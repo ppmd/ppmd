@@ -56,15 +56,15 @@ class sim():
     """Object containing a simulation."""
     p_store=[]
 
-    def __init__(self,N_in=0 , box_dims):
-    """
-    Initialise system,
-    
-    keyword arguments:
-    N_in -- Number of particles, default 0.
-    box_dims -- Dimensions of container, no default, must be specified.
-    
-    """
+    def __init__(self,N_in , box_dims):
+        """
+        Initialise system,
+        
+        keyword arguments:
+        N_in -- Number of particles, no default.
+        box_dims -- Dimensions of container, no default.
+        
+        """
     
         self.N=N_in
         self.box_size=box_dims
@@ -77,16 +77,16 @@ class sim():
 
 
     def verlet_vel(self, dt):
-    """
-    Perform velocity update in velocity verlet using specified timestep.
-    """
+        """
+        Perform velocity update in velocity verlet using specified timestep.
+        """
         for i in self.p_store:
             i.V = i.V + dt*i.A
 
     def verlet_pos(self, dt):
-    """
-    Perform position update in velocity verlet using specified timestep. Applies peroidic boundary conditions
-    """
+        """
+        Perform position update in velocity verlet using specified timestep. Applies peroidic boundary conditions
+        """
         for i in self.p_store:
             i.X = i.X + dt*i.V #Position update from velocity
             
@@ -142,9 +142,9 @@ class sim():
             
     
     def frame_plot(self):
-    """
-    Function to plot all particles in 3D scatter plot.
-    """
+        """
+        Function to plot all particles in 3D scatter plot.
+        """
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         for i in self.p_store:
@@ -161,10 +161,10 @@ if __name__ == '__main__':
     """
 
 
-    it_max=1   #max iterations
+    it_max=100   #max iterations
     N=27     #number of paricles
     box_size=numpy.array([(-5,5),(-5,5),(-5,5)])    #size of box containing particles
-    dt=0.005
+    dt=0.005 #timestep size
 
     #create simulation
     s1=sim(N,box_size)
