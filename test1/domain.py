@@ -1,12 +1,23 @@
-class domain():
-    def __init__(self, extent):
+class Domain():
+    '''
+    Base class for simulation domain.
+
+    '''
+
+    def __init__(self, extent = [1.0, 1.0, 1.0]):
         """
-        Expects list of dimensions
+        Initialises a domain with a list length three.
+        
+        :arg extent: [x,y,z] - extents of simulation domain.
+        
         """
         self._extent = extent
     
     @property  
-    def dim(self):
+    def extent(self):
+        """
+        Returns list of domain extents.
+        """
         return self._extent
     
         
