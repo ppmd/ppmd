@@ -1,7 +1,7 @@
 import math
 
 
-class Potential(object):
+class BasePotential(object):
     '''Abstract base class for inter-atomic potentials.
 
     Inter-atomic potentials can be described by a scalar
