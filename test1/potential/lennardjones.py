@@ -7,12 +7,17 @@ class LennardJones(basepotential.BasePotential):
     .. math:
         V(r) = 4\epsilon ((r/\sigma)^{-12} - (r/\sigma)^{-6})    
     
-
-    :arg epsilon: Potential parameter :math:`\epsilon`
-    :arg sigma: Potential parameter :math:`\sigma`    
     
     """
     def __init__(self, epsilon = 1.0, sigma = 1.0):
+        """
+        Initialise Lennard Jones potential:
+        
+        :arg epsilon: (float) Potential parameter :math:`\epsilon`
+        :arg sigma: (float) Potential parameter :math:`\sigma`   
+        
+        
+        """
         self._epsilon = epsilon
         self._sigma = sigma
         self._sigma6 = float(sigma)**6
@@ -36,7 +41,7 @@ class LennardJones(basepotential.BasePotential):
         """
         Evaluate potential.
         
-        :arg r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
+        :arg r: (float) Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
         """
         _sig6_rm6 = self._sigma6*(r**(-6))
         return _4epsilon * _sig6_rm6 * (_sig6_rm6 - 1.0)
@@ -45,7 +50,7 @@ class LennardJones(basepotential.BasePotential):
         """
         Evaluate force.
         
-        :arg r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
+        :arg r: (float) Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
         
         Assumes non-dimensionalisation:
         :math: '\epsilon = 1'

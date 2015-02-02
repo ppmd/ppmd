@@ -1,0 +1,86 @@
+(1) A class representing the simulation domain. This stores information such as the extent in the x-, y- and z- direction and the number of cells (once you implement the cell based algorithm). In the constructor, you pass the domain size etc. The class can then also have a method which tells you which cell a particle is in (needed for the cell based algorithm). It will be an important ingredient in the cell-based algorithm
+
+(2) A class for the interaction potential. In the constructor you pass the parameters (such as sigma and epsilon for Lennart Jones). It has a method for evaluating the potential (given a scalar distance r) and a method for evaluating the force vector (given a distance vector (dx,dy,dz)). All potentials have the same generic interface (i.e. minimal set of functions they have to implement in order to be usable in a simulation), so you could create an abstract base class and then derive from this, see e.g. attached file potential.py.
+
+(3) A class containing the state of the simulation. This stores the current positions, velocities and accelerations of the particles. In the constructor you pass it the interaction potential (or a list of potentials) and the domain. This state can then have methods for
+- calculating the potential and kinetic energy
+- initialising the particle positions and velocities
+- Calculate the accelerations
+- Enforce periodicity (for this it needs to know the domain sizes, that's why we need the domain as a data member)
+- Plotting the current state
+If you defined an abstract base class for the potential, you can then be sure that the potential class provides all the required functionality (you will need to be able to evaluate the forces and potential in the state class). Since python is an interpreted language, compliance with the base class is not enforced at compile time as it would, for example, be in C++, but at least the programmer can look at the abstract potential base class and then knows which functionality he is allowed to use in the state class. There is support for abstract base classes in python, but I have never used it myself.
+
+(4) A time stepping class, which takes a particle state in the constructor. The job of this class is to evolve the simulation forward in time. For this it only uses the acceleration update method from the state class. An example (Leapfrog) would be:
+
+def step(self):
+    npart = self._state.npart
+    self._state.update_accelerations()
+    self._state.v[0:npart,0:2] += self._state.a[0:npart,0:2]*self._dt
+    self._state.rx[0:npart,0:2] += self._state.v[0:npart,0:2]*self._dt
+    self._state.enforce_periodicity()
+
+Your driver routine (again in a separate file), which runs the simulation, calculates the total energy and saves snapshots of the simulation looks like this:
+
+import os
+import sys
+from domain import *
+from state import *
+from potential import *
+from integrator import *
+
+npart = 64
+nsteps=128
+dt = 0.001
+
+interior_only=False
+
+def outputfilename(outputdir,i):
+    return os.path.join(outputdir,'state_'+('%03d' % i)+'.png')
+
+outputdir=os.path.join(os.path.expanduser('~'),'tmp/output_md')
+domain = Domain(1.0, 1.0, 4,4)
+potential = LennartJones(1.0,0.1)
+state = State(domain,potential,npart,1.0)
+integrator = Leapfrog(state,dt)
+state.savefig(outputfilename(outputdir,0),interior_only)
+for i in range(nsteps):
+    print i, state.total_energy()
+    integrator.step()
+    state.savefig(outputfilename(outputdir,i+1),interior_only)
+
+The main advantage of this modular design is this: you can very easily switch components. If the user wants to use a different potential, all they have to do is write their own class and replace the line
+
+potential = LennartJones(1.0,0.1)
+
+They never touch the class with the time stepping algorithm or the simulation state.
+
+* In principle it's a good idea to create a separate class for a particle to encapsulate it's properties. However, in view of what we ultimately want to do, it might not be the best way in the future. At the moment the correct abstraction for me seems to be to define a ParticleDat class (this is similar to the Dat's in PyOP2, which is data attached to topological entities of the grid). This class stores the properties of npart particles, each of which has ncomp compoents of data. So for example to store the masses, velocities, positions or accelerations for n particles in 3d, I would define
+
+mass = ParticleDat(N,1)
+v = ParticleDat(N,3)
+p = ParticleDat(N,3)
+a = ParticleDat(N,3)
+
+In this class I would then store an np-array with dimensions (npart,ncomp).
+Why would I do it this way?
+The deeper reason is that at the first abstraction level I would keep the framework we write as general as possible. So basically it provides an interface for looping over pairs (or tuples) or particles and doing some manipulations (given in a kernel) on properties stored on them. The user might decide to give all particles the same mass, and just hardwire this in the interaction kernel, or they might give each particle a different mass, in which case this needs to be stored on each particle. So if we define a class for an individual particle, this class will have to change *and* our code generation system needs to be able to handle this change when accessing the data stored on the set of particle.
+
+Ultimately the system will generate some C-code which operates on a collection of particles. For numpy arrays I can export pointers to the data via ctypes. numpy-arrays are stored in C-order (row-major), so the properties of an individual particle are contiguous in memory, and it is very easy to work out the memory address to work on. Also, having this simple memory layout allows easier reasoning about optimisations. In principle it might be possible to pass the data encapsulated in a single-particle class via ctypes, but this will be harder to access in the (generic) kernel.
+
+* You can use restructured text formatting (http://docutils.sourceforge.net/docs/user/rst/quickstart.html) for comments. If you do this, then sphinx (http://sphinx-doc.org/) lets you automatically generate documentation. So, for example you can write:
+
+def axpy(x,y,alpha=1.0):
+    '''Carries out an axpy operation, :math:`y\mapsto y+\alpha x`.
+
+    This methods implements the axpy operation for arbitrary data types.
+    :arg x: Increment vector :math:`x`
+    :arg y: Vector :math:`y`
+    :arg alpha: Multiplicative factor :math:`\alpha`
+    '''
+    [...]
+
+And this can be used to create html documentation, rendering the maths and allowing cross-referencing in your code, while still keeping the inline comments in python readable, and in fact this way you don't have to state yourself that x,y,alpha are arguments, it is obvious from the syntax.
+For an example, see e.g. https://github.com/firedrakeproject/firedrake-helmholtzsolver (clone the repository and then run 'make html' in the doc directory to generate html documentation - you will have to install sphinx to do this).
+
+You could also have a look at the PyOP2 documentation http://op2.github.io/PyOP2/ to get an idea of how they approach the problem. At some point it would be important to go through this and talk to the PyOP2/firedrake developers at Imperial.
+
