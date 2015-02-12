@@ -58,7 +58,7 @@
 <span id="domain-module"></span><h1>domain Module<a class="headerlink" href="#module-domain" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="domain.BaseDomain">
-<em class="property">class </em><tt class="descclassname">domain.</tt><tt class="descname">BaseDomain</tt><big>(</big><em>extent=array([ 1.</em>, <em>1.</em>, <em>1.])</em>, <em>cellcount=1</em><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">domain.</tt><tt class="descname">BaseDomain</tt><big>(</big><em>extent=array([ 1.</em>, <em>1.</em>, <em>1.])</em>, <em>cellcount=None</em><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base class for simulation domain.</p>
 <dl class="method">
 <dt id="domain.BaseDomain.cellcount">
@@ -70,6 +70,20 @@
 <dt id="domain.BaseDomain.extent">
 <tt class="descname">extent</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain.extent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain.extent" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns list of domain extents.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="domain.BaseDomain.set_extent">
+<tt class="descname">set_extent</tt><big>(</big><em>new_extent=array([ 1.</em>, <em>1.</em>, <em>1.])</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.set_extent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set domain extents</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arg :</th><td class="field-body">(np.shape(1,3)) New extents.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>

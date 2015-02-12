@@ -54,7 +54,7 @@
 <span id="state-module"></span><h1>state Module<a class="headerlink" href="#module-state" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="state.BaseMDState">
-<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">BaseMDState</tt><big>(</big><em>domain</em>, <em>potential</em>, <em>N=0</em>, <em>mass=1.0</em><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">BaseMDState</tt><big>(</big><em>domain</em>, <em>potential</em>, <em>particle_init=None</em>, <em>N=0</em>, <em>mass=1.0</em><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base molecular dynamics class, stores:</p>
 <dl class="method">
 <dt id="state.BaseMDState.accelerations">
@@ -78,6 +78,27 @@
 <dt id="state.BaseMDState.velocities">
 <tt class="descname">velocities</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState.velocities"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState.velocities" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return all particle velocities.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="state.LatticeInitNRho">
+<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">LatticeInitNRho</tt><big>(</big><em>N</em>, <em>rho</em><big>)</big><a class="headerlink" href="#state.LatticeInitNRho" title="Permalink to this definition">¶</a></dt>
+<dd><p>Arrange N particles into a 3D lattice of density <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>/</mo><mi>r</mi><mi>h</mi><mi>o</mi></mrow></math>. Redfines container volume as a cube with deduced volume.</p>
+<dl class="method">
+<dt id="state.LatticeInitNRho.reset">
+<tt class="descname">reset</tt><big>(</big><em>state_input</em><big>)</big><a class="headerlink" href="#state.LatticeInitNRho.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Applies initial lattice to particle positions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arg :</th><td class="field-body">(state.*) object of state class. Inheritered from BaseMDState.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>

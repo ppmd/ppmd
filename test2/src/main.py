@@ -9,7 +9,7 @@ if __name__ == '__main__':
     
     print "Wip"
     
-    N=27
+    N=64
     
     test_domain = domain.BaseDomain()
     test_potential = potential.LennardJones()
@@ -20,6 +20,7 @@ if __name__ == '__main__':
 
     print test_state.positions()
     
+    test_state.frame_plot()
     
     
     

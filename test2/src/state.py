@@ -2,6 +2,9 @@ import numpy as np
 import particle
 import math
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
 class BaseMDState():
     """
     Base molecular dynamics class, stores:
@@ -66,29 +69,35 @@ class BaseMDState():
             
         return float(energy)
         
+    def frame_plot(self):
+        """
+        Function to plot all particles in 3D scatter plot.
+        """
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        for ix in range(self._N):
+            ax.scatter(self._pos[ix,0], self._pos[ix,1], self._pos[ix,2])
+        plt.show()
+        
         
 class LatticeInitNRho():
     """
-    Arrange N particles into a 3D lattice of density :math:`\rho`. Redfines container volume as a cube with deduced volume.
+    Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass.
+    
     """
     
     def __init__(self, N, rho):
         """
-        
         Initialise required lattice with the number of particles and required density.
         
         :arg: (int) input, N, number of particles.
         :arg: (float) input, :math:`\rho`, required density.
        
-        
         """
         
         self._N = N
         self._rho = rho
-        
-        
-        
-        
+
     def reset(self, state_input):
         """
         Applies initial lattice to particle positions.
@@ -97,7 +106,7 @@ class LatticeInitNRho():
         """
         
         #Evaluate cube side length.
-        Lx = (float(self._rho) * float(self._N))**(1./3.)
+        Lx = (float(self._N) / float(self._rho))**(1./3.)
         
         #Cube dimensions of data
         np1_3 = self._N**(1./3.)
