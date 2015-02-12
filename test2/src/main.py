@@ -8,14 +8,17 @@ if __name__ == '__main__':
     
     
     print "Wip"
+    
+    N=27
+    
     test_domain = domain.BaseDomain()
     test_potential = potential.LennardJones()
-    test_state = state.BaseMDState(test_domain, test_potential, 1)
-    tmp=test_state.velocities()
     
+    test_init_lattice = state.LatticeInitNRho(N, 1.)
     
-    print test_state.energy_kenetic()
-    
+    test_state = state.BaseMDState(test_domain, test_potential, test_init_lattice, N)
+
+    print test_state.positions()
     
     
     

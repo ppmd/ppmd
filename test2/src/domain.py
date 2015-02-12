@@ -6,7 +6,7 @@ class BaseDomain():
 
     '''
 
-    def __init__(self, extent = np.array([1., 1., 1.]), cellcount = 1):
+    def __init__(self, extent = np.array([1., 1., 1.]), cellcount = None):
         """
         Initialises a domain with a list length three.
         
@@ -23,6 +23,16 @@ class BaseDomain():
         Returns list of domain extents.
         """
         return self._extent
+        
+    def set_extent(self, new_extent = np.array([1., 1., 1.])):
+        """
+        Set domain extents
+        
+        :arg: (np.shape(1,3)) New extents.
+        
+        """
+        self._extent = new_extent
+        
     
     def cellcount(self):
         """

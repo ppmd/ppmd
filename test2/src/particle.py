@@ -32,9 +32,14 @@ class Dat():
         
     def __getitem__(self, ix):
         return self._Dat[ix]
+
+    def __setitem__(self, ix, val):
+        self._Dat[ix] = val      
+        
         
     def __str__(self):
         return str(self._Dat)
+        
 
 
 
