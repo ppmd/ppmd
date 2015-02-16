@@ -21,7 +21,7 @@ class BaseDomain():
         self._extent = extent
         self._cell_count = cell_count
         self._cell_array = np.array([1,1,1],dtype=int)
-    
+        self._cell_edge_lengths = np.array([1.,1.,1.],dtype=float)
       
     def extent(self):
         """
@@ -45,11 +45,111 @@ class BaseDomain():
         """
         return self._cell_count
         
+    def cell_index_lin(self,C_in):
+        """
+        Convert tuple index to linear index. Applies periodic boundaries first.
+        
+        :arg c_in: Input index to convert.
+        """
+        
+        C_in[0] = (C_in[0]-1) % self._cell_array[0] + 1
+        C_in[1] = (C_in[1]-1) % self._cell_array[1] + 1        
+        C_in[2] = (C_in[2]-1) % self._cell_array[2] + 1    
+        
+
+        return ((C_in[2] - 1)*self._cell_array[1] + C_in[1] - 1)*self._cell_array[0] + C_in[0]
+        
+    def cell_index_lin_offset(self,C_in):
+        """
+        Convert tuple index to linear index. Applies periodic boundaries first. Returns periodic boundary offsets.
+        
+        :arg c_in: Input index to convert.
+        """
+        
+        C_in[0] = (C_in[0]-1) % self._cell_array[0] + 1
+        C_in[1] = (C_in[1]-1) % self._cell_array[1] + 1        
+        C_in[2] = (C_in[2]-1) % self._cell_array[2] + 1    
+        
+
+        return [((C_in[2] - 1)*self._cell_array[1] + C_in[1] - 1)*self._cell_array[0] + C_in[0],0,0,0]      
+        
+        
+    def cell_index_tuple(self,c_in):
+        """
+        Convert cell linear index to vector.
+        
+        :arg c_in: (int) Input index.
+        """    
+        Cz = 1 + (c_in-1)/(self._cell_array[0]*self._cell_array[1])
+        Cx = 1 + (c_in-1) % self._cell_array[0]
+        Cy = 1 + int((c_in - (Cz-1)*(self._cell_array[0]*self._cell_array[1]) -1)/(self._cell_array[0]))
+
+        return np.array([Cx,Cy,Cz])
+        
+        
+    def get_cell_lin_index(self,r_in):
+        """
+        Returns the linear cell index for a given input coordinate.
+        
+        :arg r_in: (np.array(3,1)) Cartesian vector for particle position.
+        """
+        
+        r_p = r_in + 0.5*self._extent
+        Cx = int(r_p[0]/self._cell_edge_lengths[0]) + 1
+        Cy = int(r_p[1]/self._cell_edge_lengths[1]) + 1
+        Cz = int(r_p[2]/self._cell_edge_lengths[2]) + 1
+        return ((Cz - 1)*self._cell_array[1] + Cy - 1)*self._cell_array[0] + Cx
+        
+    def get_adjacent_cells(self,ix):
+        """
+        Returns the 14 neighbouring cells as linear index.
+        
+        :arg ix: (int) Input index.
+        
+        """
+         
+        cell_list = np.zeros([14,4],dtype=int)
+        
+        C = self.cell_index_tuple(ix)
+        
+
+        cell_list[0,] = self.cell_index_lin_offset(C)
+        cell_list[1,] = self.cell_index_lin_offset(C+[1,0,0])
+        cell_list[2,] = self.cell_index_lin_offset(C+[0,1,0])
+        cell_list[3,] = self.cell_index_lin_offset(C+[1,1,0])
+        cell_list[4,] = self.cell_index_lin_offset(C+[1,-1,0])
+        
+        cell_list[5,] = self.cell_index_lin_offset(C+[-1,1,1])
+        cell_list[6,] = self.cell_index_lin_offset(C+[0,1,1])
+        cell_list[7,] = self.cell_index_lin_offset(C+[1,1,1])
+        
+        cell_list[8,] = self.cell_index_lin_offset(C+[-1,0,1])
+        cell_list[9,] = self.cell_index_lin_offset(C+[0,0,1])
+        cell_list[10,] = self.cell_index_lin_offset(C+[1,0,1])
+        
+        cell_list[11,] = self.cell_index_lin_offset(C+[-1,-1,1])
+        cell_list[12,] = self.cell_index_lin_offset(C+[0,-1,1])
+        cell_list[13,] = self.cell_index_lin_offset(C+[1,-1,1])
+        
+        
+        
+        return cell_list
+            
+        
+        
+        
+        
+        
+        
+        
     def _cell_count_recalc(self):
         """    
-        Recalculates number of cells in domain. 
+        Recalculates number of cells in domain. Alongside computing cell edge lengths.
         """
         self._cell_count = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]
+        self._cell_edge_lengths[0] = self._extent[0]/self._cell_array[0]
+        self._cell_edge_lengths[1] = self._extent[1]/self._cell_array[1]
+        self._cell_edge_lengths[2] = self._extent[2]/self._cell_array[2]
         
     def volume(self):
         """

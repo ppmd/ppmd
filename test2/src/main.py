@@ -9,7 +9,7 @@ if __name__ == '__main__':
     
     print "test MD"
     
-    N=64
+    N=27
     rho = 1.
     
     test_domain = domain.BaseDomain()
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     
     
     
-    test_state.frame_plot()
+    #test_state.frame_plot()
     
     
     
