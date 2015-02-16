@@ -9,8 +9,8 @@ if __name__ == '__main__':
     
     print "test MD"
     
-    N=27
-    rho = 1.
+    N=1000
+    rho = float(N)
     
     test_domain = domain.BaseDomain()
     test_potential = potential.LennardJones()

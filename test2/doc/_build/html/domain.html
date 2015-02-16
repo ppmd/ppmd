@@ -85,9 +85,79 @@
 </dd></dl>
 
 <dl class="method">
+<dt id="domain.BaseDomain.cell_index_lin">
+<tt class="descname">cell_index_lin</tt><big>(</big><em>C_in</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.cell_index_lin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert tuple index to linear index. Applies periodic boundaries first.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>c_in</strong> &#8211; Input index to convert.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="domain.BaseDomain.cell_index_lin_offset">
+<tt class="descname">cell_index_lin_offset</tt><big>(</big><em>C_in_abs</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.cell_index_lin_offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert tuple index to linear index. Applies periodic boundaries first. Returns periodic boundary offsets.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>c_in_abs</strong> &#8211; Input index to convert.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="domain.BaseDomain.cell_index_tuple">
+<tt class="descname">cell_index_tuple</tt><big>(</big><em>c_in</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.cell_index_tuple" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert cell linear index to vector.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>c_in</strong> &#8211; (int) Input index.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="domain.BaseDomain.extent">
 <tt class="descname">extent</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain.extent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain.extent" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns list of domain extents.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="domain.BaseDomain.get_adjacent_cells">
+<tt class="descname">get_adjacent_cells</tt><big>(</big><em>ix</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.get_adjacent_cells" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the 14 neighbouring cells as linear index.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ix</strong> &#8211; (int) Input index.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="domain.BaseDomain.get_cell_lin_index">
+<tt class="descname">get_cell_lin_index</tt><big>(</big><em>r_in</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.get_cell_lin_index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the linear cell index for a given input coordinate.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>r_in</strong> &#8211; (np.array(3,1)) Cartesian vector for particle position.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">

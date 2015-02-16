@@ -24,6 +24,13 @@ class BaseMDState():
         
         """        
         
+        self._rc = 0.15
+        self._rn = 2*self._rc
+        self._rn2 = self._rn**2
+        self._N_p = 0
+        
+        
+        
         self._N = N
         self._pos = particle.Dat(N, 3)
         self._vel = particle.Dat(N, 3)
@@ -38,10 +45,15 @@ class BaseMDState():
         particle_init.reset(self)
         
         '''Initialise cell array'''
-        self._domain.set_cell_array_radius(1.0)
+        self._domain.set_cell_array_radius(self._rn)
+        
+        print "Cell array = ", self._domain._cell_array
+        print "Domain extents = ",self._domain._extent
+        
+        
         
         '''Construct initial cell list'''
-        self._q_list = np.zeros([self._N + self._domain.cell_count()], dtype=int, order='C')
+        self._q_list = np.zeros([1 + self._N + self._domain.cell_count()], dtype=int, order='C')
         self.cell_sort_all()
         
         """Create pair lists"""
@@ -53,12 +65,12 @@ class BaseMDState():
         """
         Construct neighbour list, assigning atoms to cells. Using Rapaport alg.
         """
-        for cx in range(self._domain.cell_count()):
+        for cx in range(1,1+self._domain.cell_count()):
             self._q_list[self._N + cx] = 0
-        for ix in range(self._N):
-            c = self._domain.get_cell_lin_index(self._pos[ix,])
-            self._q_list[ix] = self._q_list[self._N + c - 1]
-            self._q_list[self._N + c -1] = ix
+        for ix in range(1,1+self._N):
+            c = self._domain.get_cell_lin_index(self._pos[ix-1,])
+            self._q_list[ix] = self._q_list[self._N + c]
+            self._q_list[self._N + c] = ix
         
         
         
@@ -67,20 +79,52 @@ class BaseMDState():
         Loop over all cells and create pair list.
         """
         
-        for cx in range(1,1 + self._domain.cell_count()):
-            for cy in self._domain.get_adjacent_cells(cx):
-                print cx,cy
+        """
+        TODO put inner part in c
+        """
+        
+        
+        pair_list=[]
+        m=0
+        
+        
+        print "pair find"
+        for cp in range(1,1 + self._domain.cell_count()):
+            cells = self._domain.get_adjacent_cells(cp)
+            
+            
+            for cpp in range(1,15):
                 
+                ip = self._q_list[self._N+cp]
                 
+                while (ip > 0):
+                    ipp = self._q_list[self._N+cpp]
+                    while (ipp > 0):
+                        if (cp != cpp or ip < ipp):
+                            #distance
+                            
+                            r = np.linalg.norm(self._pos[ip-1] - self._pos[ipp-1] + cells[0][cpp-1,1:5:1]*self._domain._extent)
+                            
+                            
+                            if (r**2 < self._rn2):
+                                """"""
+                                
+                                
+                                m+=1
+                                pair_list.append([ip,ipp])
+                                
+                                
+                                
+                                
+                        ipp = self._q_list[ipp]
+                    ip = self._q_list[ip]
+        self._N_p=m
+        
+        print m
         
         
         
-        
-        
-        
-        
-        
-        
+    
         
         
     def positions(self):
