@@ -3,6 +3,11 @@ import numpy as np
 class Dat():
     """
     Base class to hold floating point properties of particles
+    
+    :arg N1: (Integer) First dimension.
+    :arg N2: (Integer) Second dimension.
+    :arg initial_value: (Float) Value to initialise array with, default 0.0.
+    
     """
     def __init__(self, N1 = 1, N2 = 1, initial_value = None):
         """

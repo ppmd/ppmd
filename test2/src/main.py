@@ -7,18 +7,21 @@ import state
 if __name__ == '__main__':
     
     
-    print "Wip"
+    print "test MD"
     
     N=64
+    rho = 1.
     
     test_domain = domain.BaseDomain()
     test_potential = potential.LennardJones()
     
-    test_init_lattice = state.LatticeInitNRho(N, 1.)
+    test_init_lattice = state.LatticeInitNRho(N, rho)
     
     test_state = state.BaseMDState(test_domain, test_potential, test_init_lattice, N)
-
-    print test_state.positions()
+    
+    
+    
+    
     
     test_state.frame_plot()
     

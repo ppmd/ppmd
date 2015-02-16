@@ -55,7 +55,23 @@
 <dl class="class">
 <dt id="state.BaseMDState">
 <em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">BaseMDState</tt><big>(</big><em>domain</em>, <em>potential</em>, <em>particle_init=None</em>, <em>N=0</em>, <em>mass=1.0</em><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState" title="Permalink to this definition">¶</a></dt>
-<dd><p>Base molecular dynamics class, stores:</p>
+<dd><p>Base molecular dynamics class.</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">arg domain:</th><td class="field-body">(Domain class) Container within which the simulation takes place.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">arg potential:</th><td class="field-body">(Potential class) Potential to use between particles.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">arg N:</th><td class="field-body">(integer) Number of particles, default 1.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">arg mass:</th><td class="field-body">(float) Mass of particles, default 1.0</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
 <dl class="method">
 <dt id="state.BaseMDState.accelerations">
 <tt class="descname">accelerations</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState.accelerations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState.accelerations" title="Permalink to this definition">¶</a></dt>
@@ -66,6 +82,12 @@
 <dt id="state.BaseMDState.energy_kenetic">
 <tt class="descname">energy_kenetic</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState.energy_kenetic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState.energy_kenetic" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calcluate and return kenetic energy.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.frame_plot">
+<tt class="descname">frame_plot</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.frame_plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to plot all particles in 3D scatter plot.</p>
 </dd></dl>
 
 <dl class="method">
@@ -86,7 +108,20 @@
 <dt id="state.LatticeInitNRho">
 <em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">LatticeInitNRho</tt><big>(</big><em>N</em>, <em>rho</em><big>)</big><a class="headerlink" href="#state.LatticeInitNRho" title="Permalink to this definition">¶</a></dt>
 <dd><p>Arrange N particles into a 3D lattice of density <math xmlns="http://www.w3.org/1998/Math/MathML">
-<mrow><mo>/</mo><mi>r</mi><mi>h</mi><mi>o</mi></mrow></math>. Redfines container volume as a cube with deduced volume.</p>
+<mrow><mo>/</mo><mi>r</mi><mi>h</mi><mi>o</mi></mrow></math>. Redfines container volume as a cube with deduced volume, assumes unit mass.</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">arg:</th><td class="field-body">(int) input, N, number of particles.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">arg:</th><td class="field-body">(float) input, <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>/</mo><mi>r</mi><mi>h</mi><mi>o</mi></mrow></math>, required density.</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
 <dl class="method">
 <dt id="state.LatticeInitNRho.reset">
 <tt class="descname">reset</tt><big>(</big><em>state_input</em><big>)</big><a class="headerlink" href="#state.LatticeInitNRho.reset" title="Permalink to this definition">¶</a></dt>

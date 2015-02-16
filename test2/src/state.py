@@ -7,17 +7,21 @@ from mpl_toolkits.mplot3d import Axes3D
 
 class BaseMDState():
     """
-    Base molecular dynamics class, stores:
-    """
-    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1.):
-        """
-        Intialise class to hold the state of a simulation.
-        
-        
+    Base molecular dynamics class.
+    
         :arg domain: (Domain class) Container within which the simulation takes place.
         :arg potential: (Potential class) Potential to use between particles.
         :arg N: (integer) Number of particles, default 1.
         :arg mass: (float) Mass of particles, default 1.0
+    """
+    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1.):
+        """
+        Intialise class to hold the state of a simulation.
+        :arg domain: (Domain class) Container within which the simulation takes place.
+        :arg potential: (Potential class) Potential to use between particles.
+        :arg N: (integer) Number of particles, default 1.
+        :arg mass: (float) Mass of particles, default 1.0        
+        
         """        
         
         self._N = N
@@ -31,7 +35,7 @@ class BaseMDState():
         self._potential = potential
         
         particle_init.reset(self)
-        
+        #self._domain.set_cell_array_radius(1.0)
         
         
     def positions(self):
@@ -84,14 +88,15 @@ class LatticeInitNRho():
     """
     Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass.
     
+        :arg: (int) input, N, number of particles.
+        :arg: (float) input, :math:`/rho`, required density.
+    
     """
     
     def __init__(self, N, rho):
         """
         Initialise required lattice with the number of particles and required density.
         
-        :arg: (int) input, N, number of particles.
-        :arg: (float) input, :math:`\rho`, required density.
        
         """
         
