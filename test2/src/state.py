@@ -16,7 +16,7 @@ class BaseMDState():
         :arg N: (integer) Number of particles, default 1.
         :arg mass: (float) Mass of particles, default 1.0
     """
-    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1.):
+    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1., dt = 0.001, T = 0.1):
         """
         Intialise class to hold the state of a simulation.
         :arg domain: (Domain class) Container within which the simulation takes place.
@@ -48,8 +48,8 @@ class BaseMDState():
         self._rn2 = self._rn**2
         self._N_p = 0
         
-        
-        
+        self._dt = dt
+        self._T = T
 
         
         ''' Initialise particle positions'''
@@ -83,6 +83,41 @@ class BaseMDState():
         print "Time taken py: ", end2 - end, "seconds."
         """
         
+        #Calculate initial accelerations.
+        self.pair_locate_c()
+        
+        #self.velocity_verlet_integration()
+        
+        
+        
+        
+    def velocity_verlet_step(self):
+        """
+        Perform one step of Velocity Verlet.
+        """
+        
+        self._vel._Dat+=0.5*self._dt*self._accel._Dat
+        self._pos._Dat+=self._dt*self._vel._Dat
+        
+        #handle perodic bounadies
+        for j in range(self._N):
+            self._domain.boundary_correct(self._pos[j])
+        
+        #update accelerations
+        self.pair_locate_c()
+        self._vel._Dat+= 0.5*self._dt*self._accel._Dat
+        
+        
+    def velocity_verlet_integration(self):
+        """
+        Perform Velocity Verlet integration up to time T.
+        """    
+        
+        for i in range(int(math.ceil(self._T/self._dt))):
+            self.velocity_verlet_step()
+            
+
+        
         
         
         
@@ -111,7 +146,7 @@ class BaseMDState():
         self._accel._Dat*=0.0
         self._U[0] = 0.0
         
-        print "pair find"
+        
         for cp in range(1,1 + self._domain.cell_count()):
             
             cells = self._domain.get_adjacent_cells(cp)
@@ -155,6 +190,8 @@ class BaseMDState():
         """
         C version of the pair_locate: Loop over all cells update accelerations and potential engery.
         """
+        print self._q_list
+        
         
         self._accel._Dat*=0.0
         self._U[0] = 0.0
@@ -175,7 +212,7 @@ class BaseMDState():
                                                         ctypes.POINTER(ctypes.c_double),
                                                         ctypes.POINTER(ctypes.c_double)]
         
-        print "pair find C"
+        
         for cp in range(1,1 + self._domain.cell_count()):
             
             
@@ -233,6 +270,9 @@ class BaseMDState():
         """
         Function to plot all particles in 3D scatter plot.
         """
+        
+        print "plotting....."
+        
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         for ix in range(self._N):

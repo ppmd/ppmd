@@ -197,10 +197,7 @@ class BaseDomain():
         self._cell_count_recalc()
         
         
-        
-        
-        
-        
+    
         
     def cell_array(self, cell_array):
         """
@@ -210,6 +207,24 @@ class BaseDomain():
         return self._cell_array   
     
     
+    def boundary_correct(self, r_in):
+        """
+        Return a new position accounting for periodic boundaries.
+        
+        :arg r_in: np.array(1,3) input position
+        """
+        
+        for ix in range(3):
+            while (r_in[ix] < -0.5*self._extent[ix]):
+                r_in[ix]+=self._extent[ix]
+            while (r_in[ix] > 0.5*self._extent[ix]):
+                r_in[ix]-=self._extent[ix]        
+        
+        return r_in
+        
+        
+        
+        
     
     
     

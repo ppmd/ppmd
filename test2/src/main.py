@@ -9,8 +9,8 @@ if __name__ == '__main__':
     
     print "test MD"
     
-    N=1000
-    rho = 1
+    N=3375
+    rho = 3
     
     print rho
     
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     
     
     
-    #test_state.frame_plot()
+    test_state.frame_plot()
     
     
     
