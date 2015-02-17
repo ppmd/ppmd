@@ -1,4 +1,5 @@
 import numpy as np
+import ctypes
 
 class Dat():
     """
@@ -23,9 +24,9 @@ class Dat():
         self._N2 = N2
         
         if (initial_value != None):
-            self._Dat = float(initial_value) * np.ones([N1, N2], dtype=float, order='C')
+            self._Dat = float(initial_value) * np.ones([N1, N2], dtype=ctypes.c_double, order='C')
         else:
-            self._Dat = np.zeros([N1, N2], dtype=float, order='C')
+            self._Dat = np.zeros([N1, N2], dtype=ctypes.c_double, order='C')
         
         
     

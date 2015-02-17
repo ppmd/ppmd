@@ -90,3 +90,85 @@ class LennardJones(BasePotential):
         _rm2 = r**(-2)
         _rm6 = _rm2**(3)
         return self._48_sigma * _rm2 * _rm6 * (_rm6 - 0.5)
+        
+class LennardJonesShifted(BasePotential):
+    '''Shifted Lennard Jones potential.
+    
+    .. math:
+        V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + 1/4)
+        
+    for :math:`r>r_c=2^{1/6}` the potential (and force) is set to zero.
+
+    :arg epsilon: Potential parameter :math:`\epsilon`
+    :arg sigma: Potential parameter :math:`\sigma`
+    '''
+    def __init__(self,epsilon = 1.0,sigma = 1.0):
+        self._epsilon = epsilon
+        self._sigma = sigma
+        self._C_V = 4.*self._epsilon
+        self._C_F = 48*self._epsilon/self._sigma**2
+        self._rc = 2.**(1./6.)*self._sigma
+        self._rc2 = self._rc**2
+        self._sigma2 = self._sigma**2
+
+    @property
+    def epsilon(self):
+        '''Value of parameter :math:`\epsilon`'''
+        return self._epsilon
+
+    @property
+    def sigma(self):
+        '''Value of parameter :math:`\sigma`'''
+        return self._sigma
+
+    @property
+    def rc(self):
+        '''Value of cufoff distance :math:`r_c`'''
+        return self._rc
+
+    def evaluate(self,r):
+        '''Evaluate potential.
+
+        :arg r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
+        '''
+        if (r < self._rc):
+            r_m6 = (r/self._sigma)**(-6)
+            return self._C_V*((r_m6-1.0)*r_m6 + 0.25)
+        else:
+            return 0.0
+    """
+    def evaluate_force(self,rx,ry):
+        '''Evaluate force.
+
+        :arg rx: x-component of distance :math:`r_x`
+        :arg ry: y-component of distance :math:`r_y`
+        '''
+        r2 = rx**2+ry**2
+        if (r2 < self._rc2):
+            r_m2 = self._sigma2/r2
+            tmp = self._C_F*(r_m2**7 - 0.5*r_m2**4)
+            return (tmp*rx,tmp*ry)
+        else:
+            return (0.0,0.0)
+    """
+    def evaluate_force(self,r2):
+        '''Evaluate force.
+
+        :arg rx: x-component of distance :math:`r_x`
+        :arg ry: y-component of distance :math:`r_y`
+        '''
+        
+        if (r2 < self._rc2):
+            r_m2 = self._sigma2/r2
+            return  self._C_F*(r_m2**7 - 0.5*r_m2**4)
+            
+        else:
+            return 0.0   
+
+
+
+
+
+
+
+

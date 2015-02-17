@@ -10,10 +10,12 @@ if __name__ == '__main__':
     print "test MD"
     
     N=1000
-    rho = float(N)
+    rho = 1
+    
+    print rho
     
     test_domain = domain.BaseDomain()
-    test_potential = potential.LennardJones()
+    test_potential = potential.LennardJonesShifted()
     
     test_init_lattice = state.LatticeInitNRho(N, rho)
     

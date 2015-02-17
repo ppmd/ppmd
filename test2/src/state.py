@@ -1,6 +1,8 @@
 import numpy as np
 import particle
 import math
+import ctypes
+import time
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -23,14 +25,6 @@ class BaseMDState():
         :arg mass: (float) Mass of particles, default 1.0        
         
         """        
-        
-        self._rc = 0.15
-        self._rn = 2*self._rc
-        self._rn2 = self._rn**2
-        self._N_p = 0
-        
-        
-        
         self._N = N
         self._pos = particle.Dat(N, 3)
         self._vel = particle.Dat(N, 3)
@@ -40,6 +34,23 @@ class BaseMDState():
         
         self._domain = domain
         self._potential = potential
+        
+        #potential energy
+        self._U = np.zeros([1], dtype=ctypes.c_double, order='C')
+        
+        
+        
+        self._rc = 2.**(1./6.)*self._potential._sigma
+        self._rn = 2*self._rc
+        
+        print "r_n = ", self._rn
+        
+        self._rn2 = self._rn**2
+        self._N_p = 0
+        
+        
+        
+
         
         ''' Initialise particle positions'''
         particle_init.reset(self)
@@ -52,12 +63,30 @@ class BaseMDState():
         
         
         
+        
         '''Construct initial cell list'''
-        self._q_list = np.zeros([1 + self._N + self._domain.cell_count()], dtype=int, order='C')
+        self._q_list = np.zeros([1 + self._N + self._domain.cell_count()], dtype=ctypes.c_int, order='C')
         self.cell_sort_all()
         
-        """Create pair lists"""
+        
+        """
+        #Create pair lists and evaluate forces
+        start = time.time()
+        self.pair_locate_c()
+        print "Potential energy C:", self._U
+        end = time.time()
         self.pair_locate()
+        end2 = time.time()
+        print "Potential energy py:", self._U
+        
+        print "Time taken C: ", end - start, "seconds."
+        print "Time taken py: ", end2 - end, "seconds."
+        """
+        
+        
+        
+        
+        
         
         
         
@@ -76,23 +105,20 @@ class BaseMDState():
         
     def pair_locate(self):
         """
-        Loop over all cells and create pair list.
+        Loop over all cells update accelerations and potential engery.
         """
         
-        """
-        TODO put inner part in c
-        """
-        
-        
-        pair_list=[]
-        m=0
-        
+        self._accel._Dat*=0.0
+        self._U[0] = 0.0
         
         print "pair find"
         for cp in range(1,1 + self._domain.cell_count()):
+            
             cells = self._domain.get_adjacent_cells(cp)
             
+            count=0
             
+            """start c code here"""
             for cpp in range(1,15):
                 
                 ip = self._q_list[self._N+cp]
@@ -103,28 +129,69 @@ class BaseMDState():
                         if (cp != cpp or ip < ipp):
                             #distance
                             
-                            r = np.linalg.norm(self._pos[ip-1] - self._pos[ipp-1] + cells[0][cpp-1,1:5:1]*self._domain._extent)
+                            rv = self._pos[ip-1] - self._pos[ipp-1] + cells[cpp-1,1:4:1]*self._domain._extent
+                            r = np.linalg.norm(rv)
                             
-                            
-                            if (r**2 < self._rn2):
-                                """"""
+
+                            if (r**2 < (self._rc**2)):    
+
+                                count+=1
+                                
+                                force_eval = self._potential.evaluate_force(r)
+                                
+                                self._accel._Dat[ip-1]+=force_eval*rv
+                                self._accel._Dat[ipp-1]-=force_eval*rv
+                                
+                                self._U[0] += self._potential.evaluate(r)
                                 
                                 
-                                m+=1
-                                pair_list.append([ip,ipp])
-                                
-                                
-                                
-                                
+                                      
                         ipp = self._q_list[ipp]
                     ip = self._q_list[ip]
-        self._N_p=m
-        
-        print m
+            #print count, cp
         
         
+    def pair_locate_c(self):
+        """
+        C version of the pair_locate: Loop over all cells update accelerations and potential engery.
+        """
         
-    
+        self._accel._Dat*=0.0
+        self._U[0] = 0.0
+        
+        
+        
+        self._libpair_loop_LJ = np.ctypeslib.load_library('libpair_loop_LJ.so','.')
+        self._libpair_loop_LJ.d_pair_loop_LJ.restype = ctypes.c_int
+        
+        #void d_pair_loop_LJ(int N, int cp, double rc, int* cells, int* q_list, double* pos, double* d_extent, double *accel);
+        self._libpair_loop_LJ.d_pair_loop_LJ.argtypes = [ctypes.c_int,
+                                                        ctypes.c_int,
+                                                        ctypes.c_double,
+                                                        ctypes.POINTER(ctypes.c_int),
+                                                        ctypes.POINTER(ctypes.c_int),
+                                                        ctypes.POINTER(ctypes.c_double),
+                                                        ctypes.POINTER(ctypes.c_double),
+                                                        ctypes.POINTER(ctypes.c_double),
+                                                        ctypes.POINTER(ctypes.c_double)]
+        
+        print "pair find C"
+        for cp in range(1,1 + self._domain.cell_count()):
+            
+            
+            cells = self._domain.get_adjacent_cells(cp)
+            
+            
+            args = [cells.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                    self._pos._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                    self._domain._extent.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                    self._accel._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                    self._U.ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
+            
+            self._libpair_loop_LJ.d_pair_loop_LJ(ctypes.c_int(self._N), ctypes.c_int(cp), ctypes.c_double(self._rc), *args)
+        
+        
         
         
     def positions(self):

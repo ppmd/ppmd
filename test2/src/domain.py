@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import ctypes
 
 class BaseDomain():
     '''
@@ -66,21 +67,20 @@ class BaseDomain():
         :arg c_in_abs: Input index to convert.
         """
         
-        periodic = False
         
-        C_in = np.zeros(3,dtype=int)
+        C_in = np.zeros(3,dtype=ctypes.c_int)
         C_in[0] = (C_in_abs[0]-1) % self._cell_array[0] + 1
         C_in[1] = (C_in_abs[1]-1) % self._cell_array[1] + 1
         C_in[2] = (C_in_abs[2]-1) % self._cell_array[2] + 1
         
-        correction = np.array([((C_in[2] - 1)*self._cell_array[1] + C_in[1] - 1)*self._cell_array[0] + C_in[0],0,0,0])
+        correction = np.array([((C_in[2] - 1)*self._cell_array[1] + C_in[1] - 1)*self._cell_array[0] + C_in[0],0,0,0,0],dtype=ctypes.c_int)
         
         if (C_in[0] != C_in_abs[0] or C_in[1] != C_in_abs[1] or C_in[2] != C_in_abs[2]):
-            periodic = True
+            correction[4] = 1
             correction[1:4:1] = np.sign(C_in_abs-C_in)
-            
+         
 
-        return [correction,periodic]
+        return correction
         
         
     def cell_index_tuple(self,c_in):
@@ -117,8 +117,8 @@ class BaseDomain():
         
         """
          
-        cell_list = np.zeros([14,4],dtype=int)
-        cell_list_boundary=[]
+        cell_list = np.zeros([14,5],dtype=ctypes.c_int, order='C')
+        #cell_list_boundary=[]
         
         C = self.cell_index_tuple(ix)
         
@@ -140,16 +140,10 @@ class BaseDomain():
             ]
         
         for ix in range(14):
-
             ind = stencil_map[ix]
+            cell_list[ix,] = self.cell_index_lin_offset(C+ind)
 
-            tmp=self.cell_index_lin_offset(C+ind)
-            cell_list[ix,] = tmp[0]
-            cell_list_boundary.append(tmp[1])
-        
- 
-        return [cell_list, cell_list_boundary]
-            
+        return cell_list
         
         
         
