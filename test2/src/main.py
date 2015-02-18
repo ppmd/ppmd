@@ -9,7 +9,7 @@ if __name__ == '__main__':
     
     print "test MD"
     
-    N=3375
+    N=1000
     rho = 3
     
     print rho

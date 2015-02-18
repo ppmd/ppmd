@@ -207,18 +207,20 @@ class BaseDomain():
         return self._cell_array   
     
     
-    def boundary_correct(self, r_in):
+    def boundary_correct(self, r_in, N):
         """
         Return a new position accounting for periodic boundaries.
         
         :arg r_in: np.array(1,3) input position
         """
-        
-        for ix in range(3):
-            while (r_in[ix] < -0.5*self._extent[ix]):
-                r_in[ix]+=self._extent[ix]
-            while (r_in[ix] > 0.5*self._extent[ix]):
-                r_in[ix]-=self._extent[ix]        
+        for ix in range(N):
+            if (abs(r_in[ix,0]) > 0.5*self._extent[0]):
+                r_in[ix,0] -= np.sign(r_in[ix,0])*math.ceil((abs(r_in[ix,0])-0.5*self._extent[0])/self._extent[0])*self._extent[0]
+            if (abs(r_in[ix,1]) > 0.5*self._extent[1]):
+                r_in[ix,1] -= np.sign(r_in[ix,1])*math.ceil((abs(r_in[ix,1])-0.5*self._extent[1])/self._extent[1])*self._extent[1]
+            if (abs(r_in[ix,2]) > 0.5*self._extent[2]):
+                r_in[ix,2] -= np.sign(r_in[ix,2])*math.ceil((abs(r_in[ix,2])-0.5*self._extent[2])/self._extent[2])*self._extent[2]
+             
         
         return r_in
         

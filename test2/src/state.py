@@ -16,7 +16,7 @@ class BaseMDState():
         :arg N: (integer) Number of particles, default 1.
         :arg mass: (float) Mass of particles, default 1.0
     """
-    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1., dt = 0.001, T = 0.1):
+    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1., dt = 0.001, T = 0.04):
         """
         Intialise class to hold the state of a simulation.
         :arg domain: (Domain class) Container within which the simulation takes place.
@@ -86,7 +86,7 @@ class BaseMDState():
         #Calculate initial accelerations.
         self.pair_locate_c()
         
-        #self.velocity_verlet_integration()
+        self.velocity_verlet_integration()
         
         
         
@@ -100,8 +100,7 @@ class BaseMDState():
         self._pos._Dat+=self._dt*self._vel._Dat
         
         #handle perodic bounadies
-        for j in range(self._N):
-            self._domain.boundary_correct(self._pos[j])
+        self._domain.boundary_correct(self._pos,self._N)
         
         #update accelerations
         self.pair_locate_c()
@@ -115,7 +114,7 @@ class BaseMDState():
         
         for i in range(int(math.ceil(self._T/self._dt))):
             self.velocity_verlet_step()
-            
+            print i
 
         
         
@@ -190,7 +189,6 @@ class BaseMDState():
         """
         C version of the pair_locate: Loop over all cells update accelerations and potential engery.
         """
-        print self._q_list
         
         
         self._accel._Dat*=0.0
