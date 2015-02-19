@@ -17,7 +17,7 @@ class BaseMDState():
         :arg N: (integer) Number of particles, default 1.
         :arg mass: (float) Mass of particles, default 1.0
     """
-    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1., dt = 0.001, T = 0.1):
+    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1., dt = 0.00005, T = 0.05):
         """
         Intialise class to hold the state of a simulation.
         :arg domain: (Domain class) Container within which the simulation takes place.
@@ -197,7 +197,7 @@ class BaseMDState():
                         if (cp != cpp or ip < ipp):
                             #distance
                             
-                            rv = self._pos[ip-1] - self._pos[ipp-1] + cells[cpp-1,1:4:1]*self._domain._extent
+                            rv = self._pos[ipp-1] - self._pos[ip-1] + cells[cpp-1,1:4:1]*self._domain._extent
                             r = np.linalg.norm(rv)
                             
 
@@ -311,6 +311,9 @@ class BaseMDState():
         ax = fig.add_subplot(111, projection='3d')
         for ix in range(self._N):
             ax.scatter(self._pos[ix,0], self._pos[ix,1], self._pos[ix,2])
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
         plt.show()
         
         

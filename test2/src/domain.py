@@ -245,32 +245,29 @@ class BaseDomain():
                 print "BC after isnan error", ix, r_in[ix,]   
         """
         
+        H = lambda x: 0 if x < 0 else 1
+        
         for ix in range(N):
             if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
                 print "BC before isnan error", ix, r_in[ix,]      
             
-            while (abs(r_in[ix,0]) > 0.5*self._extent[0]):
+            if (abs(r_in[ix,0]) > 0.5*self._extent[0]):
                 x=r_in[ix,0]+0.5*self._extent[0]
-                r_in[ix,0] = H(x)*( abs(x) % self._extent[0] ) + H(-1.0*x)*(self._extent[0] - abs(x) % self._extent[0]) - 0.5*self._extent[0]
+                r_in[ix,0] = H(x)*( x % self._extent[0] ) + H(-1*x)*(self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
             
-            while (abs(r_in[ix,1]) > 0.5*self._extent[1]):
+            if (abs(r_in[ix,1]) > 0.5*self._extent[1]):
                 x=r_in[ix,1]+0.5*self._extent[1]
-                r_in[ix,1] = H(x)*( abs(x) % self._extent[1] ) + H(-1.0*x)*(self._extent[1] - abs(x) % self._extent[1]) - 0.5*self._extent[1]        
+                r_in[ix,1] = H(x)*( x % self._extent[1] ) + H(-1*x)*(self._extent[1] - (abs(x) % self._extent[1])) - 0.5*self._extent[1]        
         
         
-            while (abs(r_in[ix,2]) > 0.5*self._extent[2]):
+            if (abs(r_in[ix,2]) > 0.5*self._extent[2]):
                 x=r_in[ix,2]+0.5*self._extent[2]
-                r_in[ix,2] = H(x)*( abs(x) % self._extent[2] ) + H(-1.0*x)*(self._extent[2] - abs(x) % self._extent[2]) - 0.5*self._extent[2]        
+                r_in[ix,2] = H(x)*( x % self._extent[2] ) + H(-1*x)*(self._extent[2] - (abs(x) % self._extent[2])) - 0.5*self._extent[2]        
 
         return r_in
         
         
         
-def H(x):
-    if x == 0:
-        return 0.5
-
-    return 0 if x < 0 else 1
     
     
     
