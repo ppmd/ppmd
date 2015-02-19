@@ -103,10 +103,18 @@ class BaseDomain():
         :arg r_in: (np.array(3,1)) Cartesian vector for particle position.
         """
         
+        
+        
         r_p = r_in + 0.5*self._extent
-        Cx = int(r_p[0]/self._cell_edge_lengths[0]) + 1
+        
+        
+        
+        
+        Cx = int(r_p[0]/self._cell_edge_lengths[0]) + 1  
         Cy = int(r_p[1]/self._cell_edge_lengths[1]) + 1
         Cz = int(r_p[2]/self._cell_edge_lengths[2]) + 1
+        
+        
         return ((Cz - 1)*self._cell_array[1] + Cy - 1)*self._cell_array[0] + Cx
         
     def get_adjacent_cells(self,ix):
@@ -121,6 +129,9 @@ class BaseDomain():
         #cell_list_boundary=[]
         
         C = self.cell_index_tuple(ix)
+        
+        
+        
         
         stencil_map = [
             [0,0,0],
@@ -141,7 +152,9 @@ class BaseDomain():
         
         for ix in range(14):
             ind = stencil_map[ix]
+            
             cell_list[ix,] = self.cell_index_lin_offset(C+ind)
+
 
         return cell_list
         
@@ -209,24 +222,55 @@ class BaseDomain():
     
     def boundary_correct(self, r_in, N):
         """
-        Return a new position accounting for periodic boundaries.
+        Return a new position accounting for periodic boundaries. Would probably benefit from being in C.
         
         :arg r_in: np.array(1,3) input position
         """
-        for ix in range(N):
-            if (abs(r_in[ix,0]) > 0.5*self._extent[0]):
-                r_in[ix,0] -= np.sign(r_in[ix,0])*math.ceil((abs(r_in[ix,0])-0.5*self._extent[0])/self._extent[0])*self._extent[0]
-            if (abs(r_in[ix,1]) > 0.5*self._extent[1]):
-                r_in[ix,1] -= np.sign(r_in[ix,1])*math.ceil((abs(r_in[ix,1])-0.5*self._extent[1])/self._extent[1])*self._extent[1]
-            if (abs(r_in[ix,2]) > 0.5*self._extent[2]):
-                r_in[ix,2] -= np.sign(r_in[ix,2])*math.ceil((abs(r_in[ix,2])-0.5*self._extent[2])/self._extent[2])*self._extent[2]
-             
         
+        
+        """
+        for ix in range(N):
+            if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
+                print "BC before isnan error", ix, r_in[ix,]
+            
+            
+            
+            while (abs(r_in[ix,0]) > 0.5*self._extent[0]):
+                r_in[ix,0] -= np.sign(r_in[ix,0])*math.ceil((abs(r_in[ix,0])-0.5*self._extent[0])/self._extent[0])*self._extent[0]
+            while (abs(r_in[ix,1]) > 0.5*self._extent[1]):
+                r_in[ix,1] -= np.sign(r_in[ix,1])*math.ceil((abs(r_in[ix,1])-0.5*self._extent[1])/self._extent[1])*self._extent[1]
+            while (abs(r_in[ix,2]) > 0.5*self._extent[2]):
+                r_in[ix,2] -= np.sign(r_in[ix,2])*math.ceil((abs(r_in[ix,2])-0.5*self._extent[2])/self._extent[2])*self._extent[2]
+            if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
+                print "BC after isnan error", ix, r_in[ix,]   
+        """
+        
+        for ix in range(N):
+            if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
+                print "BC before isnan error", ix, r_in[ix,]      
+            
+            while (abs(r_in[ix,0]) > 0.5*self._extent[0]):
+                x=r_in[ix,0]+0.5*self._extent[0]
+                r_in[ix,0] = H(x)*( abs(x) % self._extent[0] ) + H(-1.0*x)*(self._extent[0] - abs(x) % self._extent[0]) - 0.5*self._extent[0]
+            
+            while (abs(r_in[ix,1]) > 0.5*self._extent[1]):
+                x=r_in[ix,1]+0.5*self._extent[1]
+                r_in[ix,1] = H(x)*( abs(x) % self._extent[1] ) + H(-1.0*x)*(self._extent[1] - abs(x) % self._extent[1]) - 0.5*self._extent[1]        
+        
+        
+            while (abs(r_in[ix,2]) > 0.5*self._extent[2]):
+                x=r_in[ix,2]+0.5*self._extent[2]
+                r_in[ix,2] = H(x)*( abs(x) % self._extent[2] ) + H(-1.0*x)*(self._extent[2] - abs(x) % self._extent[2]) - 0.5*self._extent[2]        
+
         return r_in
         
         
         
-        
+def H(x):
+    if x == 0:
+        return 0.5
+
+    return 0 if x < 0 else 1
     
     
     

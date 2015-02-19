@@ -3,6 +3,7 @@ import particle
 import math
 import ctypes
 import time
+import random
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -16,7 +17,7 @@ class BaseMDState():
         :arg N: (integer) Number of particles, default 1.
         :arg mass: (float) Mass of particles, default 1.0
     """
-    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1., dt = 0.001, T = 0.04):
+    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1., dt = 0.001, T = 0.1):
         """
         Intialise class to hold the state of a simulation.
         :arg domain: (Domain class) Container within which the simulation takes place.
@@ -87,6 +88,19 @@ class BaseMDState():
         self.pair_locate_c()
         
         self.velocity_verlet_integration()
+    
+    
+    
+    
+    
+    
+    def isnan_checker(self,r_in,msg):
+        for ix in range(self._N):
+            if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
+                print msg,"isnan error", ix, r_in[ix,]
+        
+        
+        
         
         
         
@@ -96,14 +110,24 @@ class BaseMDState():
         Perform one step of Velocity Verlet.
         """
         
+        
+        
+        
         self._vel._Dat+=0.5*self._dt*self._accel._Dat
         self._pos._Dat+=self._dt*self._vel._Dat
         
         #handle perodic bounadies
         self._domain.boundary_correct(self._pos,self._N)
+        self.cell_sort_all()
         
         #update accelerations
+        
+        self.isnan_checker(self._accel._Dat,"before pair locate")
+        
         self.pair_locate_c()
+        
+        self.isnan_checker(self._accel._Dat,"afte pair locate")
+        
         self._vel._Dat+= 0.5*self._dt*self._accel._Dat
         
         
@@ -116,14 +140,7 @@ class BaseMDState():
             self.velocity_verlet_step()
             print i
 
-        
-        
-        
-        
-        
-        
-        
-        
+     
     def cell_sort_all(self):
         """
         Construct neighbour list, assigning atoms to cells. Using Rapaport alg.
@@ -132,8 +149,23 @@ class BaseMDState():
             self._q_list[self._N + cx] = 0
         for ix in range(1,1+self._N):
             c = self._domain.get_cell_lin_index(self._pos[ix-1,])
+            
+            #print c, self._pos[ix-1,], self._domain._extent*0.5
             self._q_list[ix] = self._q_list[self._N + c]
+                
+            
+                
+                
             self._q_list[self._N + c] = ix
+            
+        verbose = False
+        if verbose:
+            for cxx in range(self._N+1,self._N + 1 +self._domain.cell_count()):
+                cx = cxx
+                while (cx > 0):
+                    print cxx - self._N,self._q_list[cx]
+                    cx = self._q_list[cx]
+                  
         
         
         
@@ -153,7 +185,9 @@ class BaseMDState():
             count=0
             
             """start c code here"""
-            for cpp in range(1,15):
+            for cpp_i in range(1,15):
+                
+                cpp = cells[cpp_i,0]
                 
                 ip = self._q_list[self._N+cp]
                 
@@ -215,6 +249,8 @@ class BaseMDState():
             
             
             cells = self._domain.get_adjacent_cells(cp)
+            
+            #print cp, cells
             
             
             args = [cells.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
@@ -332,7 +368,59 @@ class LatticeInitNRho():
             
         
         
+class LatticeInitNRhoRand():
+    """
+    Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass adds uniform deviantion based on given maximum.
+    
+        :arg N: (int) number of particles.
+        :arg rho: (float) :math:`/rho`, required density.
+        :arg dev: (float) maximum possible random deviation from lattice.
+    
+    """
+    
+    def __init__(self, N, rho, dev=0.0):
+        """
+        Initialise required lattice with the number of particles and required density.
         
+       
+        """
+        
+        self._N = N
+        self._rho = rho
+        self._dev = dev
+
+    def reset(self, state_input):
+        """
+        Applies initial lattice to particle positions.
+        
+        :arg: (state.*) object of state class. Inheritered from BaseMDState.
+        """
+        
+        #Evaluate cube side length.
+        Lx = (float(self._N) / float(self._rho))**(1./3.)
+        
+        #Cube dimensions of data
+        np1_3 = self._N**(1./3.)
+        np2_3 = np1_3**2.
+        
+        #starting point for each dimension. 
+        mLx_2 = (-0.5 * Lx) + (0.5*Lx)/math.floor(np1_3)
+        
+        #set new domain extents
+        state_input._domain.set_extent(np.array([Lx, Lx, Lx]))
+        
+        #get pointer for positions
+        pos = state_input.positions()
+        
+        #Loop over all particles
+        for ix in range(self._N):
+            
+            #Map point into cube side of calculated side length Lx.
+            z=math.floor(ix/np2_3)
+
+            pos[ix,0]=random.uniform(0,self._dev) + mLx_2+(math.fmod((ix - z*np2_3),np1_3)/np1_3)*Lx #x
+            pos[ix,1]=random.uniform(0,self._dev) + mLx_2+(math.floor((ix - z*np2_3)/np1_3)/np1_3)*Lx #y
+            pos[ix,2]=random.uniform(0,self._dev) + mLx_2+(z/np1_3)*Lx
         
         
         

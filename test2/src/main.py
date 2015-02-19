@@ -9,20 +9,18 @@ if __name__ == '__main__':
     
     print "test MD"
     
-    N=1000
-    rho = 3
+    N=10**3
+    rho = 2
+    dev = 0.0
     
     print rho
     
     test_domain = domain.BaseDomain()
     test_potential = potential.LennardJonesShifted()
     
-    test_init_lattice = state.LatticeInitNRho(N, rho)
+    test_init_lattice = state.LatticeInitNRhoRand(N, rho, dev)
     
     test_state = state.BaseMDState(test_domain, test_potential, test_init_lattice, N)
-    
-    
-    
     
     
     test_state.frame_plot()
