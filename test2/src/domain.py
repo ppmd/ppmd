@@ -247,9 +247,10 @@ class BaseDomain():
         
         H = lambda x: 0 if x < 0 else 1
         
+        
         for ix in range(N):
-            if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
-                print "BC before isnan error", ix, r_in[ix,]      
+            #if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
+            #    print "BC before isnan error", ix, r_in[ix,]      
             
             if (abs(r_in[ix,0]) > 0.5*self._extent[0]):
                 x=r_in[ix,0]+0.5*self._extent[0]

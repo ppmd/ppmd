@@ -10,7 +10,7 @@ if __name__ == '__main__':
     print "test MD"
     
     N=10**3
-    rho = 2
+    rho = 3
     dev = 0.0
     
     print rho

@@ -17,7 +17,7 @@ class BaseMDState():
         :arg N: (integer) Number of particles, default 1.
         :arg mass: (float) Mass of particles, default 1.0
     """
-    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1., dt = 0.00005, T = 0.05):
+    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1., dt = 0.0001, T = 1.0):
         """
         Intialise class to hold the state of a simulation.
         :arg domain: (Domain class) Container within which the simulation takes place.
@@ -36,7 +36,7 @@ class BaseMDState():
         self._domain = domain
         self._potential = potential
         
-        #potential energy
+        #potential energy, kenetic energy, total energy.
         self._U = np.zeros([1], dtype=ctypes.c_double, order='C')
         
         
@@ -117,16 +117,21 @@ class BaseMDState():
         self._pos._Dat+=self._dt*self._vel._Dat
         
         #handle perodic bounadies
+        
+        
+        
+        
+        
         self._domain.boundary_correct(self._pos,self._N)
         self.cell_sort_all()
         
         #update accelerations
         
-        self.isnan_checker(self._accel._Dat,"before pair locate")
+        #self.isnan_checker(self._accel._Dat,"before pair locate")
         
         self.pair_locate_c()
         
-        self.isnan_checker(self._accel._Dat,"afte pair locate")
+        #self.isnan_checker(self._accel._Dat,"afte pair locate")
         
         self._vel._Dat+= 0.5*self._dt*self._accel._Dat
         
@@ -138,7 +143,7 @@ class BaseMDState():
         
         for i in range(int(math.ceil(self._T/self._dt))):
             self.velocity_verlet_step()
-            print i
+            print i, "Potential energy:", self._U
 
      
     def cell_sort_all(self):
@@ -185,7 +190,7 @@ class BaseMDState():
             count=0
             
             """start c code here"""
-            for cpp_i in range(1,15):
+            for cpp_i in range(0,14):
                 
                 cpp = cells[cpp_i,0]
                 
@@ -197,7 +202,8 @@ class BaseMDState():
                         if (cp != cpp or ip < ipp):
                             #distance
                             
-                            rv = self._pos[ipp-1] - self._pos[ip-1] + cells[cpp-1,1:4:1]*self._domain._extent
+                            
+                            rv = self._pos[ipp-1] - self._pos[ip-1] + cells[cpp_i,1:4:1]*self._domain._extent
                             r = np.linalg.norm(rv)
                             
 
