@@ -17,7 +17,7 @@ class BaseMDState():
         :arg N: (integer) Number of particles, default 1.
         :arg mass: (float) Mass of particles, default 1.0
     """
-    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1., dt = 0.0001, T = 1.0):
+    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1., dt = 0.0001, T = 0.1):
         """
         Intialise class to hold the state of a simulation.
         :arg domain: (Domain class) Container within which the simulation takes place.
@@ -38,8 +38,14 @@ class BaseMDState():
         
         #potential energy, kenetic energy, total energy.
         self._U = np.zeros([1], dtype=ctypes.c_double, order='C')
+        self._K = np.zeros([1], dtype=ctypes.c_double, order='C')
+        self._Q = np.zeros([1], dtype=ctypes.c_double, order='C')
         
-        
+        #storage containers for energy.
+        self._U_store = []
+        self._K_store = []
+        self._Q_store = []
+        self._T_store = []
         
         self._rc = 2.**(1./6.)*self._potential._sigma
         self._rn = 2*self._rc
@@ -110,28 +116,17 @@ class BaseMDState():
         Perform one step of Velocity Verlet.
         """
         
-        
-        
-        
         self._vel._Dat+=0.5*self._dt*self._accel._Dat
         self._pos._Dat+=self._dt*self._vel._Dat
         
         #handle perodic bounadies
-        
-        
-        
-        
-        
+
         self._domain.boundary_correct(self._pos,self._N)
         self.cell_sort_all()
         
         #update accelerations
-        
-        #self.isnan_checker(self._accel._Dat,"before pair locate")
-        
         self.pair_locate_c()
         
-        #self.isnan_checker(self._accel._Dat,"afte pair locate")
         
         self._vel._Dat+= 0.5*self._dt*self._accel._Dat
         
@@ -143,8 +138,17 @@ class BaseMDState():
         
         for i in range(int(math.ceil(self._T/self._dt))):
             self.velocity_verlet_step()
-            print i, "Potential energy:", self._U
-
+            
+            if (i > 0.6*math.ceil(self._T/self._dt)):
+                self._K = 0.5*np.sum(self._vel()*self._vel())
+                
+                self._U_store.append(math.log(self._U/self._N))
+                self._K_store.append(math.log(self._K/self._N))
+                self._Q_store.append(math.log((self._U + self._K)/self._N))
+                self._T_store.append((i+1)*self._dt)
+            
+                
+            print i
      
     def cell_sort_all(self):
         """
@@ -313,6 +317,11 @@ class BaseMDState():
         
         print "plotting....."
         
+        
+        
+        
+        
+        
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         for ix in range(self._N):
@@ -320,6 +329,16 @@ class BaseMDState():
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.set_zlabel('z')
+        
+        fig2 = plt.figure()
+        ax2 = fig2.add_subplot(111)
+        ax2.plot(self._T_store,self._Q_store,color='r', linewidth=2)
+        ax2.plot(self._T_store,self._U_store,color='g')
+        ax2.plot(self._T_store,self._K_store,color='b')
+        
+        ax2.set_xlabel('Time')
+        ax2.set_ylabel('ln(Energy)')
+        
         plt.show()
         
         

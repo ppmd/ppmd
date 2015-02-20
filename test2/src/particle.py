@@ -46,6 +46,8 @@ class Dat():
     def __str__(self):
         return str(self._Dat)
     
+    def __call__(self):
+        return self._Dat
 
 
 

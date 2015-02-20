@@ -11,7 +11,7 @@ if __name__ == '__main__':
     
     N=10**3
     rho = 3
-    dev = 0.0
+    dev = 0.1
     
     print rho
     
