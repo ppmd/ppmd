@@ -142,9 +142,9 @@ class BaseMDState():
             if (i > 0.6*math.ceil(self._T/self._dt)):
                 self._K = 0.5*np.sum(self._vel()*self._vel())
                 
-                self._U_store.append(math.log(self._U/self._N))
-                self._K_store.append(math.log(self._K/self._N))
-                self._Q_store.append(math.log((self._U + self._K)/self._N))
+                self._U_store.append(math.log(self._U/self._N,10))
+                self._K_store.append(math.log(self._K/self._N,10))
+                self._Q_store.append(math.log((self._U + self._K)/self._N,10))
                 self._T_store.append((i+1)*self._dt)
             
                 
@@ -337,7 +337,7 @@ class BaseMDState():
         ax2.plot(self._T_store,self._K_store,color='b')
         
         ax2.set_xlabel('Time')
-        ax2.set_ylabel('ln(Energy)')
+        ax2.set_ylabel('log_10(Energy)')
         
         plt.show()
         
