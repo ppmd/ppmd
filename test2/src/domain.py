@@ -220,7 +220,7 @@ class BaseDomain():
         return self._cell_array   
     
     
-    def boundary_correct(self, r_in, N):
+    def boundary_correct(self, input_state):
         """
         Return a new position accounting for periodic boundaries. Would probably benefit from being in C.
         
@@ -246,6 +246,11 @@ class BaseDomain():
         """
         
         H = lambda x: 0 if x < 0 else 1
+        
+        N = input_state.N()
+        r_in = input_state.positions()
+        
+        
         
         
         for ix in range(N):

@@ -9,18 +9,32 @@ if __name__ == '__main__':
     
     print "test MD"
     
-    N=10**3
-    rho = 3
-    dev = 0.1
+    n=10
+    N=n**3
+    
+    rho = 1
+    
+    mu = 0.0
+    nsig = 0.5
+    
+    
     
     print rho
     
     test_domain = domain.BaseDomain()
-    test_potential = potential.LennardJonesShifted()
+    test_potential = potential.LennardJones()
+    test_pos_init_lattice = state.PosLatticeInitNRho(N, rho)
+    test_vel_init = state.VelNormDistInit(mu,nsig)
     
-    test_init_lattice = state.LatticeInitNRhoRand(N, rho, dev)
     
-    test_state = state.BaseMDState(test_domain, test_potential, test_init_lattice, N)
+    
+    
+    
+    test_state = state.BaseMDState(domain = test_domain,
+                                   potential = test_potential, 
+                                   particle_pos_init = test_pos_init_lattice, 
+                                   particle_vel_init = test_vel_init,
+                                   N = N)
     
     
     test_state.frame_plot()

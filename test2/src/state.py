@@ -17,7 +17,7 @@ class BaseMDState():
         :arg N: (integer) Number of particles, default 1.
         :arg mass: (float) Mass of particles, default 1.0
     """
-    def __init__(self, domain, potential, particle_init = None, N = 0, mass = 1., dt = 0.0001, T = 0.1):
+    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, N = 0, mass = 1., dt = 0.0001, T = 0.08):
         """
         Intialise class to hold the state of a simulation.
         :arg domain: (Domain class) Container within which the simulation takes place.
@@ -60,7 +60,14 @@ class BaseMDState():
 
         
         ''' Initialise particle positions'''
-        particle_init.reset(self)
+        particle_pos_init.reset(self)
+        
+        
+        '''Initialise velocities'''
+        if (particle_vel_init != None):
+            particle_vel_init.reset(self)
+        
+        
         
         '''Initialise cell array'''
         self._domain.set_cell_array_radius(self._rn)
@@ -121,7 +128,7 @@ class BaseMDState():
         
         #handle perodic bounadies
 
-        self._domain.boundary_correct(self._pos,self._N)
+        self._domain.boundary_correct(self)
         self.cell_sort_all()
         
         #update accelerations
@@ -139,7 +146,7 @@ class BaseMDState():
         for i in range(int(math.ceil(self._T/self._dt))):
             self.velocity_verlet_step()
             
-            if (i > 0.6*math.ceil(self._T/self._dt)):
+            if (i > -1):
                 self._K = 0.5*np.sum(self._vel()*self._vel())
                 
                 self._U_store.append(math.log(self._U/self._N,10))
@@ -272,7 +279,11 @@ class BaseMDState():
             
             self._libpair_loop_LJ.d_pair_loop_LJ(ctypes.c_int(self._N), ctypes.c_int(cp), ctypes.c_double(self._rc), *args)
         
-        
+    def N(self):
+        """
+        Returns number of particles.
+        """
+        return self._N  
         
         
     def positions(self):
@@ -342,7 +353,7 @@ class BaseMDState():
         plt.show()
         
         
-class LatticeInitNRho():
+class PosLatticeInitNRho():
     """
     Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass.
     
@@ -396,7 +407,7 @@ class LatticeInitNRho():
             
         
         
-class LatticeInitNRhoRand():
+class PosLatticeInitNRhoRand():
     """
     Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass adds uniform deviantion based on given maximum.
     
@@ -450,9 +461,15 @@ class LatticeInitNRhoRand():
             pos[ix,1]=random.uniform(0,self._dev) + mLx_2+(math.floor((ix - z*np2_3)/np1_3)/np1_3)*Lx #y
             pos[ix,2]=random.uniform(0,self._dev) + mLx_2+(z/np1_3)*Lx
         
+class VelNormDistInit():
+    def __init__(self,mu = 0.0,sig = 1.0):
+        self._mu = mu
+        self._sig = sig        
         
-        
-        
+    def reset(self,state_input):
+        vel_in = state_input.velocities()
+        for ix in range(state_input.N()):
+            vel_in[ix,]=[random.gauss(self._mu, self._sig),random.gauss(self._mu, self._sig),random.gauss(self._mu, self._sig)]
         
         
     
