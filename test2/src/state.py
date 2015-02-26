@@ -17,7 +17,7 @@ class BaseMDState():
         :arg N: (integer) Number of particles, default 1.
         :arg mass: (float) Mass of particles, default 1.0
     """
-    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, N = 0, mass = 1., dt = 0.0001, T = 0.08):
+    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, N = 0, mass = 1., dt = 0.0005, T = 0.02):
         """
         Intialise class to hold the state of a simulation.
         :arg domain: (Domain class) Container within which the simulation takes place.
@@ -149,13 +149,14 @@ class BaseMDState():
             if (i > -1):
                 self._K = 0.5*np.sum(self._vel()*self._vel())
                 
+                print self._U
                 self._U_store.append(math.log(self._U/self._N,10))
                 self._K_store.append(math.log(self._K/self._N,10))
                 self._Q_store.append(math.log((self._U + self._K)/self._N,10))
                 self._T_store.append((i+1)*self._dt)
             
                 
-            print i
+            print i, self.positions()[1,0] - self.positions()[0,0]
      
     def cell_sort_all(self):
         """
@@ -283,7 +284,13 @@ class BaseMDState():
         """
         Returns number of particles.
         """
-        return self._N  
+        return self._N
+        
+    def domain(self):
+        """
+        Return the domain used by the state.
+        """
+        return self._domain
         
         
     def positions(self):
@@ -321,16 +328,12 @@ class BaseMDState():
             
         return float(energy)
         
-    def frame_plot(self):
+    def frame_plot_energy(self):
         """
         Function to plot all particles in 3D scatter plot.
         """
         
         print "plotting....."
-        
-        
-        
-        
         
         
         fig = plt.figure()
@@ -352,13 +355,31 @@ class BaseMDState():
         
         plt.show()
         
+    def frame_plot_pos(self):
+        """
+        Function to plot all particles in 3D scatter plot.
+        """
         
-class PosLatticeInitNRho():
+        print "plotting....."
+        
+        
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        for ix in range(self._N):
+            ax.scatter(self._pos[ix,0], self._pos[ix,1], self._pos[ix,2])
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        
+        plt.show()
+        
+        
+class PosInitLatticeNRho():
     """
     Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass.
     
-        :arg: (int) input, N, number of particles.
-        :arg: (float) input, :math:`/rho`, required density.
+    :arg: (int) input, N, number of particles.
+    :arg: (float) input, :math:`/rho`, required density.
     
     """
     
@@ -390,7 +411,7 @@ class PosLatticeInitNRho():
         mLx_2 = (-0.5 * Lx) + (0.5*Lx)/math.floor(np1_3)
         
         #set new domain extents
-        state_input._domain.set_extent(np.array([Lx, Lx, Lx]))
+        state_input.domain().set_extent(np.array([Lx, Lx, Lx]))
         
         #get pointer for positions
         pos = state_input.positions()
@@ -407,7 +428,7 @@ class PosLatticeInitNRho():
             
         
         
-class PosLatticeInitNRhoRand():
+class PosInitLatticeNRhoRand():
     """
     Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass adds uniform deviantion based on given maximum.
     
@@ -421,7 +442,6 @@ class PosLatticeInitNRhoRand():
         """
         Initialise required lattice with the number of particles and required density.
         
-       
         """
         
         self._N = N
@@ -446,7 +466,7 @@ class PosLatticeInitNRhoRand():
         mLx_2 = (-0.5 * Lx) + (0.5*Lx)/math.floor(np1_3)
         
         #set new domain extents
-        state_input._domain.set_extent(np.array([Lx, Lx, Lx]))
+        state_input.domain().set_extent(np.array([Lx, Lx, Lx]))
         
         #get pointer for positions
         pos = state_input.positions()
@@ -460,18 +480,114 @@ class PosLatticeInitNRhoRand():
             pos[ix,0]=random.uniform(0,self._dev) + mLx_2+(math.fmod((ix - z*np2_3),np1_3)/np1_3)*Lx #x
             pos[ix,1]=random.uniform(0,self._dev) + mLx_2+(math.floor((ix - z*np2_3)/np1_3)/np1_3)*Lx #y
             pos[ix,2]=random.uniform(0,self._dev) + mLx_2+(z/np1_3)*Lx
+
+
+class PosInitTwoParticlesInABox():
+    """
+    Creates two particles a set distance apart on the x-axis, centred on the origin. Places these within a containing volume of given extents.
+    
+    :arg rx: (float) Distance between particles.
+    :arg extents: (np.array(3)) Extent for containing volume.
+    """
+    
+    def __init__(self,rx,extent = np.array([1.0,1.0,1.0])):
+        self._rx = rx
+        self._extent = extent
         
-class VelNormDistInit():
+    def reset(self, state_input):
+        """
+        Resets the first two particles in the input state domain to sit on the x-axis the set distance apart.
+        
+        
+        :arg state_input: (state class) State object containing at least two particles.
+        """
+        
+        if (state_input.N() >= 2):
+            state_input.positions()[0,] = [-0.5*self._rx,.0,.0]
+            state_input.positions()[1,] = [0.5*self._rx,.0,.0]
+        else:
+            print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
+            
+        state_input.domain().set_extent(self._extent)
+
+
+
+
+        
+class VelInitNormDist():
+    """
+    Initialise velocities by sampling from a gaussian distribution.
+    
+    :arg mu: (float) Mean for gaussian distribution.
+    :arg sig: (float) Standard deviation for gaussian distribution.
+    
+    """
+
     def __init__(self,mu = 0.0,sig = 1.0):
         self._mu = mu
         self._sig = sig        
-        
+    
+    
     def reset(self,state_input):
+        """
+        Resets particle velocities to Gaussian distribution.
+        
+        :arg state_input: (state class) Input state class oject containing velocities.
+        """
+        
+        #Get velocities.
         vel_in = state_input.velocities()
+        
+        #Apply normal distro to velocities.
         for ix in range(state_input.N()):
             vel_in[ix,]=[random.gauss(self._mu, self._sig),random.gauss(self._mu, self._sig),random.gauss(self._mu, self._sig)]
         
         
+class VelInitTwoParticlesInABox():
+    """
+    Sets velocities for two particles.
+    
+    :arg vx: (np.array(3,1)) Velocity vector for particle 1.
+    :arg vy: (np.array(3,1)) Velocity vector for particle 2.
+    
+    """
+
+    def __init__(self, vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.])):
+        self._vx = vx
+        self._vy = vy
+        
+    def reset(self, state_input):
+        """
+        Resets the particles in the input state to the required velocities.
+        
+        :arg state_input: (state class) input state.
+        """
+
+        if (state_input.N() >= 2):
+            state_input.velocities()[0,] = self._vx
+            state_input.velocities()[1,] = self._vy        
+        else:
+            print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
     
         
