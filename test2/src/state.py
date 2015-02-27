@@ -17,7 +17,7 @@ class BaseMDState():
         :arg N: (integer) Number of particles, default 1.
         :arg mass: (float) Mass of particles, default 1.0
     """
-    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, N = 0, mass = 1., dt = 0.0005, T = 0.02):
+    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, N = 0, mass = 1., dt = 0.00001, T = 0.02):
         """
         Intialise class to hold the state of a simulation.
         :arg domain: (Domain class) Container within which the simulation takes place.
@@ -150,9 +150,11 @@ class BaseMDState():
                 self._K = 0.5*np.sum(self._vel()*self._vel())
                 
                 print self._U
-                self._U_store.append(math.log(self._U/self._N,10))
-                self._K_store.append(math.log(self._K/self._N,10))
-                self._Q_store.append(math.log((self._U + self._K)/self._N,10))
+                
+                
+                self._U_store.append(self._U/self._N)
+                self._K_store.append(self._K/self._N)
+                self._Q_store.append((self._U + self._K)/self._N)
                 self._T_store.append((i+1)*self._dt)
             
                 
@@ -350,8 +352,9 @@ class BaseMDState():
         ax2.plot(self._T_store,self._U_store,color='g')
         ax2.plot(self._T_store,self._K_store,color='b')
         
+        ax2.set_title('Red: Total energy, Green: Potential energy, Blue: kenetic energy')
         ax2.set_xlabel('Time')
-        ax2.set_ylabel('log_10(Energy)')
+        ax2.set_ylabel('Energy')
         
         plt.show()
         

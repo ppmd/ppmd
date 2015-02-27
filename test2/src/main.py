@@ -30,7 +30,7 @@ if __name__ == '__main__':
     #test_pos_init = state.PosInitLatticeNRho(N, rho)
     #test_vel_init = state.VelInitNormDist(mu,nsig)
     
-    test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.75, extent = np.array([10., 10., 10.]))
+    test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.5, extent = np.array([3., 3., 3.]))
     test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
     
     

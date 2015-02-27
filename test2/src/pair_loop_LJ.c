@@ -52,9 +52,9 @@ void d_pair_loop_LJ(int N, int cp, double rc, int* cells, int* q_list, double* p
                 if (cp != cpp || ip < ipp){
                     
                     
-                    rv[0] = pos[LINIDX_2D(3,ipp-1,0)] - pos[LINIDX_2D(3,ip-1,0)] + cells[LINIDX_2D(5,cpp_i,1)]*d_extent[0];
-                    rv[1] = pos[LINIDX_2D(3,ipp-1,1)] - pos[LINIDX_2D(3,ip-1,1)] + cells[LINIDX_2D(5,cpp_i,2)]*d_extent[1];
-                    rv[2] = pos[LINIDX_2D(3,ipp-1,2)] - pos[LINIDX_2D(3,ip-1,2)] + cells[LINIDX_2D(5,cpp_i,3)]*d_extent[2];
+                    rv[0] = pos[LINIDX_2D(3,ip-1,0)] - pos[LINIDX_2D(3,ipp-1,0)] + cells[LINIDX_2D(5,cpp_i,1)]*d_extent[0];
+                    rv[1] = pos[LINIDX_2D(3,ip-1,1)] - pos[LINIDX_2D(3,ipp-1,1)] + cells[LINIDX_2D(5,cpp_i,2)]*d_extent[1];
+                    rv[2] = pos[LINIDX_2D(3,ip-1,2)] - pos[LINIDX_2D(3,ipp-1,2)] + cells[LINIDX_2D(5,cpp_i,3)]*d_extent[2];
                     
                     //printf("%f, %f, %f \n", cells[LINIDX_2D(5,cpp_i,1)]*d_extent[0], cells[LINIDX_2D(5,cpp_i,2)]*d_extent[1], cells[LINIDX_2D(5,cpp_i,3)]*d_extent[2] );
                     
