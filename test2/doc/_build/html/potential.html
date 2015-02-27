@@ -172,6 +172,88 @@ atomic distance :vec{r}=(r_x,r_y)=vec{r}_i - vec{r}_j:</p>
 
 </dd></dl>
 
+<dl class="class">
+<dt id="potential.LennardJonesShifted">
+<em class="property">class </em><tt class="descclassname">potential.</tt><tt class="descname">LennardJonesShifted</tt><big>(</big><em>epsilon=1.0</em>, <em>sigma=1.0</em><big>)</big><a class="headerlink" href="#potential.LennardJonesShifted" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#potential.BasePotential" title="potential.BasePotential"><tt class="xref py py-class docutils literal"><span class="pre">potential.BasePotential</span></tt></a></p>
+<p>Shifted Lennard Jones potential.</p>
+<p>for <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>r</mi><mo>&gt;</mo><msub><mi>r</mi><mi>c</mi></msub><mo>=</mo><msup><mn>2</mn>
+<mrow><mn>1</mn><mo>/</mo><mn>6</mn></mrow></msup></mrow></math> the potential (and force) is set to zero.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>epsilon</strong> &#8211; Potential parameter <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>ϵ</mi></mrow></math></li>
+<li><strong>sigma</strong> &#8211; Potential parameter <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>σ</mi></mrow></math></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="potential.LennardJonesShifted.epsilon">
+<tt class="descname">epsilon</tt><a class="headerlink" href="#potential.LennardJonesShifted.epsilon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Value of parameter <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>ϵ</mi></mrow></math></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="potential.LennardJonesShifted.evaluate">
+<tt class="descname">evaluate</tt><big>(</big><em>r</em><big>)</big><a class="headerlink" href="#potential.LennardJonesShifted.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate potential.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>r</strong> &#8211; Inter-atomic distance <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>r</mi><mo>=</mo><mo>|</mo><msub><mover>
+<mrow><mi>r</mi></mrow><mo>⃗</mo></mover><mi>i</mi></msub><mo>-</mo><msub><mover>
+<mrow><mi>r</mi></mrow><mo>⃗</mo></mover><mi>j</mi></msub><mo>|</mo></mrow></math></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="potential.LennardJonesShifted.evaluate_force">
+<tt class="descname">evaluate_force</tt><big>(</big><em>r2</em><big>)</big><a class="headerlink" href="#potential.LennardJonesShifted.evaluate_force" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate force.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>rx</strong> &#8211; x-component of distance <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><msub><mi>r</mi><mi>x</mi></msub></mrow></math></li>
+<li><strong>ry</strong> &#8211; y-component of distance <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><msub><mi>r</mi><mi>y</mi></msub></mrow></math></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="potential.LennardJonesShifted.rc">
+<tt class="descname">rc</tt><a class="headerlink" href="#potential.LennardJonesShifted.rc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Value of cufoff distance <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><msub><mi>r</mi><mi>c</mi></msub></mrow></math></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="potential.LennardJonesShifted.sigma">
+<tt class="descname">sigma</tt><a class="headerlink" href="#potential.LennardJonesShifted.sigma" title="Permalink to this definition">¶</a></dt>
+<dd><p>Value of parameter <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mi>σ</mi></mrow></math></p>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 
 

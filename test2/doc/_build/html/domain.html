@@ -73,6 +73,20 @@
 </tbody>
 </table>
 <dl class="method">
+<dt id="domain.BaseDomain.boundary_correct">
+<tt class="descname">boundary_correct</tt><big>(</big><em>input_state</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.boundary_correct" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a new position accounting for periodic boundaries. Would probably benefit from being in C.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>r_in</strong> &#8211; np.array(1,3) input position</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="domain.BaseDomain.cell_array">
 <tt class="descname">cell_array</tt><big>(</big><em>cell_array</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.cell_array" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return cell array.</p>
