@@ -36,7 +36,7 @@ void d_pair_loop_LJ(int N, int cell_count, double rc, int* cells, int* q_list, d
 
     // LJ variables
     
-    double C_F = 48.0;
+    double C_F = -48.0;
     double r_m2,r_m6;
     double f_tmp;
     
@@ -61,14 +61,14 @@ void d_pair_loop_LJ(int N, int cell_count, double rc, int* cells, int* q_list, d
                         
                         if ((cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),4)] > 0) || test_bound == 1){
                         
-                            rv[0] = pos[LINIDX_2D(3,ip-1,0)] - pos[LINIDX_2D(3,ipp-1,0)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),1)]*d_extent[0];
-                            rv[1] = pos[LINIDX_2D(3,ip-1,1)] - pos[LINIDX_2D(3,ipp-1,1)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),2)]*d_extent[1];
-                            rv[2] = pos[LINIDX_2D(3,ip-1,2)] - pos[LINIDX_2D(3,ipp-1,2)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),3)]*d_extent[2];
+                            rv[0] = pos[LINIDX_2D(3,ipp-1,0)] - pos[LINIDX_2D(3,ip-1,0)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),1)]*d_extent[0];
+                            rv[1] = pos[LINIDX_2D(3,ipp-1,1)] - pos[LINIDX_2D(3,ip-1,1)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),2)]*d_extent[1];
+                            rv[2] = pos[LINIDX_2D(3,ipp-1,2)] - pos[LINIDX_2D(3,ip-1,2)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),3)]*d_extent[2];
                         }
                         else {
-                            rv[0] = pos[LINIDX_2D(3,ip-1,0)] - pos[LINIDX_2D(3,ipp-1,0)];
-                            rv[1] = pos[LINIDX_2D(3,ip-1,1)] - pos[LINIDX_2D(3,ipp-1,1)];
-                            rv[2] = pos[LINIDX_2D(3,ip-1,2)] - pos[LINIDX_2D(3,ipp-1,2)];                              
+                            rv[0] = pos[LINIDX_2D(3,ipp-1,0)] - pos[LINIDX_2D(3,ip-1,0)];
+                            rv[1] = pos[LINIDX_2D(3,ipp-1,1)] - pos[LINIDX_2D(3,ip-1,1)];
+                            rv[2] = pos[LINIDX_2D(3,ipp-1,2)] - pos[LINIDX_2D(3,ip-1,2)];                              
                         }
                         r2 = pow(rv[0],2) + pow(rv[1],2) + pow(rv[2],2);
                         
