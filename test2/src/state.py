@@ -14,8 +14,12 @@ class BaseMDState():
     
         :arg domain: (Domain class) Container within which the simulation takes place.
         :arg potential: (Potential class) Potential to use between particles.
+        :arg particle_pos_init: (class PosInit*) Class to initialise particles with.
+        :arg particle_vel_init: (class VelInit*) Class to initialise particles velocities with.
         :arg N: (integer) Number of particles, default 1.
         :arg mass: (float) Mass of particles, default 1.0
+        :arg dt: (float) Time-step size.
+        :arg T: (float) End time.
     """
     def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, N = 0, mass = 1., dt = 0.00001, T = 0.02):
         """
