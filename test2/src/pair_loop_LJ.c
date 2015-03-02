@@ -32,7 +32,7 @@ void d_pair_loop_LJ(int N, int cell_count, double rc, int* cells, int* q_list, d
     double r;
     
     int j;
-    int test_bound = 1;
+    
 
     // LJ variables
     
@@ -59,7 +59,7 @@ void d_pair_loop_LJ(int N, int cell_count, double rc, int* cells, int* q_list, d
                     
                     if (cp != cpp || ip < ipp){
                         
-                        if ((cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),4)] > 0) || test_bound == 1){
+                        if (cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),4)] > 0){
                         
                             rv[0] = pos[LINIDX_2D(3,ipp-1,0)] - pos[LINIDX_2D(3,ip-1,0)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),1)]*d_extent[0];
                             rv[1] = pos[LINIDX_2D(3,ipp-1,1)] - pos[LINIDX_2D(3,ip-1,1)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),2)]*d_extent[1];
