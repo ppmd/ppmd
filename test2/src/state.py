@@ -7,6 +7,7 @@ import random
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+np.set_printoptions(threshold='nan')
 
 class BaseMDState():
     """
@@ -66,6 +67,7 @@ class BaseMDState():
         ''' Initialise particle positions'''
         particle_pos_init.reset(self)
         
+        self._pos_draw = draw_particles(self._N, self.positions(), self._domain.extent())
         
         '''Initialise velocities'''
         if (particle_vel_init != None):
@@ -86,6 +88,14 @@ class BaseMDState():
         self._q_list = np.zeros([1 + self._N + self._domain.cell_count()], dtype=ctypes.c_int, order='C')
         self.cell_sort_all()
         
+        '''Determine cell neighbours'''
+        
+        self._cells=np.zeros([14*self._domain.cell_count(),5],dtype=ctypes.c_int, order='C')
+        
+        for cp in range(1,1 + self._domain.cell_count()):
+            self._cells[(cp-1)*14:(cp*14),...] = self._domain.get_adjacent_cells(cp)
+        
+        
         
         """
         #Create pair lists and evaluate forces
@@ -102,7 +112,9 @@ class BaseMDState():
         """
         
         #Calculate initial accelerations.
+        
         self.pair_locate_c()
+        
         
         self.velocity_verlet_integration()
     
@@ -126,18 +138,18 @@ class BaseMDState():
         """
         Perform one step of Velocity Verlet.
         """
-        
         self._vel._Dat+=0.5*self._dt*self._accel._Dat
+
         self._pos._Dat+=self._dt*self._vel._Dat
         
         #handle perodic bounadies
 
         self._domain.boundary_correct(self)
+
         self.cell_sort_all()
         
         #update accelerations
         self.pair_locate_c()
-        
         
         self._vel._Dat+= 0.5*self._dt*self._accel._Dat
         
@@ -146,14 +158,18 @@ class BaseMDState():
         """
         Perform Velocity Verlet integration up to time T.
         """    
+        max_it = int(math.ceil(self._T/self._dt))
         
-        for i in range(int(math.ceil(self._T/self._dt))):
+        percent_int = 1
+        percent_count = percent_int
+        
+        for i in range(max_it):
             self.velocity_verlet_step()
             
             if (i > -1):
                 self._K = 0.5*np.sum(self._vel()*self._vel())
                 
-                print self._U
+                #print self._U
                 
                 
                 self._U_store.append(self._U/self._N)
@@ -162,7 +178,16 @@ class BaseMDState():
                 self._T_store.append((i+1)*self._dt)
             
                 
-            print i, self.positions()[1,0] - self.positions()[0,0]
+            #print i, self.positions()[1,0] - self.positions()[0,0]
+            
+            if ( ((100.0*i)/max_it) > percent_count):
+                
+                self._pos_draw.draw()
+                
+                percent_count += percent_int
+                print int((100.0*i)/max_it),"%", "T=", self._dt*i
+            
+            
      
     def cell_sort_all(self):
         """
@@ -190,59 +215,7 @@ class BaseMDState():
                     cx = self._q_list[cx]
                   
         
-        
-        
-    def pair_locate(self):
-        """
-        Loop over all cells update accelerations and potential engery.
-        """
-        
-        self._accel._Dat*=0.0
-        self._U[0] = 0.0
-        
-        
-        for cp in range(1,1 + self._domain.cell_count()):
-            
-            cells = self._domain.get_adjacent_cells(cp)
-            
-            count=0
-            
-            """start c code here"""
-            for cpp_i in range(0,14):
-                
-                cpp = cells[cpp_i,0]
-                
-                ip = self._q_list[self._N+cp]
-                
-                while (ip > 0):
-                    ipp = self._q_list[self._N+cpp]
-                    while (ipp > 0):
-                        if (cp != cpp or ip < ipp):
-                            #distance
-                            
-                            
-                            rv = self._pos[ipp-1] - self._pos[ip-1] + cells[cpp_i,1:4:1]*self._domain._extent
-                            r = np.linalg.norm(rv)
-                            
-
-                            if (r**2 < (self._rc**2)):    
-
-                                count+=1
-                                
-                                force_eval = self._potential.evaluate_force(r)
-                                
-                                self._accel._Dat[ip-1]+=force_eval*rv
-                                self._accel._Dat[ipp-1]-=force_eval*rv
-                                
-                                self._U[0] += self._potential.evaluate(r)
-                                
-                                
-                                      
-                        ipp = self._q_list[ipp]
-                    ip = self._q_list[ip]
-            #print count, cp
-        
-        
+     
     def pair_locate_c(self):
         """
         C version of the pair_locate: Loop over all cells update accelerations and potential engery.
@@ -257,7 +230,7 @@ class BaseMDState():
         self._libpair_loop_LJ = np.ctypeslib.load_library('libpair_loop_LJ.so','.')
         self._libpair_loop_LJ.d_pair_loop_LJ.restype = ctypes.c_int
         
-        #void d_pair_loop_LJ(int N, int cp, double rc, int* cells, int* q_list, double* pos, double* d_extent, double *accel);
+        #void d_pair_loop_LJ(int N, int cell_count, double rc, int* cells, int* q_list, double* pos, double* d_extent, double *accel);
         self._libpair_loop_LJ.d_pair_loop_LJ.argtypes = [ctypes.c_int,
                                                         ctypes.c_int,
                                                         ctypes.c_double,
@@ -269,22 +242,26 @@ class BaseMDState():
                                                         ctypes.POINTER(ctypes.c_double)]
         
         
-        for cp in range(1,1 + self._domain.cell_count()):
+        #for cp in range(1,1 + self._domain.cell_count()):
             
             
-            cells = self._domain.get_adjacent_cells(cp)
+            #cells = self._domain.get_adjacent_cells(cp)
             
             #print cp, cells
             
+        
             
-            args = [cells.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                    self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                    self._pos._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-                    self._domain._extent.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-                    self._accel._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-                    self._U.ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
             
-            self._libpair_loop_LJ.d_pair_loop_LJ(ctypes.c_int(self._N), ctypes.c_int(cp), ctypes.c_double(self._rc), *args)
+            
+        args = [self._cells.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                self._pos._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                self._domain._extent.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                self._accel._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                self._U.ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
+            
+        self._libpair_loop_LJ.d_pair_loop_LJ(ctypes.c_int(self._N), ctypes.c_int(self._domain.cell_count()), ctypes.c_double(self._rc), *args)
+        
         
     def N(self):
         """
@@ -340,6 +317,26 @@ class BaseMDState():
         """
         
         print "plotting....."
+
+        
+        fig2 = plt.figure()
+        ax2 = fig2.add_subplot(111)
+        ax2.plot(self._T_store,self._Q_store,color='r', linewidth=2)
+        ax2.plot(self._T_store,self._U_store,color='g')
+        ax2.plot(self._T_store,self._K_store,color='b')
+        
+        ax2.set_title('Red: Total energy, Green: Potential energy, Blue: kenetic energy')
+        ax2.set_xlabel('Time')
+        ax2.set_ylabel('Energy')
+        
+        plt.show()
+        
+    def frame_plot_energy_draw(self):
+        """
+        Function to plot all particles in 3D scatter plot.
+        """
+        
+        print "plotting....."
         
         
         fig = plt.figure()
@@ -360,7 +357,7 @@ class BaseMDState():
         ax2.set_xlabel('Time')
         ax2.set_ylabel('Energy')
         
-        plt.show()
+        plt.draw()
         
     def frame_plot_pos(self):
         """
@@ -491,15 +488,17 @@ class PosInitLatticeNRhoRand():
 
 class PosInitTwoParticlesInABox():
     """
-    Creates two particles a set distance apart on the x-axis, centred on the origin. Places these within a containing volume of given extents.
+    Creates two particles a set distance apart on the  given axis, centred on the origin. Places these within a containing volume of given extents.
     
     :arg rx: (float) Distance between particles.
     :arg extents: (np.array(3)) Extent for containing volume.
+    :arg axis: (np.array(3)) axis to centre on.
     """
     
-    def __init__(self,rx,extent = np.array([1.0,1.0,1.0])):
+    def __init__(self,rx,extent = np.array([1.0,1.0,1.0]), axis = np.array([1.0,0.0,0.0])):
         self._rx = rx
         self._extent = extent
+        self._axis = axis
         
     def reset(self, state_input):
         """
@@ -510,8 +509,8 @@ class PosInitTwoParticlesInABox():
         """
         
         if (state_input.N() >= 2):
-            state_input.positions()[0,] = [-0.5*self._rx,.0,.0]
-            state_input.positions()[1,] = [0.5*self._rx,.0,.0]
+            state_input.positions()[0,] = -0.5*self._rx*self._axis
+            state_input.positions()[1,] = 0.5*self._rx*self._axis
         else:
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
             
@@ -577,7 +576,36 @@ class VelInitTwoParticlesInABox():
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
 
 
+class draw_particles():
+    def __init__(self,N,pos,extents):
+        print "plotting....."
+        plt.ion()
+        
+        self._N = N
+        self._pos = pos
+        self._extents = extents
 
+        self._fig = plt.figure()
+        self._ax = self._fig.add_subplot(111, projection='3d')
+        
+        self._key=['red','blue']
+        plt.show()
+        
+    def draw(self):
+    
+        plt.cla()
+           
+        for ix in range(self._N):
+            self._ax.scatter(self._pos[ix,0], self._pos[ix,1], self._pos[ix,2],color=self._key[ix%2])
+        self._ax.set_xlim([-0.5*self._extents[0],0.5*self._extents[0]])
+        self._ax.set_ylim([-0.5*self._extents[1],0.5*self._extents[1]])
+        self._ax.set_zlim([-0.5*self._extents[2],0.5*self._extents[2]])
+                
+        self._ax.set_xlabel('x')
+        self._ax.set_ylabel('y')
+        self._ax.set_zlabel('z')
+        
+        plt.draw()
 
 
 

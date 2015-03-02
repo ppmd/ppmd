@@ -4,6 +4,7 @@ import domain
 import potential
 import state
 import numpy as np
+import math
 
 if __name__ == '__main__':
     
@@ -12,13 +13,14 @@ if __name__ == '__main__':
     
     #n=10
     #N=n**3
+    #rho = 3.2
     
     N=2
     
-    #rho = 1
+    
     
     mu = 0.0
-    nsig = 0.5
+    nsig = 2.5
     
     
     
@@ -30,23 +32,28 @@ if __name__ == '__main__':
     #test_pos_init = state.PosInitLatticeNRho(N, rho)
     #test_vel_init = state.VelInitNormDist(mu,nsig)
     
-    test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.5, extent = np.array([3., 3., 3.]))
-    test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
+    test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.5, extent = np.array([7., 7., 7.]), axis = np.array([1,0,0]))
+    test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([1., 0., 0.]), vy = np.array([-1., 0., 0.]))
     
-    
+    r=0.5
+    #test_pos_init = state.PosInitTwoParticlesInABox(rx = r, extent = np.array([7., 7., 7.]), axis = np.array([1,0,0]))
+    #test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 1./(math.sqrt(2*r)), 0.]), vy = np.array([0., -1./(math.sqrt(2*r)), 0.]))
     
     test_state = state.BaseMDState(domain = test_domain,
                                    potential = test_potential, 
                                    particle_pos_init = test_pos_init, 
                                    particle_vel_init = test_vel_init,
-                                   N = N)
+                                   N = N,
+                                   dt = 0.00001,
+                                   T =  0.05
+                                   )
     
     
     test_state.frame_plot_energy()
     
     
     
-    
+    a=input("PRESS ENTER TO CONTINUE.\n")
     
     
     
