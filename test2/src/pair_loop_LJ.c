@@ -72,7 +72,7 @@ void d_pair_loop_LJ(int N, int cell_count, double rc, int* cells, int* q_list, d
                         }
                         r2 = pow(rv[0],2) + pow(rv[1],2) + pow(rv[2],2);
                         
-                        rc2 = 100.0;
+                        
                         if (r2 < rc2){
 
                             /* Lennard-Jones */
@@ -93,10 +93,7 @@ void d_pair_loop_LJ(int N, int cell_count, double rc, int* cells, int* q_list, d
 
                         }
                         
-                        
-                        
-                        
-                        
+  
                     }
                     ipp = q_list[ipp];  
                 }
