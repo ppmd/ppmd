@@ -45,7 +45,7 @@ if __name__ == '__main__':
                                    particle_vel_init = test_vel_init,
                                    N = N,
                                    dt = 0.00001,
-                                   T =  0.5
+                                   T =  1.0
                                    )
     
     

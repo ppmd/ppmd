@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-O3 -fpic -mtune=native -fopenmp
+CFLAGS=-O3 -fpic -mtune=native -fopenmp -pthread
 LFLAGS=-L.
 OBJS=main.o
 MAIN=main.x
