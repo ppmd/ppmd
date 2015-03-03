@@ -182,10 +182,11 @@ class BaseMDState():
             
             if ( ((100.0*i)/max_it) > percent_count):
                 
-                self._pos_draw.draw()
+                #self._pos_draw.draw()
                 
                 percent_count += percent_int
                 print int((100.0*i)/max_it),"%", "T=", self._dt*i
+                
             
             
      
