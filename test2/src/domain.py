@@ -2,6 +2,7 @@ import numpy as np
 import math
 import ctypes
 
+
 class BaseDomain():
     '''
     Base class for simulation domain, cartesian, 3D.
@@ -23,6 +24,15 @@ class BaseDomain():
         self._cell_count = cell_count
         self._cell_array = np.array([1,1,1],dtype=int)
         self._cell_edge_lengths = np.array([1.,1.,1.],dtype=float)
+        
+        self._USE_C = False
+        if (self._USE_C):
+            self._periodic_boundary = np.ctypeslib.load_library('libperiodic_boundary.so','.')
+            self._periodic_boundary.d_periodic_boundary.restype = ctypes.c_int
+            self._periodic_boundary.d_periodic_boundary.argtypes = [ ctypes.c_int,ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double)] 
+            
+        
+        
       
     def extent(self):
         """
@@ -117,46 +127,7 @@ class BaseDomain():
         
         return ((Cz - 1)*self._cell_array[1] + Cy - 1)*self._cell_array[0] + Cx
         
-    def get_adjacent_cells(self,ix):
-        """
-        Returns the 14 neighbouring cells as linear index.
-        
-        :arg ix: (int) Input index.
-        
-        """
-         
-        cell_list = np.zeros([14,5],dtype=ctypes.c_int, order='C')
-        #cell_list_boundary=[]
-        
-        C = self.cell_index_tuple(ix)
-        
-        
-        
-        
-        stencil_map = [
-            [0,0,0],
-            [1,0,0],
-            [0,1,0],
-            [1,1,0],
-            [1,-1,0],
-            [-1,1,1],
-            [0,1,1],
-            [1,1,1],
-            [-1,0,1],
-            [0,0,1],
-            [1,0,1],
-            [-1,-1,1],
-            [0,-1,1],
-            [1,-1,1]
-            ]
-        
-        for ix in range(14):
-            ind = stencil_map[ix]
-            
-            cell_list[ix,] = self.cell_index_lin_offset(C+ind)
 
-
-        return cell_list
         
         
         
@@ -226,56 +197,58 @@ class BaseDomain():
         
         :arg r_in: np.array(1,3) input position
         """
-        
-        
-        """
-        for ix in range(N):
-            if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
-                print "BC before isnan error", ix, r_in[ix,]
-            
-            
-            
-            while (abs(r_in[ix,0]) > 0.5*self._extent[0]):
-                r_in[ix,0] -= np.sign(r_in[ix,0])*math.ceil((abs(r_in[ix,0])-0.5*self._extent[0])/self._extent[0])*self._extent[0]
-            while (abs(r_in[ix,1]) > 0.5*self._extent[1]):
-                r_in[ix,1] -= np.sign(r_in[ix,1])*math.ceil((abs(r_in[ix,1])-0.5*self._extent[1])/self._extent[1])*self._extent[1]
-            while (abs(r_in[ix,2]) > 0.5*self._extent[2]):
-                r_in[ix,2] -= np.sign(r_in[ix,2])*math.ceil((abs(r_in[ix,2])-0.5*self._extent[2])/self._extent[2])*self._extent[2]
-            if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
-                print "BC after isnan error", ix, r_in[ix,]   
-        """
-        
-        H = lambda x: 0 if x < 0 else 1
-        
-        N = input_state.N()
-        r_in = input_state.positions()
-        
-        
-        
-        
-        for ix in range(N):
-            #if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
-            #    print "BC before isnan error", ix, r_in[ix,]      
-            
-            if (abs(r_in[ix,0]) > 0.5*self._extent[0]):
-                x=r_in[ix,0]+0.5*self._extent[0]
-                r_in[ix,0] = H(x)*( x % self._extent[0] ) + H(-1*x)*(self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
-            
-            if (abs(r_in[ix,1]) > 0.5*self._extent[1]):
-                x=r_in[ix,1]+0.5*self._extent[1]
-                r_in[ix,1] = H(x)*( x % self._extent[1] ) + H(-1*x)*(self._extent[1] - (abs(x) % self._extent[1])) - 0.5*self._extent[1]        
-        
-        
-            if (abs(r_in[ix,2]) > 0.5*self._extent[2]):
-                x=r_in[ix,2]+0.5*self._extent[2]
-                r_in[ix,2] = H(x)*( x % self._extent[2] ) + H(-1*x)*(self._extent[2] - (abs(x) % self._extent[2])) - 0.5*self._extent[2]        
 
-        return r_in
+        
+        
+            
+        #H = lambda x: 0 if x < 0 else 1
+        
+
         
         
         
-    
-    
+        if (self._USE_C != True):
+                N = input_state.N()
+                r_in = input_state.positions()
+        
+        
+                for ix in range(N):
+                    #if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
+                    #    print "BC before isnan error", ix, r_in[ix,]      
+
+                    if (abs(r_in[ix,0]) > 0.5*self._extent[0]):
+                        x=r_in[ix,0]+0.5*self._extent[0]
+                        #r_in[ix,0] = H(x)*( x % self._extent[0] ) + H(-1*x)*(self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
+                        
+                        if (x < 0):
+                            r_in[ix,0] = (self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
+                        else:
+                            r_in[ix,0] = ( x % self._extent[0] ) - 0.5*self._extent[0]
+                        
+                    if (abs(r_in[ix,1]) > 0.5*self._extent[1]):
+                        x=r_in[ix,1]+0.5*self._extent[1]
+                        #r_in[ix,1] = H(x)*( x % self._extent[1] ) + H(-1*x)*(self._extent[1] - (abs(x) % self._extent[1])) - 0.5*self._extent[1]        
+                        if (x < 0):
+                            r_in[ix,1] = (self._extent[1] - (abs(x) % self._extent[1])) - 0.5*self._extent[1]
+                        else:
+                            r_in[ix,1] = ( x % self._extent[1] ) - 0.5*self._extent[1]
+
+                    if (abs(r_in[ix,2]) > 0.5*self._extent[2]):
+                        x=r_in[ix,2]+0.5*self._extent[2]
+                        #r_in[ix,2] = H(x)*( x % self._extent[2] ) + H(-1*x)*(self._extent[2] - (abs(x) % self._extent[2])) - 0.5*self._extent[2]        
+                        if (x < 0):
+                            r_in[ix,2] = (self._extent[2] - (abs(x) % self._extent[2])) - 0.5*self._extent[2]
+                        else:
+                            r_in[ix,2] = ( x % self._extent[2] ) - 0.5*self._extent[2]
+        else:
+            args = [self._extent.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                    input_state.positions().Dat().ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
+            self._periodic_boundary.d_periodic_boundary(ctypes.c_int(input_state.N()), *args )
+
+        
+        
+        
+
     
     
     

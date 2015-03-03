@@ -1,9 +1,9 @@
 CC=gcc
-CFLAGS=-O3 -fpic -mtune=native -fopenmp -pthread
+CFLAGS=-O3 -fpic -mtune=native -fopenmp -lomp -lgomp
 LFLAGS=-L.
 OBJS=main.o
 MAIN=main.x
-LIBS=pair_loop_LJ
+LIBS=pair_loop_LJ periodic_boundary
 
 all: $(MAIN)
 

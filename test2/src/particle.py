@@ -28,7 +28,8 @@ class Dat():
         else:
             self._Dat = np.zeros([N1, N2], dtype=ctypes.c_double, order='C')
         
-        
+    def set_val(self,val):
+        self._Dat[...,...] = val
     
     def Dat(self):
         """

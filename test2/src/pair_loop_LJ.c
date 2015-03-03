@@ -24,7 +24,7 @@ void d_pair_loop_LJ(int N, int cell_count, double rc, int* cells, int* q_list, d
 
     */
     
-    
+    U[0] = 0.0;
     
     int cpp,ip,ipp,cpp_i,cp;
     double rv[3], r2;
@@ -42,7 +42,8 @@ void d_pair_loop_LJ(int N, int cell_count, double rc, int* cells, int* q_list, d
     
     for(cp = 1; cp < cell_count+1; cp++){
         for(cpp_i=0; cpp_i<14; cpp_i++){
-        
+            
+            
             
         
             cpp = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),0)];
@@ -101,6 +102,7 @@ void d_pair_loop_LJ(int N, int cell_count, double rc, int* cells, int* q_list, d
             }
         }
     }
+    
     
     
     

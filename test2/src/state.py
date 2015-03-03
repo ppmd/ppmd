@@ -4,6 +4,8 @@ import math
 import ctypes
 import time
 import random
+import pairloop
+
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -83,73 +85,28 @@ class BaseMDState():
         
         
         
+        self._pair_method = pairloop.pair_loop_rapaport(self)
+        self._pair_method.update()
         
-        '''Construct initial cell list'''
-        self._q_list = np.zeros([1 + self._N + self._domain.cell_count()], dtype=ctypes.c_int, order='C')
-        self.cell_sort_all()
-        
-        '''Determine cell neighbours'''
-        
-        self._cells=np.zeros([14*self._domain.cell_count(),5],dtype=ctypes.c_int, order='C')
-        
-        for cp in range(1,1 + self._domain.cell_count()):
-            self._cells[(cp-1)*14:(cp*14),...] = self._domain.get_adjacent_cells(cp)
-        
-        
-        
-        """
-        #Create pair lists and evaluate forces
-        start = time.time()
-        self.pair_locate_c()
-        print "Potential energy C:", self._U
-        end = time.time()
-        self.pair_locate()
-        end2 = time.time()
-        print "Potential energy py:", self._U
-        
-        print "Time taken C: ", end - start, "seconds."
-        print "Time taken py: ", end2 - end, "seconds."
-        """
-        
-        #Calculate initial accelerations.
-        
-        self.pair_locate_c()
+        self._pair_method.pair_locate_c()
         
         
         self.velocity_verlet_integration()
     
-    
-    
-    
-    
-    
-    def isnan_checker(self,r_in,msg):
-        for ix in range(self._N):
-            if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
-                print msg,"isnan error", ix, r_in[ix,]
-        
-        
-        
-        
-        
-        
         
     def velocity_verlet_step(self):
         """
         Perform one step of Velocity Verlet.
         """
+        
         self._vel._Dat+=0.5*self._dt*self._accel._Dat
-
         self._pos._Dat+=self._dt*self._vel._Dat
         
-        #handle perodic bounadies
-
-        self._domain.boundary_correct(self)
-
-        self.cell_sort_all()
+        
+        self._pair_method.update()
         
         #update accelerations
-        self.pair_locate_c()
+        self._pair_method.pair_locate_c()
         
         self._vel._Dat+= 0.5*self._dt*self._accel._Dat
         
@@ -158,18 +115,23 @@ class BaseMDState():
         """
         Perform Velocity Verlet integration up to time T.
         """    
+        
         max_it = int(math.ceil(self._T/self._dt))
         
         percent_int = 1
         percent_count = percent_int
         
+        
+        
         for i in range(max_it):
+            
+            
             self.velocity_verlet_step()
             
             if (i > -1):
                 self._K = 0.5*np.sum(self._vel()*self._vel())
                 
-                #print self._U
+                
                 
                 
                 self._U_store.append(self._U/self._N)
@@ -182,7 +144,7 @@ class BaseMDState():
             
             if ( ((100.0*i)/max_it) > percent_count):
                 
-                #self._pos_draw.draw()
+                self._pos_draw.draw()
                 
                 percent_count += percent_int
                 print int((100.0*i)/max_it),"%", "T=", self._dt*i
@@ -190,78 +152,8 @@ class BaseMDState():
             
             
      
-    def cell_sort_all(self):
-        """
-        Construct neighbour list, assigning atoms to cells. Using Rapaport alg.
-        """
-        for cx in range(1,1+self._domain.cell_count()):
-            self._q_list[self._N + cx] = 0
-        for ix in range(1,1+self._N):
-            c = self._domain.get_cell_lin_index(self._pos[ix-1,])
-            
-            #print c, self._pos[ix-1,], self._domain._extent*0.5
-            self._q_list[ix] = self._q_list[self._N + c]
-                
-            
-                
-                
-            self._q_list[self._N + c] = ix
-            
-        verbose = False
-        if verbose:
-            for cxx in range(self._N+1,self._N + 1 +self._domain.cell_count()):
-                cx = cxx
-                while (cx > 0):
-                    print cxx - self._N,self._q_list[cx]
-                    cx = self._q_list[cx]
-                  
-        
-     
-    def pair_locate_c(self):
-        """
-        C version of the pair_locate: Loop over all cells update accelerations and potential engery.
-        """
-        
-        
-        self._accel._Dat*=0.0
-        self._U[0] = 0.0
-        
-        
-        
-        self._libpair_loop_LJ = np.ctypeslib.load_library('libpair_loop_LJ.so','.')
-        self._libpair_loop_LJ.d_pair_loop_LJ.restype = ctypes.c_int
-        
-        #void d_pair_loop_LJ(int N, int cell_count, double rc, int* cells, int* q_list, double* pos, double* d_extent, double *accel);
-        self._libpair_loop_LJ.d_pair_loop_LJ.argtypes = [ctypes.c_int,
-                                                        ctypes.c_int,
-                                                        ctypes.c_double,
-                                                        ctypes.POINTER(ctypes.c_int),
-                                                        ctypes.POINTER(ctypes.c_int),
-                                                        ctypes.POINTER(ctypes.c_double),
-                                                        ctypes.POINTER(ctypes.c_double),
-                                                        ctypes.POINTER(ctypes.c_double),
-                                                        ctypes.POINTER(ctypes.c_double)]
-        
-        
-        #for cp in range(1,1 + self._domain.cell_count()):
-            
-            
-            #cells = self._domain.get_adjacent_cells(cp)
-            
-            #print cp, cells
-            
-        
-            
-            
-            
-        args = [self._cells.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                self._pos._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-                self._domain._extent.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-                self._accel._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-                self._U.ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
-            
-        self._libpair_loop_LJ.d_pair_loop_LJ(ctypes.c_int(self._N), ctypes.c_int(self._domain.cell_count()), ctypes.c_double(self._rc), *args)
+
+    
         
         
     def N(self):
@@ -295,6 +187,28 @@ class BaseMDState():
         Return all particle accelerations.
         """
         return self._accel
+        
+    def set_accelerations(self,val):
+        """
+        Set all accelerations to given value.
+        
+        :arg val: (float) value to set to.
+        """
+        
+        self._accel.set_val(val)
+        
+    def U(self):
+        """
+        Return potential energy
+        """
+        return self._U
+        
+    def reset_U(self):
+        """
+        Reset potential energy to 0.0
+        """
+        self._U = ctypes.c_double(0.0)
+        
         
     def energy_kenetic(self):
         """

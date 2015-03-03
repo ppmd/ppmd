@@ -33,7 +33,7 @@ if __name__ == '__main__':
     test_vel_init = state.VelInitNormDist(mu,nsig)
     
     #test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.5, extent = np.array([7., 7., 7.]), axis = np.array([1,0,0]))
-    #test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([1., 0., 0.]), vy = np.array([-1., 0., 0.]))
+    #test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
     
     r=0.5
     #test_pos_init = state.PosInitTwoParticlesInABox(rx = r, extent = np.array([7., 7., 7.]), axis = np.array([1,0,0]))
@@ -45,7 +45,7 @@ if __name__ == '__main__':
                                    particle_vel_init = test_vel_init,
                                    N = N,
                                    dt = 0.00001,
-                                   T =  1.0
+                                   T =  0.05
                                    )
     
     
