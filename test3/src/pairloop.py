@@ -5,7 +5,7 @@ import ctypes
 import time
 import random
 
-class pair_loop_rapaport():
+class PairLoopRapaport():
     '''
     Class to implement rapaport 14 cell looping.
     '''
@@ -56,23 +56,24 @@ class pair_loop_rapaport():
         
         
      
-    def update(self):
+    def _update_prepare(self):
         #handle perodic bounadies
         self._input_state.domain().boundary_correct(self._input_state)
         #update cell list
         self.cell_sort_all()
         
         
-    def pair_locate_c(self):
+    def update(self):
         """
         C version of the pair_locate: Loop over all cells update accelerations and potential engery.
         """
+        self._update_prepare()
     
         self._input_state.set_accelerations(0.0)
         #self._input_state.reset_U() #causes segfault.....
         
             
-        self._libpair_loop_LJ.d_pair_loop_LJ(ctypes.c_int(self._input_state.N()), ctypes.c_int(self._input_state.domain().cell_count()), ctypes.c_double(self._input_state._rc), *self._args)   
+        self._libpair_loop_LJ.d_pair_loop_LJ(ctypes.c_int(self._input_state.N()), ctypes.c_int(self._input_state.domain().cell_count()), ctypes.c_double(self._input_state._potential._rc), *self._args)   
         
         
         

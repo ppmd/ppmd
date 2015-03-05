@@ -5,6 +5,8 @@ import potential
 import state
 import numpy as np
 import math
+import method
+import data
 
 if __name__ == '__main__':
     
@@ -40,17 +42,27 @@ if __name__ == '__main__':
     #test_pos_init = state.PosInitTwoParticlesInABox(rx = r, extent = np.array([7., 7., 7.]), axis = np.array([1,0,0]))
     #test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 1./(math.sqrt(2*r)), 0.]), vy = np.array([0., -1./(math.sqrt(2*r)), 0.]))
     
+    
+    
     test_state = state.BaseMDState(domain = test_domain,
                                    potential = test_potential, 
                                    particle_pos_init = test_pos_init, 
                                    particle_vel_init = test_vel_init,
                                    N = N,
-                                   dt = 0.00001,
-                                   T =  0.05
                                    )
     
     
-    test_state.frame_plot_energy()
+    test_integrator = method.VelocityVerlet(state = test_state)
+    
+    energy_data = test_integrator.integrate(dt = 0.0001, T = 1)
+    
+    
+    
+    
+    
+    
+    
+    energy_data.plot()
     
     
     

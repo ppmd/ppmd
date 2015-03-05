@@ -52,6 +52,13 @@ class LennardJones(BasePotential):
         self._4epsilon = 4. * self._epsilon
         self._48_sigma = 48. / self._sigma
         
+        
+        self._rc = 2.**(1./6.)*self._sigma
+        self._rn = 2*self._rc
+        self._rn2 = self._rn**2
+        
+        
+        
     def epsilon(self):
         """
         Return :math:`\epsilon`
