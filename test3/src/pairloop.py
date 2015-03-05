@@ -4,6 +4,9 @@ import math
 import ctypes
 import time
 import random
+import os
+import hashlib
+import subprocess
 
 class PairLoopRapaport():
     '''
@@ -93,9 +96,7 @@ class PairLoopRapaport():
             self._q_list[ix] = self._q_list[self._input_state.N() + c]
             self._q_list[self._input_state.N() + c] = ix
             
-      
-        
-      
+    
        
     def get_adjacent_cells(self,ix):
         """
@@ -134,6 +135,110 @@ class PairLoopRapaport():
 
         return cell_list        
         
+
+class SingleAllParticleLoop():
+    """
+    Class to loop over all particles once.
+    """
+    def __init__(self, kernel, particle_dat_dict, headers=None):
+        self._temp_dir = './build/'
+        if (not os.path.exists(self._temp_dir)):
+            os.mkdir(self._temp_dir)
+        self._kernel = kernel
+        self._particle_dat_dict = particle_dat_dict
+        self._nargs = len(self._particle_dat_dict)
+        self._headers = headers
+        
+        self._unique_name = self._unique_name_calc()
+        
+        self._lib_filename  = self._unique_name +'.so'
+        
+        if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
+            self._create_library()
+
+
+
+    def _create_library(self):
+        '''
+        Create a shared library from the source code.
+        '''
+        
+        filename_base = os.path.join(self._temp_dir,self._unique_name)
+        header_filename = filename_base+'.h'
+        impl_filename = filename_base+'.c'
+        with open(header_filename,'w') as f:
+            print >> f, self._generate_header_source()        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    def _generate_header_source(self):
+        '''Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        '''
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+
+        %(INCLUDED_HEADERS)s
+
+        void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
+
+        #endif
+        '''
+        d = {'UNIQUENAME':self._unique_name,
+             'INCLUDED_HEADERS':self._included_headers(),
+             'KERNEL_NAME':self._kernel.name,
+             'ARGUMENTS':self._argnames()}
+        return (code % d)
+
+
+
+    def _unique_name_calc(self):
+        '''Return name which can be used to identify the pair loop 
+        in a unique way.
+        '''
+        return self._kernel.name+'_'+self.hexdigest()
+        
+    def hexdigest(self):
+        '''Create unique hex digest'''
+        m = hashlib.md5()
+        m.update(self._kernel.code)
+        if (self._headers != None):
+            for header in self._headers:
+                m.update(header)
+        return m.hexdigest()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         
     
     

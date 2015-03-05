@@ -12,7 +12,7 @@ class VelocityVerlet():
     Class to apply Velocity-Verlet to a given state using a given looping method.
     """
     
-    def __init__(self, dt = 0.0001, T = 0.01, looping_method = None, state = None):
+    def __init__(self, dt = 0.0001, T = 0.01, looping_method_accel = None, state = None):
         self._dt = dt
         self._T = T
         
@@ -20,10 +20,10 @@ class VelocityVerlet():
         self._state = state
         
         
-        if (looping_method == None):
-            self._looping_method = pairloop.PairLoopRapaport(self._state)
+        if (looping_method_accel == None):
+            self._looping_method_accel = pairloop.PairLoopRapaport(self._state)
         else:
-            self._looping_method = looping_method
+            self._looping_method_accel = looping_method_accel
         
         
         
@@ -60,7 +60,7 @@ class VelocityVerlet():
         percent_int = 10
         percent_count = percent_int
 
-        self._looping_method.update()
+        self._looping_method_accel.update()
 
         for i in range(self._max_it):
             
@@ -98,7 +98,7 @@ class VelocityVerlet():
         self._P+=self._dt*self._V
         
         #update accelerations
-        self._looping_method.update()
+        self._looping_method_accel.update()
         
         self._V+= 0.5*self._dt*self._A
     
