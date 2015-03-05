@@ -1,0 +1,387 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>state Module &mdash; src  documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="src  documentation" href="index.html" />
+    <link rel="prev" title="potential Module" href="potential.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="potential.html" title="potential Module"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">src  documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-state">
+<span id="state-module"></span><h1>state Module<a class="headerlink" href="#module-state" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="state.BaseMDState">
+<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">BaseMDState</tt><big>(</big><em>domain</em>, <em>potential</em>, <em>particle_pos_init=None</em>, <em>particle_vel_init=None</em>, <em>N=0</em>, <em>mass=1.0</em>, <em>dt=1e-05</em>, <em>T=0.02</em><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base molecular dynamics class.</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">arg domain:</th><td class="field-body">(Domain class) Container within which the simulation takes place.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">arg potential:</th><td class="field-body">(Potential class) Potential to use between particles.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">arg particle_pos_init:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">(class PosInit*) Class to initialise particles with.</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">arg particle_vel_init:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">(class VelInit*) Class to initialise particles velocities with.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">arg N:</th><td class="field-body">(integer) Number of particles, default 1.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">arg mass:</th><td class="field-body">(float) Mass of particles, default 1.0</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">arg dt:</th><td class="field-body">(float) Time-step size.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">arg T:</th><td class="field-body">(float) End time.</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<dl class="method">
+<dt id="state.BaseMDState.N">
+<tt class="descname">N</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.N" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns number of particles.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.accelerations">
+<tt class="descname">accelerations</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState.accelerations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState.accelerations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return all particle accelerations.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.cell_sort_all">
+<tt class="descname">cell_sort_all</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.cell_sort_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct neighbour list, assigning atoms to cells. Using Rapaport alg.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.domain">
+<tt class="descname">domain</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.domain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the domain used by the state.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.energy_kenetic">
+<tt class="descname">energy_kenetic</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState.energy_kenetic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState.energy_kenetic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calcluate and return kenetic energy.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.frame_plot_energy">
+<tt class="descname">frame_plot_energy</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.frame_plot_energy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to plot all particles in 3D scatter plot.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.frame_plot_pos">
+<tt class="descname">frame_plot_pos</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.frame_plot_pos" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to plot all particles in 3D scatter plot.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.isnan_checker">
+<tt class="descname">isnan_checker</tt><big>(</big><em>r_in</em>, <em>msg</em><big>)</big><a class="headerlink" href="#state.BaseMDState.isnan_checker" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.pair_locate">
+<tt class="descname">pair_locate</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.pair_locate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loop over all cells update accelerations and potential engery.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.pair_locate_c">
+<tt class="descname">pair_locate_c</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.pair_locate_c" title="Permalink to this definition">¶</a></dt>
+<dd><p>C version of the pair_locate: Loop over all cells update accelerations and potential engery.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.positions">
+<tt class="descname">positions</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState.positions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState.positions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return all particle positions.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.velocities">
+<tt class="descname">velocities</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState.velocities"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState.velocities" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return all particle velocities.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.velocity_verlet_integration">
+<tt class="descname">velocity_verlet_integration</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.velocity_verlet_integration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform Velocity Verlet integration up to time T.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.velocity_verlet_step">
+<tt class="descname">velocity_verlet_step</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.velocity_verlet_step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform one step of Velocity Verlet.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="state.PosInitLatticeNRho">
+<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">PosInitLatticeNRho</tt><big>(</big><em>N</em>, <em>rho</em><big>)</big><a class="headerlink" href="#state.PosInitLatticeNRho" title="Permalink to this definition">¶</a></dt>
+<dd><p>Arrange N particles into a 3D lattice of density <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>/</mo><mi>r</mi><mi>h</mi><mi>o</mi></mrow></math>. Redfines container volume as a cube with deduced volume, assumes unit mass.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arg :</th><td class="field-body">(int) input, N, number of particles.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Arg :</th><td class="field-body">(float) input, <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>/</mo><mi>r</mi><mi>h</mi><mi>o</mi></mrow></math>, required density.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="state.PosInitLatticeNRho.reset">
+<tt class="descname">reset</tt><big>(</big><em>state_input</em><big>)</big><a class="headerlink" href="#state.PosInitLatticeNRho.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Applies initial lattice to particle positions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arg :</th><td class="field-body">(state.*) object of state class. Inheritered from BaseMDState.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="state.PosInitLatticeNRhoRand">
+<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">PosInitLatticeNRhoRand</tt><big>(</big><em>N</em>, <em>rho</em>, <em>dev=0.0</em><big>)</big><a class="headerlink" href="#state.PosInitLatticeNRhoRand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Arrange N particles into a 3D lattice of density <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>/</mo><mi>r</mi><mi>h</mi><mi>o</mi></mrow></math>. Redfines container volume as a cube with deduced volume, assumes unit mass adds uniform deviantion based on given maximum.</p>
+<blockquote>
+<div><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">arg N:</th><td class="field-body">(int) number of particles.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">arg rho:</th><td class="field-body">(float) <math xmlns="http://www.w3.org/1998/Math/MathML">
+<mrow><mo>/</mo><mi>r</mi><mi>h</mi><mi>o</mi></mrow></math>, required density.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">arg dev:</th><td class="field-body">(float) maximum possible random deviation from lattice.</td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<dl class="method">
+<dt id="state.PosInitLatticeNRhoRand.reset">
+<tt class="descname">reset</tt><big>(</big><em>state_input</em><big>)</big><a class="headerlink" href="#state.PosInitLatticeNRhoRand.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Applies initial lattice to particle positions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Arg :</th><td class="field-body">(state.*) object of state class. Inheritered from BaseMDState.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="state.PosInitTwoParticlesInABox">
+<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">PosInitTwoParticlesInABox</tt><big>(</big><em>rx</em>, <em>extent=array([ 1.</em>, <em>1.</em>, <em>1.])</em><big>)</big><a class="headerlink" href="#state.PosInitTwoParticlesInABox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates two particles a set distance apart on the x-axis, centred on the origin. Places these within a containing volume of given extents.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>rx</strong> &#8211; (float) Distance between particles.</li>
+<li><strong>extents</strong> &#8211; (np.array(3)) Extent for containing volume.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="state.PosInitTwoParticlesInABox.reset">
+<tt class="descname">reset</tt><big>(</big><em>state_input</em><big>)</big><a class="headerlink" href="#state.PosInitTwoParticlesInABox.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resets the first two particles in the input state domain to sit on the x-axis the set distance apart.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>state_input</strong> &#8211; (state class) State object containing at least two particles.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="state.VelInitNormDist">
+<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">VelInitNormDist</tt><big>(</big><em>mu=0.0</em>, <em>sig=1.0</em><big>)</big><a class="headerlink" href="#state.VelInitNormDist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialise velocities by sampling from a gaussian distribution.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>mu</strong> &#8211; (float) Mean for gaussian distribution.</li>
+<li><strong>sig</strong> &#8211; (float) Standard deviation for gaussian distribution.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="state.VelInitNormDist.reset">
+<tt class="descname">reset</tt><big>(</big><em>state_input</em><big>)</big><a class="headerlink" href="#state.VelInitNormDist.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resets particle velocities to Gaussian distribution.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>state_input</strong> &#8211; (state class) Input state class oject containing velocities.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="state.VelInitTwoParticlesInABox">
+<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">VelInitTwoParticlesInABox</tt><big>(</big><em>vx=array([ 0.</em>, <em>0.</em>, <em>0.])</em>, <em>vy=array([ 0.</em>, <em>0.</em>, <em>0.])</em><big>)</big><a class="headerlink" href="#state.VelInitTwoParticlesInABox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets velocities for two particles.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>vx</strong> &#8211; (np.array(3,1)) Velocity vector for particle 1.</li>
+<li><strong>vy</strong> &#8211; (np.array(3,1)) Velocity vector for particle 2.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="state.VelInitTwoParticlesInABox.reset">
+<tt class="descname">reset</tt><big>(</big><em>state_input</em><big>)</big><a class="headerlink" href="#state.VelInitTwoParticlesInABox.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resets the particles in the input state to the required velocities.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>state_input</strong> &#8211; (state class) input state.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="potential.html"
+                        title="previous chapter">potential Module</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/state.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="potential.html" title="potential Module"
+             >previous</a> |</li>
+        <li><a href="index.html">src  documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, Author.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
