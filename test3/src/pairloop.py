@@ -43,7 +43,9 @@ class PairLoopRapaport():
                                                         ctypes.POINTER(ctypes.c_double),
                                                         ctypes.POINTER(ctypes.c_double)]
         
-           
+        
+        
+    def _arg_update(self):    
         self._args = [self._cell_map.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
                 self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
                 self._input_state.positions().Dat().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
@@ -70,8 +72,9 @@ class PairLoopRapaport():
         self._update_prepare()
     
         self._input_state.set_accelerations(0.0)
-        #self._input_state.reset_U() #causes segfault.....
+        self._input_state.reset_U() #causes segfault.....
         
+        self._arg_update()
             
         self._libpair_loop_LJ.d_pair_loop_LJ(ctypes.c_int(self._input_state.N()), ctypes.c_int(self._input_state.domain().cell_count()), ctypes.c_double(self._input_state._potential._rc), *self._args)   
         

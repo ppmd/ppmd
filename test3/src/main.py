@@ -54,7 +54,7 @@ if __name__ == '__main__':
     
     test_integrator = method.VelocityVerlet(state = test_state)
     
-    energy_data = test_integrator.integrate(dt = 0.0001, T = 1)
+    energy_data = test_integrator.integrate(dt = 0.0001, T = 0.1)
     
     
     

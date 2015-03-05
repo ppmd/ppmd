@@ -45,9 +45,6 @@ class BaseMDState():
         
 
         
-
-        
-
         
         #potential energy, kenetic energy, total energy.
         self._U = np.zeros([1], dtype=ctypes.c_double, order='C')
@@ -138,7 +135,7 @@ class BaseMDState():
         """
         Reset potential energy to 0.0
         """
-        self._U = 0.0
+        self._U = np.zeros([1], dtype=ctypes.c_double, order='C')
         
     def K_set(self, K_in):
         """
@@ -170,24 +167,6 @@ class BaseMDState():
         
 
         
-        
-    def frame_plot_pos(self):
-        """
-        Function to plot all particles in 3D scatter plot.
-        """
-        
-        print "plotting....."
-        
-        
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        for ix in range(self._N):
-            ax.scatter(self._pos[ix,0], self._pos[ix,1], self._pos[ix,2])
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
-        
-        plt.show()
         
         
 class PosInitLatticeNRho():
