@@ -151,7 +151,7 @@ class SingleAllParticleLoop():
         
         self._unique_name = self._unique_name_calc()
         
-        self._lib_filename  = self._unique_name +'.so'
+        self._library_filename  = self._unique_name +'.so'
         
         if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
             self._create_library()
@@ -168,12 +168,112 @@ class SingleAllParticleLoop():
         impl_filename = filename_base+'.c'
         with open(header_filename,'w') as f:
             print >> f, self._generate_header_source()        
+        with open(impl_filename,'w') as f:
+            print >> f, self._generate_impl_source()
         
+    
+    
+    
+    
+    
         
+    def _generate_impl_source(self):
+        '''Generate the source code the actual implementation.
+        '''
+        code = '''
+        #include \"%(UNIQUENAME)s.h\"
+
+        %(KERNEL_METHODNAME)s
+        %(KERNEL)s
+        }
+
+        void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
+          int i;
+          for (i=0; i<n; ++i) {
+              %(KERNEL_ARGUMENT_DECL)s
+              %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
+            }
+        }
+        '''
+        d = {'UNIQUENAME':self._unique_name,
+             'KERNEL_METHODNAME':self._kernel_methodname(),
+             'KERNEL':self._kernel.code,
+             'ARGUMENTS':self._argnames(),
+             'LOC_ARGUMENTS':self._loc_argnames(),
+             'KERNEL_NAME':self._kernel.name,
+             'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations()}
+        return code % d        
         
+    
+    def _kernel_methodname(self):
+        '''Construct the name of the kernel method.
         
+        Return a string of the form 
+        ``inline void kernel_name(double **<arg1>, double **<arg2}, ...) {``
+        which is used for defining the name of the kernel method.
+        '''
+        space = ' '*14
+        s = 'inline void '+self._kernel.name+'('
+        for var_name in self._particle_dat_dict.keys():
+            s += 'double **'+var_name+', '
+        s = s[:-2] + ') {'
+        return s
+
+    def _loc_argnames(self):
+        '''Comma separated string of local argument names.
+
+        This string is used in the call to the local kernel. If, for
+        example, two particle dats get passed to the pairloop, then
+        the result will be ``loc_arg_000,loc_arg_001``. Each of these
+        is of type ``double* [2]``, see method _kernel_argument_declarations()
+        '''
+        argnames = ''
+        for i in range(self._nargs):
+            argnames += 'loc_arg_'+('%03d' % i)+','
+        return argnames[:-1]
+
+    
+    def _kernel_argument_declarations(self):
+        '''Define and declare the kernel arguments.
+
+        For each argument the kernel gets passed a pointer of type
+        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
+        pointer to the data which contains the properties of particle i.
+        These properties are stored consecutively in memory, so for a 
+        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
+        property the vector entry j of particle i is accessed as 
+        ``loc_argXXX[i][j]``.
+
+        This method generates the definitions of the ``loc_argXXX`` variables
+        and populates the data to ensure that ``loc_argXXX[i]`` points to
+        the correct address in the particle_dats.
+        '''
+        s = '\n'
+        for i,dat in enumerate(self._particle_dat_dict.values()):
+            ncomp = dat.ncomp()
+            space = ' '*14
+            argname = 'arg_'+('%03d' % i)
+            loc_argname = 'loc_'+argname
+            #s += space+'double *'+loc_argname+'[2];\n'
+            s += space+'double *'+loc_argname+';\n'
+            s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
+            #s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
+        return s
+
+
         
-        
+    def _argnames(self):
+        '''Comma separated string of argument name declarations.
+
+        This string of argument names is used in the declaration of 
+        the method which executes the pairloop over the grid. 
+        If, for example, the pairloop gets passed two particle_dats, 
+        then the result will be ``double* arg_000,double* arg_001`.`
+        '''
+        argnames = ''
+        for i in range(self._nargs):
+            argnames += 'double *arg_'+('%03d' % i)+','
+        return argnames[:-1]        
         
         
         
@@ -198,7 +298,15 @@ class SingleAllParticleLoop():
              'ARGUMENTS':self._argnames()}
         return (code % d)
 
-
+    def _included_headers(self):
+        '''Return names of included header files.'''
+        s = ''
+        if (self._headers != None):
+            s += '\n'
+            for x in self._headers:
+                s += '#include \"'+x+'\"'
+        return s
+        
 
     def _unique_name_calc(self):
         '''Return name which can be used to identify the pair loop 

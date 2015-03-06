@@ -49,6 +49,9 @@ class Dat():
     
     def __call__(self):
         return self._Dat
+    @property    
+    def ncomp(self):
+        return self._N2
 
 
 

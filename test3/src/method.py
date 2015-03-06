@@ -5,6 +5,8 @@ import pairloop
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import kernel
+import constant
 np.set_printoptions(threshold='nan')
 
 class VelocityVerlet():
@@ -33,6 +35,28 @@ class VelocityVerlet():
     
         ''' Drawing particles initialisation'''
         self._pos_draw = data.draw_particles(self._state.N(), self._P, self._state.domain().extent())
+        
+        '''Updates step broken into two parts'''
+        
+        self._kernel1_code = '''
+        //self._V+=0.5*self._dt*self._A
+        //self._P+=self._dt*self._V
+        V += 0.5*dt*A;
+        P += dt*V;
+        '''
+        self._constants1 = [constant.Constant('dt',self._dt)]
+        
+        self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
+        
+        self._p1 = pairloop.SingleAllParticleLoop(self._kernel1,{'P':self._P,'V':self._V,'A':self._A})
+        
+        
+        
+        
+        
+        
+        
+        
     
         
     
