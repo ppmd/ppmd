@@ -7,12 +7,13 @@ import numpy as np
 import math
 import method
 import data
+import time
 
 if __name__ == '__main__':
     
     
-    test_1000 = True
-    test_2_bounce = False
+    test_1000 = False
+    test_2_bounce = True
     
     if (test_1000):
         n=10
@@ -52,11 +53,12 @@ if __name__ == '__main__':
                                    )
     
     
-    test_integrator = method.VelocityVerlet(state = test_state)
+    test_integrator = method.VelocityVerlet(state = test_state, USE_C = False)
     
-    energy_data = test_integrator.integrate(dt = 0.0001, T = 0.1)
-    
-    
+    start = time.clock()
+    energy_data = test_integrator.integrate(dt = 0.00001, T = 0.1)
+    end = time.clock()
+    print "Rough time taken:", end - start,"s"
     
     
     

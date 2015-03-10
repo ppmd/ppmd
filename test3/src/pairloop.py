@@ -8,6 +8,137 @@ import os
 import hashlib
 import subprocess
 
+class PairLoopRapaport_tmp():
+    '''
+    Class to implement rapaport 14 cell looping.
+    '''
+    def __init__(self,input_state):
+        
+        
+        
+        self._input_state = input_state
+        
+        '''Construct initial cell list'''
+        self._q_list = np.zeros([1 + self._input_state.N() + self._input_state.domain().cell_count()], dtype=ctypes.c_int, order='C')
+        self.cell_sort_all()
+        
+
+        
+        '''Determine cell neighbours'''
+        self._cell_map=np.zeros([14*self._input_state.domain().cell_count(),5],dtype=ctypes.c_int, order='C')
+        for cp in range(1,1 + self._input_state.domain().cell_count()):
+            self._cell_map[(cp-1)*14:(cp*14),...] = self.get_adjacent_cells(cp)
+        
+        
+        
+        '''Initialise pair_loop code'''
+        self._libpair_loop_LJ = np.ctypeslib.load_library('libpair_loop_LJ.so','.')
+        self._libpair_loop_LJ.d_pair_loop_LJ.restype = ctypes.c_int
+        
+        #void d_pair_loop_LJ(int N, int cell_count, double rc, int* cells, int* q_list, double* pos, double* d_extent, double *accel);
+        self._libpair_loop_LJ.d_pair_loop_LJ.argtypes = [ctypes.c_int,
+                                                        ctypes.c_int,
+                                                        ctypes.c_double,
+                                                        ctypes.POINTER(ctypes.c_int),
+                                                        ctypes.POINTER(ctypes.c_int),
+                                                        ctypes.POINTER(ctypes.c_double),
+                                                        ctypes.POINTER(ctypes.c_double),
+                                                        ctypes.POINTER(ctypes.c_double),
+                                                        ctypes.POINTER(ctypes.c_double)]
+        
+        
+        
+    def _arg_update(self):    
+        self._args = [self._cell_map.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                self._input_state.positions().Dat().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                self._input_state.domain().extent().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                self._input_state.accelerations().Dat().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
+                self._input_state.U().ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
+        
+        
+    
+        
+        
+     
+    def _update_prepare(self):
+        #handle perodic bounadies
+        self._input_state.domain().boundary_correct(self._input_state)
+        #update cell list
+        self.cell_sort_all()
+        
+        
+    def update(self):
+        """
+        C version of the pair_locate: Loop over all cells update accelerations and potential engery.
+        """
+        self._update_prepare()
+    
+        self._input_state.set_accelerations(0.0)
+        self._input_state.reset_U() #causes segfault.....
+        
+        self._arg_update()
+            
+        self._libpair_loop_LJ.d_pair_loop_LJ(ctypes.c_int(self._input_state.N()), ctypes.c_int(self._input_state.domain().cell_count()), ctypes.c_double(self._input_state._potential._rc), *self._args)   
+        
+        
+        
+    def cell_sort_all(self):
+        """
+        Construct neighbour list, assigning atoms to cells. Using Rapaport alg.
+        """
+        for cx in range(1,1+self._input_state.domain().cell_count()):
+            self._q_list[self._input_state.N() + cx] = 0
+        for ix in range(1,1+self._input_state.N()):
+            c = self._input_state.domain().get_cell_lin_index(self._input_state.positions().Dat()[ix-1,])
+            
+            #print c, self._pos[ix-1,], self._domain._extent*0.5
+            self._q_list[ix] = self._q_list[self._input_state.N() + c]
+            self._q_list[self._input_state.N() + c] = ix
+            
+    
+       
+    def get_adjacent_cells(self,ix):
+        """
+        Returns the 14 neighbouring cells as linear index.
+        
+        :arg ix: (int) Input index.
+        
+        """
+         
+        cell_list = np.zeros([14,5],dtype=ctypes.c_int, order='C')
+        #cell_list_boundary=[]
+        
+        C = self._input_state.domain().cell_index_tuple(ix)
+        
+        stencil_map = [
+            [0,0,0],
+            [1,0,0],
+            [0,1,0],
+            [1,1,0],
+            [1,-1,0],
+            [-1,1,1],
+            [0,1,1],
+            [1,1,1],
+            [-1,0,1],
+            [0,0,1],
+            [1,0,1],
+            [-1,-1,1],
+            [0,-1,1],
+            [1,-1,1]
+            ]
+        
+        for ix in range(14):
+            ind = stencil_map[ix]
+            
+            cell_list[ix,] = self._input_state.domain().cell_index_lin_offset(C+ind)
+
+        return cell_list
+
+################################################################################################################
+# RAPAPORT LOOP SERIAL
+################################################################################################################
+
 class PairLoopRapaport():
     '''
     Class to implement rapaport 14 cell looping.
@@ -133,9 +264,42 @@ class PairLoopRapaport():
             
             cell_list[ix,] = self._input_state.domain().cell_index_lin_offset(C+ind)
 
-        return cell_list        
+        return cell_list
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
         
-
+################################################################################################################
+# SINGLE PARTICLE LOOP SERIAL
+################################################################################################################
 class SingleAllParticleLoop():
     """
     Class to loop over all particles once.
@@ -148,6 +312,8 @@ class SingleAllParticleLoop():
         self._particle_dat_dict = particle_dat_dict
         self._nargs = len(self._particle_dat_dict)
         self._headers = headers
+
+        self._code_init()
         
         self._unique_name = self._unique_name_calc()
         
@@ -157,6 +323,8 @@ class SingleAllParticleLoop():
             self._create_library()
         self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
 
+     
+        
 
     def _create_library(self):
         '''
@@ -201,34 +369,17 @@ class SingleAllParticleLoop():
         '''Execute the kernel over all particle pairs.'''
         args = []
         for dat in self._particle_dat_dict.values():
-            args.append(dat._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)))
+            args.append(dat.ctypes_data())
             n = dat.npart
         method = self._lib[self._kernel.name+'_wrapper']
         method(n,*args)   
     
-    
-    
-    
-    
-        
+
+       
     def _generate_impl_source(self):
         '''Generate the source code the actual implementation.
         '''
-        code = '''
-        #include \"%(UNIQUENAME)s.h\"
 
-        %(KERNEL_METHODNAME)s
-        %(KERNEL)s
-        }
-
-        void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
-          int i;
-          for (i=0; i<n; ++i) {
-              %(KERNEL_ARGUMENT_DECL)s
-              %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
-            }
-        }
-        '''
         d = {'UNIQUENAME':self._unique_name,
              'KERNEL_METHODNAME':self._kernel_methodname(),
              'KERNEL':self._kernel.code,
@@ -236,7 +387,7 @@ class SingleAllParticleLoop():
              'LOC_ARGUMENTS':self._loc_argnames(),
              'KERNEL_NAME':self._kernel.name,
              'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations()}
-        return code % d        
+        return self._code % d        
         
     
     def _kernel_methodname(self):
@@ -266,6 +417,22 @@ class SingleAllParticleLoop():
             argnames += 'loc_arg_'+('%03d' % i)+','
         return argnames[:-1]
 
+    def _code_init(self):
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+
+        %(KERNEL_METHODNAME)s
+        %(KERNEL)s
+        }
+
+        void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
+          int i;
+          for (i=0; i<n; ++i) {
+              %(KERNEL_ARGUMENT_DECL)s
+              %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
+            }
+        }
+        '''
     
     def _kernel_argument_declarations(self):
         '''Define and declare the kernel arguments.
@@ -295,6 +462,8 @@ class SingleAllParticleLoop():
             #s += space+'double *'+loc_argname+'[2];\n'
             s += space+'double *'+loc_argname+';\n'
             s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'
+            #s += space+loc_argname+' = &'+argname+'['+str(ncomp)+'*i];\n'
+            
             #s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
         return s
 
@@ -355,18 +524,85 @@ class SingleAllParticleLoop():
     def hexdigest(self):
         '''Create unique hex digest'''
         m = hashlib.md5()
-        m.update(self._kernel.code)
+        m.update(self._kernel.code+self._code)
         if (self._headers != None):
             for header in self._headers:
                 m.update(header)
         return m.hexdigest()
 
+################################################################################################################
+# SINGLE PARTICLE LOOP OPENMP
+################################################################################################################
 
+class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
+    """
+    OpenMP version of single pass pair loop
+    """
+    SingleAllParticleLoop._create_library
+    
+    def _code_init(self):
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+        #include <omp.h>
 
+        %(KERNEL_METHODNAME)s
+        %(KERNEL)s
+        }
 
-
-
-
+        void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
+          int i;
+          #pragma omp parallel for
+          for (i=0; i<n; ++i) {
+              %(KERNEL_ARGUMENT_DECL)s
+              %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
+            }
+        }
+        '''
+    
+          
+    
+    def _create_library(self):
+        '''
+        Create a shared library from the source code.
+        '''
+        
+        filename_base = os.path.join(self._temp_dir,self._unique_name)
+        header_filename = filename_base+'.h'
+        impl_filename = filename_base+'.c'
+        with open(header_filename,'w') as f:
+            print >> f, self._generate_header_source()        
+        with open(impl_filename,'w') as f:
+            print >> f, self._generate_impl_source()
+        object_filename = filename_base+'.o'
+        library_filename = filename_base+'.so'        
+        cflags = ['-O3','-fpic','-fopenmp','-lgomp','-lpthread','-lc','-lrt']
+        cc = 'gcc'
+        ld = 'gcc'
+        link_flags = ['-fopenmp','-lgomp','-lpthread','-lc','-lrt']
+        compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
+                       +['-o',object_filename,impl_filename]
+        link_cmd = [ld,'-shared']+link_flags+['-o',library_filename,object_filename]
+        stdout_filename = filename_base+'.log'
+        stderr_filename = filename_base+'.err'
+        with open(stdout_filename,'w') as stdout:
+            with open(stderr_filename,'w') as stderr:
+                stdout.write('Compilation command:\n')
+                stdout.write(' '.join(compile_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(compile_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate()
+                stdout.write('Link command:\n')
+                stdout.write(' '.join(link_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(link_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate() 
+        
+        
+        
 
 
 
