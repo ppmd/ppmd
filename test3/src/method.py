@@ -29,31 +29,41 @@ class VelocityVerlet():
         
         
         
-        self._A = self._state.accelerations().Dat()
-        self._V = self._state.velocities().Dat()
-        self._P = self._state.positions().Dat()
+        self._A = self._state.accelerations()
+        self._V = self._state.velocities()
+        self._P = self._state.positions()
+        
+        
     
         ''' Drawing particles initialisation'''
         self._pos_draw = data.draw_particles(self._state.N(), self._P, self._state.domain().extent())
         
         '''Updates step broken into two parts'''
         
+        self._constants = [constant.Constant('dt',self._dt)]
+        
         self._kernel1_code = '''
         //self._V+=0.5*self._dt*self._A
         //self._P+=self._dt*self._V
-        V += 0.5*dt*A;
-        P += dt*V;
+        V[0] += 0.5*dt*A[0];
+        V[1] += 0.5*dt*A[1];
+        V[2] += 0.5*dt*A[2];
+        P[0] += dt*V[0];
+        P[1] += dt*V[1];
+        P[2] += dt*V[2];
         '''
-        self._constants1 = [constant.Constant('dt',self._dt)]
-        
-        self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
-        
+        self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
         self._p1 = pairloop.SingleAllParticleLoop(self._kernel1,{'P':self._P,'V':self._V,'A':self._A})
         
+        self._kernel2_code = '''
+        //self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat()
+        V[0] += 0.5*dt*A[0];
+        V[1] += 0.5*dt*A[1];
+        V[2] += 0.5*dt*A[2];
+        '''
         
-        
-        
-        
+        self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
+        self._p2 = pairloop.SingleAllParticleLoop(self._kernel2,{'V':self._V,'A':self._A})
         
         
         
@@ -92,11 +102,11 @@ class VelocityVerlet():
             self.velocity_verlet_step()
             
             if (i > -1):
-                self._state.K_set( 0.5*np.sum(self._V*self._V) )
+                self._state.K_set( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )
                 
                 
                 self._E_store.U_append(self._state.U()/self._state.N())
-                self._E_store.K_append(( 0.5*np.sum(self._V*self._V) )/self._state.N())
+                self._E_store.K_append(( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )/self._state.N())
                 self._E_store.Q_append((self._state.U() + self._state.K())/self._state.N())
                 self._E_store.T_append((i+1)*self._dt)
             
@@ -118,14 +128,16 @@ class VelocityVerlet():
         Perform one step of Velocity Verlet.
         """
         
-        self._V+=0.5*self._dt*self._A
-        self._P+=self._dt*self._V
+        #self._V.Dat()[...,...]+=0.5*self._dt*self._A.Dat()
+        #self._P.Dat()[...,...]+=self._dt*self._V.Dat()
+        
+        self._p1.execute()
         
         #update accelerations
         self._looping_method_accel.update()
         
-        self._V+= 0.5*self._dt*self._A
-    
+        #self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat()
+        self._p2.execute()
     
  
     

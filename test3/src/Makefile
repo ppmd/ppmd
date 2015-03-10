@@ -21,4 +21,4 @@ $(MAIN): $(addsuffix .so,$(addprefix lib,$(LIBS)))
 
 .phony:
 clean:
-	rm -rf *.o *.so $(MAIN) *.pyc
+	rm -rf *.o *.so $(MAIN) *.pyc ./build/*

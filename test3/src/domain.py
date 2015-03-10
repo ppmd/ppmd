@@ -209,7 +209,7 @@ class BaseDomain():
         
         if (self._USE_C != True):
                 N = input_state.N()
-                r_in = input_state.positions()
+                r_in = input_state.positions().Dat()
         
         
                 for ix in range(N):

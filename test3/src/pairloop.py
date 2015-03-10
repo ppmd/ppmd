@@ -90,7 +90,7 @@ class PairLoopRapaport():
         for cx in range(1,1+self._input_state.domain().cell_count()):
             self._q_list[self._input_state.N() + cx] = 0
         for ix in range(1,1+self._input_state.N()):
-            c = self._input_state.domain().get_cell_lin_index(self._input_state.positions()[ix-1,])
+            c = self._input_state.domain().get_cell_lin_index(self._input_state.positions().Dat()[ix-1,])
             
             #print c, self._pos[ix-1,], self._domain._extent*0.5
             self._q_list[ix] = self._q_list[self._input_state.N() + c]
@@ -155,7 +155,7 @@ class SingleAllParticleLoop():
         
         if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
             self._create_library()
-
+        self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
 
 
     def _create_library(self):
@@ -170,7 +170,41 @@ class SingleAllParticleLoop():
             print >> f, self._generate_header_source()        
         with open(impl_filename,'w') as f:
             print >> f, self._generate_impl_source()
+        object_filename = filename_base+'.o'
+        library_filename = filename_base+'.so'        
+        cflags = ['-O3','-fpic']
+        cc = 'gcc'
+        ld = 'gcc'
+        compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
+                       +['-o',object_filename,impl_filename]
+        link_cmd = [ld,'-shared']+['-o',library_filename,object_filename]
+        stdout_filename = filename_base+'.log'
+        stderr_filename = filename_base+'.err'
+        with open(stdout_filename,'w') as stdout:
+            with open(stderr_filename,'w') as stderr:
+                stdout.write('Compilation command:\n')
+                stdout.write(' '.join(compile_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(compile_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate()
+                stdout.write('Link command:\n')
+                stdout.write(' '.join(link_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(link_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate()                
         
+    def execute(self):
+        '''Execute the kernel over all particle pairs.'''
+        args = []
+        for dat in self._particle_dat_dict.values():
+            args.append(dat._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double)))
+            n = dat.npart
+        method = self._lib[self._kernel.name+'_wrapper']
+        method(n,*args)   
     
     
     
@@ -209,13 +243,13 @@ class SingleAllParticleLoop():
         '''Construct the name of the kernel method.
         
         Return a string of the form 
-        ``inline void kernel_name(double **<arg1>, double **<arg2}, ...) {``
+        ``inline void kernel_name(double *<arg1>, double *<arg2}, ...) {``
         which is used for defining the name of the kernel method.
         '''
         space = ' '*14
         s = 'inline void '+self._kernel.name+'('
         for var_name in self._particle_dat_dict.keys():
-            s += 'double **'+var_name+', '
+            s += 'double *'+var_name+', '
         s = s[:-2] + ') {'
         return s
 
@@ -250,13 +284,17 @@ class SingleAllParticleLoop():
         '''
         s = '\n'
         for i,dat in enumerate(self._particle_dat_dict.values()):
-            ncomp = dat.ncomp()
+            
+            
+            ncomp = dat.ncomp
+            
+            
             space = ' '*14
             argname = 'arg_'+('%03d' % i)
             loc_argname = 'loc_'+argname
             #s += space+'double *'+loc_argname+'[2];\n'
             s += space+'double *'+loc_argname+';\n'
-            s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
+            s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'
             #s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
         return s
 

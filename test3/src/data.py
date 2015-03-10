@@ -28,7 +28,7 @@ class draw_particles():
         plt.cla()
            
         for ix in range(self._N):
-            self._ax.scatter(self._pos[ix,0], self._pos[ix,1], self._pos[ix,2],color=self._key[ix%2])
+            self._ax.scatter(self._pos.Dat()[ix,0], self._pos.Dat()[ix,1], self._pos.Dat()[ix,2],color=self._key[ix%2])
         self._ax.set_xlim([-0.5*self._extents[0],0.5*self._extents[0]])
         self._ax.set_ylim([-0.5*self._extents[1],0.5*self._extents[1]])
         self._ax.set_zlim([-0.5*self._extents[2],0.5*self._extents[2]])

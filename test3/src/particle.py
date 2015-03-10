@@ -36,9 +36,14 @@ class Dat():
         Returns entire data array.
         """
         return self._Dat
-        
-    def __getitem__(self, ix):
-        return self._Dat[ix]
+    '''    
+    def __getitem__(self,key=None):   
+        if (key != None):
+            return self._Dat[key]
+        else:
+            return self._Dat
+    '''        
+            
 
     def __setitem__(self, ix, val):
         self._Dat[ix] = val      
@@ -52,6 +57,33 @@ class Dat():
     @property    
     def ncomp(self):
         return self._N2
+   
+    @property    
+    def npart(self):
+        '''Return number of particles.'''
+        return self._N1
+        
+    def ctypes_data(self):
+        '''Return ctypes-pointer to data.'''
+        return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
 
 
