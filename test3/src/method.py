@@ -102,7 +102,7 @@ class VelocityVerlet():
         percent_int = 10
         percent_count = percent_int
 
-        self._looping_method_accel.update()
+        self._looping_method_accel.execute()
 
         for i in range(self._max_it):
             
@@ -143,7 +143,7 @@ class VelocityVerlet():
             self._P.Dat()[...,...]+=self._dt*self._V.Dat()
         
         #update accelerations
-        self._looping_method_accel.update()
+        self._looping_method_accel.execute()
         
         
         if (self._USE_C):

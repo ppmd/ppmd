@@ -47,9 +47,9 @@ class BaseMDState():
         
         
         #potential energy, kenetic energy, total energy.
-        self._U = np.zeros([1], dtype=ctypes.c_double, order='C')
-        self._K = np.zeros([1], dtype=ctypes.c_double, order='C')
-        self._Q = np.zeros([1], dtype=ctypes.c_double, order='C')
+        self._U = particle.ScalarDat();
+        self._K = particle.ScalarDat();
+        self._Q = particle.ScalarDat();
 
         
         
@@ -165,7 +165,8 @@ class BaseMDState():
             
         return float(energy)
         
-
+    def potential(self):
+        return self._potential
         
         
         

@@ -8,6 +8,161 @@ import os
 import hashlib
 import subprocess
 
+class _base():
+    def _unique_name_calc(self):
+        '''Return name which can be used to identify the pair loop 
+        in a unique way.
+        '''
+        return self._kernel.name+'_'+self.hexdigest()
+        
+    def hexdigest(self):
+        '''Create unique hex digest'''
+        m = hashlib.md5()
+        m.update(self._kernel.code+self._code)
+        if (self._headers != None):
+            for header in self._headers:
+                m.update(header)
+        return m.hexdigest()
+        
+    def _generate_header_source(self):
+        '''Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        '''
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+
+        %(INCLUDED_HEADERS)s
+
+        void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
+
+        #endif
+        '''
+        d = {'UNIQUENAME':self._unique_name,
+             'INCLUDED_HEADERS':self._included_headers(),
+             'KERNEL_NAME':self._kernel.name,
+             'ARGUMENTS':self._argnames()}
+        return (code % d)
+    
+    def _included_headers(self):
+        '''Return names of included header files.'''
+        s = ''
+        if (self._headers != None):
+            s += '\n'
+            for x in self._headers:
+                s += '#include \"'+x+'\"'
+        return s    
+    
+    def _argnames(self):
+        '''Comma separated string of argument name declarations.
+
+        This string of argument names is used in the declaration of 
+        the method which executes the pairloop over the grid. 
+        If, for example, the pairloop gets passed two particle_dats, 
+        then the result will be ``double** arg_000,double** arg_001`.`
+        '''
+        #argnames = ''
+        #for i in range(self._nargs):
+        #    argnames += 'double **arg_'+('%03d' % i)+','
+        #return argnames[:-1]
+        
+        argnames = ''
+        for i,dat in enumerate(self._particle_dat_dict.items()):
+        
+            if (dat[1].DatType  == 'scalar'):
+                argnames += 'double *arg_'+('%03d' % i)+','
+            
+            if (dat[1].DatType  == 'array'):        
+                argnames += 'double **arg_'+('%03d' % i)+','
+
+        return argnames[:-1]
+        
+
+    def _generate_impl_source(self):
+        '''Generate the source code the actual implementation.
+        '''
+
+        d = {'UNIQUENAME':self._unique_name,
+             'KERNEL_METHODNAME':self._kernel_methodname(),
+             'KERNEL':self._kernel.code,
+             'ARGUMENTS':self._argnames(),
+             'LOC_ARGUMENTS':self._loc_argnames(),
+             'KERNEL_NAME':self._kernel.name,
+             'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations()}
+        return self._code % d    
+
+    def _kernel_methodname(self):
+        '''Construct the name of the kernel method.
+        
+        Return a string of the form 
+        ``inline void kernel_name(double **<arg1>, double *<arg2}, ...) {``
+        which is used for defining the name of the kernel method.
+        '''
+        space = ' '*14
+        s = 'inline void '+self._kernel.name+'('
+        for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
+            #print var_name_kernel, var_name_state.DatType()
+            
+            if (var_name_state.DatType=='array'):
+                s += 'double **'+var_name_kernel+', '
+            if (var_name_state.DatType=='scalar'):
+                s += 'double *'+var_name_kernel+', '
+            
+            
+        s = s[:-2] + ') {'
+        return s           
+
+    def _loc_argnames(self):
+        '''Comma separated string of local argument names.
+
+        This string is used in the call to the local kernel. If, for
+        example, two particle dats get passed to the pairloop, then
+        the result will be ``loc_arg_000,loc_arg_001``. Each of these
+        is of required type, see method _kernel_argument_declarations()
+        '''
+        argnames = ''
+        for i in range(self._nargs):
+            argnames += 'loc_arg_'+('%03d' % i)+','
+        return argnames[:-1]
+
+
+    def _kernel_argument_declarations(self):
+        '''Define and declare the kernel arguments.
+
+        For each argument the kernel gets passed a pointer of type
+        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
+        pointer to the data which contains the properties of particle i.
+        These properties are stored consecutively in memory, so for a 
+        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
+        property the vector entry j of particle i is accessed as 
+        ``loc_argXXX[i][j]``.
+
+        This method generates the definitions of the ``loc_argXXX`` variables
+        and populates the data to ensure that ``loc_argXXX[i]`` points to
+        the correct address in the particle_dats.
+        '''
+        s = '\n'
+        for i,dat in enumerate(self._particle_dat_dict.items()):
+            
+            
+            space = ' '*14
+            argname = 'arg_'+('%03d' % i)
+            loc_argname = 'loc_'+argname
+            
+            
+            if (dat[1].DatType  == 'scalar'):
+                s += space+'double *'+loc_argname+' = '+argname+';\n'
+            
+            if (dat[1].DatType  == 'array'):
+                ncomp = dat[1].ncomp
+                s += space+'double *'+loc_argname+'[2];\n'
+                s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
+                s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'       
+        
+        return s
+
+
 class PairLoopRapaport_tmp():
     '''
     Class to implement rapaport 14 cell looping.
@@ -68,7 +223,7 @@ class PairLoopRapaport_tmp():
         self.cell_sort_all()
         
         
-    def update(self):
+    def execute(self):
         """
         C version of the pair_locate: Loop over all cells update accelerations and potential engery.
         """
@@ -139,7 +294,7 @@ class PairLoopRapaport_tmp():
 # RAPAPORT LOOP SERIAL
 ################################################################################################################
 
-class PairLoopRapaport():
+class PairLoopRapaport(_base):
     '''
     Class to implement rapaport 14 cell looping.
     '''
@@ -161,34 +316,90 @@ class PairLoopRapaport():
             self._cell_map[(cp-1)*14:(cp*14),...] = self.get_adjacent_cells(cp)
         
         
+        ##########
+        # End of Rapaport initialisations.
+        ##########
         
-        '''Initialise pair_loop code'''
-        self._libpair_loop_LJ = np.ctypeslib.load_library('libpair_loop_LJ.so','.')
-        self._libpair_loop_LJ.d_pair_loop_LJ.restype = ctypes.c_int
+        self._temp_dir = './build/'
+        if (not os.path.exists(self._temp_dir)):
+            os.mkdir(self._temp_dir)
+        self._kernel = input_state.potential().kernel()
+        self._particle_dat_dict = input_state.potential().datdict(input_state)
+        self._nargs = len(self._particle_dat_dict)
+        self._headers = input_state.potential().headers()
+
+        self._code_init()
         
-        #void d_pair_loop_LJ(int N, int cell_count, double rc, int* cells, int* q_list, double* pos, double* d_extent, double *accel);
-        self._libpair_loop_LJ.d_pair_loop_LJ.argtypes = [ctypes.c_int,
-                                                        ctypes.c_int,
-                                                        ctypes.c_double,
-                                                        ctypes.POINTER(ctypes.c_int),
-                                                        ctypes.POINTER(ctypes.c_int),
-                                                        ctypes.POINTER(ctypes.c_double),
-                                                        ctypes.POINTER(ctypes.c_double),
-                                                        ctypes.POINTER(ctypes.c_double),
-                                                        ctypes.POINTER(ctypes.c_double)]
+        self._unique_name = self._unique_name_calc()
+        
+        self._library_filename  = self._unique_name +'.so'
+        
+        if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
+            self._create_library()
+        self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+
+
+    def _generate_header_source(self):
+        '''Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        '''
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+
+        %(INCLUDED_HEADERS)s
+        #define LINIDX_2D(NX,iy,ix)   ((NX)*(iy) + (ix))
+        void %(KERNEL_NAME)s_wrapper(const int n,const int cell_count, int* cells, int* q_list,%(ARGUMENTS)s);
+
+        #endif
+        '''
+        d = {'UNIQUENAME':self._unique_name,
+             'INCLUDED_HEADERS':self._included_headers(),
+             'KERNEL_NAME':self._kernel.name,
+             'ARGUMENTS':self._argnames()}
+        return (code % d)
         
         
+    def _code_init(self):
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
         
-    def _arg_update(self):    
-        self._args = [self._cell_map.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                self._input_state.positions().Dat().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-                self._input_state.domain().extent().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-                self._input_state.accelerations().Dat().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-                self._input_state.U().ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
+        %(KERNEL_METHODNAME)s
+        %(KERNEL)s
+        }        
         
+        void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cells, int* q_list,%(ARGUMENTS)s) { 
         
+            int cpp,i,j,cpp_i,cp;
     
+            for(cp = 1; cp < cell_count+1; cp++){
+                for(cpp_i=0; cpp_i<14; cpp_i++){
+                    cpp = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),0)];
+                    i = q_list[n+cp];
+                    while (i > 0){
+                        j = q_list[n+cpp];
+                        while (j > 0){
+                            if (cp != cpp || i < j){
+        
+                                %(KERNEL_ARGUMENT_DECL)s
+                                %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
+        
+                                
+                            }
+                            j = q_list[j];  
+                        }
+                        i=q_list[i];
+                    }
+                }
+            }
+            
+        
+            return;
+        }        
+        
+        
+        '''
         
         
      
@@ -199,18 +410,30 @@ class PairLoopRapaport():
         self.cell_sort_all()
         
         
-    def update(self):
+    def execute(self):
         """
         C version of the pair_locate: Loop over all cells update accelerations and potential engery.
         """
         self._update_prepare()
     
         self._input_state.set_accelerations(0.0)
-        self._input_state.reset_U() #causes segfault.....
+        self._input_state.reset_U() 
         
-        self._arg_update()
+        args = [self._cell_map.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                        self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int))]
+                
+        for dat in self._particle_dat_dict.values():
+            args.append(dat.ctypes_data())
+        method = self._lib[self._kernel.name+'_wrapper']
+        
+        method(ctypes.c_int(self._input_state.N()), ctypes.c_int(self._input_state.domain().cell_count()), *args)           
+        
+        
+        
+        
+        #self._arg_update()
             
-        self._libpair_loop_LJ.d_pair_loop_LJ(ctypes.c_int(self._input_state.N()), ctypes.c_int(self._input_state.domain().cell_count()), ctypes.c_double(self._input_state._potential._rc), *self._args)   
+        #self._libpair_loop_LJ.d_pair_loop_LJ(ctypes.c_int(self._input_state.N()), ctypes.c_int(self._input_state.domain().cell_count()), ctypes.c_double(self._input_state._potential._rc), *self._args)   
         
         
         
@@ -267,7 +490,44 @@ class PairLoopRapaport():
         return cell_list
      
      
-     
+    def _create_library(self):
+        '''
+        Create a shared library from the source code.
+        '''
+        
+        filename_base = os.path.join(self._temp_dir,self._unique_name)
+        header_filename = filename_base+'.h'
+        impl_filename = filename_base+'.c'
+        with open(header_filename,'w') as f:
+            print >> f, self._generate_header_source()        
+        with open(impl_filename,'w') as f:
+            print >> f, self._generate_impl_source()
+        object_filename = filename_base+'.o'
+        library_filename = filename_base+'.so'        
+        cflags = ['-O3','-fpic']
+        cc = 'gcc'
+        ld = 'gcc'
+        compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
+                       +['-o',object_filename,impl_filename]
+        link_cmd = [ld,'-shared']+['-o',library_filename,object_filename]
+        stdout_filename = filename_base+'.log'
+        stderr_filename = filename_base+'.err'
+        with open(stdout_filename,'w') as stdout:
+            with open(stderr_filename,'w') as stderr:
+                stdout.write('Compilation command:\n')
+                stdout.write(' '.join(compile_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(compile_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate()
+                stdout.write('Link command:\n')
+                stdout.write(' '.join(link_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(link_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate()      
      
      
      

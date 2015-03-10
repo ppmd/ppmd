@@ -1,4 +1,6 @@
 import math
+import kernel
+import constant
 
 
 class BasePotential(object):
@@ -59,6 +61,10 @@ class LennardJones(BasePotential):
         
         
         
+        
+        
+        
+        
     def epsilon(self):
         """
         Return :math:`\epsilon`
@@ -115,6 +121,7 @@ class LennardJonesShifted(BasePotential):
         self._C_V = 4.*self._epsilon
         self._C_F = 48*self._epsilon/self._sigma**2
         self._rc = 2.**(1./6.)*self._sigma
+        self._rn = 2.0*self._rc
         self._rc2 = self._rc**2
         self._sigma2 = self._sigma**2
 
@@ -171,6 +178,71 @@ class LennardJonesShifted(BasePotential):
             
         else:
             return 0.0   
+
+    def kernel(self):
+        kernel_code = '''
+        
+        double r[3];
+        r[0] = P[1][0] - P[0][0];
+        r[1] = P[1][1] - P[0][1];
+        r[2] = P[1][2] - P[0][2];
+        
+        double r2 = pow(r[0],2) + pow(r[1],2) + pow(r[2],2);
+        
+        if (r2 < rc2){
+
+            /* Lennard-Jones */
+            double r_m2 = sigma2/r2;
+            double r_m6 = pow(r_m2,3);
+            double f_tmp = CF*(pow(r_m2,7) - 0.5*pow(r_m2,4) );
+            U[0]+= CV*((r_m6-1.0)*r_m6 + 0.25);
+            
+            
+            A[0][0]+=f_tmp*r[0];
+            A[0][1]+=f_tmp*r[1];
+            A[0][2]+=f_tmp*r[2];
+            
+            A[1][0]-=f_tmp*r[0];
+            A[1][1]-=f_tmp*r[1];
+            A[1][2]-=f_tmp*r[2];
+
+        }
+        
+        '''
+        constants=(constant.Constant('sigma2',self._sigma**2),
+                   constant.Constant('rc2',self._rc**2),
+                   constant.Constant('CF',self._C_F),
+                   constant.Constant('CV',self._C_V))        
+        
+        
+        return kernel.Kernel('LJ_accel_U',kernel_code, constants)
+
+    def datdict(self, input_state):
+        return {'P':input_state.positions(), 'A':input_state.accelerations(), 'U':input_state.U()}
+
+    def headers(self):
+        return ['math.h']
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

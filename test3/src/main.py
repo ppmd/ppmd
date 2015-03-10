@@ -23,7 +23,7 @@ if __name__ == '__main__':
         nsig = 2.5
         
         test_domain = domain.BaseDomain()
-        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
+        test_potential = potential.LennardJonesShifted(sigma=1.0,epsilon=1.0)    
     
         test_pos_init = state.PosInitLatticeNRho(N, rho)
         test_vel_init = state.VelInitNormDist(mu,nsig)    
@@ -32,7 +32,7 @@ if __name__ == '__main__':
         N=2
         
         test_domain = domain.BaseDomain()
-        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)
+        test_potential = potential.LennardJonesShifted(sigma=1.0,epsilon=1.0)
         
         test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.5, extent = np.array([7., 7., 7.]), axis = np.array([1,0,0]))
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
@@ -53,7 +53,7 @@ if __name__ == '__main__':
                                    )
     
     
-    test_integrator = method.VelocityVerlet(state = test_state, USE_C = False)
+    test_integrator = method.VelocityVerlet(state = test_state, USE_C = True)
     
     start = time.clock()
     energy_data = test_integrator.integrate(dt = 0.00001, T = 0.1)

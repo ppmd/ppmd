@@ -20,6 +20,8 @@ class Dat():
     
         """
         
+        self._type = 'array'
+        
         self._N1 = N1
         self._N2 = N2
         
@@ -66,11 +68,57 @@ class Dat():
     def ctypes_data(self):
         '''Return ctypes-pointer to data.'''
         return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))        
+    @property     
+    def DatType(self):
+        return self._type
         
         
+class ScalarDat(Dat):
+    """
+    Base class to hold a single floating point property.
+    
+    :arg initial_value: (Float) Value to initialise array with, default 0.0.
+    
+    """
+    def __init__(self, initial_value = None):
+        """
+        Creates scalar with given initial value.
+        
+        :arg initial_value: (Float) Value to initialise scalar with, default 0.0.
+    
+        """
+        
+        self._type = 'scalar'
         
         
+        if (initial_value != None):
+            self._Dat = float(initial_value) * np.ones([1], dtype=ctypes.c_double, order='C')
+        else:
+            self._Dat = np.zeros([1], dtype=ctypes.c_double, order='C')
         
+    def set_val(self,val):
+        self._Dat[0] = val
+    
+    def Dat(self):
+        return self._Dat[0]
+    
+    def __setitem__(self, val):
+        self._Dat[0] = val      
+        
+        
+    def __str__(self):
+        return str(self._Dat[0])
+    
+    def __call__(self):
+        return self._Dat[0]
+        
+        
+    def ctypes_data(self):
+        '''Return ctypes-pointer to data.'''
+        return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))        
+    @property     
+    def DatType(self):
+        return self._type            
         
         
         
