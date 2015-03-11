@@ -212,7 +212,7 @@ class PairLoopRapaport_tmp():
                 self._input_state.positions().Dat().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
                 self._input_state.domain().extent().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
                 self._input_state.accelerations().Dat().ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-                self._input_state.U().ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
+                self._input_state.U().ctypes_data()]
         
         
     

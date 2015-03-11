@@ -53,10 +53,10 @@ if __name__ == '__main__':
                                    )
     
     
-    test_integrator = method.VelocityVerlet(state = test_state, USE_C = False)
+    test_integrator = method.VelocityVerlet(state = test_state, USE_C = True)
     
     start = time.clock()
-    energy_data = test_integrator.integrate(dt = 0.00001, T = 0.1)
+    energy_data = test_integrator.integrate(dt = 0.0001, T = 0.1)
     end = time.clock()
     print "Rough time taken:", end - start,"s"
     
