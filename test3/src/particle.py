@@ -10,7 +10,7 @@ class Dat():
     :arg initial_value: (Float) Value to initialise array with, default 0.0.
     
     """
-    def __init__(self, N1 = 1, N2 = 1, initial_value = None):
+    def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None):
         """
         Creates N1*N2 array with given initial value.
         
@@ -19,7 +19,7 @@ class Dat():
         :arg initial_value: (Float) Value to initialise array with, default 0.0.
     
         """
-        
+        self._name = name
         self._type = 'array'
         
         self._N1 = N1
@@ -69,8 +69,12 @@ class Dat():
         '''Return ctypes-pointer to data.'''
         return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))        
     @property     
-    def DatType(self):
+    def dattype(self):
         return self._type
+        
+    @property
+    def name(self):
+        return self._name
         
         
 class ScalarDat(Dat):
@@ -80,7 +84,7 @@ class ScalarDat(Dat):
     :arg initial_value: (Float) Value to initialise array with, default 0.0.
     
     """
-    def __init__(self, initial_value = None):
+    def __init__(self, initial_value = None, name = None):
         """
         Creates scalar with given initial value.
         
@@ -89,6 +93,7 @@ class ScalarDat(Dat):
         """
         
         self._type = 'scalar'
+        self._name = name
         
         
         if (initial_value != None):
@@ -100,28 +105,31 @@ class ScalarDat(Dat):
         self._Dat[0] = val
     
     def Dat(self):
-        return self._Dat[0]
+        return self._Dat
     
     def __setitem__(self, val):
         self._Dat[0] = val      
         
         
     def __str__(self):
-        return str(self._Dat[0])
+        return str(self._Dat)
     
     def __call__(self):
-        return self._Dat[0]
+        return self._Dat
+    
         
         
     def ctypes_data(self):
         '''Return ctypes-pointer to data.'''
         return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))        
     @property     
-    def DatType(self):
+    def dattype(self):
         return self._type            
         
-        
-        
+    @property
+    def name(self):
+        return self._name    
+    
         
         
         

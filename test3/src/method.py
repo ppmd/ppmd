@@ -110,12 +110,12 @@ class VelocityVerlet():
             self.velocity_verlet_step()
             
             if (i > -1):
-                self._state.K_set( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )
+                self._state.K()._Dat = ( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )
                 
                 
-                self._E_store.U_append(self._state.U()/self._state.N())
+                self._E_store.U_append(self._state.U().Dat()/self._state.N())
                 self._E_store.K_append(( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )/self._state.N())
-                self._E_store.Q_append((self._state.U() + self._state.K())/self._state.N())
+                self._E_store.Q_append((self._state.U().Dat() + self._state.K().Dat())/self._state.N())
                 self._E_store.T_append((i+1)*self._dt)
             
                 
@@ -143,6 +143,7 @@ class VelocityVerlet():
             self._P.Dat()[...,...]+=self._dt*self._V.Dat()
         
         #update accelerations
+        
         self._looping_method_accel.execute()
         
         

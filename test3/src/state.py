@@ -34,9 +34,9 @@ class BaseMDState():
         
         """        
         self._N = N
-        self._pos = particle.Dat(N, 3)
-        self._vel = particle.Dat(N, 3)
-        self._accel = particle.Dat(N, 3)
+        self._pos = particle.Dat(N, 3, name='positions')
+        self._vel = particle.Dat(N, 3, name='velocities')
+        self._accel = particle.Dat(N, 3, name='accelerations')
         
         self._mass = particle.Dat(N, 1, 1.0)
         
@@ -135,13 +135,8 @@ class BaseMDState():
         """
         Reset potential energy to 0.0
         """
-        self._U = np.zeros([1], dtype=ctypes.c_double, order='C')
+        self._U._Dat = np.zeros([1], dtype=ctypes.c_double, order='C')
         
-    def K_set(self, K_in):
-        """
-        Set a kenetic energy value.
-        """
-        self._K = K_in
         
     def U_set(self, U_in):
         """

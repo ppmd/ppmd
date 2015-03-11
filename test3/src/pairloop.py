@@ -69,12 +69,14 @@ class _base():
         
         argnames = ''
         for i,dat in enumerate(self._particle_dat_dict.items()):
-        
-            if (dat[1].DatType  == 'scalar'):
-                argnames += 'double *arg_'+('%03d' % i)+','
+            argnames += 'double *arg_'+('%03d' % i)+','
             
-            if (dat[1].DatType  == 'array'):        
-                argnames += 'double **arg_'+('%03d' % i)+','
+            
+            #if (dat[1].dattype  == 'scalar'):
+                #argnames += 'double *arg_'+('%03d' % i)+','
+            
+            #if (dat[1].dattype  == 'array'):        
+                #argnames += 'double **arg_'+('%03d' % i)+','
 
         return argnames[:-1]
         
@@ -102,11 +104,11 @@ class _base():
         space = ' '*14
         s = 'inline void '+self._kernel.name+'('
         for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
-            #print var_name_kernel, var_name_state.DatType()
+            #print var_name_kernel, var_name_state.dattype()
             
-            if (var_name_state.DatType=='array'):
+            if (var_name_state.dattype=='array'):
                 s += 'double **'+var_name_kernel+', '
-            if (var_name_state.DatType=='scalar'):
+            if (var_name_state.dattype=='scalar'):
                 s += 'double *'+var_name_kernel+', '
             
             
@@ -125,6 +127,8 @@ class _base():
         for i in range(self._nargs):
             argnames += 'loc_arg_'+('%03d' % i)+','
         return argnames[:-1]
+
+
 
 
     def _kernel_argument_declarations(self):
@@ -151,17 +155,16 @@ class _base():
             loc_argname = 'loc_'+argname
             
             
-            if (dat[1].DatType  == 'scalar'):
+            if (dat[1].dattype  == 'scalar'):
                 s += space+'double *'+loc_argname+' = '+argname+';\n'
             
-            if (dat[1].DatType  == 'array'):
+            if (dat[1].dattype  == 'array'):
                 ncomp = dat[1].ncomp
                 s += space+'double *'+loc_argname+'[2];\n'
                 s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                 s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'       
         
-        return s
-
+        return s 
 
 class PairLoopRapaport_tmp():
     '''
@@ -350,7 +353,7 @@ class PairLoopRapaport(_base):
 
         %(INCLUDED_HEADERS)s
         #define LINIDX_2D(NX,iy,ix)   ((NX)*(iy) + (ix))
-        void %(KERNEL_NAME)s_wrapper(const int n,const int cell_count, int* cells, int* q_list,%(ARGUMENTS)s);
+        void %(KERNEL_NAME)s_wrapper(const int n,const int cell_count, int* cells, int* q_list, double* d_extent,%(ARGUMENTS)s);
 
         #endif
         '''
@@ -369,7 +372,7 @@ class PairLoopRapaport(_base):
         %(KERNEL)s
         }        
         
-        void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cells, int* q_list,%(ARGUMENTS)s) { 
+        void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cells, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
         
             int cpp,i,j,cpp_i,cp;
     
@@ -384,7 +387,7 @@ class PairLoopRapaport(_base):
         
                                 %(KERNEL_ARGUMENT_DECL)s
                                 %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
-        
+                                
                                 
                             }
                             j = q_list[j];  
@@ -394,13 +397,64 @@ class PairLoopRapaport(_base):
                 }
             }
             
-        
+            
             return;
         }        
         
         
         '''
+    def _kernel_argument_declarations(self):
+        '''Define and declare the kernel arguments.
+
+        For each argument the kernel gets passed a pointer of type
+        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
+        pointer to the data which contains the properties of particle i.
+        These properties are stored consecutively in memory, so for a 
+        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
+        property the vector entry j of particle i is accessed as 
+        ``loc_argXXX[i][j]``.
+
+        This method generates the definitions of the ``loc_argXXX`` variables
+        and populates the data to ensure that ``loc_argXXX[i]`` points to
+        the correct address in the particle_dats.
+        '''
+        s = '\n'
+        for i,dat in enumerate(self._particle_dat_dict.items()):
+            
+            
+            space = ' '*14
+            argname = 'arg_'+('%03d' % i)
+            loc_argname = 'loc_'+argname
+            
+            
+            if (dat[1].dattype  == 'scalar'):
+                s += space+'double *'+loc_argname+' = '+argname+';\n'
+            
+            if (dat[1].dattype  == 'array'):
+                if (dat[1].name  == 'positions'):
+                    s += space+'double *'+loc_argname+'[2];\n'
+                    
+                    
+                    s += space+'if (cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),4)] > 0){ \n'
+
+                    s += space+'double r1[3];\n'
+                    s += space+'r1[0] ='+argname+'[LINIDX_2D(3,j-1,0)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),1)]*d_extent[0]; \n'
+                    s += space+'r1[1] ='+argname+'[LINIDX_2D(3,j-1,1)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),2)]*d_extent[1]; \n'
+                    s += space+'r1[2] ='+argname+'[LINIDX_2D(3,j-1,2)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),3)]*d_extent[2]; \n'
+                    s += space+loc_argname+'[1] = r1;\n'
+                    
+                    s += space+'}else{ \n'
+                    s += space+loc_argname+'[1] = '+argname+'+3*(j-1);\n' 
+                    s += space+'} \n'
+                    s += space+loc_argname+'[0] = '+argname+'+3*(i-1);\n'
+                    
+                else:
+                    ncomp = dat[1].ncomp
+                    s += space+'double *'+loc_argname+'[2];\n'
+                    s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*(i-1);\n'
+                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*(j-1);\n'       
         
+        return s       
         
      
     def _update_prepare(self):
@@ -416,17 +470,21 @@ class PairLoopRapaport(_base):
         """
         self._update_prepare()
     
-        self._input_state.set_accelerations(0.0)
+        self._input_state.set_accelerations(ctypes.c_double(0.0))
         self._input_state.reset_U() 
         
         args = [self._cell_map.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                        self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int))]
+                        self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+                        self._input_state.domain().extent().ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
                 
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data())
+            
         method = self._lib[self._kernel.name+'_wrapper']
         
         method(ctypes.c_int(self._input_state.N()), ctypes.c_int(self._input_state.domain().cell_count()), *args)           
+        
+        
         
         
         

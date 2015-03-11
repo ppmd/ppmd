@@ -119,7 +119,7 @@ class LennardJonesShifted(BasePotential):
         self._epsilon = epsilon
         self._sigma = sigma
         self._C_V = 4.*self._epsilon
-        self._C_F = 48*self._epsilon/self._sigma**2
+        self._C_F = -48*self._epsilon/self._sigma**2
         self._rc = 2.**(1./6.)*self._sigma
         self._rn = 2.0*self._rc
         self._rc2 = self._rc**2
@@ -189,13 +189,18 @@ class LennardJonesShifted(BasePotential):
         
         double r2 = pow(r[0],2) + pow(r[1],2) + pow(r[2],2);
         
+        
+        
         if (r2 < rc2){
+            
 
             /* Lennard-Jones */
             double r_m2 = sigma2/r2;
             double r_m6 = pow(r_m2,3);
             double f_tmp = CF*(pow(r_m2,7) - 0.5*pow(r_m2,4) );
             U[0]+= CV*((r_m6-1.0)*r_m6 + 0.25);
+            
+            
             
             
             A[0][0]+=f_tmp*r[0];
@@ -221,7 +226,7 @@ class LennardJonesShifted(BasePotential):
         return {'P':input_state.positions(), 'A':input_state.accelerations(), 'U':input_state.U()}
 
     def headers(self):
-        return ['math.h']
+        return ['math.h','stdio.h']
 
 
 

@@ -53,7 +53,7 @@ if __name__ == '__main__':
                                    )
     
     
-    test_integrator = method.VelocityVerlet(state = test_state, USE_C = True)
+    test_integrator = method.VelocityVerlet(state = test_state, USE_C = False)
     
     start = time.clock()
     energy_data = test_integrator.integrate(dt = 0.00001, T = 0.1)
