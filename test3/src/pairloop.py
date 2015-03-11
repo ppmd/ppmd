@@ -51,7 +51,7 @@ class _base():
         if (self._headers != None):
             s += '\n'
             for x in self._headers:
-                s += '#include \"'+x+'\"'
+                s += '#include \"'+x+'\" \n'
         return s    
     
     def _argnames(self):
@@ -829,7 +829,7 @@ class SingleAllParticleLoop():
         if (self._headers != None):
             s += '\n'
             for x in self._headers:
-                s += '#include \"'+x+'\"'
+                s += '#include \"'+x+'\" \n'
         return s
         
 
