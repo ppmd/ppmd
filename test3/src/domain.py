@@ -22,7 +22,7 @@ class BaseDomain():
         """
         self._extent = extent
         self._cell_count = cell_count
-        self._cell_array = np.array([1,1,1],dtype=int)
+        self._cell_array = np.array([1,1,1], dtype=ctypes.c_int, order='C')
         self._cell_edge_lengths = np.array([1.,1.,1.],dtype=float)
         
         self._USE_C = False
@@ -156,7 +156,7 @@ class BaseDomain():
         
         :arg cell_array: (np.array(1,3), new cell array.)
         """
-        self._cell_array = cell_array.astype(int)
+        self._cell_array = cell_array.astype(ctypes.c_int)
         self._cell_count_recalc()
         
         
@@ -183,7 +183,7 @@ class BaseDomain():
         
     
         
-    def cell_array(self, cell_array):
+    def cell_array(self):
         """
         Return cell array.
         """

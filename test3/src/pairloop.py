@@ -314,9 +314,9 @@ class PairLoopRapaport(_base):
 
         
         '''Determine cell neighbours'''
-        self._cell_map=np.zeros([14*self._input_state.domain().cell_count(),5],dtype=ctypes.c_int, order='C')
-        for cp in range(1,1 + self._input_state.domain().cell_count()):
-            self._cell_map[(cp-1)*14:(cp*14),...] = self.get_adjacent_cells(cp)
+        #self._cell_map=np.zeros([14*self._input_state.domain().cell_count(),5],dtype=ctypes.c_int, order='C')
+        #for cp in range(1,1 + self._input_state.domain().cell_count()):
+        #    self._cell_map[(cp-1)*14:(cp*14),...] = self.get_adjacent_cells(cp)
         
         
         ##########
@@ -394,12 +394,14 @@ class PairLoopRapaport(_base):
                 
             int Cz = cp/(cell_array[0]*cell_array[1]) + cell_map[cpp_i][2];
             int Cx = cp %% cell_array[0] + cell_map[cpp_i][0];
-            int Cy = (int)((cp - (Cz-1)*(cell_array[0]*cell_array[1]))/(cell_array[0])) + cell_map[cpp_i][1];;
+            int Cy = (int)((cp - (Cz-1)*(cell_array[0]*cell_array[1]))/(cell_array[0])) + cell_map[cpp_i][1];
 
             
-            int C0 = Cx %% cell_array[0];    
-            int C1 = Cy %% cell_array[0];
-            int C2 = Cz %% cell_array[0];
+            int C0 = (Cx + cell_array[0]) %% cell_array[0];    
+            int C1 = (Cy + cell_array[1]) %% cell_array[1];
+            int C2 = (Cz + cell_array[2]) %% cell_array[2];
+                
+                
                 
             if ((Cx != C0) || (Cy != C1) || (Cz != C2)) { 
                 flag[0] = 1;
@@ -407,44 +409,39 @@ class PairLoopRapaport(_base):
                 offset[1] = ((double)sign(Cy - C1))*d_extent[1];
                 offset[2] = ((double)sign(Cz - C2))*d_extent[2];
                 
-            } else {flag[0] = 0;}
+                
+                
+            } else {flag[0] = 0; }
             
+            cpp[0] = (C2*cell_array[1] + C1)*cell_array[0] + C0;
+                
+            //printf("|flag = %%d|", flag[0]);
             
-                
-                
-                
                 
                 
                 
             return;      
         }    
         
-        void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cells, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
+        void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
         
-            int cpp,i,j,cpp_i,cp;
+            int cpp,i,j,cpp_i,cp,flag;
+            
     
             for(cp = 0; cp < cell_count; cp++){
                 for(cpp_i=0; cpp_i<14; cpp_i++){
                 
+
+                    //cpp = cells[LINIDX_2D(5,cpp_i + (cp*14),0)];
                     
-                    
-                    
-                    
-                    
-                    
-                    cpp = cells[LINIDX_2D(5,cpp_i + (cp*14),0)];
-                    
-                    const double s0 = cells[LINIDX_2D(5,cpp_i + (cp*14),1)]*d_extent[0];
-                    const double s1 = cells[LINIDX_2D(5,cpp_i + (cp*14),2)]*d_extent[1];
-                    const double s2 = cells[LINIDX_2D(5,cpp_i + (cp*14),3)]*d_extent[2];
-                    
-                    
+                    double s[3];
+                    cell_index_offset(cp, cpp_i, cell_array, d_extent, &cpp, &flag, &s[0]);
                     
                     double r1[3];
                     
-                    i = q_list[n+cp];
+                    i = q_list[n+cp+1];
                     while (i > 0){
-                        j = q_list[n+cpp];
+                        j = q_list[n+cpp+1];
                         while (j > 0){
                             if (cp != cpp || i < j){
         
@@ -498,12 +495,12 @@ class PairLoopRapaport(_base):
                     s += space+'double *'+loc_argname+'[2];\n'
                     
                     
-                    s += space+'if (cells[LINIDX_2D(5,cpp_i + (cp*14),4)] > 0){ \n'
+                    s += space+'if (flag>0){ \n'
 
                     #s += space+'double r1[3];\n'
-                    s += space+'r1[0] ='+argname+'[LINIDX_2D(3,j-1,0)] + s0; \n'
-                    s += space+'r1[1] ='+argname+'[LINIDX_2D(3,j-1,1)] + s1; \n'
-                    s += space+'r1[2] ='+argname+'[LINIDX_2D(3,j-1,2)] + s2; \n'
+                    s += space+'r1[0] ='+argname+'[LINIDX_2D(3,j-1,0)] + s[0]; \n'
+                    s += space+'r1[1] ='+argname+'[LINIDX_2D(3,j-1,1)] + s[1]; \n'
+                    s += space+'r1[2] ='+argname+'[LINIDX_2D(3,j-1,2)] + s[2]; \n'
                     s += space+loc_argname+'[1] = r1;\n'
                     
                     s += space+'}else{ \n'
@@ -536,7 +533,7 @@ class PairLoopRapaport(_base):
         self._input_state.set_accelerations(ctypes.c_double(0.0))
         self._input_state.reset_U() 
         
-        args = [self._cell_map.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        args = [self._input_state.domain().cell_array().ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
                         self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
                         self._input_state.domain().extent().ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
                 

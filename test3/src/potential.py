@@ -189,6 +189,7 @@ class LennardJonesShifted(BasePotential):
         
         double r2 = pow(r[0],2) + pow(r[1],2) + pow(r[2],2);
         
+        printf("r2 = %f", r2);
         
         
         if (r2 < rc2){
