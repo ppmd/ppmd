@@ -13,7 +13,7 @@ if __name__ == '__main__':
     
     
     test_1000 = True
-    test_2_bounce = False
+    test_2_bounce = True
     
     if (test_1000):
         n=10
@@ -38,10 +38,6 @@ if __name__ == '__main__':
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
         
         
-
-    #r=0.5
-    #test_pos_init = state.PosInitTwoParticlesInABox(rx = r, extent = np.array([7., 7., 7.]), axis = np.array([1,0,0]))
-    #test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 1./(math.sqrt(2*r)), 0.]), vy = np.array([0., -1./(math.sqrt(2*r)), 0.]))
     
     
     

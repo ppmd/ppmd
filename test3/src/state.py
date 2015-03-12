@@ -32,7 +32,8 @@ class BaseMDState():
         :arg N: (integer) Number of particles, default 1.
         :arg mass: (float) Mass of particles, default 1.0        
         
-        """        
+        """
+        self._potential = potential
         self._N = N
         self._pos = particle.Dat(N, 3, name='positions')
         self._vel = particle.Dat(N, 3, name='velocities')
@@ -41,15 +42,13 @@ class BaseMDState():
         self._mass = particle.Dat(N, 1, 1.0)
         
         self._domain = domain
-        self._potential = potential
-        
-
-        
         
         #potential energy, kenetic energy, total energy.
         self._U = particle.ScalarDat();
         self._K = particle.ScalarDat();
         self._Q = particle.ScalarDat();
+
+        
 
         
         
@@ -68,7 +67,8 @@ class BaseMDState():
         print "Cell array = ", self._domain._cell_array
         print "Domain extents = ",self._domain._extent
         
-        
+        #Setup acceleration updating from given potential
+        self._looping_method_accel = pairloop.PairLoopRapaport(self)
     
         
     def N(self):
@@ -111,6 +111,18 @@ class BaseMDState():
         """
         
         self._accel.set_val(val)
+        
+    def accelerations_update(self):
+        """
+        Updates accelerations dats using given looping method.
+        """
+        self._looping_method_accel.execute()
+        
+    @property
+    def potential(self):
+        return self._potential
+        
+        
         
     def U(self):
         """

@@ -370,7 +370,49 @@ class PairLoopRapaport(_base):
         
         %(KERNEL_METHODNAME)s
         %(KERNEL)s
-        }        
+        }
+        
+        int cell_index_offset(int cp, int cpp_i, int* cell_array, int* cpp, int *flag, double *offset){
+        
+            const signed char cell_map[14][3] = {   {0,0,0},
+                                                    {1,0,0},
+                                                    {0,1,0},
+                                                    {1,1,0},
+                                                    {1,-1,0},
+                                                    {-1,1,1},
+                                                    {0,1,1},
+                                                    {1,1,1},
+                                                    {-1,0,1},
+                                                    {0,0,1},
+                                                    {1,0,1},
+                                                    {-1,-1,1},
+                                                    {0,-1,1},
+                                                    {1,-1,1}};     
+                
+                
+            int Cz = 1 + (cp-1)/(cell_array[0]*cell_array[1]);
+            int Cx = 1 + (cp-1) %% cell_array[0];
+            int Cy = 1 + (int)((cp - (Cz-1)*(cell_array[0]*cell_array[1]) -1)/(cell_array[0]));
+
+        
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            return;      
+        }    
         
         void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cells, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
         
@@ -378,11 +420,19 @@ class PairLoopRapaport(_base):
     
             for(cp = 1; cp < cell_count+1; cp++){
                 for(cpp_i=0; cpp_i<14; cpp_i++){
-                    cpp = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),0)];
+                
+                    //replace below 4 lines with functon call??
+                    
+                    
+                    
+                    cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),0)];
                     
                     const double s0 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),1)]*d_extent[0];
                     const double s1 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),2)]*d_extent[1];
                     const double s2 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),3)]*d_extent[2];
+                    
+                    
+                    
                     double r1[3];
                     
                     i = q_list[n+cp];
@@ -531,19 +581,19 @@ class PairLoopRapaport(_base):
         
         stencil_map = [
             [0,0,0],
-            [1,0,0],
             [0,1,0],
+            [0,0,1],
+            [0,1,1],
+            [0,-1,1],
+            [1,0,0],
+            [1,0,1],
+            [-1,0,1],
             [1,1,0],
             [1,-1,0],
-            [-1,1,1],
-            [0,1,1],
             [1,1,1],
-            [-1,0,1],
-            [0,0,1],
-            [1,0,1],
-            [-1,-1,1],
-            [0,-1,1],
-            [1,-1,1]
+            [1,-1,1],
+            [-1,1,1],
+            [-1,-1,1]
             ]
         
         for ix in range(14):

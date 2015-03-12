@@ -18,15 +18,8 @@ class VelocityVerlet():
         self._dt = dt
         self._T = T
         
-        
-        
+
         self._state = state
-        
-        
-        if (looping_method_accel == None):
-            self._looping_method_accel = pairloop.PairLoopRapaport(self._state)
-        else:
-            self._looping_method_accel = looping_method_accel
         
         
         
@@ -99,10 +92,10 @@ class VelocityVerlet():
 
         
 
-        percent_int = 100
+        percent_int = 10
         percent_count = percent_int
 
-        self._looping_method_accel.execute()
+        self._state.accelerations_update()
 
         for i in range(self._max_it):
             
@@ -144,8 +137,7 @@ class VelocityVerlet():
         
         #update accelerations
         
-        self._looping_method_accel.execute()
-        
+        self._state.accelerations_update()
         
         if (self._USE_C):
             self._p2.execute()
