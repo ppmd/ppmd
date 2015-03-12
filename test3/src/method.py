@@ -99,7 +99,7 @@ class VelocityVerlet():
 
         
 
-        percent_int = 10
+        percent_int = 100
         percent_count = percent_int
 
         self._looping_method_accel.execute()
