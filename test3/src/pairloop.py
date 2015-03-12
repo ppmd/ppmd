@@ -383,7 +383,7 @@ class PairLoopRapaport(_base):
                     const double s0 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),1)]*d_extent[0];
                     const double s1 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),2)]*d_extent[1];
                     const double s2 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),3)]*d_extent[2];
-                    
+                    double r1[3];
                     
                     i = q_list[n+cp];
                     while (i > 0){
@@ -443,7 +443,7 @@ class PairLoopRapaport(_base):
                     
                     s += space+'if (cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),4)] > 0){ \n'
 
-                    s += space+'double r1[3];\n'
+                    #s += space+'double r1[3];\n'
                     s += space+'r1[0] ='+argname+'[LINIDX_2D(3,j-1,0)] + s0; \n'
                     s += space+'r1[1] ='+argname+'[LINIDX_2D(3,j-1,1)] + s1; \n'
                     s += space+'r1[2] ='+argname+'[LINIDX_2D(3,j-1,2)] + s2; \n'
