@@ -379,6 +379,12 @@ class PairLoopRapaport(_base):
             for(cp = 1; cp < cell_count+1; cp++){
                 for(cpp_i=0; cpp_i<14; cpp_i++){
                     cpp = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),0)];
+                    
+                    const double s0 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),1)]*d_extent[0];
+                    const double s1 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),2)]*d_extent[1];
+                    const double s2 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),3)]*d_extent[2];
+                    
+                    
                     i = q_list[n+cp];
                     while (i > 0){
                         j = q_list[n+cpp];
@@ -438,9 +444,9 @@ class PairLoopRapaport(_base):
                     s += space+'if (cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),4)] > 0){ \n'
 
                     s += space+'double r1[3];\n'
-                    s += space+'r1[0] ='+argname+'[LINIDX_2D(3,j-1,0)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),1)]*d_extent[0]; \n'
-                    s += space+'r1[1] ='+argname+'[LINIDX_2D(3,j-1,1)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),2)]*d_extent[1]; \n'
-                    s += space+'r1[2] ='+argname+'[LINIDX_2D(3,j-1,2)] + cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),3)]*d_extent[2]; \n'
+                    s += space+'r1[0] ='+argname+'[LINIDX_2D(3,j-1,0)] + s0; \n'
+                    s += space+'r1[1] ='+argname+'[LINIDX_2D(3,j-1,1)] + s1; \n'
+                    s += space+'r1[2] ='+argname+'[LINIDX_2D(3,j-1,2)] + s2; \n'
                     s += space+loc_argname+'[1] = r1;\n'
                     
                     s += space+'}else{ \n'
