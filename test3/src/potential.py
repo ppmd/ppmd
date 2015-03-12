@@ -182,29 +182,33 @@ class LennardJonesShifted(BasePotential):
     def kernel(self):
         kernel_code = '''
         
-        double r[3];
-        r[0] = P[1][0] - P[0][0];
-        r[1] = P[1][1] - P[0][1];
-        r[2] = P[1][2] - P[0][2];
+        const double R0 = P[1][0] - P[0][0];
+        const double R1 = P[1][1] - P[0][1];
+        const double R2 = P[1][2] - P[0][2];
         
-        double r2 = pow(r[0],2) + pow(r[1],2) + pow(r[2],2);
+        const double r2 = R0*R0 + R1*R1 + R2*R2;
         
         if (r2 < rc2){
             
 
             /* Lennard-Jones */
-            double r_m2 = sigma2/r2;
-            double r_m6 = pow(r_m2,3);
-            double f_tmp = CF*(pow(r_m2,7) - 0.5*pow(r_m2,4) );
-            U[0]+= CV*((r_m6-1.0)*r_m6 + 0.25);
+            const double r_m2 = sigma2/r2;
+            const double r_m4 = r_m2*r_m2;
+            const double r_m6 = r_m4*r_m2;
             
-            A[0][0]+=f_tmp*r[0];
-            A[0][1]+=f_tmp*r[1];
-            A[0][2]+=f_tmp*r[2];
+            *U+= CV*((r_m6-1.0)*r_m6 + 0.25);
             
-            A[1][0]-=f_tmp*r[0];
-            A[1][1]-=f_tmp*r[1];
-            A[1][2]-=f_tmp*r[2];
+            const double r_m8 = r_m4*r_m4;
+            const double f_tmp = CF*(r_m6 - 0.5)*r_m8;
+
+            
+            A[0][0]+=f_tmp*R0;
+            A[0][1]+=f_tmp*R1;
+            A[0][2]+=f_tmp*R2;
+            
+            A[1][0]-=f_tmp*R0;
+            A[1][1]-=f_tmp*R1;
+            A[1][2]-=f_tmp*R2;
 
         }
         
@@ -221,7 +225,7 @@ class LennardJonesShifted(BasePotential):
         return {'P':input_state.positions(), 'A':input_state.accelerations(), 'U':input_state.U()}
 
     def headers(self):
-        return ['math.h','stdio.h']
+        return []
 
 
 

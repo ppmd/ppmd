@@ -92,7 +92,7 @@ class VelocityVerlet():
 
         
 
-        percent_int = 10
+        percent_int = 101
         percent_count = percent_int
 
         self._state.accelerations_update()

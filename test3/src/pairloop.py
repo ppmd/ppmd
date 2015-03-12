@@ -374,25 +374,25 @@ class PairLoopRapaport(_base):
         %(KERNEL)s
         }
         
-        inline void cell_index_offset(const int cp, const int cpp_i, int* cell_array, double *d_extent, int* cpp, int *flag, double *offset){
+        inline void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cpp, unsigned int *flag, double *offset){
         
-            const signed char cell_map[14][3] = {   {0,0,0},
-                                                    {1,0,0},
-                                                    {0,1,0},
-                                                    {1,1,0},
-                                                    {1,-1,0},
-                                                    {-1,1,1},
-                                                    {0,1,1},
-                                                    {1,1,1},
-                                                    {-1,0,1},
-                                                    {0,0,1},
-                                                    {1,0,1},
-                                                    {-1,-1,1},
-                                                    {0,-1,1},
-                                                    {1,-1,1}};     
+            const int cell_map[14][3] = {   {0,0,0},
+                                            {1,0,0},
+                                            {0,1,0},
+                                            {1,1,0},
+                                            {1,-1,0},
+                                            {-1,1,1},
+                                            {0,1,1},
+                                            {1,1,1},
+                                            {-1,0,1},
+                                            {0,0,1},
+                                            {1,0,1},
+                                            {-1,-1,1},
+                                            {0,-1,1},
+                                            {1,-1,1}};     
                 
                 
-            int tmp = cell_array[0]*cell_array[1];    
+            unsigned int tmp = cell_array[0]*cell_array[1];    
             int Cz = cp/tmp;
             int Cx = cp %% cell_array[0];
             int Cy = (cp - Cz*tmp)/cell_array[0];
@@ -426,10 +426,13 @@ class PairLoopRapaport(_base):
         
         void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
             
-            for(int cp = 0; cp < cell_count; cp++){
-                for(int cpp_i=0; cpp_i<14; cpp_i++){
+            for(unsigned int cp = 0; cp < cell_count; cp++){
+                for(unsigned int cpp_i=0; cpp_i<14; cpp_i++){
                 
-                    double s[3]; int flag,i,j,cpp;
+                    double s[3]; 
+                    unsigned int flag, cpp; 
+                    int i,j;
+                    
                     cell_index_offset(cp, cpp_i, cell_array, d_extent, &cpp, &flag, s);
                     
                     
@@ -491,7 +494,7 @@ class PairLoopRapaport(_base):
                     s += space+'double *'+loc_argname+'[2];\n'
                     
                     
-                    s += space+'if (flag>0){ \n'
+                    s += space+'if (flag){ \n'
 
                     #s += space+'double r1[3];\n'
                     s += space+'r1[0] ='+argname+'[LINIDX_2D(3,j-1,0)] + s[0]; \n'
@@ -618,7 +621,7 @@ class PairLoopRapaport(_base):
             print >> f, self._generate_impl_source()
         object_filename = filename_base+'.o'
         library_filename = filename_base+'.so'        
-        cflags = ['-O3','-fpic','-std=c99']
+        cflags = ['-O3','-fpic','-std=c99','-march=native']
         cc = 'gcc'
         ld = 'gcc'
         compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
