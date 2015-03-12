@@ -13,7 +13,7 @@ if __name__ == '__main__':
     
     
     test_1000 = True
-    test_2_bounce = True
+    test_2_bounce = False
     
     if (test_1000):
         n=10

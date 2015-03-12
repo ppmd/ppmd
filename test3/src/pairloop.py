@@ -374,7 +374,7 @@ class PairLoopRapaport(_base):
         %(KERNEL)s
         }
         
-        inline void cell_index_offset(int cp, int cpp_i, int* cell_array, double *d_extent, int* cpp, int *flag, double *offset){
+        inline void cell_index_offset(const int cp, const int cpp_i, int* cell_array, double *d_extent, int* cpp, int *flag, double *offset){
         
             const signed char cell_map[14][3] = {   {0,0,0},
                                                     {1,0,0},
@@ -395,10 +395,10 @@ class PairLoopRapaport(_base):
             int tmp = cell_array[0]*cell_array[1];    
             int Cz = cp/tmp;
             int Cx = cp %% cell_array[0];
-            int Cy = (cp - Cz*tmp)/(cell_array[0]);
+            int Cy = (cp - Cz*tmp)/cell_array[0];
             
             
-            Cx += cell_map[cpp_i][0] ;
+            Cx += cell_map[cpp_i][0];
             Cy += cell_map[cpp_i][1];
             Cz += cell_map[cpp_i][2];
             
@@ -425,14 +425,11 @@ class PairLoopRapaport(_base):
         }    
         
         void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
-        
-            int cpp,i,j,cpp_i,cp,flag;
             
-    
-            for(cp = 0; cp < cell_count; cp++){
-                for(cpp_i=0; cpp_i<14; cpp_i++){
+            for(int cp = 0; cp < cell_count; cp++){
+                for(int cpp_i=0; cpp_i<14; cpp_i++){
                 
-                    double s[3];
+                    double s[3]; int flag,i,j,cpp;
                     cell_index_offset(cp, cpp_i, cell_array, d_extent, &cpp, &flag, s);
                     
                     
@@ -621,7 +618,7 @@ class PairLoopRapaport(_base):
             print >> f, self._generate_impl_source()
         object_filename = filename_base+'.o'
         library_filename = filename_base+'.so'        
-        cflags = ['-O3','-fpic']
+        cflags = ['-O3','-fpic','-std=c99']
         cc = 'gcc'
         ld = 'gcc'
         compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
