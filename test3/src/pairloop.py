@@ -393,32 +393,28 @@ class PairLoopRapaport(_base):
                 
                 
             int Cz = cp/(cell_array[0]*cell_array[1]) + cell_map[cpp_i][2];
-            int Cx = cp %% cell_array[0] + cell_map[cpp_i][0];
-            int Cy = (int)((cp - (Cz-1)*(cell_array[0]*cell_array[1]))/(cell_array[0])) + cell_map[cpp_i][1];
+            int Cx = (cp %% cell_array[0]) + cell_map[cpp_i][0];
+            int Cy = ((cp - Cz*(cell_array[0]*cell_array[1]))/(cell_array[0])) + cell_map[cpp_i][1];
 
             
             int C0 = (Cx + cell_array[0]) %% cell_array[0];    
             int C1 = (Cy + cell_array[1]) %% cell_array[1];
             int C2 = (Cz + cell_array[2]) %% cell_array[2];
                 
-                
-                
+             
             if ((Cx != C0) || (Cy != C1) || (Cz != C2)) { 
-                flag[0] = 1;
+                *flag = 1;
                 offset[0] = ((double)sign(Cx - C0))*d_extent[0];
                 offset[1] = ((double)sign(Cy - C1))*d_extent[1];
                 offset[2] = ((double)sign(Cz - C2))*d_extent[2];
                 
                 
                 
-            } else {flag[0] = 0; }
+            } else {*flag = 0; }
             
-            cpp[0] = (C2*cell_array[1] + C1)*cell_array[0] + C0;
-                
-            //printf("|flag = %%d|", flag[0]);
+            *cpp = (C2*cell_array[1] + C1)*cell_array[0] + C0;
             
-                
-                
+            
                 
             return;      
         }    
@@ -432,10 +428,11 @@ class PairLoopRapaport(_base):
                 for(cpp_i=0; cpp_i<14; cpp_i++){
                 
 
-                    //cpp = cells[LINIDX_2D(5,cpp_i + (cp*14),0)];
+                    
                     
                     double s[3];
-                    cell_index_offset(cp, cpp_i, cell_array, d_extent, &cpp, &flag, &s[0]);
+                    cell_index_offset(cp, cpp_i, cell_array, d_extent, &cpp, &flag, s);
+                    
                     
                     double r1[3];
                     

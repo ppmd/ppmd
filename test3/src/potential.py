@@ -189,9 +189,6 @@ class LennardJonesShifted(BasePotential):
         
         double r2 = pow(r[0],2) + pow(r[1],2) + pow(r[2],2);
         
-        printf("r2 = %f", r2);
-        
-        
         if (r2 < rc2){
             
 
@@ -200,9 +197,6 @@ class LennardJonesShifted(BasePotential):
             double r_m6 = pow(r_m2,3);
             double f_tmp = CF*(pow(r_m2,7) - 0.5*pow(r_m2,4) );
             U[0]+= CV*((r_m6-1.0)*r_m6 + 0.25);
-            
-            
-            
             
             A[0][0]+=f_tmp*r[0];
             A[0][1]+=f_tmp*r[1];
