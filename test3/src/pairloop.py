@@ -392,10 +392,15 @@ class PairLoopRapaport(_base):
                                                     {1,-1,1}};     
                 
                 
-            int Cz = cp/(cell_array[0]*cell_array[1]) + cell_map[cpp_i][2];
-            int Cx = (cp %% cell_array[0]) + cell_map[cpp_i][0];
-            int Cy = ((cp - Cz*(cell_array[0]*cell_array[1]))/(cell_array[0])) + cell_map[cpp_i][1];
-
+            int tmp = cell_array[0]*cell_array[1];    
+            int Cz = cp/tmp;
+            int Cx = cp %% cell_array[0];
+            int Cy = (cp - Cz*tmp)/(cell_array[0]);
+            
+            
+            Cx += cell_map[cpp_i][0] ;
+            Cy += cell_map[cpp_i][1];
+            Cz += cell_map[cpp_i][2];
             
             int C0 = (Cx + cell_array[0]) %% cell_array[0];    
             int C1 = (Cy + cell_array[1]) %% cell_array[1];
@@ -427,9 +432,6 @@ class PairLoopRapaport(_base):
             for(cp = 0; cp < cell_count; cp++){
                 for(cpp_i=0; cpp_i<14; cpp_i++){
                 
-
-                    
-                    
                     double s[3];
                     cell_index_offset(cp, cpp_i, cell_array, d_extent, &cpp, &flag, s);
                     
