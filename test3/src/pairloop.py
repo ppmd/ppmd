@@ -425,8 +425,9 @@ class PairLoopRapaport(_base):
                     
                     
                     
-                    cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),0)];
+                    //cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),0)];
                     
+                    cpp = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),0)];
                     const double s0 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),1)]*d_extent[0];
                     const double s1 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),2)]*d_extent[1];
                     const double s2 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),3)]*d_extent[2];
