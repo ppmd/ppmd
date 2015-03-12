@@ -353,6 +353,8 @@ class PairLoopRapaport(_base):
 
         %(INCLUDED_HEADERS)s
         #define LINIDX_2D(NX,iy,ix)   ((NX)*(iy) + (ix))
+        #define sign(x) (((x) < 0 ) ?  -1 : ((x) > 0 ))
+        
         void %(KERNEL_NAME)s_wrapper(const int n,const int cell_count, int* cells, int* q_list, double* d_extent,%(ARGUMENTS)s);
 
         #endif
@@ -372,7 +374,7 @@ class PairLoopRapaport(_base):
         %(KERNEL)s
         }
         
-        int cell_index_offset(int cp, int cpp_i, int* cell_array, int* cpp, int *flag, double *offset){
+        inline void cell_index_offset(int cp, int cpp_i, int* cell_array, double *d_extent, int* cpp, int *flag, double *offset){
         
             const signed char cell_map[14][3] = {   {0,0,0},
                                                     {1,0,0},
@@ -390,21 +392,24 @@ class PairLoopRapaport(_base):
                                                     {1,-1,1}};     
                 
                 
-            int Cz = 1 + (cp-1)/(cell_array[0]*cell_array[1]);
-            int Cx = 1 + (cp-1) %% cell_array[0];
-            int Cy = 1 + (int)((cp - (Cz-1)*(cell_array[0]*cell_array[1]) -1)/(cell_array[0]));
+            int Cz = cp/(cell_array[0]*cell_array[1]) + cell_map[cpp_i][2];
+            int Cx = cp %% cell_array[0] + cell_map[cpp_i][0];
+            int Cy = (int)((cp - (Cz-1)*(cell_array[0]*cell_array[1]))/(cell_array[0])) + cell_map[cpp_i][1];;
 
-        
+            
+            int C0 = Cx %% cell_array[0];    
+            int C1 = Cy %% cell_array[0];
+            int C2 = Cz %% cell_array[0];
                 
+            if ((Cx != C0) || (Cy != C1) || (Cz != C2)) { 
+                flag[0] = 1;
+                offset[0] = ((double)sign(Cx - C0))*d_extent[0];
+                offset[1] = ((double)sign(Cy - C1))*d_extent[1];
+                offset[2] = ((double)sign(Cz - C2))*d_extent[2];
                 
-                
-                
-                
-                
-                
-                
-                
-                
+            } else {flag[0] = 0;}
+            
+            
                 
                 
                 
@@ -418,19 +423,20 @@ class PairLoopRapaport(_base):
         
             int cpp,i,j,cpp_i,cp;
     
-            for(cp = 1; cp < cell_count+1; cp++){
+            for(cp = 0; cp < cell_count; cp++){
                 for(cpp_i=0; cpp_i<14; cpp_i++){
                 
-                    //replace below 4 lines with functon call??
                     
                     
                     
-                    //cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),0)];
                     
-                    cpp = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),0)];
-                    const double s0 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),1)]*d_extent[0];
-                    const double s1 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),2)]*d_extent[1];
-                    const double s2 = cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),3)]*d_extent[2];
+                    
+                    
+                    cpp = cells[LINIDX_2D(5,cpp_i + (cp*14),0)];
+                    
+                    const double s0 = cells[LINIDX_2D(5,cpp_i + (cp*14),1)]*d_extent[0];
+                    const double s1 = cells[LINIDX_2D(5,cpp_i + (cp*14),2)]*d_extent[1];
+                    const double s2 = cells[LINIDX_2D(5,cpp_i + (cp*14),3)]*d_extent[2];
                     
                     
                     
@@ -492,7 +498,7 @@ class PairLoopRapaport(_base):
                     s += space+'double *'+loc_argname+'[2];\n'
                     
                     
-                    s += space+'if (cells[LINIDX_2D(5,cpp_i + ((cp-1)*14),4)] > 0){ \n'
+                    s += space+'if (cells[LINIDX_2D(5,cpp_i + (cp*14),4)] > 0){ \n'
 
                     #s += space+'double r1[3];\n'
                     s += space+'r1[0] ='+argname+'[LINIDX_2D(3,j-1,0)] + s0; \n'
