@@ -621,7 +621,7 @@ class PairLoopRapaport(_base):
             print >> f, self._generate_impl_source()
         object_filename = filename_base+'.o'
         library_filename = filename_base+'.so'        
-        cflags = ['-O3','-fpic','-std=c99','-march=native']
+        cflags = ['-O3','-fpic','-std=c99']
         cc = 'gcc'
         ld = 'gcc'
         compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
