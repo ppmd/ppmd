@@ -538,7 +538,7 @@ class PairLoopRapaport(_base):
         method(ctypes.c_int(self._input_state.N()), ctypes.c_int(self._input_state.domain().cell_count()), *args)           
         
         
-        
+    #move this to C    
     def cell_sort_all(self):
         """
         Construct neighbour list, assigning atoms to cells. Using Rapaport alg.

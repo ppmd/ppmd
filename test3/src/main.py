@@ -15,6 +15,9 @@ if __name__ == '__main__':
     test_1000 = True
     test_2_bounce = False
     
+    plotting = False
+    logging = True
+    
     if (test_1000):
         n=10
         N=n**3
@@ -49,18 +52,18 @@ if __name__ == '__main__':
                                    )
     
     
-    test_integrator = method.VelocityVerlet(state = test_state, USE_C = True)
+    test_integrator = method.VelocityVerlet(state = test_state, USE_C = True, USE_LOGGING = logging, USE_PLOTTING = plotting)
     
     start = time.clock()
-    energy_data = test_integrator.integrate(dt = 0.0001, T = 0.1)
+    energy_data = test_integrator.integrate(dt = 0.0001, T = 25.0)
     end = time.clock()
     print "Rough time taken:", end - start,"s"
     
     
     
     
-    
-    energy_data.plot()
+    if (logging):
+        energy_data.plot()
     
     
     

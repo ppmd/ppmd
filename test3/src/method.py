@@ -14,7 +14,8 @@ class VelocityVerlet():
     Class to apply Velocity-Verlet to a given state using a given looping method.
     """
     
-    def __init__(self, dt = 0.0001, T = 0.01, looping_method_accel = None, state = None, USE_C = True):
+    def __init__(self, dt = 0.0001, T = 0.01, looping_method_accel = None, state = None, USE_C = True, USE_PLOTTING = True, USE_LOGGING = True):
+    
         self._dt = dt
         self._T = T
         
@@ -34,13 +35,9 @@ class VelocityVerlet():
         
         '''Updates step broken into two parts'''
         self._USE_C = USE_C
+        self._USE_PLOTTING = USE_PLOTTING
+        self._USE_LOGGING = USE_LOGGING
         
-        
-        
-        
-    
-        
-    
     def integrate(self, dt = None, T = None):
         if (dt != None):
             self._dt = dt
@@ -80,8 +77,6 @@ class VelocityVerlet():
         
         self.velocity_verlet_integration()
         
-        
-        
         return self._E_store
         
         
@@ -92,7 +87,7 @@ class VelocityVerlet():
 
         
 
-        percent_int = 99
+        percent_int = 10
         percent_count = percent_int
 
         self._state.accelerations_update()
@@ -102,10 +97,9 @@ class VelocityVerlet():
             
             self.velocity_verlet_step()
             
-            if (i > -1):
+            if ((self._USE_LOGGING) & (i > -1)):
+            
                 self._state.K()._Dat = ( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )
-                
-                
                 self._E_store.U_append(self._state.U().Dat()/self._state.N())
                 self._E_store.K_append(( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )/self._state.N())
                 self._E_store.Q_append((self._state.U().Dat() + self._state.K().Dat())/self._state.N())
@@ -114,12 +108,14 @@ class VelocityVerlet():
                 
             #print i, self.positions()[1,0] - self.positions()[0,0]
             
-            if ( ((100.0*i)/self._max_it) > percent_count):
+            if ( ( self._USE_LOGGING | self._USE_PLOTTING ) & (((100.0*i)/self._max_it) > percent_count)):
                 
-                self._pos_draw.draw()
+                if (self._USE_PLOTTING):
+                    self._pos_draw.draw()
                 
                 percent_count += percent_int
-                print int((100.0*i)/self._max_it),"%", "T=", self._dt*i   
+                if (self._USE_LOGGING):
+                    print int((100.0*i)/self._max_it),"%", "T=", self._dt*i   
     
         
     
