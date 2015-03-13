@@ -112,28 +112,14 @@ class BaseDomain():
         
         :arg r_in: (np.array(3,1)) Cartesian vector for particle position.
         """
-        
-        
-        
-        r_p = r_in + 0.5*self._extent
-        
-        
-        
-        
-        Cx = int(r_p[0]/self._cell_edge_lengths[0]) + 1  
-        Cy = int(r_p[1]/self._cell_edge_lengths[1]) + 1
-        Cz = int(r_p[2]/self._cell_edge_lengths[2]) + 1
-        
-        
-        return ((Cz - 1)*self._cell_array[1] + Cy - 1)*self._cell_array[0] + Cx
-        
 
+        r_p = r_in + 0.5*self._extent
+
+        Cx = int(r_p[0]/self._cell_edge_lengths[0])  
+        Cy = int(r_p[1]/self._cell_edge_lengths[1])
+        Cz = int(r_p[2]/self._cell_edge_lengths[2])
         
-        
-        
-        
-        
-        
+        return (Cz*self._cell_array[1] + Cy)*self._cell_array[0] + Cx
         
     def _cell_count_recalc(self):
         """    

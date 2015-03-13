@@ -308,15 +308,9 @@ class PairLoopRapaport(_base):
         self._input_state = input_state
         
         '''Construct initial cell list'''
-        self._q_list = np.zeros([1 + self._input_state.N() + self._input_state.domain().cell_count()], dtype=ctypes.c_int, order='C')
+        self._q_list = np.zeros([self._input_state.N() + self._input_state.domain().cell_count()], dtype=ctypes.c_int, order='C')
         self.cell_sort_all()
         
-
-        
-        '''Determine cell neighbours'''
-        #self._cell_map=np.zeros([14*self._input_state.domain().cell_count(),5],dtype=ctypes.c_int, order='C')
-        #for cp in range(1,1 + self._input_state.domain().cell_count()):
-        #    self._cell_map[(cp-1)*14:(cp*14),...] = self.get_adjacent_cells(cp)
         
         
         ##########
@@ -438,10 +432,10 @@ class PairLoopRapaport(_base):
                     
                     double r1[3];
                     
-                    i = q_list[n+cp+1];
-                    while (i > 0){
-                        j = q_list[n+cpp+1];
-                        while (j > 0){
+                    i = q_list[n+cp];
+                    while (i > -1){
+                        j = q_list[n+cpp];
+                        while (j > -1){
                             if (cp != cpp || i < j){
         
                                 %(KERNEL_ARGUMENT_DECL)s
@@ -497,21 +491,21 @@ class PairLoopRapaport(_base):
                     s += space+'if (flag){ \n'
 
                     #s += space+'double r1[3];\n'
-                    s += space+'r1[0] ='+argname+'[LINIDX_2D(3,j-1,0)] + s[0]; \n'
-                    s += space+'r1[1] ='+argname+'[LINIDX_2D(3,j-1,1)] + s[1]; \n'
-                    s += space+'r1[2] ='+argname+'[LINIDX_2D(3,j-1,2)] + s[2]; \n'
+                    s += space+'r1[0] ='+argname+'[LINIDX_2D(3,j,0)] + s[0]; \n'
+                    s += space+'r1[1] ='+argname+'[LINIDX_2D(3,j,1)] + s[1]; \n'
+                    s += space+'r1[2] ='+argname+'[LINIDX_2D(3,j,2)] + s[2]; \n'
                     s += space+loc_argname+'[1] = r1;\n'
                     
                     s += space+'}else{ \n'
-                    s += space+loc_argname+'[1] = '+argname+'+3*(j-1);\n' 
+                    s += space+loc_argname+'[1] = '+argname+'+3*j;\n' 
                     s += space+'} \n'
-                    s += space+loc_argname+'[0] = '+argname+'+3*(i-1);\n'
+                    s += space+loc_argname+'[0] = '+argname+'+3*i;\n'
                     
                 else:
                     ncomp = dat[1].ncomp
                     s += space+'double *'+loc_argname+'[2];\n'
-                    s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*(i-1);\n'
-                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*(j-1);\n'       
+                    s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
+                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'       
         
         return s       
         
@@ -545,67 +539,19 @@ class PairLoopRapaport(_base):
         
         
         
-        
-        
-        
-        #self._arg_update()
-            
-        #self._libpair_loop_LJ.d_pair_loop_LJ(ctypes.c_int(self._input_state.N()), ctypes.c_int(self._input_state.domain().cell_count()), ctypes.c_double(self._input_state._potential._rc), *self._args)   
-        
-        
-        
     def cell_sort_all(self):
         """
         Construct neighbour list, assigning atoms to cells. Using Rapaport alg.
         """
-        for cx in range(1,1+self._input_state.domain().cell_count()):
-            self._q_list[self._input_state.N() + cx] = 0
-        for ix in range(1,1+self._input_state.N()):
-            c = self._input_state.domain().get_cell_lin_index(self._input_state.positions().Dat()[ix-1,])
+        for cx in range(self._input_state.domain().cell_count()):
+            self._q_list[self._input_state.N() + cx] = -1
+        for ix in range(self._input_state.N()):
+            c = self._input_state.domain().get_cell_lin_index(self._input_state.positions().Dat()[ix,])
             
             #print c, self._pos[ix-1,], self._domain._extent*0.5
             self._q_list[ix] = self._q_list[self._input_state.N() + c]
             self._q_list[self._input_state.N() + c] = ix
             
-    
-       
-    def get_adjacent_cells(self,ix):
-        """
-        Returns the 14 neighbouring cells as linear index.
-        
-        :arg ix: (int) Input index.
-        
-        """
-         
-        cell_list = np.zeros([14,5],dtype=ctypes.c_int, order='C')
-        #cell_list_boundary=[]
-        
-        C = self._input_state.domain().cell_index_tuple(ix)
-        
-        stencil_map = [
-            [0,0,0],
-            [0,1,0],
-            [0,0,1],
-            [0,1,1],
-            [0,-1,1],
-            [1,0,0],
-            [1,0,1],
-            [-1,0,1],
-            [1,1,0],
-            [1,-1,0],
-            [1,1,1],
-            [1,-1,1],
-            [-1,1,1],
-            [-1,-1,1]
-            ]
-        
-        for ix in range(14):
-            ind = stencil_map[ix]
-            
-            cell_list[ix,] = self._input_state.domain().cell_index_lin_offset(C+ind)
-
-        return cell_list
-     
      
     def _create_library(self):
         '''
