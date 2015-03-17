@@ -13,9 +13,9 @@ if __name__ == '__main__':
     
     
     test_1000 = True
-    test_2_bounce = False
+    test_2_bounce = True
     
-    plotting = False
+    plotting = True
     logging = True
     
     if (test_1000):
@@ -30,7 +30,8 @@ if __name__ == '__main__':
     
         test_pos_init = state.PosInitLatticeNRho(N, rho)
         test_vel_init = state.VelInitNormDist(mu,nsig)    
-    
+        test_mass_init = state.MassInitTwoAlternating(m1 = 1.0, m2 = 1.0)
+        
     if (test_2_bounce):
         N=2
         
@@ -39,7 +40,7 @@ if __name__ == '__main__':
         
         test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.5, extent = np.array([7., 7., 7.]), axis = np.array([1,0,0]))
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
-        
+        test_mass_init = state.MassInitTwoAlternating(m1 = 1.0, m2 = 10.0)
         
     
     
@@ -48,6 +49,7 @@ if __name__ == '__main__':
                                    potential = test_potential, 
                                    particle_pos_init = test_pos_init, 
                                    particle_vel_init = test_vel_init,
+                                   particle_mass_init = test_mass_init,
                                    N = N,
                                    )
     
@@ -55,7 +57,7 @@ if __name__ == '__main__':
     test_integrator = method.VelocityVerlet(state = test_state, USE_C = True, USE_LOGGING = logging, USE_PLOTTING = plotting)
     
     start = time.clock()
-    energy_data = test_integrator.integrate(dt = 0.0001, T = 25.0)
+    energy_data = test_integrator.integrate(dt = 0.00001, T = 0.1)
     end = time.clock()
     print "Rough time taken:", end - start,"s"
     

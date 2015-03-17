@@ -189,7 +189,7 @@ class LennardJonesShifted(BasePotential):
         const double r2 = R0*R0 + R1*R1 + R2*R2;
         
         if (r2 < rc2){
-            
+        
 
             /* Lennard-Jones */
             const double r_m2 = sigma2/r2;

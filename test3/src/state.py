@@ -24,7 +24,7 @@ class BaseMDState():
         :arg dt: (float) Time-step size.
         :arg T: (float) End time.
     """
-    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, N = 0, mass = 1.):
+    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, particle_mass_init = None, N = 0, mass = 1.):
         """
         Intialise class to hold the state of a simulation.
         :arg domain: (Domain class) Container within which the simulation takes place.
@@ -40,6 +40,10 @@ class BaseMDState():
         self._accel = particle.Dat(N, 3, name='accelerations')
         
         self._mass = particle.Dat(N, 1, 1.0)
+        if (particle_mass_init != None):
+            particle_mass_init.reset(self._mass)
+            
+        
         
         self._domain = domain
         
@@ -117,6 +121,12 @@ class BaseMDState():
         Updates accelerations dats using given looping method.
         """
         self._looping_method_accel.execute()
+        
+    def masses(self):
+        """
+        Return all particle masses.
+        """
+        return self._mass
         
     @property
     def potential(self):
@@ -375,7 +385,15 @@ class VelInitTwoParticlesInABox():
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
 
 
+class MassInitTwoAlternating():
+    
+    def __init__(self, m1 = 1.0, m2 = 1.0):
+        self._m = [m1, m2]
 
+        
+    def reset(self, mass_input):
+        for ix in range(np.shape(mass_input.Dat())[0]):
+            mass_input[ix] = self._m[(ix % 2)]
 
 
 

@@ -33,6 +33,7 @@ class Dat():
     def set_val(self,val):
         self._Dat[...,...] = val
     
+     
     def Dat(self):
         """
         Returns entire data array.
@@ -45,6 +46,9 @@ class Dat():
         else:
             return self._Dat
     '''        
+    
+    def __getitem__(self,ix):
+        return self._Dat[ix] 
             
 
     def __setitem__(self, ix, val):
@@ -106,6 +110,10 @@ class ScalarDat(Dat):
     
     def Dat(self):
         return self._Dat
+        
+    def __getitem__(self):
+        return self._Dat     
+        
     
     def __setitem__(self, val):
         self._Dat[0] = val      

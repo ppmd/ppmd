@@ -22,11 +22,11 @@ class VelocityVerlet():
 
         self._state = state
         
-        
-        
         self._A = self._state.accelerations()
         self._V = self._state.velocities()
         self._P = self._state.positions()
+        self._M = self._state.masses()
+        self._K = self._state.K()
         
         
     
@@ -54,25 +54,27 @@ class VelocityVerlet():
             self._kernel1_code = '''
             //self._V+=0.5*self._dt*self._A
             //self._P+=self._dt*self._V
-            V[0] += dht*A[0];
-            V[1] += dht*A[1];
-            V[2] += dht*A[2];
+            const double M_tmp = 1/M[0];
+            V[0] += dht*A[0]*M_tmp;
+            V[1] += dht*A[1]*M_tmp;
+            V[2] += dht*A[2]*M_tmp;
             P[0] += dt*V[0];
             P[1] += dt*V[1];
             P[2] += dt*V[2];
             '''
             self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-            self._p1 = pairloop.SingleAllParticleLoop(self._kernel1,{'P':self._P,'V':self._V,'A':self._A})
+            self._p1 = pairloop.SingleAllParticleLoop(self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
             
             self._kernel2_code = '''
             //self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat()
-            V[0] += dht*A[0];
-            V[1] += dht*A[1];
-            V[2] += dht*A[2];
+            const double M_tmp = 1/M[0];
+            V[0] += dht*A[0]*M_tmp;
+            V[1] += dht*A[1]*M_tmp;
+            V[2] += dht*A[2]*M_tmp;
             '''
             
             self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-            self._p2 = pairloop.SingleAllParticleLoop(self._kernel2,{'V':self._V,'A':self._A})        
+            self._p2 = pairloop.SingleAllParticleLoop(self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})        
         
         
         self.velocity_verlet_integration()
@@ -87,7 +89,7 @@ class VelocityVerlet():
 
         
 
-        percent_int = 10
+        percent_int = 5
         percent_count = percent_int
 
         self._state.accelerations_update()
@@ -99,10 +101,19 @@ class VelocityVerlet():
             
             if ((self._USE_LOGGING) & (i > -1)):
             
-                self._state.K()._Dat = ( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )
+                #self._state.K()._Dat = ( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )
+                
+                self._K = 0.0
+                for ix in range(self._state.N()):
+                    self._K += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
+                
+                
                 self._E_store.U_append(self._state.U().Dat()/self._state.N())
-                self._E_store.K_append(( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )/self._state.N())
-                self._E_store.Q_append((self._state.U().Dat() + self._state.K().Dat())/self._state.N())
+                
+                self._E_store.K_append((self._K)/self._state.N())
+                
+                self._E_store.Q_append((self._state.U().Dat() + self._K)/self._state.N())
+                
                 self._E_store.T_append((i+1)*self._dt)
             
                 

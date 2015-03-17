@@ -722,8 +722,15 @@ class SingleAllParticleLoop():
         '''
         space = ' '*14
         s = 'inline void '+self._kernel.name+'('
-        for var_name in self._particle_dat_dict.keys():
-            s += 'double *'+var_name+', '
+        for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
+            #print var_name_kernel, var_name_state.dattype()
+            
+            if (var_name_state.dattype=='array'):
+                s += 'double **'+var_name_kernel+', '
+            if (var_name_state.dattype=='scalar'):
+                s += 'double *'+var_name_kernel+', '        
+        
+        
         s = s[:-2] + ') {'
         return s
 
@@ -773,23 +780,23 @@ class SingleAllParticleLoop():
         the correct address in the particle_dats.
         '''
         s = '\n'
-        for i,dat in enumerate(self._particle_dat_dict.values()):
-            
-            
-            ncomp = dat.ncomp
+        for i,dat in enumerate(self._particle_dat_dict.items()):
             
             
             space = ' '*14
             argname = 'arg_'+('%03d' % i)
             loc_argname = 'loc_'+argname
-            #s += space+'double *'+loc_argname+'[2];\n'
-            s += space+'double *'+loc_argname+';\n'
-            s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'
-            #s += space+loc_argname+' = &'+argname+'['+str(ncomp)+'*i];\n'
             
-            #s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
-        return s
-
+            
+            if (dat[1].dattype  == 'scalar'):
+                s += space+'double *'+loc_argname+' = '+argname+';\n'
+            
+            if (dat[1].dattype  == 'array'):
+                ncomp = dat[1].ncomp
+                s += space+'double *'+loc_argname+';\n'
+                s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'     
+        
+        return s 
 
         
     def _argnames(self):
@@ -800,10 +807,13 @@ class SingleAllParticleLoop():
         If, for example, the pairloop gets passed two particle_dats, 
         then the result will be ``double* arg_000,double* arg_001`.`
         '''
+        
         argnames = ''
         for i in range(self._nargs):
             argnames += 'double *arg_'+('%03d' % i)+','
         return argnames[:-1]        
+        
+        
         
         
         
