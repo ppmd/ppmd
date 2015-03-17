@@ -21,6 +21,7 @@ class VelocityVerlet():
         
 
         self._state = state
+        self._N = self._state.N()
         
         self._A = self._state.accelerations()
         self._V = self._state.velocities()
@@ -63,7 +64,7 @@ class VelocityVerlet():
             P[2] += dt*V[2];
             '''
             self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-            self._p1 = pairloop.SingleAllParticleLoop(self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
+            self._p1 = pairloop.SingleAllParticleLoop(self._N,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
             
             self._kernel2_code = '''
             //self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat()
@@ -74,8 +75,18 @@ class VelocityVerlet():
             '''
             
             self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-            self._p2 = pairloop.SingleAllParticleLoop(self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})        
-        
+            self._p2 = pairloop.SingleAllParticleLoop(self._N,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})  
+            
+            self._K_kernel_code = '''
+            K[0]+= (V[0]*V[0] + V[1]*V[1] + V[2]*V[2])*0.5*M[0];
+            
+            '''      
+            self._constants_K = []
+            self._K_kernel = kernel.Kernel('K_kernel',self._K_kernel_code,self._constants_K)
+            self._pK = pairloop.SingleAllParticleLoop(self._N,self._K_kernel,{'V':self._V,'K':self._K, 'M':self._M},headers = ['stdio.h']) 
+            
+            
+            
         
         self.velocity_verlet_integration()
         
@@ -103,16 +114,19 @@ class VelocityVerlet():
             
                 #self._state.K()._Dat = ( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )
                 
-                self._K = 0.0
-                for ix in range(self._state.N()):
-                    self._K += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
+                self._K[0] = 0.0
+                if(self._USE_C):
+                    self._pK.execute()
+                else:
+                    for ix in range(self._state.N()):
+                        self._K += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
                 
                 
                 self._E_store.U_append(self._state.U().Dat()/self._state.N())
                 
-                self._E_store.K_append((self._K)/self._state.N())
+                self._E_store.K_append((self._K[0])/self._state.N())
                 
-                self._E_store.Q_append((self._state.U().Dat() + self._K)/self._state.N())
+                self._E_store.Q_append((self._state.U()[0] + self._K[0])/self._state.N())
                 
                 self._E_store.T_append((i+1)*self._dt)
             

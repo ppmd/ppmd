@@ -627,7 +627,8 @@ class SingleAllParticleLoop():
     """
     Class to loop over all particles once.
     """
-    def __init__(self, kernel, particle_dat_dict, headers=None):
+    def __init__(self, N, kernel, particle_dat_dict, headers=None):
+        self._N = N
         self._temp_dir = './build/'
         if (not os.path.exists(self._temp_dir)):
             os.mkdir(self._temp_dir)
@@ -693,9 +694,9 @@ class SingleAllParticleLoop():
         args = []
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data())
-            n = dat.npart
+            
         method = self._lib[self._kernel.name+'_wrapper']
-        method(n,*args)   
+        method(self._N,*args)   
     
 
        
@@ -724,11 +725,8 @@ class SingleAllParticleLoop():
         s = 'inline void '+self._kernel.name+'('
         for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
             #print var_name_kernel, var_name_state.dattype()
-            
-            if (var_name_state.dattype=='array'):
-                s += 'double **'+var_name_kernel+', '
-            if (var_name_state.dattype=='scalar'):
-                s += 'double *'+var_name_kernel+', '        
+            s += 'double *'+var_name_kernel+', '
+     
         
         
         s = s[:-2] + ') {'
@@ -760,6 +758,7 @@ class SingleAllParticleLoop():
           for (i=0; i<n; ++i) {
               %(KERNEL_ARGUMENT_DECL)s
               %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
+              
             }
         }
         '''

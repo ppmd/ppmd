@@ -105,18 +105,17 @@ class ScalarDat(Dat):
         else:
             self._Dat = np.zeros([1], dtype=ctypes.c_double, order='C')
         
-    def set_val(self,val):
-        self._Dat[0] = val
     
     def Dat(self):
         return self._Dat
         
-    def __getitem__(self):
-        return self._Dat     
+    def __getitem__(self,ix):
+        return self._Dat[ix]     
         
     
-    def __setitem__(self, val):
-        self._Dat[0] = val      
+    def __setitem__(self,ix, val):
+        self._Dat[0] = val
+        
         
         
     def __str__(self):
