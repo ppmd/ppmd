@@ -2,23 +2,17 @@ import numpy as np
 import ctypes
 
 class Dat():
-    """
-    Base class to hold floating point properties of particles
+    '''
+    Base class to hold floating point properties of particles, creates N1*N2 array with given initial value.
     
     :arg N1: (Integer) First dimension.
     :arg N2: (Integer) Second dimension.
     :arg initial_value: (Float) Value to initialise array with, default 0.0.
+    :arg name: (string) Collective name of stored vars eg positions.
     
-    """
+    '''
     def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None):
-        """
-        Creates N1*N2 array with given initial value.
         
-        :arg N1: (Integer) First dimension.
-        :arg N2: (Integer) Second dimension.
-        :arg initial_value: (Float) Value to initialise array with, default 0.0.
-    
-        """
         self._name = name
         self._type = 'array'
         
@@ -35,9 +29,9 @@ class Dat():
     
      
     def Dat(self):
-        """
+        '''
         Returns entire data array.
-        """
+        '''
         return self._Dat
     '''    
     def __getitem__(self,key=None):   
@@ -62,6 +56,9 @@ class Dat():
         return self._Dat
     @property    
     def ncomp(self):
+        '''
+        Return number of components.
+        '''
         return self._N2
    
     @property    
@@ -74,27 +71,31 @@ class Dat():
         return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))        
     @property     
     def dattype(self):
+        '''
+        Returns type of particle dat.
+        '''
         return self._type
         
     @property
     def name(self):
+        '''
+        Returns name of particle dat.
+        '''
         return self._name
         
         
 class ScalarDat(Dat):
-    """
+    '''
     Base class to hold a single floating point property.
     
     :arg initial_value: (Float) Value to initialise array with, default 0.0.
+    :arg name: (string) Collective name of stored vars eg positions.
     
-    """
+    '''
     def __init__(self, initial_value = None, name = None):
-        """
+        '''
         Creates scalar with given initial value.
-        
-        :arg initial_value: (Float) Value to initialise scalar with, default 0.0.
-    
-        """
+        '''
         
         self._type = 'scalar'
         self._name = name
@@ -107,6 +108,9 @@ class ScalarDat(Dat):
         
     
     def Dat(self):
+        '''
+        Returns stored data as numpy array.
+        '''
         return self._Dat
         
     def __getitem__(self,ix):
@@ -115,9 +119,7 @@ class ScalarDat(Dat):
     
     def __setitem__(self,ix, val):
         self._Dat[0] = val
-        
-        
-        
+          
     def __str__(self):
         return str(self._Dat)
     
@@ -131,10 +133,16 @@ class ScalarDat(Dat):
         return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))        
     @property     
     def dattype(self):
+        '''
+        Returns type of particle dat.
+        '''    
         return self._type            
         
     @property
     def name(self):
+        '''
+        Returns name of particle dat.
+        '''    
         return self._name    
     
         

@@ -386,12 +386,23 @@ class VelInitTwoParticlesInABox():
 
 
 class MassInitTwoAlternating():
+    '''
+    Class to initialise masses, alternates between two masses.
+    
+    :arg m1: (float) First mass
+    :arg m2: (float) Second mass
+    '''
     
     def __init__(self, m1 = 1.0, m2 = 1.0):
         self._m = [m1, m2]
 
         
     def reset(self, mass_input):
+        '''
+        Apply to input mass dat class.
+        
+        :arg mass_input: (class Dat) Dat container with masses.
+        '''
         for ix in range(np.shape(mass_input.Dat())[0]):
             mass_input[ix] = self._m[(ix % 2)]
 

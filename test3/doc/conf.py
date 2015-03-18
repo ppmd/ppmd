@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # src documentation build configuration file, created by
-# sphinx-quickstart on Fri Feb  6 16:50:04 2015.
+# sphinx-quickstart on Wed Mar 18 12:10:48 2015.
 #
 # This file is execfile()d with the current directory set to its containing dir.
 #

@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>main Module &mdash; src  documentation</title>
+    <title>constant Module &mdash; src  documentation</title>
     
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -26,8 +26,8 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="src  documentation" href="index.html" />
-    <link rel="next" title="method Module" href="method.html" />
-    <link rel="prev" title="kernel Module" href="kernel.html" /> 
+    <link rel="next" title="data Module" href="data.html" />
+    <link rel="prev" title="Welcome to src’s documentation!" href="index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -40,10 +40,10 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="method.html" title="method Module"
+          <a href="data.html" title="data Module"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="kernel.html" title="kernel Module"
+          <a href="index.html" title="Welcome to src’s documentation!"
              accesskey="P">previous</a> |</li>
         <li><a href="index.html">src  documentation</a> &raquo;</li> 
       </ul>
@@ -54,8 +54,46 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="module-main">
-<span id="main-module"></span><h1>main Module<a class="headerlink" href="#module-main" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="module-constant">
+<span id="constant-module"></span><h1>constant Module<a class="headerlink" href="#module-constant" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="constant.Constant">
+<em class="property">class </em><tt class="descclassname">constant.</tt><tt class="descname">Constant</tt><big>(</big><em>name</em>, <em>value</em><big>)</big><a class="reference internal" href="_modules/constant.html#Constant"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#constant.Constant" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
+<p>Class representing a numerical constant.</p>
+<p>This class can be used to use placeholders for constants
+in kernels.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> &#8211; Name of constant</li>
+<li><strong>value</strong> &#8211; Numerical value (can actually be any data type)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="constant.Constant.replace">
+<tt class="descname">replace</tt><big>(</big><em>s</em><big>)</big><a class="reference internal" href="_modules/constant.html#Constant.replace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#constant.Constant.replace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Replace all occurances in a string and return result</p>
+<p>Ignores the constant if it is not a C-variable. For example,
+if the name of the constant is <tt class="docutils literal"><span class="pre">mass</span></tt>, then it would not replace
+it in <tt class="docutils literal"><span class="pre">mass1</span></tt> or <tt class="docutils literal"><span class="pre">Hmass</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>s</strong> &#8211; string to work on</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 
 
@@ -65,14 +103,14 @@
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
   <h4>Previous topic</h4>
-  <p class="topless"><a href="kernel.html"
-                        title="previous chapter">kernel Module</a></p>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Welcome to src&#8217;s documentation!</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="method.html"
-                        title="next chapter">method Module</a></p>
+  <p class="topless"><a href="data.html"
+                        title="next chapter">data Module</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
-    <li><a href="_sources/main.txt"
+    <li><a href="_sources/constant.txt"
            rel="nofollow">Show Source</a></li>
   </ul>
 <div id="searchbox" style="display: none">
@@ -102,10 +140,10 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="method.html" title="method Module"
+          <a href="data.html" title="data Module"
              >next</a> |</li>
         <li class="right" >
-          <a href="kernel.html" title="kernel Module"
+          <a href="index.html" title="Welcome to src’s documentation!"
              >previous</a> |</li>
         <li><a href="index.html">src  documentation</a> &raquo;</li> 
       </ul>

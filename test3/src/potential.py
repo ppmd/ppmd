@@ -180,6 +180,10 @@ class LennardJonesShifted(BasePotential):
             return 0.0   
 
     def kernel(self):
+        '''
+        Returns a kernel class for the potential.
+        '''
+        
         kernel_code = '''
         
         const double R0 = P[1][0] - P[0][0];
@@ -222,9 +226,17 @@ class LennardJonesShifted(BasePotential):
         return kernel.Kernel('LJ_accel_U',kernel_code, constants)
 
     def datdict(self, input_state):
+        '''
+        Map between state variables and kernel variables, returns required dictonary.
+        
+        :arg input_state: (class state) state with containing variables.
+        '''
         return {'P':input_state.positions(), 'A':input_state.accelerations(), 'U':input_state.U()}
 
     def headers(self):
+        '''
+        Returns required headers for kernel.
+        '''
         return []
 
 

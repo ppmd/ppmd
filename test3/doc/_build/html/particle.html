@@ -27,7 +27,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="src  documentation" href="index.html" />
     <link rel="next" title="potential Module" href="potential.html" />
-    <link rel="prev" title="main Module" href="main.html" /> 
+    <link rel="prev" title="pairloop Module" href="pairloop.html" /> 
   </head>
   <body>
     <div class="related">
@@ -43,7 +43,7 @@
           <a href="potential.html" title="potential Module"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="main.html" title="main Module"
+          <a href="pairloop.html" title="pairloop Module"
              accesskey="P">previous</a> |</li>
         <li><a href="index.html">src  documentation</a> &raquo;</li> 
       </ul>
@@ -58,8 +58,8 @@
 <span id="particle-module"></span><h1>particle Module<a class="headerlink" href="#module-particle" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="particle.Dat">
-<em class="property">class </em><tt class="descclassname">particle.</tt><tt class="descname">Dat</tt><big>(</big><em>N1=1</em>, <em>N2=1</em>, <em>initial_value=None</em><big>)</big><a class="reference internal" href="_modules/particle.html#Dat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#particle.Dat" title="Permalink to this definition">¶</a></dt>
-<dd><p>Base class to hold floating point properties of particles</p>
+<em class="property">class </em><tt class="descclassname">particle.</tt><tt class="descname">Dat</tt><big>(</big><em>N1=1</em>, <em>N2=1</em>, <em>initial_value=None</em>, <em>name=None</em><big>)</big><a class="reference internal" href="_modules/particle.html#Dat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#particle.Dat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class to hold floating point properties of particles, creates N1*N2 array with given initial value.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -68,6 +68,7 @@
 <li><strong>N1</strong> &#8211; (Integer) First dimension.</li>
 <li><strong>N2</strong> &#8211; (Integer) Second dimension.</li>
 <li><strong>initial_value</strong> &#8211; (Float) Value to initialise array with, default 0.0.</li>
+<li><strong>name</strong> &#8211; (string) Collective name of stored vars eg positions.</li>
 </ul>
 </td>
 </tr>
@@ -77,6 +78,84 @@
 <dt id="particle.Dat.Dat">
 <tt class="descname">Dat</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/particle.html#Dat.Dat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#particle.Dat.Dat" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns entire data array.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="particle.Dat.ctypes_data">
+<tt class="descname">ctypes_data</tt><big>(</big><big>)</big><a class="headerlink" href="#particle.Dat.ctypes_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return ctypes-pointer to data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="particle.Dat.dattype">
+<tt class="descname">dattype</tt><a class="headerlink" href="#particle.Dat.dattype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns type of particle dat.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="particle.Dat.name">
+<tt class="descname">name</tt><a class="headerlink" href="#particle.Dat.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns name of particle dat.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="particle.Dat.ncomp">
+<tt class="descname">ncomp</tt><a class="headerlink" href="#particle.Dat.ncomp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return number of components.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="particle.Dat.npart">
+<tt class="descname">npart</tt><a class="headerlink" href="#particle.Dat.npart" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return number of particles.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="particle.Dat.set_val">
+<tt class="descname">set_val</tt><big>(</big><em>val</em><big>)</big><a class="headerlink" href="#particle.Dat.set_val" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="particle.ScalarDat">
+<em class="property">class </em><tt class="descclassname">particle.</tt><tt class="descname">ScalarDat</tt><big>(</big><em>initial_value=None</em>, <em>name=None</em><big>)</big><a class="headerlink" href="#particle.ScalarDat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#particle.Dat" title="particle.Dat"><tt class="xref py py-class docutils literal"><span class="pre">particle.Dat</span></tt></a></p>
+<p>Base class to hold a single floating point property.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>initial_value</strong> &#8211; (Float) Value to initialise array with, default 0.0.</li>
+<li><strong>name</strong> &#8211; (string) Collective name of stored vars eg positions.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="particle.ScalarDat.Dat">
+<tt class="descname">Dat</tt><big>(</big><big>)</big><a class="headerlink" href="#particle.ScalarDat.Dat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns stored data as numpy array.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="particle.ScalarDat.ctypes_data">
+<tt class="descname">ctypes_data</tt><big>(</big><big>)</big><a class="headerlink" href="#particle.ScalarDat.ctypes_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return ctypes-pointer to data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="particle.ScalarDat.dattype">
+<tt class="descname">dattype</tt><a class="headerlink" href="#particle.ScalarDat.dattype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns type of particle dat.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="particle.ScalarDat.name">
+<tt class="descname">name</tt><a class="headerlink" href="#particle.ScalarDat.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns name of particle dat.</p>
 </dd></dl>
 
 </dd></dl>
@@ -90,8 +169,8 @@
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
   <h4>Previous topic</h4>
-  <p class="topless"><a href="main.html"
-                        title="previous chapter">main Module</a></p>
+  <p class="topless"><a href="pairloop.html"
+                        title="previous chapter">pairloop Module</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="potential.html"
                         title="next chapter">potential Module</a></p>
@@ -130,7 +209,7 @@
           <a href="potential.html" title="potential Module"
              >next</a> |</li>
         <li class="right" >
-          <a href="main.html" title="main Module"
+          <a href="pairloop.html" title="pairloop Module"
              >previous</a> |</li>
         <li><a href="index.html">src  documentation</a> &raquo;</li> 
       </ul>

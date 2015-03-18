@@ -8,6 +8,15 @@ from mpl_toolkits.mplot3d import Axes3D
 np.set_printoptions(threshold='nan')
 
 class draw_particles():
+    '''
+    Class to plot N particles with given positions.
+    
+    :arg N: (int) Number of particles.
+    :arg pos: (np.array(N,3)) particle positions.
+    :arg extent: (np.array(3,1)) domain extents.
+    
+    
+    '''
     def __init__(self,N,pos,extents):
         print "plotting....."
         plt.ion()
@@ -24,7 +33,11 @@ class draw_particles():
 
 
     def draw(self):
-
+        '''
+        Update current plot, use for real time plotting.
+        '''
+        
+        
         plt.cla()
            
         for ix in range(self._N):
@@ -40,6 +53,11 @@ class draw_particles():
         plt.draw()
     
 class BasicEnergyStore():
+    '''
+    Class to contain recorded values of potential energy U, kenetic energy K, total energy Q and time T.
+    
+    :arg size: (int) Required size of each container.
+    '''
     def __init__(self, size = 1):
     
         self._size = size
@@ -55,20 +73,43 @@ class BasicEnergyStore():
         self._T_c = 0
     
     
-    def U_append(self,val):    
+    def U_append(self,val):
+        '''
+        Append a value to potential energy.
+        
+        :arg val: (float) value to append
+        '''
         self._U_store[self._U_c] = val
         self._U_c+=1
-    def K_append(self,val):    
+    def K_append(self,val): 
+        '''
+        Append a value to kenetic energy.
+        
+        :arg val: (float) value to append
+        '''       
         self._K_store[self._K_c] = val
         self._K_c+=1        
-    def Q_append(self,val):    
+    def Q_append(self,val): 
+        '''
+        Append a value to total energy.
+        
+        :arg val: (float) value to append
+        '''       
         self._Q_store[self._Q_c] = val
         self._Q_c+=1
-    def T_append(self,val):    
+    def T_append(self,val):
+        '''
+        Append a value to time store.
+        
+        :arg val: (float) value to append
+        '''       
         self._T_store[self._T_c] = val
         self._T_c+=1            
    
     def plot(self):
+        '''
+        Plot recorded energies against time.
+        '''
         fig2 = plt.figure()
         ax2 = fig2.add_subplot(111)
         ax2.plot(self._T_store,self._Q_store,color='r', linewidth=2)

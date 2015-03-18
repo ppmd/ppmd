@@ -168,7 +168,7 @@ class _base():
 
 class PairLoopRapaport_tmp():
     '''
-    Class to implement rapaport 14 cell looping.
+    Class to implement rapaport 14 cell looping, Use PairLoopRapaport instead.
     '''
     def __init__(self,input_state):
         
@@ -300,11 +300,11 @@ class PairLoopRapaport_tmp():
 class PairLoopRapaport(_base):
     '''
     Class to implement rapaport 14 cell looping.
+    
+    :arg input_state: State containing data to loop over.
     '''
     def __init__(self,input_state):
-        
-        
-        
+         
         self._input_state = input_state
         
         '''Construct initial cell list'''
@@ -518,9 +518,9 @@ class PairLoopRapaport(_base):
         
         
     def execute(self):
-        """
+        '''
         C version of the pair_locate: Loop over all cells update accelerations and potential engery.
-        """
+        '''
         self._update_prepare()
     
         self._input_state.set_accelerations(ctypes.c_double(0.0))
@@ -624,9 +624,14 @@ class PairLoopRapaport(_base):
 # SINGLE PARTICLE LOOP SERIAL
 ################################################################################################################
 class SingleAllParticleLoop():
-    """
+    '''
     Class to loop over all particles once.
-    """
+    
+    :arg N: (int) Number of elements to loop over.
+    :arg kernel: (class kernel) Kernel to apply at each element.
+    :arg particle_dat_dict: (dict) Dictonary storing map between kernel variables and state variables.
+    :arg headers: (list) list containing C headers required by kernel.
+    '''
     def __init__(self, N, kernel, particle_dat_dict, headers=None):
         self._N = N
         self._temp_dir = './build/'
@@ -867,9 +872,9 @@ class SingleAllParticleLoop():
 ################################################################################################################
 
 class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
-    """
-    OpenMP version of single pass pair loop
-    """
+    '''
+    OpenMP version of single pass pair loop (experimental)
+    '''
     SingleAllParticleLoop._create_library
     
     def _code_init(self):

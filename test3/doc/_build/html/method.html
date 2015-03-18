@@ -1,0 +1,169 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>method Module &mdash; src  documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="src  documentation" href="index.html" />
+    <link rel="next" title="pairloop Module" href="pairloop.html" />
+    <link rel="prev" title="main Module" href="main.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="pairloop.html" title="pairloop Module"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="main.html" title="main Module"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">src  documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-method">
+<span id="method-module"></span><h1>method Module<a class="headerlink" href="#module-method" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="method.VelocityVerlet">
+<em class="property">class </em><tt class="descclassname">method.</tt><tt class="descname">VelocityVerlet</tt><big>(</big><em>dt=0.0001</em>, <em>T=0.01</em>, <em>state=None</em>, <em>USE_C=True</em>, <em>USE_PLOTTING=True</em>, <em>USE_LOGGING=True</em><big>)</big><a class="reference internal" href="_modules/method.html#VelocityVerlet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#method.VelocityVerlet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class to apply Velocity-Verlet to a given state using a given looping method.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dt</strong> &#8211; (float) Time step size, can be specified at integrate call.</li>
+<li><strong>T</strong> &#8211; (float) End time, can be specified at integrate call.</li>
+<li><strong>USE_C</strong> &#8211; (bool) Flag to use C looping and kernel.</li>
+<li><strong>USE_PLOTTING</strong> &#8211; (bool) Flag to plot state at certain progress points.</li>
+<li><strong>USE_LOGGING</strong> &#8211; (bool) Flag to log energy at each iteration.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="method.VelocityVerlet.integrate">
+<tt class="descname">integrate</tt><big>(</big><em>dt=None</em>, <em>T=None</em><big>)</big><a class="reference internal" href="_modules/method.html#VelocityVerlet.integrate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#method.VelocityVerlet.integrate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Integrate state forward in time.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>dt</strong> &#8211; (float) Time step size.</li>
+<li><strong>T</strong> &#8211; (float) End time.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="method.VelocityVerlet.velocity_verlet_integration">
+<tt class="descname">velocity_verlet_integration</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/method.html#VelocityVerlet.velocity_verlet_integration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#method.VelocityVerlet.velocity_verlet_integration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform Velocity Verlet integration up to time T.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="method.VelocityVerlet.velocity_verlet_step">
+<tt class="descname">velocity_verlet_step</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/method.html#VelocityVerlet.velocity_verlet_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#method.VelocityVerlet.velocity_verlet_step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform one step of Velocity Verlet.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="main.html"
+                        title="previous chapter">main Module</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="pairloop.html"
+                        title="next chapter">pairloop Module</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/method.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="pairloop.html" title="pairloop Module"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="main.html" title="main Module"
+             >previous</a> |</li>
+        <li><a href="index.html">src  documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2015, Author.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -10,11 +10,17 @@ import constant
 np.set_printoptions(threshold='nan')
 
 class VelocityVerlet():
-    """
+    '''
     Class to apply Velocity-Verlet to a given state using a given looping method.
-    """
     
-    def __init__(self, dt = 0.0001, T = 0.01, looping_method_accel = None, state = None, USE_C = True, USE_PLOTTING = True, USE_LOGGING = True):
+    :arg dt: (float) Time step size, can be specified at integrate call.
+    :arg T: (float) End time, can be specified at integrate call.
+    :arg USE_C: (bool) Flag to use C looping and kernel.
+    :arg USE_PLOTTING: (bool) Flag to plot state at certain progress points.
+    :arg USE_LOGGING: (bool) Flag to log energy at each iteration.
+    '''
+    
+    def __init__(self, dt = 0.0001, T = 0.01, state = None, USE_C = True, USE_PLOTTING = True, USE_LOGGING = True):
     
         self._dt = dt
         self._T = T
@@ -40,6 +46,12 @@ class VelocityVerlet():
         self._USE_LOGGING = USE_LOGGING
         
     def integrate(self, dt = None, T = None):
+        '''
+        Integrate state forward in time.
+        
+        :arg dt: (float) Time step size.
+        :arg T: (float) End time.
+        '''
         if (dt != None):
             self._dt = dt
         if (T != None):
@@ -123,15 +135,12 @@ class VelocityVerlet():
                 
                 
                 self._E_store.U_append(self._state.U().Dat()/self._state.N())
-                
                 self._E_store.K_append((self._K[0])/self._state.N())
-                
                 self._E_store.Q_append((self._state.U()[0] + self._K[0])/self._state.N())
-                
                 self._E_store.T_append((i+1)*self._dt)
             
                 
-            #print i, self.positions()[1,0] - self.positions()[0,0]
+            
             
             if ( ( self._USE_LOGGING | self._USE_PLOTTING ) & (((100.0*i)/self._max_it) > percent_count)):
                 

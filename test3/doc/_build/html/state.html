@@ -54,7 +54,7 @@
 <span id="state-module"></span><h1>state Module<a class="headerlink" href="#module-state" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="state.BaseMDState">
-<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">BaseMDState</tt><big>(</big><em>domain</em>, <em>potential</em>, <em>particle_pos_init=None</em>, <em>particle_vel_init=None</em>, <em>N=0</em>, <em>mass=1.0</em>, <em>dt=1e-05</em>, <em>T=0.02</em><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">BaseMDState</tt><big>(</big><em>domain</em>, <em>potential</em>, <em>particle_pos_init=None</em>, <em>particle_vel_init=None</em>, <em>particle_mass_init=None</em>, <em>N=0</em>, <em>mass=1.0</em><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base molecular dynamics class.</p>
 <blockquote>
 <div><table class="docutils field-list" frame="void" rules="none">
@@ -83,9 +83,33 @@
 </table>
 </div></blockquote>
 <dl class="method">
+<dt id="state.BaseMDState.K">
+<tt class="descname">K</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.K" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return Kenetic energy</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="state.BaseMDState.N">
 <tt class="descname">N</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.N" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns number of particles.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.Q">
+<tt class="descname">Q</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.Q" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return Total energy</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.U">
+<tt class="descname">U</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.U" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return potential energy</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.U_set">
+<tt class="descname">U_set</tt><big>(</big><em>U_in</em><big>)</big><a class="headerlink" href="#state.BaseMDState.U_set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a kenetic energy value.</p>
 </dd></dl>
 
 <dl class="method">
@@ -95,9 +119,9 @@
 </dd></dl>
 
 <dl class="method">
-<dt id="state.BaseMDState.cell_sort_all">
-<tt class="descname">cell_sort_all</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.cell_sort_all" title="Permalink to this definition">¶</a></dt>
-<dd><p>Construct neighbour list, assigning atoms to cells. Using Rapaport alg.</p>
+<dt id="state.BaseMDState.accelerations_update">
+<tt class="descname">accelerations_update</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.accelerations_update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Updates accelerations dats using given looping method.</p>
 </dd></dl>
 
 <dl class="method">
@@ -113,32 +137,9 @@
 </dd></dl>
 
 <dl class="method">
-<dt id="state.BaseMDState.frame_plot_energy">
-<tt class="descname">frame_plot_energy</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.frame_plot_energy" title="Permalink to this definition">¶</a></dt>
-<dd><p>Function to plot all particles in 3D scatter plot.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="state.BaseMDState.frame_plot_pos">
-<tt class="descname">frame_plot_pos</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.frame_plot_pos" title="Permalink to this definition">¶</a></dt>
-<dd><p>Function to plot all particles in 3D scatter plot.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="state.BaseMDState.isnan_checker">
-<tt class="descname">isnan_checker</tt><big>(</big><em>r_in</em>, <em>msg</em><big>)</big><a class="headerlink" href="#state.BaseMDState.isnan_checker" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="state.BaseMDState.pair_locate">
-<tt class="descname">pair_locate</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.pair_locate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Loop over all cells update accelerations and potential engery.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="state.BaseMDState.pair_locate_c">
-<tt class="descname">pair_locate_c</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.pair_locate_c" title="Permalink to this definition">¶</a></dt>
-<dd><p>C version of the pair_locate: Loop over all cells update accelerations and potential engery.</p>
+<dt id="state.BaseMDState.masses">
+<tt class="descname">masses</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.masses" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return all particle masses.</p>
 </dd></dl>
 
 <dl class="method">
@@ -148,21 +149,66 @@
 </dd></dl>
 
 <dl class="method">
+<dt id="state.BaseMDState.potential">
+<tt class="descname">potential</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.potential" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.reset_U">
+<tt class="descname">reset_U</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.reset_U" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset potential energy to 0.0</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="state.BaseMDState.set_accelerations">
+<tt class="descname">set_accelerations</tt><big>(</big><em>val</em><big>)</big><a class="headerlink" href="#state.BaseMDState.set_accelerations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set all accelerations to given value.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>val</strong> &#8211; (float) value to set to.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="state.BaseMDState.velocities">
 <tt class="descname">velocities</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/state.html#BaseMDState.velocities"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#state.BaseMDState.velocities" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return all particle velocities.</p>
 </dd></dl>
 
-<dl class="method">
-<dt id="state.BaseMDState.velocity_verlet_integration">
-<tt class="descname">velocity_verlet_integration</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.velocity_verlet_integration" title="Permalink to this definition">¶</a></dt>
-<dd><p>Perform Velocity Verlet integration up to time T.</p>
 </dd></dl>
 
+<dl class="class">
+<dt id="state.MassInitTwoAlternating">
+<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">MassInitTwoAlternating</tt><big>(</big><em>m1=1.0</em>, <em>m2=1.0</em><big>)</big><a class="headerlink" href="#state.MassInitTwoAlternating" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class to initialise masses, alternates between two masses.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>m1</strong> &#8211; (float) First mass</li>
+<li><strong>m2</strong> &#8211; (float) Second mass</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
-<dt id="state.BaseMDState.velocity_verlet_step">
-<tt class="descname">velocity_verlet_step</tt><big>(</big><big>)</big><a class="headerlink" href="#state.BaseMDState.velocity_verlet_step" title="Permalink to this definition">¶</a></dt>
-<dd><p>Perform one step of Velocity Verlet.</p>
+<dt id="state.MassInitTwoAlternating.reset">
+<tt class="descname">reset</tt><big>(</big><em>mass_input</em><big>)</big><a class="headerlink" href="#state.MassInitTwoAlternating.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply to input mass dat class.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mass_input</strong> &#8211; (class Dat) Dat container with masses.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -237,8 +283,8 @@
 
 <dl class="class">
 <dt id="state.PosInitTwoParticlesInABox">
-<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">PosInitTwoParticlesInABox</tt><big>(</big><em>rx</em>, <em>extent=array([ 1.</em>, <em>1.</em>, <em>1.])</em><big>)</big><a class="headerlink" href="#state.PosInitTwoParticlesInABox" title="Permalink to this definition">¶</a></dt>
-<dd><p>Creates two particles a set distance apart on the x-axis, centred on the origin. Places these within a containing volume of given extents.</p>
+<em class="property">class </em><tt class="descclassname">state.</tt><tt class="descname">PosInitTwoParticlesInABox</tt><big>(</big><em>rx</em>, <em>extent=array([ 1.</em>, <em>1.</em>, <em>1.])</em>, <em>axis=array([ 1.</em>, <em>0.</em>, <em>0.])</em><big>)</big><a class="headerlink" href="#state.PosInitTwoParticlesInABox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates two particles a set distance apart on the  given axis, centred on the origin. Places these within a containing volume of given extents.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -246,6 +292,7 @@
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>rx</strong> &#8211; (float) Distance between particles.</li>
 <li><strong>extents</strong> &#8211; (np.array(3)) Extent for containing volume.</li>
+<li><strong>axis</strong> &#8211; (np.array(3)) axis to centre on.</li>
 </ul>
 </td>
 </tr>
