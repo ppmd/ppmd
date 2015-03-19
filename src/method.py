@@ -120,7 +120,7 @@ class VelocityVerlet():
         for i in range(self._max_it):
             
             
-            self.velocity_verlet_step()
+            self._velocity_verlet_step()
             
             if ((self._USE_LOGGING) & (i > -1)):
             

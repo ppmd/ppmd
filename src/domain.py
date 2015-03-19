@@ -17,7 +17,7 @@ class BaseDomain():
         self._extent = extent
         self._cell_count = cell_count
         self._cell_array = np.array([1,1,1], dtype=ctypes.c_int, order='C')
-        self._cell_edge_lengths = np.array([1.,1.,1.],dtype=double)
+        self._cell_edge_lengths = np.array([1.,1.,1.],dtype=float)
         
         self._USE_C = False
         if (self._USE_C):
