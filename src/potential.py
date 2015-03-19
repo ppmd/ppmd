@@ -43,8 +43,8 @@ class LennardJones(BasePotential):
         """
         Initialise Lennard Jones potential:
         
-        :arg epsilon: (float) Potential parameter :math:`\epsilon`
-        :arg sigma: (float) Potential parameter :math:`\sigma`   
+        :arg double epsilon: Potential parameter :math:`\epsilon`
+        :arg double sigma: Potential parameter :math:`\sigma`   
         
         
         """
@@ -82,7 +82,7 @@ class LennardJones(BasePotential):
         """
         Evaluate potential.
         
-        :arg r: (float) Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
+        :arg double r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
         """
         _sig6_rm6 = self._sigma6*(r**(-6))
         return _4epsilon * _sig6_rm6 * (_sig6_rm6 - 1.0)
@@ -91,7 +91,7 @@ class LennardJones(BasePotential):
         """
         Evaluate force.
         
-        :arg r: (float) Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
+        :arg double r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
         
         Assumes non-dimensionalisation:
         :math: '\epsilon = 1'
@@ -229,7 +229,7 @@ class LennardJonesShifted(BasePotential):
         '''
         Map between state variables and kernel variables, returns required dictonary.
         
-        :arg input_state: (class state) state with containing variables.
+        :arg state input_state: state with containing variables.
         '''
         return {'P':input_state.positions(), 'A':input_state.accelerations(), 'U':input_state.U()}
 

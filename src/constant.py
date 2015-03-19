@@ -6,7 +6,7 @@ class Constant(object):
     This class can be used to use placeholders for constants
     in kernels.
     
-    :arg name: Name of constant
+    :arg str name: Name of constant
     :arg value: Numerical value (can actually be any data type)
     '''
     def __init__(self,name,value):
@@ -20,7 +20,7 @@ class Constant(object):
         if the name of the constant is ``mass``, then it would not replace
         it in ``mass1`` or ``Hmass``.
 
-        :arg s: string to work on
+        :arg str s: string to work on
         '''
         forbiddenChars='[^a-zA-Z0-9_]'
         regex = self._name

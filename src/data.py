@@ -11,9 +11,9 @@ class draw_particles():
     '''
     Class to plot N particles with given positions.
     
-    :arg N: (int) Number of particles.
-    :arg pos: (np.array(N,3)) particle positions.
-    :arg extent: (np.array(3,1)) domain extents.
+    :arg int N: Number of particles.
+    :arg np.array(N,3) pos: particle positions.
+    :arg np.array(3,1) extent:  domain extents.
     
     
     '''
@@ -56,7 +56,7 @@ class BasicEnergyStore():
     '''
     Class to contain recorded values of potential energy U, kenetic energy K, total energy Q and time T.
     
-    :arg size: (int) Required size of each container.
+    :arg int size: Required size of each container.
     '''
     def __init__(self, size = 1):
     
@@ -77,7 +77,7 @@ class BasicEnergyStore():
         '''
         Append a value to potential energy.
         
-        :arg val: (float) value to append
+        :arg double val: value to append
         '''
         self._U_store[self._U_c] = val
         self._U_c+=1
@@ -85,7 +85,7 @@ class BasicEnergyStore():
         '''
         Append a value to kenetic energy.
         
-        :arg val: (float) value to append
+        :arg double val: value to append
         '''       
         self._K_store[self._K_c] = val
         self._K_c+=1        
@@ -93,7 +93,7 @@ class BasicEnergyStore():
         '''
         Append a value to total energy.
         
-        :arg val: (float) value to append
+        :arg double val: value to append
         '''       
         self._Q_store[self._Q_c] = val
         self._Q_c+=1
@@ -101,7 +101,7 @@ class BasicEnergyStore():
         '''
         Append a value to time store.
         
-        :arg val: (float) value to append
+        :arg double val: value to append
         '''       
         self._T_store[self._T_c] = val
         self._T_c+=1            

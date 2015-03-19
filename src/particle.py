@@ -5,10 +5,10 @@ class Dat():
     '''
     Base class to hold floating point properties of particles, creates N1*N2 array with given initial value.
     
-    :arg N1: (Integer) First dimension.
-    :arg N2: (Integer) Second dimension.
-    :arg initial_value: (Float) Value to initialise array with, default 0.0.
-    :arg name: (string) Collective name of stored vars eg positions.
+    :arg int N1: First dimension extent.
+    :arg int N2: Second dimension extent.
+    :arg double initial_value: Value to initialise array with, default 0.0.
+    :arg str name: Collective name of stored vars eg positions.
     
     '''
     def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None):
@@ -88,8 +88,8 @@ class ScalarDat(Dat):
     '''
     Base class to hold a single floating point property.
     
-    :arg initial_value: (Float) Value to initialise array with, default 0.0.
-    :arg name: (string) Collective name of stored vars eg positions.
+    :arg double initial_value: Value to initialise array with, default 0.0.
+    :arg str name: Collective name of stored vars eg positions.
     
     '''
     def __init__(self, initial_value = None, name = None):

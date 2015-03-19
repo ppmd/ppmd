@@ -260,7 +260,7 @@ class PairLoopRapaport_tmp():
         """
         Returns the 14 neighbouring cells as linear index.
         
-        :arg ix: (int) Input index.
+        :arg int ix: Input index.
         
         """
          
@@ -301,7 +301,7 @@ class PairLoopRapaport(_base):
     '''
     Class to implement rapaport 14 cell looping.
     
-    :arg input_state: State containing data to loop over.
+    :arg state input_state: State containing data to loop over.
     '''
     def __init__(self,input_state):
          
@@ -627,10 +627,10 @@ class SingleAllParticleLoop():
     '''
     Class to loop over all particles once.
     
-    :arg N: (int) Number of elements to loop over.
-    :arg kernel: (class kernel) Kernel to apply at each element.
-    :arg particle_dat_dict: (dict) Dictonary storing map between kernel variables and state variables.
-    :arg headers: (list) list containing C headers required by kernel.
+    :arg int N: Number of elements to loop over.
+    :arg kernel kernel:  Kernel to apply at each element.
+    :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
+    :arg list headers: list containing C headers required by kernel.
     '''
     def __init__(self, N, kernel, particle_dat_dict, headers=None):
         self._N = N

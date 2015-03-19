@@ -12,27 +12,25 @@ from mpl_toolkits.mplot3d import Axes3D
 np.set_printoptions(threshold='nan')
 
 class BaseMDState():
-    """
+    '''
     Base molecular dynamics class.
     
-        :arg domain: (Domain class) Container within which the simulation takes place.
-        :arg potential: (Potential class) Potential to use between particles.
-        :arg particle_pos_init: (class PosInit*) Class to initialise particles with.
-        :arg particle_vel_init: (class VelInit*) Class to initialise particles velocities with.
-        :arg N: (integer) Number of particles, default 1.
-        :arg mass: (float) Mass of particles, default 1.0
-        :arg dt: (float) Time-step size.
-        :arg T: (float) End time.
-    """
+    :arg domain domain: Container within which the simulation takes place.
+    :arg potential potential: Potential to use between particles.
+    :arg PosInit* particle_pos_init: Class to initialise particles with.
+    :arg VelInit* particle_vel_init: Class to initialise particles velocities with.
+    :arg int N: Number of particles, default 1.
+    :arg double mass: Mass of particles, default 1.0.
+    '''
     def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, particle_mass_init = None, N = 0, mass = 1.):
-        """
+        '''
         Intialise class to hold the state of a simulation.
-        :arg domain: (Domain class) Container within which the simulation takes place.
-        :arg potential: (Potential class) Potential to use between particles.
-        :arg N: (integer) Number of particles, default 1.
-        :arg mass: (float) Mass of particles, default 1.0        
+        :arg domain domain: Container within which the simulation takes place.
+        :arg potential potential: Potential to use between particles.
+        :arg int N: Number of particles, default 1.
+        :arg double mass: Mass of particles, default 1.0        
         
-        """
+        '''
         self._potential = potential
         self._N = N
         self._pos = particle.Dat(N, 3, name='positions')
@@ -111,7 +109,7 @@ class BaseMDState():
         """
         Set all accelerations to given value.
         
-        :arg val: (float) value to set to.
+        :arg double val: value to set to.
         """
         
         self._accel.set_val(val)
@@ -191,8 +189,8 @@ class PosInitLatticeNRho():
     """
     Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass.
     
-    :arg: (int) input, N, number of particles.
-    :arg: (float) input, :math:`/rho`, required density.
+    :arg int N: N, number of particles.
+    :arg double rho: :math:`rho`, required density.
     
     """
     
@@ -210,7 +208,7 @@ class PosInitLatticeNRho():
         """
         Applies initial lattice to particle positions.
         
-        :arg: (state.*) object of state class. Inheritered from BaseMDState.
+        :arg state state_input: object of state class. Inheritered from BaseMDState.
         """
         
         #Evaluate cube side length.
@@ -245,9 +243,9 @@ class PosInitLatticeNRhoRand():
     """
     Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass adds uniform deviantion based on given maximum.
     
-        :arg N: (int) number of particles.
-        :arg rho: (float) :math:`/rho`, required density.
-        :arg dev: (float) maximum possible random deviation from lattice.
+        :arg int N: number of particles.
+        :arg double rho: :math:`/rho`, required density.
+        :arg double dev: maximum possible random deviation from lattice.
     
     """
     
@@ -265,7 +263,7 @@ class PosInitLatticeNRhoRand():
         """
         Applies initial lattice to particle positions.
         
-        :arg: (state.*) object of state class. Inheritered from BaseMDState.
+        :arg state state_input: object of state class. Inheritered from BaseMDState.
         """
         
         #Evaluate cube side length.
@@ -299,9 +297,9 @@ class PosInitTwoParticlesInABox():
     """
     Creates two particles a set distance apart on the  given axis, centred on the origin. Places these within a containing volume of given extents.
     
-    :arg rx: (float) Distance between particles.
-    :arg extents: (np.array(3)) Extent for containing volume.
-    :arg axis: (np.array(3)) axis to centre on.
+    :arg double rx: Distance between particles.
+    :arg np.array(3,1) extents: Extent for containing volume.
+    :arg np.array(3,1) axis: axis to centre on.
     """
     
     def __init__(self,rx,extent = np.array([1.0,1.0,1.0]), axis = np.array([1.0,0.0,0.0])):
@@ -314,7 +312,7 @@ class PosInitTwoParticlesInABox():
         Resets the first two particles in the input state domain to sit on the x-axis the set distance apart.
         
         
-        :arg state_input: (state class) State object containing at least two particles.
+        :arg state state_input: State object containing at least two particles.
         """
         
         if (state_input.N() >= 2):
@@ -333,8 +331,8 @@ class VelInitNormDist():
     """
     Initialise velocities by sampling from a gaussian distribution.
     
-    :arg mu: (float) Mean for gaussian distribution.
-    :arg sig: (float) Standard deviation for gaussian distribution.
+    :arg double mu: Mean for gaussian distribution.
+    :arg double sig: Standard deviation for gaussian distribution.
     
     """
 
@@ -347,7 +345,7 @@ class VelInitNormDist():
         """
         Resets particle velocities to Gaussian distribution.
         
-        :arg state_input: (state class) Input state class oject containing velocities.
+        :arg state state_input: Input state class oject containing velocities.
         """
         
         #Get velocities.
@@ -362,8 +360,8 @@ class VelInitTwoParticlesInABox():
     """
     Sets velocities for two particles.
     
-    :arg vx: (np.array(3,1)) Velocity vector for particle 1.
-    :arg vy: (np.array(3,1)) Velocity vector for particle 2.
+    :arg np.array(3,1) vx: Velocity vector for particle 1.
+    :arg np.array(3,1) vy: Velocity vector for particle 2.
     
     """
 
@@ -375,7 +373,7 @@ class VelInitTwoParticlesInABox():
         """
         Resets the particles in the input state to the required velocities.
         
-        :arg state_input: (state class) input state.
+        :arg state state_input: input state.
         """
 
         if (state_input.N() >= 2):
@@ -389,8 +387,8 @@ class MassInitTwoAlternating():
     '''
     Class to initialise masses, alternates between two masses.
     
-    :arg m1: (float) First mass
-    :arg m2: (float) Second mass
+    :arg double m1:  First mass
+    :arg double m2:  Second mass
     '''
     
     def __init__(self, m1 = 1.0, m2 = 1.0):
@@ -401,7 +399,7 @@ class MassInitTwoAlternating():
         '''
         Apply to input mass dat class.
         
-        :arg mass_input: (class Dat) Dat container with masses.
+        :arg Dat mass_input: Dat container with masses.
         '''
         for ix in range(np.shape(mass_input.Dat())[0]):
             mass_input[ix] = self._m[(ix % 2)]

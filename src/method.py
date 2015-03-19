@@ -13,11 +13,11 @@ class VelocityVerlet():
     '''
     Class to apply Velocity-Verlet to a given state using a given looping method.
     
-    :arg dt: (float) Time step size, can be specified at integrate call.
-    :arg T: (float) End time, can be specified at integrate call.
-    :arg USE_C: (bool) Flag to use C looping and kernel.
-    :arg USE_PLOTTING: (bool) Flag to plot state at certain progress points.
-    :arg USE_LOGGING: (bool) Flag to log energy at each iteration.
+    :arg double dt: Time step size, can be specified at integrate call.
+    :arg double T: End time, can be specified at integrate call.
+    :arg bool USE_C: Flag to use C looping and kernel.
+    :arg bool USE_PLOTTING: Flag to plot state at certain progress points.
+    :arg bool USE_LOGGING: Flag to log energy at each iteration.
     '''
     
     def __init__(self, dt = 0.0001, T = 0.01, state = None, USE_C = True, USE_PLOTTING = True, USE_LOGGING = True):
@@ -49,8 +49,8 @@ class VelocityVerlet():
         '''
         Integrate state forward in time.
         
-        :arg dt: (float) Time step size.
-        :arg T: (float) End time.
+        :arg double dt: Time step size.
+        :arg double T: End time.
         '''
         if (dt != None):
             self._dt = dt
@@ -100,12 +100,12 @@ class VelocityVerlet():
             
             
         
-        self.velocity_verlet_integration()
+        self._velocity_verlet_integration()
         
         return self._E_store
         
         
-    def velocity_verlet_integration(self):
+    def _velocity_verlet_integration(self):
         """
         Perform Velocity Verlet integration up to time T.
         """    
@@ -154,7 +154,7 @@ class VelocityVerlet():
         
     
                 
-    def velocity_verlet_step(self):
+    def _velocity_verlet_step(self):
         """
         Perform one step of Velocity Verlet.
         """

@@ -5,25 +5,19 @@ import ctypes
 
 class BaseDomain():
     '''
-    Base class for simulation domain, cartesian, 3D.
+    Base class for simulation domain, cartesian, 3D. Initialises domain with given extents.
     
-    :arg extent: [x,y,z] numpy array with extents of simulation domain.
-    :arg cellcount: (Integer) Number of cells within domain.
+    :arg np.array(3,1) extent: [x,y,z] numpy array with extents of simulation domain.
+    :arg int cellcount: Number of cells within domain (optional).
 
     '''
 
     def __init__(self, extent = np.array([1., 1., 1.]), cell_count = 1):
-        """
-        Initialises a domain with a list length three.
-        
-        :arg extent: [x,y,z] numpy array with extents of simulation domain.
-        :arg cellcount: (Integer) Number of cells within domain.
-        
-        """
+
         self._extent = extent
         self._cell_count = cell_count
         self._cell_array = np.array([1,1,1], dtype=ctypes.c_int, order='C')
-        self._cell_edge_lengths = np.array([1.,1.,1.],dtype=float)
+        self._cell_edge_lengths = np.array([1.,1.,1.],dtype=double)
         
         self._USE_C = False
         if (self._USE_C):
@@ -44,7 +38,7 @@ class BaseDomain():
         """
         Set domain extents
         
-        :arg new_extent: (np.shape(1,3)) New extents.
+        :arg np.array(3,1) new_extent: New extents.
         
         """
         self._extent = new_extent
@@ -60,7 +54,7 @@ class BaseDomain():
         """
         Convert tuple index to linear index. Applies periodic boundaries first.
         
-        :arg c_in: Input index to convert.
+        :arg int c_in: Input index to convert.
         """
         
         C_in[0] = (C_in[0]-1) % self._cell_array[0] + 1
@@ -74,7 +68,7 @@ class BaseDomain():
         """
         Convert tuple index to linear index. Applies periodic boundaries first. Returns periodic boundary offsets.
         
-        :arg c_in_abs: Input index to convert.
+        :arg np.array(3,1) c_in_abs: Input index to convert.
         """
         
         
@@ -97,7 +91,7 @@ class BaseDomain():
         """
         Convert cell linear index to vector.
         
-        :arg c_in: (int) Input index.
+        :arg int c_in: Input index.
         """    
         Cz = 1 + (c_in-1)/(self._cell_array[0]*self._cell_array[1])
         Cx = 1 + (c_in-1) % self._cell_array[0]
@@ -110,7 +104,7 @@ class BaseDomain():
         """
         Returns the linear cell index for a given input coordinate.
         
-        :arg r_in: (np.array(3,1)) Cartesian vector for particle position.
+        :arg np.array(3,1) r_in:  Cartesian vector for particle position.
         """
 
         r_p = r_in + 0.5*self._extent
@@ -140,7 +134,7 @@ class BaseDomain():
         """
         Set cell array with a vector.
         
-        :arg cell_array: (np.array(1,3), new cell array.)
+        :arg np.array(3,1) cell_array: new cell array.
         """
         self._cell_array = cell_array.astype(ctypes.c_int)
         self._cell_count_recalc()
@@ -150,7 +144,7 @@ class BaseDomain():
         """
         Create cell structure based on current extent and extended cutoff distance.
         
-        :arg rn: (float) :math:`r_n = r_c + \delta`
+        :arg double rn:  :math:`r_n = r_c + \delta`
         
         """
         self._cell_array[0] = int(self._extent[0]/rn)
@@ -181,7 +175,7 @@ class BaseDomain():
         """
         Return a new position accounting for periodic boundaries. Would probably benefit from being in C.
         
-        :arg r_in: np.array(1,3) input position
+        :arg np.array(3,1) r_in: input position
         """
 
         
