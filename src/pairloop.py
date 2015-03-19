@@ -175,15 +175,27 @@ class PairLoopRapaport(_base):
     '''
     Class to implement rapaport 14 cell looping.
     
-    :arg state input_state: State containing data to loop over.
+    :arg int N: Number of elements to loop over.
+    :arg domain domain: Domain containing the particles.
+    :arg dat positions: Postitions of particles.
+    :arg potential potential: Potential between particles.
+    :arg dict dat_dict: Dictonary mapping between state vars and kernel vars.
+    
     '''
-    def __init__(self,input_state):
-         
-        self._input_state = input_state
+    def __init__(self,N,domain,positions,potential,dat_dict):
+        
+        self._N = N
+        self._domain = domain
+        self._P = positions
+        self._potential = potential
+        self._particle_dat_dict = dat_dict
+        
+        
+        
         
         '''Construct initial cell list'''
-        self._q_list = np.zeros([self._input_state.N() + self._input_state.domain().cell_count()], dtype=ctypes.c_int, order='C')
-        self.cell_sort_all()
+        self._q_list = np.zeros([self._N + self._domain.cell_count()], dtype=ctypes.c_int, order='C')
+        
         
         
         
@@ -194,10 +206,11 @@ class PairLoopRapaport(_base):
         self._temp_dir = './build/'
         if (not os.path.exists(self._temp_dir)):
             os.mkdir(self._temp_dir)
-        self._kernel = input_state.potential().kernel()
-        self._particle_dat_dict = input_state.potential().datdict(input_state)
+        self._kernel = self._potential.kernel()
+        
+        
         self._nargs = len(self._particle_dat_dict)
-        self._headers = input_state.potential().headers()
+        self._headers = self._potential.headers()
 
         self._code_init()
         
@@ -383,48 +396,40 @@ class PairLoopRapaport(_base):
         
         return s       
         
-     
-    def _update_prepare(self):
-        #handle perodic bounadies
-        self._input_state.domain().boundary_correct(self._input_state)
-        #update cell list
-        self.cell_sort_all()
         
+                
         
     def execute(self):
         '''
         C version of the pair_locate: Loop over all cells update accelerations and potential engery.
         '''
-        self._update_prepare()
-    
-        self._input_state.set_accelerations(ctypes.c_double(0.0))
-        self._input_state.reset_U() 
+        self._cell_sort_all()
         
-        args = [self._input_state.domain().cell_array().ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        args = [self._domain.cell_array().ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
                         self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                        self._input_state.domain().extent().ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
+                        self._domain.extent().ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
                 
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data())
             
         method = self._lib[self._kernel.name+'_wrapper']
         
-        method(ctypes.c_int(self._input_state.N()), ctypes.c_int(self._input_state.domain().cell_count()), *args)           
+        method(ctypes.c_int(self._N), ctypes.c_int(self._domain.cell_count()), *args)           
         
         
     #move this to C    
-    def cell_sort_all(self):
+    def _cell_sort_all(self):
         """
         Construct neighbour list, assigning atoms to cells. Using Rapaport alg.
         """
-        for cx in range(self._input_state.domain().cell_count()):
-            self._q_list[self._input_state.N() + cx] = -1
-        for ix in range(self._input_state.N()):
-            c = self._input_state.domain().get_cell_lin_index(self._input_state.positions().Dat()[ix,])
+        for cx in range(self._domain.cell_count()):
+            self._q_list[self._N + cx] = -1
+        for ix in range(self._N):
+            c = self._domain.get_cell_lin_index(self._P.Dat()[ix,])
             
             #print c, self._pos[ix-1,], self._domain._extent*0.5
-            self._q_list[ix] = self._q_list[self._input_state.N() + c]
-            self._q_list[self._input_state.N() + c] = ix
+            self._q_list[ix] = self._q_list[self._N + c]
+            self._q_list[self._N + c] = ix
             
      
     def _create_library(self):

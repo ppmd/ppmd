@@ -27,8 +27,9 @@ class VelocityVerlet():
         
 
         self._state = state
-        self._N = self._state.N()
         
+        self._domain = self._state.domain()
+        self._N = self._state.N()
         self._A = self._state.accelerations()
         self._V = self._state.velocities()
         self._P = self._state.positions()
@@ -112,9 +113,10 @@ class VelocityVerlet():
 
         
 
-        percent_int = 5
+        percent_int = 10
         percent_count = percent_int
 
+        self._domain.boundary_correct(self._P)
         self._state.accelerations_update()
 
         for i in range(self._max_it):
@@ -166,7 +168,7 @@ class VelocityVerlet():
             self._P.Dat()[...,...]+=self._dt*self._V.Dat()
         
         #update accelerations
-        
+        self._domain.boundary_correct(self._P)
         self._state.accelerations_update()
         
         if (self._USE_C):

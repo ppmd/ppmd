@@ -171,11 +171,11 @@ class BaseDomain():
         return self._cell_array   
     
     
-    def boundary_correct(self, input_state):
+    def boundary_correct(self, r_in_dat):
         """
         Return a new position accounting for periodic boundaries. Would probably benefit from being in C.
         
-        :arg np.array(3,1) r_in: input position
+        :arg np.array(3,1) r_in_dat: input position
         """
 
         
@@ -188,8 +188,8 @@ class BaseDomain():
         
         
         if (self._USE_C != True):
-                N = input_state.N()
-                r_in = input_state.positions().Dat()
+                N = r_in_dat.npart
+                r_in = r_in_dat.Dat()
         
         
                 for ix in range(N):

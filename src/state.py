@@ -70,7 +70,13 @@ class BaseMDState():
         print "Domain extents = ",self._domain._extent
         
         #Setup acceleration updating from given potential
-        self._looping_method_accel = pairloop.PairLoopRapaport(self)
+        
+        _potential_dat_dict = self._potential.datdict(self)
+        self._looping_method_accel = pairloop.PairLoopRapaport(N=self._N,
+                                                                domain = self._domain, 
+                                                                positions = self._pos, 
+                                                                potential = self._potential, 
+                                                                dat_dict = _potential_dat_dict)
     
         
     def N(self):
@@ -118,6 +124,8 @@ class BaseMDState():
         """
         Updates accelerations dats using given looping method.
         """
+        self.set_accelerations(ctypes.c_double(0.0))
+        self.reset_U()
         self._looping_method_accel.execute()
         
     def masses(self):

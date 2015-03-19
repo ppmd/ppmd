@@ -15,7 +15,7 @@ if __name__ == '__main__':
     test_1000 = True
     
     #2 particles bouncing agasint each other.
-    test_2_bounce = True
+    test_2_bounce = False
     
     #plot as computing + at end?
     plotting = True
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     
     #integrate.
     start = time.clock()
-    energy_data = test_integrator.integrate(dt = 0.00001, T = 0.1)
+    energy_data = test_integrator.integrate(dt = 0.0001, T = 0.1)
     end = time.clock()
     print "Rough time taken:", end - start,"s"
     
