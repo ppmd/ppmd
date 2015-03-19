@@ -50,6 +50,8 @@
             
   <h1>Source code for potential</h1><div class="highlight"><pre>
 <span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">kernel</span>
+<span class="kn">import</span> <span class="nn">constant</span>
 
 
 <div class="viewcode-block" id="BasePotential"><a class="viewcode-back" href="../potential.html#potential.BasePotential">[docs]</a><span class="k">class</span> <span class="nc">BasePotential</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -92,8 +94,8 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Initialise Lennard Jones potential:</span>
 <span class="sd">        </span>
-<span class="sd">        :arg epsilon: (float) Potential parameter :math:`\epsilon`</span>
-<span class="sd">        :arg sigma: (float) Potential parameter :math:`\sigma`   </span>
+<span class="sd">        :arg double epsilon: Potential parameter :math:`\epsilon`</span>
+<span class="sd">        :arg double sigma: Potential parameter :math:`\sigma`   </span>
 <span class="sd">        </span>
 <span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -102,6 +104,17 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_sigma6</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span><span class="o">**</span><span class="mi">6</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_4epsilon</span> <span class="o">=</span> <span class="mf">4.</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_epsilon</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_48_sigma</span> <span class="o">=</span> <span class="mf">48.</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sigma</span>
+        
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rc</span> <span class="o">=</span> <span class="mf">2.</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">6.</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_sigma</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rn</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_rc</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rn2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rn</span><span class="o">**</span><span class="mi">2</span>
+        
+        
+        
+        
+        
+        
         
 <div class="viewcode-block" id="LennardJones.epsilon"><a class="viewcode-back" href="../potential.html#potential.LennardJones.epsilon">[docs]</a>    <span class="k">def</span> <span class="nf">epsilon</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -120,7 +133,7 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Evaluate potential.</span>
 <span class="sd">        </span>
-<span class="sd">        :arg r: (float) Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`</span>
+<span class="sd">        :arg double r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">_sig6_rm6</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sigma6</span><span class="o">*</span><span class="p">(</span><span class="n">r</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mi">6</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">_4epsilon</span> <span class="o">*</span> <span class="n">_sig6_rm6</span> <span class="o">*</span> <span class="p">(</span><span class="n">_sig6_rm6</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
@@ -129,7 +142,7 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Evaluate force.</span>
 <span class="sd">        </span>
-<span class="sd">        :arg r: (float) Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`</span>
+<span class="sd">        :arg double r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`</span>
 <span class="sd">        </span>
 <span class="sd">        Assumes non-dimensionalisation:</span>
 <span class="sd">        :math: &#39;\epsilon = 1&#39;</span>
@@ -140,8 +153,143 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">_rm2</span> <span class="o">=</span> <span class="n">r</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
         <span class="n">_rm6</span> <span class="o">=</span> <span class="n">_rm2</span><span class="o">**</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_48_sigma</span> <span class="o">*</span> <span class="n">_rm2</span> <span class="o">*</span> <span class="n">_rm6</span> <span class="o">*</span> <span class="p">(</span><span class="n">_rm6</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span></div></div>
-</pre></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_48_sigma</span> <span class="o">*</span> <span class="n">_rm2</span> <span class="o">*</span> <span class="n">_rm6</span> <span class="o">*</span> <span class="p">(</span><span class="n">_rm6</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span>
+        </div></div>
+<div class="viewcode-block" id="LennardJonesShifted"><a class="viewcode-back" href="../potential.html#potential.LennardJonesShifted">[docs]</a><span class="k">class</span> <span class="nc">LennardJonesShifted</span><span class="p">(</span><span class="n">BasePotential</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Shifted Lennard Jones potential.</span>
+<span class="sd">    </span>
+<span class="sd">    .. math:</span>
+<span class="sd">        V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + 1/4)</span>
+<span class="sd">        </span>
+<span class="sd">    for :math:`r&gt;r_c=2^{1/6}` the potential (and force) is set to zero.</span>
+
+<span class="sd">    :arg epsilon: Potential parameter :math:`\epsilon`</span>
+<span class="sd">    :arg sigma: Potential parameter :math:`\sigma`</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">epsilon</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span><span class="n">sigma</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_epsilon</span> <span class="o">=</span> <span class="n">epsilon</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sigma</span> <span class="o">=</span> <span class="n">sigma</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_C_V</span> <span class="o">=</span> <span class="mf">4.</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_epsilon</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_C_F</span> <span class="o">=</span> <span class="o">-</span><span class="mi">48</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_epsilon</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">_sigma</span><span class="o">**</span><span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rc</span> <span class="o">=</span> <span class="mf">2.</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">6.</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_sigma</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rn</span> <span class="o">=</span> <span class="mf">2.0</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_rc</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rc2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rc</span><span class="o">**</span><span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sigma2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sigma</span><span class="o">**</span><span class="mi">2</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="LennardJonesShifted.epsilon"><a class="viewcode-back" href="../potential.html#potential.LennardJonesShifted.epsilon">[docs]</a>    <span class="k">def</span> <span class="nf">epsilon</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Value of parameter :math:`\epsilon`&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_epsilon</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="LennardJonesShifted.sigma"><a class="viewcode-back" href="../potential.html#potential.LennardJonesShifted.sigma">[docs]</a>    <span class="k">def</span> <span class="nf">sigma</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Value of parameter :math:`\sigma`&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sigma</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="LennardJonesShifted.rc"><a class="viewcode-back" href="../potential.html#potential.LennardJonesShifted.rc">[docs]</a>    <span class="k">def</span> <span class="nf">rc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Value of cufoff distance :math:`r_c`&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rc</span>
+</div>
+<div class="viewcode-block" id="LennardJonesShifted.evaluate"><a class="viewcode-back" href="../potential.html#potential.LennardJonesShifted.evaluate">[docs]</a>    <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">r</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Evaluate potential.</span>
+
+<span class="sd">        :arg r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">r</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rc</span><span class="p">):</span>
+            <span class="n">r_m6</span> <span class="o">=</span> <span class="p">(</span><span class="n">r</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">_sigma</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mi">6</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_C_V</span><span class="o">*</span><span class="p">((</span><span class="n">r_m6</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span><span class="o">*</span><span class="n">r_m6</span> <span class="o">+</span> <span class="mf">0.25</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span></div>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    def evaluate_force(self,rx,ry):</span>
+<span class="sd">        &#39;&#39;&#39;Evaluate force.</span>
+
+<span class="sd">        :arg rx: x-component of distance :math:`r_x`</span>
+<span class="sd">        :arg ry: y-component of distance :math:`r_y`</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        r2 = rx**2+ry**2</span>
+<span class="sd">        if (r2 &lt; self._rc2):</span>
+<span class="sd">            r_m2 = self._sigma2/r2</span>
+<span class="sd">            tmp = self._C_F*(r_m2**7 - 0.5*r_m2**4)</span>
+<span class="sd">            return (tmp*rx,tmp*ry)</span>
+<span class="sd">        else:</span>
+<span class="sd">            return (0.0,0.0)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="LennardJonesShifted.evaluate_force"><a class="viewcode-back" href="../potential.html#potential.LennardJonesShifted.evaluate_force">[docs]</a>    <span class="k">def</span> <span class="nf">evaluate_force</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">r2</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Evaluate force.</span>
+
+<span class="sd">        :arg rx: x-component of distance :math:`r_x`</span>
+<span class="sd">        :arg ry: y-component of distance :math:`r_y`</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="n">r2</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rc2</span><span class="p">):</span>
+            <span class="n">r_m2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sigma2</span><span class="o">/</span><span class="n">r2</span>
+            <span class="k">return</span>  <span class="bp">self</span><span class="o">.</span><span class="n">_C_F</span><span class="o">*</span><span class="p">(</span><span class="n">r_m2</span><span class="o">**</span><span class="mi">7</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">r_m2</span><span class="o">**</span><span class="mi">4</span><span class="p">)</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>   
+</div>
+<div class="viewcode-block" id="LennardJonesShifted.kernel"><a class="viewcode-back" href="../potential.html#potential.LennardJonesShifted.kernel">[docs]</a>    <span class="k">def</span> <span class="nf">kernel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns a kernel class for the potential.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        
+        <span class="n">kernel_code</span> <span class="o">=</span> <span class="s">&#39;&#39;&#39;</span>
+<span class="s">        </span>
+<span class="s">        const double R0 = P[1][0] - P[0][0];</span>
+<span class="s">        const double R1 = P[1][1] - P[0][1];</span>
+<span class="s">        const double R2 = P[1][2] - P[0][2];</span>
+<span class="s">        </span>
+<span class="s">        const double r2 = R0*R0 + R1*R1 + R2*R2;</span>
+<span class="s">        </span>
+<span class="s">        if (r2 &lt; rc2){</span>
+<span class="s">        </span>
+
+<span class="s">            /* Lennard-Jones */</span>
+<span class="s">            const double r_m2 = sigma2/r2;</span>
+<span class="s">            const double r_m4 = r_m2*r_m2;</span>
+<span class="s">            const double r_m6 = r_m4*r_m2;</span>
+<span class="s">            </span>
+<span class="s">            *U+= CV*((r_m6-1.0)*r_m6 + 0.25);</span>
+<span class="s">            </span>
+<span class="s">            const double r_m8 = r_m4*r_m4;</span>
+<span class="s">            const double f_tmp = CF*(r_m6 - 0.5)*r_m8;</span>
+
+<span class="s">            </span>
+<span class="s">            A[0][0]+=f_tmp*R0;</span>
+<span class="s">            A[0][1]+=f_tmp*R1;</span>
+<span class="s">            A[0][2]+=f_tmp*R2;</span>
+<span class="s">            </span>
+<span class="s">            A[1][0]-=f_tmp*R0;</span>
+<span class="s">            A[1][1]-=f_tmp*R1;</span>
+<span class="s">            A[1][2]-=f_tmp*R2;</span>
+
+<span class="s">        }</span>
+<span class="s">        </span>
+<span class="s">        &#39;&#39;&#39;</span>
+        <span class="n">constants</span><span class="o">=</span><span class="p">(</span><span class="n">constant</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s">&#39;sigma2&#39;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span>
+                   <span class="n">constant</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s">&#39;rc2&#39;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_rc</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span>
+                   <span class="n">constant</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s">&#39;CF&#39;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_C_F</span><span class="p">),</span>
+                   <span class="n">constant</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s">&#39;CV&#39;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_C_V</span><span class="p">))</span>        
+        
+        
+        <span class="k">return</span> <span class="n">kernel</span><span class="o">.</span><span class="n">Kernel</span><span class="p">(</span><span class="s">&#39;LJ_accel_U&#39;</span><span class="p">,</span><span class="n">kernel_code</span><span class="p">,</span> <span class="n">constants</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="LennardJonesShifted.datdict"><a class="viewcode-back" href="../potential.html#potential.LennardJonesShifted.datdict">[docs]</a>    <span class="k">def</span> <span class="nf">datdict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_state</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Map between state variables and kernel variables, returns required dictonary.</span>
+<span class="sd">        </span>
+<span class="sd">        :arg state input_state: state with containing variables.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s">&#39;P&#39;</span><span class="p">:</span><span class="n">input_state</span><span class="o">.</span><span class="n">positions</span><span class="p">(),</span> <span class="s">&#39;A&#39;</span><span class="p">:</span><span class="n">input_state</span><span class="o">.</span><span class="n">accelerations</span><span class="p">(),</span> <span class="s">&#39;U&#39;</span><span class="p">:</span><span class="n">input_state</span><span class="o">.</span><span class="n">U</span><span class="p">()}</span>
+</div>
+<div class="viewcode-block" id="LennardJonesShifted.headers"><a class="viewcode-back" href="../potential.html#potential.LennardJonesShifted.headers">[docs]</a>    <span class="k">def</span> <span class="nf">headers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Returns required headers for kernel.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="p">[]</span>
+</pre></div></div></div>
 
           </div>
         </div>

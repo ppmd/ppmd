@@ -65,11 +65,11 @@
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>dt</strong> &#8211; (float) Time step size, can be specified at integrate call.</li>
-<li><strong>T</strong> &#8211; (float) End time, can be specified at integrate call.</li>
-<li><strong>USE_C</strong> &#8211; (bool) Flag to use C looping and kernel.</li>
-<li><strong>USE_PLOTTING</strong> &#8211; (bool) Flag to plot state at certain progress points.</li>
-<li><strong>USE_LOGGING</strong> &#8211; (bool) Flag to log energy at each iteration.</li>
+<li><strong>dt</strong> (<em>double</em>) &#8211; Time step size, can be specified at integrate call.</li>
+<li><strong>T</strong> (<em>double</em>) &#8211; End time, can be specified at integrate call.</li>
+<li><strong>USE_C</strong> (<em>bool</em>) &#8211; Flag to use C looping and kernel.</li>
+<li><strong>USE_PLOTTING</strong> (<em>bool</em>) &#8211; Flag to plot state at certain progress points.</li>
+<li><strong>USE_LOGGING</strong> (<em>bool</em>) &#8211; Flag to log energy at each iteration.</li>
 </ul>
 </td>
 </tr>
@@ -84,25 +84,13 @@
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>dt</strong> &#8211; (float) Time step size.</li>
-<li><strong>T</strong> &#8211; (float) End time.</li>
+<li><strong>dt</strong> (<em>double</em>) &#8211; Time step size.</li>
+<li><strong>T</strong> (<em>double</em>) &#8211; End time.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
-</dd></dl>
-
-<dl class="method">
-<dt id="method.VelocityVerlet.velocity_verlet_integration">
-<tt class="descname">velocity_verlet_integration</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/method.html#VelocityVerlet.velocity_verlet_integration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#method.VelocityVerlet.velocity_verlet_integration" title="Permalink to this definition">¶</a></dt>
-<dd><p>Perform Velocity Verlet integration up to time T.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="method.VelocityVerlet.velocity_verlet_step">
-<tt class="descname">velocity_verlet_step</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/method.html#VelocityVerlet.velocity_verlet_step"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#method.VelocityVerlet.velocity_verlet_step" title="Permalink to this definition">¶</a></dt>
-<dd><p>Perform one step of Velocity Verlet.</p>
 </dd></dl>
 
 </dd></dl>

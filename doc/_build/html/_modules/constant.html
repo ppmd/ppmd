@@ -57,7 +57,7 @@
 <span class="sd">    This class can be used to use placeholders for constants</span>
 <span class="sd">    in kernels.</span>
 <span class="sd">    </span>
-<span class="sd">    :arg name: Name of constant</span>
+<span class="sd">    :arg str name: Name of constant</span>
 <span class="sd">    :arg value: Numerical value (can actually be any data type)</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">name</span><span class="p">,</span><span class="n">value</span><span class="p">):</span>
@@ -71,7 +71,7 @@
 <span class="sd">        if the name of the constant is ``mass``, then it would not replace</span>
 <span class="sd">        it in ``mass1`` or ``Hmass``.</span>
 
-<span class="sd">        :arg s: string to work on</span>
+<span class="sd">        :arg str s: string to work on</span>
 <span class="sd">        &#39;&#39;&#39;</span>
         <span class="n">forbiddenChars</span><span class="o">=</span><span class="s">&#39;[^a-zA-Z0-9_]&#39;</span>
         <span class="n">regex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span>

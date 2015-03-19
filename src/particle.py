@@ -83,8 +83,10 @@ class Dat():
         '''
         return self._name
         
-        
-class ScalarDat(Dat):
+################################################################################################################
+# ScalarDat
+################################################################################################################ 
+class ScalarDat():
     '''
     Base class to hold a single floating point property.
     
@@ -92,19 +94,19 @@ class ScalarDat(Dat):
     :arg str name: Collective name of stored vars eg positions.
     
     '''
-    def __init__(self, initial_value = None, name = None):
+    def __init__(self, initial_value = None, name = None, ncomp = 1):
         '''
         Creates scalar with given initial value.
         '''
         
         self._type = 'scalar'
         self._name = name
-        
+        self._N1 = ncomp
         
         if (initial_value != None):
-            self._Dat = float(initial_value) * np.ones([1], dtype=ctypes.c_double, order='C')
+            self._Dat = float(initial_value) * np.ones([self._N1], dtype=ctypes.c_double, order='C')
         else:
-            self._Dat = np.zeros([1], dtype=ctypes.c_double, order='C')
+            self._Dat = np.zeros([self._N1], dtype=ctypes.c_double, order='C')
         
     
     def Dat(self):
@@ -118,7 +120,7 @@ class ScalarDat(Dat):
         
     
     def __setitem__(self,ix, val):
-        self._Dat[0] = val
+        self._Dat[ix] = val
           
     def __str__(self):
         return str(self._Dat)
@@ -126,8 +128,7 @@ class ScalarDat(Dat):
     def __call__(self):
         return self._Dat
     
-        
-        
+          
     def ctypes_data(self):
         '''Return ctypes-pointer to data.'''
         return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))        
@@ -145,8 +146,12 @@ class ScalarDat(Dat):
         '''    
         return self._name    
     
-        
-        
+    @property
+    def ncomp(self):
+        '''
+        Return number of components.
+        '''   
+        return self._N1
         
         
         

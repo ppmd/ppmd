@@ -9,6 +9,10 @@ import kernel
 import constant
 np.set_printoptions(threshold='nan')
 
+################################################################################################################
+# Velocity Verlet Method
+################################################################################################################ 
+
 class VelocityVerlet():
     '''
     Class to apply Velocity-Verlet to a given state using a given looping method.
@@ -177,12 +181,69 @@ class VelocityVerlet():
             self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat()
         
     
- 
+################################################################################################################
+# G(R)
+################################################################################################################  
+    
+class RadialDistribution():
+    '''
+    Class to calculate radial distribution function.
+    
+    :arg np.array(3,1) positions: Particle positions.
+    :arg np.array(3,1) extents: Domain extents.
+    :arg double rmax: Maximum radial distance.
+    :arg int rsteps: Resolution to record to, default 100.
+    '''
+    def __init__(self, positions, rmax = 1.0, rsteps = 100, extents):
+        
+        
+        self._P = positions
+        self._rsteps = rsteps
+        self._gr = data.ScalarArray(ncomp = self._rsteps)
+        self._extent = data.ScalarArray(val=extents)
+        
+        self._kernel = '''
+                    const double R0 = P[1][0] - P[0][0];
+                    const double R1 = P[1][1] - P[0][1];
+                    const double R2 = P[1][2] - P[0][2];
+        '''
+        
+        
+        
+        
+        
     
     
     
     
     
-    
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     

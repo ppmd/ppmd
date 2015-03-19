@@ -311,7 +311,7 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns the 14 neighbouring cells as linear index.</span>
 <span class="sd">        </span>
-<span class="sd">        :arg ix: (int) Input index.</span>
+<span class="sd">        :arg int ix: Input index.</span>
 <span class="sd">        </span>
 <span class="sd">        &quot;&quot;&quot;</span>
          
@@ -352,7 +352,7 @@
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Class to implement rapaport 14 cell looping.</span>
 <span class="sd">    </span>
-<span class="sd">    :arg input_state: State containing data to loop over.</span>
+<span class="sd">    :arg state input_state: State containing data to loop over.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">input_state</span><span class="p">):</span>
          
@@ -678,10 +678,10 @@
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Class to loop over all particles once.</span>
 <span class="sd">    </span>
-<span class="sd">    :arg N: (int) Number of elements to loop over.</span>
-<span class="sd">    :arg kernel: (class kernel) Kernel to apply at each element.</span>
-<span class="sd">    :arg particle_dat_dict: (dict) Dictonary storing map between kernel variables and state variables.</span>
-<span class="sd">    :arg headers: (list) list containing C headers required by kernel.</span>
+<span class="sd">    :arg int N: Number of elements to loop over.</span>
+<span class="sd">    :arg kernel kernel:  Kernel to apply at each element.</span>
+<span class="sd">    :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.</span>
+<span class="sd">    :arg list headers: list containing C headers required by kernel.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">particle_dat_dict</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_N</span> <span class="o">=</span> <span class="n">N</span>

@@ -51,37 +51,98 @@
   <h1>Source code for state</h1><div class="highlight"><pre>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">particle</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">pairloop</span>
+<span class="kn">import</span> <span class="nn">data</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">mpl_toolkits.mplot3d</span> <span class="kn">import</span> <span class="n">Axes3D</span>
+<span class="n">np</span><span class="o">.</span><span class="n">set_printoptions</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="s">&#39;nan&#39;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="BaseMDState"><a class="viewcode-back" href="../state.html#state.BaseMDState">[docs]</a><span class="k">class</span> <span class="nc">BaseMDState</span><span class="p">():</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Base molecular dynamics class, stores:</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">potential</span><span class="p">,</span> <span class="n">N</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">mass</span> <span class="o">=</span> <span class="mf">1.</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Base molecular dynamics class.</span>
+<span class="sd">    </span>
+<span class="sd">    :arg domain domain: Container within which the simulation takes place.</span>
+<span class="sd">    :arg potential potential: Potential to use between particles.</span>
+<span class="sd">    :arg PosInit* particle_pos_init: Class to initialise particles with.</span>
+<span class="sd">    :arg VelInit* particle_vel_init: Class to initialise particles velocities with.</span>
+<span class="sd">    :arg int N: Number of particles, default 1.</span>
+<span class="sd">    :arg double mass: Mass of particles, default 1.0.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">potential</span><span class="p">,</span> <span class="n">particle_pos_init</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">particle_vel_init</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">particle_mass_init</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">N</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">mass</span> <span class="o">=</span> <span class="mf">1.</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">        Intialise class to hold the state of a simulation.</span>
+<span class="sd">        :arg domain domain: Container within which the simulation takes place.</span>
+<span class="sd">        :arg potential potential: Potential to use between particles.</span>
+<span class="sd">        :arg int N: Number of particles, default 1.</span>
+<span class="sd">        :arg double mass: Mass of particles, default 1.0        </span>
 <span class="sd">        </span>
-<span class="sd">        </span>
-<span class="sd">        :arg domain: (Domain class) Container within which the simulation takes place.</span>
-<span class="sd">        :arg potential: (Potential class) Potential to use between particles.</span>
-<span class="sd">        :arg N: (integer) Number of particles, default 1.</span>
-<span class="sd">        :arg mass: (float) Mass of particles, default 1.0</span>
-<span class="sd">        &quot;&quot;&quot;</span>        
-        
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_potential</span> <span class="o">=</span> <span class="n">potential</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_N</span> <span class="o">=</span> <span class="n">N</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span> <span class="o">=</span> <span class="n">particle</span><span class="o">.</span><span class="n">Dat</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_vel</span> <span class="o">=</span> <span class="n">particle</span><span class="o">.</span><span class="n">Dat</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_accel</span> <span class="o">=</span> <span class="n">particle</span><span class="o">.</span><span class="n">Dat</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span> <span class="o">=</span> <span class="n">particle</span><span class="o">.</span><span class="n">Dat</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;positions&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vel</span> <span class="o">=</span> <span class="n">particle</span><span class="o">.</span><span class="n">Dat</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;velocities&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_accel</span> <span class="o">=</span> <span class="n">particle</span><span class="o">.</span><span class="n">Dat</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&#39;accelerations&#39;</span><span class="p">)</span>
         
         <span class="bp">self</span><span class="o">.</span><span class="n">_mass</span> <span class="o">=</span> <span class="n">particle</span><span class="o">.</span><span class="n">Dat</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">particle_mass_init</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">):</span>
+            <span class="n">particle_mass_init</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mass</span><span class="p">)</span>
+            
+        
         
         <span class="bp">self</span><span class="o">.</span><span class="n">_domain</span> <span class="o">=</span> <span class="n">domain</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_potential</span> <span class="o">=</span> <span class="n">potential</span>
         
+        <span class="c">#potential energy, kenetic energy, total energy.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_U</span> <span class="o">=</span> <span class="n">particle</span><span class="o">.</span><span class="n">ScalarDat</span><span class="p">();</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_K</span> <span class="o">=</span> <span class="n">particle</span><span class="o">.</span><span class="n">ScalarDat</span><span class="p">();</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_Q</span> <span class="o">=</span> <span class="n">particle</span><span class="o">.</span><span class="n">ScalarDat</span><span class="p">();</span>
+
+        
+
+        
+        
+        <span class="sd">&#39;&#39;&#39; Initialise particle positions&#39;&#39;&#39;</span>
+        <span class="n">particle_pos_init</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        
+        
+        <span class="sd">&#39;&#39;&#39;Initialise velocities&#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">particle_vel_init</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">):</span>
+            <span class="n">particle_vel_init</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        
+        
+        <span class="sd">&#39;&#39;&#39;Initialise cell array&#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_domain</span><span class="o">.</span><span class="n">set_cell_array_radius</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_potential</span><span class="o">.</span><span class="n">_rn</span><span class="p">)</span>
+        
+        <span class="k">print</span> <span class="s">&quot;Cell array = &quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_domain</span><span class="o">.</span><span class="n">_cell_array</span>
+        <span class="k">print</span> <span class="s">&quot;Domain extents = &quot;</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_domain</span><span class="o">.</span><span class="n">_extent</span>
+        
+        <span class="c">#Setup acceleration updating from given potential</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_looping_method_accel</span> <span class="o">=</span> <span class="n">pairloop</span><span class="o">.</span><span class="n">PairLoopRapaport</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+    
+        
+<div class="viewcode-block" id="BaseMDState.N"><a class="viewcode-back" href="../state.html#state.BaseMDState.N">[docs]</a>    <span class="k">def</span> <span class="nf">N</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns number of particles.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_N</span>
+        </div>
+<div class="viewcode-block" id="BaseMDState.domain"><a class="viewcode-back" href="../state.html#state.BaseMDState.domain">[docs]</a>    <span class="k">def</span> <span class="nf">domain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the domain used by the state.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_domain</span>
+        
+        </div>
 <div class="viewcode-block" id="BaseMDState.positions"><a class="viewcode-back" href="../state.html#state.BaseMDState.positions">[docs]</a>    <span class="k">def</span> <span class="nf">positions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return all particle positions.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span>
+
         </div>
 <div class="viewcode-block" id="BaseMDState.velocities"><a class="viewcode-back" href="../state.html#state.BaseMDState.velocities">[docs]</a>    <span class="k">def</span> <span class="nf">velocities</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -94,6 +155,65 @@
 <span class="sd">        Return all particle accelerations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_accel</span>
+        </div>
+<div class="viewcode-block" id="BaseMDState.set_accelerations"><a class="viewcode-back" href="../state.html#state.BaseMDState.set_accelerations">[docs]</a>    <span class="k">def</span> <span class="nf">set_accelerations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">val</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set all accelerations to given value.</span>
+<span class="sd">        </span>
+<span class="sd">        :arg double val: value to set to.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_accel</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+        </div>
+<div class="viewcode-block" id="BaseMDState.accelerations_update"><a class="viewcode-back" href="../state.html#state.BaseMDState.accelerations_update">[docs]</a>    <span class="k">def</span> <span class="nf">accelerations_update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Updates accelerations dats using given looping method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_looping_method_accel</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+        </div>
+<div class="viewcode-block" id="BaseMDState.masses"><a class="viewcode-back" href="../state.html#state.BaseMDState.masses">[docs]</a>    <span class="k">def</span> <span class="nf">masses</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return all particle masses.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mass</span>
+        </div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">potential</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_potential</span>
+        
+        
+        
+<div class="viewcode-block" id="BaseMDState.U"><a class="viewcode-back" href="../state.html#state.BaseMDState.U">[docs]</a>    <span class="k">def</span> <span class="nf">U</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return potential energy</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_U</span>
+        </div>
+<div class="viewcode-block" id="BaseMDState.K"><a class="viewcode-back" href="../state.html#state.BaseMDState.K">[docs]</a>    <span class="k">def</span> <span class="nf">K</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return Kenetic energy</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_K</span>
+        </div>
+<div class="viewcode-block" id="BaseMDState.Q"><a class="viewcode-back" href="../state.html#state.BaseMDState.Q">[docs]</a>    <span class="k">def</span> <span class="nf">Q</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return Total energy</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Q</span>        
+                
+        </div>
+<div class="viewcode-block" id="BaseMDState.reset_U"><a class="viewcode-back" href="../state.html#state.BaseMDState.reset_U">[docs]</a>    <span class="k">def</span> <span class="nf">reset_U</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reset potential energy to 0.0</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_U</span><span class="o">.</span><span class="n">_Dat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_double</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s">&#39;C&#39;</span><span class="p">)</span>
+        
+        </div>
+<div class="viewcode-block" id="BaseMDState.U_set"><a class="viewcode-back" href="../state.html#state.BaseMDState.U_set">[docs]</a>    <span class="k">def</span> <span class="nf">U_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">U_in</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set a kenetic energy value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_U</span> <span class="o">=</span> <span class="n">U_in</span>
         </div>
 <div class="viewcode-block" id="BaseMDState.energy_kenetic"><a class="viewcode-back" href="../state.html#state.BaseMDState.energy_kenetic">[docs]</a>    <span class="k">def</span> <span class="nf">energy_kenetic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -110,9 +230,246 @@
             <span class="n">energy</span> <span class="o">+=</span> <span class="mf">0.5</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_mass</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">squared_sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_vel</span><span class="p">[</span><span class="n">i</span><span class="p">,:])</span>
             
         <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">energy</span><span class="p">)</span>
+        </div>
+<div class="viewcode-block" id="BaseMDState.potential"><a class="viewcode-back" href="../state.html#state.BaseMDState.potential">[docs]</a>    <span class="k">def</span> <span class="nf">potential</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_potential</span>
         
         
+        </div></div>
+<div class="viewcode-block" id="PosInitLatticeNRho"><a class="viewcode-back" href="../state.html#state.PosInitLatticeNRho">[docs]</a><span class="k">class</span> <span class="nc">PosInitLatticeNRho</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass.</span>
+<span class="sd">    </span>
+<span class="sd">    :arg int N: N, number of particles.</span>
+<span class="sd">    :arg double rho: :math:`rho`, required density.</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">rho</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialise required lattice with the number of particles and required density.</span>
+<span class="sd">        </span>
+<span class="sd">       </span>
+<span class="sd">        &quot;&quot;&quot;</span>
         
+        <span class="bp">self</span><span class="o">.</span><span class="n">_N</span> <span class="o">=</span> <span class="n">N</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rho</span> <span class="o">=</span> <span class="n">rho</span>
+
+<div class="viewcode-block" id="PosInitLatticeNRho.reset"><a class="viewcode-back" href="../state.html#state.PosInitLatticeNRho.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_input</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Applies initial lattice to particle positions.</span>
+<span class="sd">        </span>
+<span class="sd">        :arg state state_input: object of state class. Inheritered from BaseMDState.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="c">#Evaluate cube side length.</span>
+        <span class="n">Lx</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rho</span><span class="p">))</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">3.</span><span class="p">)</span>
+        
+        <span class="c">#Cube dimensions of data</span>
+        <span class="n">np1_3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">3.</span><span class="p">)</span>
+        <span class="n">np2_3</span> <span class="o">=</span> <span class="n">np1_3</span><span class="o">**</span><span class="mf">2.</span>
+        
+        <span class="c">#starting point for each dimension. </span>
+        <span class="n">mLx_2</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">Lx</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">0.5</span><span class="o">*</span><span class="n">Lx</span><span class="p">)</span><span class="o">/</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">np1_3</span><span class="p">)</span>
+        
+        <span class="c">#set new domain extents</span>
+        <span class="n">state_input</span><span class="o">.</span><span class="n">domain</span><span class="p">()</span><span class="o">.</span><span class="n">set_extent</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">Lx</span><span class="p">,</span> <span class="n">Lx</span><span class="p">,</span> <span class="n">Lx</span><span class="p">]))</span>
+        
+        <span class="c">#get pointer for positions</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">state_input</span><span class="o">.</span><span class="n">positions</span><span class="p">()</span>
+        
+        <span class="c">#Loop over all particles</span>
+        <span class="k">for</span> <span class="n">ix</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="p">):</span>
+            
+            <span class="c">#Map point into cube side of calculated side length Lx.</span>
+            <span class="n">z</span><span class="o">=</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">ix</span><span class="o">/</span><span class="n">np2_3</span><span class="p">)</span>
+
+            <span class="n">pos</span><span class="p">[</span><span class="n">ix</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">=</span><span class="n">mLx_2</span><span class="o">+</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">fmod</span><span class="p">((</span><span class="n">ix</span> <span class="o">-</span> <span class="n">z</span><span class="o">*</span><span class="n">np2_3</span><span class="p">),</span><span class="n">np1_3</span><span class="p">)</span><span class="o">/</span><span class="n">np1_3</span><span class="p">)</span><span class="o">*</span><span class="n">Lx</span> <span class="c">#x</span>
+            <span class="n">pos</span><span class="p">[</span><span class="n">ix</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">=</span><span class="n">mLx_2</span><span class="o">+</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">((</span><span class="n">ix</span> <span class="o">-</span> <span class="n">z</span><span class="o">*</span><span class="n">np2_3</span><span class="p">)</span><span class="o">/</span><span class="n">np1_3</span><span class="p">)</span><span class="o">/</span><span class="n">np1_3</span><span class="p">)</span><span class="o">*</span><span class="n">Lx</span> <span class="c">#y</span>
+            <span class="n">pos</span><span class="p">[</span><span class="n">ix</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span><span class="o">=</span><span class="n">mLx_2</span><span class="o">+</span><span class="p">(</span><span class="n">z</span><span class="o">/</span><span class="n">np1_3</span><span class="p">)</span><span class="o">*</span><span class="n">Lx</span>
+            
+        
+        </div></div>
+<div class="viewcode-block" id="PosInitLatticeNRhoRand"><a class="viewcode-back" href="../state.html#state.PosInitLatticeNRhoRand">[docs]</a><span class="k">class</span> <span class="nc">PosInitLatticeNRhoRand</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass adds uniform deviantion based on given maximum.</span>
+<span class="sd">    </span>
+<span class="sd">        :arg int N: number of particles.</span>
+<span class="sd">        :arg double rho: :math:`/rho`, required density.</span>
+<span class="sd">        :arg double dev: maximum possible random deviation from lattice.</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">N</span><span class="p">,</span> <span class="n">rho</span><span class="p">,</span> <span class="n">dev</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialise required lattice with the number of particles and required density.</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_N</span> <span class="o">=</span> <span class="n">N</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rho</span> <span class="o">=</span> <span class="n">rho</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dev</span> <span class="o">=</span> <span class="n">dev</span>
+
+<div class="viewcode-block" id="PosInitLatticeNRhoRand.reset"><a class="viewcode-back" href="../state.html#state.PosInitLatticeNRhoRand.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_input</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Applies initial lattice to particle positions.</span>
+<span class="sd">        </span>
+<span class="sd">        :arg state state_input: object of state class. Inheritered from BaseMDState.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="c">#Evaluate cube side length.</span>
+        <span class="n">Lx</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rho</span><span class="p">))</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">3.</span><span class="p">)</span>
+        
+        <span class="c">#Cube dimensions of data</span>
+        <span class="n">np1_3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">3.</span><span class="p">)</span>
+        <span class="n">np2_3</span> <span class="o">=</span> <span class="n">np1_3</span><span class="o">**</span><span class="mf">2.</span>
+        
+        <span class="c">#starting point for each dimension. </span>
+        <span class="n">mLx_2</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">Lx</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">0.5</span><span class="o">*</span><span class="n">Lx</span><span class="p">)</span><span class="o">/</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">np1_3</span><span class="p">)</span>
+        
+        <span class="c">#set new domain extents</span>
+        <span class="n">state_input</span><span class="o">.</span><span class="n">domain</span><span class="p">()</span><span class="o">.</span><span class="n">set_extent</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">Lx</span><span class="p">,</span> <span class="n">Lx</span><span class="p">,</span> <span class="n">Lx</span><span class="p">]))</span>
+        
+        <span class="c">#get pointer for positions</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">state_input</span><span class="o">.</span><span class="n">positions</span><span class="p">()</span>
+        
+        <span class="c">#Loop over all particles</span>
+        <span class="k">for</span> <span class="n">ix</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_N</span><span class="p">):</span>
+            
+            <span class="c">#Map point into cube side of calculated side length Lx.</span>
+            <span class="n">z</span><span class="o">=</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">ix</span><span class="o">/</span><span class="n">np2_3</span><span class="p">)</span>
+
+            <span class="n">pos</span><span class="p">[</span><span class="n">ix</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">=</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_dev</span><span class="p">)</span> <span class="o">+</span> <span class="n">mLx_2</span><span class="o">+</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">fmod</span><span class="p">((</span><span class="n">ix</span> <span class="o">-</span> <span class="n">z</span><span class="o">*</span><span class="n">np2_3</span><span class="p">),</span><span class="n">np1_3</span><span class="p">)</span><span class="o">/</span><span class="n">np1_3</span><span class="p">)</span><span class="o">*</span><span class="n">Lx</span> <span class="c">#x</span>
+            <span class="n">pos</span><span class="p">[</span><span class="n">ix</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">=</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_dev</span><span class="p">)</span> <span class="o">+</span> <span class="n">mLx_2</span><span class="o">+</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">((</span><span class="n">ix</span> <span class="o">-</span> <span class="n">z</span><span class="o">*</span><span class="n">np2_3</span><span class="p">)</span><span class="o">/</span><span class="n">np1_3</span><span class="p">)</span><span class="o">/</span><span class="n">np1_3</span><span class="p">)</span><span class="o">*</span><span class="n">Lx</span> <span class="c">#y</span>
+            <span class="n">pos</span><span class="p">[</span><span class="n">ix</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span><span class="o">=</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_dev</span><span class="p">)</span> <span class="o">+</span> <span class="n">mLx_2</span><span class="o">+</span><span class="p">(</span><span class="n">z</span><span class="o">/</span><span class="n">np1_3</span><span class="p">)</span><span class="o">*</span><span class="n">Lx</span>
+
+</div></div>
+<div class="viewcode-block" id="PosInitTwoParticlesInABox"><a class="viewcode-back" href="../state.html#state.PosInitTwoParticlesInABox">[docs]</a><span class="k">class</span> <span class="nc">PosInitTwoParticlesInABox</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates two particles a set distance apart on the  given axis, centred on the origin. Places these within a containing volume of given extents.</span>
+<span class="sd">    </span>
+<span class="sd">    :arg double rx: Distance between particles.</span>
+<span class="sd">    :arg np.array(3,1) extents: Extent for containing volume.</span>
+<span class="sd">    :arg np.array(3,1) axis: axis to centre on.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">rx</span><span class="p">,</span><span class="n">extent</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span><span class="mf">1.0</span><span class="p">,</span><span class="mf">1.0</span><span class="p">]),</span> <span class="n">axis</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span><span class="mf">0.0</span><span class="p">,</span><span class="mf">0.0</span><span class="p">])):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rx</span> <span class="o">=</span> <span class="n">rx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_extent</span> <span class="o">=</span> <span class="n">extent</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_axis</span> <span class="o">=</span> <span class="n">axis</span>
+        
+<div class="viewcode-block" id="PosInitTwoParticlesInABox.reset"><a class="viewcode-back" href="../state.html#state.PosInitTwoParticlesInABox.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_input</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resets the first two particles in the input state domain to sit on the x-axis the set distance apart.</span>
+<span class="sd">        </span>
+<span class="sd">        </span>
+<span class="sd">        :arg state state_input: State object containing at least two particles.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="n">state_input</span><span class="o">.</span><span class="n">N</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="n">state_input</span><span class="o">.</span><span class="n">positions</span><span class="p">()[</span><span class="mi">0</span><span class="p">,]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.5</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_rx</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_axis</span>
+            <span class="n">state_input</span><span class="o">.</span><span class="n">positions</span><span class="p">()[</span><span class="mi">1</span><span class="p">,]</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_rx</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_axis</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s">&quot;ERROR: PosInitTwoParticlesInABox, not enough particles!&quot;</span>
+            
+        <span class="n">state_input</span><span class="o">.</span><span class="n">domain</span><span class="p">()</span><span class="o">.</span><span class="n">set_extent</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_extent</span><span class="p">)</span>
+
+
+
+
+        </div></div>
+<div class="viewcode-block" id="VelInitNormDist"><a class="viewcode-back" href="../state.html#state.VelInitNormDist">[docs]</a><span class="k">class</span> <span class="nc">VelInitNormDist</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialise velocities by sampling from a gaussian distribution.</span>
+<span class="sd">    </span>
+<span class="sd">    :arg double mu: Mean for gaussian distribution.</span>
+<span class="sd">    :arg double sig: Standard deviation for gaussian distribution.</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">mu</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span><span class="n">sig</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mu</span> <span class="o">=</span> <span class="n">mu</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sig</span> <span class="o">=</span> <span class="n">sig</span>        
+    
+    
+<div class="viewcode-block" id="VelInitNormDist.reset"><a class="viewcode-back" href="../state.html#state.VelInitNormDist.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state_input</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resets particle velocities to Gaussian distribution.</span>
+<span class="sd">        </span>
+<span class="sd">        :arg state state_input: Input state class oject containing velocities.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="c">#Get velocities.</span>
+        <span class="n">vel_in</span> <span class="o">=</span> <span class="n">state_input</span><span class="o">.</span><span class="n">velocities</span><span class="p">()</span>
+        
+        <span class="c">#Apply normal distro to velocities.</span>
+        <span class="k">for</span> <span class="n">ix</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">state_input</span><span class="o">.</span><span class="n">N</span><span class="p">()):</span>
+            <span class="n">vel_in</span><span class="p">[</span><span class="n">ix</span><span class="p">,]</span><span class="o">=</span><span class="p">[</span><span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sig</span><span class="p">),</span><span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sig</span><span class="p">),</span><span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_mu</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sig</span><span class="p">)]</span>
+        
+        </div></div>
+<div class="viewcode-block" id="VelInitTwoParticlesInABox"><a class="viewcode-back" href="../state.html#state.VelInitTwoParticlesInABox">[docs]</a><span class="k">class</span> <span class="nc">VelInitTwoParticlesInABox</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sets velocities for two particles.</span>
+<span class="sd">    </span>
+<span class="sd">    :arg np.array(3,1) vx: Velocity vector for particle 1.</span>
+<span class="sd">    :arg np.array(3,1) vy: Velocity vector for particle 2.</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">]),</span> <span class="n">vy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">])):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vx</span> <span class="o">=</span> <span class="n">vx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_vy</span> <span class="o">=</span> <span class="n">vy</span>
+        
+<div class="viewcode-block" id="VelInitTwoParticlesInABox.reset"><a class="viewcode-back" href="../state.html#state.VelInitTwoParticlesInABox.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state_input</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resets the particles in the input state to the required velocities.</span>
+<span class="sd">        </span>
+<span class="sd">        :arg state state_input: input state.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">state_input</span><span class="o">.</span><span class="n">N</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="n">state_input</span><span class="o">.</span><span class="n">velocities</span><span class="p">()[</span><span class="mi">0</span><span class="p">,]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vx</span>
+            <span class="n">state_input</span><span class="o">.</span><span class="n">velocities</span><span class="p">()[</span><span class="mi">1</span><span class="p">,]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_vy</span>        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s">&quot;ERROR: PosInitTwoParticlesInABox, not enough particles!&quot;</span>
+
+</div></div>
+<div class="viewcode-block" id="MassInitTwoAlternating"><a class="viewcode-back" href="../state.html#state.MassInitTwoAlternating">[docs]</a><span class="k">class</span> <span class="nc">MassInitTwoAlternating</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Class to initialise masses, alternates between two masses.</span>
+<span class="sd">    </span>
+<span class="sd">    :arg double m1:  First mass</span>
+<span class="sd">    :arg double m2:  Second mass</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">m1</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">m2</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_m</span> <span class="o">=</span> <span class="p">[</span><span class="n">m1</span><span class="p">,</span> <span class="n">m2</span><span class="p">]</span>
+
+        
+<div class="viewcode-block" id="MassInitTwoAlternating.reset"><a class="viewcode-back" href="../state.html#state.MassInitTwoAlternating.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mass_input</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Apply to input mass dat class.</span>
+<span class="sd">        </span>
+<span class="sd">        :arg Dat mass_input: Dat container with masses.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">for</span> <span class="n">ix</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">mass_input</span><span class="o">.</span><span class="n">Dat</span><span class="p">())[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">mass_input</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_m</span><span class="p">[(</span><span class="n">ix</span> <span class="o">%</span> <span class="mi">2</span><span class="p">)]</span>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    
         
         
         

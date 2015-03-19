@@ -64,11 +64,11 @@
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Class to apply Velocity-Verlet to a given state using a given looping method.</span>
 <span class="sd">    </span>
-<span class="sd">    :arg dt: (float) Time step size, can be specified at integrate call.</span>
-<span class="sd">    :arg T: (float) End time, can be specified at integrate call.</span>
-<span class="sd">    :arg USE_C: (bool) Flag to use C looping and kernel.</span>
-<span class="sd">    :arg USE_PLOTTING: (bool) Flag to plot state at certain progress points.</span>
-<span class="sd">    :arg USE_LOGGING: (bool) Flag to log energy at each iteration.</span>
+<span class="sd">    :arg double dt: Time step size, can be specified at integrate call.</span>
+<span class="sd">    :arg double T: End time, can be specified at integrate call.</span>
+<span class="sd">    :arg bool USE_C: Flag to use C looping and kernel.</span>
+<span class="sd">    :arg bool USE_PLOTTING: Flag to plot state at certain progress points.</span>
+<span class="sd">    :arg bool USE_LOGGING: Flag to log energy at each iteration.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dt</span> <span class="o">=</span> <span class="mf">0.0001</span><span class="p">,</span> <span class="n">T</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">USE_C</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">USE_PLOTTING</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">USE_LOGGING</span> <span class="o">=</span> <span class="bp">True</span><span class="p">):</span>
@@ -100,8 +100,8 @@
         <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">        Integrate state forward in time.</span>
 <span class="sd">        </span>
-<span class="sd">        :arg dt: (float) Time step size.</span>
-<span class="sd">        :arg T: (float) End time.</span>
+<span class="sd">        :arg double dt: Time step size.</span>
+<span class="sd">        :arg double T: End time.</span>
 <span class="sd">        &#39;&#39;&#39;</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">dt</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_dt</span> <span class="o">=</span> <span class="n">dt</span>
@@ -151,12 +151,12 @@
             
             
         
-        <span class="bp">self</span><span class="o">.</span><span class="n">velocity_verlet_integration</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_velocity_verlet_integration</span><span class="p">()</span>
         
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_E_store</span>
         
         </div>
-<div class="viewcode-block" id="VelocityVerlet.velocity_verlet_integration"><a class="viewcode-back" href="../method.html#method.VelocityVerlet.velocity_verlet_integration">[docs]</a>    <span class="k">def</span> <span class="nf">velocity_verlet_integration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_velocity_verlet_integration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Perform Velocity Verlet integration up to time T.</span>
 <span class="sd">        &quot;&quot;&quot;</span>    
@@ -204,8 +204,8 @@
     
         
     
-                </div>
-<div class="viewcode-block" id="VelocityVerlet.velocity_verlet_step"><a class="viewcode-back" href="../method.html#method.VelocityVerlet.velocity_verlet_step">[docs]</a>    <span class="k">def</span> <span class="nf">velocity_verlet_step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                
+    <span class="k">def</span> <span class="nf">_velocity_verlet_step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Perform one step of Velocity Verlet.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -234,7 +234,7 @@
     
     
     
-    </div></div>
+    </div>
 </pre></div>
 
           </div>

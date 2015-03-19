@@ -59,14 +59,14 @@
 <dl class="class">
 <dt id="domain.BaseDomain">
 <em class="property">class </em><tt class="descclassname">domain.</tt><tt class="descname">BaseDomain</tt><big>(</big><em>extent=array([ 1.</em>, <em>1.</em>, <em>1.])</em>, <em>cell_count=1</em><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain" title="Permalink to this definition">¶</a></dt>
-<dd><p>Base class for simulation domain, cartesian, 3D.</p>
+<dd><p>Base class for simulation domain, cartesian, 3D. Initialises domain with given extents.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>extent</strong> &#8211; [x,y,z] numpy array with extents of simulation domain.</li>
-<li><strong>cellcount</strong> &#8211; (Integer) Number of cells within domain.</li>
+<li><strong>extent</strong> (<em>np.array(3,1)</em>) &#8211; [x,y,z] numpy array with extents of simulation domain.</li>
+<li><strong>cellcount</strong> (<em>int</em>) &#8211; Number of cells within domain (optional).</li>
 </ul>
 </td>
 </tr>
@@ -74,13 +74,13 @@
 </table>
 <dl class="method">
 <dt id="domain.BaseDomain.boundary_correct">
-<tt class="descname">boundary_correct</tt><big>(</big><em>input_state</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.boundary_correct" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">boundary_correct</tt><big>(</big><em>r_in_dat</em><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain.boundary_correct"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain.boundary_correct" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a new position accounting for periodic boundaries. Would probably benefit from being in C.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>r_in</strong> &#8211; np.array(1,3) input position</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>r_in_dat</strong> (<em>np.array(3,1)</em>) &#8211; input position</td>
 </tr>
 </tbody>
 </table>
@@ -88,25 +88,25 @@
 
 <dl class="method">
 <dt id="domain.BaseDomain.cell_array">
-<tt class="descname">cell_array</tt><big>(</big><big>)</big><a class="headerlink" href="#domain.BaseDomain.cell_array" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">cell_array</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain.cell_array"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain.cell_array" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return cell array.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="domain.BaseDomain.cell_count">
-<tt class="descname">cell_count</tt><big>(</big><big>)</big><a class="headerlink" href="#domain.BaseDomain.cell_count" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">cell_count</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain.cell_count"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain.cell_count" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return cell count for domain.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="domain.BaseDomain.cell_index_lin">
-<tt class="descname">cell_index_lin</tt><big>(</big><em>C_in</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.cell_index_lin" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">cell_index_lin</tt><big>(</big><em>C_in</em><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain.cell_index_lin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain.cell_index_lin" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert tuple index to linear index. Applies periodic boundaries first.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>c_in</strong> &#8211; Input index to convert.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>c_in</strong> (<em>int</em>) &#8211; Input index to convert.</td>
 </tr>
 </tbody>
 </table>
@@ -114,13 +114,13 @@
 
 <dl class="method">
 <dt id="domain.BaseDomain.cell_index_lin_offset">
-<tt class="descname">cell_index_lin_offset</tt><big>(</big><em>C_in_abs</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.cell_index_lin_offset" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">cell_index_lin_offset</tt><big>(</big><em>C_in_abs</em><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain.cell_index_lin_offset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain.cell_index_lin_offset" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert tuple index to linear index. Applies periodic boundaries first. Returns periodic boundary offsets.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>c_in_abs</strong> &#8211; Input index to convert.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>c_in_abs</strong> (<em>np.array(3,1)</em>) &#8211; Input index to convert.</td>
 </tr>
 </tbody>
 </table>
@@ -128,13 +128,13 @@
 
 <dl class="method">
 <dt id="domain.BaseDomain.cell_index_tuple">
-<tt class="descname">cell_index_tuple</tt><big>(</big><em>c_in</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.cell_index_tuple" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">cell_index_tuple</tt><big>(</big><em>c_in</em><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain.cell_index_tuple"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain.cell_index_tuple" title="Permalink to this definition">¶</a></dt>
 <dd><p>Convert cell linear index to vector.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>c_in</strong> &#8211; (int) Input index.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>c_in</strong> (<em>int</em>) &#8211; Input index.</td>
 </tr>
 </tbody>
 </table>
@@ -148,13 +148,13 @@
 
 <dl class="method">
 <dt id="domain.BaseDomain.get_cell_lin_index">
-<tt class="descname">get_cell_lin_index</tt><big>(</big><em>r_in</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.get_cell_lin_index" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">get_cell_lin_index</tt><big>(</big><em>r_in</em><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain.get_cell_lin_index"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain.get_cell_lin_index" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the linear cell index for a given input coordinate.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>r_in</strong> &#8211; (np.array(3,1)) Cartesian vector for particle position.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>r_in</strong> (<em>np.array(3,1)</em>) &#8211; Cartesian vector for particle position.</td>
 </tr>
 </tbody>
 </table>
@@ -162,13 +162,13 @@
 
 <dl class="method">
 <dt id="domain.BaseDomain.set_cell_array_explicit">
-<tt class="descname">set_cell_array_explicit</tt><big>(</big><em>cell_array</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.set_cell_array_explicit" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">set_cell_array_explicit</tt><big>(</big><em>cell_array</em><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain.set_cell_array_explicit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain.set_cell_array_explicit" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set cell array with a vector.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cell_array</strong> &#8211; (np.array(1,3), new cell array.)</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cell_array</strong> (<em>np.array(3,1)</em>) &#8211; new cell array.</td>
 </tr>
 </tbody>
 </table>
@@ -176,13 +176,13 @@
 
 <dl class="method">
 <dt id="domain.BaseDomain.set_cell_array_radius">
-<tt class="descname">set_cell_array_radius</tt><big>(</big><em>rn</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.set_cell_array_radius" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">set_cell_array_radius</tt><big>(</big><em>rn</em><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain.set_cell_array_radius"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain.set_cell_array_radius" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create cell structure based on current extent and extended cutoff distance.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rn</strong> &#8211; (float) <math xmlns="http://www.w3.org/1998/Math/MathML">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rn</strong> (<em>double</em>) &#8211; <math xmlns="http://www.w3.org/1998/Math/MathML">
 <mrow><msub><mi>r</mi><mi>n</mi></msub><mo>=</mo><msub><mi>r</mi><mi>c</mi></msub><mo>+</mo><mi>δ</mi></mrow></math></td>
 </tr>
 </tbody>
@@ -191,13 +191,13 @@
 
 <dl class="method">
 <dt id="domain.BaseDomain.set_extent">
-<tt class="descname">set_extent</tt><big>(</big><em>new_extent=array([ 1.</em>, <em>1.</em>, <em>1.])</em><big>)</big><a class="headerlink" href="#domain.BaseDomain.set_extent" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">set_extent</tt><big>(</big><em>new_extent=array([ 1.</em>, <em>1.</em>, <em>1.])</em><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain.set_extent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain.set_extent" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set domain extents</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>new_extent</strong> &#8211; (np.shape(1,3)) New extents.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>new_extent</strong> (<em>np.array(3,1)</em>) &#8211; New extents.</td>
 </tr>
 </tbody>
 </table>
@@ -205,7 +205,7 @@
 
 <dl class="method">
 <dt id="domain.BaseDomain.volume">
-<tt class="descname">volume</tt><big>(</big><big>)</big><a class="headerlink" href="#domain.BaseDomain.volume" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">volume</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/domain.html#BaseDomain.volume"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#domain.BaseDomain.volume" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return domain volume.</p>
 </dd></dl>
 

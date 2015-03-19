@@ -817,10 +817,93 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
                                      stderr=stderr)
                 p.communicate() 
         
+################################################################################################################
+# DOUBLE PARTICLE LOOP
+################################################################################################################        
         
+class DoubleAllParticleLoop(SingleAllParticleLoop):
+    '''
+    Class to loop over all particle pairs once.
+    
+    :arg int N: Number of elements to loop over.
+    :arg kernel kernel:  Kernel to apply at each element.
+    :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
+    :arg list headers: list containing C headers required by kernel.
+    '''     
         
+    
+    def _kernel_methodname(self):
+        '''Construct the name of the kernel method.
+        
+        Return a string of the form 
+        ``inline void kernel_name(double **<arg1>, double *<arg2}, ...) {``
+        which is used for defining the name of the kernel method.
+        '''
+        space = ' '*14
+        s = 'inline void '+self._kernel.name+'('
+        for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
+            #print var_name_kernel, var_name_state.dattype()
+            
+            if (var_name_state.dattype=='array'):
+                s += 'double **'+var_name_kernel+', '
+            if (var_name_state.dattype=='scalar'):
+                s += 'double *'+var_name_kernel+', '
+            
+            
+        s = s[:-2] + ') {'
+        return s
 
+    def _code_init(self):
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
 
+        %(KERNEL_METHODNAME)s
+        %(KERNEL)s
+        }
+
+        void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
+          for (int i=0; i<n; i++) { for (int j=0; j<n; j++) {  
+              %(KERNEL_ARGUMENT_DECL)s
+              %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
+              }}
+        }
+        '''
+    
+    def _kernel_argument_declarations(self):
+        '''Define and declare the kernel arguments.
+
+        For each argument the kernel gets passed a pointer of type
+        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
+        pointer to the data which contains the properties of particle i.
+        These properties are stored consecutively in memory, so for a 
+        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
+        property the vector entry j of particle i is accessed as 
+        ``loc_argXXX[i][j]``.
+
+        This method generates the definitions of the ``loc_argXXX`` variables
+        and populates the data to ensure that ``loc_argXXX[i]`` points to
+        the correct address in the particle_dats.
+        '''
+        s = '\n'
+        for i,dat in enumerate(self._particle_dat_dict.items()):
+            
+            
+            space = ' '*14
+            argname = 'arg_'+('%03d' % i)
+            loc_argname = 'loc_'+argname
+            
+            
+            if (dat[1].dattype  == 'scalar'):
+                s += space+'double *'+loc_argname+' = '+argname+';\n'
+            
+            if (dat[1].dattype  == 'array'):
+                ncomp = dat[1].ncomp
+                s += space+'double *'+loc_argname+'[2];\n'
+                s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
+                s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'    
+        
+        return s      
+        
 
 
 

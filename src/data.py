@@ -51,6 +51,10 @@ class draw_particles():
         self._ax.set_zlabel('z')
         
         plt.draw()
+
+################################################################################################################
+# Basic Energy Store
+################################################################################################################ 
     
 class BasicEnergyStore():
     '''
@@ -121,5 +125,80 @@ class BasicEnergyStore():
         ax2.set_ylabel('Energy')
         
         plt.show()    
-  
-
+################################################################################################################
+# Scalar array.
+################################################################################################################ 
+class ScalarArray():
+    '''
+    Base class to hold a single floating point property.
+    
+    :arg double initial_value: Value to initialise array with, default 0.0.
+    :arg str name: Collective name of stored vars eg positions.
+    :arg int ncomp: Number of components.
+    
+    '''
+    def __init__(self, initial_value = None, name = None, ncomp = 1, val = None):
+        '''
+        Creates scalar with given initial value.
+        '''
+        
+        self._type = 'scalar'
+        if (name != None):
+            self._name = name
+        self._N1 = ncomp
+        
+        if (initial_value != None):
+            self._Dat = float(initial_value) * np.ones([self._N1], dtype=ctypes.c_double, order='C')
+        if (val = None):
+            self._Dat = np.zeros([self._N1], dtype=ctypes.c_double, order='C')
+        if (val != None):
+            self._Dat = val.astype(dtype=ctypes.c_double, order='C')
+        
+        
+        
+        
+        
+    
+    def Dat(self):
+        '''
+        Returns stored data as numpy array.
+        '''
+        return self._Dat
+        
+    def __getitem__(self,ix):
+        return self._Dat[ix]     
+        
+    
+    def __setitem__(self,ix, val):
+        self._Dat[ix] = val
+          
+    def __str__(self):
+        return str(self._Dat)
+    
+    def __call__(self):
+        return self._Dat
+    
+          
+    def ctypes_data(self):
+        '''Return ctypes-pointer to data.'''
+        return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))        
+    @property     
+    def dattype(self):
+        '''
+        Returns type of particle dat.
+        '''    
+        return self._type            
+        
+    @property
+    def name(self):
+        '''
+        Returns name of particle dat.
+        '''    
+        return self._name    
+    
+    @property
+    def ncomp(self):
+        '''
+        Return number of components.
+        '''   
+        return self._N1

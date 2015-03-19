@@ -62,9 +62,9 @@
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Class to plot N particles with given positions.</span>
 <span class="sd">    </span>
-<span class="sd">    :arg N: (int) Number of particles.</span>
-<span class="sd">    :arg pos: (np.array(N,3)) particle positions.</span>
-<span class="sd">    :arg extent: (np.array(3,1)) domain extents.</span>
+<span class="sd">    :arg int N: Number of particles.</span>
+<span class="sd">    :arg np.array(N,3) pos: particle positions.</span>
+<span class="sd">    :arg np.array(3,1) extent:  domain extents.</span>
 <span class="sd">    </span>
 <span class="sd">    </span>
 <span class="sd">    &#39;&#39;&#39;</span>
@@ -107,7 +107,7 @@
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Class to contain recorded values of potential energy U, kenetic energy K, total energy Q and time T.</span>
 <span class="sd">    </span>
-<span class="sd">    :arg size: (int) Required size of each container.</span>
+<span class="sd">    :arg int size: Required size of each container.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
     
@@ -128,7 +128,7 @@
         <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">        Append a value to potential energy.</span>
 <span class="sd">        </span>
-<span class="sd">        :arg val: (float) value to append</span>
+<span class="sd">        :arg double val: value to append</span>
 <span class="sd">        &#39;&#39;&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_U_store</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_U_c</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_U_c</span><span class="o">+=</span><span class="mi">1</span></div>
@@ -136,7 +136,7 @@
         <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">        Append a value to kenetic energy.</span>
 <span class="sd">        </span>
-<span class="sd">        :arg val: (float) value to append</span>
+<span class="sd">        :arg double val: value to append</span>
 <span class="sd">        &#39;&#39;&#39;</span>       
         <span class="bp">self</span><span class="o">.</span><span class="n">_K_store</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_K_c</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_K_c</span><span class="o">+=</span><span class="mi">1</span>        </div>
@@ -144,7 +144,7 @@
         <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">        Append a value to total energy.</span>
 <span class="sd">        </span>
-<span class="sd">        :arg val: (float) value to append</span>
+<span class="sd">        :arg double val: value to append</span>
 <span class="sd">        &#39;&#39;&#39;</span>       
         <span class="bp">self</span><span class="o">.</span><span class="n">_Q_store</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_Q_c</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_Q_c</span><span class="o">+=</span><span class="mi">1</span></div>
@@ -152,7 +152,7 @@
         <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">        Append a value to time store.</span>
 <span class="sd">        </span>
-<span class="sd">        :arg val: (float) value to append</span>
+<span class="sd">        :arg double val: value to append</span>
 <span class="sd">        &#39;&#39;&#39;</span>       
         <span class="bp">self</span><span class="o">.</span><span class="n">_T_store</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_T_c</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_T_c</span><span class="o">+=</span><span class="mi">1</span>            

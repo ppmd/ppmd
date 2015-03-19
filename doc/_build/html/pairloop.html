@@ -58,59 +58,28 @@
 <span id="pairloop-module"></span><h1>pairloop Module<a class="headerlink" href="#module-pairloop" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="pairloop.PairLoopRapaport">
-<em class="property">class </em><tt class="descclassname">pairloop.</tt><tt class="descname">PairLoopRapaport</tt><big>(</big><em>input_state</em><big>)</big><a class="reference internal" href="_modules/pairloop.html#PairLoopRapaport"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pairloop.PairLoopRapaport" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">pairloop.</tt><tt class="descname">PairLoopRapaport</tt><big>(</big><em>N</em>, <em>domain</em>, <em>positions</em>, <em>potential</em>, <em>dat_dict</em><big>)</big><a class="reference internal" href="_modules/pairloop.html#PairLoopRapaport"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pairloop.PairLoopRapaport" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">pairloop._base</span></tt></p>
 <p>Class to implement rapaport 14 cell looping.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>input_state</strong> &#8211; State containing data to loop over.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>N</strong> (<em>int</em>) &#8211; Number of elements to loop over.</li>
+<li><strong>domain</strong> (<a class="reference internal" href="domain.html#module-domain" title="domain"><em>domain</em></a>) &#8211; Domain containing the particles.</li>
+<li><strong>positions</strong> (<em>dat</em>) &#8211; Postitions of particles.</li>
+<li><strong>potential</strong> (<a class="reference internal" href="potential.html#module-potential" title="potential"><em>potential</em></a>) &#8211; Potential between particles.</li>
+<li><strong>dat_dict</strong> (<em>dict</em>) &#8211; Dictonary mapping between state vars and kernel vars.</li>
+</ul>
+</td>
 </tr>
 </tbody>
 </table>
-<dl class="method">
-<dt id="pairloop.PairLoopRapaport.cell_sort_all">
-<tt class="descname">cell_sort_all</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pairloop.html#PairLoopRapaport.cell_sort_all"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pairloop.PairLoopRapaport.cell_sort_all" title="Permalink to this definition">¶</a></dt>
-<dd><p>Construct neighbour list, assigning atoms to cells. Using Rapaport alg.</p>
-</dd></dl>
-
 <dl class="method">
 <dt id="pairloop.PairLoopRapaport.execute">
 <tt class="descname">execute</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pairloop.html#PairLoopRapaport.execute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pairloop.PairLoopRapaport.execute" title="Permalink to this definition">¶</a></dt>
 <dd><p>C version of the pair_locate: Loop over all cells update accelerations and potential engery.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="pairloop.PairLoopRapaport_tmp">
-<em class="property">class </em><tt class="descclassname">pairloop.</tt><tt class="descname">PairLoopRapaport_tmp</tt><big>(</big><em>input_state</em><big>)</big><a class="reference internal" href="_modules/pairloop.html#PairLoopRapaport_tmp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pairloop.PairLoopRapaport_tmp" title="Permalink to this definition">¶</a></dt>
-<dd><p>Class to implement rapaport 14 cell looping, Use PairLoopRapaport instead.</p>
-<dl class="method">
-<dt id="pairloop.PairLoopRapaport_tmp.cell_sort_all">
-<tt class="descname">cell_sort_all</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pairloop.html#PairLoopRapaport_tmp.cell_sort_all"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pairloop.PairLoopRapaport_tmp.cell_sort_all" title="Permalink to this definition">¶</a></dt>
-<dd><p>Construct neighbour list, assigning atoms to cells. Using Rapaport alg.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pairloop.PairLoopRapaport_tmp.execute">
-<tt class="descname">execute</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/pairloop.html#PairLoopRapaport_tmp.execute"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pairloop.PairLoopRapaport_tmp.execute" title="Permalink to this definition">¶</a></dt>
-<dd><p>C version of the pair_locate: Loop over all cells update accelerations and potential engery.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pairloop.PairLoopRapaport_tmp.get_adjacent_cells">
-<tt class="descname">get_adjacent_cells</tt><big>(</big><em>ix</em><big>)</big><a class="reference internal" href="_modules/pairloop.html#PairLoopRapaport_tmp.get_adjacent_cells"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pairloop.PairLoopRapaport_tmp.get_adjacent_cells" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the 14 neighbouring cells as linear index.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ix</strong> &#8211; (int) Input index.</td>
-</tr>
-</tbody>
-</table>
 </dd></dl>
 
 </dd></dl>
@@ -124,10 +93,10 @@
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>N</strong> &#8211; (int) Number of elements to loop over.</li>
-<li><strong>kernel</strong> &#8211; (class kernel) Kernel to apply at each element.</li>
-<li><strong>particle_dat_dict</strong> &#8211; (dict) Dictonary storing map between kernel variables and state variables.</li>
-<li><strong>headers</strong> &#8211; (list) list containing C headers required by kernel.</li>
+<li><strong>N</strong> (<em>int</em>) &#8211; Number of elements to loop over.</li>
+<li><strong>kernel</strong> (<a class="reference internal" href="kernel.html#module-kernel" title="kernel"><em>kernel</em></a>) &#8211; Kernel to apply at each element.</li>
+<li><strong>particle_dat_dict</strong> (<em>dict</em>) &#8211; Dictonary storing map between kernel variables and state variables.</li>
+<li><strong>headers</strong> (<em>list</em>) &#8211; list containing C headers required by kernel.</li>
 </ul>
 </td>
 </tr>
