@@ -32,7 +32,9 @@ class _base():
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-
+        #define sign(x) (((x) > 0) - ((x) < 0))
+        #define isign(x) (((x) < 0) - ((x) > 0))
+        #define abs_md(x) ((x) < 0 ? -1*(x) : (x))
         %(INCLUDED_HEADERS)s
 
         void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
@@ -234,7 +236,10 @@ class PairLoopRapaport(_base):
 
         %(INCLUDED_HEADERS)s
         #define LINIDX_2D(NX,iy,ix)   ((NX)*(iy) + (ix))
-        #define sign(x) (((x) < 0 ) ?  -1 : ((x) > 0 ))
+        //#define sign(x) (((x) < 0 ) ?  -1 : ((x) > 0 ))
+        #define sign(x) (((x) > 0) - ((x) < 0))
+        #define isign(x) (((x) < 0) - ((x) > 0))
+        #define abs_md(x) ((x) < 0 ? -1*(x) : (x))
         
         void %(KERNEL_NAME)s_wrapper(const int n,const int cell_count, int* cells, int* q_list, double* d_extent,%(ARGUMENTS)s);
 
@@ -548,7 +553,7 @@ class SingleAllParticleLoop():
             print >> f, self._generate_impl_source()
         object_filename = filename_base+'.o'
         library_filename = filename_base+'.so'        
-        cflags = ['-O3','-fpic']
+        cflags = ['-O3','-fpic','-std=c99']
         cc = 'gcc'
         ld = 'gcc'
         compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
@@ -708,7 +713,11 @@ class SingleAllParticleLoop():
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-
+        #define sign(x) (((x) > 0) - ((x) < 0))
+        
+        #define isign(x) (((x) < 0) - ((x) > 0))
+        #define abs_md(x) ((x) < 0 ? -1*(x) : (x))
+        
         %(INCLUDED_HEADERS)s
 
         void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
@@ -863,9 +872,11 @@ class DoubleAllParticleLoop(SingleAllParticleLoop):
 
         void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
           for (int i=0; i<n; i++) { for (int j=0; j<n; j++) {  
-              %(KERNEL_ARGUMENT_DECL)s
-              %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
-              }}
+              if (i != j){
+                  %(KERNEL_ARGUMENT_DECL)s
+                  %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
+              }
+          }}
         }
         '''
     

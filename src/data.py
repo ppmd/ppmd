@@ -149,7 +149,7 @@ class ScalarArray():
         
         if (initial_value != None):
             self._Dat = float(initial_value) * np.ones([self._N1], dtype=ctypes.c_double, order='C')
-        if (val = None):
+        if (val == None):
             self._Dat = np.zeros([self._N1], dtype=ctypes.c_double, order='C')
         if (val != None):
             self._Dat = val.astype(dtype=ctypes.c_double, order='C')
@@ -166,7 +166,15 @@ class ScalarArray():
         return self._Dat
         
     def __getitem__(self,ix):
-        return self._Dat[ix]     
+        return self._Dat[ix]
+        
+    def scale(self,val):
+        '''
+        Scale data array by value val.
+        
+        :arg double val: Coefficient to scale all elements by.
+        '''
+        self._Dat = val * self._Dat
         
     
     def __setitem__(self,ix, val):

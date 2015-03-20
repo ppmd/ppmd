@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import kernel
 import constant
+import ctypes
 np.set_printoptions(threshold='nan')
 
 ################################################################################################################
@@ -185,7 +186,7 @@ class VelocityVerlet():
 # G(R)
 ################################################################################################################  
     
-class RadialDistribution():
+class RadialDistributionPeriodicStatic():
     '''
     Class to calculate radial distribution function.
     
@@ -193,26 +194,79 @@ class RadialDistribution():
     :arg np.array(3,1) extents: Domain extents.
     :arg double rmax: Maximum radial distance.
     :arg int rsteps: Resolution to record to, default 100.
+    :arg np.array(3,1) extent: Domain extents.
     '''
-    def __init__(self, positions, rmax = 1.0, rsteps = 100, extents):
+    def __init__(self, state, rmax = 1.0, rsteps = 100):
         
-        
-        self._P = positions
+        self._state = state
+        self._P = self._state.positions()
+        self._N = self._P.npart
+        self._rmax = rmax
         self._rsteps = rsteps
+        self._extent = self._state.domain().extent()
         self._gr = data.ScalarArray(ncomp = self._rsteps)
-        self._extent = data.ScalarArray(val=extents)
         
-        self._kernel = '''
-                    const double R0 = P[1][0] - P[0][0];
-                    const double R1 = P[1][1] - P[0][1];
-                    const double R2 = P[1][2] - P[0][2];
+        
+        _kernel = '''
+        double R0 = P[1][0] - P[0][0];
+        double R1 = P[1][1] - P[0][1];
+        double R2 = P[1][2] - P[0][2];
+        
+        if (abs_md(R0) > exto20 ) { R0 += isign(R0) * extent0 ; }
+        if (abs_md(R1) > exto21 ) { R1 += isign(R1) * extent1 ; }
+        if (abs_md(R2) > exto22 ) { R2 += isign(R2) * extent2 ; }
+        
+        const double r2 = R0*R0 + R1*R1 + R2*R2;
+        
+        if (r2 < rmax2){
+            
+            double r20=0.0, r21 = r2;
+            
+            //Try to avoid sqrt...
+            while(abs_md(r20 - r21) > rmaxoverrsteps * 0.2 ){
+                r20 = r21;
+                r21 -= 0.5*(r21 - (r2/r21) );
+            }
+            
+            //printf("|%f, %f, %d|", r2, r21, (int) (abs_md(r21* rstepsoverrmax)));
+            
+            GR[(int) (abs_md(r21* rstepsoverrmax))]++;
+            
+            
+        }
         '''
         
+        _constants=(constant.Constant('rmaxoverrsteps', self._rmax/self._rsteps ),
+                    constant.Constant('rstepsoverrmax', self._rsteps/self._rmax ),
+                    constant.Constant('rmax2', self._rmax**2 ),
+                    constant.Constant('extent0', self._extent[0] ),
+                    constant.Constant('extent1', self._extent[1] ),
+                    constant.Constant('extent2', self._extent[2] ),
+                    constant.Constant('exto20', 0.5*self._extent[0] ),
+                    constant.Constant('exto21', 0.5*self._extent[1] ),
+                    constant.Constant('exto22', 0.5*self._extent[2] )
+                    )        
         
         
+        _grkernel = kernel.Kernel('radial_distro_periodic_static',_kernel, _constants)
+        _datdict = {'P':self._P, 'GR':self._gr}
+        _headers = ['stdio.h']
         
+        self._p = pairloop.DoubleAllParticleLoop(N = self._N, kernel = _grkernel, particle_dat_dict = _datdict, headers = _headers)
         
-    
+    def evaluate(self):
+        self._gr.scale(0.0)
+        self._p.execute()
+        self._gr.scale(self._state.domain().volume()/(self._N**3))
+        
+    def plot(self):
+        self._fig = plt.figure()
+        self._ax = self._fig.add_subplot(111)
+        r =  np.linspace(0, self._rmax, num=self._rsteps, endpoint=True)
+        plt.plot(r,self._gr.Dat())
+        self._ax.set_title('Radial Distribution Function')
+        self._ax.set_xlabel('r')
+        self._ax.set_ylabel('G(r)')
     
     
     
