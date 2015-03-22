@@ -42,14 +42,15 @@ class VelocityVerlet():
         self._K = self._state.K()
         
         
-    
-        ''' Drawing particles initialisation'''
-        self._pos_draw = data.draw_particles(self._state.N(), self._P, self._state.domain().extent())
-        
         '''Updates step broken into two parts'''
         self._USE_C = USE_C
         self._USE_PLOTTING = USE_PLOTTING
         self._USE_LOGGING = USE_LOGGING
+        
+    
+        ''' Drawing particles initialisation'''
+        if (self._USE_PLOTTING):
+            self._pos_draw = data.draw_particles(self._state.N(), self._P, self._state.domain().extent())        
         
     def integrate(self, dt = None, T = None):
         '''
@@ -198,6 +199,7 @@ class RadialDistributionPeriodicStatic():
     '''
     def __init__(self, state, rmax = 1.0, rsteps = 100):
         
+        self._count = 0
         self._state = state
         self._P = self._state.positions()
         self._N = self._P.npart
@@ -223,7 +225,7 @@ class RadialDistributionPeriodicStatic():
             double r20=0.0, r21 = r2;
             
             //Try to avoid sqrt...
-            while(abs_md(r20 - r21) > rmaxoverrsteps * 0.2 ){
+            while(abs_md(r20 - r21) > rmaxoverrsteps ){
                 r20 = r21;
                 r21 -= 0.5*(r21 - (r2/r21) );
             }
@@ -236,7 +238,7 @@ class RadialDistributionPeriodicStatic():
         }
         '''
         
-        _constants=(constant.Constant('rmaxoverrsteps', self._rmax/self._rsteps ),
+        _constants=(constant.Constant('rmaxoverrsteps', 0.2*self._rmax/self._rsteps ),
                     constant.Constant('rstepsoverrmax', self._rsteps/self._rmax ),
                     constant.Constant('rmax2', self._rmax**2 ),
                     constant.Constant('extent0', self._extent[0] ),
@@ -255,21 +257,22 @@ class RadialDistributionPeriodicStatic():
         self._p = pairloop.DoubleAllParticleLoop(N = self._N, kernel = _grkernel, particle_dat_dict = _datdict, headers = _headers)
         
     def evaluate(self):
-        self._gr.scale(0.0)
         self._p.execute()
-        self._gr.scale(self._state.domain().volume()/(self._N**3))
+        self._count+=1
         
     def plot(self):
-        self._fig = plt.figure()
-        self._ax = self._fig.add_subplot(111)
-        r =  np.linspace(0, self._rmax, num=self._rsteps, endpoint=True)
-        plt.plot(r,self._gr.Dat())
-        self._ax.set_title('Radial Distribution Function')
-        self._ax.set_xlabel('r')
-        self._ax.set_ylabel('G(r)')
+        if (self._count > 0):
+            self._fig = plt.figure()
+            self._ax = self._fig.add_subplot(111)
+            r =  np.linspace(0, self._rmax, num=self._rsteps, endpoint=True)
+            plt.plot(r,self._gr.Dat()/(self._count*(self._N**3)))
+            self._ax.set_title('Radial Distribution Function')
+            self._ax.set_xlabel('r')
+            self._ax.set_ylabel('G(r)')
     
     
-    
+    def reset(self):
+        self._gr.scale(0.0)
     
 
 

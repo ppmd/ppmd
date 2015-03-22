@@ -74,7 +74,7 @@ if __name__ == '__main__':
     
     
     #Create an integrator for above state class.
-    test_integrator = method.VelocityVerlet(state = test_state, USE_C = True, USE_LOGGING = logging, USE_PLOTTING = plotting)
+    test_integrator = method.VelocityVerlet(state = test_state, USE_C = True, USE_LOGGING = False, USE_PLOTTING = False)
     
     #create G(r) method.
     test_gr_method = method.RadialDistributionPeriodicStatic(state = test_state, rmax = test_state.domain().extent()[0], rsteps = 200)
@@ -94,6 +94,25 @@ if __name__ == '__main__':
     start = time.clock()
     test_gr_method.evaluate()
     end = time.clock()
+    
+    
+    ###########################################################
+    
+    start = time.clock()
+    energy_data = test_integrator.integrate(dt = 0.0001, T = 1.0)
+    end = time.clock()
+    print "Rough time taken integrate :", end - start,"s"
+    
+    #If logging was enabled, plot data.
+    if (logging):
+        energy_data.plot()
+    
+    start = time.clock()
+    test_gr_method.evaluate()
+    end = time.clock()    
+    
+    ###########################################################
+    
     print "Rough time taken G(r) :", end - start,"s"    
     test_gr_method.plot()
     
