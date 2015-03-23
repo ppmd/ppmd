@@ -17,13 +17,10 @@ class draw_particles():
     
     
     '''
-    def __init__(self,N,pos,extents):
+    def __init__(self):
         print "plotting....."
         plt.ion()
         
-        self._N = N
-        self._pos = pos
-        self._extents = extents
 
         self._fig = plt.figure()
         self._ax = self._fig.add_subplot(111, projection='3d')
@@ -32,11 +29,14 @@ class draw_particles():
         plt.show()
 
 
-    def draw(self):
+    def draw(self,N,pos,extents):
         '''
         Update current plot, use for real time plotting.
         '''
         
+        self._N = N
+        self._pos = pos
+        self._extents = extents
         
         plt.cla()
            
@@ -62,20 +62,32 @@ class BasicEnergyStore():
     
     :arg int size: Required size of each container.
     '''
-    def __init__(self, size = 1):
+    def __init__(self, size = 0):
     
-        self._size = size
-    
-        self._U_store = np.zeros([self._size], dtype=ctypes.c_double, order='C')
-        self._K_store = np.zeros([self._size], dtype=ctypes.c_double, order='C')
-        self._Q_store = np.zeros([self._size], dtype=ctypes.c_double, order='C')
-        self._T_store = np.zeros([self._size], dtype=ctypes.c_double, order='C')
+        self._U_store = np.zeros([size], dtype=ctypes.c_double, order='C')
+        self._K_store = np.zeros([size], dtype=ctypes.c_double, order='C')
+        self._Q_store = np.zeros([size], dtype=ctypes.c_double, order='C')
+        self._T_store = np.zeros([size], dtype=ctypes.c_double, order='C')
     
         self._U_c = 0
         self._K_c = 0
         self._Q_c = 0
         self._T_c = 0
-    
+        self._T_base = None
+        
+    def append_prepare(self,size):
+        
+        if (self._T_base == None):
+            self._T_base = 0.0
+        else:
+            self._T_base = self._T_store[-1]
+        
+        
+        self._U_store = np.concatenate((self._U_store, np.zeros(size, dtype=ctypes.c_double, order='C')))
+        self._K_store = np.concatenate((self._K_store, np.zeros(size, dtype=ctypes.c_double, order='C')))
+        self._Q_store = np.concatenate((self._Q_store, np.zeros(size, dtype=ctypes.c_double, order='C')))
+        self._T_store = np.concatenate((self._T_store, np.zeros(size, dtype=ctypes.c_double, order='C')))
+        
     
     def U_append(self,val):
         '''
@@ -107,7 +119,7 @@ class BasicEnergyStore():
         
         :arg double val: value to append
         '''       
-        self._T_store[self._T_c] = val
+        self._T_store[self._T_c] = val + self._T_base
         self._T_c+=1            
    
     def plot(self):

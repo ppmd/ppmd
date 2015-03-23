@@ -25,7 +25,7 @@ class VelocityVerlet():
     :arg bool USE_LOGGING: Flag to log energy at each iteration.
     '''
     
-    def __init__(self, dt = 0.0001, T = 0.01, state = None, USE_C = True, USE_PLOTTING = True, USE_LOGGING = True):
+    def __init__(self, dt = 0.0001, T = 0.01, state = None, USE_C = True, plot_handle = None, energy_handle = None):
     
         self._dt = dt
         self._T = T
@@ -42,15 +42,11 @@ class VelocityVerlet():
         self._K = self._state.K()
         
         
-        '''Updates step broken into two parts'''
         self._USE_C = USE_C
-        self._USE_PLOTTING = USE_PLOTTING
-        self._USE_LOGGING = USE_LOGGING
+        self._plot_handle = plot_handle
+        self._energy_handle = energy_handle
         
-    
-        ''' Drawing particles initialisation'''
-        if (self._USE_PLOTTING):
-            self._pos_draw = data.draw_particles(self._state.N(), self._P, self._state.domain().extent())        
+               
         
     def integrate(self, dt = None, T = None):
         '''
@@ -59,13 +55,16 @@ class VelocityVerlet():
         :arg double dt: Time step size.
         :arg double T: End time.
         '''
+        
+        
         if (dt != None):
             self._dt = dt
         if (T != None):
             self._T = T
         self._max_it = int(math.ceil(self._T/self._dt))
+        self._energy_handle.append_prepare(self._max_it)
         
-        self._E_store = data.BasicEnergyStore(self._max_it)
+            
         
         if (self._USE_C):
         
@@ -109,7 +108,6 @@ class VelocityVerlet():
         
         self._velocity_verlet_integration()
         
-        return self._E_store
         
         
     def _velocity_verlet_integration(self):
@@ -119,7 +117,7 @@ class VelocityVerlet():
 
         
 
-        percent_int = 10
+        percent_int = 50
         percent_count = percent_int
 
         self._domain.boundary_correct(self._P)
@@ -130,7 +128,7 @@ class VelocityVerlet():
             
             self._velocity_verlet_step()
             
-            if ((self._USE_LOGGING) & (i > -1)):
+            if ((self._energy_handle != None) & (i > -1)):
             
                 #self._state.K()._Dat = ( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )
                 
@@ -142,21 +140,21 @@ class VelocityVerlet():
                         self._K += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
                 
                 
-                self._E_store.U_append(self._state.U().Dat()/self._state.N())
-                self._E_store.K_append((self._K[0])/self._state.N())
-                self._E_store.Q_append((self._state.U()[0] + self._K[0])/self._state.N())
-                self._E_store.T_append((i+1)*self._dt)
+                self._energy_handle.U_append(self._state.U().Dat()/self._state.N())
+                self._energy_handle.K_append((self._K[0])/self._state.N())
+                self._energy_handle.Q_append((self._state.U()[0] + self._K[0])/self._state.N())
+                self._energy_handle.T_append((i+1)*self._dt)
             
                 
             
             
-            if ( ( self._USE_LOGGING | self._USE_PLOTTING ) & (((100.0*i)/self._max_it) > percent_count)):
+            if ( ( (self._energy_handle != None) | (self._plot_handle != None) ) & (((100.0*i)/self._max_it) > percent_count)):
                 
-                if (self._USE_PLOTTING):
-                    self._pos_draw.draw()
+                if (self._plot_handle != None):
+                    self._plot_handle.draw(self._state.N(), self._P, self._state.domain().extent())
                 
                 percent_count += percent_int
-                if (self._USE_LOGGING):
+                if (self._energy_handle != None):
                     print int((100.0*i)/self._max_it),"%", "T=", self._dt*i   
     
         
@@ -187,7 +185,7 @@ class VelocityVerlet():
 # G(R)
 ################################################################################################################  
     
-class RadialDistributionPeriodicStatic():
+class RadialDistributionPeriodicNVE():
     '''
     Class to calculate radial distribution function.
     
@@ -224,13 +222,13 @@ class RadialDistributionPeriodicStatic():
             
             double r20=0.0, r21 = r2;
             
-            //Try to avoid sqrt...
+            r21 = sqrt(r2);
+            /*
             while(abs_md(r20 - r21) > rmaxoverrsteps ){
                 r20 = r21;
                 r21 -= 0.5*(r21 - (r2/r21) );
             }
-            
-            //printf("|%f, %f, %d|", r2, r21, (int) (abs_md(r21* rstepsoverrmax)));
+            */
             
             GR[(int) (abs_md(r21* rstepsoverrmax))]++;
             
@@ -252,7 +250,7 @@ class RadialDistributionPeriodicStatic():
         
         _grkernel = kernel.Kernel('radial_distro_periodic_static',_kernel, _constants)
         _datdict = {'P':self._P, 'GR':self._gr}
-        _headers = ['stdio.h']
+        _headers = ['math.h']
         
         self._p = pairloop.DoubleAllParticleLoop(N = self._N, kernel = _grkernel, particle_dat_dict = _datdict, headers = _headers)
         
@@ -265,7 +263,7 @@ class RadialDistributionPeriodicStatic():
             self._fig = plt.figure()
             self._ax = self._fig.add_subplot(111)
             r =  np.linspace(0, self._rmax, num=self._rsteps, endpoint=True)
-            plt.plot(r,self._gr.Dat()/(self._count*(self._N**3)))
+            plt.plot(r,self._state.domain().volume()*self._gr.Dat()/(self._count*(self._N**2)))
             self._ax.set_title('Radial Distribution Function')
             self._ax.set_xlabel('r')
             self._ax.set_ylabel('G(r)')

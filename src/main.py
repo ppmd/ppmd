@@ -19,16 +19,17 @@ if __name__ == '__main__':
     
     #plot as computing + at end?
     plotting = True
+    plothandle = None
     
     #log energy?
     logging = True
     
     if (test_1000):
-        n=6
+        n=10
         N=n**3
-        rho = 0.5
+        rho = 2.5
         mu = 0.0
-        nsig = 2.5
+        nsig = 5.0
         
         #Initialise basci domain
         test_domain = domain.BaseDomain()
@@ -72,54 +73,93 @@ if __name__ == '__main__':
                                    N = N,
                                    )
     
+    #plotting handle
+    if (plotting):
+        plothandle = data.draw_particles()
+    
+    #energy handle
+    if (logging):
+        energyhandle = data.BasicEnergyStore()
+    
+    
+    
     
     #Create an integrator for above state class.
-    test_integrator = method.VelocityVerlet(state = test_state, USE_C = True, USE_LOGGING = False, USE_PLOTTING = False)
+    test_integrator = method.VelocityVerlet(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle)
     
     #create G(r) method.
-    test_gr_method = method.RadialDistributionPeriodicStatic(state = test_state, rmax = test_state.domain().extent()[0], rsteps = 200)
+    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 200)
     
     
     
-    #integrate.
+    ###########################################################
     start = time.clock()
-    energy_data = test_integrator.integrate(dt = 0.0001, T = 1.0)
+    test_integrator.integrate(dt = 0.0001, T = 0.5)
     end = time.clock()
     print "Rough time taken integrate :", end - start,"s"
     
-    #If logging was enabled, plot data.
-    if (logging):
-        energy_data.plot()
     
     start = time.clock()
     test_gr_method.evaluate()
     end = time.clock()
-    
+    print "Rough time taken G(r) :", end - start,"s" 
     
     ###########################################################
     
     start = time.clock()
-    energy_data = test_integrator.integrate(dt = 0.0001, T = 1.0)
+    test_integrator.integrate(dt = 0.0001, T = 0.5)
     end = time.clock()
     print "Rough time taken integrate :", end - start,"s"
     
-    #If logging was enabled, plot data.
-    if (logging):
-        energy_data.plot()
+
     
     start = time.clock()
     test_gr_method.evaluate()
     end = time.clock()    
+    print "Rough time taken G(r) :", end - start,"s"    
+    
     
     ###########################################################
     
-    print "Rough time taken G(r) :", end - start,"s"    
-    test_gr_method.plot()
+    start = time.clock()
+    test_integrator.integrate(dt = 0.0001, T = 0.5)
+    end = time.clock()
+    print "Rough time taken integrate :", end - start,"s"
     
+
+    
+    start = time.clock()
+    test_gr_method.evaluate()
+    end = time.clock()    
+    print "Rough time taken G(r) :", end - start,"s"    
+    
+    
+    ###########################################################
+    
+    start = time.clock()
+    test_integrator.integrate(dt = 0.0001, T = 0.5)
+    end = time.clock()
+    print "Rough time taken integrate :", end - start,"s"
+    
+
+    
+    start = time.clock()
+    test_gr_method.evaluate()
+    end = time.clock()    
+    print "Rough time taken G(r) :", end - start,"s"    
+    
+    
+    ###########################################################    
     
     
 
     
+    
+    #If logging was enabled, plot data.
+    if (logging):
+        energyhandle.plot()
+
+    test_gr_method.plot()
     
     
     a=input("PRESS ENTER TO CONTINUE.\n")
