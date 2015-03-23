@@ -25,17 +25,17 @@ if __name__ == '__main__':
     logging = True
     
     if (test_1000):
-        n=10
+        n=11
         N=n**3
-        rho = 2.5
+        rho = 0.3
         mu = 0.0
-        nsig = 5.0
+        nsig = 0.05
         
         #Initialise basci domain
         test_domain = domain.BaseDomain()
         
         #Initialise LJ potential
-        test_potential = potential.LennardJonesShifted(sigma=1.0,epsilon=1.0)    
+        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
         
         #Place N particles in a lattice with given density.
         test_pos_init = state.PosInitLatticeNRho(N, rho)
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     
     ###########################################################
     start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 0.5)
+    test_integrator.integrate(dt = 0.0001, T = 0.2)
     end = time.clock()
     print "Rough time taken integrate :", end - start,"s"
     
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     ###########################################################
     
     start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 0.5)
+    test_integrator.integrate(dt = 0.0001, T = 0.2)
     end = time.clock()
     print "Rough time taken integrate :", end - start,"s"
     
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     ###########################################################
     
     start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 0.5)
+    test_integrator.integrate(dt = 0.0001, T = 0.2)
     end = time.clock()
     print "Rough time taken integrate :", end - start,"s"
     
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     ###########################################################
     
     start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 0.5)
+    test_integrator.integrate(dt = 0.0001, T = 0.2)
     end = time.clock()
     print "Rough time taken integrate :", end - start,"s"
     

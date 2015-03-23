@@ -312,6 +312,7 @@ class PairLoopRapaport(_base):
         
         void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
             
+            
             for(unsigned int cp = 0; cp < cell_count; cp++){
                 for(unsigned int cpp_i=0; cpp_i<14; cpp_i++){
                 
@@ -454,9 +455,10 @@ class PairLoopRapaport(_base):
         cflags = ['-O3','-fpic','-std=c99']
         cc = 'gcc'
         ld = 'gcc'
+        lflags = []
         compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
                        +['-o',object_filename,impl_filename]
-        link_cmd = [ld,'-shared']+['-o',library_filename,object_filename]
+        link_cmd = [ld,'-shared']+lflags+['-o',library_filename,object_filename]
         stdout_filename = filename_base+'.log'
         stderr_filename = filename_base+'.err'
         with open(stdout_filename,'w') as stdout:
@@ -477,33 +479,7 @@ class PairLoopRapaport(_base):
                 p.communicate()      
      
      
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-     
-        
+
 ################################################################################################################
 # SINGLE PARTICLE LOOP SERIAL
 ################################################################################################################

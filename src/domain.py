@@ -152,11 +152,14 @@ class BaseDomain():
         self._cell_array[2] = int(self._extent[2]/rn)
         
         if (self._cell_array[0] < 3 or self._cell_array[1] < 3 or self._cell_array[2] < 3):
-            print "WARNING: Less than three cells per coordinate direction."
+            print "WARNING: Less than three cells per coordinate direction. Correcting"
             print "Cell array = ", self._cell_array
             print "Domain extents = ",self._extent
         
-        
+            self._extent[0] = 3*rn
+            self._extent[1] = 3*rn
+            self._extent[2] = 3*rn
+            self.set_cell_array_radius(rn)
         
         self._cell_count_recalc()
         

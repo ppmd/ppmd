@@ -83,6 +83,7 @@ class BasicEnergyStore():
             self._T_base = self._T_store[-1]
         
         
+        
         self._U_store = np.concatenate((self._U_store, np.zeros(size, dtype=ctypes.c_double, order='C')))
         self._K_store = np.concatenate((self._K_store, np.zeros(size, dtype=ctypes.c_double, order='C')))
         self._Q_store = np.concatenate((self._Q_store, np.zeros(size, dtype=ctypes.c_double, order='C')))
@@ -95,6 +96,7 @@ class BasicEnergyStore():
         
         :arg double val: value to append
         '''
+        
         self._U_store[self._U_c] = val
         self._U_c+=1
     def K_append(self,val): 

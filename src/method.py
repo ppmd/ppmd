@@ -25,9 +25,10 @@ class VelocityVerlet():
     :arg bool USE_LOGGING: Flag to log energy at each iteration.
     '''
     
-    def __init__(self, dt = 0.0001, T = 0.01, state = None, USE_C = True, plot_handle = None, energy_handle = None):
+    def __init__(self, dt = 0.0001, T = 0.01, DT = 0.001,state = None, USE_C = True, plot_handle = None, energy_handle = None):
     
         self._dt = dt
+        self._DT = DT
         self._T = T
         
 
@@ -48,7 +49,7 @@ class VelocityVerlet():
         
                
         
-    def integrate(self, dt = None, T = None):
+    def integrate(self, dt = None, DT = None, T = None):
         '''
         Integrate state forward in time.
         
@@ -61,8 +62,14 @@ class VelocityVerlet():
             self._dt = dt
         if (T != None):
             self._T = T
+        if (DT != None):
+            self._DT = DT
+        else:
+            self._DT = 10.0*self._dt
+            
         self._max_it = int(math.ceil(self._T/self._dt))
-        self._energy_handle.append_prepare(self._max_it)
+        self._DT_Count = int(math.ceil(self._T/self._DT))
+        self._energy_handle.append_prepare(self._DT_Count)
         
             
         
@@ -117,7 +124,7 @@ class VelocityVerlet():
 
         
 
-        percent_int = 50
+        percent_int = 25
         percent_count = percent_int
 
         self._domain.boundary_correct(self._P)
@@ -128,7 +135,7 @@ class VelocityVerlet():
             
             self._velocity_verlet_step()
             
-            if ((self._energy_handle != None) & (i > -1)):
+            if ((self._energy_handle != None) & ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )):
             
                 #self._state.K()._Dat = ( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )
                 

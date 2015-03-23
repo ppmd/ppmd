@@ -69,6 +69,9 @@ class BaseMDState():
         print "Cell array = ", self._domain._cell_array
         print "Domain extents = ",self._domain._extent
         
+        
+        
+        
         #Setup acceleration updating from given potential
         
         _potential_dat_dict = self._potential.datdict(self)
