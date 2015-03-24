@@ -5,6 +5,7 @@ import ctypes
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import threading
 np.set_printoptions(threshold='nan')
 
 class draw_particles():
@@ -27,8 +28,7 @@ class draw_particles():
         
         self._key=['red','blue']
         plt.show()
-
-
+        
     def draw(self,N,pos,extents):
         '''
         Update current plot, use for real time plotting.

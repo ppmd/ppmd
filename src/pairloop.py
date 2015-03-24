@@ -32,9 +32,7 @@ class _base():
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #define sign(x) (((x) > 0) - ((x) < 0))
-        #define isign(x) (((x) < 0) - ((x) > 0))
-        #define abs_md(x) ((x) < 0 ? -1*(x) : (x))
+        #include "../generic.h"
         %(INCLUDED_HEADERS)s
 
         void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
@@ -235,11 +233,8 @@ class PairLoopRapaport(_base):
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
 
         %(INCLUDED_HEADERS)s
-        #define LINIDX_2D(NX,iy,ix)   ((NX)*(iy) + (ix))
-        //#define sign(x) (((x) < 0 ) ?  -1 : ((x) > 0 ))
-        #define sign(x) (((x) > 0) - ((x) < 0))
-        #define isign(x) (((x) < 0) - ((x) > 0))
-        #define abs_md(x) ((x) < 0 ? -1*(x) : (x))
+
+        #include "../generic.h"
         
         void %(KERNEL_NAME)s_wrapper(const int n,const int cell_count, int* cells, int* q_list, double* d_extent,%(ARGUMENTS)s);
 
@@ -529,12 +524,13 @@ class SingleAllParticleLoop():
             print >> f, self._generate_impl_source()
         object_filename = filename_base+'.o'
         library_filename = filename_base+'.so'        
-        cflags = ['-O3','-fpic','-std=c99']
+        cflags = ['-O3','-fpic','-std=c99','-lm']
         cc = 'gcc'
         ld = 'gcc'
+        link_flags = ['-lm']
         compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
                        +['-o',object_filename,impl_filename]
-        link_cmd = [ld,'-shared']+['-o',library_filename,object_filename]
+        link_cmd = [ld,'-shared']+link_flags+['-o',library_filename,object_filename]
         stdout_filename = filename_base+'.log'
         stderr_filename = filename_base+'.err'
         with open(stdout_filename,'w') as stdout:
@@ -689,10 +685,8 @@ class SingleAllParticleLoop():
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #define sign(x) (((x) > 0) - ((x) < 0))
         
-        #define isign(x) (((x) < 0) - ((x) > 0))
-        #define abs_md(x) ((x) < 0 ? -1*(x) : (x))
+        #include "../generic.h"
         
         %(INCLUDED_HEADERS)s
 
@@ -745,6 +739,8 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
         #include <omp.h>
+
+        #include "../generic.h"
 
         %(KERNEL_METHODNAME)s
         %(KERNEL)s

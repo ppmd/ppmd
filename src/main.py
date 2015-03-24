@@ -25,11 +25,11 @@ if __name__ == '__main__':
     logging = True
     
     if (test_1000):
-        n=11
+        n=10
         N=n**3
-        rho = 0.3
+        rho = 1.0
         mu = 0.0
-        nsig = 0.05
+        nsig = 2.0
         
         #Initialise basci domain
         test_domain = domain.BaseDomain()
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     
     
     #Create an integrator for above state class.
-    test_integrator = method.VelocityVerlet(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle)
+    test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle)
     
     #create G(r) method.
     test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 200)
@@ -93,6 +93,17 @@ if __name__ == '__main__':
     
     
     ###########################################################
+    
+    start = time.clock()
+    test_integrator.integrate(dt = 0.0001, T = 10.0)
+    end = time.clock()
+    print "Rough time taken integrate :", end - start,"s"    
+    
+    start = time.clock()
+    test_integrator.integrate_thermostat(dt = 0.0001, T = 10.0, nu = 2.5, Temp = 0.01)
+    end = time.clock()
+    print "Rough time taken integrate_thermostat :", end - start,"s"
+    
     start = time.clock()
     test_integrator.integrate(dt = 0.0001, T = 0.2)
     end = time.clock()
@@ -104,52 +115,29 @@ if __name__ == '__main__':
     end = time.clock()
     print "Rough time taken G(r) :", end - start,"s" 
     
-    ###########################################################
+    start = time.clock()
+    test_integrator.integrate(dt = 0.0001, T = 0.2)
+    end = time.clock()
+    print "Rough time taken integrate :", end - start,"s"    
+    
+    start = time.clock()
+    test_gr_method.evaluate()
+    end = time.clock()
+    print "Rough time taken G(r) :", end - start,"s"
     
     start = time.clock()
     test_integrator.integrate(dt = 0.0001, T = 0.2)
     end = time.clock()
-    print "Rough time taken integrate :", end - start,"s"
-    
-
+    print "Rough time taken integrate :", end - start,"s" 
     
     start = time.clock()
     test_gr_method.evaluate()
-    end = time.clock()    
-    print "Rough time taken G(r) :", end - start,"s"    
+    end = time.clock()
+    print "Rough time taken G(r) :", end - start,"s" 
     
     
     ###########################################################
-    
-    start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 0.2)
-    end = time.clock()
-    print "Rough time taken integrate :", end - start,"s"
-    
-
-    
-    start = time.clock()
-    test_gr_method.evaluate()
-    end = time.clock()    
-    print "Rough time taken G(r) :", end - start,"s"    
-    
-    
-    ###########################################################
-    
-    start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 0.2)
-    end = time.clock()
-    print "Rough time taken integrate :", end - start,"s"
-    
-
-    
-    start = time.clock()
-    test_gr_method.evaluate()
-    end = time.clock()    
-    print "Rough time taken G(r) :", end - start,"s"    
-    
-    
-    ###########################################################    
+     
     
     
 

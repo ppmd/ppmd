@@ -47,6 +47,34 @@ class VelocityVerlet():
         self._plot_handle = plot_handle
         self._energy_handle = energy_handle
         
+        self._kernel1_code = '''
+        //self._V+=0.5*self._dt*self._A
+        //self._P+=self._dt*self._V
+        const double M_tmp = 1/M[0];
+        V[0] += dht*A[0]*M_tmp;
+        V[1] += dht*A[1]*M_tmp;
+        V[2] += dht*A[2]*M_tmp;
+        P[0] += dt*V[0];
+        P[1] += dt*V[1];
+        P[2] += dt*V[2];
+        '''
+                
+        self._kernel2_code = '''
+        //self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat()
+        const double M_tmp = 1/M[0];
+        V[0] += dht*A[0]*M_tmp;
+        V[1] += dht*A[1]*M_tmp;
+        V[2] += dht*A[2]*M_tmp;
+        '''
+        
+        self._K_kernel_code = '''
+        K[0]+= (V[0]*V[0] + V[1]*V[1] + V[2]*V[2])*0.5*M[0];
+        
+        '''      
+        self._constants_K = []
+        self._K_kernel = kernel.Kernel('K_kernel',self._K_kernel_code,self._constants_K)
+        self._pK = pairloop.SingleAllParticleLoop(self._N,self._K_kernel,{'V':self._V,'K':self._K, 'M':self._M},headers = ['stdio.h'])         
+        
                
         
     def integrate(self, dt = None, DT = None, T = None):
@@ -77,42 +105,14 @@ class VelocityVerlet():
         
             self._constants = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
             
-            self._kernel1_code = '''
-            //self._V+=0.5*self._dt*self._A
-            //self._P+=self._dt*self._V
-            const double M_tmp = 1/M[0];
-            V[0] += dht*A[0]*M_tmp;
-            V[1] += dht*A[1]*M_tmp;
-            V[2] += dht*A[2]*M_tmp;
-            P[0] += dt*V[0];
-            P[1] += dt*V[1];
-            P[2] += dt*V[2];
-            '''
+            
             self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
             self._p1 = pairloop.SingleAllParticleLoop(self._N,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
-            
-            self._kernel2_code = '''
-            //self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat()
-            const double M_tmp = 1/M[0];
-            V[0] += dht*A[0]*M_tmp;
-            V[1] += dht*A[1]*M_tmp;
-            V[2] += dht*A[2]*M_tmp;
-            '''
-            
+
             self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
             self._p2 = pairloop.SingleAllParticleLoop(self._N,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})  
+              
             
-            self._K_kernel_code = '''
-            K[0]+= (V[0]*V[0] + V[1]*V[1] + V[2]*V[2])*0.5*M[0];
-            
-            '''      
-            self._constants_K = []
-            self._K_kernel = kernel.Kernel('K_kernel',self._K_kernel_code,self._constants_K)
-            self._pK = pairloop.SingleAllParticleLoop(self._N,self._K_kernel,{'V':self._V,'K':self._K, 'M':self._M},headers = ['stdio.h']) 
-            
-            
-            
-        
         self._velocity_verlet_integration()
         
         
@@ -187,6 +187,169 @@ class VelocityVerlet():
         else:
             self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat()
         
+
+################################################################################################################
+# Anderson thermostat
+################################################################################################################ 
+
+class VelocityVerletAnderson(VelocityVerlet):
+    
+    def integrate_thermostat(self, dt = None, DT = None, T = None, Temp = 273.15, nu = 1.0):
+        '''
+        Integrate state forward in time.
+        
+        :arg double dt: Time step size.
+        :arg double T: End time.
+        :arg double Temp: Temperature of heat bath.
+        '''
+        
+        self._Temp = Temp
+        self._nu = nu
+        
+        if (dt != None):
+            self._dt = dt
+        if (T != None):
+            self._T = T
+        if (DT != None):
+            self._DT = DT
+        else:
+            self._DT = 10.0*self._dt
+            
+        self._max_it = int(math.ceil(self._T/self._dt))
+        self._DT_Count = int(math.ceil(self._T/self._DT))
+        self._energy_handle.append_prepare(self._DT_Count)
+        
+        
+        if (self._USE_C):
+            self._constants1 = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
+            self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
+            self._p1 = pairloop.SingleAllParticleLoop(self._N,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
+            
+            
+            
+            self._kernel2_thermostat_code = '''
+            
+            //Anderson thermostat here.
+            //probably horrific random code.
+            
+            const double tmp_rand_max = 1.0/RAND_MAX;
+            
+            if (rand()*tmp_rand_max < rate) {
+            
+                //Box-Muller method.
+                
+                
+                const double scale = sqrt(temperature/M[0]);
+                const double stmp = scale*sqrt(-2.0*log(rand()*tmp_rand_max));
+                
+                const double V0 = 2.0*M_PI*rand()*tmp_rand_max;
+                V[0] = stmp*cos(V0);
+                V[1] = stmp*sin(V0);
+                V[2] = scale*sqrt(-2.0*log(rand()*tmp_rand_max))*cos(2.0*M_PI*rand()*tmp_rand_max);
+                      
+            }
+            else {
+                const double M_tmp = 1/M[0];
+                V[0] += dht*A[0]*M_tmp;
+                V[1] += dht*A[1]*M_tmp;
+                V[2] += dht*A[2]*M_tmp;
+            }
+            
+            '''
+            
+            
+            self._constants2_thermostat = [constant.Constant('rate',self._dt*self._nu), constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt), constant.Constant('temperature',self._Temp),]
+            
+            self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat)
+            self._p2_thermostat = pairloop.SingleAllParticleLoop(self._N,self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M}, headers = ['math.h','stdlib.h','time.h','stdio.h'])  
+            
+            
+            
+            
+            
+            
+            
+        
+        self._velocity_verlet_integration_thermostat()    
+    
+    def _velocity_verlet_integration_thermostat(self):
+        """
+        Perform Velocity Verlet integration up to time T.
+        """    
+
+        
+
+        percent_int = 25
+        percent_count = percent_int
+
+        self._domain.boundary_correct(self._P)
+        self._state.accelerations_update()
+
+        for i in range(self._max_it):
+            
+            
+            self._velocity_verlet_step_thermostat()
+            
+            if ((self._energy_handle != None) & ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )):
+            
+                #self._state.K()._Dat = ( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )
+                
+                self._K[0] = 0.0
+                if(self._USE_C):
+                    self._pK.execute()
+                else:
+                    for ix in range(self._state.N()):
+                        self._K += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
+                
+                
+                self._energy_handle.U_append(self._state.U().Dat()/self._state.N())
+                self._energy_handle.K_append((self._K[0])/self._state.N())
+                self._energy_handle.Q_append((self._state.U()[0] + self._K[0])/self._state.N())
+                self._energy_handle.T_append((i+1)*self._dt)
+            
+                
+            
+            
+            if ( ( (self._energy_handle != None) | (self._plot_handle != None) ) & (((100.0*i)/self._max_it) > percent_count)):
+                
+                if (self._plot_handle != None):
+                    self._plot_handle.draw(self._state.N(), self._P, self._state.domain().extent())
+                
+                percent_count += percent_int
+                if (self._energy_handle != None):
+                    print int((100.0*i)/self._max_it),"%", "T=", self._dt*i   
+    
+        
+    
+                
+    def _velocity_verlet_step_thermostat(self):
+        """
+        Perform one step of Velocity Verlet.
+        """
+        
+        self._p1.execute()
+        
+        #update accelerations
+        self._domain.boundary_correct(self._P)
+        self._state.accelerations_update()
+        
+        self._p2_thermostat.execute()   
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+
+
     
 ################################################################################################################
 # G(R)
@@ -279,7 +442,6 @@ class RadialDistributionPeriodicNVE():
     def reset(self):
         self._gr.scale(0.0)
     
-
 
 
 

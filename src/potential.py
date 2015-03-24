@@ -51,7 +51,7 @@ class LennardJonesShifted(BasePotential):
         self._C_V = 4.*self._epsilon
         self._C_F = -48*self._epsilon/self._sigma**2
         self._rc = 2.**(1./6.)*self._sigma
-        self._rn = 2.0*self._rc
+        self._rn = 1.2*self._rc
         self._rc2 = self._rc**2
         self._sigma2 = self._sigma**2
         
@@ -193,7 +193,7 @@ class LennardJones(LennardJonesShifted):
         self._C_V = 4.*self._epsilon
         self._C_F = -48*self._epsilon/self._sigma**2
         self._rc = self._sigma*(5./2.)
-        self._rn = 2.0*self._rc
+        self._rn = 1.2*self._rc
         self._rc2 = self._rc**2
         self._sigma2 = self._sigma**2
         self._shift_internal = (2.0/5.0)**6 - (2.0/5.0)**12
