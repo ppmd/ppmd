@@ -843,11 +843,11 @@ class DoubleAllParticleLoop(SingleAllParticleLoop):
         }
 
         void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
-          for (int i=0; i<n; i++) { for (int j=0; j<n; j++) {  
-              if (i != j){
-                  %(KERNEL_ARGUMENT_DECL)s
-                  %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
-              }
+          for (int i=0; i<n; i++) { for (int j=0; j<i; j++) {  
+              
+              %(KERNEL_ARGUMENT_DECL)s
+              %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
+              
           }}
         }
         '''

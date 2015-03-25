@@ -27,9 +27,9 @@ if __name__ == '__main__':
     if (test_1000):
         n=10
         N=n**3
-        rho = 1.0
+        rho = 0.3
         mu = 0.0
-        nsig = 2.0
+        nsig = 10.0
         
         #Initialise basci domain
         test_domain = domain.BaseDomain()
@@ -93,49 +93,48 @@ if __name__ == '__main__':
     
     
     ###########################################################
-    
+      
+    """
     start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 10.0)
-    end = time.clock()
-    print "Rough time taken integrate :", end - start,"s"    
-    
-    start = time.clock()
-    test_integrator.integrate_thermostat(dt = 0.0001, T = 10.0, nu = 2.5, Temp = 0.01)
+    test_integrator.integrate_thermostat(dt = 0.0001, T = 3.0, nu = 2.0, Temp = 0.001)
     end = time.clock()
     print "Rough time taken integrate_thermostat :", end - start,"s"
+    """
     
     start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 0.2)
+    test_integrator.integrate(dt = 0.0001, T = 0.4)
     end = time.clock()
-    print "Rough time taken integrate :", end - start,"s"
-    
-    
+    print "Rough time taken integrate_thermostat :", end - start,"s" 
+     
     start = time.clock()
     test_gr_method.evaluate()
     end = time.clock()
     print "Rough time taken G(r) :", end - start,"s" 
-    
+         
     start = time.clock()
     test_integrator.integrate(dt = 0.0001, T = 0.2)
     end = time.clock()
-    print "Rough time taken integrate :", end - start,"s"    
-    
+    print "Rough time taken integrate_thermostat :", end - start,"s"    
+         
+    start = time.clock()
+    test_gr_method.evaluate()
+    end = time.clock()
+    print "Rough time taken G(r) :", end - start,"s" 
+
+    start = time.clock()
+    test_integrator.integrate(dt = 0.0001, T = 0.2)
+    end = time.clock()
+    print "Rough time taken integrate_thermostat :", end - start,"s"    
+         
     start = time.clock()
     test_gr_method.evaluate()
     end = time.clock()
     print "Rough time taken G(r) :", end - start,"s"
     
     start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 0.2)
-    end = time.clock()
-    print "Rough time taken integrate :", end - start,"s" 
-    
-    start = time.clock()
     test_gr_method.evaluate()
     end = time.clock()
-    print "Rough time taken G(r) :", end - start,"s" 
-    
-    
+    print "Rough time taken G(r) :", end - start,"s"        
     ###########################################################
      
     

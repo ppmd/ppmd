@@ -124,7 +124,7 @@ class VelocityVerlet():
 
         
 
-        percent_int = 25
+        percent_int = 10
         percent_count = percent_int
 
         self._domain.boundary_correct(self._P)
@@ -279,7 +279,7 @@ class VelocityVerletAnderson(VelocityVerlet):
 
         
 
-        percent_int = 25
+        percent_int = 10
         percent_count = percent_int
 
         self._domain.boundary_correct(self._P)
@@ -428,15 +428,26 @@ class RadialDistributionPeriodicNVE():
         self._p.execute()
         self._count+=1
         
+        
+        
+        
     def plot(self):
         if (self._count > 0):
             self._fig = plt.figure()
             self._ax = self._fig.add_subplot(111)
-            r =  np.linspace(0, self._rmax, num=self._rsteps, endpoint=True)
-            plt.plot(r,self._state.domain().volume()*self._gr.Dat()/(self._count*(self._N**2)))
+            r =  np.linspace(0.+0.5*(self._rmax/self._rsteps), self._rmax-0.5*(self._rmax/self._rsteps), num=self._rsteps, endpoint=True)
+            
+            _rscaled = 2.0*self._state.domain().volume()*self._gr.Dat()/(self._count * (self._N**2) * (self._N - 1.) * (self._rmax/self._rsteps) )
+            
+            _rscaled =  _rscaled/( (self._rmax/self._rsteps)*(r**2))
+            
+            
+            plt.plot(r, _rscaled)
             self._ax.set_title('Radial Distribution Function')
             self._ax.set_xlabel('r')
             self._ax.set_ylabel('G(r)')
+        else:
+            print "Warning: run evaluate() at least once before plotting."
     
     
     def reset(self):
