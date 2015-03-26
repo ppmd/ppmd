@@ -2,11 +2,55 @@ import math
 import state
 import pairloop
 import ctypes
+import particle
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-import threading
+import datetime
+import os
+import re
 np.set_printoptions(threshold='nan')
+
+def XYZWrite(filename='out', X = None, title='A',sym='A', N_mol = 1, rename_override=False):
+    '''
+    Function to write particle positions in a xyz format.
+    
+    :arg str filename: Filename to write to default out.xyz.
+    :arg Dat X: Particle dat containing positions.
+    :arg str title: title of molecule default ABC. 
+    :arg str sym: Atomic symbol for particles, default A.
+    :arg int N_mol: Number of atoms per molecule default 1.
+    :arg bool rename_override: Flagging as True will disable autorenaming of output file.
+    '''
+    if (X==None):
+        print "XYZwrite Error: No data."
+        return 0
+    
+    
+    if (os.path.exists(os.path.join('./',filename)) & (rename_override != True)):
+        filename=re.sub('.xyz',datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz',filename)
+        if (os.path.exists(os.path.join('./',filename))):
+            filename=re.sub('.xyz',datetime.datetime.now().strftime("_%f") + '.xyz',filename)
+            if (os.path.exists(os.path.join('./',filename))):
+                print "XYZWrite Error: No unquie name found."
+                return 0
+        
+    space=' '
+    
+    
+    f=open(filename,'w')
+    for ix in range(X.npart):
+        f.write(str(N_mol)+'\n')
+        f.write(str(title)+'\n')
+        f.write(str(sym).rjust(3))
+        for iy in range(X.ncomp):
+            f.write(space+str('%.5f' % X[ix,iy]))
+        f.write('\n')
+    f.close()
+    
+
+
+
 
 class draw_particles():
     '''

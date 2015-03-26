@@ -93,13 +93,15 @@ if __name__ == '__main__':
     
     
     ###########################################################
+    
+    data.XYZWrite(filename='output/out.xyz', X=test_state.positions())
       
     """
     start = time.clock()
     test_integrator.integrate_thermostat(dt = 0.0001, T = 3.0, nu = 2.0, Temp = 0.001)
     end = time.clock()
     print "Rough time taken integrate_thermostat :", end - start,"s"
-    """
+    
     
     start = time.clock()
     test_integrator.integrate(dt = 0.0001, T = 0.4)
@@ -150,6 +152,13 @@ if __name__ == '__main__':
     
     
     a=input("PRESS ENTER TO CONTINUE.\n")
+    
+    """
+    
+    
+    
+    
+    
     
     
     
