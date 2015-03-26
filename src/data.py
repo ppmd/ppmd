@@ -9,9 +9,59 @@ from mpl_toolkits.mplot3d import Axes3D
 import datetime
 import os
 import re
+import pickle
+import random
 np.set_printoptions(threshold='nan')
 
-def XYZWrite(filename='out', X = None, title='A',sym='A', N_mol = 1, rename_override=False):
+def DatWrite(filename='out.Dat', X = None, rename_override=False):
+    '''
+    Function to write Dat objects to disk.
+    
+    :arg str filename: Filename to write to default out.xyz.
+    :arg Dat X: Dat.
+    :arg bool rename_override: Flagging as True will disable autorenaming of output file.
+    '''
+    if (X==None):
+        print "DatWrite Error: No data."
+        return 0
+    
+    
+    if (os.path.exists(os.path.join('./',filename)) & (rename_override != True)):
+        filename=re.sub('.xyz',datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz',filename)
+        if (os.path.exists(os.path.join('./',filename))):
+            filename=re.sub('.xyz',datetime.datetime.now().strftime("_%f") + '.xyz',filename)
+            if (os.path.exists(os.path.join('./',filename))):
+                print "XYZWrite Error: No unquie name found."
+                return 0
+    
+    
+    
+    
+    f=open(filename,'w')            
+    pickle.dump(X, f, pickle.HIGHEST_PROTOCOL)
+    f.close()
+    return 1
+    
+def DatRead(filename=None):
+    '''
+    Function to read Dat objects from disk.
+    
+    :arg str filename: Filename to write to default out.xyz.
+    :arg Dat X: Dat.
+    :arg bool rename_override: Flagging as True will disable autorenaming of output file.
+    '''
+                
+    if (filename==None):
+        print "DatRead Error: No filename given."
+        return 0 
+          
+    f=open(filename,'r')
+    tmp=pickle.load(f)
+    f.close()
+    return tmp
+
+
+def XYZWrite(filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_override=False):
     '''
     Function to write particle positions in a xyz format.
     

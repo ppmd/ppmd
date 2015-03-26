@@ -92,18 +92,16 @@ if __name__ == '__main__':
     
     
     
+    #data.DatWrite('output/intial.Dat', X = test_state.positions(), rename_override=True)
+    
     ###########################################################
     
     #data.XYZWrite(filename='output/out.xyz', X=test_state.positions())    
     
-    
-    start = time.clock()
-    test_gr_method.evaluate()
-    end = time.clock()
-    print "Rough time taken G(r) :", end - start,"s"      
+        
     
     
-    """
+    
     start = time.clock()
     test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, nu = 2.0, Temp = 0.001)
     end = time.clock()
@@ -145,8 +143,8 @@ if __name__ == '__main__':
     end = time.clock()
     print "Rough time taken G(r) :", end - start,"s"        
     ###########################################################
-    """
     
+    #data.DatWrite('output/final.Dat', X = test_state.positions(), rename_override=True)
     
 
     
@@ -156,6 +154,9 @@ if __name__ == '__main__':
         energyhandle.plot()
 
     test_gr_method.plot()
+    
+    
+    
     
     
     a=input("PRESS ENTER TO CONTINUE.\n")
