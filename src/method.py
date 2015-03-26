@@ -375,7 +375,7 @@ class RadialDistributionPeriodicNVE():
         self._rsteps = rsteps
         self._extent = self._state.domain().extent()
         self._gr = data.ScalarArray(ncomp = self._rsteps)
-        
+        self._gr.scale(0.0)
         
         _kernel = '''
         double R0 = P[1][0] - P[0][0];
@@ -437,12 +437,16 @@ class RadialDistributionPeriodicNVE():
             self._ax = self._fig.add_subplot(111)
             r =  np.linspace(0.+0.5*(self._rmax/self._rsteps), self._rmax-0.5*(self._rmax/self._rsteps), num=self._rsteps, endpoint=True)
             
-            _rscaled = 2.0*self._state.domain().volume()*self._gr.Dat()/(self._count * (self._N**2) * (self._N - 1.) * (self._rmax/self._rsteps) )
-            
-            _rscaled =  _rscaled/( (self._rmax/self._rsteps)*(r**2))
+            #_grscaled = self._rsteps*self._gr.Dat()/(self._count * 0.5*((self._N - 1)**2)  )
             
             
-            plt.plot(r, _rscaled)
+            _grscaled = self._rsteps*self._gr.Dat()/(np.sum(self._gr.Dat()))
+            
+            
+            _grscaled = _grscaled/((self._N/self._state.domain().volume())*4*math.pi*(r**2) * (self._rmax/float(self._rsteps)))
+            
+            
+            plt.plot(r, _grscaled)
             self._ax.set_title('Radial Distribution Function')
             self._ax.set_xlabel('r')
             self._ax.set_ylabel('G(r)')

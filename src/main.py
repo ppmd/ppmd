@@ -27,7 +27,7 @@ if __name__ == '__main__':
     if (test_1000):
         n=10
         N=n**3
-        rho = 0.3
+        rho = 1.0
         mu = 0.0
         nsig = 10.0
         
@@ -88,17 +88,24 @@ if __name__ == '__main__':
     test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle)
     
     #create G(r) method.
-    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 200)
+    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 100)
     
     
     
     ###########################################################
     
-    data.XYZWrite(filename='output/out.xyz', X=test_state.positions())
-      
+    #data.XYZWrite(filename='output/out.xyz', X=test_state.positions())    
+    
+    
+    start = time.clock()
+    test_gr_method.evaluate()
+    end = time.clock()
+    print "Rough time taken G(r) :", end - start,"s"      
+    
+    
     """
     start = time.clock()
-    test_integrator.integrate_thermostat(dt = 0.0001, T = 3.0, nu = 2.0, Temp = 0.001)
+    test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, nu = 2.0, Temp = 0.001)
     end = time.clock()
     print "Rough time taken integrate_thermostat :", end - start,"s"
     
@@ -138,7 +145,7 @@ if __name__ == '__main__':
     end = time.clock()
     print "Rough time taken G(r) :", end - start,"s"        
     ###########################################################
-     
+    """
     
     
 
@@ -153,7 +160,7 @@ if __name__ == '__main__':
     
     a=input("PRESS ENTER TO CONTINUE.\n")
     
-    """
+    
     
     
     
