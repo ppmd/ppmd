@@ -25,7 +25,7 @@ if __name__ == '__main__':
     logging = True
     
     if (test_1000):
-        n=10
+        n=9
         N=n**3
         rho = 1.0
         mu = 0.0
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle)
     
     #create G(r) method.
-    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 100)
+    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 200)
     
     
     
@@ -156,11 +156,20 @@ if __name__ == '__main__':
     test_gr_method.plot()
     
     
+    """
+    TMPPOS = data.DatRead('output/final.Dat')
+    
+    test_state._pos = TMPPOS
+    
+    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 200)
     
     
-    
+    test_gr_method.evaluate()
+    test_gr_method.plot()
+    """
     a=input("PRESS ENTER TO CONTINUE.\n")
     
+
     
     
     
