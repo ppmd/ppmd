@@ -14,9 +14,10 @@ class Kernel(object):
     :arg constants: List of constants (type :class:`.Constant`) which 
         are to be substituted in
     '''
-    def __init__(self,name,code,constants):
+    def __init__(self,name,code,constants,headers=None):
         self._name = name
         self._code = code
+        self._headers = headers
         for x in constants:
             self._code = x.replace(self._code)
 
@@ -35,4 +36,9 @@ class Kernel(object):
     def code(self):
         '''Kernel source code after substitution of numerical constants'''
         return self._code
+    
+    @property
+    def headers(self):
+        '''Return C headers required for kernel'''
+        return self._headers
     

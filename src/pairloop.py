@@ -9,7 +9,7 @@ import hashlib
 import subprocess
 import data
 
-class _base():
+class _base(object):
     def _unique_name_calc(self):
         '''Return name which can be used to identify the pair loop 
         in a unique way.
@@ -20,8 +20,8 @@ class _base():
         '''Create unique hex digest'''
         m = hashlib.md5()
         m.update(self._kernel.code+self._code)
-        if (self._headers != None):
-            for header in self._headers:
+        if (self._kernel.headers != None):
+            for header in self._kernel.headers:
                 m.update(header)
         return m.hexdigest()
         
@@ -49,9 +49,9 @@ class _base():
     def _included_headers(self):
         '''Return names of included header files.'''
         s = ''
-        if (self._headers != None):
+        if (self._kernel.headers != None):
             s += '\n'
-            for x in self._headers:
+            for x in self._kernel.headers:
                 s += '#include \"'+x+'\" \n'
         return s    
     
@@ -107,9 +107,9 @@ class _base():
         for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
             #print var_name_kernel, var_name_state.dattype()
             
-            if (var_name_state.dattype=='array'):
+            if (type(var_name_state) == particle.Dat):
                 s += 'double **'+var_name_kernel+', '
-            if (var_name_state.dattype=='scalar'):
+            if (type(var_name_state) == data.ScalarArray):
                 s += 'double *'+var_name_kernel+', '
             
             
@@ -156,10 +156,10 @@ class _base():
             loc_argname = 'loc_'+argname
             
             
-            if (dat[1].dattype  == 'scalar'):
+            if (type(dat[1]) == data.ScalarArray):
                 s += space+'double *'+loc_argname+' = '+argname+';\n'
             
-            if (dat[1].dattype  == 'array'):
+            if (type(dat[1]) == particle.Dat):
                 ncomp = dat[1].ncomp
                 s += space+'double *'+loc_argname+'[2];\n'
                 s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
@@ -211,7 +211,7 @@ class PairLoopRapaport(_base):
         
         
         self._nargs = len(self._particle_dat_dict)
-        self._headers = self._potential.headers()
+        
 
         self._code_init()
         
@@ -369,10 +369,10 @@ class PairLoopRapaport(_base):
             loc_argname = 'loc_'+argname
             
             
-            if (dat[1].dattype  == 'scalar'):
+            if (type(dat[1]) == data.ScalarArray):
                 s += space+'double *'+loc_argname+' = '+argname+';\n'
             
-            if (dat[1].dattype  == 'array'):
+            if (type(dat[1]) == particle.Dat):
                 if (dat[1].name  == 'positions'):
                     s += space+'double *'+loc_argname+'[2];\n'
                     
@@ -481,16 +481,15 @@ class PairLoopRapaport(_base):
 ################################################################################################################
 # SINGLE PARTICLE LOOP SERIAL
 ################################################################################################################
-class SingleAllParticleLoop():
+class SingleAllParticleLoop(object):
     '''
     Class to loop over all particles once.
     
     :arg int N: Number of elements to loop over.
     :arg kernel kernel:  Kernel to apply at each element.
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
-    :arg list headers: list containing C headers required by kernel.
     '''
-    def __init__(self, N, kernel, particle_dat_dict, headers=None):
+    def __init__(self, N, kernel, particle_dat_dict):
         self._N = N
         self._temp_dir = './build/'
         if (not os.path.exists(self._temp_dir)):
@@ -498,7 +497,6 @@ class SingleAllParticleLoop():
         self._kernel = kernel
         self._particle_dat_dict = particle_dat_dict
         self._nargs = len(self._particle_dat_dict)
-        self._headers = headers
 
         self._code_init()
         
@@ -643,7 +641,12 @@ class SingleAllParticleLoop():
         the correct address in the particle_dats.
         '''
         s = '\n'
+        
+        
+        
+        
         for i,dat in enumerate(self._particle_dat_dict.items()):
+            
             
             
             space = ' '*14
@@ -651,10 +654,12 @@ class SingleAllParticleLoop():
             loc_argname = 'loc_'+argname
             
             
-            if (dat[1].dattype  == 'scalar'):
+            
+            if (type(dat[1]) == data.ScalarArray):
                 s += space+'double *'+loc_argname+' = '+argname+';\n'
             
-            if (dat[1].dattype  == 'array'):
+            if (type(dat[1]) == particle.Dat):
+                
                 ncomp = dat[1].ncomp
                 s += space+'double *'+loc_argname+';\n'
                 s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'     
@@ -706,9 +711,9 @@ class SingleAllParticleLoop():
     def _included_headers(self):
         '''Return names of included header files.'''
         s = ''
-        if (self._headers != None):
+        if (self._kernel.headers != None):
             s += '\n'
-            for x in self._headers:
+            for x in self._kernel.headers:
                 s += '#include \"'+x+'\" \n'
         return s
         
@@ -723,8 +728,8 @@ class SingleAllParticleLoop():
         '''Create unique hex digest'''
         m = hashlib.md5()
         m.update(self._kernel.code+self._code)
-        if (self._headers != None):
-            for header in self._headers:
+        if (self._kernel.headers != None):
+            for header in self._kernel.headers:
                 m.update(header)
         return m.hexdigest()
 
@@ -828,9 +833,13 @@ class DoubleAllParticleLoop(SingleAllParticleLoop):
         for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
             #print var_name_kernel, var_name_state.dattype()
             
-            if (var_name_state.dattype=='array'):
+            #if (var_name_state.dattype=='array'):
+            if (type(var_name_state) == particle.Dat):
                 s += 'double **'+var_name_kernel+', '
-            if (var_name_state.dattype=='scalar'):
+                print "array"
+            #if (var_name_state.dattype=='scalar'):
+            if (type(var_name_state) == data.ScalarArray):
+                print "scalar"
                 s += 'double *'+var_name_kernel+', '
             
             
@@ -879,10 +888,10 @@ class DoubleAllParticleLoop(SingleAllParticleLoop):
             loc_argname = 'loc_'+argname
             
             
-            if (dat[1].dattype  == 'scalar'):
+            if (type(dat[1]) == data.ScalarArray):
                 s += space+'double *'+loc_argname+' = '+argname+';\n'
             
-            if (dat[1].dattype  == 'array'):
+            if (type(dat[1]) == particle.Dat):
                 ncomp = dat[1].ncomp
                 s += space+'double *'+loc_argname+'[2];\n'
                 s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'

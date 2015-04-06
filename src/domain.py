@@ -3,7 +3,7 @@ import math
 import ctypes
 import data
 
-class BaseDomain():
+class BaseDomain(object):
     '''
     Base class for simulation domain, cartesian, 3D. Initialises domain with given extents.
     
@@ -25,12 +25,28 @@ class BaseDomain():
         
         self._cell_edge_lengths = np.array([1.,1.,1.],dtype=float)
         
-        self._USE_C = False
-        if (self._USE_C):
-            self._periodic_boundary = np.ctypeslib.load_library('libperiodic_boundary.so','.')
-            self._periodic_boundary.d_periodic_boundary.restype = ctypes.c_int
-            self._periodic_boundary.d_periodic_boundary.argtypes = [ ctypes.c_int,ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double)] 
+        '''
+        if (abs(r_in[ix,0]) > 0.5*self._extent[0]):
+            x=r_in[ix,0]+0.5*self._extent[0]
+            #r_in[ix,0] = H(x)*( x % self._extent[0] ) + H(-1*x)*(self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
             
+            if (x < 0):
+                r_in[ix,0] = (self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
+            else:
+                r_in[ix,0] = ( x % self._extent[0] ) - 0.5*self._extent[0]
+        '''        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         
       
@@ -140,52 +156,39 @@ class BaseDomain():
         :arg np.array(3,1) r_in_dat: input position
         """
 
-        
-        
-            
-        #H = lambda x: 0 if x < 0 else 1
-        
+        N = r_in_dat.npart
+        r_in = r_in_dat.Dat()
 
-        
-        
-        
-        if (self._USE_C != True):
-                N = r_in_dat.npart
-                r_in = r_in_dat.Dat()
-        
-        
-                for ix in range(N):
-                    #if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
-                    #    print "BC before isnan error", ix, r_in[ix,]      
 
-                    if (abs(r_in[ix,0]) > 0.5*self._extent[0]):
-                        x=r_in[ix,0]+0.5*self._extent[0]
-                        #r_in[ix,0] = H(x)*( x % self._extent[0] ) + H(-1*x)*(self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
-                        
-                        if (x < 0):
-                            r_in[ix,0] = (self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
-                        else:
-                            r_in[ix,0] = ( x % self._extent[0] ) - 0.5*self._extent[0]
-                        
-                    if (abs(r_in[ix,1]) > 0.5*self._extent[1]):
-                        x=r_in[ix,1]+0.5*self._extent[1]
-                        #r_in[ix,1] = H(x)*( x % self._extent[1] ) + H(-1*x)*(self._extent[1] - (abs(x) % self._extent[1])) - 0.5*self._extent[1]        
-                        if (x < 0):
-                            r_in[ix,1] = (self._extent[1] - (abs(x) % self._extent[1])) - 0.5*self._extent[1]
-                        else:
-                            r_in[ix,1] = ( x % self._extent[1] ) - 0.5*self._extent[1]
+        for ix in range(N):
+            #if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
+            #    print "BC before isnan error", ix, r_in[ix,]      
 
-                    if (abs(r_in[ix,2]) > 0.5*self._extent[2]):
-                        x=r_in[ix,2]+0.5*self._extent[2]
-                        #r_in[ix,2] = H(x)*( x % self._extent[2] ) + H(-1*x)*(self._extent[2] - (abs(x) % self._extent[2])) - 0.5*self._extent[2]        
-                        if (x < 0):
-                            r_in[ix,2] = (self._extent[2] - (abs(x) % self._extent[2])) - 0.5*self._extent[2]
-                        else:
-                            r_in[ix,2] = ( x % self._extent[2] ) - 0.5*self._extent[2]
-        else:
-            args = [self._extent.ctypes.data_as(ctypes.POINTER(ctypes.c_double)),
-                    input_state.positions().Dat().ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
-            self._periodic_boundary.d_periodic_boundary(ctypes.c_int(input_state.N()), *args )
+            if (abs(r_in[ix,0]) > 0.5*self._extent[0]):
+                x=r_in[ix,0]+0.5*self._extent[0]
+                #r_in[ix,0] = H(x)*( x % self._extent[0] ) + H(-1*x)*(self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
+                
+                if (x < 0):
+                    r_in[ix,0] = (self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
+                else:
+                    r_in[ix,0] = ( x % self._extent[0] ) - 0.5*self._extent[0]
+                
+            if (abs(r_in[ix,1]) > 0.5*self._extent[1]):
+                x=r_in[ix,1]+0.5*self._extent[1]
+                #r_in[ix,1] = H(x)*( x % self._extent[1] ) + H(-1*x)*(self._extent[1] - (abs(x) % self._extent[1])) - 0.5*self._extent[1]        
+                if (x < 0):
+                    r_in[ix,1] = (self._extent[1] - (abs(x) % self._extent[1])) - 0.5*self._extent[1]
+                else:
+                    r_in[ix,1] = ( x % self._extent[1] ) - 0.5*self._extent[1]
+
+            if (abs(r_in[ix,2]) > 0.5*self._extent[2]):
+                x=r_in[ix,2]+0.5*self._extent[2]
+                #r_in[ix,2] = H(x)*( x % self._extent[2] ) + H(-1*x)*(self._extent[2] - (abs(x) % self._extent[2])) - 0.5*self._extent[2]        
+                if (x < 0):
+                    r_in[ix,2] = (self._extent[2] - (abs(x) % self._extent[2])) - 0.5*self._extent[2]
+                else:
+                    r_in[ix,2] = ( x % self._extent[2] ) - 0.5*self._extent[2]
+
 
         
         

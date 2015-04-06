@@ -1,7 +1,12 @@
 import numpy as np
 import ctypes
+import datetime
+import os
+import re
+import pickle
+import random
 
-class Dat():
+class Dat(object):
     '''
     Base class to hold floating point properties of particles, creates N1*N2 array with given initial value.
     
@@ -83,8 +88,58 @@ class Dat():
         Returns name of particle dat.
         '''
         return self._name
+    
+        
+    def DatWrite(self, dirname = './output',filename = None, rename_override = False):
+        '''
+        Function to write Dat objects to disk.
+        
+        :arg str dirname: directory to write to, default ./output.
+        :arg str filename: Filename to write to, default dat name or data.Dat if name unset.
+        :arg bool rename_override: Flagging as True will disable autorenaming of output file.
+        '''
         
         
+        if (self._name!=None and filename == None):
+            filename = str(self._name)+'.Dat'
+        if (filename == None):
+            filename = 'data.Dat'
+          
+            
+            
+        
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+        
+        
+        if (os.path.exists(os.path.join(dirname,filename)) & (rename_override != True)):
+            filename=re.sub('.Dat',datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.Dat',filename)
+            if (os.path.exists(os.path.join(dirname,filename))):
+                filename=re.sub('.Dat',datetime.datetime.now().strftime("_%f") + '.Dat',filename)
+                assert os.path.exists(os.path.join(dirname,filename)), "DatWrite Error: No unquie name found."
+        
+        
+        f=open(os.path.join(dirname,filename),'w')            
+        pickle.dump(self._Dat, f, pickle.HIGHEST_PROTOCOL)
+        f.close()
+    
+    
+       
+    def DatRead(self, dirname = './output', filename=None):
+        '''
+        Function to read Dat objects from disk.
+        
+        :arg str dirname: directory to read from, default ./output.
+        :arg str filename: filename to read from.
+        '''
+        
+        assert os.path.exists(dirname), "Read directory not found"         
+        assert filename!=None, "DatRead Error: No filename given."
+        
+            
+        f=open(os.path.join(dirname,filename),'r')
+        self=pickle.load(f)
+        f.close()     
         
         
         

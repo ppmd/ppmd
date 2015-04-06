@@ -13,52 +13,8 @@ import pickle
 import random
 np.set_printoptions(threshold='nan')
 
-def DatWrite(filename='out.Dat', X = None, rename_override=False):
-    '''
-    Function to write Dat objects to disk.
+
     
-    :arg str filename: Filename to write to default out.xyz.
-    :arg Dat X: Dat.
-    :arg bool rename_override: Flagging as True will disable autorenaming of output file.
-    '''
-    if (X==None):
-        print "DatWrite Error: No data."
-        return 0
-    
-    
-    if (os.path.exists(os.path.join('./',filename)) & (rename_override != True)):
-        filename=re.sub('.xyz',datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz',filename)
-        if (os.path.exists(os.path.join('./',filename))):
-            filename=re.sub('.xyz',datetime.datetime.now().strftime("_%f") + '.xyz',filename)
-            if (os.path.exists(os.path.join('./',filename))):
-                print "XYZWrite Error: No unquie name found."
-                return 0
-    
-    
-    
-    
-    f=open(filename,'w')            
-    pickle.dump(X, f, pickle.HIGHEST_PROTOCOL)
-    f.close()
-    return 1
-    
-def DatRead(filename=None):
-    '''
-    Function to read Dat objects from disk.
-    
-    :arg str filename: Filename to write to default out.xyz.
-    :arg Dat X: Dat.
-    :arg bool rename_override: Flagging as True will disable autorenaming of output file.
-    '''
-                
-    if (filename==None):
-        print "DatRead Error: No filename given."
-        return 0 
-          
-    f=open(filename,'r')
-    tmp=pickle.load(f)
-    f.close()
-    return tmp
 
 
 def XYZWrite(filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_override=False):
@@ -72,18 +28,14 @@ def XYZWrite(filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_
     :arg int N_mol: Number of atoms per molecule default 1.
     :arg bool rename_override: Flagging as True will disable autorenaming of output file.
     '''
-    if (X==None):
-        print "XYZwrite Error: No data."
-        return 0
+    assert X!=None, "XYZwrite Error: No data."
     
     
     if (os.path.exists(os.path.join('./',filename)) & (rename_override != True)):
         filename=re.sub('.xyz',datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz',filename)
         if (os.path.exists(os.path.join('./',filename))):
             filename=re.sub('.xyz',datetime.datetime.now().strftime("_%f") + '.xyz',filename)
-            if (os.path.exists(os.path.join('./',filename))):
-                print "XYZWrite Error: No unquie name found."
-                return 0
+            assert os.path.exists(os.path.join('./',filename)), "XYZWrite Error: No unquie name found."
         
     space=' '
     
@@ -102,7 +54,7 @@ def XYZWrite(filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_
 
 
 
-class draw_particles():
+class draw_particles(object):
     '''
     Class to plot N particles with given positions.
     
@@ -150,7 +102,7 @@ class draw_particles():
 # Basic Energy Store
 ################################################################################################################ 
     
-class BasicEnergyStore():
+class BasicEnergyStore(object):
     '''
     Class to contain recorded values of potential energy U, kenetic energy K, total energy Q and time T.
     
@@ -236,7 +188,7 @@ class BasicEnergyStore():
 ################################################################################################################
 # Scalar array.
 ################################################################################################################ 
-class ScalarArray():
+class ScalarArray(object):
     '''
     Base class to hold a single floating point property.
     
@@ -323,3 +275,58 @@ class ScalarArray():
         Return number of components.
         '''   
         return self._N1
+    
+        
+    def DatWrite(self, dirname = './output',filename = None, rename_override = False):
+        '''
+        Function to write ScalarArray objects to disk.
+        
+        :arg str dirname: directory to write to, default ./output.
+        :arg str filename: Filename to write to, default array name or data.SArray if name unset.
+        :arg bool rename_override: Flagging as True will disable autorenaming of output file.
+        '''
+        
+        
+        if (self._name!=None and filename == None):
+            filename = str(self._name)+'.SArray'
+        if (filename == None):
+            filename = 'data.SArray'
+          
+            
+            
+        
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+        
+        
+        if (os.path.exists(os.path.join(dirname,filename)) & (rename_override != True)):
+            filename=re.sub('.SArray',datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.SArray',filename)
+            if (os.path.exists(os.path.join(dirname,filename))):
+                filename=re.sub('.SArray',datetime.datetime.now().strftime("_%f") + '.SArray',filename)
+                assert os.path.exists(os.path.join(dirname,filename)), "DatWrite Error: No unquie name found."
+        
+        
+        f=open(os.path.join(dirname,filename),'w')            
+        pickle.dump(self._Dat, f, pickle.HIGHEST_PROTOCOL)
+        f.close()
+    
+    
+       
+    def DatRead(self, dirname = './output', filename=None):
+        '''
+        Function to read Dat objects from disk.
+        
+        :arg str dirname: directory to read from, default ./output.
+        :arg str filename: filename to read from.
+        '''
+        
+        assert os.path.exists(dirname), "Read directory not found"         
+        assert filename!=None, "DatRead Error: No filename given."
+        
+            
+        f=open(os.path.join(dirname,filename),'r')
+        self=pickle.load(f)
+        f.close()         
+        
+        
+        

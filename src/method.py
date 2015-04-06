@@ -14,7 +14,7 @@ np.set_printoptions(threshold='nan')
 # Velocity Verlet Method
 ################################################################################################################ 
 
-class VelocityVerlet():
+class VelocityVerlet(object):
     '''
     Class to apply Velocity-Verlet to a given state using a given looping method.
     
@@ -73,7 +73,7 @@ class VelocityVerlet():
         '''      
         self._constants_K = []
         self._K_kernel = kernel.Kernel('K_kernel',self._K_kernel_code,self._constants_K)
-        self._pK = pairloop.SingleAllParticleLoop(self._N,self._K_kernel,{'V':self._V,'K':self._K, 'M':self._M},headers = ['stdio.h'])         
+        self._pK = pairloop.SingleAllParticleLoop(self._N,self._K_kernel,{'V':self._V,'K':self._K, 'M':self._M})         
         
                
         
@@ -260,8 +260,8 @@ class VelocityVerletAnderson(VelocityVerlet):
             
             self._constants2_thermostat = [constant.Constant('rate',self._dt*self._nu), constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt), constant.Constant('temperature',self._Temp),]
             
-            self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat)
-            self._p2_thermostat = pairloop.SingleAllParticleLoop(self._N,self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M}, headers = ['math.h','stdlib.h','time.h','stdio.h'])  
+            self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
+            self._p2_thermostat = pairloop.SingleAllParticleLoop(self._N,self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})  
             
             
             
@@ -355,7 +355,7 @@ class VelocityVerletAnderson(VelocityVerlet):
 # G(R)
 ################################################################################################################  
     
-class RadialDistributionPeriodicNVE():
+class RadialDistributionPeriodicNVE(object):
     '''
     Class to calculate radial distribution function.
     
@@ -377,6 +377,7 @@ class RadialDistributionPeriodicNVE():
         self._gr = data.ScalarArray(ncomp = self._rsteps)
         self._gr.scale(0.0)
         
+        _headers = ['math.h']
         _kernel = '''
         double R0 = P[1][0] - P[0][0];
         double R1 = P[1][1] - P[0][1];
@@ -418,11 +419,11 @@ class RadialDistributionPeriodicNVE():
                     )        
         
         
-        _grkernel = kernel.Kernel('radial_distro_periodic_static',_kernel, _constants)
+        _grkernel = kernel.Kernel('radial_distro_periodic_static',_kernel, _constants, headers = _headers)
         _datdict = {'P':self._P, 'GR':self._gr}
-        _headers = ['math.h']
         
-        self._p = pairloop.DoubleAllParticleLoop(N = self._N, kernel = _grkernel, particle_dat_dict = _datdict, headers = _headers)
+        
+        self._p = pairloop.DoubleAllParticleLoop(N = self._N, kernel = _grkernel, particle_dat_dict = _datdict)
         
     def evaluate(self):
         self._p.execute()

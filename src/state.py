@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 np.set_printoptions(threshold='nan')
 
-class BaseMDState():
+class BaseMDState(object):
     '''
     Base molecular dynamics class.
     
@@ -196,7 +196,7 @@ class BaseMDState():
         
         
         
-class PosInitLatticeNRho():
+class PosInitLatticeNRho(object):
     """
     Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass.
     
@@ -250,7 +250,7 @@ class PosInitLatticeNRho():
             
         
         
-class PosInitLatticeNRhoRand():
+class PosInitLatticeNRhoRand(object):
     """
     Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass adds uniform deviantion based on given maximum.
     
@@ -304,7 +304,7 @@ class PosInitLatticeNRhoRand():
             pos[ix,2]=random.uniform(0,self._dev) + mLx_2+(z/np1_3)*Lx
 
 
-class PosInitTwoParticlesInABox():
+class PosInitTwoParticlesInABox(object):
     """
     Creates two particles a set distance apart on the  given axis, centred on the origin. Places these within a containing volume of given extents.
     
@@ -338,7 +338,7 @@ class PosInitTwoParticlesInABox():
 
 
         
-class VelInitNormDist():
+class VelInitNormDist(object):
     """
     Initialise velocities by sampling from a gaussian distribution.
     
@@ -367,7 +367,7 @@ class VelInitNormDist():
             vel_in[ix,]=[random.gauss(self._mu, self._sig),random.gauss(self._mu, self._sig),random.gauss(self._mu, self._sig)]
         
         
-class VelInitTwoParticlesInABox():
+class VelInitTwoParticlesInABox(object):
     """
     Sets velocities for two particles.
     
@@ -394,7 +394,7 @@ class VelInitTwoParticlesInABox():
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
 
 
-class MassInitTwoAlternating():
+class MassInitTwoAlternating(object):
     '''
     Class to initialise masses, alternates between two masses.
     
