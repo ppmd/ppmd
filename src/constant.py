@@ -22,6 +22,9 @@ class Constant(object):
 
         :arg str s: string to work on
         '''
-        forbiddenChars='[^a-zA-Z0-9_]'
-        regex = self._name
+        #forbiddenChars='[^a-zA-Z0-9_]' #='[\W]'='[^\w]'
+        
+        forbiddenChars='[\W]'
+        regex = '(?<='+forbiddenChars+')('+self._name+')(?='+forbiddenChars+')'
+        
         return re.sub(regex,str(self._value),s)
