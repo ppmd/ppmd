@@ -46,9 +46,9 @@ class BaseMDState():
         self._domain = domain
         
         #potential energy, kenetic energy, total energy.
-        self._U = particle.ScalarDat();
-        self._K = particle.ScalarDat();
-        self._Q = particle.ScalarDat();
+        self._U = data.ScalarArray();
+        self._K = data.ScalarArray();
+        self._Q = data.ScalarArray();
 
         
 
