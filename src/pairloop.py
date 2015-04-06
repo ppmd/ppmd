@@ -7,6 +7,7 @@ import random
 import os
 import hashlib
 import subprocess
+import data
 
 class _base():
     def _unique_name_calc(self):
@@ -406,14 +407,16 @@ class PairLoopRapaport(_base):
         '''
         self._cell_sort_all()
         
-        args = [self._domain.cell_array().ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        
+        args = [self._domain.cell_array().ctypes_data,
                         self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                        self._domain.extent().ctypes.data_as(ctypes.POINTER(ctypes.c_double))]
+                        self._domain.extent().ctypes_data]
                 
         for dat in self._particle_dat_dict.values():
-            args.append(dat.ctypes_data())
+            args.append(dat.ctypes_data)
             
         method = self._lib[self._kernel.name+'_wrapper']
+        
         
         method(ctypes.c_int(self._N), ctypes.c_int(self._domain.cell_count()), *args)           
         
@@ -554,7 +557,7 @@ class SingleAllParticleLoop():
         '''Execute the kernel over all particle pairs.'''
         args = []
         for dat in self._particle_dat_dict.values():
-            args.append(dat.ctypes_data())
+            args.append(dat.ctypes_data)
             
         method = self._lib[self._kernel.name+'_wrapper']
         method(self._N,*args)   

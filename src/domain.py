@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import ctypes
-
+import data
 
 class BaseDomain():
     '''
@@ -13,10 +13,16 @@ class BaseDomain():
     '''
 
     def __init__(self, extent = np.array([1., 1., 1.]), cell_count = 1):
-
-        self._extent = extent
+        
+        self._extent = data.ScalarArray(extent)
+        
+        
+        
         self._cell_count = cell_count
         self._cell_array = np.array([1,1,1], dtype=ctypes.c_int, order='C')
+        self._cell_array = data.ScalarArray(self._cell_array, dtype=ctypes.c_int)
+        
+        
         self._cell_edge_lengths = np.array([1.,1.,1.],dtype=float)
         
         self._USE_C = False
@@ -41,7 +47,7 @@ class BaseDomain():
         :arg np.array(3,1) new_extent: New extents.
         
         """
-        self._extent = new_extent
+        self._extent[0:4] = new_extent
         
     
     def cell_count(self):
@@ -60,7 +66,7 @@ class BaseDomain():
         :arg np.array(3,1) r_in:  Cartesian vector for particle position.
         """
 
-        r_p = r_in + 0.5*self._extent
+        r_p = r_in + 0.5*self._extent()
 
         Cx = int(r_p[0]/self._cell_edge_lengths[0])  
         Cy = int(r_p[1]/self._cell_edge_lengths[1])

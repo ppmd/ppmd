@@ -65,7 +65,8 @@ class Dat():
     def npart(self):
         '''Return number of particles.'''
         return self._N1
-        
+    
+    @property    
     def ctypes_data(self):
         '''Return ctypes-pointer to data.'''
         return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))        
@@ -128,7 +129,7 @@ class ScalarDat():
     def __call__(self):
         return self._Dat
     
-          
+    @property      
     def ctypes_data(self):
         '''Return ctypes-pointer to data.'''
         return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))        
