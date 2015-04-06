@@ -85,7 +85,7 @@ if __name__ == '__main__':
     
     
     #Create an integrator for above state class.
-    test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle)
+    test_integrator = method.VelocityVerlet(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle)
     
     #create G(r) method.
     test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 200)
@@ -98,35 +98,7 @@ if __name__ == '__main__':
     
     #data.XYZWrite(filename='output/out.xyz', X=test_state.positions())    
     
-        
     
-    
-    
-    start = time.clock()
-    test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, nu = 2.0, Temp = 0.001)
-    end = time.clock()
-    print "Rough time taken integrate_thermostat :", end - start,"s"
-    
-    
-    start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 0.4)
-    end = time.clock()
-    print "Rough time taken integrate_thermostat :", end - start,"s" 
-     
-    start = time.clock()
-    test_gr_method.evaluate()
-    end = time.clock()
-    print "Rough time taken G(r) :", end - start,"s" 
-         
-    start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 0.2)
-    end = time.clock()
-    print "Rough time taken integrate_thermostat :", end - start,"s"    
-         
-    start = time.clock()
-    test_gr_method.evaluate()
-    end = time.clock()
-    print "Rough time taken G(r) :", end - start,"s" 
 
     start = time.clock()
     test_integrator.integrate(dt = 0.0001, T = 0.2)
@@ -137,11 +109,7 @@ if __name__ == '__main__':
     test_gr_method.evaluate()
     end = time.clock()
     print "Rough time taken G(r) :", end - start,"s"
-    
-    start = time.clock()
-    test_gr_method.evaluate()
-    end = time.clock()
-    print "Rough time taken G(r) :", end - start,"s"        
+        
     ###########################################################
     
     #data.DatWrite('output/final.Dat', X = test_state.positions(), rename_override=True)

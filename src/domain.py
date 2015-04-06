@@ -49,7 +49,8 @@ class BaseDomain():
         Return cell count for domain.
         """
         return self._cell_count
-        
+    
+    '''    
     def cell_index_lin(self,C_in):
         """
         Convert tuple index to linear index. Applies periodic boundaries first.
@@ -63,7 +64,9 @@ class BaseDomain():
         
 
         return ((C_in[2] - 1)*self._cell_array[1] + C_in[1] - 1)*self._cell_array[0] + C_in[0]
-        
+    '''
+    
+    '''    
     def cell_index_lin_offset(self,C_in_abs):
         """
         Convert tuple index to linear index. Applies periodic boundaries first. Returns periodic boundary offsets.
@@ -85,8 +88,9 @@ class BaseDomain():
          
 
         return correction
-        
-        
+    '''   
+    
+    '''    
     def cell_index_tuple(self,c_in):
         """
         Convert cell linear index to vector.
@@ -98,8 +102,9 @@ class BaseDomain():
         Cy = 1 + int((c_in - (Cz-1)*(self._cell_array[0]*self._cell_array[1]) -1)/(self._cell_array[0]))
 
         return np.array([Cx,Cy,Cz])
-        
-        
+    '''    
+    
+    # Used in creation of cell link list.    
     def get_cell_lin_index(self,r_in):
         """
         Returns the linear cell index for a given input coordinate.
@@ -114,6 +119,8 @@ class BaseDomain():
         Cz = int(r_p[2]/self._cell_edge_lengths[2])
         
         return (Cz*self._cell_array[1] + Cy)*self._cell_array[0] + Cx
+        
+        
         
     def _cell_count_recalc(self):
         """    
@@ -163,9 +170,7 @@ class BaseDomain():
         
         self._cell_count_recalc()
         
-        
-    
-        
+         
     def cell_array(self):
         """
         Return cell array.
