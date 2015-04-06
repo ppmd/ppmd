@@ -14,12 +14,13 @@ class Kernel(object):
     :arg constants: List of constants (type :class:`.Constant`) which 
         are to be substituted in
     '''
-    def __init__(self,name,code,constants,headers=None):
+    def __init__(self,name,code,constants=None,headers=None):
         self._name = name
         self._code = code
         self._headers = headers
-        for x in constants:
-            self._code = x.replace(self._code)
+        if (constants!=None):
+            for x in constants:
+                self._code = x.replace(self._code)
 
     def hexdigest(self):
         '''Unique md5 hexdigest which is used for identifying the kernel.'''

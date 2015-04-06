@@ -127,7 +127,7 @@ class VelocityVerlet(object):
         percent_int = 10
         percent_count = percent_int
 
-        self._domain.boundary_correct(self._P)
+        self._domain.BCexecute()
         self._state.accelerations_update()
 
         for i in range(self._max_it):
@@ -179,7 +179,8 @@ class VelocityVerlet(object):
             self._P.Dat()[...,...]+=self._dt*self._V.Dat()
         
         #update accelerations
-        self._domain.boundary_correct(self._P)
+        self._domain.BCexecute()
+        
         self._state.accelerations_update()
         
         if (self._USE_C):
@@ -282,7 +283,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         percent_int = 10
         percent_count = percent_int
 
-        self._domain.boundary_correct(self._P)
+        self._domain.BCexecute()
         self._state.accelerations_update()
 
         for i in range(self._max_it):
@@ -330,7 +331,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         self._p1.execute()
         
         #update accelerations
-        self._domain.boundary_correct(self._P)
+        self._domain.BCexecute()
         self._state.accelerations_update()
         
         self._p2_thermostat.execute()   

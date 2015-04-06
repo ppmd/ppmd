@@ -44,6 +44,8 @@ class BaseMDState(object):
         
         
         self._domain = domain
+        self._domain.BCSetup(self._pos)
+        
         
         #potential energy, kenetic energy, total energy.
         self._U = data.ScalarArray();

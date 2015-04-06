@@ -2,6 +2,8 @@ import numpy as np
 import math
 import ctypes
 import data
+import kernel
+import pairloop
 
 class BaseDomain(object):
     '''
@@ -25,25 +27,70 @@ class BaseDomain(object):
         
         self._cell_edge_lengths = np.array([1.,1.,1.],dtype=float)
         
+        self._BCloop = None
+        
+       
+        
+        
+        
+    def BCSetup(self, positions):
         '''
-        if (abs(r_in[ix,0]) > 0.5*self._extent[0]):
-            x=r_in[ix,0]+0.5*self._extent[0]
-            #r_in[ix,0] = H(x)*( x % self._extent[0] ) + H(-1*x)*(self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
+        Setup loop to apply periodic boundary conditions to input positions.
+        
+        :arg particle.Dat positions: particle.Dat containing particle positions.
+        '''      
+        
+        self._BCcode = '''
+        
+        if (abs_md(P[0]) > 0.5*E[0]){
+            const double E0_2 = 0.5*E[0];
+            const double x = P[0] + E0_2;
             
-            if (x < 0):
-                r_in[ix,0] = (self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
-            else:
-                r_in[ix,0] = ( x % self._extent[0] ) - 0.5*self._extent[0]
-        '''        
+            if (x < 0){
+                P[0] = (E[0] - fmod(abs_md(x) , E[0])) - E0_2;
+            }
+            else{
+                P[0] = fmod( x , E[0] ) - E0_2;
+            }
+        }
+        
+        if (abs_md(P[1]) > 0.5*E[1]){
+            const double E1_2 = 0.5*E[1];
+            const double x = P[1] + E1_2;
+            
+            if (x < 0){
+                P[1] = (E[1] - fmod(abs_md(x) , E[1])) - E1_2;
+            }
+            else{
+                P[1] = fmod( x , E[1] ) - E1_2;
+            }
+        }
+        
+        if (abs_md(P[2]) > 0.5*E[2]){
+            const double E2_2 = 0.5*E[2];
+            const double x = P[2] + E2_2;
+            
+            if (x < 0){
+                P[2] = (E[2] - fmod(abs_md(x) , E[2])) - E2_2;
+            }
+            else{
+                P[2] = fmod( x , E[2] ) - E2_2;
+            }
+        }                
         
         
+        '''
         
+        self._BCcodeDict = {'P':positions, 'E':self._extent}
         
+        self._BCkernel= kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
         
+        self._BCloop = pairloop.SingleAllParticleLoop(positions.npart, self._BCkernel,self._BCcodeDict)          
         
+    def BCexecute(self):
         
-        
-        
+        assert self._BCloop != None, "Run BCSetup first"
+        self._BCloop.execute()
         
         
         
@@ -146,48 +193,7 @@ class BaseDomain(object):
         Return cell array.
         """
         
-        return self._cell_array   
-    
-    
-    def boundary_correct(self, r_in_dat):
-        """
-        Return a new position accounting for periodic boundaries. Would probably benefit from being in C.
-        
-        :arg np.array(3,1) r_in_dat: input position
-        """
-
-        N = r_in_dat.npart
-        r_in = r_in_dat.Dat()
-
-
-        for ix in range(N):
-            #if (math.isnan(r_in[ix,0]) or math.isnan(r_in[ix,1]) or math.isnan(r_in[ix,2])):
-            #    print "BC before isnan error", ix, r_in[ix,]      
-
-            if (abs(r_in[ix,0]) > 0.5*self._extent[0]):
-                x=r_in[ix,0]+0.5*self._extent[0]
-                #r_in[ix,0] = H(x)*( x % self._extent[0] ) + H(-1*x)*(self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
-                
-                if (x < 0):
-                    r_in[ix,0] = (self._extent[0] - (abs(x) % self._extent[0])) - 0.5*self._extent[0]
-                else:
-                    r_in[ix,0] = ( x % self._extent[0] ) - 0.5*self._extent[0]
-                
-            if (abs(r_in[ix,1]) > 0.5*self._extent[1]):
-                x=r_in[ix,1]+0.5*self._extent[1]
-                #r_in[ix,1] = H(x)*( x % self._extent[1] ) + H(-1*x)*(self._extent[1] - (abs(x) % self._extent[1])) - 0.5*self._extent[1]        
-                if (x < 0):
-                    r_in[ix,1] = (self._extent[1] - (abs(x) % self._extent[1])) - 0.5*self._extent[1]
-                else:
-                    r_in[ix,1] = ( x % self._extent[1] ) - 0.5*self._extent[1]
-
-            if (abs(r_in[ix,2]) > 0.5*self._extent[2]):
-                x=r_in[ix,2]+0.5*self._extent[2]
-                #r_in[ix,2] = H(x)*( x % self._extent[2] ) + H(-1*x)*(self._extent[2] - (abs(x) % self._extent[2])) - 0.5*self._extent[2]        
-                if (x < 0):
-                    r_in[ix,2] = (self._extent[2] - (abs(x) % self._extent[2])) - 0.5*self._extent[2]
-                else:
-                    r_in[ix,2] = ( x % self._extent[2] ) - 0.5*self._extent[2]
+        return self._cell_array
 
 
         

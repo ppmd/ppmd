@@ -756,7 +756,7 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
 
         void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
           int i;
-          #pragma omp parallel for
+          #pragma omp parallel for schedule(static)
           for (i=0; i<n; ++i) {
               %(KERNEL_ARGUMENT_DECL)s
               %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
@@ -836,10 +836,10 @@ class DoubleAllParticleLoop(SingleAllParticleLoop):
             #if (var_name_state.dattype=='array'):
             if (type(var_name_state) == particle.Dat):
                 s += 'double **'+var_name_kernel+', '
-                print "array"
+                
             #if (var_name_state.dattype=='scalar'):
             if (type(var_name_state) == data.ScalarArray):
-                print "scalar"
+                
                 s += 'double *'+var_name_kernel+', '
             
             
