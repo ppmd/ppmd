@@ -193,13 +193,6 @@ class PairLoopRapaport(_base):
         
         
         
-        
-        '''Construct initial cell list'''
-        self._q_list = np.zeros([self._N + self._domain.cell_count()], dtype=ctypes.c_int, order='C')
-        
-        
-        
-        
         ##########
         # End of Rapaport initialisations.
         ##########
@@ -409,8 +402,8 @@ class PairLoopRapaport(_base):
         
         
         args = [self._domain.cell_array().ctypes_data,
-                        self._q_list.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-                        self._domain.extent().ctypes_data]
+                        self._q_list.ctypes_data,
+                        self._domain.extent.ctypes_data]
                 
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data)
@@ -419,6 +412,46 @@ class PairLoopRapaport(_base):
         
         
         method(ctypes.c_int(self._N), ctypes.c_int(self._domain.cell_count()), *args)           
+    
+    
+    
+    def _cell_sort_setup(self):
+        """
+        Creates looping for cell list creation
+        """
+        
+        '''Construct initial cell list'''
+        self._q_list = data.ScalarArray(np.zeros([self._N + self._domain.cell_count()], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)     
+        
+        self._cell_sort_code = '''
+        
+        const double R0 = P[0]+0.5*E[0];
+        const double R1 = P[1]+0.5*E[1];
+        const double R2 = P[2]+0.5*E[2];
+        
+        const double C0 = (int)(R[0]/CEL[0]);
+        const double C1 = (int)(R[1]/CEL[1]);
+        const double C2 = (int)(R[2]/CEL[2]);
+        
+        const int val = (C2*CEL[1] + C1)*CEL[0] + C0;
+        
+        
+        Q[0]
+        
+        
+        
+        
+        '''
+        self._cell_sort_dict = {'E':self._domain.extent, 'P':self._P, 'CEL':self._domain.cell_edge_lengths, 'Q':self._q_list}
+        
+        
+        
+        
+        self._BCkernel= kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
+        self._BCloop = pairloop.SingleAllParticleLoop(positions.npart, self._BCkernel,self._BCcodeDict)
+        
+        
+        
         
         
     #move this to C    
@@ -426,6 +459,11 @@ class PairLoopRapaport(_base):
         """
         Construct neighbour list, assigning atoms to cells. Using Rapaport alg.
         """
+        
+        '''Construct initial cell list'''
+        self._q_list = data.ScalarArray(np.zeros([self._N + self._domain.cell_count()], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)    
+        
+        
         for cx in range(self._domain.cell_count()):
             self._q_list[self._N + cx] = -1
         for ix in range(self._N):
@@ -435,6 +473,20 @@ class PairLoopRapaport(_base):
             self._q_list[ix] = self._q_list[self._N + c]
             self._q_list[self._N + c] = ix
             
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
      
     def _create_library(self):
         '''

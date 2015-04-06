@@ -27,6 +27,10 @@ class BaseDomain(object):
         
         self._cell_edge_lengths = np.array([1.,1.,1.],dtype=float)
         
+        self._cell_edge_lengths = data.ScalarArray(np.array([1.,1.,1.], dtype=ctypes.c_double))
+        
+        
+        
         self._BCloop = None
         
        
@@ -96,7 +100,7 @@ class BaseDomain(object):
         
         
         
-      
+    @property  
     def extent(self):
         """
         Returns list of domain extents.
@@ -195,7 +199,12 @@ class BaseDomain(object):
         
         return self._cell_array
 
-
+    @property 
+    def cell_edge_lengths(self):
+        """
+        Return cell edge lengths.
+        """
+        return self._cell_edge_lengths
         
         
         
