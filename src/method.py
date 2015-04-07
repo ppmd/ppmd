@@ -124,7 +124,7 @@ class VelocityVerlet(object):
 
         
 
-        percent_int = 50
+        percent_int = 99
         percent_count = percent_int
 
         self._domain.BCexecute()

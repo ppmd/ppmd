@@ -8,6 +8,7 @@ import os
 import hashlib
 import subprocess
 import data
+import kernel
 
 ctypes_map = {ctypes.c_double:'double', ctypes.c_int:'int'}
 
@@ -200,6 +201,7 @@ class PairLoopRapaport(_base):
         
 
         self._code_init()
+        self._cell_sort_setup()
         
         self._unique_name = self._unique_name_calc()
         
@@ -414,7 +416,11 @@ class PairLoopRapaport(_base):
         """
         
         '''Construct initial cell list'''
-        self._q_list = data.ScalarArray(np.zeros([self._N + self._domain.cell_count()], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)     
+        self._q_list = data.ScalarArray(np.zeros([self._N + self._domain.cell_count()], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
+        
+        #temporary method for index awareness inside kernel.
+        self._internal_index = data.ScalarArray(dtype=ctypes.c_int)
+        self._internal_N = data.ScalarArray(val=self._N, dtype=ctypes.c_int) 
         
         self._cell_sort_code = '''
         
@@ -422,24 +428,25 @@ class PairLoopRapaport(_base):
         const double R1 = P[1]+0.5*E[1];
         const double R2 = P[2]+0.5*E[2];
         
-        const double C0 = (int)(R[0]/CEL[0]);
-        const double C1 = (int)(R[1]/CEL[1]);
-        const double C2 = (int)(R[2]/CEL[2]);
+        const double C0 = (int)(R0/CEL[0]);
+        const double C1 = (int)(R1/CEL[1]);
+        const double C2 = (int)(R2/CEL[2]);
         
         const int val = (C2*CEL[1] + C1)*CEL[0] + C0;
         
-        
-        Q[ix] = Q[N + val];
-        Q[N + val] = ix;
-        
+        Q[I[0]] = Q[N[0] + val];
+        Q[N[0] + val] = I[0];
+        I[0]++;
         '''
-        self._cell_sort_dict = {'E':self._domain.extent, 'P':self._P, 'CEL':self._domain.cell_edge_lengths, 'Q':self._q_list}
+        self._cell_sort_dict = {'E':self._domain.extent,
+                                'P':self._P, 'CEL':self._domain.cell_edge_lengths,
+                                'Q':self._q_list,
+                                'I':self._internal_index,
+                                'N':self._internal_N}
         
         
-        
-        
-        self._BCkernel= kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
-        self._BCloop = pairloop.SingleAllParticleLoop(positions.npart, self._BCkernel,self._BCcodeDict)
+        self._cell_sort_kernel = kernel.Kernel('cell_list_method', self._cell_sort_code)
+        self._cell_sort_loop = SingleAllParticleLoop(self._N, self._cell_sort_kernel, self._cell_sort_dict)
         
         
         
@@ -451,19 +458,25 @@ class PairLoopRapaport(_base):
         Construct neighbour list, assigning atoms to cells. Using Rapaport alg.
         """
         
-        '''Construct initial cell list'''
+        '''Construct initial cell list
         self._q_list = data.ScalarArray(np.zeros([self._N + self._domain.cell_count()], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)    
-        
+        '''
         
         for cx in range(self._domain.cell_count()):
             self._q_list[self._N + cx] = -1
+            
+        '''    
         for ix in range(self._N):
             c = self._domain.get_cell_lin_index(self._P.Dat()[ix,])
             
             #print c, self._pos[ix-1,], self._domain._extent*0.5
             self._q_list[ix] = self._q_list[self._N + c]
             self._q_list[self._N + c] = ix
-            
+        '''
+        
+        
+        self._internal_index.scale(0)
+        self._cell_sort_loop.execute()    
     
     
     

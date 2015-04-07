@@ -106,7 +106,7 @@ if __name__ == '__main__':
     
 
     start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 0.1)
+    test_integrator.integrate(dt = 0.0001, T = 5.0)
     end = time.clock()
     print "Rough time taken integrate_thermostat :", end - start,"s"    
          
@@ -118,8 +118,6 @@ if __name__ == '__main__':
     ###########################################################
     
     #data.DatWrite('output/final.Dat', X = test_state.positions(), rename_override=True)
-    
-
     
     
     #If logging was enabled, plot data.

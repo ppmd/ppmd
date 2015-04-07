@@ -217,7 +217,7 @@ class ScalarArray(object):
         if (val == None):
             self._Dat = np.zeros([self._N1], dtype=self._dtype, order='C')
         if (val != None):
-            self._Dat = val.astype(dtype=self._dtype, order='C')
+            self._Dat = np.array(val, dtype=self._dtype, order='C')
         
         
             
