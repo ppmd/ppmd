@@ -10,6 +10,9 @@ import kernel
 import constant
 import ctypes
 import time
+import os
+import re
+import datetime
 np.set_printoptions(threshold='nan')
 
 ################################################################################################################
@@ -447,21 +450,18 @@ class RadialDistributionPeriodicNVE(object):
             end = time.clock()
             print "rdf time taken:", end - start,"s" 
         
-        
-        
+    def _scale(self):
+        self._r =  np.linspace(0.+0.5*(self._rmax/self._rsteps), self._rmax-0.5*(self._rmax/self._rsteps), num=self._rsteps, endpoint=True)            
+        self._grscaled = self._gr.Dat()*self._state.domain().volume()/((self._N)*(self._N - 1)*2*math.pi*(self._r**2) * (self._rmax/float(self._rsteps))*self._count)
         
     def plot(self):
+        self._scale()
         if (self._count > 0):
             plt.ion()
             _fig = plt.figure()
             _ax = _fig.add_subplot(111)
             
-            _r =  np.linspace(0.+0.5*(self._rmax/self._rsteps), self._rmax-0.5*(self._rmax/self._rsteps), num=self._rsteps, endpoint=True)
-            
-            _grscaled = self._gr.Dat()*self._state.domain().volume()/((self._N)*(self._N - 1)*2*math.pi*(_r**2) * (self._rmax/float(self._rsteps))*self._count)
-            
-            
-            plt.plot(_r, _grscaled)
+            plt.plot(self._r, self._grscaled)
             _ax.set_title('Radial Distribution Function')
             _ax.set_xlabel('r')
             _ax.set_ylabel('G(r)')
@@ -473,6 +473,40 @@ class RadialDistributionPeriodicNVE(object):
     def reset(self):
         self._gr.scale(0.0)
     
+    
+    def RawWrite(self, dirname = './output',filename = None, rename_override = False):
+        '''
+        Function to write Radial Distribution Evaluations to disk.
+        
+        :arg str dirname: directory to write to, default ./output.
+        :arg str filename: Filename to write to, default array name or data.rdf if name unset.
+        :arg bool rename_override: Flagging as True will disable autorenaming of output file.
+        '''
+        
+        
+        if (filename == None):
+            filename = 'data.rdf'
+        
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+        
+        
+        if (os.path.exists(os.path.join(dirname,filename)) & (rename_override != True)):
+            filename=re.sub('.rdf',datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.rdf',filename)
+            if (os.path.exists(os.path.join(dirname,filename))):
+                filename=re.sub('.rdf',datetime.datetime.now().strftime("_%f") + '.rdf',filename)
+                assert os.path.exists(os.path.join(dirname,filename)), "RawWrite Error: No unquie name found."
+        
+        self._scale()
+        f=open(os.path.join(dirname,filename),'w')            
+        
+        
+        f.write('r \t g(r)\n')
+        for ix in range(self._gr.ncomp):
+            f.write(str(self._r[ix]) + '\t' + str(self._grscaled[ix]) + '\n')
+        
+        
+        f.close()
 
 
 

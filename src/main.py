@@ -28,6 +28,7 @@ if __name__ == '__main__':
     if (test_1000):
         n=10
         N=n**3
+        print "N =",N
         rho = 1.0
         mu = 0.0
         nsig = 5.0
@@ -103,11 +104,11 @@ if __name__ == '__main__':
     
     
     test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
-    test_integrator.integrate_thermostat(dt = 0.0001, T = 1.5, Temp=0.001, nu=2.5, timer=True)
+    test_integrator.integrate_thermostat(dt = 0.0001, T = 1.5, Temp=111.06, nu=2.5, timer=True)
     test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     test_gr_method.evaluate(timer=True)
     test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
-    test_gr_method.evaluate(timer=True)        
+    test_gr_method.evaluate(timer=True)       
     ###########################################################
     
     #data.DatWrite('output/final.Dat', X = test_state.positions(), rename_override=True)
@@ -118,7 +119,7 @@ if __name__ == '__main__':
         energyhandle.plot()
 
     test_gr_method.plot()
-    
+    test_gr_method.RawWrite()
     
 
     a=input("PRESS ENTER TO CONTINUE.\n")
