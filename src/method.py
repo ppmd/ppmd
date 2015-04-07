@@ -9,6 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import kernel
 import constant
 import ctypes
+import time
 np.set_printoptions(threshold='nan')
 
 ################################################################################################################
@@ -78,13 +79,17 @@ class VelocityVerlet(object):
         
                
         
-    def integrate(self, dt = None, DT = None, T = None):
+    def integrate(self, dt = None, DT = None, T = None, timer=False):
         '''
         Integrate state forward in time.
         
         :arg double dt: Time step size.
         :arg double T: End time.
+        :arg bool timer: display approximate timing information.
         '''
+        if (timer==True):
+            start = time.clock()
+        
         
         
         if (dt != None):
@@ -116,6 +121,10 @@ class VelocityVerlet(object):
               
             
         self._velocity_verlet_integration()
+        if (timer==True):
+            end = time.clock()
+            print "integrate time taken:", end - start,"s"        
+        
         
         
         
@@ -124,10 +133,10 @@ class VelocityVerlet(object):
         Perform Velocity Verlet integration up to time T.
         """    
 
-        
-
-        percent_int = 10
-        percent_count = percent_int
+        percent_count = 101
+        if (self._plot_handle != None):
+            percent_int = self._plot_handle.interval
+            percent_count = percent_int
 
         self._domain.BCexecute()
         self._state.accelerations_update()
@@ -197,14 +206,17 @@ class VelocityVerlet(object):
 
 class VelocityVerletAnderson(VelocityVerlet):
     
-    def integrate_thermostat(self, dt = None, DT = None, T = None, Temp = 273.15, nu = 1.0):
+    def integrate_thermostat(self, dt = None, DT = None, T = None, Temp = 273.15, nu = 1.0, timer=False):
         '''
         Integrate state forward in time.
         
         :arg double dt: Time step size.
         :arg double T: End time.
         :arg double Temp: Temperature of heat bath.
+        :arg bool timer: display approximate timing information.
         '''
+        if (timer==True):
+            start = time.clock()
         
         self._Temp = Temp
         self._nu = nu
@@ -267,14 +279,12 @@ class VelocityVerletAnderson(VelocityVerlet):
             self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
             self._p2_thermostat = loop.SingleAllParticleLoop(self._N,self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})  
             
-            
-            
-            
-            
-            
-            
         
-        self._velocity_verlet_integration_thermostat()    
+        self._velocity_verlet_integration_thermostat()
+        
+        if (timer==True):
+            end = time.clock()
+            print "integrate thermostat time taken:", end - start,"s"           
     
     def _velocity_verlet_integration_thermostat(self):
         """
@@ -282,9 +292,10 @@ class VelocityVerletAnderson(VelocityVerlet):
         """    
 
         
-
-        percent_int = 10
-        percent_count = percent_int
+        percent_count = 101
+        if (self._plot_handle != None):
+            percent_int = self._plot_handle.interval
+            percent_count = percent_int
 
         self._domain.BCexecute()
         self._state.accelerations_update()
@@ -363,11 +374,9 @@ class RadialDistributionPeriodicNVE(object):
     '''
     Class to calculate radial distribution function.
     
-    :arg np.array(3,1) positions: Particle positions.
-    :arg np.array(3,1) extents: Domain extents.
+    :arg state state: State containing particle positions.
     :arg double rmax: Maximum radial distance.
     :arg int rsteps: Resolution to record to, default 100.
-    :arg np.array(3,1) extent: Domain extents.
     '''
     def __init__(self, state, rmax = 1.0, rsteps = 100):
         
@@ -424,35 +433,39 @@ class RadialDistributionPeriodicNVE(object):
         
         self._p = pairloop.DoubleAllParticleLoop(N = self._N, kernel = _grkernel, particle_dat_dict = _datdict)
         
-    def evaluate(self):
+    def evaluate(self, timer=False):
+        '''
+        Evaluate the radial distribution function.
+        
+        :arg bool timer: display approximate timing information.
+        '''
+        if (timer==True):
+            start = time.clock()    
         self._p.execute()
-        
         self._count+=1
-        
+        if (timer==True):
+            end = time.clock()
+            print "rdf time taken:", end - start,"s" 
         
         
         
         
     def plot(self):
         if (self._count > 0):
-            self._fig = plt.figure()
-            self._ax = self._fig.add_subplot(111)
-            r =  np.linspace(0.+0.5*(self._rmax/self._rsteps), self._rmax-0.5*(self._rmax/self._rsteps), num=self._rsteps, endpoint=True)
+            plt.ion()
+            _fig = plt.figure()
+            _ax = _fig.add_subplot(111)
             
-            #_grscaled = self._rsteps*self._gr.Dat()/(self._count * 0.5*((self._N - 1)**2)  )
+            _r =  np.linspace(0.+0.5*(self._rmax/self._rsteps), self._rmax-0.5*(self._rmax/self._rsteps), num=self._rsteps, endpoint=True)
             
-            
-             
-            _grscaled = self._gr.Dat()
+            _grscaled = self._gr.Dat()*self._state.domain().volume()/((self._N)*(self._N - 1)*8*math.pi*(_r**2) * (self._rmax/float(self._rsteps)))
             
             
-            _grscaled = _grscaled*self._state.domain().volume()/((self._N)*(self._N - 1)*8*math.pi*(r**2) * (self._rmax/float(self._rsteps)))
-            
-            
-            plt.plot(r, _grscaled)
-            self._ax.set_title('Radial Distribution Function')
-            self._ax.set_xlabel('r')
-            self._ax.set_ylabel('G(r)')
+            plt.plot(_r, _grscaled)
+            _ax.set_title('Radial Distribution Function')
+            _ax.set_xlabel('r')
+            _ax.set_ylabel('G(r)')
+            plt.show()
         else:
             print "Warning: run evaluate() at least once before plotting."
     

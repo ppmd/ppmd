@@ -7,7 +7,6 @@ import numpy as np
 import math
 import method
 import data
-import time
 
 if __name__ == '__main__':
     
@@ -27,9 +26,9 @@ if __name__ == '__main__':
     logging = True
     
     if (test_1000):
-        n=9
+        n=10
         N=n**3
-        rho = 1.0
+        rho = 0.7
         mu = 0.0
         nsig = 10.0
         
@@ -56,7 +55,7 @@ if __name__ == '__main__':
         test_potential = potential.LennardJonesShifted(sigma=1.0,epsilon=1.0)
         
         #Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.5, extent = np.array([7., 7., 7.]), axis = np.array([1,0,0]))
+        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.6, extent = np.array([7., 7., 7.]), axis = np.array([1,0,0]))
         
         #Give first two particles specific velocities
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
@@ -77,7 +76,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.draw_particles()
+        plothandle = data.draw_particles(interval = 10)
     else:
         plothandle = None
     
@@ -95,27 +94,19 @@ if __name__ == '__main__':
     test_integrator = method.VelocityVerlet(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle)
     
     #create G(r) method.
-    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 100)
+    #test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 100)
     
     
     
-    #data.DatWrite('output/intial.Dat', X = test_state.positions(), rename_override=True)
     
     ###########################################################
     
     #data.XYZWrite(filename='output/out.xyz', X=test_state.positions())    
     
     
+    test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)    
+    #test_gr_method.evaluate(timer=True)
 
-    start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 1.0)
-    end = time.clock()
-    print "Rough time taken integrate_thermostat :", end - start,"s"    
-         
-    start = time.clock()
-    test_gr_method.evaluate()
-    end = time.clock()
-    print "Rough time taken G(r) :", end - start,"s"
         
     ###########################################################
     
@@ -126,20 +117,10 @@ if __name__ == '__main__':
     if (logging):
         energyhandle.plot()
 
-    test_gr_method.plot()
+    #test_gr_method.plot()
     
     
-    """
-    TMPPOS = data.DatRead('output/final.Dat')
-    
-    test_state._pos = TMPPOS
-    
-    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 200)
-    
-    
-    test_gr_method.evaluate()
-    test_gr_method.plot()
-    """
+
     a=input("PRESS ENTER TO CONTINUE.\n")
     
 

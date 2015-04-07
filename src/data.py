@@ -64,21 +64,24 @@ class draw_particles(object):
     
     
     '''
-    def __init__(self):
-        print "plotting....."
+    def __init__(self, interval = 10):
+        
+        self._interval = interval
+        
         plt.ion()
         
-
         self._fig = plt.figure()
         self._ax = self._fig.add_subplot(111, projection='3d')
         
         self._key=['red','blue']
         plt.show()
         
+        
     def draw(self,N,pos,extents):
         '''
         Update current plot, use for real time plotting.
         '''
+        
         
         self._N = N
         self._pos = pos
@@ -97,6 +100,10 @@ class draw_particles(object):
         self._ax.set_zlabel('z')
         
         plt.draw()
+    
+    @property    
+    def interval(self):
+        return self._interval
 
 ################################################################################################################
 # Basic Energy Store
@@ -174,7 +181,8 @@ class BasicEnergyStore(object):
         '''
         Plot recorded energies against time.
         '''
-        fig2 = plt.figure()
+        plt.ion()
+        fig2 = plt.figure(num=None)
         ax2 = fig2.add_subplot(111)
         ax2.plot(self._T_store,self._Q_store,color='r', linewidth=2)
         ax2.plot(self._T_store,self._U_store,color='g')
@@ -241,7 +249,7 @@ class ScalarArray(object):
         
     
     def __setitem__(self,ix, val):
-        self._Dat[ix] = val
+        self._Dat[ix] = np.array([val],dtype=self._dtype)
           
     def __str__(self):
         return str(self._Dat)

@@ -21,12 +21,7 @@ class BaseDomain(object):
         
         
         self._cell_count = cell_count
-        self._cell_array = np.array([1,1,1], dtype=ctypes.c_int, order='C')
-        self._cell_array = data.ScalarArray(self._cell_array, dtype=ctypes.c_int)
-        
-        
-        self._cell_edge_lengths = np.array([1.,1.,1.],dtype=float)
-        
+        self._cell_array = data.ScalarArray(np.array([1,1,1]), dtype=ctypes.c_int)
         self._cell_edge_lengths = data.ScalarArray(np.array([1.,1.,1.], dtype=ctypes.c_double))
         
         
@@ -89,10 +84,13 @@ class BaseDomain(object):
         
         self._BCkernel= kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
         
-        self._BCloop = loop.SingleAllParticleLoop(positions.npart, self._BCkernel,self._BCcodeDict)          
+        self._BCloop = loop.SingleAllParticleLoop(positions.npart, self._BCkernel,self._BCcodeDict)       
+        #self._positions = positions
+           
         
     def BCexecute(self):
         
+        #self.boundary_correct(self._positions)
         assert self._BCloop != None, "Run BCSetup first"
         self._BCloop.execute()
         
@@ -152,6 +150,8 @@ class BaseDomain(object):
         self._cell_edge_lengths[1] = self._extent[1]/self._cell_array[1]
         self._cell_edge_lengths[2] = self._extent[2]/self._cell_array[2]
         
+        
+        
     def volume(self):
         """
         Return domain volume.
@@ -164,7 +164,8 @@ class BaseDomain(object):
         
         :arg np.array(3,1) cell_array: new cell array.
         """
-        self._cell_array = cell_array.astype(ctypes.c_int)
+        
+        self._cell_array[0:4] = cell_array
         self._cell_count_recalc()
         
         
@@ -179,6 +180,7 @@ class BaseDomain(object):
         self._cell_array[1] = int(self._extent[1]/rn)
         self._cell_array[2] = int(self._extent[2]/rn)
         
+        
         if (self._cell_array[0] < 3 or self._cell_array[1] < 3 or self._cell_array[2] < 3):
             print "WARNING: Less than three cells per coordinate direction. Correcting"
             print "Cell array = ", self._cell_array
@@ -191,7 +193,7 @@ class BaseDomain(object):
         
         self._cell_count_recalc()
         
-         
+    @property     
     def cell_array(self):
         """
         Return cell array.
@@ -206,8 +208,7 @@ class BaseDomain(object):
         """
         return self._cell_edge_lengths
         
-        
-        
+               
 
     
     

@@ -9,6 +9,7 @@ import subprocess
 import data
 import kernel
 import loop
+import constant
 
 
 class _base(object):
@@ -395,7 +396,7 @@ class PairLoopRapaport(_base):
         self._cell_sort_all()
         
         
-        args = [self._domain.cell_array().ctypes_data,
+        args = [self._domain.cell_array.ctypes_data,
                         self._q_list.ctypes_data,
                         self._domain.extent.ctypes_data]
                 
@@ -419,7 +420,9 @@ class PairLoopRapaport(_base):
         
         #temporary method for index awareness inside kernel.
         self._internal_index = data.ScalarArray(dtype=ctypes.c_int)
-        self._internal_N = data.ScalarArray(val=self._N, dtype=ctypes.c_int) 
+        self._internal_N = data.ScalarArray(dtype=ctypes.c_int)
+        self._internal_index[0]=0
+        self._internal_N[0] = self._N         
         
         self._cell_sort_code = '''
         
@@ -427,41 +430,44 @@ class PairLoopRapaport(_base):
         const double R1 = P[1]+0.5*E[1];
         const double R2 = P[2]+0.5*E[2];
         
-        const double C0 = (int)(R0/CEL[0]);
-        const double C1 = (int)(R1/CEL[1]);
-        const double C2 = (int)(R2/CEL[2]);
+        const int C0 = (int)(R0/CEL[0]);
+        const int C1 = (int)(R1/CEL[1]);
+        const int C2 = (int)(R2/CEL[2]);
         
-        const int val = (C2*CEL[1] + C1)*CEL[0] + C0;
+        const int val = (C2*CA[1] + C1)*CA[0] + C0;
         
         Q[I[0]] = Q[N[0] + val];
         Q[N[0] + val] = I[0];
         I[0]++;
+        
         '''
         self._cell_sort_dict = {'E':self._domain.extent,
-                                'P':self._P, 'CEL':self._domain.cell_edge_lengths,
+                                'P':self._P,
+                                'CEL':self._domain.cell_edge_lengths,
+                                'CA':self._domain.cell_array,
                                 'Q':self._q_list,
                                 'I':self._internal_index,
                                 'N':self._internal_N}
+                
         
         
-        self._cell_sort_kernel = kernel.Kernel('cell_list_method', self._cell_sort_code)
+        self._cell_sort_kernel = kernel.Kernel('cell_list_method', self._cell_sort_code, headers = ['stdio.h'])
         self._cell_sort_loop = loop.SingleAllParticleLoop(self._N, self._cell_sort_kernel, self._cell_sort_dict)
-        
-        
-        
-        
         
     #move this to C    
     def _cell_sort_all(self):
         """
         Construct neighbour list, assigning atoms to cells. Using Rapaport algorithm.
         """
-        
+
+                
         for cx in range(self._domain.cell_count()):
             self._q_list[self._N + cx] = -1
-        self._internal_index.scale(0)
+        
+        
+        self._internal_index[0]=0
         self._cell_sort_loop.execute()    
-    
+        
     
     def _create_library(self):
         '''
