@@ -20,7 +20,7 @@ if __name__ == '__main__':
     test_2_bounce = False
     
     #plot as computing + at end?
-    plotting = True
+    plotting = False
     
     #log energy?
     logging = True
@@ -28,9 +28,9 @@ if __name__ == '__main__':
     if (test_1000):
         n=10
         N=n**3
-        rho = 0.7
+        rho = 1.0
         mu = 0.0
-        nsig = 10.0
+        nsig = 5.0
         
         #Initialise basci domain
         test_domain = domain.BaseDomain()
@@ -91,23 +91,23 @@ if __name__ == '__main__':
     
     
     #Create an integrator for above state class.
-    test_integrator = method.VelocityVerlet(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle)
+    test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle)
     
     #create G(r) method.
-    #test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 100)
+    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 200)
     
     
     
     
     ###########################################################
     
-    #data.XYZWrite(filename='output/out.xyz', X=test_state.positions())    
     
-    
-    test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)    
-    #test_gr_method.evaluate(timer=True)
-
-        
+    test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
+    test_integrator.integrate_thermostat(dt = 0.0001, T = 1.5, Temp=0.001, nu=2.5, timer=True)
+    test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
+    test_gr_method.evaluate(timer=True)
+    test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
+    test_gr_method.evaluate(timer=True)        
     ###########################################################
     
     #data.DatWrite('output/final.Dat', X = test_state.positions(), rename_override=True)
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     if (logging):
         energyhandle.plot()
 
-    #test_gr_method.plot()
+    test_gr_method.plot()
     
     
 

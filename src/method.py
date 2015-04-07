@@ -458,7 +458,7 @@ class RadialDistributionPeriodicNVE(object):
             
             _r =  np.linspace(0.+0.5*(self._rmax/self._rsteps), self._rmax-0.5*(self._rmax/self._rsteps), num=self._rsteps, endpoint=True)
             
-            _grscaled = self._gr.Dat()*self._state.domain().volume()/((self._N)*(self._N - 1)*8*math.pi*(_r**2) * (self._rmax/float(self._rsteps)))
+            _grscaled = self._gr.Dat()*self._state.domain().volume()/((self._N)*(self._N - 1)*2*math.pi*(_r**2) * (self._rmax/float(self._rsteps))*self._count)
             
             
             plt.plot(_r, _grscaled)
