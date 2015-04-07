@@ -124,7 +124,7 @@ class VelocityVerlet(object):
 
         
 
-        percent_int = 10
+        percent_int = 50
         percent_count = percent_int
 
         self._domain.BCexecute()
@@ -375,10 +375,12 @@ class RadialDistributionPeriodicNVE(object):
         self._rmax = rmax
         self._rsteps = rsteps
         self._extent = self._state.domain().extent()
-        self._gr = data.ScalarArray(ncomp = self._rsteps)
+        self._gr = data.ScalarArray(ncomp = self._rsteps, dtype=ctypes.c_int)
         self._gr.scale(0.0)
         
-        _headers = ['math.h']
+        
+        
+        _headers = ['math.h','stdio.h']
         _kernel = '''
         double R0 = P[1][0] - P[0][0];
         double R1 = P[1][1] - P[0][1];
@@ -395,15 +397,8 @@ class RadialDistributionPeriodicNVE(object):
             double r20=0.0, r21 = r2;
             
             r21 = sqrt(r2);
-            /*
-            while(abs_md(r20 - r21) > rmaxoverrsteps ){
-                r20 = r21;
-                r21 -= 0.5*(r21 - (r2/r21) );
-            }
-            */
             
             GR[(int) (abs_md(r21* rstepsoverrmax))]++;
-            
             
         }
         '''
@@ -428,6 +423,7 @@ class RadialDistributionPeriodicNVE(object):
         
     def evaluate(self):
         self._p.execute()
+        
         self._count+=1
         
         
@@ -443,6 +439,7 @@ class RadialDistributionPeriodicNVE(object):
             #_grscaled = self._rsteps*self._gr.Dat()/(self._count * 0.5*((self._N - 1)**2)  )
             
             
+             
             _grscaled = self._gr.Dat()
             
             

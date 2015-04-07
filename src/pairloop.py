@@ -9,6 +9,8 @@ import hashlib
 import subprocess
 import data
 
+ctypes_map = {ctypes.c_double:'double', ctypes.c_int:'int'}
+
 class _base(object):
     def _unique_name_calc(self):
         '''Return name which can be used to identify the pair loop 
@@ -63,21 +65,12 @@ class _base(object):
         If, for example, the pairloop gets passed two particle_dats, 
         then the result will be ``double** arg_000,double** arg_001`.`
         '''
-        #argnames = ''
-        #for i in range(self._nargs):
-        #    argnames += 'double **arg_'+('%03d' % i)+','
-        #return argnames[:-1]
         
         argnames = ''
         for i,dat in enumerate(self._particle_dat_dict.items()):
-            argnames += 'double *arg_'+('%03d' % i)+','
             
+            argnames += ctypes_map[dat[1].dtype]+' *arg_'+('%03d' % i)+','
             
-            #if (dat[1].dattype  == 'scalar'):
-                #argnames += 'double *arg_'+('%03d' % i)+','
-            
-            #if (dat[1].dattype  == 'array'):        
-                #argnames += 'double **arg_'+('%03d' % i)+','
 
         return argnames[:-1]
         
@@ -108,9 +101,9 @@ class _base(object):
             #print var_name_kernel, var_name_state.dattype()
             
             if (type(var_name_state) == particle.Dat):
-                s += 'double **'+var_name_kernel+', '
+                s += ctypes_map[var_name_state.dtype]+' **'+var_name_kernel+', '
             if (type(var_name_state) == data.ScalarArray):
-                s += 'double *'+var_name_kernel+', '
+                s += ctypes_map[var_name_state.dtype]+' *'+var_name_kernel+', '
             
             
         s = s[:-2] + ') {'
@@ -157,11 +150,11 @@ class _base(object):
             
             
             if (type(dat[1]) == data.ScalarArray):
-                s += space+'double *'+loc_argname+' = '+argname+';\n'
+                s += space+ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
             if (type(dat[1]) == particle.Dat):
                 ncomp = dat[1].ncomp
-                s += space+'double *'+loc_argname+'[2];\n'
+                s += space+ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                 s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                 s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'       
         
@@ -363,11 +356,11 @@ class PairLoopRapaport(_base):
             
             
             if (type(dat[1]) == data.ScalarArray):
-                s += space+'double *'+loc_argname+' = '+argname+';\n'
+                s += space+ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
             if (type(dat[1]) == particle.Dat):
                 if (dat[1].name  == 'positions'):
-                    s += space+'double *'+loc_argname+'[2];\n'
+                    s += space+ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                     
                     
                     s += space+'if (flag){ \n'
@@ -385,7 +378,7 @@ class PairLoopRapaport(_base):
                     
                 else:
                     ncomp = dat[1].ncomp
-                    s += space+'double *'+loc_argname+'[2];\n'
+                    s += space+ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                     s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                     s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'       
         
@@ -436,10 +429,8 @@ class PairLoopRapaport(_base):
         const int val = (C2*CEL[1] + C1)*CEL[0] + C0;
         
         
-        Q[0]
-        
-        
-        
+        Q[ix] = Q[N + val];
+        Q[N + val] = ix;
         
         '''
         self._cell_sort_dict = {'E':self._domain.extent, 'P':self._P, 'CEL':self._domain.cell_edge_lengths, 'Q':self._q_list}
@@ -639,7 +630,7 @@ class SingleAllParticleLoop(object):
         s = 'inline void '+self._kernel.name+'('
         for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
             #print var_name_kernel, var_name_state.dattype()
-            s += 'double *'+var_name_kernel+', '
+            s += ctypes_map[var_name_state.dtype]+' *'+var_name_kernel+', '
      
         
         
@@ -708,17 +699,17 @@ class SingleAllParticleLoop(object):
             
             
             if (type(dat[1]) == data.ScalarArray):
-                s += space+'double *'+loc_argname+' = '+argname+';\n'
+                s += space+ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
             if (type(dat[1]) == particle.Dat):
                 
                 ncomp = dat[1].ncomp
-                s += space+'double *'+loc_argname+';\n'
+                s += space+ctypes_map[dat[1].dtype]+' *'+loc_argname+';\n'
                 s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'     
         
         return s 
 
-        
+    """   
     def _argnames(self):
         '''Comma separated string of argument name declarations.
 
@@ -732,8 +723,28 @@ class SingleAllParticleLoop(object):
         for i in range(self._nargs):
             argnames += 'double *arg_'+('%03d' % i)+','
         return argnames[:-1]        
+     """
+      
+    def _argnames(self):
+        '''Comma separated string of argument name declarations.
+
+        This string of argument names is used in the declaration of 
+        the method which executes the pairloop over the grid. 
+        If, for example, the pairloop gets passed two particle_dats, 
+        then the result will be ``double** arg_000,double** arg_001`.`
+        '''
+        #argnames = ''
+        #for i in range(self._nargs):
+        #    argnames += 'double **arg_'+('%03d' % i)+','
+        #return argnames[:-1]
         
-        
+        argnames = ''
+        for i,dat in enumerate(self._particle_dat_dict.items()):
+            
+            argnames += ctypes_map[dat[1].dtype]+' *arg_'+('%03d' % i)+','
+            
+
+        return argnames[:-1]        
         
         
         
@@ -887,12 +898,12 @@ class DoubleAllParticleLoop(SingleAllParticleLoop):
             
             #if (var_name_state.dattype=='array'):
             if (type(var_name_state) == particle.Dat):
-                s += 'double **'+var_name_kernel+', '
+                s += ctypes_map[var_name_state.dtype]+' **'+var_name_kernel+', '
                 
             #if (var_name_state.dattype=='scalar'):
             if (type(var_name_state) == data.ScalarArray):
                 
-                s += 'double *'+var_name_kernel+', '
+                s += ctypes_map[var_name_state.dtype]+' *'+var_name_kernel+', '
             
             
         s = s[:-2] + ') {'
@@ -941,11 +952,11 @@ class DoubleAllParticleLoop(SingleAllParticleLoop):
             
             
             if (type(dat[1]) == data.ScalarArray):
-                s += space+'double *'+loc_argname+' = '+argname+';\n'
+                s += space+ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
             if (type(dat[1]) == particle.Dat):
                 ncomp = dat[1].ncomp
-                s += space+'double *'+loc_argname+'[2];\n'
+                s += space+ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                 s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                 s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'    
         

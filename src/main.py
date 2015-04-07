@@ -93,7 +93,7 @@ if __name__ == '__main__':
     test_integrator = method.VelocityVerlet(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle)
     
     #create G(r) method.
-    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 200)
+    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 100)
     
     
     
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     
 
     start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 1.0)
+    test_integrator.integrate(dt = 0.0001, T = 0.1)
     end = time.clock()
     print "Rough time taken integrate_thermostat :", end - start,"s"    
          

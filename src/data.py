@@ -14,7 +14,7 @@ import random
 np.set_printoptions(threshold='nan')
 
 
-    
+
 
 
 def XYZWrite(filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_override=False):
@@ -202,7 +202,6 @@ class ScalarArray(object):
         Creates scalar with given initial value.
         '''
         
-        self._type = 'scalar'
         self._dtype = dtype
         
         if (name != None):
@@ -238,7 +237,7 @@ class ScalarArray(object):
         
         :arg double val: Coefficient to scale all elements by.
         '''
-        self._Dat = val * self._Dat
+        self._Dat = np.array([val],dtype=self._dtype) * self._Dat
         
     
     def __setitem__(self,ix, val):
@@ -253,7 +252,13 @@ class ScalarArray(object):
     @property      
     def ctypes_data(self):
         '''Return ctypes-pointer to data.'''
-        return self._Dat.ctypes.data_as(ctypes.POINTER(self._dtype))      
+        return self._Dat.ctypes.data_as(ctypes.POINTER(self._dtype))
+        
+    @property
+    def dtype(self):
+        ''' Return Dat c data ctype'''
+        return self._dtype
+              
     
     @property     
     def dattype(self):

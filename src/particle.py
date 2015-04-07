@@ -19,15 +19,16 @@ class Dat(object):
     def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None):
         
         self._name = name
-        self._type = 'array'
+        
+        self._dtype = ctypes.c_double
         
         self._N1 = N1
         self._N2 = N2
         
         if (initial_value != None):
-            self._Dat = float(initial_value) * np.ones([N1, N2], dtype=ctypes.c_double, order='C')
+            self._Dat = float(initial_value) * np.ones([N1, N2], dtype=self._dtype, order='C')
         else:
-            self._Dat = np.zeros([N1, N2], dtype=ctypes.c_double, order='C')
+            self._Dat = np.zeros([N1, N2], dtype=self._dtype, order='C')
         
     def set_val(self,val):
         self._Dat[...,...] = val
@@ -74,7 +75,14 @@ class Dat(object):
     @property    
     def ctypes_data(self):
         '''Return ctypes-pointer to data.'''
-        return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))        
+        return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))  
+        
+    @property
+    def dtype(self):
+        ''' Return Dat c data ctype'''
+        return self._dtype
+        
+              
     @property     
     def dattype(self):
         '''
