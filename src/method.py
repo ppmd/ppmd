@@ -2,6 +2,7 @@ import math
 import state
 import data
 import pairloop
+import loop
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -73,7 +74,7 @@ class VelocityVerlet(object):
         '''      
         self._constants_K = []
         self._K_kernel = kernel.Kernel('K_kernel',self._K_kernel_code,self._constants_K)
-        self._pK = pairloop.SingleAllParticleLoop(self._N,self._K_kernel,{'V':self._V,'K':self._K, 'M':self._M})         
+        self._pK = loop.SingleAllParticleLoop(self._N,self._K_kernel,{'V':self._V,'K':self._K, 'M':self._M})         
         
                
         
@@ -97,7 +98,9 @@ class VelocityVerlet(object):
             
         self._max_it = int(math.ceil(self._T/self._dt))
         self._DT_Count = int(math.ceil(self._T/self._DT))
-        self._energy_handle.append_prepare(self._DT_Count)
+        
+        if (self._energy_handle != None):
+            self._energy_handle.append_prepare(self._DT_Count)
         
             
         
@@ -105,12 +108,11 @@ class VelocityVerlet(object):
         
             self._constants = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
             
-            
             self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-            self._p1 = pairloop.SingleAllParticleLoop(self._N,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
+            self._p1 = loop.SingleAllParticleLoop(self._N,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
 
             self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-            self._p2 = pairloop.SingleAllParticleLoop(self._N,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})  
+            self._p2 = loop.SingleAllParticleLoop(self._N,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})  
               
             
         self._velocity_verlet_integration()
@@ -124,7 +126,7 @@ class VelocityVerlet(object):
 
         
 
-        percent_int = 99
+        percent_int = 10
         percent_count = percent_int
 
         self._domain.BCexecute()
@@ -218,13 +220,14 @@ class VelocityVerletAnderson(VelocityVerlet):
             
         self._max_it = int(math.ceil(self._T/self._dt))
         self._DT_Count = int(math.ceil(self._T/self._DT))
-        self._energy_handle.append_prepare(self._DT_Count)
+        if (self._energy_handle != None):
+            self._energy_handle.append_prepare(self._DT_Count)
         
         
         if (self._USE_C):
             self._constants1 = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
             self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
-            self._p1 = pairloop.SingleAllParticleLoop(self._N,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
+            self._p1 = loop.SingleAllParticleLoop(self._N,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
             
             
             
@@ -262,7 +265,7 @@ class VelocityVerletAnderson(VelocityVerlet):
             self._constants2_thermostat = [constant.Constant('rate',self._dt*self._nu), constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt), constant.Constant('temperature',self._Temp),]
             
             self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
-            self._p2_thermostat = pairloop.SingleAllParticleLoop(self._N,self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})  
+            self._p2_thermostat = loop.SingleAllParticleLoop(self._N,self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})  
             
             
             

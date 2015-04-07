@@ -3,7 +3,7 @@ import math
 import ctypes
 import data
 import kernel
-import pairloop
+import loop
 
 class BaseDomain(object):
     '''
@@ -89,7 +89,7 @@ class BaseDomain(object):
         
         self._BCkernel= kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
         
-        self._BCloop = pairloop.SingleAllParticleLoop(positions.npart, self._BCkernel,self._BCcodeDict)          
+        self._BCloop = loop.SingleAllParticleLoop(positions.npart, self._BCkernel,self._BCcodeDict)          
         
     def BCexecute(self):
         

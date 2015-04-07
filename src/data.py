@@ -13,7 +13,7 @@ import pickle
 import random
 np.set_printoptions(threshold='nan')
 
-
+ctypes_map = {ctypes.c_double:'double', ctypes.c_int:'int'}
 
 
 

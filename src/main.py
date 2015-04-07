@@ -22,7 +22,6 @@ if __name__ == '__main__':
     
     #plot as computing + at end?
     plotting = True
-    plothandle = None
     
     #log energy?
     logging = True
@@ -79,11 +78,14 @@ if __name__ == '__main__':
     #plotting handle
     if (plotting):
         plothandle = data.draw_particles()
+    else:
+        plothandle = None
     
     #energy handle
     if (logging):
         energyhandle = data.BasicEnergyStore()
-    
+    else:
+        energyhandle = None
     
     
     
@@ -106,7 +108,7 @@ if __name__ == '__main__':
     
 
     start = time.clock()
-    test_integrator.integrate(dt = 0.0001, T = 5.0)
+    test_integrator.integrate(dt = 0.0001, T = 1.0)
     end = time.clock()
     print "Rough time taken integrate_thermostat :", end - start,"s"    
          
