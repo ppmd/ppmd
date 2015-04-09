@@ -26,11 +26,12 @@ class VelocityVerlet(object):
     :arg double dt: Time step size, can be specified at integrate call.
     :arg double T: End time, can be specified at integrate call.
     :arg bool USE_C: Flag to use C looping and kernel.
-    :arg bool USE_PLOTTING: Flag to plot state at certain progress points.
-    :arg bool USE_LOGGING: Flag to log energy at each iteration.
+    :arg DrawParticles plot_handle: PLotting class to plot state at certain progress points.
+    :arg BasicEnergyStore energy_handle: Energy storage class to log energy at each iteration.
+    :arg bool writexyz: Flag to indicate writing of xyz at each DT.
     '''
     
-    def __init__(self, dt = 0.0001, T = 0.01, DT = 0.001,state = None, USE_C = True, plot_handle = None, energy_handle = None):
+    def __init__(self, dt = 0.0001, T = 0.01, DT = 0.001,state = None, USE_C = True, plot_handle = None, energy_handle = None, writexyz = False):
     
         self._dt = dt
         self._DT = DT
@@ -39,18 +40,19 @@ class VelocityVerlet(object):
 
         self._state = state
         
-        self._domain = self._state.domain()
-        self._N = self._state.N()
-        self._A = self._state.accelerations()
-        self._V = self._state.velocities()
-        self._P = self._state.positions()
-        self._M = self._state.masses()
-        self._K = self._state.K()
+        self._domain = self._state.domain
+        self._N = self._state.N
+        self._A = self._state.accelerations
+        self._V = self._state.velocities
+        self._P = self._state.positions
+        self._M = self._state.masses
+        self._K = self._state.K
         
         
         self._USE_C = USE_C
         self._plot_handle = plot_handle
         self._energy_handle = energy_handle
+        self._writexyz = writexyz
         
         self._kernel1_code = '''
         //self._V+=0.5*self._dt*self._A
@@ -65,7 +67,7 @@ class VelocityVerlet(object):
         '''
                 
         self._kernel2_code = '''
-        //self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat()
+        //self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat
         const double M_tmp = 1/M[0];
         V[0] += dht*A[0]*M_tmp;
         V[1] += dht*A[1]*M_tmp;
@@ -102,7 +104,7 @@ class VelocityVerlet(object):
         if (DT != None):
             self._DT = DT
         else:
-            self._DT = 10.0*self._dt
+            self._DT = 50.0*self._dt
             
         self._max_it = int(math.ceil(self._T/self._dt))
         self._DT_Count = int(math.ceil(self._T/self._DT))
@@ -150,33 +152,34 @@ class VelocityVerlet(object):
             self._velocity_verlet_step()
             
             if ((self._energy_handle != None) & ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )):
-            
-                #self._state.K()._Dat = ( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )
                 
                 self._K[0] = 0.0
                 if(self._USE_C):
                     self._pK.execute()
                 else:
-                    for ix in range(self._state.N()):
+                    for ix in range(self._state.N):
                         self._K += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
                 
                 
-                self._energy_handle.U_append(self._state.U().Dat()/self._state.N())
-                self._energy_handle.K_append((self._K[0])/self._state.N())
-                self._energy_handle.Q_append((self._state.U()[0] + self._K[0])/self._state.N())
+                self._energy_handle.U_append(self._state.U.Dat/self._state.N)
+                self._energy_handle.K_append((self._K[0])/self._state.N)
+                self._energy_handle.Q_append((self._state.U[0] + self._K[0])/self._state.N)
                 self._energy_handle.T_append((i+1)*self._dt)
-            
+                
+            if ( (self._writexyz == True) & (((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1))) ):
+                self._state.positions.XYZWrite(append = 1)
+                
+                
                 
             
             
-            if ( ( (self._energy_handle != None) | (self._plot_handle != None) ) & (((100.0*i)/self._max_it) > percent_count)):
+            if ( (self._plot_handle != None) & (((100.0*i)/self._max_it) > percent_count)):
                 
                 if (self._plot_handle != None):
-                    self._plot_handle.draw(self._state.N(), self._P, self._state.domain().extent())
+                    self._plot_handle.draw(self._state.N, self._P, self._state.domain.extent)
                 
                 percent_count += percent_int
-                if (self._energy_handle != None):
-                    print int((100.0*i)/self._max_it),"%", "T=", self._dt*i   
+                print int((100.0*i)/self._max_it),"%", "T=", self._dt*i   
     
         
     
@@ -189,8 +192,8 @@ class VelocityVerlet(object):
         if (self._USE_C):
             self._p1.execute()
         else:
-            self._V.Dat()[...,...]+=0.5*self._dt*self._A.Dat()
-            self._P.Dat()[...,...]+=self._dt*self._V.Dat()
+            self._V.Dat[...,...]+=0.5*self._dt*self._A.Dat
+            self._P.Dat[...,...]+=self._dt*self._V.Dat
         
         #update accelerations
         self._domain.BCexecute()
@@ -200,7 +203,7 @@ class VelocityVerlet(object):
         if (self._USE_C):
             self._p2.execute()
         else:
-            self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat()
+            self._V.Dat[...,...]+= 0.5*self._dt*self._A.Dat
         
 
 ################################################################################################################
@@ -231,7 +234,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         if (DT != None):
             self._DT = DT
         else:
-            self._DT = 10.0*self._dt
+            self._DT = 50.0*self._dt
             
         self._max_it = int(math.ceil(self._T/self._dt))
         self._DT_Count = int(math.ceil(self._T/self._DT))
@@ -309,33 +312,38 @@ class VelocityVerletAnderson(VelocityVerlet):
             self._velocity_verlet_step_thermostat()
             
             if ((self._energy_handle != None) & ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )):
-            
-                #self._state.K()._Dat = ( 0.5*np.sum(self._V.Dat()*self._V.Dat()) )
+                
                 
                 self._K[0] = 0.0
                 if(self._USE_C):
                     self._pK.execute()
                 else:
-                    for ix in range(self._state.N()):
+                    for ix in range(self._state.N):
                         self._K += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
                 
                 
-                self._energy_handle.U_append(self._state.U().Dat()/self._state.N())
-                self._energy_handle.K_append((self._K[0])/self._state.N())
-                self._energy_handle.Q_append((self._state.U()[0] + self._K[0])/self._state.N())
+                self._energy_handle.U_append(self._state.U.Dat/self._state.N)
+                self._energy_handle.K_append((self._K[0])/self._state.N)
+                self._energy_handle.Q_append((self._state.U[0] + self._K[0])/self._state.N)
                 self._energy_handle.T_append((i+1)*self._dt)
             
+            
+                
+            if ( (self._writexyz == True) & (((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1))) ):
+                self._state.positions.XYZWrite(append=1)
+                
+                
+                
                 
             
             
-            if ( ( (self._energy_handle != None) | (self._plot_handle != None) ) & (((100.0*i)/self._max_it) > percent_count)):
+            if ( (self._plot_handle != None)  & (((100.0*i)/self._max_it) > percent_count)):
                 
                 if (self._plot_handle != None):
-                    self._plot_handle.draw(self._state.N(), self._P, self._state.domain().extent())
+                    self._plot_handle.draw(self._state.N, self._P, self._state.domain.extent)
                 
                 percent_count += percent_int
-                if (self._energy_handle != None):
-                    print int((100.0*i)/self._max_it),"%", "T=", self._dt*i   
+                print int((100.0*i)/self._max_it),"%", "T=", self._dt*i   
     
         
     
@@ -381,15 +389,21 @@ class RadialDistributionPeriodicNVE(object):
     :arg double rmax: Maximum radial distance.
     :arg int rsteps: Resolution to record to, default 100.
     '''
-    def __init__(self, state, rmax = 1.0, rsteps = 100):
+    def __init__(self, state, rmax = None, rsteps = 100):
         
         self._count = 0
         self._state = state
-        self._P = self._state.positions()
+        self._extent = self._state.domain.extent
+        self._P = self._state.positions
         self._N = self._P.npart
         self._rmax = rmax
+        
+        if (self._rmax == None):
+            self._rmax = 0.5*self._extent.min
+        
+        
         self._rsteps = rsteps
-        self._extent = self._state.domain().extent()
+        
         self._gr = data.ScalarArray(ncomp = self._rsteps, dtype=ctypes.c_int)
         self._gr.scale(0.0)
         
@@ -442,6 +456,10 @@ class RadialDistributionPeriodicNVE(object):
         
         :arg bool timer: display approximate timing information.
         '''
+        
+        assert self._rmax <= 0.5*self._state.domain.extent.min, "Maximum radius too large."
+        
+        
         if (timer==True):
             start = time.clock()    
         self._p.execute()
@@ -452,7 +470,7 @@ class RadialDistributionPeriodicNVE(object):
         
     def _scale(self):
         self._r =  np.linspace(0.+0.5*(self._rmax/self._rsteps), self._rmax-0.5*(self._rmax/self._rsteps), num=self._rsteps, endpoint=True)            
-        self._grscaled = self._gr.Dat()*self._state.domain().volume()/((self._N)*(self._N - 1)*2*math.pi*(self._r**2) * (self._rmax/float(self._rsteps))*self._count)
+        self._grscaled = self._gr.Dat*self._state.domain.volume/((self._N)*(self._N - 1)*2*math.pi*(self._r**2) * (self._rmax/float(self._rsteps))*self._count)
         
     def plot(self):
         self._scale()

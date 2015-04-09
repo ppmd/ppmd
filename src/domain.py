@@ -114,7 +114,7 @@ class BaseDomain(object):
         """
         self._extent[0:4] = new_extent
         
-    
+    @property
     def cell_count(self):
         """
         Return cell count for domain.
@@ -134,7 +134,7 @@ class BaseDomain(object):
         self._cell_edge_lengths[2] = self._extent[2]/self._cell_array[2]
         
         
-        
+    @property    
     def volume(self):
         """
         Return domain volume.

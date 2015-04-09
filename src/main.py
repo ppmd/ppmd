@@ -7,6 +7,7 @@ import numpy as np
 import math
 import method
 import data
+import loop
 
 if __name__ == '__main__':
     
@@ -77,7 +78,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.draw_particles(interval = 10)
+        plothandle = data.DrawParticles(interval = 10)
     else:
         plothandle = None
     
@@ -91,27 +92,37 @@ if __name__ == '__main__':
     
     
     
+    
+    
+    
+    
     #Create an integrator for above state class.
-    test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle)
+    test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False)
     
     #create G(r) method.
-    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rmax = 0.5*test_state.domain().extent()[0], rsteps = 200)
+    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rsteps = 200)
     
     
     
     
     ###########################################################
+    global __DEBUG__
+    
+    
+    if '__DEBUG__' in globals():
+        print "global found"
     
     
     test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
-    test_integrator.integrate_thermostat(dt = 0.0001, T = 1.5, Temp=111.06, nu=2.5, timer=True)
-    test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
+    test_integrator.integrate_thermostat(dt = 0.0001, T = 0.2, Temp=0.001, nu=2.5, timer=True)
+    test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
     test_gr_method.evaluate(timer=True)
-    test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
-    test_gr_method.evaluate(timer=True)       
-    ###########################################################
+    test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
+    test_gr_method.evaluate(timer=True)
     
-    #data.DatWrite('output/final.Dat', X = test_state.positions(), rename_override=True)
+    
+    
+    ###########################################################
     
     
     #If logging was enabled, plot data.
@@ -119,7 +130,7 @@ if __name__ == '__main__':
         energyhandle.plot()
 
     test_gr_method.plot()
-    test_gr_method.RawWrite()
+    #test_gr_method.RawWrite()
     
 
     a=input("PRESS ENTER TO CONTINUE.\n")

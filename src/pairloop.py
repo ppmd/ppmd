@@ -12,6 +12,8 @@ import loop
 import constant
 
 
+
+
 class _base(object):
     def _unique_name_calc(self):
         '''Return name which can be used to identify the pair loop 
@@ -406,7 +408,7 @@ class PairLoopRapaport(_base):
         method = self._lib[self._kernel.name+'_wrapper']
         
         
-        method(ctypes.c_int(self._N), ctypes.c_int(self._domain.cell_count()), *args)           
+        method(ctypes.c_int(self._N), ctypes.c_int(self._domain.cell_count), *args)           
     
     
     
@@ -416,7 +418,7 @@ class PairLoopRapaport(_base):
         """
         
         '''Construct initial cell list'''
-        self._q_list = data.ScalarArray(np.zeros([self._N + self._domain.cell_count()], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
+        self._q_list = data.ScalarArray(np.zeros([self._N + self._domain.cell_count], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
         
         #temporary method for index awareness inside kernel.
         self._internal_index = data.ScalarArray(dtype=ctypes.c_int)
@@ -461,7 +463,7 @@ class PairLoopRapaport(_base):
         """
 
                 
-        for cx in range(self._domain.cell_count()):
+        for cx in range(self._domain.cell_count):
             self._q_list[self._N + cx] = -1
         
         

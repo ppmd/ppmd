@@ -30,10 +30,12 @@ class Dat(object):
         else:
             self._Dat = np.zeros([N1, N2], dtype=self._dtype, order='C')
         
+        self._XYZFile_exists = False
+        
     def set_val(self,val):
         self._Dat[...,...] = val
     
-     
+    @property 
     def Dat(self):
         '''
         Returns entire data array.
@@ -149,7 +151,69 @@ class Dat(object):
         self=pickle.load(f)
         f.close()     
         
+    def XYZWrite(self, dirname = './output', filename='out.xyz', title=None,sym=None, rename_override=False, append = 0):
+        '''
+        Function to write particle positions in a xyz format.
         
+        :arg str dirname: Directory to write to default ./output.
+        :arg str filename: Filename to write to default out.xyz.
+        :arg Dat X: Particle dat containing positions.
+        :arg str title: title of molecule default ABC. 
+        :arg str sym: Atomic symbol for particles, default A.
+        :arg int N_mol: Number of atoms per molecule default 1.
+        :arg bool rename_override: Flagging as True will disable autorenaming of output file.
+        '''
+        
+        if (append == 0):
+            self._XYZFile_exists = False
+            self._XYZfilename = filename
+            
+        if ((append > 0) & (self._XYZFile_exists == False)):
+            self._XYZfilename = filename
+        
+        
+        
+        
+        if (title==None):
+            title = 'AA'
+        if (sym == None):
+            sym = 'A'
+            
+        
+
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)    
+        
+        
+        
+        if (os.path.exists(os.path.join(dirname,self._XYZfilename)) & (rename_override == False) & (self._XYZFile_exists == False)):
+            self._XYZfilename=re.sub('.xyz',datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz',self._XYZfilename)
+            if (os.path.exists(os.path.join(dirname,self._XYZfilename))):
+                self._XYZfilename=re.sub('.xyz',datetime.datetime.now().strftime("_%f") + '.xyz',self._XYZfilename)
+                assert os.path.exists(os.path.join(dirname,self._XYZfilename)), "XYZWrite Error: No unquie name found."
+        self._XYZFile_exists = True
+        
+        
+            
+        
+        
+        
+            
+        space=' '
+        
+        if (append == 0):
+            f=open(os.path.join(dirname,self._XYZfilename),'w')
+        if (append > 0):
+            f=open(os.path.join(dirname,self._XYZfilename),'a')
+        
+        f.write(str(self._N1)+'\n')
+        f.write(str(title)+'\n')
+        for ix in range(self._N1):
+            f.write(str(sym).rjust(3))
+            for iy in range(self._N2):
+                f.write(space+str('%.5f' % self._Dat[ix,iy]))
+            f.write('\n')
+        f.close()        
         
         
         

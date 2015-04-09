@@ -17,10 +17,11 @@ ctypes_map = {ctypes.c_double:'double', ctypes.c_int:'int'}
 
 
 
-def XYZWrite(filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_override=False):
+def XYZWrite(dirname = './output', filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_override=False):
     '''
     Function to write particle positions in a xyz format.
     
+    :arg str dirname: Directory to write to default ./output.
     :arg str filename: Filename to write to default out.xyz.
     :arg Dat X: Particle dat containing positions.
     :arg str title: title of molecule default ABC. 
@@ -29,21 +30,23 @@ def XYZWrite(filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_
     :arg bool rename_override: Flagging as True will disable autorenaming of output file.
     '''
     assert X!=None, "XYZwrite Error: No data."
+
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)    
     
-    
-    if (os.path.exists(os.path.join('./',filename)) & (rename_override != True)):
+    if (os.path.exists(os.path.join(dirname,filename)) & (rename_override != True)):
         filename=re.sub('.xyz',datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz',filename)
-        if (os.path.exists(os.path.join('./',filename))):
+        if (os.path.exists(os.path.join(dirname,filename))):
             filename=re.sub('.xyz',datetime.datetime.now().strftime("_%f") + '.xyz',filename)
-            assert os.path.exists(os.path.join('./',filename)), "XYZWrite Error: No unquie name found."
+            assert os.path.exists(os.path.join(dirname,filename)), "XYZWrite Error: No unquie name found."
         
     space=' '
     
     
-    f=open(filename,'w')
+    f=open(os.path.join(dirname,filename),'w')
+    f.write(str(N_mol)+'\n')
+    f.write(str(title)+'\n')
     for ix in range(X.npart):
-        f.write(str(N_mol)+'\n')
-        f.write(str(title)+'\n')
         f.write(str(sym).rjust(3))
         for iy in range(X.ncomp):
             f.write(space+str('%.5f' % X[ix,iy]))
@@ -54,7 +57,7 @@ def XYZWrite(filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_
 
 
 
-class draw_particles(object):
+class DrawParticles(object):
     '''
     Class to plot N particles with given positions.
     
@@ -90,7 +93,7 @@ class draw_particles(object):
         plt.cla()
            
         for ix in range(self._N):
-            self._ax.scatter(self._pos.Dat()[ix,0], self._pos.Dat()[ix,1], self._pos.Dat()[ix,2],color=self._key[ix%2])
+            self._ax.scatter(self._pos.Dat[ix,0], self._pos.Dat[ix,1], self._pos.Dat[ix,2],color=self._key[ix%2])
         self._ax.set_xlim([-0.5*self._extents[0],0.5*self._extents[0]])
         self._ax.set_ylim([-0.5*self._extents[1],0.5*self._extents[1]])
         self._ax.set_zlim([-0.5*self._extents[2],0.5*self._extents[2]])
@@ -229,7 +232,7 @@ class ScalarArray(object):
         
         
             
-    
+    @property
     def Dat(self):
         '''
         Returns stored data as numpy array.
@@ -288,6 +291,17 @@ class ScalarArray(object):
         Return number of components.
         '''   
         return self._N1
+        
+    @property
+    def min(self):
+        '''Return minimum'''
+        return self._Dat.min()
+        
+    @property
+    def max(self):
+        '''Return maximum'''
+        return self._Dat.max()        
+        
     
         
     def DatWrite(self, dirname = './output',filename = None, rename_override = False):

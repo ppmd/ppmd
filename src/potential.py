@@ -109,7 +109,8 @@ class LennardJonesShifted(BasePotential):
             
         else:
             return 0.0   
-
+    
+    
     def kernel(self):
         '''
         Returns a kernel class for the potential.
@@ -162,7 +163,7 @@ class LennardJonesShifted(BasePotential):
         
         :arg state input_state: state with containing variables.
         '''
-        return {'P':input_state.positions(), 'A':input_state.accelerations(), 'U':input_state.U()}
+        return {'P':input_state.positions, 'A':input_state.accelerations, 'U':input_state.U}
         
                
         

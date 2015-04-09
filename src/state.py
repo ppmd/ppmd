@@ -83,38 +83,47 @@ class BaseMDState(object):
                                                                 potential = self._potential, 
                                                                 dat_dict = _potential_dat_dict)
     
-        
+    @property    
     def N(self):
         """
         Returns number of particles.
         """
         return self._N
-        
+    
+    @property  
     def domain(self):
         """
         Return the domain used by the state.
         """
         return self._domain
         
-        
+    @property    
     def positions(self):
         """
         Return all particle positions.
         """
         return self._pos
 
-        
+    @property    
     def velocities(self):
         """
         Return all particle velocities.
         """
         return self._vel
-        
+    
+    @property     
     def accelerations(self):
         """
         Return all particle accelerations.
         """
         return self._accel
+
+    @property      
+    def masses(self):
+        """
+        Return all particle masses.
+        """
+        return self._mass
         
     def set_accelerations(self,val):
         """
@@ -132,31 +141,28 @@ class BaseMDState(object):
         self.set_accelerations(ctypes.c_double(0.0))
         self.reset_U()
         self._looping_method_accel.execute()
-        
-    def masses(self):
-        """
-        Return all particle masses.
-        """
-        return self._mass
+
         
     @property
     def potential(self):
         return self._potential
+             
         
-        
-        
+    @property    
     def U(self):
         """
         Return potential energy
         """
         return self._U
-        
+    
+    @property    
     def K(self):
         """
         Return Kenetic energy
         """
         return self._K
-        
+    
+    @property    
     def Q(self):
         """
         Return Total energy
@@ -193,8 +199,7 @@ class BaseMDState(object):
             
         return float(energy)
         
-    def potential(self):
-        return self._potential
+
         
         
         
@@ -235,10 +240,10 @@ class PosInitLatticeNRho(object):
         mLx_2 = (-0.5 * Lx) + (0.5*Lx)/math.floor(np1_3)
         
         #set new domain extents
-        state_input.domain().set_extent(np.array([Lx, Lx, Lx]))
+        state_input.domain.set_extent(np.array([Lx, Lx, Lx]))
         
         #get pointer for positions
-        pos = state_input.positions()
+        pos = state_input.positions
         
         #Loop over all particles
         for ix in range(self._N):
@@ -290,10 +295,10 @@ class PosInitLatticeNRhoRand(object):
         mLx_2 = (-0.5 * Lx) + (0.5*Lx)/math.floor(np1_3)
         
         #set new domain extents
-        state_input.domain().set_extent(np.array([Lx, Lx, Lx]))
+        state_input.domain.set_extent(np.array([Lx, Lx, Lx]))
         
         #get pointer for positions
-        pos = state_input.positions()
+        pos = state_input.positions
         
         #Loop over all particles
         for ix in range(self._N):
@@ -328,13 +333,13 @@ class PosInitTwoParticlesInABox(object):
         :arg state state_input: State object containing at least two particles.
         """
         
-        if (state_input.N() >= 2):
-            state_input.positions()[0,] = -0.5*self._rx*self._axis
-            state_input.positions()[1,] = 0.5*self._rx*self._axis
+        if (state_input.N >= 2):
+            state_input.positions[0,] = -0.5*self._rx*self._axis
+            state_input.positions[1,] = 0.5*self._rx*self._axis
         else:
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
             
-        state_input.domain().set_extent(self._extent)
+        state_input.domain.set_extent(self._extent)
 
 
 
@@ -362,10 +367,10 @@ class VelInitNormDist(object):
         """
         
         #Get velocities.
-        vel_in = state_input.velocities()
+        vel_in = state_input.velocities
         
         #Apply normal distro to velocities.
-        for ix in range(state_input.N()):
+        for ix in range(state_input.N):
             vel_in[ix,]=[random.gauss(self._mu, self._sig),random.gauss(self._mu, self._sig),random.gauss(self._mu, self._sig)]
         
         
@@ -389,9 +394,9 @@ class VelInitTwoParticlesInABox(object):
         :arg state state_input: input state.
         """
 
-        if (state_input.N() >= 2):
-            state_input.velocities()[0,] = self._vx
-            state_input.velocities()[1,] = self._vy        
+        if (state_input.N >= 2):
+            state_input.velocities[0,] = self._vx
+            state_input.velocities[1,] = self._vy        
         else:
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
 
@@ -414,7 +419,7 @@ class MassInitTwoAlternating(object):
         
         :arg Dat mass_input: Dat container with masses.
         '''
-        for ix in range(np.shape(mass_input.Dat())[0]):
+        for ix in range(np.shape(mass_input.Dat)[0]):
             mass_input[ix] = self._m[(ix % 2)]
 
 
