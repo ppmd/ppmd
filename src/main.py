@@ -94,13 +94,17 @@ if __name__ == '__main__':
     
     
     
-    
+    #Create VAF method.
+    test_vaf_method = method.VelocityAutocorrelation(state = test_state)   
     
     #Create an integrator for above state class.
-    test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False)
+    test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, VAF_handle = test_vaf_method)
     
     #create G(r) method.
     test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rsteps = 200)
+    
+
+    
     
     
     
@@ -113,12 +117,12 @@ if __name__ == '__main__':
         print "global found"
     
     
-    test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
-    test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=50.0, nu=2.5, timer=True)
-    test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
-    test_gr_method.evaluate(timer=True)
-    test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
-    test_gr_method.evaluate(timer=True)
+    test_integrator.integrate(dt = 0.0001, T = 1.0, timer=True)
+    #test_integrator.integrate_thermostat(dt = 0.0001, T = 0.1, Temp=50.0, nu=2.5, timer=True)
+    #test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
+    #test_gr_method.evaluate(timer=True)
+    #test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
+    #test_gr_method.evaluate(timer=True)
     
     
     
@@ -129,9 +133,9 @@ if __name__ == '__main__':
     if (logging):
         energyhandle.plot()
 
-    test_gr_method.plot()
+    #test_gr_method.plot()
     #test_gr_method.RawWrite()
-    
+    test_vaf_method.plot()
 
     a=input("PRESS ENTER TO CONTINUE.\n")
     

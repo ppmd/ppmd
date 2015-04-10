@@ -41,13 +41,11 @@ class Dat(object):
         Returns entire data array.
         '''
         return self._Dat
-    '''    
-    def __getitem__(self,key=None):   
-        if (key != None):
-            return self._Dat[key]
-        else:
-            return self._Dat
-    '''        
+            
+    @Dat.setter
+    def Dat(self, val):
+        self._Dat = np.array([val],dtype=self._dtype)
+    
     
     def __getitem__(self,ix):
         return self._Dat[ix] 

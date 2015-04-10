@@ -391,12 +391,14 @@ class PairLoopRapaport(_base):
         
                 
         
-    def execute(self):
+    def execute(self, dat_dict = None):
         '''
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         '''
         self._cell_sort_all()
         
+        if (dat_dict != None):
+            self._particle_dat_dict = dat_dict
         
         args = [self._domain.cell_array.ctypes_data,
                         self._q_list.ctypes_data,
@@ -406,7 +408,6 @@ class PairLoopRapaport(_base):
             args.append(dat.ctypes_data)
             
         method = self._lib[self._kernel.name+'_wrapper']
-        
         
         method(ctypes.c_int(self._N), ctypes.c_int(self._domain.cell_count), *args)           
     

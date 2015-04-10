@@ -255,6 +255,11 @@ class ScalarArray(object):
         Returns stored data as numpy array.
         '''
         return self._Dat
+    
+    @Dat.setter
+    def Dat(self, val):
+        self._Dat = np.array([val],dtype=self._dtype)     
+        
         
     def __getitem__(self,ix):
         return self._Dat[ix]

@@ -13,6 +13,7 @@ import time
 import os
 import re
 import datetime
+import particle
 np.set_printoptions(threshold='nan')
 
 ################################################################################################################
@@ -31,7 +32,7 @@ class VelocityVerlet(object):
     :arg bool writexyz: Flag to indicate writing of xyz at each DT.
     '''
     
-    def __init__(self, dt = 0.0001, T = 0.01, DT = 0.001,state = None, USE_C = True, plot_handle = None, energy_handle = None, writexyz = False):
+    def __init__(self, dt = 0.0001, T = 0.01, DT = 0.001,state = None, USE_C = True, plot_handle = None, energy_handle = None, writexyz = False, VAF_handle = None):
     
         self._dt = dt
         self._DT = DT
@@ -53,6 +54,7 @@ class VelocityVerlet(object):
         self._plot_handle = plot_handle
         self._energy_handle = energy_handle
         self._writexyz = writexyz
+        self._VAF_handle = VAF_handle
         
         self._kernel1_code = '''
         //self._V+=0.5*self._dt*self._A
@@ -112,6 +114,9 @@ class VelocityVerlet(object):
         if (self._energy_handle != None):
             self._energy_handle.append_prepare(self._DT_Count)
         
+        if (self._VAF_handle != None):
+            self._VAF_handle.append_prepare(self._DT_Count)
+            
             
         
         if (self._USE_C):
@@ -138,48 +143,19 @@ class VelocityVerlet(object):
         Perform Velocity Verlet integration up to time T.
         """    
 
-        percent_count = 101
+        self._percent_count = 101
         if (self._plot_handle != None):
-            percent_int = self._plot_handle.interval
-            percent_count = percent_int
+            self._percent_int = self._plot_handle.interval
+            self._percent_count = percent_int
 
         self._domain.BCexecute()
         self._state.forces_update()
 
-        for i in range(self._max_it):
-            
+        for i in range(self._max_it):         
             
             self._velocity_verlet_step()
             
-            if ((self._energy_handle != None) & ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )):
-                
-                self._K[0] = 0.0
-                if(self._USE_C):
-                    self._pK.execute()
-                else:
-                    for ix in range(self._state.N):
-                        self._K += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
-                
-                
-                self._energy_handle.U_append(self._state.U.Dat/self._state.N)
-                self._energy_handle.K_append((self._K[0])/self._state.N)
-                self._energy_handle.Q_append((self._state.U[0] + self._K[0])/self._state.N)
-                self._energy_handle.T_append((i+1)*self._dt)
-                
-            if ( (self._writexyz == True) & (((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1))) ):
-                self._state.positions.XYZWrite(append = 1)
-                
-                
-                
-            
-            
-            if ( (self._plot_handle != None) & (((100.0*i)/self._max_it) > percent_count)):
-                
-                if (self._plot_handle != None):
-                    self._plot_handle.draw(self._state.N, self._P, self._state.domain.extent)
-                
-                percent_count += percent_int
-                print int((100.0*i)/self._max_it),"%", "T=", self._dt*i   
+            self._integration_internals(i)
     
         
     
@@ -205,6 +181,55 @@ class VelocityVerlet(object):
         else:
             self._V.Dat[...,...]+= 0.5*self._dt*self._A.Dat
         
+
+    def _integration_internals(self, i):
+        
+        DTFLAG = ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )
+        PERCENT = ((100.0*i)/self._max_it)
+        
+        if ((self._energy_handle != None) & (DTFLAG == True)):
+            
+            
+            self._K.scale(0.0)
+            
+            if(self._USE_C):
+                self._pK.execute()
+                #self._K.AverageUpdate()
+            else:
+                for ix in range(self._state.N):
+                    self._K[0] += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
+            
+            
+            self._energy_handle.U_append(self._state.U.Dat/self._N)
+            self._energy_handle.K_append((self._K[0])/self._N)
+            self._energy_handle.Q_append((self._state.U[0] + self._K[0])/self._N)
+            self._energy_handle.T_append((i+1)*self._dt)
+        
+        
+            
+        if ( (self._writexyz == True) & (DTFLAG == True) ):
+            self._state.positions.XYZWrite(append=1)
+        
+           
+        #if (DTFLAG==True):
+        #        print "Temperature = ",(self._K.Average/self._N)*(2./3.)
+        #        self._K.AverageReset()
+               
+        if ( (self._VAF_handle != None) & (DTFLAG == True) ):    
+            self._VAF_handle.evaluate(T=(i+1)*self._dt)
+                      
+        
+        
+        if ( (self._plot_handle != None)  & (PERCENT > self._percent_count)):
+            
+            if (self._plot_handle != None):
+                self._plot_handle.draw(self._state.N, self._P, self._state.domain.extent)
+            
+            self._percent_count += self._percent_int
+            print int((100.0*i)/self._max_it),"%", "T=", self._dt*i
+                
+                
+                
 
 ################################################################################################################
 # Anderson thermostat
@@ -240,7 +265,9 @@ class VelocityVerletAnderson(VelocityVerlet):
         self._DT_Count = int(math.ceil(self._T/self._DT))
         if (self._energy_handle != None):
             self._energy_handle.append_prepare(self._DT_Count)
-        
+            
+        if (self._VAF_handle != None):
+            self._VAF_handle.append_prepare(self._DT_Count)
         
         if (self._USE_C):
             self._constants1 = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
@@ -298,92 +325,31 @@ class VelocityVerletAnderson(VelocityVerlet):
         """    
 
         
-        percent_count = 101
+        self._percent_count = 101
         if (self._plot_handle != None):
-            percent_int = self._plot_handle.interval
-            percent_count = percent_int
+            self._percent_int = self._plot_handle.interval
+            self._percent_count = percent_int
 
         self._domain.BCexecute()
         self._state.forces_update()
 
         for i in range(self._max_it):
+              
+            self._p1.execute()
             
+            #update forces
+            self._domain.BCexecute()
+            self._state.forces_update()
             
-            self._velocity_verlet_step_thermostat()
+            self._p2_thermostat.execute() 
             
-            DTFLAG = ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )
-            PERCENT = ((100.0*i)/self._max_it)
+            self._integration_internals(i)
             
-            if ((self._energy_handle != None) & (DTFLAG == True)):
-                
-                
-                self._K.scale(0.0)
-                
-                if(self._USE_C):
-                    self._pK.execute()
-                    #self._K.AverageUpdate()
-                else:
-                    for ix in range(self._state.N):
-                        self._K[0] += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
-                
-                
-                self._energy_handle.U_append(self._state.U.Dat/self._N)
-                self._energy_handle.K_append((self._K[0])/self._N)
-                self._energy_handle.Q_append((self._state.U[0] + self._K[0])/self._N)
-                self._energy_handle.T_append((i+1)*self._dt)
-            
-            
-                
-            if ( (self._writexyz == True) & (DTFLAG == True) ):
-                self._state.positions.XYZWrite(append=1)
-            
-               
-            #if (DTFLAG==True):
-            #        print "Temperature = ",(self._K.Average/self._N)*(2./3.)
-            #        self._K.AverageReset()
-                   
-                
-            
-            
-            if ( (self._plot_handle != None)  & (PERCENT > percent_count)):
-                
-                if (self._plot_handle != None):
-                    self._plot_handle.draw(self._state.N, self._P, self._state.domain.extent)
-                
-                percent_count += percent_int
-                print int((100.0*i)/self._max_it),"%", "T=", self._dt*i   
-    
-        
-    
-                
-    def _velocity_verlet_step_thermostat(self):
-        """
-        Perform one step of Velocity Verlet.
-        """
-        
-        self._p1.execute()
-        
-        #update forces
-        self._domain.BCexecute()
-        self._state.forces_update()
-        
-        self._p2_thermostat.execute()   
+  
     
     
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-
-
     
 ################################################################################################################
 # G(R)
@@ -541,21 +507,112 @@ class VelocityAutocorrelation(object):
     
     
     '''
-    def __init__(self, state):
+    def __init__(self, state, size = 0,V0 = None):
         self._state = state
-        self.N = self._state.N
+        self._N = self._state.N
+        self._V0 = particle.Dat(self._N, 3, name='V0')
+        self._VT = self._V0
+        
+        self._Ni = data.ScalarArray(val = 1./self._N, dtype = ctypes.c_double)
+        
+        self._VO_SET = False
+        if (V0 != None):
+            self.SetV0(V0)
+        else:
+            self.SetV0(state = self._state)
+        
+        
+        self._VAF = data.ScalarArray(ncomp=size)
+        self._VAF_index = data.ScalarArray(val = 0, dtype = ctypes.c_int)
+        
+        self._T_store = data.ScalarArray(initial_value = 0.0, ncomp = size, dtype=ctypes.c_double)
+        self._T_base = None
+        
+        _headers = None
+        _constants = None
+        _kernel_code = '''
+        
+        VAF[I[0]] += (V0[0]*VT[0] + V0[1]*VT[1] + V0[2]*VT[2])*Ni[0];
+        
+        '''
+        
+        _kernel = kernel.Kernel('VelocityAutocorrelation',_kernel_code, _constants, _headers)
+        
+        self._datdict = {'VAF':self._VAF, 'V0':self._V0, 'VT':self._VT, 'I':self._VAF_index, 'Ni':self._Ni}
+        
+        self._loop = loop.SingleAllParticleLoop(N = self._N, kernel = _kernel, particle_dat_dict = self._datdict)
         
         
         
         
+    def SetV0(self, V0=None, state=None):
         
-        
-        
-        
-        
+        if (V0!=None):
+            self._V0.Dat = np.copy(V0.Dat)
+            self._V0_SET = True
+        if (state!=None):
+            self._V0.Dat = np.copy(state.velocities.Dat)
+            self._V0_SET = True            
+        assert self._V0_SET == True, "No velocities set, check input data."
         
     
-
+    
+        
+    def evaluate(self, T=None, timer = False):
+        if (timer==True):
+            start = time.clock()
+        
+        
+        assert int(self._VAF_index.Dat) < int(self._VAF.ncomp), "VAF store not large enough"
+        
+        self._Ni.Dat = 1./self._N
+        
+        self._datdict['VT'] = self._state.velocities
+        
+              
+        self._loop.execute(self._datdict)
+        
+        
+        if (T==None):
+            self._T_store[self._VAF_index] = 1 + self._T_base
+        else:
+            
+            self._T_store[self._VAF_index.Dat] = T + self._T_base
+        
+        self._VAF_index.Dat+=1
+        
+        
+        if (timer==True):
+            end = time.clock()
+            print "rdf time taken:", end - start,"s"         
+    
+    
+        
+    def append_prepare(self,size):
+        self._VAF.concatenate(size)      
+        
+        if (self._T_base == None):
+            self._T_base = 0.0
+        else:
+            self._T_base = self._T_store[-1]        
+        self._T_store.concatenate(size)
+        
+    
+    def plot(self):
+        
+        
+        if (self._VAF_index > 0):
+            plt.ion()
+            _fig = plt.figure()
+            _ax = _fig.add_subplot(111)
+            
+            plt.plot(self._T_store.Dat, self._VAF.Dat)
+            _ax.set_title('Velocity Autocorrelation Function')
+            _ax.set_xlabel('Time')
+            _ax.set_ylabel('VAF')
+            plt.show()
+        else:
+            print "Warning: run evaluate() at least once before plotting."
 
 
 

@@ -84,7 +84,11 @@ class SingleAllParticleLoop(object):
                                      stderr=stderr)
                 p.communicate()                
         
-    def execute(self):
+    def execute(self, dat_dict = None):
+    
+        if (dat_dict != None):
+            self._particle_dat_dict = dat_dict    
+    
         '''Execute the kernel over all particle pairs.'''
         args = []
         for dat in self._particle_dat_dict.values():
