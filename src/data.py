@@ -120,10 +120,13 @@ class BasicEnergyStore(object):
     '''
     def __init__(self, size = 0):
     
-        self._U_store = np.zeros([size], dtype=ctypes.c_double, order='C')
-        self._K_store = np.zeros([size], dtype=ctypes.c_double, order='C')
-        self._Q_store = np.zeros([size], dtype=ctypes.c_double, order='C')
-        self._T_store = np.zeros([size], dtype=ctypes.c_double, order='C')
+        
+        
+        self._U_store = ScalarArray(initial_value = 0.0, ncomp = size, dtype=ctypes.c_double)
+        self._K_store = ScalarArray(initial_value = 0.0, ncomp = size, dtype=ctypes.c_double)
+        self._Q_store = ScalarArray(initial_value = 0.0, ncomp = size, dtype=ctypes.c_double)
+        self._T_store = ScalarArray(initial_value = 0.0, ncomp = size, dtype=ctypes.c_double)
+    
     
         self._U_c = 0
         self._K_c = 0
@@ -139,11 +142,11 @@ class BasicEnergyStore(object):
             self._T_base = self._T_store[-1]
         
         
-        
-        self._U_store = np.concatenate((self._U_store, np.zeros(size, dtype=ctypes.c_double, order='C')))
-        self._K_store = np.concatenate((self._K_store, np.zeros(size, dtype=ctypes.c_double, order='C')))
-        self._Q_store = np.concatenate((self._Q_store, np.zeros(size, dtype=ctypes.c_double, order='C')))
-        self._T_store = np.concatenate((self._T_store, np.zeros(size, dtype=ctypes.c_double, order='C')))
+        #Migrate to scalar dats
+        self._U_store.concatenate(size)
+        self._K_store.concatenate(size)
+        self._Q_store.concatenate(size)
+        self._T_store.concatenate(size)
         
     
     def U_append(self,val):
@@ -187,9 +190,9 @@ class BasicEnergyStore(object):
         plt.ion()
         fig2 = plt.figure(num=None)
         ax2 = fig2.add_subplot(111)
-        ax2.plot(self._T_store,self._Q_store,color='r', linewidth=2)
-        ax2.plot(self._T_store,self._U_store,color='g')
-        ax2.plot(self._T_store,self._K_store,color='b')
+        ax2.plot(self._T_store.Dat,self._Q_store.Dat,color='r', linewidth=2)
+        ax2.plot(self._T_store.Dat,self._U_store.Dat,color='g')
+        ax2.plot(self._T_store.Dat,self._K_store.Dat,color='b')
         
         ax2.set_title('Red: Total energy, Green: Potential energy, Blue: kenetic energy')
         ax2.set_xlabel('Time')
@@ -230,6 +233,20 @@ class ScalarArray(object):
         if (val != None):
             self._Dat = np.array(val, dtype=self._dtype, order='C')
         
+        self._A = False
+        
+    def concatenate(self, size):
+        '''
+        Increase length of scalar array object.
+        
+        :arg int size: Number of new elements.
+        '''
+        self._Dat = np.concatenate((self._Dat, np.zeros(size, dtype=self._dtype, order='C')))
+        self._N1 += size
+        if (self._A == True):   
+            self._Aarray = np.concatenate((self._Aarray, np.zeros(size, dtype=self._dtype, order='C')))
+            self._Aarray = 0.*self._Aarray
+        
         
             
     @property
@@ -253,6 +270,12 @@ class ScalarArray(object):
     
     def __setitem__(self,ix, val):
         self._Dat[ix] = np.array([val],dtype=self._dtype)
+        
+        
+        if (self._A == True):
+            self._Aarray[ix] = np.array([val],dtype=self._dtype)
+            self._Alength += 1
+            
           
     def __str__(self):
         return str(self._Dat)
@@ -300,7 +323,11 @@ class ScalarArray(object):
     @property
     def max(self):
         '''Return maximum'''
-        return self._Dat.max()        
+        return self._Dat.max()
+    @property
+    def mean(self):
+        '''Return mean'''
+        return self._Dat.mean()      
         
     
         
@@ -355,5 +382,73 @@ class ScalarArray(object):
         self=pickle.load(f)
         f.close()         
         
+
+    def AverageReset(self):
+        '''Resest and initialises averaging.'''
+        if (self._A == False):
+            
+            
+            self._Aarray = np.zeros([self._N1], dtype=self._dtype, order='C')
+            self._Alength = 0.0
+            self._A = True
+        else:
+            self._Aarray = 0.*self._Aarray
+            self._Alength = 0.0
+            
+    @property 
+    def Average(self):
+        '''Returns averages of recorded values since AverageReset was called.'''
+        #assert self._A == True, "Run AverageReset to initialise or reset averaging"
+        if (self._A == True):
+            
+            return self._Aarray/self._Alength
+
+    def AverageStop(self, clean=False):
+        '''
+        Stops averaging values.
+        
+        :arg bool clean: Flag to free memory allocated to averaging, default False.
+        '''
+        if (self._A == True):
+            self._A = False
+            if (clean==True):
+                del self._A
+    
+    def AverageUpdate(self):
+        '''Copy values from Dat into averaging array'''
+        if (self._A == True):
+            self._Aarray += self._Dat
+            self._Alength += 1
+        else:
+            self.AverageReset()
+            self._Aarray += self._Dat
+            self._Alength += 1            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         
         

@@ -311,33 +311,41 @@ class VelocityVerletAnderson(VelocityVerlet):
             
             self._velocity_verlet_step_thermostat()
             
-            if ((self._energy_handle != None) & ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )):
+            DTFLAG = ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )
+            PERCENT = ((100.0*i)/self._max_it)
+            
+            if ((self._energy_handle != None) & (DTFLAG == True)):
                 
                 
-                self._K[0] = 0.0
+                self._K.scale(0.0)
+                
                 if(self._USE_C):
                     self._pK.execute()
+                    #self._K.AverageUpdate()
                 else:
                     for ix in range(self._state.N):
-                        self._K += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
+                        self._K[0] += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
                 
                 
-                self._energy_handle.U_append(self._state.U.Dat/self._state.N)
-                self._energy_handle.K_append((self._K[0])/self._state.N)
-                self._energy_handle.Q_append((self._state.U[0] + self._K[0])/self._state.N)
+                self._energy_handle.U_append(self._state.U.Dat/self._N)
+                self._energy_handle.K_append((self._K[0])/self._N)
+                self._energy_handle.Q_append((self._state.U[0] + self._K[0])/self._N)
                 self._energy_handle.T_append((i+1)*self._dt)
             
             
                 
-            if ( (self._writexyz == True) & (((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1))) ):
+            if ( (self._writexyz == True) & (DTFLAG == True) ):
                 self._state.positions.XYZWrite(append=1)
-                
-                
-                
+            
+               
+            #if (DTFLAG==True):
+            #        print "Temperature = ",(self._K.Average/self._N)*(2./3.)
+            #        self._K.AverageReset()
+                   
                 
             
             
-            if ( (self._plot_handle != None)  & (((100.0*i)/self._max_it) > percent_count)):
+            if ( (self._plot_handle != None)  & (PERCENT > percent_count)):
                 
                 if (self._plot_handle != None):
                     self._plot_handle.draw(self._state.N, self._P, self._state.domain.extent)
@@ -527,10 +535,26 @@ class RadialDistributionPeriodicNVE(object):
         f.close()
 
 
-
-
-
-
+class VelocityAutocorrelation(object):
+    '''
+    Method to calculate Velocity Autocorrelation Function.
+    
+    
+    '''
+    def __init__(self, state):
+        self._state = state
+        self.N = self._state.N
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
 
 
 
