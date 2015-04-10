@@ -35,7 +35,7 @@ class BaseMDState(object):
         self._N = N
         self._pos = particle.Dat(N, 3, name='positions')
         self._vel = particle.Dat(N, 3, name='velocities')
-        self._accel = particle.Dat(N, 3, name='accelerations')
+        self._accel = particle.Dat(N, 3, name='forces')
         
         self._mass = particle.Dat(N, 1, 1.0)
         if (particle_mass_init != None):
@@ -112,9 +112,9 @@ class BaseMDState(object):
         return self._vel
     
     @property     
-    def accelerations(self):
+    def forces(self):
         """
-        Return all particle accelerations.
+        Return all particle forces.
         """
         return self._accel
 
@@ -125,20 +125,20 @@ class BaseMDState(object):
         """
         return self._mass
         
-    def set_accelerations(self,val):
+    def set_forces(self,val):
         """
-        Set all accelerations to given value.
+        Set all forces to given value.
         
         :arg double val: value to set to.
         """
         
         self._accel.set_val(val)
         
-    def accelerations_update(self):
+    def forces_update(self):
         """
-        Updates accelerations dats using given looping method.
+        Updates forces dats using given looping method.
         """
-        self.set_accelerations(ctypes.c_double(0.0))
+        self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
         self._looping_method_accel.execute()
 

@@ -393,7 +393,7 @@ class PairLoopRapaport(_base):
         
     def execute(self):
         '''
-        C version of the pair_locate: Loop over all cells update accelerations and potential engery.
+        C version of the pair_locate: Loop over all cells update forces and potential engery.
         '''
         self._cell_sort_all()
         
