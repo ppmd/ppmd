@@ -501,13 +501,19 @@ class RadialDistributionPeriodicNVE(object):
         f.close()
 
 
+################################################################################################################
+# VAF
+################################################################################################################ 
+
 class VelocityAutocorrelation(object):
     '''
     Method to calculate Velocity Autocorrelation Function.
     
-    
+    :arg state state: Input state containing velocities.
+    :arg int size: Initial length of VAF array (optional).
+    :arg particle.Dat V0: Initial velocity Dat (optional).
     '''
-    def __init__(self, state, size = 0,V0 = None):
+    def __init__(self, state, size = 0, V0 = None):
         self._state = state
         self._N = self._state.N
         self._V0 = particle.Dat(self._N, 3, name='V0')
@@ -546,6 +552,12 @@ class VelocityAutocorrelation(object):
         
         
     def SetV0(self, V0=None, state=None):
+        '''
+        Set an initial velocity Dat to use as V_0. Requires either a velocity Dat or a state as an argument. V_0 will be set to either the passed velocities or to the velocities in the passed state.        
+        
+        :arg particle.Dat V0: Velocity Dat.
+        :arg state state: State class containing velocities.
+        '''
         
         if (V0!=None):
             self._V0.Dat = np.copy(V0.Dat)
@@ -559,6 +571,12 @@ class VelocityAutocorrelation(object):
     
         
     def evaluate(self, T=None, timer = False):
+        '''
+        Evaluate VAF using the current velocities held in the state with the velocities in V0.
+        
+        :arg double T: Time within block of integration.
+        :arg bool timer: Flag to time evaluation of VAF.
+        '''
         if (timer==True):
             start = time.clock()
         
@@ -566,12 +584,8 @@ class VelocityAutocorrelation(object):
         assert int(self._VAF_index.Dat) < int(self._VAF.ncomp), "VAF store not large enough"
         
         self._Ni.Dat = 1./self._N
-        
-        self._datdict['VT'] = self._state.velocities
-        
-              
+        self._datdict['VT'] = self._state.velocities     
         self._loop.execute(self._datdict)
-        
         
         if (T==None):
             self._T_store[self._VAF_index] = 1 + self._T_base
@@ -584,11 +598,16 @@ class VelocityAutocorrelation(object):
         
         if (timer==True):
             end = time.clock()
-            print "rdf time taken:", end - start,"s"         
+            print "VAF time taken:", end - start,"s"         
     
     
         
     def append_prepare(self,size):
+        '''
+        Function to prepare storage arrays for forthcoming VAF evaluations.
+        
+        :arg int size: Number of upcoming evaluations.
+        '''
         self._VAF.concatenate(size)      
         
         if (self._T_base == None):
@@ -599,7 +618,9 @@ class VelocityAutocorrelation(object):
         
     
     def plot(self):
-        
+        '''
+        Plot array of recorded VAF evaluations.
+        '''
         
         if (self._VAF_index > 0):
             plt.ion()
