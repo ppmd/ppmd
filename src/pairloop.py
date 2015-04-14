@@ -72,7 +72,7 @@ class _base(object):
         argnames = ''
         for i,dat in enumerate(self._particle_dat_dict.items()):
             
-            argnames += data.ctypes_map[dat[1].dtype]+' *arg_'+('%03d' % i)+','
+            argnames += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+'_ext,'
             
 
         return argnames[:-1]
@@ -100,13 +100,13 @@ class _base(object):
         '''
         space = ' '*14
         s = 'inline void '+self._kernel.name+'('
-        for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
-            #print var_name_kernel, var_name_state.dattype()
+        
+        for i,dat in enumerate(self._particle_dat_dict.items()):
             
-            if (type(var_name_state) == particle.Dat):
-                s += data.ctypes_map[var_name_state.dtype]+' **'+var_name_kernel+', '
-            if (type(var_name_state) == data.ScalarArray):
-                s += data.ctypes_map[var_name_state.dtype]+' *'+var_name_kernel+', '
+            if (type(dat[1]) == particle.Dat):
+                s += data.ctypes_map[dat[1].dtype]+' **'+dat[0]+', '
+            if (type(dat[1]) == data.ScalarArray):
+                s += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+', '
             
             
         s = s[:-2] + ') {'
@@ -121,8 +121,8 @@ class _base(object):
         is of required type, see method _kernel_argument_declarations()
         '''
         argnames = ''
-        for i in range(self._nargs):
-            argnames += 'loc_arg_'+('%03d' % i)+','
+        for i,dat in enumerate(self._particle_dat_dict.items()):
+            argnames += dat[0]+','
         return argnames[:-1]
 
 
@@ -148,8 +148,8 @@ class _base(object):
             
             
             space = ' '*14
-            argname = 'arg_'+('%03d' % i)
-            loc_argname = 'loc_'+argname
+            argname = dat[0]+'_ext'
+            loc_argname = dat[0]
             
             
             if (type(dat[1]) == data.ScalarArray):
@@ -355,8 +355,8 @@ class PairLoopRapaport(_base):
             
             
             space = ' '*14
-            argname = 'arg_'+('%03d' % i)
-            loc_argname = 'loc_'+argname
+            argname = dat[0]+'_ext'
+            loc_argname = dat[0]
             
             
             if (type(dat[1]) == data.ScalarArray):
@@ -536,17 +536,14 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
         '''
         space = ' '*14
         s = 'inline void '+self._kernel.name+'('
-        for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
-            #print var_name_kernel, var_name_state.dattype()
+        
+        for i,dat in enumerate(self._particle_dat_dict.items()):
             
-            #if (var_name_state.dattype=='array'):
-            if (type(var_name_state) == particle.Dat):
-                s += data.ctypes_map[var_name_state.dtype]+' **'+var_name_kernel+', '
+            if (type(dat[1]) == particle.Dat):
+                s += data.ctypes_map[dat[1].dtype]+' **'+dat[0]+', '
                 
-            #if (var_name_state.dattype=='scalar'):
-            if (type(var_name_state) == data.ScalarArray):
-                
-                s += data.ctypes_map[var_name_state.dtype]+' *'+var_name_kernel+', '
+            if (type(dat[1]) == data.ScalarArray):
+                s += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+', '
             
             
         s = s[:-2] + ') {'
@@ -590,8 +587,8 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
             
             
             space = ' '*14
-            argname = 'arg_'+('%03d' % i)
-            loc_argname = 'loc_'+argname
+            argname = dat[0]+'_ext'
+            loc_argname = dat[0]
             
             
             if (type(dat[1]) == data.ScalarArray):

@@ -110,7 +110,7 @@ class SingleAllParticleLoop(object):
              'LOC_ARGUMENTS':self._loc_argnames(),
              'KERNEL_NAME':self._kernel.name,
              'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations()}
-        return self._code % d        
+        return self._code % d
         
     
     def _kernel_methodname(self):
@@ -122,9 +122,11 @@ class SingleAllParticleLoop(object):
         '''
         space = ' '*14
         s = 'inline void '+self._kernel.name+'('
-        for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
+        
+        #for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
+        for i,dat in enumerate(self._particle_dat_dict.items()):
             #print var_name_kernel, var_name_state.dattype()
-            s += data.ctypes_map[var_name_state.dtype]+' *'+var_name_kernel+', '
+            s += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+', '
      
         
         
@@ -140,8 +142,11 @@ class SingleAllParticleLoop(object):
         is of type ``double* [2]``, see method _kernel_argument_declarations()
         '''
         argnames = ''
-        for i in range(self._nargs):
-            argnames += 'loc_arg_'+('%03d' % i)+','
+        
+        for i,dat in enumerate(self._particle_dat_dict.items()):
+            argnames += dat[0]+','    
+            
+        
         return argnames[:-1]
 
     def _code_init(self):
@@ -187,10 +192,8 @@ class SingleAllParticleLoop(object):
             
             
             space = ' '*14
-            argname = 'arg_'+('%03d' % i)
-            loc_argname = 'loc_'+argname
-            
-            
+            argname = dat[0]+'_ext'
+            loc_argname = dat[0]
             
             if (type(dat[1]) == data.ScalarArray):
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
@@ -200,6 +203,9 @@ class SingleAllParticleLoop(object):
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';\n'
                 s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'     
+        
+        
+        
         
         return s 
 
@@ -235,7 +241,7 @@ class SingleAllParticleLoop(object):
         argnames = ''
         for i,dat in enumerate(self._particle_dat_dict.items()):
             
-            argnames += data.ctypes_map[dat[1].dtype]+' *arg_'+('%03d' % i)+','
+            argnames += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+'_ext,'
             
 
         return argnames[:-1]        
@@ -317,7 +323,6 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
           for (i=0; i<n; ++i) {
               %(KERNEL_ARGUMENT_DECL)s
               %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
-              
             }
         }
         '''
