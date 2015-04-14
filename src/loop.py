@@ -317,6 +317,7 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
           for (i=0; i<n; ++i) {
               %(KERNEL_ARGUMENT_DECL)s
               %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
+              
             }
         }
         '''

@@ -3,7 +3,7 @@ CFLAGS=-O3 -fpic -mtune=native -fopenmp -lomp -lgomp -std=c99
 LFLAGS=-L.
 OBJS=main.o
 MAIN=main.x
-LIBS=pair_loop_LJ periodic_boundary
+LIBS=
 
 all: $(MAIN)
 

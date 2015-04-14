@@ -538,7 +538,10 @@ class VelocityAutoCorrelation(object):
         _constants = None
         _kernel_code = '''
         
-        VAF[I[0]] += (V0[0]*VT[0] + V0[1]*VT[1] + V0[2]*VT[2])*Ni[0];
+        
+        const double tmp = (V0[0]*VT[0] + V0[1]*VT[1] + V0[2]*VT[2])*Ni[0];
+        #pragma omp reduction(+=:VAF[I[0]])
+        VAF[I[0]] += tmp;
         
         '''
         
