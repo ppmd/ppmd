@@ -505,7 +505,7 @@ class RadialDistributionPeriodicNVE(object):
 # VAF
 ################################################################################################################ 
 
-class VelocityAutocorrelation(object):
+class VelocityAutoCorrelation(object):
     '''
     Method to calculate Velocity Autocorrelation Function.
     

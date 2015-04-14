@@ -95,7 +95,7 @@ if __name__ == '__main__':
     
     
     #Create VAF method.
-    test_vaf_method = method.VelocityAutocorrelation(state = test_state)   
+    test_vaf_method = method.VelocityAutoCorrelation(state = test_state)   
     
     #Create an integrator for above state class.
     test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, VAF_handle = test_vaf_method)
