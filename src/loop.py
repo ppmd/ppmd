@@ -153,15 +153,16 @@ class SingleAllParticleLoop(object):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
 
-        %(KERNEL_METHODNAME)s
-        %(KERNEL)s
-        }
-
         void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
           int i;
           for (i=0; i<n; ++i) {
               %(KERNEL_ARGUMENT_DECL)s
-              %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
+              
+                  //KERNEL CODE START
+                  
+                  %(KERNEL)s
+                  
+                  //KERNEL CODE END
               
             }
         }
@@ -313,16 +314,17 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
 
         #include "../generic.h"
 
-        %(KERNEL_METHODNAME)s
-        %(KERNEL)s
-        }
-
         void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
           int i;
           #pragma omp parallel for schedule(static)
           for (i=0; i<n; ++i) {
               %(KERNEL_ARGUMENT_DECL)s
-              %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
+              
+                  //KERNEL CODE START
+                  
+                  %(KERNEL)s
+                  
+                  //KERNEL CODE END
             }
         }
         '''

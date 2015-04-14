@@ -242,9 +242,6 @@ class PairLoopRapaport(_base):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
         
-        %(KERNEL_METHODNAME)s
-        %(KERNEL)s
-        }
         
         inline void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cpp, unsigned int *flag, double *offset){
         
@@ -318,7 +315,12 @@ class PairLoopRapaport(_base):
                             if (cp != cpp || i < j){
         
                                 %(KERNEL_ARGUMENT_DECL)s
-                                %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
+                                
+                                  //KERNEL CODE START
+                                  
+                                  %(KERNEL)s
+                                  
+                                  //KERNEL CODE END
                                 
                                 
                             }
@@ -553,15 +555,15 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
 
-        %(KERNEL_METHODNAME)s
-        %(KERNEL)s
-        }
-
         void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
           for (int i=0; i<n; i++) { for (int j=0; j<i; j++) {  
               
               %(KERNEL_ARGUMENT_DECL)s
-              %(KERNEL_NAME)s(%(LOC_ARGUMENTS)s);
+                  //KERNEL CODE START
+                  
+                  %(KERNEL)s
+                  
+                  //KERNEL CODE END
               
           }}
         }
