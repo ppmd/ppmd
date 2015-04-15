@@ -8,6 +8,8 @@ import math
 import method
 import data
 import loop
+import subprocess
+import os
 
 if __name__ == '__main__':
     
@@ -31,10 +33,11 @@ if __name__ == '__main__':
     
     if (debug):
         print "Debugging enabled"
+        subprocess.Popen("make clean", shell=True)
     
     
     if (test_1000):
-        n=10
+        n=25
         N=n**3
         print "N =",N
         rho = 1.0
@@ -119,12 +122,12 @@ if __name__ == '__main__':
     ###########################################################
     
     
-    test_integrator.integrate(dt = 0.0001, T = 0.01, timer=True)
+    test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 0.1, Temp=50.0, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
     #test_gr_method.evaluate(timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
-    #test_gr_method.evaluate(timer=True)
+    test_gr_method.evaluate(timer=True)
     
     
     
@@ -139,7 +142,7 @@ if __name__ == '__main__':
     #test_gr_method.RawWrite()
     test_vaf_method.plot()
 
-    #a=input("PRESS ENTER TO CONTINUE.\n")
+    a=input("PRESS ENTER TO CONTINUE.\n")
     
 
     

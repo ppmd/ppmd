@@ -79,7 +79,8 @@ class VelocityVerlet(object):
         '''
         
         self._K_kernel_code = '''
-        K[0]+= (V[0]*V[0] + V[1]*V[1] + V[2]*V[2])*0.5*M[0];
+        
+        K[0] += (V[0]*V[0] + V[1]*V[1] + V[2]*V[2])*0.5*M[0];
         
         '''      
         self._constants_K = []
@@ -195,6 +196,7 @@ class VelocityVerlet(object):
             self._K.scale(0.0)
             
             if(self._USE_C):
+                
                 self._pK.execute()
                 #self._K.AverageUpdate()
             else:
@@ -388,6 +390,8 @@ class RadialDistributionPeriodicNVE(object):
         
         _headers = ['math.h','stdio.h']
         _kernel = '''
+        
+        
         double R0 = P[1][0] - P[0][0];
         double R1 = P[1][1] - P[0][1];
         double R2 = P[1][2] - P[0][2];
@@ -403,6 +407,7 @@ class RadialDistributionPeriodicNVE(object):
             double r20=0.0, r21 = r2;
             
             r21 = sqrt(r2);
+            
             
             GR[(int) (abs_md(r21* rstepsoverrmax))]++;
             
@@ -425,7 +430,7 @@ class RadialDistributionPeriodicNVE(object):
         _datdict = {'P':self._P, 'GR':self._gr}
         
         
-        self._p = pairloop.DoubleAllParticleLoop(N = self._N, kernel = _grkernel, particle_dat_dict = _datdict, DEBUG = self._DEBUG)
+        self._p = pairloop.DoubleAllParticleLoopOpenMP(N = self._N, kernel = _grkernel, particle_dat_dict = _datdict, DEBUG = self._DEBUG)
         
     def evaluate(self, timer=False):
         '''
@@ -545,7 +550,7 @@ class VelocityAutoCorrelation(object):
         
         
         const double tmp = (V0[0]*VT[0] + V0[1]*VT[1] + V0[2]*VT[2])*Ni[0];
-        #pragma omp reduction(+=:VAF[I[0]])
+        
         VAF[I[0]] += tmp;
         
         '''

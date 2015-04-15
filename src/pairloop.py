@@ -607,11 +607,70 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
         return s      
         
 
+class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
+    
+    def _code_init(self):
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
 
+        void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
+          
+          #pragma omp parallel for schedule(dynamic)
+          for (int i=0; i<n; i++) { 
+            for (int j=0; j<i; j++) {  
+              
+              %(KERNEL_ARGUMENT_DECL)s
+                  //KERNEL CODE START
+                  
+                  %(KERNEL)s
+                  
+                  //KERNEL CODE END
+              
+          }}
+        }
+        '''
 
-
-
-
+    def _create_library(self):
+        '''
+        Create a shared library from the source code.
+        '''
+        
+        filename_base = os.path.join(self._temp_dir,self._unique_name)
+        header_filename = filename_base+'.h'
+        impl_filename = filename_base+'.c'
+        with open(header_filename,'w') as f:
+            print >> f, self._generate_header_source()        
+        with open(impl_filename,'w') as f:
+            print >> f, self._generate_impl_source()
+        object_filename = filename_base+'.o'
+        library_filename = filename_base+'.so'        
+        cflags = ['-O3','-fpic','-fopenmp','-lgomp','-lpthread','-lc','-lrt','--std=c99']
+        if (self._DEBUG):
+            cflags+=['-g']        
+        cc = 'gcc'
+        ld = 'gcc'
+        link_flags = ['-fopenmp','-lgomp','-lpthread','-lc','-lrt']
+        compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
+                       +['-o',object_filename,impl_filename]
+        link_cmd = [ld,'-shared']+link_flags+['-o',library_filename,object_filename]
+        stdout_filename = filename_base+'.log'
+        stderr_filename = filename_base+'.err'
+        with open(stdout_filename,'w') as stdout:
+            with open(stderr_filename,'w') as stderr:
+                stdout.write('Compilation command:\n')
+                stdout.write(' '.join(compile_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(compile_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate()
+                stdout.write('Link command:\n')
+                stdout.write(' '.join(link_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(link_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate() 
 
 
 

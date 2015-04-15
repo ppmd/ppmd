@@ -320,7 +320,7 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
 
         void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
           int i;
-          #pragma omp parallel for schedule(static)
+          #pragma omp parallel for schedule(dynamic)
           for (i=0; i<n; ++i) {
               %(KERNEL_ARGUMENT_DECL)s
               
