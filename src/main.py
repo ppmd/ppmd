@@ -102,13 +102,13 @@ if __name__ == '__main__':
     
     
     #Create VAF method.
-    test_vaf_method = method.VelocityAutoCorrelation(state = test_state)   
+    test_vaf_method = method.VelocityAutoCorrelation(state = test_state, DEBUG = debug)   
     
     #Create an integrator for above state class.
-    test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, VAF_handle = test_vaf_method)
+    test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, VAF_handle = test_vaf_method, DEBUG = debug)
     
     #create G(r) method.
-    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rsteps = 200)
+    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rsteps = 200, DEBUG = debug)
     
 
     
@@ -119,7 +119,7 @@ if __name__ == '__main__':
     ###########################################################
     
     
-    test_integrator.integrate(dt = 0.0001, T = 1.0, timer=True)
+    test_integrator.integrate(dt = 0.0001, T = 0.01, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 0.1, Temp=50.0, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
     #test_gr_method.evaluate(timer=True)
