@@ -21,8 +21,10 @@ class SingleAllParticleLoop(object):
     :arg int N: Number of elements to loop over.
     :arg kernel kernel:  Kernel to apply at each element.
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
+    :arg bool DEBUG: Flag to enable debug flags.
     '''
-    def __init__(self, N, kernel, particle_dat_dict):
+    def __init__(self, N, kernel, particle_dat_dict, DEBUG = False):
+        self._DEBUG = DEBUG
         self._N = N
         self._temp_dir = './build/'
         if (not os.path.exists(self._temp_dir)):
@@ -59,6 +61,8 @@ class SingleAllParticleLoop(object):
         object_filename = filename_base+'.o'
         library_filename = filename_base+'.so'        
         cflags = ['-O3','-fpic','-std=c99','-lm']
+        if (self._DEBUG):
+            cflags+=['-g']        
         cc = 'gcc'
         ld = 'gcc'
         link_flags = ['-lm']
@@ -346,6 +350,8 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
         object_filename = filename_base+'.o'
         library_filename = filename_base+'.so'        
         cflags = ['-O3','-fpic','-fopenmp','-lgomp','-lpthread','-lc','-lrt']
+        if (self._DEBUG):
+            cflags+=['-g']        
         cc = 'gcc'
         ld = 'gcc'
         link_flags = ['-fopenmp','-lgomp','-lpthread','-lc','-lrt']

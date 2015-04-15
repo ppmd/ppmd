@@ -21,8 +21,9 @@ class BaseMDState(object):
     :arg VelInit* particle_vel_init: Class to initialise particles velocities with.
     :arg int N: Number of particles, default 1.
     :arg double mass: Mass of particles, default 1.0.
+    :arg bool DEBUG: Flag to enable debug flags.
     '''
-    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, particle_mass_init = None, N = 0, mass = 1.):
+    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, particle_mass_init = None, N = 0, mass = 1., DEBUG = False):
         '''
         Intialise class to hold the state of a simulation.
         :arg domain domain: Container within which the simulation takes place.
@@ -75,13 +76,14 @@ class BaseMDState(object):
         
         
         #Setup acceleration updating from given potential
-        
+        self._DEBUG = DEBUG
         _potential_dat_dict = self._potential.datdict(self)
         self._looping_method_accel = pairloop.PairLoopRapaport(N=self._N,
                                                                 domain = self._domain, 
                                                                 positions = self._pos, 
                                                                 potential = self._potential, 
-                                                                dat_dict = _potential_dat_dict)
+                                                                dat_dict = _potential_dat_dict,
+                                                                DEBUG = self._DEBUG)
     
     @property    
     def N(self):

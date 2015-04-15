@@ -26,6 +26,13 @@ if __name__ == '__main__':
     #log energy?
     logging = True
     
+    #Enbale debug flags?
+    debug = True
+    
+    if (debug):
+        print "Debugging enabled"
+    
+    
     if (test_1000):
         n=10
         N=n**3
@@ -74,6 +81,7 @@ if __name__ == '__main__':
                                    particle_vel_init = test_vel_init,
                                    particle_mass_init = test_mass_init,
                                    N = N,
+                                   DEBUG = debug
                                    )
     
     #plotting handle
@@ -87,7 +95,6 @@ if __name__ == '__main__':
         energyhandle = data.BasicEnergyStore()
     else:
         energyhandle = None
-    
     
     
     
@@ -110,11 +117,6 @@ if __name__ == '__main__':
     
     
     ###########################################################
-    global __DEBUG__
-    
-    
-    if '__DEBUG__' in globals():
-        print "global found"
     
     
     test_integrator.integrate(dt = 0.0001, T = 1.0, timer=True)
@@ -137,7 +139,7 @@ if __name__ == '__main__':
     #test_gr_method.RawWrite()
     test_vaf_method.plot()
 
-    a=input("PRESS ENTER TO CONTINUE.\n")
+    #a=input("PRESS ENTER TO CONTINUE.\n")
     
 
     

@@ -177,10 +177,10 @@ class PairLoopRapaport(_base):
     :arg dat positions: Postitions of particles.
     :arg potential potential: Potential between particles.
     :arg dict dat_dict: Dictonary mapping between state vars and kernel vars.
-    
+    :arg bool DEBUG: Flag to enable debug flags.
     '''
-    def __init__(self,N,domain,positions,potential,dat_dict):
-        
+    def __init__(self,N,domain,positions,potential,dat_dict, DEBUG = False):
+        self._DEBUG = DEBUG
         self._N = N
         self._domain = domain
         self._P = positions
@@ -489,6 +489,8 @@ class PairLoopRapaport(_base):
         object_filename = filename_base+'.o'
         library_filename = filename_base+'.so'        
         cflags = ['-O3','-fpic','-std=c99']
+        if (self._DEBUG):
+            cflags+=['-g']
         cc = 'gcc'
         ld = 'gcc'
         lflags = []
