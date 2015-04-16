@@ -13,8 +13,8 @@ import constant
 import build
 
 #Temporary compiler flag
-TMPCC = build.ICC
-TMPCC_OpenMP = build.ICC_OpenMP
+TMPCC = build.GCC
+TMPCC_OpenMP = build.GCC_OpenMP
 
 class _base(build.GenericToolChain):
     
@@ -282,7 +282,28 @@ class PairLoopRapaport(_base):
         
         return s       
         
+    def _generate_header_source(self):
+        '''Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        '''
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+
+        %(INCLUDED_HEADERS)s
+
+        #include "../generic.h"
         
+        void %(KERNEL_NAME)s_wrapper(const int n,const int cell_count, int* cells, int* q_list, double* d_extent,%(ARGUMENTS)s);
+
+        #endif
+        '''
+        d = {'UNIQUENAME':self._unique_name,
+             'INCLUDED_HEADERS':self._included_headers(),
+             'KERNEL_NAME':self._kernel.name,
+             'ARGUMENTS':self._argnames()}
+        return (code % d)        
                 
         
     def execute(self, dat_dict = None):

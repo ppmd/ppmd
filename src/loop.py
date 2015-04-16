@@ -11,8 +11,8 @@ import kernel
 import build
 
 #Temporary compiler flag
-TMPCC = build.ICC
-TMPCC_OpenMP = build.ICC_OpenMP
+TMPCC = build.GCC
+TMPCC_OpenMP = build.GCC_OpenMP
 
 class _base(build.GenericToolChain):
     '''
