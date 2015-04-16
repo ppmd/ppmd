@@ -344,8 +344,6 @@ class PosInitTwoParticlesInABox(object):
         state_input.domain.set_extent(self._extent)
 
 
-
-
         
 class VelInitNormDist(object):
     """

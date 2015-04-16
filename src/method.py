@@ -98,7 +98,7 @@ class VelocityVerlet(object):
         :arg bool timer: display approximate timing information.
         '''
         if (timer==True):
-            start = time.clock()
+            start = time.time()
         
         
         
@@ -135,7 +135,7 @@ class VelocityVerlet(object):
             
         self._velocity_verlet_integration()
         if (timer==True):
-            end = time.clock()
+            end = time.time()
             print "integrate time taken:", end - start,"s"        
         
         
@@ -149,7 +149,7 @@ class VelocityVerlet(object):
         self._percent_count = 101
         if (self._plot_handle != None):
             self._percent_int = self._plot_handle.interval
-            self._percent_count = percent_int
+            self._percent_count = self._percent_int
 
         self._domain.BCexecute()
         self._state.forces_update()
@@ -251,7 +251,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         :arg bool timer: display approximate timing information.
         '''
         if (timer==True):
-            start = time.clock()
+            start = time.time()
         
         self._Temp = Temp
         self._nu = nu
@@ -320,7 +320,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         self._velocity_verlet_integration_thermostat()
         
         if (timer==True):
-            end = time.clock()
+            end = time.time()
             print "integrate thermostat time taken:", end - start,"s"           
     
     def _velocity_verlet_integration_thermostat(self):
@@ -332,7 +332,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         self._percent_count = 101
         if (self._plot_handle != None):
             self._percent_int = self._plot_handle.interval
-            self._percent_count = percent_int
+            self._percent_count = self._percent_int
 
         self._domain.BCexecute()
         self._state.forces_update()
@@ -442,11 +442,11 @@ class RadialDistributionPeriodicNVE(object):
         
         
         if (timer==True):
-            start = time.clock()    
+            start = time.time()    
         self._p.execute()
         self._count+=1
         if (timer==True):
-            end = time.clock()
+            end = time.time()
             print "rdf time taken:", end - start,"s" 
         
     def _scale(self):
@@ -590,7 +590,7 @@ class VelocityAutoCorrelation(object):
         :arg bool timer: Flag to time evaluation of VAF.
         '''
         if (timer==True):
-            start = time.clock()
+            start = time.time()
         
         
         assert int(self._VAF_index.Dat) < int(self._VAF.ncomp), "VAF store not large enough"
@@ -609,7 +609,7 @@ class VelocityAutoCorrelation(object):
         
         
         if (timer==True):
-            end = time.clock()
+            end = time.time()
             print "VAF time taken:", end - start,"s"         
     
     

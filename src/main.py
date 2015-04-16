@@ -38,10 +38,11 @@ if __name__ == '__main__':
     
     
     if (test_1000):
+        #n=25 reasonable size
         n=25
         N=n**3
         print "N =",N
-        rho = 1.0
+        rho = 1.
         mu = 0.0
         nsig = 5.0
         
@@ -90,7 +91,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(interval = 10)
+        plothandle = data.DrawParticles(interval = 45)
     else:
         plothandle = None
     
@@ -124,11 +125,11 @@ if __name__ == '__main__':
     
     
     test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
-    #test_integrator.integrate_thermostat(dt = 0.0001, T = 0.1, Temp=50.0, nu=2.5, timer=True)
-    #test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
+    #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
+    #test_integrator.integrate(dt = 0.0001, T = 0.5, timer=True)
     #test_gr_method.evaluate(timer=True)
-    #test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
-    test_gr_method.evaluate(timer=True)
+    #test_integrator.integrate(dt = 0.0001, T = 0.5, timer=True)
+    #test_gr_method.evaluate(timer=True)
     
     
     
