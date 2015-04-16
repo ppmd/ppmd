@@ -78,7 +78,7 @@ class BaseMDState(object):
         #Setup acceleration updating from given potential
         self._DEBUG = DEBUG
         _potential_dat_dict = self._potential.datdict(self)
-        self._looping_method_accel = pairloop.PairLoopRapaport(N=self._N,
+        self._looping_method_accel = pairloop.PairLoopRapaportOpenMP2(N=self._N,
                                                                     domain = self._domain, 
                                                                     positions = self._pos, 
                                                                     potential = self._potential, 

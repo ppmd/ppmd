@@ -408,7 +408,6 @@ class RadialDistributionPeriodicNVE(object):
             
             r21 = sqrt(r2);
             
-            
             GR[(int) (abs_md(r21* rstepsoverrmax))]++;
             
         }
@@ -430,7 +429,7 @@ class RadialDistributionPeriodicNVE(object):
         _datdict = {'P':self._P, 'GR':self._gr}
         
         
-        self._p = pairloop.DoubleAllParticleLoopOpenMP(N = self._N, kernel = _grkernel, particle_dat_dict = _datdict, DEBUG = self._DEBUG)
+        self._p = pairloop.DoubleAllParticleLoop(N = self._N, kernel = _grkernel, particle_dat_dict = _datdict, DEBUG = self._DEBUG)
         
     def evaluate(self, timer=False):
         '''

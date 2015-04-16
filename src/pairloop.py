@@ -16,83 +16,9 @@ import build
 TMPCC = build.ICC
 TMPCC_OpenMP = build.ICC_OpenMP
 
-class _base(object):
-    def _unique_name_calc(self):
-        '''Return name which can be used to identify the pair loop 
-        in a unique way.
-        '''
-        return self._kernel.name+'_'+self.hexdigest()
-        
-    def hexdigest(self):
-        '''Create unique hex digest'''
-        m = hashlib.md5()
-        m.update(self._kernel.code+self._code)
-        if (self._kernel.headers != None):
-            for header in self._kernel.headers:
-                m.update(header)
-        return m.hexdigest()
-        
-    def _generate_header_source(self):
-        '''Generate the source code of the header file.
-
-        Returns the source code for the header file.
-        '''
-        code = '''
-        #ifndef %(UNIQUENAME)s_H
-        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #include "../generic.h"
-        %(INCLUDED_HEADERS)s
-
-        void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
-
-        #endif
-        '''
-        d = {'UNIQUENAME':self._unique_name,
-             'INCLUDED_HEADERS':self._included_headers(),
-             'KERNEL_NAME':self._kernel.name,
-             'ARGUMENTS':self._argnames()}
-        return (code % d)
+class _base(build.GenericToolChain):
     
-    def _included_headers(self):
-        '''Return names of included header files.'''
-        s = ''
-        if (self._kernel.headers != None):
-            s += '\n'
-            for x in self._kernel.headers:
-                s += '#include \"'+x+'\" \n'
-        return s    
     
-    def _argnames(self):
-        '''Comma separated string of argument name declarations.
-
-        This string of argument names is used in the declaration of 
-        the method which executes the pairloop over the grid. 
-        If, for example, the pairloop gets passed two particle_dats, 
-        then the result will be ``double** arg_000,double** arg_001`.`
-        '''
-        
-        argnames = ''
-        for i,dat in enumerate(self._particle_dat_dict.items()):
-            
-            argnames += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+'_ext,'
-            
-
-        return argnames[:-1]
-        
-
-    def _generate_impl_source(self):
-        '''Generate the source code the actual implementation.
-        '''
-
-        d = {'UNIQUENAME':self._unique_name,
-             'KERNEL_METHODNAME':self._kernel_methodname(),
-             'KERNEL':self._kernel.code,
-             'ARGUMENTS':self._argnames(),
-             'LOC_ARGUMENTS':self._loc_argnames(),
-             'KERNEL_NAME':self._kernel.name,
-             'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations()}
-        return self._code % d    
-
     def _kernel_methodname(self):
         '''Construct the name of the kernel method.
         
@@ -110,26 +36,11 @@ class _base(object):
             if (type(dat[1]) == data.ScalarArray):
                 s += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+', '
             
-            
+        
         s = s[:-2] + ') {'
         return s           
 
-    def _loc_argnames(self):
-        '''Comma separated string of local argument names.
-
-        This string is used in the call to the local kernel. If, for
-        example, two particle dats get passed to the pairloop, then
-        the result will be ``loc_arg_000,loc_arg_001``. Each of these
-        is of required type, see method _kernel_argument_declarations()
-        '''
-        argnames = ''
-        for i,dat in enumerate(self._particle_dat_dict.items()):
-            argnames += dat[0]+','
-        return argnames[:-1]
-
-
-
-
+    
     def _kernel_argument_declarations(self):
         '''Define and declare the kernel arguments.
 
@@ -164,48 +75,6 @@ class _base(object):
                 s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'       
         
         return s 
-
-    def _create_library(self):
-        '''
-        Create a shared library from the source code.
-        '''
-        
-        filename_base = os.path.join(self._temp_dir,self._unique_name)
-        header_filename = filename_base+'.h'
-        impl_filename = filename_base+'.c'
-        with open(header_filename,'w') as f:
-            print >> f, self._generate_header_source()        
-        with open(impl_filename,'w') as f:
-            print >> f, self._generate_impl_source()
-        object_filename = filename_base+'.o'
-        library_filename = filename_base+'.so'        
-        cflags = self._cc.cflags
-        if (self._DEBUG):
-            cflags+=self._cc.dbgflags
-        cc = self._cc.binary
-        ld = self._cc.binary
-        lflags = self._cc.lflags
-        compile_cmd = cc+self._cc.compileflag+cflags+['-I',self._temp_dir] \
-                       +['-o',object_filename,impl_filename]
-        link_cmd = ld+self._cc.sharedlibflag+lflags+['-o',library_filename,object_filename]
-        stdout_filename = filename_base+'.log'
-        stderr_filename = filename_base+'.err'
-        with open(stdout_filename,'w') as stdout:
-            with open(stderr_filename,'w') as stderr:
-                stdout.write('Compilation command:\n')
-                stdout.write(' '.join(compile_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(compile_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate()
-                stdout.write('Link command:\n')
-                stdout.write(' '.join(link_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(link_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate() 
 
 ################################################################################################################
 # RAPAPORT LOOP SERIAL
@@ -260,31 +129,7 @@ class PairLoopRapaport(_base):
     def _compiler_set(self):
         self._cc = TMPCC
     
-
-    def _generate_header_source(self):
-        '''Generate the source code of the header file.
-
-        Returns the source code for the header file.
-        '''
-        code = '''
-        #ifndef %(UNIQUENAME)s_H
-        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-
-        %(INCLUDED_HEADERS)s
-
-        #include "../generic.h"
-        
-        void %(KERNEL_NAME)s_wrapper(const int n,const int cell_count, int* cells, int* q_list, double* d_extent,%(ARGUMENTS)s);
-
-        #endif
-        '''
-        d = {'UNIQUENAME':self._unique_name,
-             'INCLUDED_HEADERS':self._included_headers(),
-             'KERNEL_NAME':self._kernel.name,
-             'ARGUMENTS':self._argnames()}
-        return (code % d)
-        
-        
+                
     def _code_init(self):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
@@ -610,8 +455,11 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
                 s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                 s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'    
         
-        return s      
-        
+        return s    
+          
+################################################################################################################
+# DOUBLE ALL PARTICLE LOOP OPENMP
+################################################################################################################        
 
 class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
     def _compiler_set(self):
@@ -762,33 +610,33 @@ class PairLoopRapaportOpenMP2(PairLoopRapaport):
         
             const int cell_map[27][3] = {   
                                             {-1,1,-1},
-                                            {0,1,-1},
-                                            {1,1,-1},
+                                            {-1,-1,-1},
                                             {-1,0,-1},
+                                            {0,1,-1},
+                                            {0,-1,-1},
                                             {0,0,-1},
                                             {1,0,-1},
-                                            {-1,-1,-1},
-                                            {0,-1,-1},
+                                            {1,1,-1},
                                             {1,-1,-1},                                            
-                                            
+
+                                            {-1,1,0},
+                                            {-1,0,0},                                            
                                             {-1,-1,0},
                                             {0,-1,0},
-                                            {-1,1,0},
-                                            {-1,0,0},
                                             {0,0,0},
-                                            {1,0,0},
                                             {0,1,0},
+                                            {1,0,0},                                            
                                             {1,1,0},
                                             {1,-1,0},
                                             
-                                            {-1,1,1},
-                                            {0,1,1},
-                                            {1,1,1},
                                             {-1,0,1},
-                                            {0,0,1},
-                                            {1,0,1},
+                                            {-1,1,1},
                                             {-1,-1,1},
+                                            {0,0,1},
+                                            {0,1,1},
                                             {0,-1,1},
+                                            {1,0,1},
+                                            {1,1,1},
                                             {1,-1,1}
                                             
                                             };
@@ -830,7 +678,9 @@ class PairLoopRapaportOpenMP2(PairLoopRapaport):
         
         void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
             
-            #pragma omp parallel for schedule(static, 100)
+            double U_sum = 0.0;
+            
+            #pragma omp parallel for schedule(dynamic) reduction(+:U_sum)
             for(unsigned int cp = 0; cp < cell_count; cp++){
                 for(unsigned int cpp_i=0; cpp_i<27; cpp_i++){
                 
@@ -847,7 +697,7 @@ class PairLoopRapaportOpenMP2(PairLoopRapaport):
                     while (i > -1){
                         j = q_list[n+cpp];
                         while (j > -1){
-                            if (cp != cpp || i < j){
+                            if ((cp != cpp) || (i != j)){
         
                                 %(KERNEL_ARGUMENT_DECL)s
                                 
@@ -866,7 +716,7 @@ class PairLoopRapaportOpenMP2(PairLoopRapaport):
                 }
             }
             
-            
+            *U_ext=U_sum;
             return;
         }        
         
