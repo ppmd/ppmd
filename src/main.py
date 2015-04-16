@@ -33,7 +33,7 @@ if __name__ == '__main__':
     
     if (debug):
         print "Debugging enabled"
-        subprocess.Popen("make clean", shell=True)
+        #subprocess.Popen("make clean", shell=True)
     
     
     if (test_1000):
