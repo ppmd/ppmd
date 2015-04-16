@@ -124,7 +124,10 @@ class PairLoopRapaport(_base):
         
         if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
             self._create_library()
-        self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        try:
+            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        except:
+            build.load_library_exception(self._kernel.name, self._unique_name,type(self))
     
     def _compiler_set(self):
         self._cc = TMPCC

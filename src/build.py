@@ -9,7 +9,7 @@ import subprocess
 import data
 import kernel
 import constant
-
+import re
 
 class compiler(object):
     '''
@@ -74,6 +74,66 @@ ICC = compiler(['ICC'],['icc'],['-O3','-fpic','-std=c99','-march=core-avx2'],['-
 ICC_OpenMP = compiler(['ICC'],['icc'],['-O3','-fpic','-openmp','-lgomp','-lpthread','-lc','-lrt','-std=c99','-march=core-avx2'],['-openmp','-lgomp','-lpthread','-lc','-lrt'],['-g'],['-c'],['-shared'])
 
 
+
+def load_library_exception(kernel_name='None supplied', unique_name='None supplied', looping_type='None supplied'):
+    '''
+    Attempts to create useful error messages for code generation.
+    
+    :arg str kernel_name: Name of kernel
+    :arg str unique_name: Unique name given to kernel.
+    :arg loop looping_type: Loop/Pairloop applied to kernel.
+    '''
+    err_msg = "Could not read error file."
+    err_read = False
+    err_line = -1
+    err_code = "Source not read."
+    
+    #Try to open error file.
+    try:
+        f = open('./build/'+unique_name+'.err', 'r')
+        err_msg=f.read()
+        f.close()
+        err_read = True
+    except:
+        print "Error file not read"
+    
+    #Try to read source lines around error.
+    if (err_read):
+        m = re.search('[0-9]+:[0-9]', err_msg)
+        m = re.search('[0-9]+:', m.group(0))
+        
+        err_line = int(m.group(0)[:-1])
+        
+        if (err_line > 0):
+            try:
+                f = open('./build/'+unique_name+'.c', 'r')
+                code_str=f.read()
+                f.close()        
+            except:
+                print "Source file not read"
+            code_str=code_str.split('\n')[max(0,err_line-6):err_line+1]
+            code_str[-3]=code_str[-3]+"    <-------------"
+            code_str = [x+"\n" for x in code_str]
+            
+            err_code = ''.join(code_str)
+            
+    
+    raise RuntimeError("\n"
+                       "###################################################### \n"
+                       "\t \t \t ERROR \n"
+                       "###################################################### \n" 
+                       "kernel name: "+str(kernel_name)+"\n"
+                       "------------------------------------------------------ \n"
+                       "looping class: "+str(looping_type)+"\n"
+                       "------------------------------------------------------ \n"
+                       "Compile/link error message: \n \n"+
+                       str(err_msg) + "\n"
+                       "------------------------------------------------------ \n"
+                       "Error location attempt: \n \n"+
+                       str(err_code) + "\n \n"
+                       "###################################################### \n"
+                       )
+    
 
 
 
