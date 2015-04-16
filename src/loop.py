@@ -8,44 +8,13 @@ import hashlib
 import subprocess
 import data
 import kernel
+import build
 
+#Temporary compiler flag
+TMPCC = build.ICC
+TMPCC_OpenMP = build.ICC_OpenMP
 
-
-################################################################################################################
-# SINGLE PARTICLE LOOP SERIAL
-################################################################################################################
-class SingleAllParticleLoop(object):
-    '''
-    Class to loop over all particles once.
-    
-    :arg int N: Number of elements to loop over.
-    :arg kernel kernel:  Kernel to apply at each element.
-    :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
-    :arg bool DEBUG: Flag to enable debug flags.
-    '''
-    def __init__(self, N, kernel, particle_dat_dict, DEBUG = False):
-        self._DEBUG = DEBUG
-        self._N = N
-        self._temp_dir = './build/'
-        if (not os.path.exists(self._temp_dir)):
-            os.mkdir(self._temp_dir)
-        self._kernel = kernel
-        self._particle_dat_dict = particle_dat_dict
-        self._nargs = len(self._particle_dat_dict)
-
-        self._code_init()
-        
-        self._unique_name = self._unique_name_calc()
-        
-        self._library_filename  = self._unique_name +'.so'
-        
-        if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
-            self._create_library()
-        self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
-
-     
-        
-
+class _base(object):
     def _create_library(self):
         '''
         Create a shared library from the source code.
@@ -60,15 +29,15 @@ class SingleAllParticleLoop(object):
             print >> f, self._generate_impl_source()
         object_filename = filename_base+'.o'
         library_filename = filename_base+'.so'        
-        cflags = ['-O3','-fpic','-std=c99','-lm']
+        cflags = self._cc.cflags
         if (self._DEBUG):
-            cflags+=['-g']        
-        cc = 'gcc'
-        ld = 'gcc'
-        link_flags = ['-lm']
-        compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
+            cflags+=self._cc.dbgflags
+        cc = self._cc.binary
+        ld = self._cc.binary
+        lflags = self._cc.lflags
+        compile_cmd = cc+self._cc.compileflag+cflags+['-I',self._temp_dir] \
                        +['-o',object_filename,impl_filename]
-        link_cmd = [ld,'-shared']+link_flags+['-o',library_filename,object_filename]
+        link_cmd = ld+self._cc.sharedlibflag+lflags+['-o',library_filename,object_filename]
         stdout_filename = filename_base+'.log'
         stderr_filename = filename_base+'.err'
         with open(stdout_filename,'w') as stdout:
@@ -86,8 +55,44 @@ class SingleAllParticleLoop(object):
                 p = subprocess.Popen(link_cmd,
                                      stdout=stdout,
                                      stderr=stderr)
-                p.communicate()                
+                p.communicate() 
+
+################################################################################################################
+# SINGLE PARTICLE LOOP SERIAL
+################################################################################################################
+class SingleAllParticleLoop(_base):
+    '''
+    Class to loop over all particles once.
+    
+    :arg int N: Number of elements to loop over.
+    :arg kernel kernel:  Kernel to apply at each element.
+    :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
+    :arg bool DEBUG: Flag to enable debug flags.
+    '''
+    def __init__(self, N, kernel, particle_dat_dict, DEBUG = False):
+        self._DEBUG = DEBUG
+        self._compiler_set()
+        self._N = N
+        self._temp_dir = './build/'
+        if (not os.path.exists(self._temp_dir)):
+            os.mkdir(self._temp_dir)
+        self._kernel = kernel
+        self._particle_dat_dict = particle_dat_dict
+        self._nargs = len(self._particle_dat_dict)
+
+        self._code_init()
         
+        self._unique_name = self._unique_name_calc()
+        
+        self._library_filename  = self._unique_name +'.so'
+        
+        if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
+            self._create_library()
+        self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+                   
+    def _compiler_set(self):
+        self._cc = TMPCC
+                
     def execute(self, dat_dict = None):
     
         if (dat_dict != None):
@@ -309,7 +314,8 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
     '''
     OpenMP version of single pass pair loop (experimental)
     '''
-    SingleAllParticleLoop._create_library
+    def _compiler_set(self):
+        self._cc = TMPCC_OpenMP
     
     def _code_init(self):
         self._code = '''
@@ -333,48 +339,5 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
         }
         '''
     
-          
-    
-    def _create_library(self):
-        '''
-        Create a shared library from the source code.
-        '''
-        
-        filename_base = os.path.join(self._temp_dir,self._unique_name)
-        header_filename = filename_base+'.h'
-        impl_filename = filename_base+'.c'
-        with open(header_filename,'w') as f:
-            print >> f, self._generate_header_source()        
-        with open(impl_filename,'w') as f:
-            print >> f, self._generate_impl_source()
-        object_filename = filename_base+'.o'
-        library_filename = filename_base+'.so'        
-        cflags = ['-O3','-fpic','-fopenmp','-lgomp','-lpthread','-lc','-lrt']
-        if (self._DEBUG):
-            cflags+=['-g']        
-        cc = 'gcc'
-        ld = 'gcc'
-        link_flags = ['-fopenmp','-lgomp','-lpthread','-lc','-lrt']
-        compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
-                       +['-o',object_filename,impl_filename]
-        link_cmd = [ld,'-shared']+link_flags+['-o',library_filename,object_filename]
-        stdout_filename = filename_base+'.log'
-        stderr_filename = filename_base+'.err'
-        with open(stdout_filename,'w') as stdout:
-            with open(stderr_filename,'w') as stderr:
-                stdout.write('Compilation command:\n')
-                stdout.write(' '.join(compile_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(compile_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate()
-                stdout.write('Link command:\n')
-                stdout.write(' '.join(link_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(link_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate() 
         
 

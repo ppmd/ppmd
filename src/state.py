@@ -79,11 +79,11 @@ class BaseMDState(object):
         self._DEBUG = DEBUG
         _potential_dat_dict = self._potential.datdict(self)
         self._looping_method_accel = pairloop.PairLoopRapaport(N=self._N,
-                                                                domain = self._domain, 
-                                                                positions = self._pos, 
-                                                                potential = self._potential, 
-                                                                dat_dict = _potential_dat_dict,
-                                                                DEBUG = self._DEBUG)
+                                                                    domain = self._domain, 
+                                                                    positions = self._pos, 
+                                                                    potential = self._potential, 
+                                                                    dat_dict = _potential_dat_dict,
+                                                                    DEBUG = self._DEBUG)
     
     @property    
     def N(self):

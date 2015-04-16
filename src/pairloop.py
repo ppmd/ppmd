@@ -10,9 +10,11 @@ import data
 import kernel
 import loop
 import constant
+import build
 
-
-
+#Temporary compiler flag
+TMPCC = build.ICC
+TMPCC_OpenMP = build.ICC_OpenMP
 
 class _base(object):
     def _unique_name_calc(self):
@@ -163,6 +165,47 @@ class _base(object):
         
         return s 
 
+    def _create_library(self):
+        '''
+        Create a shared library from the source code.
+        '''
+        
+        filename_base = os.path.join(self._temp_dir,self._unique_name)
+        header_filename = filename_base+'.h'
+        impl_filename = filename_base+'.c'
+        with open(header_filename,'w') as f:
+            print >> f, self._generate_header_source()        
+        with open(impl_filename,'w') as f:
+            print >> f, self._generate_impl_source()
+        object_filename = filename_base+'.o'
+        library_filename = filename_base+'.so'        
+        cflags = self._cc.cflags
+        if (self._DEBUG):
+            cflags+=self._cc.dbgflags
+        cc = self._cc.binary
+        ld = self._cc.binary
+        lflags = self._cc.lflags
+        compile_cmd = cc+self._cc.compileflag+cflags+['-I',self._temp_dir] \
+                       +['-o',object_filename,impl_filename]
+        link_cmd = ld+self._cc.sharedlibflag+lflags+['-o',library_filename,object_filename]
+        stdout_filename = filename_base+'.log'
+        stderr_filename = filename_base+'.err'
+        with open(stdout_filename,'w') as stdout:
+            with open(stderr_filename,'w') as stderr:
+                stdout.write('Compilation command:\n')
+                stdout.write(' '.join(compile_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(compile_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate()
+                stdout.write('Link command:\n')
+                stdout.write(' '.join(link_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(link_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate() 
 
 ################################################################################################################
 # RAPAPORT LOOP SERIAL
@@ -187,6 +230,7 @@ class PairLoopRapaport(_base):
         self._potential = potential
         self._particle_dat_dict = dat_dict
         
+        self._compiler_set()
         
         
         ##########
@@ -212,7 +256,10 @@ class PairLoopRapaport(_base):
         if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
             self._create_library()
         self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
-
+    
+    def _compiler_set(self):
+        self._cc = TMPCC
+    
 
     def _generate_header_source(self):
         '''Generate the source code of the header file.
@@ -472,49 +519,7 @@ class PairLoopRapaport(_base):
         
         self._internal_index[0]=0
         self._cell_sort_loop.execute()    
-        
-    
-    def _create_library(self):
-        '''
-        Create a shared library from the source code.
-        '''
-        
-        filename_base = os.path.join(self._temp_dir,self._unique_name)
-        header_filename = filename_base+'.h'
-        impl_filename = filename_base+'.c'
-        with open(header_filename,'w') as f:
-            print >> f, self._generate_header_source()        
-        with open(impl_filename,'w') as f:
-            print >> f, self._generate_impl_source()
-        object_filename = filename_base+'.o'
-        library_filename = filename_base+'.so'        
-        cflags = ['-O3','-fpic','-std=c99']
-        if (self._DEBUG):
-            cflags+=['-g']
-        cc = 'gcc'
-        ld = 'gcc'
-        lflags = []
-        compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
-                       +['-o',object_filename,impl_filename]
-        link_cmd = [ld,'-shared']+lflags+['-o',library_filename,object_filename]
-        stdout_filename = filename_base+'.log'
-        stderr_filename = filename_base+'.err'
-        with open(stdout_filename,'w') as stdout:
-            with open(stderr_filename,'w') as stderr:
-                stdout.write('Compilation command:\n')
-                stdout.write(' '.join(compile_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(compile_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate()
-                stdout.write('Link command:\n')
-                stdout.write(' '.join(link_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(link_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate()      
+             
      
 ################################################################################################################
 # DOUBLE PARTICLE LOOP
@@ -529,7 +534,8 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg list headers: list containing C headers required by kernel.
     '''     
-        
+    def _compiler_set(self):
+        self._cc = TMPCC        
     
     def _kernel_methodname(self):
         '''Construct the name of the kernel method.
@@ -608,7 +614,8 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
         
 
 class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
-    
+    def _compiler_set(self):
+        self._cc = TMPCC_OpenMP    
     def _code_init(self):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
@@ -630,56 +637,241 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
         }
         '''
 
-    def _create_library(self):
-        '''
-        Create a shared library from the source code.
-        '''
+
+################################################################################################################
+# RAPAPORT LOOP OPENMP1
+################################################################################################################
+
+class PairLoopRapaportOpenMP1(PairLoopRapaport):
+    def _compiler_set(self):
+        self._cc = TMPCC_OpenMP
+    def _code_init(self):
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+        #include <omp.h>
         
-        filename_base = os.path.join(self._temp_dir,self._unique_name)
-        header_filename = filename_base+'.h'
-        impl_filename = filename_base+'.c'
-        with open(header_filename,'w') as f:
-            print >> f, self._generate_header_source()        
-        with open(impl_filename,'w') as f:
-            print >> f, self._generate_impl_source()
-        object_filename = filename_base+'.o'
-        library_filename = filename_base+'.so'        
-        cflags = ['-O3','-fpic','-fopenmp','-lgomp','-lpthread','-lc','-lrt','--std=c99']
-        if (self._DEBUG):
-            cflags+=['-g']        
-        cc = 'gcc'
-        ld = 'gcc'
-        link_flags = ['-fopenmp','-lgomp','-lpthread','-lc','-lrt']
-        compile_cmd = [cc,'-c','-fpic']+cflags+['-I',self._temp_dir] \
-                       +['-o',object_filename,impl_filename]
-        link_cmd = [ld,'-shared']+link_flags+['-o',library_filename,object_filename]
-        stdout_filename = filename_base+'.log'
-        stderr_filename = filename_base+'.err'
-        with open(stdout_filename,'w') as stdout:
-            with open(stderr_filename,'w') as stderr:
-                stdout.write('Compilation command:\n')
-                stdout.write(' '.join(compile_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(compile_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate()
-                stdout.write('Link command:\n')
-                stdout.write(' '.join(link_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(link_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate() 
+        inline void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cpp, unsigned int *flag, double *offset){
+        
+            const int cell_map[14][3] = {   {0,0,0},
+                                            {1,0,0},
+                                            {0,1,0},
+                                            {1,1,0},
+                                            {1,-1,0},
+                                            {-1,1,1},
+                                            {0,1,1},
+                                            {1,1,1},
+                                            {-1,0,1},
+                                            {0,0,1},
+                                            {1,0,1},
+                                            {-1,-1,1},
+                                            {0,-1,1},
+                                            {1,-1,1}};     
+                
+                
+            unsigned int tmp = cell_array[0]*cell_array[1];    
+            int Cz = cp/tmp;
+            int Cx = cp %% cell_array[0];
+            int Cy = (cp - Cz*tmp)/cell_array[0];
+            
+            
+            Cx += cell_map[cpp_i][0];
+            Cy += cell_map[cpp_i][1];
+            Cz += cell_map[cpp_i][2];
+            
+            int C0 = (Cx + cell_array[0]) %% cell_array[0];    
+            int C1 = (Cy + cell_array[1]) %% cell_array[1];
+            int C2 = (Cz + cell_array[2]) %% cell_array[2];
+                
+             
+            if ((Cx != C0) || (Cy != C1) || (Cz != C2)) { 
+                *flag = 1;
+                offset[0] = ((double)sign(Cx - C0))*d_extent[0];
+                offset[1] = ((double)sign(Cy - C1))*d_extent[1];
+                offset[2] = ((double)sign(Cz - C2))*d_extent[2];
+                
+                
+                
+            } else {*flag = 0; }
+            
+            *cpp = (C2*cell_array[1] + C1)*cell_array[0] + C0;
+            
+            
+                
+            return;      
+        }    
+        
+        void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
+            
+            #pragma omp parallel for schedule(static, 100)
+            for(unsigned int cp = 0; cp < cell_count; cp++){
+                for(unsigned int cpp_i=0; cpp_i<14; cpp_i++){
+                
+                    double s[3]; 
+                    unsigned int flag, cpp; 
+                    int i,j;
+                    
+                    cell_index_offset(cp, cpp_i, cell_array, d_extent, &cpp, &flag, s);
+                    
+                    
+                    double r1[3];
+                    
+                    i = q_list[n+cp];
+                    while (i > -1){
+                        j = q_list[n+cpp];
+                        while (j > -1){
+                            if (cp != cpp || i < j){
+        
+                                %(KERNEL_ARGUMENT_DECL)s
+                                
+                                  //KERNEL CODE START
+                                  
+                                  %(KERNEL)s
+                                  
+                                  //KERNEL CODE END
+                                
+                                
+                            }
+                            j = q_list[j];  
+                        }
+                        i=q_list[i];
+                    }
+                }
+            }
+            
+            
+            return;
+        }        
+        
+        
+        '''
 
 
+################################################################################################################
+# RAPAPORT LOOP OPENMP2
+################################################################################################################
 
-
-
-
-
-
-
+class PairLoopRapaportOpenMP2(PairLoopRapaport):
+    def _compiler_set(self):
+        self._cc = TMPCC_OpenMP
+    def _code_init(self):
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+        #include <omp.h>
+        
+        inline void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cpp, unsigned int *flag, double *offset){
+        
+            const int cell_map[27][3] = {   
+                                            {-1,1,-1},
+                                            {0,1,-1},
+                                            {1,1,-1},
+                                            {-1,0,-1},
+                                            {0,0,-1},
+                                            {1,0,-1},
+                                            {-1,-1,-1},
+                                            {0,-1,-1},
+                                            {1,-1,-1},                                            
+                                            
+                                            {-1,-1,0},
+                                            {0,-1,0},
+                                            {-1,1,0},
+                                            {-1,0,0},
+                                            {0,0,0},
+                                            {1,0,0},
+                                            {0,1,0},
+                                            {1,1,0},
+                                            {1,-1,0},
+                                            
+                                            {-1,1,1},
+                                            {0,1,1},
+                                            {1,1,1},
+                                            {-1,0,1},
+                                            {0,0,1},
+                                            {1,0,1},
+                                            {-1,-1,1},
+                                            {0,-1,1},
+                                            {1,-1,1}
+                                            
+                                            };
+                                            
+                                             
+                
+                
+            unsigned int tmp = cell_array[0]*cell_array[1];    
+            int Cz = cp/tmp;
+            int Cx = cp %% cell_array[0];
+            int Cy = (cp - Cz*tmp)/cell_array[0];
+            
+            
+            Cx += cell_map[cpp_i][0];
+            Cy += cell_map[cpp_i][1];
+            Cz += cell_map[cpp_i][2];
+            
+            int C0 = (Cx + cell_array[0]) %% cell_array[0];    
+            int C1 = (Cy + cell_array[1]) %% cell_array[1];
+            int C2 = (Cz + cell_array[2]) %% cell_array[2];
+                
+             
+            if ((Cx != C0) || (Cy != C1) || (Cz != C2)) { 
+                *flag = 1;
+                offset[0] = ((double)sign(Cx - C0))*d_extent[0];
+                offset[1] = ((double)sign(Cy - C1))*d_extent[1];
+                offset[2] = ((double)sign(Cz - C2))*d_extent[2];
+                
+                
+                
+            } else {*flag = 0; }
+            
+            *cpp = (C2*cell_array[1] + C1)*cell_array[0] + C0;
+            
+            
+                
+            return;      
+        }    
+        
+        void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
+            
+            #pragma omp parallel for schedule(static, 100)
+            for(unsigned int cp = 0; cp < cell_count; cp++){
+                for(unsigned int cpp_i=0; cpp_i<27; cpp_i++){
+                
+                    double s[3]; 
+                    unsigned int flag, cpp; 
+                    int i,j;
+                    
+                    cell_index_offset(cp, cpp_i, cell_array, d_extent, &cpp, &flag, s);
+                    
+                    
+                    double r1[3];
+                    
+                    i = q_list[n+cp];
+                    while (i > -1){
+                        j = q_list[n+cpp];
+                        while (j > -1){
+                            if (cp != cpp || i < j){
+        
+                                %(KERNEL_ARGUMENT_DECL)s
+                                
+                                  //KERNEL CODE START
+                                  
+                                  %(KERNEL)s
+                                  
+                                  //KERNEL CODE END
+                                
+                                
+                            }
+                            j = q_list[j];  
+                        }
+                        i=q_list[i];
+                    }
+                }
+            }
+            
+            
+            return;
+        }        
+        
+        
+        '''
 
         
     
