@@ -10,9 +10,7 @@ import data
 import kernel
 import build
 
-#Temporary compiler flag
-TMPCC = build.GCC
-TMPCC_OpenMP = build.GCC_OpenMP
+
 
 class _base(build.GenericToolChain):
     '''
@@ -48,7 +46,7 @@ class _base(build.GenericToolChain):
             build.load_library_exception(self._kernel.name, self._unique_name,type(self))
         
     def _compiler_set(self):
-        self._cc = TMPCC
+        self._cc = build.TMPCC
 
     def _kernel_methodname(self):
         '''Construct the name of the kernel method.
@@ -125,7 +123,7 @@ class _base(build.GenericToolChain):
 class SingleAllParticleLoop(_base):
                    
     def _compiler_set(self):
-        self._cc = TMPCC
+        self._cc = build.TMPCC
         
         
 
@@ -157,7 +155,7 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
     OpenMP version of single pass pair loop (experimental)
     '''
     def _compiler_set(self):
-        self._cc = TMPCC_OpenMP
+        self._cc = build.TMPCC_OpenMP
     
     def _code_init(self):
         self._code = '''

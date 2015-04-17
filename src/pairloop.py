@@ -12,9 +12,7 @@ import loop
 import constant
 import build
 
-#Temporary compiler flag
-TMPCC = build.GCC
-TMPCC_OpenMP = build.GCC_OpenMP
+
 
 class _base(build.GenericToolChain):
     
@@ -130,7 +128,7 @@ class PairLoopRapaport(_base):
             build.load_library_exception(self._kernel.name, self._unique_name,type(self))
     
     def _compiler_set(self):
-        self._cc = TMPCC
+        self._cc = build.TMPCC
     
                 
     def _code_init(self):
@@ -404,7 +402,7 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
     :arg list headers: list containing C headers required by kernel.
     '''     
     def _compiler_set(self):
-        self._cc = TMPCC        
+        self._cc = build.TMPCC        
     
     def _kernel_methodname(self):
         '''Construct the name of the kernel method.
@@ -487,7 +485,7 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
 
 class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
     def _compiler_set(self):
-        self._cc = TMPCC_OpenMP    
+        self._cc = build.TMPCC_OpenMP    
     def _code_init(self):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
@@ -516,7 +514,7 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
 
 class PairLoopRapaportOpenMP1(PairLoopRapaport):
     def _compiler_set(self):
-        self._cc = TMPCC_OpenMP
+        self._cc = build.TMPCC_OpenMP
     def _code_init(self):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
@@ -624,7 +622,7 @@ class PairLoopRapaportOpenMP1(PairLoopRapaport):
 
 class PairLoopRapaportOpenMP2(PairLoopRapaport):
     def _compiler_set(self):
-        self._cc = TMPCC_OpenMP
+        self._cc = build.TMPCC_OpenMP
     def _code_init(self):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
@@ -702,9 +700,9 @@ class PairLoopRapaportOpenMP2(PairLoopRapaport):
         
         void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
             
-            double U_sum = 0.0;
+            %(OPENMP_INIT)s
             
-            #pragma omp parallel for schedule(dynamic) reduction(+:U_sum)
+            #pragma omp parallel for schedule(dynamic) %(OPENMP_DECLARATION)s
             for(unsigned int cp = 0; cp < cell_count; cp++){
                 for(unsigned int cpp_i=0; cpp_i<27; cpp_i++){
                 
@@ -740,13 +738,37 @@ class PairLoopRapaportOpenMP2(PairLoopRapaport):
                 }
             }
             
-            *U_ext=U_sum;
+            %(OPENMP_FINALISE)s
+            
             return;
         }        
         
         
         '''
 
-        
+    def _generate_impl_source(self):
+        '''Generate the source code the actual implementation.
+        '''
+
+        d = {'UNIQUENAME':self._unique_name,
+             'KERNEL_METHODNAME':self._kernel_methodname(),
+             'KERNEL':self._kernel.code,
+             'ARGUMENTS':self._argnames(),
+             'LOC_ARGUMENTS':self._loc_argnames(),
+             'KERNEL_NAME':self._kernel.name,
+             'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations(),
+             'OPENMP_INIT':self._kernel.OpenMPInitStr,
+             'OPENMP_DECLARATION':self._kernel.OpenMPDecStr,
+             'OPENMP_FINALISE':self._kernel.OpenMPFinalStr}
+        return self._code % d        
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     

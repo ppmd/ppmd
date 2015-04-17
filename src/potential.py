@@ -155,7 +155,7 @@ class LennardJonesShifted(BasePotential):
                    constant.Constant('CV',self._C_V))        
         
         
-        return kernel.Kernel('LJ_accel_U',kernel_code, constants)
+        return kernel.Kernel('LJ_accel_U_Shifted',kernel_code, constants)
 
     def datdict(self, input_state):
         '''
@@ -275,8 +275,7 @@ class LennardJonesOpenMP(LennardJones):
             const double r_m6 = r_m4*r_m2;
             
             
-            //*U+= 0.5*CV*((r_m6-1.0)*r_m6 + internalshift);
-            U_sum=U_sum+0.5*CV*((r_m6-1.0)*r_m6 + internalshift);
+            U_sum+= 0.5*CV*((r_m6-1.0)*r_m6 + internalshift);
             
             
             const double r_m8 = r_m4*r_m4;
@@ -296,8 +295,10 @@ class LennardJonesOpenMP(LennardJones):
                    constant.Constant('CF',self._C_F),
                    constant.Constant('CV',self._C_V))        
         
+        #Need to fix last element
+        OpenMPMethod = kernel.OpenMPMethod('double U_sum = 0.;', 'reduction(+:U_sum)', '*U_ext = U_sum;')
         
-        return kernel.Kernel('LJ_accel_U',kernel_code, constants)
+        return kernel.Kernel('LJ_accel_U', kernel_code, constants, None, OpenMPMethod)
         
         
 

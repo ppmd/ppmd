@@ -75,6 +75,20 @@ ICC_OpenMP = compiler(['ICC'],['icc'],['-O3','-fpic','-openmp','-lgomp','-lpthre
 
 
 
+
+#Temporary compiler flag
+ICC_LIST=['mapc-4044']
+if os.uname()[1] in ICC_LIST:
+    TMPCC = ICC
+    TMPCC_OpenMP = ICC_OpenMP
+else:
+    TMPCC = GCC
+    TMPCC_OpenMP = GCC_OpenMP
+
+
+
+
+
 def load_library_exception(kernel_name='None supplied', unique_name='None supplied', looping_type='None supplied'):
     '''
     Attempts to create useful error messages for code generation.
@@ -100,10 +114,14 @@ def load_library_exception(kernel_name='None supplied', unique_name='None suppli
     #Try to read source lines around error.
     if (err_read):
         m = re.search('[0-9]+:[0-9]', err_msg)
-        m = re.search('[0-9]+:', m.group(0))
-        
-        err_line = int(m.group(0)[:-1])
-        
+        try:
+            m = re.search('[0-9]+:', m.group(0))
+        except:
+            pass
+        try:
+            err_line = int(m.group(0)[:-1])
+        except:
+            pass
         if (err_line > 0):
             try:
                 f = open('./build/'+unique_name+'.c', 'r')
