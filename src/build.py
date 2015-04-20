@@ -10,6 +10,13 @@ import data
 import kernel
 import constant
 import re
+import string
+
+
+
+################################################################################################################
+# COMPILERS START
+################################################################################################################
 
 class compiler(object):
     '''
@@ -86,8 +93,34 @@ else:
     TMPCC_OpenMP = GCC_OpenMP
 
 
+################################################################################################################
+# OPENMP TOOLS START
+################################################################################################################
 
+def replace_dict(code, replace_dict):
+    for x in replace_dict.items():
+        regex = '(?<=[\W])('+x[0]+')(?=[\W])'        
+        code = re.sub(regex,str(x[1]),code)
+    return code
+    
+def replace(code,old,new): 
+     
+    
+    old=old.replace('[','\[')
+    old=old.replace(']','\]')
+    
+    regex = '(?<=[\W])('+old+')(?=[\W])'
+          
+    code = re.sub(regex,str(new),code)
+    
+    return code
 
+#OpenMP reduction definitions
+omp_operator_init_values={'+':'0', '-':'0', '*':'1', '&':'~0', '|':'0', '^':'0', '&&':'1', '||':'0'}
+
+################################################################################################################
+# AUTOCODE TOOLS START
+################################################################################################################
 
 def load_library_exception(kernel_name='None supplied', unique_name='None supplied', looping_type='None supplied'):
     '''
@@ -240,6 +273,8 @@ class GenericToolChain(object):
             print >> f, self._generate_header_source()        
         with open(impl_filename,'w') as f:
             print >> f, self._generate_impl_source()
+            
+        
         object_filename = filename_base+'.o'
         library_filename = filename_base+'.so'        
         cflags = self._cc.cflags
@@ -276,11 +311,12 @@ class GenericToolChain(object):
 
         d = {'UNIQUENAME':self._unique_name,
              'KERNEL_METHODNAME':self._kernel_methodname(),
-             'KERNEL':self._kernel.code,
+             'KERNEL':self._kernel_code,
              'ARGUMENTS':self._argnames(),
              'LOC_ARGUMENTS':self._loc_argnames(),
              'KERNEL_NAME':self._kernel.name,
              'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations()}
+            
         return self._code % d
 
 

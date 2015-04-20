@@ -225,7 +225,7 @@ class LennardJones(LennardJonesShifted):
             const double r_m4 = r_m2*r_m2;
             const double r_m6 = r_m4*r_m2;
             
-            *U+= CV*((r_m6-1.0)*r_m6 + internalshift);
+            U[0]+= CV*((r_m6-1.0)*r_m6 + internalshift);
             
             const double r_m8 = r_m4*r_m4;
             const double f_tmp = CF*(r_m6 - 0.5)*r_m8;
@@ -275,7 +275,7 @@ class LennardJonesOpenMP(LennardJones):
             const double r_m6 = r_m4*r_m2;
             
             
-            *U+= 0.5*CV*((r_m6-1.0)*r_m6 + internalshift);
+            U[0]+= 0.5*CV*((r_m6-1.0)*r_m6 + internalshift);
             
             
             const double r_m8 = r_m4*r_m4;
@@ -295,8 +295,10 @@ class LennardJonesOpenMP(LennardJones):
                    constant.Constant('CF',self._C_F),
                    constant.Constant('CV',self._C_V))        
         
+        reductions = (kernel.reduction('U','U[0]','+'),)
         
-        return kernel.Kernel('LJ_accel_U', kernel_code, constants, None)
+        
+        return kernel.Kernel('LJ_accel_U', kernel_code, constants, None, reductions)
         
         
 

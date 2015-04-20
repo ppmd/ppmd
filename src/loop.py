@@ -29,6 +29,7 @@ class _base(build.GenericToolChain):
         if (not os.path.exists(self._temp_dir)):
             os.mkdir(self._temp_dir)
         self._kernel = kernel
+        
         self._particle_dat_dict = particle_dat_dict
         self._nargs = len(self._particle_dat_dict)
 
@@ -126,8 +127,10 @@ class SingleAllParticleLoop(_base):
         self._cc = build.TMPCC
         
         
-
+    
     def _code_init(self):
+        self._kernel_code = self._kernel.code
+    
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
 
@@ -158,6 +161,8 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
         self._cc = build.TMPCC_OpenMP
     
     def _code_init(self):
+        self._kernel_code = self._kernel.code
+    
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
         #include <omp.h>

@@ -33,13 +33,13 @@ if __name__ == '__main__':
     
     if (debug):
         print "Debugging enabled"
-        subprocess.Popen("make clean", shell=True)
-        print "build cleaned"
+        #subprocess.Popen("make clean", shell=True)
+        #print "build cleaned"
     
     
     if (test_1000):
         #n=25 reasonable size
-        n=25
+        n=10
         N=n**3
         print "N =",N
         rho = 1.
@@ -129,7 +129,7 @@ if __name__ == '__main__':
     #test_integrator.integrate(dt = 0.0001, T = 0.5, timer=True)
     #test_gr_method.evaluate(timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.5, timer=True)
-    #test_gr_method.evaluate(timer=True)
+    test_gr_method.evaluate(timer=True)
     
     
     
@@ -140,7 +140,7 @@ if __name__ == '__main__':
     if (logging):
         energyhandle.plot()
 
-    #test_gr_method.plot()
+    test_gr_method.plot()
     #test_gr_method.RawWrite()
     test_vaf_method.plot()
 

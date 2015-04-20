@@ -14,15 +14,20 @@ class Kernel(object):
     :arg constants: List of constants (type :class:`.Constant`) which 
         are to be substituted in
     '''
-    def __init__(self,name,code,constants=None,headers=None):
+    def __init__(self,name,code,constants=None,headers=None,reductions=None):
         self._name = name
         self._code = code
         self._headers = headers
-        
+        self._reductions = reductions
+        self._reduction_dict = {}
         
         if (constants!=None):
             for x in constants:
                 self._code = x.replace(self._code)
+        if (self._reductions!=None):
+            for x in self._reductions:
+                    self._reduction_dict[x.variable]=x
+        
 
     def hexdigest(self):
         '''Unique md5 hexdigest which is used for identifying the kernel.'''
@@ -44,11 +49,33 @@ class Kernel(object):
     def headers(self):
         '''Return C headers required for kernel'''
         return self._headers 
+
+    @property
+    def reductions(self):
+        return self._reductions
+        
+    def reduction_variable_lookup(self, var):
+        return self._reduction_dict.get(var)
+        
+
+        
+
     
+class reduction(object):
+    def __init__(self,variable,pointer,operator = '+'):
+        self._var = variable
+        self._pointer = pointer
+        self._op = operator
     
-    
-    
-    
+    @property
+    def variable(self):
+        return self._var
+    @property
+    def pointer(self):
+        return self._pointer
+    @property
+    def operator(self):
+        return self._op
     
     
     
