@@ -407,7 +407,7 @@ class RadialDistributionPeriodicNVE(object):
             double r20=0.0, r21 = r2;
             
             r21 = sqrt(r2);
-            
+            #pragma omp atomic
             GR[(int) (abs_md(r21* rstepsoverrmax))]++;
             
         }
@@ -547,14 +547,12 @@ class VelocityAutoCorrelation(object):
         _constants = None
         _kernel_code = '''
         
-        
-        const double tmp = (V0[0]*VT[0] + V0[1]*VT[1] + V0[2]*VT[2])*Ni[0];
-        
-        VAF[I[0]] += tmp;
+        VAF[I[0]] += (V0[0]*VT[0] + V0[1]*VT[1] + V0[2]*VT[2])*Ni[0];
         
         '''
+        _reduction = (kernel.reduction('VAF','VAF[I[0]]','+'),)
         
-        _kernel = kernel.Kernel('VelocityAutocorrelation',_kernel_code, _constants, _headers)
+        _kernel = kernel.Kernel('VelocityAutocorrelation',_kernel_code, _constants, _headers, _reduction)
         
         self._datdict = {'VAF':self._VAF, 'V0':self._V0, 'VT':self._VT, 'I':self._VAF_index, 'Ni':self._Ni}
         

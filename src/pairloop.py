@@ -480,151 +480,13 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
                 s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'    
         
         return s    
-          
-################################################################################################################
-# DOUBLE ALL PARTICLE LOOP OPENMP
-################################################################################################################        
-
-class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
-    def _compiler_set(self):
-        self._cc = build.TMPCC_OpenMP    
-    def _code_init(self):
-        self._kernel_code = self._kernel.code
-        self._code = '''
-        #include \"%(UNIQUENAME)s.h\"
-
-        void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
-          
-          #pragma omp parallel for schedule(dynamic)
-          for (int i=0; i<n; i++) { 
-            for (int j=0; j<i; j++) {  
-              
-              %(KERNEL_ARGUMENT_DECL)s
-                  //KERNEL CODE START
-                  
-                  %(KERNEL)s
-                  
-                  //KERNEL CODE END
-              
-          }}
-        }
-        '''
 
 
 ################################################################################################################
-# RAPAPORT LOOP OPENMP1
+# RAPAPORT LOOP OPENMP
 ################################################################################################################
 
-class PairLoopRapaportOpenMP1(PairLoopRapaport):
-    def _compiler_set(self):
-        self._cc = build.TMPCC_OpenMP
-    def _code_init(self):
-        self._kernel_code = self._kernel.code
-        self._code = '''
-        #include \"%(UNIQUENAME)s.h\"
-        #include <omp.h>
-        
-        inline void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cpp, unsigned int *flag, double *offset){
-        
-            const int cell_map[14][3] = {   {0,0,0},
-                                            {1,0,0},
-                                            {0,1,0},
-                                            {1,1,0},
-                                            {1,-1,0},
-                                            {-1,1,1},
-                                            {0,1,1},
-                                            {1,1,1},
-                                            {-1,0,1},
-                                            {0,0,1},
-                                            {1,0,1},
-                                            {-1,-1,1},
-                                            {0,-1,1},
-                                            {1,-1,1}};     
-                
-                
-            unsigned int tmp = cell_array[0]*cell_array[1];    
-            int Cz = cp/tmp;
-            int Cx = cp %% cell_array[0];
-            int Cy = (cp - Cz*tmp)/cell_array[0];
-            
-            
-            Cx += cell_map[cpp_i][0];
-            Cy += cell_map[cpp_i][1];
-            Cz += cell_map[cpp_i][2];
-            
-            int C0 = (Cx + cell_array[0]) %% cell_array[0];    
-            int C1 = (Cy + cell_array[1]) %% cell_array[1];
-            int C2 = (Cz + cell_array[2]) %% cell_array[2];
-                
-             
-            if ((Cx != C0) || (Cy != C1) || (Cz != C2)) { 
-                *flag = 1;
-                offset[0] = ((double)sign(Cx - C0))*d_extent[0];
-                offset[1] = ((double)sign(Cy - C1))*d_extent[1];
-                offset[2] = ((double)sign(Cz - C2))*d_extent[2];
-                
-                
-                
-            } else {*flag = 0; }
-            
-            *cpp = (C2*cell_array[1] + C1)*cell_array[0] + C0;
-            
-            
-                
-            return;      
-        }    
-        
-        void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
-            
-            #pragma omp parallel for schedule(static, 100)
-            for(unsigned int cp = 0; cp < cell_count; cp++){
-                for(unsigned int cpp_i=0; cpp_i<14; cpp_i++){
-                
-                    double s[3]; 
-                    unsigned int flag, cpp; 
-                    int i,j;
-                    
-                    cell_index_offset(cp, cpp_i, cell_array, d_extent, &cpp, &flag, s);
-                    
-                    
-                    double r1[3];
-                    
-                    i = q_list[n+cp];
-                    while (i > -1){
-                        j = q_list[n+cpp];
-                        while (j > -1){
-                            if (cp != cpp || i < j){
-        
-                                %(KERNEL_ARGUMENT_DECL)s
-                                
-                                  //KERNEL CODE START
-                                  
-                                  %(KERNEL)s
-                                  
-                                  //KERNEL CODE END
-                                
-                                
-                            }
-                            j = q_list[j];  
-                        }
-                        i=q_list[i];
-                    }
-                }
-            }
-            
-            
-            return;
-        }        
-        
-        
-        '''
-
-
-################################################################################################################
-# RAPAPORT LOOP OPENMP2
-################################################################################################################
-
-class PairLoopRapaportOpenMP2(PairLoopRapaport):
+class PairLoopRapaportOpenMP(PairLoopRapaport):
     def _compiler_set(self):
         self._cc = build.TMPCC_OpenMP
     def _code_init(self):
@@ -757,14 +619,6 @@ class PairLoopRapaportOpenMP2(PairLoopRapaport):
         
         '''
         
-    def _omp_init_str(self):
-        return self._ompinitstr
-    
-    def _omp_dec_str(self):
-        return self._ompdecstr
-    
-    def _omp_final_str(self):
-        return self._ompfinalstr
 
     def _generate_impl_source(self):
         '''Generate the source code the actual implementation.
@@ -777,9 +631,9 @@ class PairLoopRapaportOpenMP2(PairLoopRapaport):
              'ARGUMENTS':self._argnames(),
              'LOC_ARGUMENTS':self._loc_argnames(),
              'KERNEL_NAME':self._kernel.name,
-             'OPENMP_INIT':self._omp_init_str(),
-             'OPENMP_DECLARATION':self._omp_dec_str(),
-             'OPENMP_FINALISE':self._omp_final_str()
+             'OPENMP_INIT':self._ompinitstr,
+             'OPENMP_DECLARATION':self._ompdecstr,
+             'OPENMP_FINALISE':self._ompfinalstr
              }
         
         return self._code % d        
@@ -831,7 +685,7 @@ class PairLoopRapaportOpenMP2(PairLoopRapaport):
                 
                 #write final value to output pointer
                 
-                self._ompfinalstr += argname+'[0] ='+reduction_argname+';'
+                self._ompfinalstr += argname+'['+reduction_handle.index+'] ='+reduction_argname+';'
                 
             
             else:
@@ -862,37 +716,150 @@ class PairLoopRapaportOpenMP2(PairLoopRapaport):
                         s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                         s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n' 
         
-        return s     
+        return s 
     
+################################################################################################################
+# DOUBLE PARTICLE LOOP
+################################################################################################################        
+        
+class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
+    '''
+    Class to loop over all particle pairs once.
     
-    def _argnames(self):
-        '''Comma separated string of argument name declarations.
+    :arg int N: Number of elements to loop over.
+    :arg kernel kernel:  Kernel to apply at each element.
+    :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
+    :arg list headers: list containing C headers required by kernel.
+    '''     
+    def _compiler_set(self):
+        self._cc = build.TMPCC        
+    
+    def _kernel_methodname(self):
+        '''Construct the name of the kernel method.
+        
+        Return a string of the form 
+        ``inline void kernel_name(double **<arg1>, double *<arg2}, ...) {``
+        which is used for defining the name of the kernel method.
+        '''
+        space = ' '*14
+        s = 'inline void '+self._kernel.name+'('
+        
+        for i,dat in enumerate(self._particle_dat_dict.items()):
+            
+            if (type(dat[1]) == particle.Dat):
+                s += data.ctypes_map[dat[1].dtype]+' **'+dat[0]+', '
+                
+            if (type(dat[1]) == data.ScalarArray):
+                s += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+', '
+            
+            
+        s = s[:-2] + ') {'
+        return s
 
-        This string of argument names is used in the declaration of 
-        the method which executes the pairloop over the grid. 
-        If, for example, the pairloop gets passed two particle_dats, 
-        then the result will be ``double** arg_000,double** arg_001`.`
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+
+            
+        self._ompinitstr = ''
+        self._ompdecstr = ''
+        self._ompfinalstr = ''         
+        
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+
+        void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) {
+          %(OPENMP_INIT)s
+          
+          #pragma omp parallel for schedule(dynamic) %(OPENMP_DECLARATION)s
+          for (int i=0; i<n; i++) { 
+            for (int j=0; j<i; j++) {  
+              
+              %(KERNEL_ARGUMENT_DECL)s
+                  //KERNEL CODE START
+                  
+                  %(KERNEL)s
+                  
+                  //KERNEL CODE END
+              
+          }}
+          %(OPENMP_FINALISE)s
+        }
+        '''
+    
+    def _generate_impl_source(self):
+        '''Generate the source code the actual implementation.
         '''
         
-        argnames = ''
-        for i,dat in enumerate(self._particle_dat_dict.items()):
-            
-            argnames += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+'_ext,'
-            
-        return argnames[:-1]     
+
+        d = {'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations_openmp(),
+             'UNIQUENAME':self._unique_name,
+             'KERNEL':self._kernel_code,
+             'ARGUMENTS':self._argnames(),
+             'LOC_ARGUMENTS':self._loc_argnames(),
+             'KERNEL_NAME':self._kernel.name,
+             'OPENMP_INIT':self._ompinitstr,
+             'OPENMP_DECLARATION':self._ompdecstr,
+             'OPENMP_FINALISE':self._ompfinalstr
+             }
+        return self._code % d          
     
-    
-    
-    
-    def _loc_argnames(self):
-        '''Comma separated string of local argument names.
+    def _kernel_argument_declarations_openmp(self):
+        '''Define and declare the kernel arguments.
+
+        For each argument the kernel gets passed a pointer of type
+        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
+        pointer to the data which contains the properties of particle i.
+        These properties are stored consecutively in memory, so for a 
+        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
+        property the vector entry j of particle i is accessed as 
+        ``loc_argXXX[i][j]``.
+
+        This method generates the definitions of the ``loc_argXXX`` variables
+        and populates the data to ensure that ``loc_argXXX[i]`` points to
+        the correct address in the particle_dats.
         '''
-        argnames = ''
+        s = '\n'
         for i,dat in enumerate(self._particle_dat_dict.items()):
-            argnames += dat[0]+','
-        return argnames[:-1]    
-    
-    
+            
+            
+            space = ' '*14
+            argname = dat[0]+'_ext'
+            loc_argname = dat[0]
+            
+            reduction_handle = self._kernel.reduction_variable_lookup(dat[0])
+            
+            if (reduction_handle != None):
+                if (dat[1].ncomp != 1): 
+                    print "WARNING, Reductions not valid for more than 1 element"
+                
+                #Create a var name a variable to reduce upon.
+                reduction_argname = dat[0]+'_reduction'
+                
+                #Initialise variable
+                self._ompinitstr += data.ctypes_map[dat[1].dtype]+' '+reduction_argname+' = '+build.omp_operator_init_values[reduction_handle.operator]+';'
+                
+                #Add to omp pragma
+                self._ompdecstr += 'reduction('+reduction_handle.operator+':'+reduction_argname+')'
+                
+                #Modify kernel code to use new reduction variable.
+                self._kernel_code = build.replace(self._kernel_code,reduction_handle.pointer, reduction_argname)
+                
+                #write final value to output pointer
+                
+                self._ompfinalstr += argname+'['+reduction_handle.index+'] ='+reduction_argname+';'
+                
+            
+            else:
+                if (type(dat[1]) == data.ScalarArray):
+                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
+                
+                elif (type(dat[1]) == particle.Dat):
+                    ncomp = dat[1].ncomp
+                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
+                    s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
+                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'    
+        
+        return s     
     
     
     

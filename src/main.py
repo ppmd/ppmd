@@ -33,13 +33,14 @@ if __name__ == '__main__':
     
     if (debug):
         print "Debugging enabled"
-        #subprocess.Popen("make clean", shell=True)
-        #print "build cleaned"
+        subprocess.Popen("make clean", shell=True).wait(); print "build cleaned"
+        
+        
     
     
     if (test_1000):
         #n=25 reasonable size
-        n=10
+        n=25
         N=n**3
         print "N =",N
         rho = 1.
@@ -50,7 +51,7 @@ if __name__ == '__main__':
         test_domain = domain.BaseDomain()
         
         #Initialise LJ potential
-        test_potential = potential.LennardJonesOpenMP(sigma=1.0,epsilon=1.0)    
+        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
         
         #Place N particles in a lattice with given density.
         test_pos_init = state.PosInitLatticeNRho(N, rho)

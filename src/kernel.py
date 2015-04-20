@@ -1,6 +1,7 @@
 import hashlib
 import os
 import constant
+import re
 
 class Kernel(object):
     '''Computational kernel, i.e. C-code + numerical constants.
@@ -11,8 +12,8 @@ class Kernel(object):
 
     :arg name: name of the kernel
     :arg code: C source code
-    :arg constants: List of constants (type :class:`.Constant`) which 
-        are to be substituted in
+    :arg constants: List of constants (type :class:`.Constant`) which are to be substituted in.
+    :arg reductions: list of reductions required by kernel if using parallel looping. 
     '''
     def __init__(self,name,code,constants=None,headers=None,reductions=None):
         self._name = name
@@ -49,12 +50,9 @@ class Kernel(object):
     def headers(self):
         '''Return C headers required for kernel'''
         return self._headers 
-
-    @property
-    def reductions(self):
-        return self._reductions
         
     def reduction_variable_lookup(self, var):
+        '''Provides a method to determine if a variable undergoes a reduction.'''
         return self._reduction_dict.get(var)
         
 
@@ -62,21 +60,34 @@ class Kernel(object):
 
     
 class reduction(object):
+    '''
+    Object to store reduction operations required by kernels. Currently holds only one reduction per instance.
+    
+    :arg str variable: Variable name eg 'U'.
+    :arg str pointer: C pointer syntax of variable being reduced upon eg 'U[0]'.
+    :arg char operator: operator performed in reduction, default '+'.
+    '''
     def __init__(self,variable,pointer,operator = '+'):
         self._var = variable
         self._pointer = pointer
         self._op = operator
-    
+        
     @property
     def variable(self):
+        '''Returns variable name '''
         return self._var
     @property
     def pointer(self):
+        '''Returns C pointer syntax'''
         return self._pointer
     @property
     def operator(self):
+        '''Returns C operator'''
         return self._op
-    
+    @property
+    def index(self):
+        '''Returns index in C pointer syntax, eg U[0] returns 0'''
+        return re.match('('+self._var+'\[)(.*)(\])',self._pointer).group(2)
     
     
     
