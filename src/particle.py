@@ -206,11 +206,18 @@ class Dat(object):
         
         f.write(str(self._N1)+'\n')
         f.write(str(title)+'\n')
+        s=''
         for ix in range(self._N1):
-            f.write(str(sym).rjust(3))
+            
+            #f.write(str(sym).rjust(3))
+            s+=str(sym).rjust(3)
+            
             for iy in range(self._N2):
-                f.write(space+str('%.5f' % self._Dat[ix,iy]))
-            f.write('\n')
+                #f.write(space+str('%.5f' % self._Dat[ix,iy]))
+                s+=space+str('%.5f' % self._Dat[ix,iy])
+            #f.write('\n')
+            s+='\n'
+        f.write(s)
         f.close()        
         
         
