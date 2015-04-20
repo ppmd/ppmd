@@ -700,9 +700,8 @@ class PairLoopRapaportOpenMP2(PairLoopRapaport):
         
         void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
             
-            %(OPENMP_INIT)s
             
-            #pragma omp parallel for schedule(dynamic) %(OPENMP_DECLARATION)s
+            #pragma omp parallel for schedule(dynamic)
             for(unsigned int cp = 0; cp < cell_count; cp++){
                 for(unsigned int cpp_i=0; cpp_i<27; cpp_i++){
                 
@@ -738,7 +737,6 @@ class PairLoopRapaportOpenMP2(PairLoopRapaport):
                 }
             }
             
-            %(OPENMP_FINALISE)s
             
             return;
         }        
@@ -756,10 +754,8 @@ class PairLoopRapaportOpenMP2(PairLoopRapaport):
              'ARGUMENTS':self._argnames(),
              'LOC_ARGUMENTS':self._loc_argnames(),
              'KERNEL_NAME':self._kernel.name,
-             'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations(),
-             'OPENMP_INIT':self._kernel.OpenMPInitStr,
-             'OPENMP_DECLARATION':self._kernel.OpenMPDecStr,
-             'OPENMP_FINALISE':self._kernel.OpenMPFinalStr}
+             'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations()
+             }
         return self._code % d        
     
     
