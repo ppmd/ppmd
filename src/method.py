@@ -528,7 +528,6 @@ class VelocityAutoCorrelation(object):
         self._V0 = particle.Dat(self._N, 3, name='V0')
         self._VT = self._V0
         
-        self._Ni = data.ScalarArray(val = 1./self._N, dtype = ctypes.c_double)
         
         self._VO_SET = False
         if (V0 != None):
@@ -538,7 +537,7 @@ class VelocityAutoCorrelation(object):
         
         
         self._VAF = data.ScalarArray(ncomp=size)
-        self._VAF_index = data.ScalarArray(val = 0, dtype = ctypes.c_int)
+        self._VAF_index = 0
         
         self._T_store = data.ScalarArray(initial_value = 0.0, ncomp = size, dtype=ctypes.c_double)
         self._T_base = None
@@ -547,16 +546,19 @@ class VelocityAutoCorrelation(object):
         _constants = None
         _kernel_code = '''
         
-        VAF[I[0]] += (V0[0]*VT[0] + V0[1]*VT[1] + V0[2]*VT[2])*Ni[0];
+        VAF[I] += (V0[0]*VT[0] + V0[1]*VT[1] + V0[2]*VT[2])*Ni;
         
         '''
-        _reduction = (kernel.reduction('VAF','VAF[I[0]]','+'),)
+        _reduction = (kernel.reduction('VAF','VAF[I]','+'),)
         
-        _kernel = kernel.Kernel('VelocityAutocorrelation',_kernel_code, _constants, _headers, _reduction)
+        _static_args = {'I':ctypes.c_int,'Ni':ctypes.c_double}
         
-        self._datdict = {'VAF':self._VAF, 'V0':self._V0, 'VT':self._VT, 'I':self._VAF_index, 'Ni':self._Ni}
+        _kernel = kernel.Kernel('VelocityAutocorrelation',_kernel_code, _constants, _headers, _reduction, _static_args)
         
-        self._loop = loop.SingleAllParticleLoop(N = self._N, kernel = _kernel, particle_dat_dict = self._datdict, DEBUG = self._DEBUG)
+        
+        self._datdict = {'VAF':self._VAF, 'V0':self._V0, 'VT':self._VT}
+        
+        self._loop = loop.SingleAllParticleLoopOpenMP(N = self._N, kernel = _kernel, particle_dat_dict = self._datdict, DEBUG = self._DEBUG)
         
         
         
@@ -591,19 +593,19 @@ class VelocityAutoCorrelation(object):
             start = time.time()
         
         
-        assert int(self._VAF_index.Dat) < int(self._VAF.ncomp), "VAF store not large enough"
+        assert int(self._VAF_index) < int(self._VAF.ncomp), "VAF store not large enough"
         
-        self._Ni.Dat = 1./self._N
+        self._Ni = 1./self._N
         self._datdict['VT'] = self._state.velocities     
-        self._loop.execute(self._datdict)
+        self._loop.execute(self._datdict, {'I':(ctypes.c_int)(self._VAF_index),'Ni':(ctypes.c_double)(self._Ni)})
         
         if (T==None):
             self._T_store[self._VAF_index] = 1 + self._T_base
         else:
             
-            self._T_store[self._VAF_index.Dat] = T + self._T_base
+            self._T_store[self._VAF_index] = T + self._T_base
         
-        self._VAF_index.Dat+=1
+        self._VAF_index+=1
         
         
         if (timer==True):

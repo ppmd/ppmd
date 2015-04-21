@@ -16,7 +16,6 @@ np.set_printoptions(threshold='nan')
 ctypes_map = {ctypes.c_double:'double', ctypes.c_int:'int'}
 
 
-
 def XYZWrite(dirname = './output', filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_override=False):
     '''
     Function to write particle positions in a xyz format.
@@ -231,7 +230,7 @@ class ScalarArray(object):
         if (val == None):
             self._Dat = np.zeros([self._N1], dtype=self._dtype, order='C')
         if (val != None):
-            self._Dat = np.array(val, dtype=self._dtype, order='C')
+            self._Dat = np.array([val], dtype=self._dtype, order='C')
         
         self._A = False
         
@@ -259,7 +258,10 @@ class ScalarArray(object):
     @Dat.setter
     def Dat(self, val):
         self._Dat = np.array([val],dtype=self._dtype)     
-        
+    
+    @property
+    def test(self):
+        return self._Dat[0]
         
     def __getitem__(self,ix):
         return self._Dat[ix]
@@ -297,7 +299,11 @@ class ScalarArray(object):
     def dtype(self):
         ''' Return Dat c data ctype'''
         return self._dtype
-              
+    
+    @property 
+    def ctypes_value(self):
+        '''Return first value in correct type.'''
+        return (self._dtype)(self._Dat[0])
     
     @property     
     def dattype(self):

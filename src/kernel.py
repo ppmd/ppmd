@@ -15,11 +15,13 @@ class Kernel(object):
     :arg constants: List of constants (type :class:`.Constant`) which are to be substituted in.
     :arg reductions: list of reductions required by kernel if using parallel looping. 
     '''
-    def __init__(self,name,code,constants=None,headers=None,reductions=None):
+    def __init__(self,name,code, constants = None, headers = None, reductions = None, static_args = None):
         self._name = name
         self._code = code
         self._headers = headers
         self._reductions = reductions
+        self._sargs = static_args
+        
         self._reduction_dict = {}
         
         if (constants!=None):
@@ -55,7 +57,9 @@ class Kernel(object):
         '''Provides a method to determine if a variable undergoes a reduction.'''
         return self._reduction_dict.get(var)
         
-
+    @property
+    def static_args(self):
+        return self._sargs
         
 
     

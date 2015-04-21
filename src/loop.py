@@ -103,20 +103,7 @@ class _base(build.GenericToolChain):
                 s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'     
         
         
-        return s
-    
-    def execute(self, dat_dict = None):
-    
-        if (dat_dict != None):
-            self._particle_dat_dict = dat_dict    
-    
-        '''Execute the kernel over all particle pairs.'''
-        args = []
-        for dat in self._particle_dat_dict.values():
-            args.append(dat.ctypes_data)
-            
-        method = self._lib[self._kernel.name+'_wrapper']
-        method(self._N,*args)           
+        return s         
               
 ################################################################################################################
 # SINGLE PARTICLE LOOP SERIAL
@@ -242,8 +229,8 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
             reduction_handle = self._kernel.reduction_variable_lookup(dat[0])
             
             if (reduction_handle != None):
-                if (dat[1].ncomp != 1): 
-                    print "WARNING, Reductions not valid for more than 1 element"
+                #if (dat[1].ncomp != 1): 
+                #print "WARNING, Reductions currently only valid for 1 element."
                 
                 #Create a var name a variable to reduce upon.
                 reduction_argname = dat[0]+'_reduction'

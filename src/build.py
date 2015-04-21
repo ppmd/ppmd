@@ -198,11 +198,22 @@ class GenericToolChain(object):
         then the result will be ``double** arg_000,double** arg_001`.`
         '''
         
+        self._argtypes = []
+        
         argnames = ''
+        if (self._kernel.static_args != None):
+            self._static_arg_order = []
+        
+            for i,dat in enumerate(self._kernel.static_args.items()):
+                argnames += 'const '+data.ctypes_map[dat[1]]+' '+dat[0]+','        
+                self._static_arg_order.append(dat[0])
+                self._argtypes.append(dat[1])
+                
         for i,dat in enumerate(self._particle_dat_dict.items()):
             
             argnames += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+'_ext,'
-            
+            self._argtypes.append(dat[1].dtype)
+        
         return argnames[:-1]  
         
     def _loc_argnames(self):
@@ -319,8 +330,29 @@ class GenericToolChain(object):
             
         return self._code % d
 
-
-
+    def execute(self, dat_dict = None, static_args = None):
+        
+        '''Allow alternative pointers'''
+        if (dat_dict != None):
+            self._particle_dat_dict = dat_dict    
+        
+        '''Currently assume N is always needed'''
+        args=[self._N]
+        
+        '''Add static arguments to launch command'''
+        if (self._kernel.static_args != None):
+            assert static_args != None, "Error: static arguments not passed to loop."
+            for x in self._static_arg_order:
+                args.append(static_args[x])
+            
+        '''Add pointer arguments to launch command'''
+        for dat in self._particle_dat_dict.values():
+            args.append(dat.ctypes_data)
+            
+            
+        '''Execute the kernel over all particle pairs.'''            
+        method = self._lib[self._kernel.name+'_wrapper']
+        method(*args)
 
 
 
