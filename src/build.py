@@ -74,11 +74,13 @@ GCC = compiler(['GCC'],['gcc'],['-O3','-fpic','-std=c99'],['-lm'],['-g'],['-c'],
 #Define system gcc version as OpenMP compiler.
 GCC_OpenMP = compiler(['GCC'],['gcc'],['-O3','-fpic','-fopenmp','-lgomp','-lpthread','-lc','-lrt','-std=c99'],['-fopenmp','-lgomp','-lpthread','-lc','-lrt'],['-g'],['-c'],['-shared'])
 
+
+
 #Define system icc version as compiler.
-ICC = compiler(['ICC'],['icc'],['-O3','-fpic','-std=c99','-march=core-avx2'],['-lm'],['-g'],['-c'],['-shared'])
+ICC = compiler(['ICC'],['icc'],['-O3','-fpic','-std=c99','-fast'],['-lm'],['-g'],['-c'],['-shared'])
 
 #Define system icc version as OpenMP compiler.
-ICC_OpenMP = compiler(['ICC'],['icc'],['-O3','-fpic','-openmp','-lgomp','-lpthread','-lc','-lrt','-std=c99','-march=core-avx2'],['-openmp','-lgomp','-lpthread','-lc','-lrt'],['-g'],['-c'],['-shared'])
+ICC_OpenMP = compiler(['ICC'],['icc'],['-O3','-fpic','-openmp','-lgomp','-lpthread','-lc','-lrt','-std=c99','-fast'],['-openmp','-lgomp','-lpthread','-lc','-lrt'],['-g'],['-c'],['-shared'])
 
 
 
@@ -88,6 +90,8 @@ ICC_LIST=['mapc-4044']
 if os.uname()[1] in ICC_LIST:
     TMPCC = ICC
     TMPCC_OpenMP = ICC_OpenMP
+    #TMPCC = GCC
+    #TMPCC_OpenMP = GCC_OpenMP    
 else:
     TMPCC = GCC
     TMPCC_OpenMP = GCC_OpenMP

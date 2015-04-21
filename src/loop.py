@@ -123,7 +123,7 @@ class SingleAllParticleLoop(_base):
 
         void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
           int i;
-          for (i=0; i<n; ++i) {
+          for (i=0; i<n; i++) {
               %(KERNEL_ARGUMENT_DECL)s
               
                   //KERNEL CODE START
