@@ -308,25 +308,44 @@ class PairLoopRapaport(_base):
         return (code % d)        
                 
         
-    def execute(self, dat_dict = None):
+        
+    def execute(self, dat_dict = None, static_args = None):
+    
         '''
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         '''
-        self._cell_sort_all()
         
+        self._cell_sort_all()        
+        '''Allow alternative pointers'''
         if (dat_dict != None):
-            self._particle_dat_dict = dat_dict
+            self._particle_dat_dict = dat_dict    
         
-        args = [self._domain.cell_array.ctypes_data,
-                        self._q_list.ctypes_data,
-                        self._domain.extent.ctypes_data]
-                
+        '''Create arg list'''
+        args=[ctypes.c_int(self._N),
+              ctypes.c_int(self._domain.cell_count), 
+              self._domain.cell_array.ctypes_data,
+              self._q_list.ctypes_data,
+              self._domain.extent.ctypes_data]
+
+        
+        '''Add static arguments to launch command'''
+        if (self._kernel.static_args != None):
+            assert static_args != None, "Error: static arguments not passed to loop."
+            for x in self._static_arg_order:
+                args.append(static_args[x])
+            
+        '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data)
             
+            
+        '''Execute the kernel over all particle pairs.'''            
         method = self._lib[self._kernel.name+'_wrapper']
+        method(*args)        
         
-        method(ctypes.c_int(self._N), ctypes.c_int(self._domain.cell_count), *args)           
+        
+        
+                   
     
     
     
