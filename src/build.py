@@ -343,6 +343,10 @@ class GenericToolChain(object):
         '''Currently assume N is always needed'''
         args=[self._N]
         
+        
+        '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
+        
+        
         '''Add static arguments to launch command'''
         if (self._kernel.static_args != None):
             assert static_args != None, "Error: static arguments not passed to loop."

@@ -145,7 +145,7 @@ if __name__ == '__main__':
     #test_gr_method.RawWrite()
     test_vaf_method.plot()
 
-    a=input("PRESS ENTER TO CONTINUE.\n")
+    #a=input("PRESS ENTER TO CONTINUE.\n")
     
 
     
