@@ -558,7 +558,7 @@ class VelocityAutoCorrelation(object):
         
         self._datdict = {'VAF':self._VAF, 'V0':self._V0, 'VT':self._VT}
         
-        self._loop = loop.SingleAllParticleLoopOpenMP(N = self._N, kernel = _kernel, particle_dat_dict = self._datdict, DEBUG = self._DEBUG)
+        self._loop = loop.SingleAllParticleLoop(N = self._N, kernel = _kernel, particle_dat_dict = self._datdict, DEBUG = self._DEBUG)
         
         
         

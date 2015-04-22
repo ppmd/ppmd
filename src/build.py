@@ -346,8 +346,8 @@ class GenericToolChain(object):
         '''Add static arguments to launch command'''
         if (self._kernel.static_args != None):
             assert static_args != None, "Error: static arguments not passed to loop."
-            for x in self._static_arg_order:
-                args.append(static_args[x])
+            for dat in static_args.values():
+                args.append(dat)
             
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
