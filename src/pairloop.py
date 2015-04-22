@@ -391,7 +391,7 @@ class PairLoopRapaport(_base):
         
         
         self._cell_sort_kernel = kernel.Kernel('cell_list_method', self._cell_sort_code, headers = ['stdio.h'])
-        self._cell_sort_loop = loop.SingleAllParticleLoop(self._N, self._cell_sort_kernel, self._cell_sort_dict)
+        self._cell_sort_loop = loop.SingleAllParticleLoop(self._N, self._cell_sort_kernel, self._cell_sort_dict, DEBUG = self._DEBUG)
         
     #move this to C    
     def _cell_sort_all(self):
