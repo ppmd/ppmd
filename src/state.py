@@ -66,8 +66,10 @@ class BaseMDState(object):
             particle_vel_init.reset(self)
         
         
-        '''Initialise cell array'''
-        self._domain.set_cell_array_radius(self._potential._rn)
+        '''Attempt to initialise cell array'''
+        _cell_setup_attempt = self._domain.set_cell_array_radius(self._potential._rn)
+        
+        
         
         print "Cell array = ", self._domain._cell_array
         print "Domain extents = ",self._domain._extent
@@ -78,12 +80,23 @@ class BaseMDState(object):
         #Setup acceleration updating from given potential
         self._DEBUG = DEBUG
         _potential_dat_dict = self._potential.datdict(self)
-        self._looping_method_accel = pairloop.PairLoopRapaport(N=self._N,
+        
+        
+        if (_cell_setup_attempt==True):
+            self._looping_method_accel = pairloop.PairLoopRapaport(N=self._N,
                                                                     domain = self._domain, 
                                                                     positions = self._pos, 
                                                                     potential = self._potential, 
                                                                     dat_dict = _potential_dat_dict,
                                                                     DEBUG = self._DEBUG)
+        
+        else:
+            self._looping_method_accel = pairloop.DoubleAllParticleLoopPBC(N=self._N,
+                                                                        domain = self._domain, 
+                                                                        kernel = self._potential.kernel,
+                                                                        particle_dat_dict = _potential_dat_dict,
+                                                                        DEBUG = self._DEBUG)
+                                                                               
     
     @property    
     def N(self):
@@ -401,6 +414,37 @@ class VelInitTwoParticlesInABox(object):
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
 
 
+class VelInitMaxwellBoltzmannDist(object):
+    """
+    Initialise velocities by sampling from a gaussian distribution.
+    
+    :arg double mu: Mean for gaussian distribution.
+    :arg double sig: Standard deviation for gaussian distribution.
+    
+    """
+
+    def __init__(self,temperature=293.15):
+        self._t = (float)(temperature)
+        
+    
+    
+    def reset(self,state_input):
+        """
+        Resets particle velocities to Maxwell-Boltzmann distribution.
+        
+        :arg state state_input: Input state class oject containing velocities and masses.
+        """
+        
+        #Apply MB distro to velocities.
+        for ix in range(state_input.N):
+            scale = math.sqrt(self._t/state_input.masses[ix])
+            stmp = scale*math.sqrt(-2.0*math.log(random.uniform(0,1)))
+            V0 = 2.*math.pi*random.uniform(0,1);
+            state_input.velocities[ix,0]=stmp*math.cos(V0)
+            state_input.velocities[ix,1]=stmp*math.sin(V0)
+            state_input.velocities[ix,1]=scale*math.sqrt(-2.0*math.log(random.uniform(0,1)))*math.cos(2.*math.pi*random.uniform(0,1));
+            
+
 class MassInitTwoAlternating(object):
     '''
     Class to initialise masses, alternates between two masses.
@@ -422,8 +466,25 @@ class MassInitTwoAlternating(object):
         for ix in range(np.shape(mass_input.Dat)[0]):
             mass_input[ix] = self._m[(ix % 2)]
 
+class MassInitIdentical(object):
+    '''
+    Class to initialise all masses to one value.
+    
+    :arg double m: Mass default 1.0
+    '''
+    
+    def __init__(self, m = 1.0):
+        self._m = (float)(m)
 
-
+        
+    def reset(self, mass_input):
+        '''
+        Apply to input mass dat class.
+        
+        :arg Dat mass_input: Dat container with masses.
+        '''
+        for ix in range(np.shape(mass_input.Dat)[0]):
+            mass_input[ix] = self._m
 
 
 

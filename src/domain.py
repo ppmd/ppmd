@@ -159,22 +159,28 @@ class BaseDomain(object):
         :arg double rn:  :math:`r_n = r_c + \delta`
         
         """
-        self._cell_array[0] = int(self._extent[0]/rn)
-        self._cell_array[1] = int(self._extent[1]/rn)
-        self._cell_array[2] = int(self._extent[2]/rn)
+
         
         
-        if (self._cell_array[0] < 3 or self._cell_array[1] < 3 or self._cell_array[2] < 3):
-            print "WARNING: Less than three cells per coordinate direction. Correcting"
-            print "Cell array = ", self._cell_array
-            print "Domain extents = ",self._extent
+        if (int(self._extent[0]/rn) < 3 or int(self._extent[1]/rn) < 3 or int(self._extent[2]/rn) < 3):
+            print "WARNING: Less than three cells per coordinate direction. Cell based domain will not be used"
+            
         
-            self._extent[0] = 3*rn
-            self._extent[1] = 3*rn
-            self._extent[2] = 3*rn
-            self.set_cell_array_radius(rn)
+            #self._extent[0] = 3*rn
+            #self._extent[1] = 3*rn
+            #self._extent[2] = 3*rn
+            #self.set_cell_array_radius(rn)
+            
+            return False
+            
+        else:
+            self._cell_array[0] = int(self._extent[0]/rn)
+            self._cell_array[1] = int(self._extent[1]/rn)
+            self._cell_array[2] = int(self._extent[2]/rn)            
+            self._cell_count_recalc()
+            
+        return True
         
-        self._cell_count_recalc()
         
     @property     
     def cell_array(self):

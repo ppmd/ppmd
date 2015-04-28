@@ -110,7 +110,7 @@ class LennardJonesShifted(BasePotential):
         else:
             return 0.0   
     
-    
+    @property
     def kernel(self):
         '''
         Returns a kernel class for the potential.
@@ -184,16 +184,20 @@ class LennardJones(LennardJonesShifted):
     :arg epsilon: Potential parameter :math:`\epsilon`
     :arg sigma: Potential parameter :math:`\sigma`
     '''
-    def __init__(self,epsilon = 1.0,sigma = 1.0):
+    def __init__(self,epsilon = 1.0,sigma = 1.0, rc = None):
         self._epsilon = epsilon
         self._sigma = sigma
         self._C_V = 4.*self._epsilon
         self._C_F = -48*self._epsilon/self._sigma**2
-        self._rc = self._sigma*(5./2.)
-        self._rn = 1.2*self._rc
+        if (rc==None):
+            self._rc = self._sigma*(5./2.)
+        else:    
+            self._rc = rc
+            
+        self._rn = 1.1*self._rc
         self._rc2 = self._rc**2
         self._sigma2 = self._sigma**2
-        self._shift_internal = (2.0/5.0)**6 - (2.0/5.0)**12
+        self._shift_internal = (self._sigma/self._rc)**6 - (self._sigma/self._rc)**12
         
     def evaluate(self,r):
         '''Evaluate potential.
@@ -205,7 +209,8 @@ class LennardJones(LennardJonesShifted):
             return self._C_V*((r_m6-1.0)*r_m6 + self._shift_internal)
         else:
             return 0.0        
-        
+    
+    @property    
     def kernel(self):
         '''
         Returns a kernel class for the potential.
@@ -256,6 +261,7 @@ class LennardJones(LennardJonesShifted):
         
         
 class LennardJonesOpenMP(LennardJones):
+    @property
     def kernel(self):
         '''
         Returns a kernel class for the potential.
@@ -299,9 +305,6 @@ class LennardJonesOpenMP(LennardJones):
         reductions = (kernel.reduction('U','U[0]','+'),)
         
         return kernel.Kernel('LJ_accel_U', kernel_code, constants, None, reductions)
-
-
-
 
 
 

@@ -132,7 +132,7 @@ class VelocityVerlet(object):
             self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
             self._p2 = loop.SingleAllParticleLoop(self._N,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG)  
               
-            
+        
         self._velocity_verlet_integration()
         if (timer==True):
             end = time.time()
@@ -151,11 +151,12 @@ class VelocityVerlet(object):
             self._percent_int = self._plot_handle.interval
             self._percent_count = self._percent_int
 
+        
         self._domain.BCexecute()
+        
         self._state.forces_update()
-
+        
         for i in range(self._max_it):         
-            
             self._velocity_verlet_step()
             
             self._integration_internals(i)

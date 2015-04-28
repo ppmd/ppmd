@@ -107,7 +107,7 @@ class PairLoopRapaport(_base):
         self._temp_dir = './build/'
         if (not os.path.exists(self._temp_dir)):
             os.mkdir(self._temp_dir)
-        self._kernel = self._potential.kernel()
+        self._kernel = self._potential.kernel
         
         
         self._nargs = len(self._particle_dat_dict)
@@ -196,6 +196,7 @@ class PairLoopRapaport(_base):
                     double s[3]; 
                     unsigned int flag, cpp; 
                     int i,j;
+                    
                     
                     cell_index_offset(cp, cpp_i, cell_array, d_extent, &cpp, &flag, s);
                     
@@ -315,7 +316,10 @@ class PairLoopRapaport(_base):
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         '''
         
-        self._cell_sort_all()        
+        self._cell_sort_all()
+        
+        
+          
         '''Allow alternative pointers'''
         if (dat_dict != None):
             self._particle_dat_dict = dat_dict    
@@ -338,9 +342,13 @@ class PairLoopRapaport(_base):
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data)
             
-            
+        
         '''Execute the kernel over all particle pairs.'''            
         method = self._lib[self._kernel.name+'_wrapper']
+        
+        
+        
+        
         method(*args)        
         
         
@@ -499,6 +507,186 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
                 s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'    
         
         return s    
+
+
+################################################################################################################
+# DOUBLE PARTICLE LOOP APPLIES PBC
+################################################################################################################ 
+class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
+    '''
+    Generic base class to loop over all particles once.
+    
+    :arg int N: Number of elements to loop over.
+    :arg kernel kernel:  Kernel to apply at each element.
+    :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
+    :arg bool DEBUG: Flag to enable debug flags.
+    '''
+    def __init__(self, N, domain, kernel, particle_dat_dict, DEBUG = False):
+        self._DEBUG = DEBUG
+        self._compiler_set()
+        self._N = N
+        self._domain = domain
+        self._temp_dir = './build/'
+        if (not os.path.exists(self._temp_dir)):
+            os.mkdir(self._temp_dir)
+        self._kernel = kernel
+        
+        self._particle_dat_dict = particle_dat_dict
+        self._nargs = len(self._particle_dat_dict)
+
+        self._code_init()
+        
+        self._unique_name = self._unique_name_calc()
+        
+        self._library_filename  = self._unique_name +'.so'
+        
+        if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
+            self._create_library()
+        try:
+            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        except:
+            build.load_library_exception(self._kernel.name, self._unique_name,type(self))
+
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+
+        void %(KERNEL_NAME)s_wrapper(const int n,double *extent_ext ,%(ARGUMENTS)s) {
+          
+          double r1[3], s1[3];
+          const double _E_2[3] = {0.5*extent_ext[0], 0.5*extent_ext[1], 0.5*extent_ext[2]};
+          const double _E[3] = {extent_ext[0], extent_ext[1], extent_ext[2]};
+           
+          for (int i=0; i<n; i++) { for (int j=0; j<i; j++) {  
+              
+              %(KERNEL_ARGUMENT_DECL)s
+                  //KERNEL CODE START
+                  
+                  %(KERNEL)s
+                  
+                  //KERNEL CODE END
+              
+          }}
+        }
+        '''
+        
+    def _generate_header_source(self):
+        '''Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        '''
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+        #include "../generic.h"
+        %(INCLUDED_HEADERS)s
+
+        void %(KERNEL_NAME)s_wrapper(int n,double *extent_ext,%(ARGUMENTS)s);
+
+        #endif
+        '''
+        
+        
+        d = {'UNIQUENAME':self._unique_name,
+             'INCLUDED_HEADERS':self._included_headers(),
+             'KERNEL_NAME':self._kernel.name,
+             'ARGUMENTS':self._argnames()}
+        return (code % d)        
+        
+        
+    def _kernel_argument_declarations(self):
+        '''Define and declare the kernel arguments.
+
+        For each argument the kernel gets passed a pointer of type
+        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
+        pointer to the data which contains the properties of particle i.
+        These properties are stored consecutively in memory, so for a 
+        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
+        property the vector entry j of particle i is accessed as 
+        ``loc_argXXX[i][j]``.
+
+        This method generates the definitions of the ``loc_argXXX`` variables
+        and populates the data to ensure that ``loc_argXXX[i]`` points to
+        the correct address in the particle_dats.
+        '''
+        s = '\n'
+        for i,dat in enumerate(self._particle_dat_dict.items()):
+            
+            
+            space = ' '*14
+            argname = dat[0]+'_ext'
+            loc_argname = dat[0]
+            
+            
+            if (type(dat[1]) == data.ScalarArray):
+                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
+            
+            if (type(dat[1]) == particle.Dat):
+                if (dat[1].name  == 'positions'):
+                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
+                    
+                    s += space+'r1[0] ='+argname+'[LINIDX_2D(3,i,0)] -'+argname+'[LINIDX_2D(3,j,0)]; \n'
+                    s += space+'r1[1] ='+argname+'[LINIDX_2D(3,i,1)] -'+argname+'[LINIDX_2D(3,j,1)]; \n'
+                    s += space+'r1[2] ='+argname+'[LINIDX_2D(3,i,2)] -'+argname+'[LINIDX_2D(3,j,2)]; \n'
+                    
+                    
+                    #s += space+'s1[0] = ((abs_md(r1[0]))>_E_2[0]? sign(r1[0])*_E[0]:0.0); \n'
+                    #s += space+'s1[1] = ((abs_md(r1[1]))>_E_2[1]? sign(r1[1])*_E[1]:0.0); \n'
+                    #s += space+'s1[2] = ((abs_md(r1[2]))>_E_2[2]? sign(r1[2])*_E[2]:0.0); \n'
+                    
+                    s += space+'s1[0] = r1[0]>_E_2[0] ? _E[0]:  r1[0]<-1*_E_2[0] ? -1*_E[0]:  0 ; \n'
+                    s += space+'s1[1] = r1[1]>_E_2[1] ? _E[1]:  r1[1]<-1*_E_2[1] ? -1*_E[1]:  0 ; \n'
+                    s += space+'s1[2] = r1[2]>_E_2[2] ? _E[2]:  r1[2]<-1*_E_2[2] ? -1*_E[2]:  0 ; \n'
+                    
+                    
+                    
+
+                    s += space+loc_argname+'[0] = r1;\n'
+                    s += space+loc_argname+'[1] = s1;\n'
+                    
+                    
+                else:
+                    ncomp = dat[1].ncomp
+                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
+                    s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
+                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'    
+        
+        return s 
+
+
+    def execute(self, dat_dict = None, static_args = None):
+        
+        '''Allow alternative pointers'''
+        if (dat_dict != None):
+            self._particle_dat_dict = dat_dict    
+        
+        '''Currently assume N is always needed'''
+        args=[self._N, self._domain.extent.ctypes_data]
+        
+        
+        '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
+        
+        
+        '''Add static arguments to launch command'''
+        if (self._kernel.static_args != None):
+            assert static_args != None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+            
+        '''Add pointer arguments to launch command'''
+        for dat in self._particle_dat_dict.values():
+            args.append(dat.ctypes_data)
+            
+            
+        '''Execute the kernel over all particle pairs.'''            
+        method = self._lib[self._kernel.name+'_wrapper']
+        method(*args)
+
+
+
+
+
 
 
 ################################################################################################################

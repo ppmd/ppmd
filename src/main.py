@@ -17,10 +17,10 @@ if __name__ == '__main__':
     
     
     #1000 particles in a box
-    test_1000 = True
+    test_1000 = False
     
     #2 particles bouncing agasint each other.
-    test_2_bounce = False
+    test_2_bounce = True
     
     #plot as computing + at end?
     plotting = False
@@ -60,7 +60,7 @@ if __name__ == '__main__':
         test_vel_init = state.VelInitNormDist(mu,nsig)
         
         #Initialise masses, in this case sets all to 1.0.
-        test_mass_init = state.MassInitTwoAlternating(m1 = 1.0, m2 = 1.0)
+        test_mass_init = state.MassInitIdentical()
         
     if (test_2_bounce):
         N=2
@@ -70,13 +70,13 @@ if __name__ == '__main__':
         test_potential = potential.LennardJonesShifted(sigma=1.0,epsilon=1.0)
         
         #Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.6, extent = np.array([7., 7., 7.]), axis = np.array([1,0,0]))
+        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.6, extent = np.array([2., 2., 2.]), axis = np.array([1,0,0]))
         
         #Give first two particles specific velocities
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
         
         #Set alternating masses for particles.
-        test_mass_init = state.MassInitTwoAlternating(m1 = 1.0, m2 = 10.0)
+        test_mass_init = state.MassInitIdentical()
         
     
     
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(interval = 45)
+        plothandle = data.DrawParticles(interval = 1)
     else:
         plothandle = None
     
@@ -125,7 +125,7 @@ if __name__ == '__main__':
     ###########################################################
     
     
-    test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
+    test_integrator.integrate(dt = 0.00001, T = 0.2, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
@@ -143,9 +143,9 @@ if __name__ == '__main__':
 
     #test_gr_method.plot()
     #test_gr_method.RawWrite()
-    test_vaf_method.plot()
+    #test_vaf_method.plot()
 
-    #a=input("PRESS ENTER TO CONTINUE.\n")
+    a=input("PRESS ENTER TO CONTINUE.\n")
     
 
     
