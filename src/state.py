@@ -357,6 +357,57 @@ class PosInitTwoParticlesInABox(object):
         state_input.domain.set_extent(self._extent)
 
 
+
+class PosInitDLPOLYConfig(object):
+    """
+    Read positions from DLPLOY config file.
+    
+    :arg str filename: Config filename.
+    """
+    
+    def __init__(self,filename = None):
+        self._f = filename
+        assert self._f!=None, "No position config file specified"
+        
+        
+    def reset(self, state_input):
+        """
+        Resets particle positions to those in file.
+        
+        :arg state state_input: State object containing required number of particles.
+        """
+        
+        fh=open(self._f)
+        shift = 7
+        offset= 4
+        count = 0
+        
+        extent=np.array([0.,0.,0.])
+        
+        for i, line in enumerate(fh):
+            if (i==2):
+                extent[0]=line.strip().split()[0]
+            if (i==3):
+                extent[1]=line.strip().split()[1]                
+            if (i==4):
+                extent[2]=line.strip().split()[2]                
+                
+        
+            if ((i>(shift-2)) and ((i-shift+1)%offset == 0) and count < state_input.N ):
+                state_input.positions[count,0]=line.strip().split()[0]
+                state_input.positions[count,1]=line.strip().split()[1]
+                state_input.positions[count,2]=line.strip().split()[2]
+                count+=1
+        
+        
+        state_input.domain.set_extent(extent)
+
+
+
+
+
+
+
         
 class VelInitNormDist(object):
     """
@@ -425,7 +476,7 @@ class VelInitMaxwellBoltzmannDist(object):
 
     def __init__(self,temperature=293.15):
         self._t = (float)(temperature)
-        
+        print "Warning not yet functional"
     
     
     def reset(self,state_input):
@@ -444,6 +495,40 @@ class VelInitMaxwellBoltzmannDist(object):
             state_input.velocities[ix,1]=stmp*math.sin(V0)
             state_input.velocities[ix,1]=scale*math.sqrt(-2.0*math.log(random.uniform(0,1)))*math.cos(2.*math.pi*random.uniform(0,1));
             
+
+class VelInitDLPOLYConfig(object):
+    """
+    Read velocities from DLPLOY config file.
+    
+    :arg str filename: Config filename.
+    """
+    
+    def __init__(self,filename = None):
+        self._f = filename
+        assert self._f!=None, "No position config file specified"
+        
+        
+    def reset(self, state_input):
+        """
+        Resets particle velocities to those in file.
+        
+        :arg state state_input: State object containing required number of particles.
+        """
+        
+        fh=open(self._f)
+        shift = 8
+        offset= 4
+        count = 0
+        
+        
+        for i, line in enumerate(fh):
+            if ((i>(shift-2)) and ((i-shift+1)%offset == 0) and count < state_input.N ):
+                state_input.velocities[count,0]=line.strip().split()[0]
+                state_input.velocities[count,1]=line.strip().split()[1]
+                state_input.velocities[count,2]=line.strip().split()[2]
+                count+=1
+        
+        
 
 class MassInitTwoAlternating(object):
     '''
