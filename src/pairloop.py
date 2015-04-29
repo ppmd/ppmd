@@ -554,11 +554,13 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
 
         void %(KERNEL_NAME)s_wrapper(const int n,double *extent_ext ,%(ARGUMENTS)s) {
           
-          double r1[3], s1[3];
           const double _E_2[3] = {0.5*extent_ext[0], 0.5*extent_ext[1], 0.5*extent_ext[2]};
-          const double _E[3] = {extent_ext[0], extent_ext[1], extent_ext[2]};
+          const double _E[3] = {extent_ext[0], extent_ext[1], extent_ext[2]};          
            
           for (int i=0; i<n; i++) { for (int j=0; j<i; j++) {  
+              
+              double r1[3], s1[3];
+
               
               %(KERNEL_ARGUMENT_DECL)s
                   //KERNEL CODE START
@@ -1068,8 +1070,111 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
         
         return s     
     
+   
+################################################################################################################
+# RAPAPORT LOOP SERIAL PARTICLE LIST
+################################################################################################################
+
+class PairLoopRapaportParticleList(PairLoopRapaport):    
+    '''
+    Applies the Rapapport particle list method
+    
+    :arg int N: Number of elements to loop over.
+    :arg domain domain: Domain containing the particles.
+    :arg dat positions: Postitions of particles.
+    :arg potential potential: Potential between particles.
+    :arg dict dat_dict: Dictonary mapping between state vars and kernel vars.
+    :arg bool DEBUG: Flag to enable debug flags.
+    '''
+    def __init__(self,N,domain,positions,potential,dat_dict, DEBUG = False):
+        self._DEBUG = DEBUG
+        self._N = N
+        self._domain = domain
+        self._P = positions
+        self._potential = potential
+        self._particle_dat_dict = dat_dict
+        
+        self._compiler_set()
+        
+        
+        ##########
+        # End of Rapaport initialisations.
+        ##########
+        
+        self._temp_dir = './build/'
+        if (not os.path.exists(self._temp_dir)):
+            os.mkdir(self._temp_dir)
+        self._kernel = self._potential.kernel
+        
+        
+        self._nargs = len(self._particle_dat_dict)
+        
+
+        self._code_init()
+        self._cell_sort_setup()
+        self._neighbour_list_setup()
+        
+        self._unique_name = self._unique_name_calc()
+        
+        self._library_filename  = self._unique_name +'.so'
+        
+        if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
+            self._create_library()
+        try:
+            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        except:
+            build.load_library_exception(self._kernel.name, self._unique_name,type(self))
     
     
+    
+    def _neighbour_list_setup(self):
+        pass
+    
+    
+    
+    
+    
+    
+    
+    def execute(self, dat_dict = None, static_args = None):
+        '''
+        C version of the pair_locate: Loop over all cells update forces and potential engery.
+        '''
+
+        self._cell_sort_all()
+
+
+          
+        '''Allow alternative pointers'''
+        if (dat_dict != None):
+            self._particle_dat_dict = dat_dict    
+
+        '''Create arg list'''
+        args=[ctypes.c_int(self._N),
+              ctypes.c_int(self._domain.cell_count), 
+              self._domain.cell_array.ctypes_data,
+              self._q_list.ctypes_data,
+              self._domain.extent.ctypes_data]
+
+
+        '''Add static arguments to launch command'''
+        if (self._kernel.static_args != None):
+            assert static_args != None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+            
+        '''Add pointer arguments to launch command'''
+        for dat in self._particle_dat_dict.values():
+            args.append(dat.ctypes_data)
+            
+
+        '''Execute the kernel over all particle pairs.'''            
+        method = self._lib[self._kernel.name+'_wrapper']
+
+
+
+
+        method(*args)        
     
     
     
