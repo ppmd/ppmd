@@ -27,8 +27,6 @@ if __name__ == '__main__':
     #particle properties
     N       = 100
     mass    = 39.948        #g/mol is this the correct mass?
-    rho     = N/(17.4**3)
-    T       = 85.0
     
     #potential properties
     epsilon = 0.9661
@@ -85,7 +83,7 @@ if __name__ == '__main__':
     integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, DEBUG = debug)
     
     
-    #control file seems to compute 16000 iterations at dt =10^-3
+    #control file seems to compute 16000 iterations at dt =10^-3, 1000 to equbrilate then 15k for averaging?
     dt=10**-3
     T=16000*dt
     integrator.integrate(dt = dt, T = T, timer=True)
