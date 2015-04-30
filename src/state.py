@@ -6,6 +6,8 @@ import time
 import random
 import pairloop
 import data
+import kernel
+import loop
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -67,7 +69,7 @@ class BaseMDState(object):
         
         
         '''Attempt to initialise cell array'''
-        _cell_setup_attempt = self._domain.set_cell_array_radius(self._potential._rn)
+        self._cell_setup_attempt = self._domain.set_cell_array_radius(self._potential._rn)
         
         
         
@@ -82,12 +84,15 @@ class BaseMDState(object):
         _potential_dat_dict = self._potential.datdict(self)
         
         
-        if (_cell_setup_attempt==True):
+        if (self._cell_setup_attempt==True):
+            self._cell_sort_setup()
+            self._cell_sort_all()
             self._looping_method_accel = pairloop.PairLoopRapaport(N=self._N,
                                                                     domain = self._domain, 
                                                                     positions = self._pos, 
                                                                     potential = self._potential, 
                                                                     dat_dict = _potential_dat_dict,
+                                                                    cell_list = self._q_list,
                                                                     DEBUG = self._DEBUG)
         
         else:
@@ -96,8 +101,72 @@ class BaseMDState(object):
                                                                         kernel = self._potential.kernel,
                                                                         particle_dat_dict = _potential_dat_dict,
                                                                         DEBUG = self._DEBUG)
-                                                                               
     
+    
+    
+                                                                               
+    def _cell_sort_setup(self):
+        """
+        Creates looping for cell list creation
+        """
+        
+        '''Construct initial cell list'''
+        self._q_list = data.ScalarArray(np.zeros([self._N + self._domain.cell_count], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
+        
+        #temporary method for index awareness inside kernel.
+        self._internal_index = data.ScalarArray(dtype=ctypes.c_int)
+        self._internal_N = data.ScalarArray(dtype=ctypes.c_int)
+        self._internal_index[0]=0
+        self._internal_N[0] = self._N         
+        
+        self._cell_sort_code = '''
+        
+        const double R0 = P[0]+0.5*E[0];
+        const double R1 = P[1]+0.5*E[1];
+        const double R2 = P[2]+0.5*E[2];
+        
+        const int C0 = (int)(R0/CEL[0]);
+        const int C1 = (int)(R1/CEL[1]);
+        const int C2 = (int)(R2/CEL[2]);
+        
+        const int val = (C2*CA[1] + C1)*CA[0] + C0;
+        
+        Q[I[0]] = Q[N[0] + val];
+        Q[N[0] + val] = I[0];
+        I[0]++;
+        
+        '''
+        self._cell_sort_dict = {'E':self._domain.extent,
+                                'P':self._pos,
+                                'CEL':self._domain.cell_edge_lengths,
+                                'CA':self._domain.cell_array,
+                                'Q':self._q_list,
+                                'I':self._internal_index,
+                                'N':self._internal_N}
+                
+        
+        
+        self._cell_sort_kernel = kernel.Kernel('cell_list_method', self._cell_sort_code, headers = ['stdio.h'])
+        self._cell_sort_loop = loop.SingleAllParticleLoop(self._N, self._cell_sort_kernel, self._cell_sort_dict, DEBUG = self._DEBUG)
+        
+    #move this to C    
+    def _cell_sort_all(self):
+        """
+        Construct neighbour list, assigning atoms to cells. Using Rapaport algorithm.
+        """
+
+                
+        for cx in range(self._domain.cell_count):
+            self._q_list[self._N + cx] = -1
+        
+        self._internal_index[0]=0
+        self._cell_sort_loop.execute()
+    
+    
+    
+    
+    
+        
     @property    
     def N(self):
         """
@@ -153,6 +222,7 @@ class BaseMDState(object):
         """
         Updates forces dats using given looping method.
         """
+        self._cell_sort_all()
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
         self._looping_method_accel.execute()

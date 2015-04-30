@@ -226,7 +226,27 @@ class halo(object):
         self._nr = nrow
         self._dt = dtype
         
-        self._d = np.zeros((self._nc, self._nr), dtype=self._dt)
+        self._d = np.zeros((self._nc, self._nr), dtype=self._dt, order='C')
+    
+    def resize(self, ncol = None, nrow = None):
+        """
+        Resize halo to given dimensions. If a new dimension size is not given, old dimension size will remain. 
+        
+        :arg int ncol: New number of columns.
+        :arg int row: New number of rows.
+        """
+        resize=False
+        if (ncol != None):
+            self._nc = ncol
+            resize = True
+        if (nrow != None):
+            self._nr = nrow
+            resize = True
+        if (resize):
+            self._d = np.zeros((self._nc, self._nr), dtype=self._dt, order='C')
+        
+        
+        
     
     
     def __setitem__(self,ix, val):
