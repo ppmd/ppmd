@@ -17,16 +17,16 @@ if __name__ == '__main__':
     
     
     #1000 particles in a box
-    test_1000 = False
+    test_1000 = True
     
     #2 particles bouncing agasint each other.
-    test_2_bounce = True
+    test_2_bounce = False
     
     #plot as computing + at end?
     plotting = False
     
     #log energy?
-    logging = True
+    logging = False
     
     #Enbale debug flags?
     debug = True
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     
     if (test_1000):
         #n=25 reasonable size
-        n=20
+        n=10
         N=n**3
         print "N =",N
         rho = 1.

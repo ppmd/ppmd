@@ -8,6 +8,7 @@ import pairloop
 import data
 import kernel
 import loop
+from mpi4py import MPI
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -34,6 +35,8 @@ class BaseMDState(object):
         :arg double mass: Mass of particles, default 1.0        
         
         '''
+              
+        
         self._potential = potential
         self._N = N
         self._pos = particle.Dat(N, 3, name='positions')
@@ -101,8 +104,8 @@ class BaseMDState(object):
                                                                         kernel = self._potential.kernel,
                                                                         particle_dat_dict = _potential_dat_dict,
                                                                         DEBUG = self._DEBUG)
-    
-    
+        
+        
     
                                                                                
     def _cell_sort_setup(self):
@@ -112,6 +115,10 @@ class BaseMDState(object):
         
         '''Construct initial cell list'''
         self._q_list = data.ScalarArray(np.zeros([self._N + self._domain.cell_count], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
+        
+        '''Keep track of number of particles per cell'''
+        self._cell_contents_count = data.ScalarArray(np.zeros([self._domain.cell_count], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
+        
         
         #temporary method for index awareness inside kernel.
         self._internal_index = data.ScalarArray(dtype=ctypes.c_int)
@@ -130,7 +137,7 @@ class BaseMDState(object):
         const int C2 = (int)(R2/CEL[2]);
         
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
-        
+        CCC[val]++;
         Q[I[0]] = Q[N[0] + val];
         Q[N[0] + val] = I[0];
         I[0]++;
@@ -141,6 +148,7 @@ class BaseMDState(object):
                                 'CEL':self._domain.cell_edge_lengths,
                                 'CA':self._domain.cell_array,
                                 'Q':self._q_list,
+                                'CCC':self._cell_contents_count,
                                 'I':self._internal_index,
                                 'N':self._internal_N}
                 
@@ -149,19 +157,19 @@ class BaseMDState(object):
         self._cell_sort_kernel = kernel.Kernel('cell_list_method', self._cell_sort_code, headers = ['stdio.h'])
         self._cell_sort_loop = loop.SingleAllParticleLoop(self._N, self._cell_sort_kernel, self._cell_sort_dict, DEBUG = self._DEBUG)
         
-    #move this to C    
+        
     def _cell_sort_all(self):
         """
         Construct neighbour list, assigning atoms to cells. Using Rapaport algorithm.
         """
-
-                
+        
         for cx in range(self._domain.cell_count):
             self._q_list[self._N + cx] = -1
         
         self._internal_index[0]=0
+        self._cell_contents_count.scale(0)
+        
         self._cell_sort_loop.execute()
-    
     
     
     
@@ -223,6 +231,12 @@ class BaseMDState(object):
         Updates forces dats using given looping method.
         """
         self._cell_sort_all()
+        
+        
+        if (self._cell_setup_attempt==True):
+            self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
+            
+                    
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
         self._looping_method_accel.execute()

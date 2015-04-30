@@ -2,6 +2,8 @@ import numpy as np
 import math
 import ctypes
 import data
+from mpi4py import MPI
+import random
 
 ################################################################################################################
 # HALO DEFINITIONS
@@ -12,34 +14,121 @@ class HaloCartesian(object):
     Class to contain and control cartesian halo transfers.
     
     """
-    def __init__(self):
+    def __init__(self, MPICOMM = None, rank = 0, nproc = 1, cell_array = None):
+        assert cell_array != None, "Error: No cell array passed."
+        self._rank = rank
+        self._nproc = nproc
+        self._MPI = MPICOMM
+        
+        self._ca = cell_array
         self._halos=[]
         
+        _BASE_SIZES = [1, self._ca[0], 1, self._ca[1], self._ca[0]*self._ca[1], self._ca[1],1,self._ca[0],1]
         
-    def add_halo(self, halo = None):
-        assert halo != None, "Error: No halo specified."
-        self._halos.append(halo)
+        _MID_SIZES = [self._ca[2], self._ca[0]*self._ca[2], self._ca[2], self._ca[1]*self._ca[2], self._ca[1]*self._ca[2], self._ca[2], self._ca[0]*self._ca[2], self._ca[2]]
+        
+        self._SIZES = _BASE_SIZES + _MID_SIZES + _BASE_SIZES
+        
+        dest=0
+        src=0
+        
+        
+        for ix in range(26):
+            self._halos.append(Halo(self._MPI, self._rank,dest,src,ix,self._SIZES[ix]))
+           
+            
+    def exchange(self,cell_contents_count, cell_list, data):
+        '''Get new storage sizes'''
+        self._exchange_size_calc(cell_contents_count)
+        '''Resize'''
+        for i,h in enumerate(self._halos):
+            h.send_prepare(self._exchange_sizes[i], cell_list, data)
+        
+        
+        
+    def _exchange_size_calc(self,cell_contents_count):
+        
+        #bottom layer
+        sizes=[
+                cell_contents_count[self._ca[0]*self._ca[1]*self._ca[2]-1],
+                sum(cell_contents_count[self._ca[0]*(self._ca[1]*self._ca[2]-1)-1::1]),
+                cell_contents_count[self._ca[0]*self._ca[1]*self._ca[2]-self._ca[0]],
+                sum(cell_contents_count[self._ca[0]*(self._ca[1]*(self._ca[2]-1)+1)-1::self._ca[0]]),
+                sum(cell_contents_count[self._ca[0]*self._ca[1]*(self._ca[2]-1)::1]),
+                sum(cell_contents_count[self._ca[0]*self._ca[1]*(self._ca[2]-1)::self._ca[0]]),
+                cell_contents_count[self._ca[0]*(self._ca[1]*(self._ca[2]-1)+1)-1],
+                sum(cell_contents_count[self._ca[0]*self._ca[1]*(self._ca[2]-1):self._ca[0]*self._ca[1]*(self._ca[2]-1)+self._ca[0]:1]),
+                cell_contents_count[self._ca[0]*self._ca[1]*(self._ca[2]-1)]
+              ]
+        
+        #middle layer
+        sizes+=[
+               sum(cell_contents_count[self._ca[0]*self._ca[1]-1::self._ca[0]*self._ca[1] ])]
+        
+        
+        tmp1=0
+        for ix in range(1,self._ca[2]+1):
+            tmp1+=sum(cell_contents_count[ix*self._ca[0]*self._ca[1]-self._ca[0]:ix*self._ca[0]*self._ca[1]-1:1])       
+        
+        tmp2=0
+        for ix in range(self._ca[2]):
+            tmp2+=sum(cell_contents_count[ix*self._ca[0]*self._ca[1]:ix*self._ca[0]*self._ca[1]+self._ca[0]-1:1])
+        
+        sizes+=[
+                tmp1,
+                sum(cell_contents_count[self._ca[0]*(self._ca[1]-1):self._ca[0]*(self._ca[1]*self._ca[2]-1):self._ca[0]*self._ca[1]]),
+                sum(cell_contents_count[self._ca[0]-1::self._ca[0]]),
+                sum(cell_contents_count[0::self._ca[0]]),
+                sum(cell_contents_count[self._ca[0]-1::self._ca[0]*self._ca[1]]),
+                tmp2,
+                sum(cell_contents_count[0::self._ca[0]*self._ca[1]])
+               ]
+        
+        #Top layer
+        sizes+=[
+                cell_contents_count[self._ca[0]*self._ca[1]-1],
+                sum(cell_contents_count[self._ca[0]*(self._ca[1]-1):self._ca[0]*self._ca[1]-1:1]),
+                cell_contents_count[self._ca[0]*(self._ca[1]-1)],
+                sum(cell_contents_count[self._ca[0]-1:self._ca[0]*self._ca[1]-1:self._ca[0]]),
+                sum(cell_contents_count[0:self._ca[0]*self._ca[1]-1:1]),
+                sum(cell_contents_count[0:self._ca[0]*(self._ca[1]-1):self._ca[0]]),
+                cell_contents_count[self._ca[0]-1],
+                sum(cell_contents_count[0:self._ca[0]-1:1]),
+                cell_contents_count[0]
+              ]        
+        self._exchange_sizes = sizes
+        
+        
+        
         
     
     
-class halo(object):
+class Halo(object):
     """
     Class to contain a halo.
     """
-    def __init__(self, local_index = None, ncol = 1, nrow = 1, dtype = ctypes.c_double):
+    def __init__(self, MPICOMM = None, rank_local = 0, rank_dest = 0, rank_src = 0, local_index = None, cell_count = 1, nrow = 1, ncol = 1, dtype = ctypes.c_double):
         
         assert local_index != None, "Error: No local index specified."
+        
+        self._MPI = MPICOMM
+        self._rank = rank_local
+        self._rd = rank_dest
+        self._rs = rank_src
+        self._MPIstatus=MPI.Status()
+        
         
         self._li = local_index #make linear or 3 tuple? leading towards linear.
         self._nc = ncol
         self._nr = nrow
         self._dt = dtype
+        self._cell_count = cell_count
         
-        self._d = np.zeros((self._nc, self._nr), dtype=self._dt, order='C')
+        self._d = np.zeros((self._nr, self._nc), dtype=self._dt, order='C')
     
-    def resize(self, ncol = None, nrow = None):
+    def resize(self, nrow = None, ncol = None):
         """
-        Resize halo to given dimensions. If a new dimension size is not given, old dimension size will remain. 
+        Resize halo to given dimensions. If a new dimension size is not given, old dimension size will remain. Initial testing gives small hit. 
         
         :arg int ncol: New number of columns.
         :arg int row: New number of rows.
@@ -52,12 +141,24 @@ class halo(object):
             self._nr = nrow
             resize = True
         if (resize):
-            self._d = np.zeros((self._nc, self._nr), dtype=self._dt, order='C')
+            self._d = np.zeros((self._nr, self._nc), dtype=self._dt, order='C')
+    
+    
+    
+    
+    def send_prepare(self, count, cell_list, data):
+        
+        recv_size = np.array([0],dtype='i')
+        self._MPI.Sendrecv(np.array([count],dtype='i'), 0, 0, recv_size, 0, 0, self._MPIstatus)
+        #get int back: recv_size[0]
+        self.resize(recv_size[0],data.ncomp)
+        
+        '''Put local data packing here'''
         
         
         
     
-    
+        
     def __setitem__(self,ix, val):
         self._d[ix] = np.array([val],dtype=self._dt)    
         
@@ -91,3 +192,14 @@ class halo(object):
     def dtype(self):
         ''' Return Dat c data ctype'''
         return self._dt
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

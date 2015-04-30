@@ -4,6 +4,8 @@ import ctypes
 import data
 import kernel
 import loop
+import halo
+from mpi4py import MPI
 
 class BaseDomain(object):
     '''
@@ -16,7 +18,13 @@ class BaseDomain(object):
 
     def __init__(self, extent = np.array([1., 1., 1.]), cell_count = 1):
         
+        self._MPI = MPI.COMM_WORLD
+        self._rank = self._MPI.Get_rank()
+        self._nproc = self._MPI.Get_size()
+        
+        
         self._extent = data.ScalarArray(extent)
+        
         
         
         
@@ -27,9 +35,6 @@ class BaseDomain(object):
         
         
         self._BCloop = None
-        
-       
-        
         
         
     def BCSetup(self, positions):
@@ -94,8 +99,21 @@ class BaseDomain(object):
         assert self._BCloop != None, "Run BCSetup first"
         self._BCloop.execute()
         
+    
+    
+    
+    def halo_init(self):
+        '''
+        Method to initialise halos for local domain.
+        '''
+        self._halos = halo.HaloCartesian(self._MPI, self._rank, self._nproc, self._cell_array)
         
         
+        
+    
+    @property
+    def halos(self):
+        return self._halos    
         
         
     @property  
@@ -132,7 +150,7 @@ class BaseDomain(object):
         self._cell_edge_lengths[0] = self._extent[0]/self._cell_array[0]
         self._cell_edge_lengths[1] = self._extent[1]/self._cell_array[1]
         self._cell_edge_lengths[2] = self._extent[2]/self._cell_array[2]
-        
+        self.halo_init()
         
     @property    
     def volume(self):
@@ -165,12 +183,10 @@ class BaseDomain(object):
         if (int(self._extent[0]/rn) < 3 or int(self._extent[1]/rn) < 3 or int(self._extent[2]/rn) < 3):
             print "WARNING: Less than three cells per coordinate direction. Cell based domain will not be used"
             
-        
-            #self._extent[0] = 3*rn
-            #self._extent[1] = 3*rn
-            #self._extent[2] = 3*rn
-            #self.set_cell_array_radius(rn)
-            
+            self._cell_array[0] = 1
+            self._cell_array[1] = 1
+            self._cell_array[2] = 1  
+            self._cell_count_recalc()
             return False
             
         else:
@@ -197,91 +213,7 @@ class BaseDomain(object):
         """
         return self._cell_edge_lengths
         
-               
-class HaloCartesian(object):
-    """
-    Class to contain and control cartesian halo transfers.
-    
-    """
-    def __init__(self):
-        self._halos=[]
         
-        
-    def add_halo(self, halo = None):
-        assert halo != None, "Error: No halo specified."
-        self._halos.append(halo)
-        
-    
-    
-class halo(object):
-    """
-    Class to contain a halo.
-    """
-    def __init__(self, local_index = None, ncol = 1, nrow = 1, dtype = ctypes.c_double):
-        
-        assert local_index != None, "Error: No local index specified."
-        
-        self._li = local_index #make linear or 3 tuple? leading towards linear.
-        self._nc = ncol
-        self._nr = nrow
-        self._dt = dtype
-        
-        self._d = np.zeros((self._nc, self._nr), dtype=self._dt, order='C')
-    
-    def resize(self, ncol = None, nrow = None):
-        """
-        Resize halo to given dimensions. If a new dimension size is not given, old dimension size will remain. 
-        
-        :arg int ncol: New number of columns.
-        :arg int row: New number of rows.
-        """
-        resize=False
-        if (ncol != None):
-            self._nc = ncol
-            resize = True
-        if (nrow != None):
-            self._nr = nrow
-            resize = True
-        if (resize):
-            self._d = np.zeros((self._nc, self._nr), dtype=self._dt, order='C')
-        
-        
-        
-    
-    
-    def __setitem__(self,ix, val):
-        self._d[ix] = np.array([val],dtype=self._dt)    
-        
-    def __str__(self):
-        return str(self._d)
-        
-    def __getitem__(self,ix):
-        return self._d[ix]    
-    
-    @property
-    def ctypes_data(self):
-        '''Return ctypes-pointer to data.'''
-        return self._d.ctypes.data_as(ctypes.POINTER(self._dt))
-        
-    @property
-    def ncol(self):
-        '''Return number of columns.'''
-        return self._nc
-        
-    @property
-    def nrow(self):
-        '''Return number of rwos.'''    
-        return self._nr
-        
-    @property
-    def index(self):
-        '''Return local index.'''
-        return self._li
-        
-    @property
-    def dtype(self):
-        ''' Return Dat c data ctype'''
-        return self._dt        
         
         
         
