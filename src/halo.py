@@ -68,71 +68,30 @@ class HaloCartesian(object):
                             range(self._ca[0]*self._ca[1]*(self._ca[2]-1),self._ca[0]*self._ca[1]*(self._ca[2]-1)+self._ca[0],1),
                             [self._ca[0]*self._ca[1]*(self._ca[2]-1)]
                             ]
-                            
-                            
-                            
         
-        #bottom layer
-        sizes=[
-                cell_contents_count[self._ca[0]*self._ca[1]*self._ca[2]-1],
-                sum(cell_contents_count[self._ca[0]*(self._ca[1]*self._ca[2]-1)::1]),
-                cell_contents_count[self._ca[0]*self._ca[1]*self._ca[2]-self._ca[0]], 
-                sum(cell_contents_count[self._ca[0]*(self._ca[1]*(self._ca[2]-1)+1)-1::self._ca[0]]),
-                sum(cell_contents_count[self._ca[0]*self._ca[1]*(self._ca[2]-1)::1]),
-                sum(cell_contents_count[self._ca[0]*self._ca[1]*(self._ca[2]-1)::self._ca[0]]),#
-                cell_contents_count[self._ca[0]*(self._ca[1]*(self._ca[2]-1)+1)-1],
-                sum(cell_contents_count[self._ca[0]*self._ca[1]*(self._ca[2]-1):self._ca[0]*self._ca[1]*(self._ca[2]-1)+self._ca[0]:1]),
-                cell_contents_count[self._ca[0]*self._ca[1]*(self._ca[2]-1)]
-              ]
-        
-        
-      
-        
-        
-        #middle layer
-        sizes+=[
-               sum(cell_contents_count[self._ca[0]*self._ca[1]-1::self._ca[0]*self._ca[1] ])]
-        
-        
-        tmp1=0
-        tmp1_=[]
+        #MIDDLE
+        _tmp1=[]
         for ix in range(1,self._ca[2]+1):
-            tmp1_+=range(ix*self._ca[0]*self._ca[1]-self._ca[0],ix*self._ca[0]*self._ca[1],1)
-            tmp1+=sum(cell_contents_count[ix*self._ca[0]*self._ca[1]-self._ca[0]:ix*self._ca[0]*self._ca[1]:1])       
-            
+            _tmp1+=range(ix*self._ca[0]*self._ca[1]-self._ca[0],ix*self._ca[0]*self._ca[1],1)    
         
-        
-        tmp2=0
-        tmp2_=[]
+        _tmp2=[]
         for ix in range(self._ca[2]):
-            tmp2_+= range(ix*self._ca[0]*self._ca[1],ix*self._ca[0]*self._ca[1]+self._ca[0],1)
-            tmp2+=sum(cell_contents_count[ix*self._ca[0]*self._ca[1]:ix*self._ca[0]*self._ca[1]+self._ca[0]-1:1])
+            _tmp2+= range(ix*self._ca[0]*self._ca[1],ix*self._ca[0]*self._ca[1]+self._ca[0],1)
         
         
         self._cell_indices+=[
                               range(self._ca[0]*self._ca[1]-1,end,self._ca[0]*self._ca[1]),
-                              tmp1_,
+                              _tmp1,
                               range(self._ca[0]*(self._ca[1]-1),self._ca[0]*(self._ca[1]*self._ca[2]-1)+1,self._ca[0]*self._ca[1]),
                               range(self._ca[0]-1,end,self._ca[0]),
                               range(0,end,self._ca[0]),
                               range(self._ca[0]-1,end,self._ca[0]*self._ca[1]),
-                              tmp2_,
+                              _tmp2,
                               range(0,end,self._ca[0]*self._ca[1])
                              ]
         
         
-        sizes+=[
-                tmp1,
-                sum(cell_contents_count[self._ca[0]*(self._ca[1]-1):self._ca[0]*(self._ca[1]*self._ca[2]-1)+1:self._ca[0]*self._ca[1]]),
-                sum(cell_contents_count[self._ca[0]-1::self._ca[0]]),
-                sum(cell_contents_count[0::self._ca[0]]),#
-                sum(cell_contents_count[self._ca[0]-1::self._ca[0]*self._ca[1]]),
-                tmp2,
-                sum(cell_contents_count[0::self._ca[0]*self._ca[1]])
-               ]
-        
-        
-        
+        #BOTTOM
         self._cell_indices+=[
                             [self._ca[0]*self._ca[1]-1],
                             range(self._ca[0]*(self._ca[1]-1),self._ca[0]*self._ca[1],1),
@@ -144,26 +103,6 @@ class HaloCartesian(object):
                             range(0,self._ca[0],1),
                             [0]
                             ]
-        
-        
-        
-        #Top layer
-        sizes+=[
-                cell_contents_count[self._ca[0]*self._ca[1]-1],
-                sum(cell_contents_count[self._ca[0]*(self._ca[1]-1):self._ca[0]*self._ca[1]:1]),
-                cell_contents_count[self._ca[0]*(self._ca[1]-1)],
-                sum(cell_contents_count[self._ca[0]-1:self._ca[0]*self._ca[1]:self._ca[0]]),
-                sum(cell_contents_count[0:self._ca[0]*self._ca[1]:1]),
-                sum(cell_contents_count[0:self._ca[0]*(self._ca[1]-1)+1:self._ca[0]]),
-                cell_contents_count[self._ca[0]-1],
-                sum(cell_contents_count[0:self._ca[0]:1]),
-                cell_contents_count[0]
-              ]
-        
-        
-        
-        #print "########################################################"
-        #print self._cell_indices
         
         _sizes=[]
         
@@ -178,7 +117,7 @@ class HaloCartesian(object):
         
         
                 
-        self._exchange_sizes = sizes
+        self._exchange_sizes = _sizes
         
         
         
