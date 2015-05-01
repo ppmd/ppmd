@@ -32,7 +32,6 @@ class HaloCartesian(object):
         dest=0
         src=0
         
-        
         for ix in range(26):
             self._halos.append(Halo(self._MPI, self._rank,dest,src,ix,self._SIZES[ix]))
            
@@ -43,23 +42,52 @@ class HaloCartesian(object):
         '''Resize'''
         for i,h in enumerate(self._halos):
             h.send_prepare(self._exchange_sizes[i], cell_list, data)
+    
+    
+        
+    def _local_data_pack(self):
+        pass
+        
+        
         
         
         
     def _exchange_size_calc(self,cell_contents_count):
         
+        end=self._ca[0]*self._ca[1]*self._ca[2]
+        
+        #TOP
+        self._cell_indices=[
+                            [end-1],
+                            range(self._ca[0]*(self._ca[1]*self._ca[2]-1),end,1),
+                            [self._ca[0]*self._ca[1]*self._ca[2]-self._ca[0]],
+                            range(self._ca[0]*(self._ca[1]*(self._ca[2]-1)+1)-1,end,self._ca[0]),
+                            range(self._ca[0]*self._ca[1]*(self._ca[2]-1),end,1),
+                            range(self._ca[0]*self._ca[1]*(self._ca[2]-1),end,self._ca[0]),
+                            [self._ca[0]*(self._ca[1]*(self._ca[2]-1)+1)-1],
+                            range(self._ca[0]*self._ca[1]*(self._ca[2]-1),self._ca[0]*self._ca[1]*(self._ca[2]-1)+self._ca[0],1),
+                            [self._ca[0]*self._ca[1]*(self._ca[2]-1)]
+                            ]
+                            
+                            
+                            
+        
         #bottom layer
         sizes=[
                 cell_contents_count[self._ca[0]*self._ca[1]*self._ca[2]-1],
-                sum(cell_contents_count[self._ca[0]*(self._ca[1]*self._ca[2]-1)-1::1]),
-                cell_contents_count[self._ca[0]*self._ca[1]*self._ca[2]-self._ca[0]],
+                sum(cell_contents_count[self._ca[0]*(self._ca[1]*self._ca[2]-1)::1]),
+                cell_contents_count[self._ca[0]*self._ca[1]*self._ca[2]-self._ca[0]], 
                 sum(cell_contents_count[self._ca[0]*(self._ca[1]*(self._ca[2]-1)+1)-1::self._ca[0]]),
                 sum(cell_contents_count[self._ca[0]*self._ca[1]*(self._ca[2]-1)::1]),
-                sum(cell_contents_count[self._ca[0]*self._ca[1]*(self._ca[2]-1)::self._ca[0]]),
+                sum(cell_contents_count[self._ca[0]*self._ca[1]*(self._ca[2]-1)::self._ca[0]]),#
                 cell_contents_count[self._ca[0]*(self._ca[1]*(self._ca[2]-1)+1)-1],
                 sum(cell_contents_count[self._ca[0]*self._ca[1]*(self._ca[2]-1):self._ca[0]*self._ca[1]*(self._ca[2]-1)+self._ca[0]:1]),
                 cell_contents_count[self._ca[0]*self._ca[1]*(self._ca[2]-1)]
               ]
+        
+        
+      
+        
         
         #middle layer
         sizes+=[
@@ -67,35 +95,89 @@ class HaloCartesian(object):
         
         
         tmp1=0
+        tmp1_=[]
         for ix in range(1,self._ca[2]+1):
-            tmp1+=sum(cell_contents_count[ix*self._ca[0]*self._ca[1]-self._ca[0]:ix*self._ca[0]*self._ca[1]-1:1])       
+            tmp1_+=range(ix*self._ca[0]*self._ca[1]-self._ca[0],ix*self._ca[0]*self._ca[1],1)
+            tmp1+=sum(cell_contents_count[ix*self._ca[0]*self._ca[1]-self._ca[0]:ix*self._ca[0]*self._ca[1]:1])       
+            
+        
         
         tmp2=0
+        tmp2_=[]
         for ix in range(self._ca[2]):
+            tmp2_+= range(ix*self._ca[0]*self._ca[1],ix*self._ca[0]*self._ca[1]+self._ca[0],1)
             tmp2+=sum(cell_contents_count[ix*self._ca[0]*self._ca[1]:ix*self._ca[0]*self._ca[1]+self._ca[0]-1:1])
+        
+        
+        self._cell_indices+=[
+                              range(self._ca[0]*self._ca[1]-1,end,self._ca[0]*self._ca[1]),
+                              tmp1_,
+                              range(self._ca[0]*(self._ca[1]-1),self._ca[0]*(self._ca[1]*self._ca[2]-1)+1,self._ca[0]*self._ca[1]),
+                              range(self._ca[0]-1,end,self._ca[0]),
+                              range(0,end,self._ca[0]),
+                              range(self._ca[0]-1,end,self._ca[0]*self._ca[1]),
+                              tmp2_,
+                              range(0,end,self._ca[0]*self._ca[1])
+                             ]
+        
         
         sizes+=[
                 tmp1,
-                sum(cell_contents_count[self._ca[0]*(self._ca[1]-1):self._ca[0]*(self._ca[1]*self._ca[2]-1):self._ca[0]*self._ca[1]]),
+                sum(cell_contents_count[self._ca[0]*(self._ca[1]-1):self._ca[0]*(self._ca[1]*self._ca[2]-1)+1:self._ca[0]*self._ca[1]]),
                 sum(cell_contents_count[self._ca[0]-1::self._ca[0]]),
-                sum(cell_contents_count[0::self._ca[0]]),
+                sum(cell_contents_count[0::self._ca[0]]),#
                 sum(cell_contents_count[self._ca[0]-1::self._ca[0]*self._ca[1]]),
                 tmp2,
                 sum(cell_contents_count[0::self._ca[0]*self._ca[1]])
                ]
         
+        
+        
+        self._cell_indices+=[
+                            [self._ca[0]*self._ca[1]-1],
+                            range(self._ca[0]*(self._ca[1]-1),self._ca[0]*self._ca[1],1),
+                            [self._ca[0]*(self._ca[1]-1)],
+                            range(self._ca[0]-1,self._ca[0]*self._ca[1],self._ca[0]),
+                            range(0,self._ca[0]*self._ca[1],1),
+                            range(0,self._ca[0]*(self._ca[1]-1)+1,self._ca[0]),
+                            [self._ca[0]-1],
+                            range(0,self._ca[0],1),
+                            [0]
+                            ]
+        
+        
+        
         #Top layer
         sizes+=[
                 cell_contents_count[self._ca[0]*self._ca[1]-1],
-                sum(cell_contents_count[self._ca[0]*(self._ca[1]-1):self._ca[0]*self._ca[1]-1:1]),
+                sum(cell_contents_count[self._ca[0]*(self._ca[1]-1):self._ca[0]*self._ca[1]:1]),
                 cell_contents_count[self._ca[0]*(self._ca[1]-1)],
-                sum(cell_contents_count[self._ca[0]-1:self._ca[0]*self._ca[1]-1:self._ca[0]]),
-                sum(cell_contents_count[0:self._ca[0]*self._ca[1]-1:1]),
-                sum(cell_contents_count[0:self._ca[0]*(self._ca[1]-1):self._ca[0]]),
+                sum(cell_contents_count[self._ca[0]-1:self._ca[0]*self._ca[1]:self._ca[0]]),
+                sum(cell_contents_count[0:self._ca[0]*self._ca[1]:1]),
+                sum(cell_contents_count[0:self._ca[0]*(self._ca[1]-1)+1:self._ca[0]]),
                 cell_contents_count[self._ca[0]-1],
-                sum(cell_contents_count[0:self._ca[0]-1:1]),
+                sum(cell_contents_count[0:self._ca[0]:1]),
                 cell_contents_count[0]
-              ]        
+              ]
+        
+        
+        
+        #print "########################################################"
+        #print self._cell_indices
+        
+        _sizes=[]
+        
+        for i,x in enumerate(self._cell_indices):
+            _sizes.append(sum([y[1] for y in enumerate(cell_contents_count) if y[0] in x]))
+        
+        
+        
+        
+        
+        
+        
+        
+                
         self._exchange_sizes = sizes
         
         
@@ -124,7 +206,7 @@ class Halo(object):
         self._dt = dtype
         self._cell_count = cell_count
         
-        self._d = np.zeros((self._nr, self._nc), dtype=self._dt, order='C')
+        self._d = np.empty((self._nr, self._nc), dtype=self._dt, order='C')
     
     def resize(self, nrow = None, ncol = None):
         """
@@ -141,19 +223,24 @@ class Halo(object):
             self._nr = nrow
             resize = True
         if (resize):
-            self._d = np.zeros((self._nr, self._nc), dtype=self._dt, order='C')
+            self._d = np.empty((self._nr, self._nc), dtype=self._dt, order='C')
     
     
     
     
     def send_prepare(self, count, cell_list, data):
         
+        '''Exchange sizes of new data.'''
         recv_size = np.array([0],dtype='i')
-        self._MPI.Sendrecv(np.array([count],dtype='i'), 0, 0, recv_size, 0, 0, self._MPIstatus)
-        #get int back: recv_size[0]
+        self._MPI.Sendrecv(np.array([count],dtype='i'), self._rd, self._rd, recv_size, self._rs, self._rs, self._MPIstatus)
+        
+        '''Create space for new incoming data.'''
         self.resize(recv_size[0],data.ncomp)
         
-        '''Put local data packing here'''
+        '''Create space for packing outgoing data.'''
+        self._send_buffer = np.empty((count, self._nc), dtype=self._dt, order='C')
+        
+        
         
         
         
