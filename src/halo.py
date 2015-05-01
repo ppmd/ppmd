@@ -41,7 +41,7 @@ class HaloCartesian(object):
         self._exchange_size_calc(cell_contents_count)
         '''Resize'''
         for i,h in enumerate(self._halos):
-            h.send_prepare(self._exchange_sizes[i], cell_list, data)
+            h.send_prepare(self._exchange_sizes[i], self._cell_indices[i], cell_list, data)
     
     
         
@@ -104,17 +104,10 @@ class HaloCartesian(object):
                             [0]
                             ]
         
-        _sizes=[]
+        _sizes=range(self._ca[0]*self._ca[1]*self._ca[2])
         
         for i,x in enumerate(self._cell_indices):
-            _sizes.append(sum([y[1] for y in enumerate(cell_contents_count) if y[0] in x]))
-        
-        
-        
-        
-        
-        
-        
+            _sizes[i]=(sum([y[1] for y in enumerate(cell_contents_count) if y[0] in x]))
         
                 
         self._exchange_sizes = _sizes
@@ -167,7 +160,7 @@ class Halo(object):
     
     
     
-    def send_prepare(self, count, cell_list, data):
+    def send_prepare(self, count, cell_indices, cell_list, data):
         
         '''Exchange sizes of new data.'''
         recv_size = np.array([0],dtype='i')
@@ -178,6 +171,20 @@ class Halo(object):
         
         '''Create space for packing outgoing data.'''
         self._send_buffer = np.empty((count, self._nc), dtype=self._dt, order='C')
+        '''Loop over the local cells and collect particle data using the cell list and list of cell indices'''
+        
+        
+        '''MOVE THIS TO C, TAKES YEARS, maybe one loop for all send buffers via pointer to pointers as opposed to here which is a loop per halo'''
+        index=0
+        for ic in cell_indices:
+            ix = cell_list[data.npart+ic]
+            while (ix > -1):
+                
+                self._send_buffer[index][:]=data[ix]
+                
+                index+=1
+                ix=cell_list[ix];
+        
         
         
         
