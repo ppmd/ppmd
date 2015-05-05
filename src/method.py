@@ -543,7 +543,7 @@ class VelocityAutoCorrelation(object):
         self._T_store = data.ScalarArray(initial_value = 0.0, ncomp = size, dtype=ctypes.c_double)
         self._T_base = None
         
-        _headers = None
+        _headers = ['stdio.h']
         _constants = None
         _kernel_code = '''
         

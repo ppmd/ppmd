@@ -93,7 +93,7 @@ class _base(build.GenericToolChain):
             argname = dat[0]+'_ext'
             loc_argname = dat[0]
             
-            if (type(dat[1]) == data.ScalarArray):
+            if (type(dat[1]) == data.ScalarArray or type(dat[1]) == data.PointerArray):
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
             if (type(dat[1]) == particle.Dat):

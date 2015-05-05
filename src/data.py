@@ -440,11 +440,33 @@ class ScalarArray(object):
         else:
             self.AverageReset()
             self._Aarray += self._Dat
-            self._Alength += 1            
+            self._Alength += 1  
+                       
+################################################################################################################
+# Pointer array.
+################################################################################################################ 
 
-
-
-
+class PointerArray(object):
+    '''
+    Class to store arrays of pointers.
+    
+    :arg int length: Length of array.
+    :arg ctypes.dtype dtype: pointer data type.
+    '''
+    def __init__(self, length, dtype):
+        self._length = length
+        self._dtype = dtype
+        self._Dat = (ctypes.POINTER(self._dtype)*self._length)()
+    
+    @property
+    def dtype(self):
+        '''Returns data type.'''
+        return self._dtype
+        
+    @property      
+    def ctypes_data(self):
+        '''Returns pointer to start of array.'''
+        return self._Dat      
 
 
 
