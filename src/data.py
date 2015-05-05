@@ -468,10 +468,16 @@ class PointerArray(object):
         '''Returns pointer to start of array.'''
         return self._Dat      
 
+    @property
+    def ncomp(self):
+        '''Return number of components'''
+        return self._length
 
+    def __getitem__(self,ix):
+        return self._Dat[ix]
 
-
-
+    def __setitem__(self,ix,val):
+        self._Dat[ix] = val
 
 
 
