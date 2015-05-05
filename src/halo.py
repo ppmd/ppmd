@@ -219,7 +219,7 @@ class Halo(object):
                     ix=cell_list[ix];
                     
                     }} ''' % _d
-             
+             #
             _static_args = {'num_cells':ctypes.c_int, 
                             'npart':ctypes.c_int, 
                             'ncomp':ctypes.c_int}
