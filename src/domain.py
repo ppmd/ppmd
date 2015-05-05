@@ -214,12 +214,48 @@ class BaseDomain(object):
         return self._cell_edge_lengths
         
         
+################################################################################################################
+# BASE DOMAIN HALO
+################################################################################################################
+
+         
+class BaseDomainHalo(BaseDomain):
+
+    def set_cell_array_explicit(self, cell_array):
+        """
+        Set cell array with a vector.
+        
+        :arg np.array(3,1) cell_array: new cell array.
+        """
+        
+        self._cell_array[0:4] = cell_array
+        
+        self._cell_array_halo = data.ScalarArray([self._cell_array[0]+2, self._cell_array[1]+2, self._cell_array[2]+2], dtype=ctypes.c_int)
+        
+        self._cell_count_recalc()
+
+
+    def _cell_count_recalc(self):
+        """    
+        Recalculates number of cells in domain. Alongside computing cell edge lengths.
+        """
+        self._cell_count = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]
+        self._cell_edge_lengths[0] = self._extent[0]/self._cell_array[0]
+        self._cell_edge_lengths[1] = self._extent[1]/self._cell_array[1]
+        self._cell_edge_lengths[2] = self._extent[2]/self._cell_array[2]
+        
+        self._cell_count_halo = self._cell_array_halo[0]*self._cell_array_halo[1]*self._cell_array_halo[2]       
         
         
         
-    
-    
-    
+
+    @property     
+    def cell_array_halo(self):
+        """
+        Return cell array.
+        """
+        
+        return self._cell_array_halo
     
     
     

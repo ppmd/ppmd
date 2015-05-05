@@ -101,6 +101,23 @@ class Dat(object):
         Returns name of particle dat.
         '''
         return self._name
+        
+    def resize(self, npart):
+        '''
+        Resize particle dat to be at least a certain size, does not resize if already large enough.
+        
+        :arg int npart: New minimum size.
+        '''
+        
+        if (npart > self._N1):
+            self._Dat.resize([npart, self._N2], dtype=self._dtype, order='C' )
+        
+        
+        
+        
+        
+        
+        
     
         
     def DatWrite(self, dirname = './output',filename = None, rename_override = False):
