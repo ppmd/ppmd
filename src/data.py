@@ -13,7 +13,7 @@ import pickle
 import random
 np.set_printoptions(threshold='nan')
 
-ctypes_map = {ctypes.c_double:'double', ctypes.c_int:'int'}
+ctypes_map = {ctypes.c_double:'double', ctypes.c_int:'int', 'float64':'double', 'int32':'int'}
 
 
 def XYZWrite(dirname = './output', filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_override=False):
@@ -223,13 +223,16 @@ class ScalarArray(object):
         
         if (initial_value != None):
             if (type(initial_value) is np.ndarray):
-                self._Dat = initial_value
-                self._N1 = initial_value.size
+                self._Dat = np.array(initial_value, dtype=self._dtype, order='C')
+                self._N1 = initial_value.shape[0]
+            elif (type(initial_value) == list):
+                self._Dat = np.array(np.array(initial_value), dtype=self._dtype, order='C')
+                self._N1 = len(initial_value)
             else:
                 self._Dat = float(initial_value) * np.ones([self._N1], dtype=self._dtype, order='C')
-        if (val == None):
+        elif (val == None):
             self._Dat = np.zeros([self._N1], dtype=self._dtype, order='C')
-        if (val != None):
+        elif (val != None):
             self._Dat = np.array([val], dtype=self._dtype, order='C')
         
         self._A = False
@@ -340,6 +343,10 @@ class ScalarArray(object):
         '''Return mean'''
         return self._Dat.mean()      
         
+    @property
+    def name(self):
+        return "ScalarArray"
+    
     
         
     def DatWrite(self, dirname = './output',filename = None, rename_override = False):

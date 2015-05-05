@@ -16,17 +16,22 @@ class Dat(object):
     :arg str name: Collective name of stored vars eg positions.
     
     '''
-    def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None):
+    def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None, dtype = ctypes.c_double):
         
         self._name = name
         
-        self._dtype = ctypes.c_double
+        self._dtype = dtype
         
         self._N1 = N1
         self._N2 = N2
         
         if (initial_value != None):
-            self._Dat = float(initial_value) * np.ones([N1, N2], dtype=self._dtype, order='C')
+            if (type(initial_value) is np.ndarray):
+                self._Dat = np.array(initial_value, dtype=self._dtype, order='C')
+                self._N1 = initial_value.shape[0]
+                self._N2 = initial_value.shape[1]                
+            else:
+                self._Dat = float(initial_value) * np.ones([N1, N2], dtype=self._dtype, order='C')
         else:
             self._Dat = np.zeros([N1, N2], dtype=self._dtype, order='C')
         

@@ -188,9 +188,43 @@ def load_library_exception(kernel_name='None supplied', unique_name='None suppli
                        str(err_code) + "\n \n"
                        "###################################################### \n"
                        )
+
+def loop_unroll(str_start, i, j, step, str_end = None, key = None):
+    '''
+    Function to create unrolled loops in python source. Potentialy add auto padding here?
+    
+    :arg str str_start: Starting string.
+    :arg int i: Start index.
+    :arg int j: End index.
+    :arg int step: Stepsize between i and j.
+    :arg str str_end: Ending string.
+    '''
+    _s=''
+    
+    
+    
+    if (key==None):
+        for ix in range(i,j,step):
+            _s+=str(str_start)+str(ix)+str(str_end)
+    else:
+        _regex = '(?<=[\W])('+key+')(?=[\W])'
+        for ix in range(i,j+1,step):
+            _s+= re.sub(_regex,str(ix),str_start) + '\n'
+    
+    
+    
+    return _s
+    
+    
     
 
 
+
+
+
+################################################################################################################
+# GENERIC TOOL CHAIN LOOPING
+################################################################################################################
 
 class GenericToolChain(object):
     def _argnames(self):
@@ -214,7 +248,6 @@ class GenericToolChain(object):
                 self._argtypes.append(dat[1])
                 
         for i,dat in enumerate(self._particle_dat_dict.items()):
-            
             argnames += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+'_ext,'
             self._argtypes.append(dat[1].dtype)
         
@@ -363,8 +396,190 @@ class GenericToolChain(object):
         method(*args)
 
 
+################################################################################################################
+# TOOLCHAIN TO COMPILE KERNEL AS LIBRARY
+################################################################################################################
 
+class SharedLib(GenericToolChain):
+    '''
+    Generic base class to loop over all particles once.
+    
+    :arg int N: Number of elements to loop over.
+    :arg kernel kernel:  Kernel to apply at each element.
+    :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
+    :arg bool DEBUG: Flag to enable debug flags.
+    '''
+    def __init__(self, kernel, particle_dat_dict, DEBUG = False):
+        self._DEBUG = DEBUG
+        self._compiler_set()
+        self._temp_dir = './build/'
+        if (not os.path.exists(self._temp_dir)):
+            os.mkdir(self._temp_dir)
+        self._kernel = kernel
+        
+        self._particle_dat_dict = particle_dat_dict
+        self._nargs = len(self._particle_dat_dict)
 
+        self._code_init()
+        
+        self._unique_name = self._unique_name_calc()
+        
+        self._library_filename  = self._unique_name +'.so'
+        
+        if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
+            self._create_library()
+        try:
+            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        except:
+            load_library_exception(self._kernel.name, self._unique_name,type(self))
+        
+    def _compiler_set(self):
+        self._cc = TMPCC
 
+    def _kernel_methodname(self):
+        '''Construct the name of the kernel method.
+        
+        Return a string of the form 
+        ``inline void kernel_name(double *<arg1>, double *<arg2}, ...) {``
+        which is used for defining the name of the kernel method.
+        '''
+        space = ' '*14
+        s = 'inline void '+self._kernel.name+'('
+        
+        #for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
+        for i,dat in enumerate(self._particle_dat_dict.items()):
+            #print var_name_kernel, var_name_state.dattype()
+            s += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+', '
+            
+        s = s[:-2] + ') {'
+        return s  
+        
+              
+    def _kernel_argument_declarations(self):
+        '''Define and declare the kernel arguments.
 
+        For each argument the kernel gets passed a pointer of type
+        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
+        pointer to the data which contains the properties of particle i.
+        These properties are stored consecutively in memory, so for a 
+        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
+        property the vector entry j of particle i is accessed as 
+        ``loc_argXXX[i][j]``.
+
+        This method generates the definitions of the ``loc_argXXX`` variables
+        and populates the data to ensure that ``loc_argXXX[i]`` points to
+        the correct address in the particle_dats.
+        '''
+        s = '\n'
+        
+        
+        for i,dat in enumerate(self._particle_dat_dict.items()):
+            
+            
+            space = ' '*14
+            argname = dat[0]#+'_ext'
+            loc_argname = argname #dat[0]
+            
+            if (type(dat[1]) == data.ScalarArray):
+                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
+            
+            if (type(dat[1]) == particle.Dat):
+                
+                ncomp = dat[1].ncomp
+                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';\n'
+                s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'     
+        
+        
+        return s  
+
+    def _generate_header_source(self):
+        '''Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        '''
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+        #include "../generic.h"
+        %(INCLUDED_HEADERS)s
+
+        void %(KERNEL_NAME)s_wrapper(%(ARGUMENTS)s);
+
+        #endif
+        '''
+        
+        
+        d = {'UNIQUENAME':self._unique_name,
+             'INCLUDED_HEADERS':self._included_headers(),
+             'KERNEL_NAME':self._kernel.name,
+             'ARGUMENTS':self._argnames()}
+        return (code % d)
+    
+    
+       
+    def execute(self, dat_dict = None, static_args = None):
+        
+        '''Allow alternative pointers'''
+        if (dat_dict != None):
+            self._particle_dat_dict = dat_dict    
+        
+        args=[]
+        
+        
+        '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
+        
+        
+        '''Add static arguments to launch command'''
+        if (self._kernel.static_args != None):
+            assert static_args != None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+            
+        '''Add pointer arguments to launch command'''
+        for dat in self._particle_dat_dict.values():
+            args.append(dat.ctypes_data)
+            
+            
+        '''Execute the kernel over all particle pairs.'''            
+        method = self._lib[self._kernel.name+'_wrapper']
+        method(*args)        
+
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+    
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+
+        void %(KERNEL_NAME)s_wrapper(%(ARGUMENTS)s) {
+          
+          %(KERNEL)s
+        
+        }
+        '''
+    def _argnames(self):
+        '''Comma separated string of argument name declarations.
+
+        This string of argument names is used in the declaration of 
+        the method which executes the pairloop over the grid. 
+        If, for example, the pairloop gets passed two particle_dats, 
+        then the result will be ``double** arg_000,double** arg_001`.`
+        '''
+        
+        self._argtypes = []
+        
+        argnames = ''
+        if (self._kernel.static_args != None):
+            self._static_arg_order = []
+        
+            for i,dat in enumerate(self._kernel.static_args.items()):
+                argnames += 'const '+data.ctypes_map[dat[1]]+' '+dat[0]+','        
+                self._static_arg_order.append(dat[0])
+                self._argtypes.append(dat[1])
+                
+        for i,dat in enumerate(self._particle_dat_dict.items()):
+            
+            argnames += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+','
+            self._argtypes.append(dat[1].dtype)
+        
+        return argnames[:-1]  
 

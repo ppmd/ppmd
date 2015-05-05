@@ -4,6 +4,9 @@ import ctypes
 import data
 from mpi4py import MPI
 import random
+import kernel
+import build
+import particle
 
 ################################################################################################################
 # HALO DEFINITIONS
@@ -40,6 +43,9 @@ class HaloCartesian(object):
         '''Get new storage sizes'''
         self._exchange_size_calc(cell_contents_count)
         '''Resize'''
+        
+        #currently sends wrong cell indices, needs to send the cell indices to pack.
+        
         for i,h in enumerate(self._halos):
             h.send_prepare(self._exchange_sizes[i], self._cell_indices[i], cell_list, data)
     
@@ -139,6 +145,9 @@ class Halo(object):
         self._cell_count = cell_count
         
         self._d = np.empty((self._nr, self._nc), dtype=self._dt, order='C')
+        
+        self._packing_lib = None
+        
     
     def resize(self, nrow = None, ncol = None):
         """
@@ -155,40 +164,86 @@ class Halo(object):
             self._nr = nrow
             resize = True
         if (resize):
-            self._d = np.empty((self._nr, self._nc), dtype=self._dt, order='C')
+            self._d = particle.Dat(self._nr, self._nc, dtype=self._dt)
     
     
     
     
-    def send_prepare(self, count, cell_indices, cell_list, data):
+    def send_prepare(self, count, cell_indices, cell_list, data_buffer):
         
         '''Exchange sizes of new data.'''
         recv_size = np.array([0],dtype='i')
         self._MPI.Sendrecv(np.array([count],dtype='i'), self._rd, self._rd, recv_size, self._rs, self._rs, self._MPIstatus)
         
         '''Create space for new incoming data.'''
-        self.resize(recv_size[0],data.ncomp)
+        self.resize(recv_size[0],data_buffer.ncomp)
         
         '''Create space for packing outgoing data.'''
-        self._send_buffer = np.empty((count, self._nc), dtype=self._dt, order='C')
+        #self._send_buffer = np.empty((count, self._nc), dtype=self._dt, order='C')
+        self._send_buffer = particle.Dat(count, self._nc, name='send_buffer', dtype=ctypes.c_double)
+        
         '''Loop over the local cells and collect particle data using the cell list and list of cell indices'''
         
         
-        '''MOVE THIS TO C, TAKES YEARS, maybe one loop for all send buffers via pointer to pointers as opposed to here which is a loop per halo'''
+        '''MOVE THIS TO C, TAKES YEARS, maybe one loop for all send buffers via pointer to pointers as opposed to here which is a loop per halo
         index=0
         for ic in cell_indices:
-            ix = cell_list[data.npart+ic]
+            ix = cell_list[data_buffer.npart+ic]
             while (ix > -1):
                 
-                self._send_buffer[index][:]=data[ix]
+                self._send_buffer[index][:]=data_buffer[ix]
                 
                 index+=1
                 ix=cell_list[ix];
+        '''
+        
+
+        
+        _cell_indices = data.ScalarArray(initial_value=cell_indices, dtype=ctypes.c_int)
         
         
+        if (self._packing_lib == None):
+            _d = {'LOOP_UNROLL':build.loop_unroll('send_buffer[LINIDX_2D(ncomp,index,iy)] = data_buffer[LINIDX_2D(ncomp,ix,iy)];',0,data_buffer.ncomp-1,1,'','iy')}
+            _code = '''
+            int index = 0;
+            
+            for(int ic=0;ic<num_cells;ic++){
+                                
+                const int icp = cell_indices[ic];               
+                int ix = cell_list[npart+icp];
+                while (ix > -1){
+                    
+                    %(LOOP_UNROLL)s
+                    
+                    index++;
+                    ix=cell_list[ix];
+                    
+                    }} ''' % _d
+             
+            _static_args = {'num_cells':ctypes.c_int, 
+                            'npart':ctypes.c_int, 
+                            'ncomp':ctypes.c_int}
+            
+            _args = {'cell_indices':_cell_indices, 
+                     'cell_list':cell_list,
+                     'send_buffer':self._send_buffer, 
+                     'data_buffer':data_buffer}
+                     
+            _headers = ['stdio.h']
+            _kernel = kernel.Kernel('HaloPack', _code, None, _headers, None, _static_args)
+            self._packing_lib = build.SharedLib(_kernel,_args,True)
+            
         
         
-        
+        self._packing_lib.execute( {'cell_indices':_cell_indices, 
+                                    'cell_list':cell_list,
+                                    'send_buffer':self._send_buffer, 
+                                    'data_buffer':data_buffer} , 
+                     static_args = {'num_cells':ctypes.c_int(self._cell_count),
+                                    'npart':ctypes.c_int(data_buffer.npart),
+                                    'ncomp':ctypes.c_int(data_buffer.ncomp) })
+    
+    
         
     
         
@@ -213,7 +268,7 @@ class Halo(object):
         
     @property
     def nrow(self):
-        '''Return number of rwos.'''    
+        '''Return number of rows.'''    
         return self._nr
         
     @property
