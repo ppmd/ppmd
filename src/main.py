@@ -20,13 +20,13 @@ if __name__ == '__main__':
     test_1000 = True
     
     #2 particles bouncing agasint each other.
-    test_2_bounce = False
+    test_2_bounce = True
     
     #plot as computing + at end?
     plotting = False
     
     #log energy?
-    logging = False
+    logging = True
     
     #Enbale debug flags?
     debug = True
@@ -48,7 +48,7 @@ if __name__ == '__main__':
         nsig = 5.0
         
         #Initialise basci domain
-        test_domain = domain.BaseDomain()
+        test_domain = domain.BaseDomainHalo()
         
         #Initialise LJ potential
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
@@ -66,11 +66,11 @@ if __name__ == '__main__':
         N=2
         
         #See above
-        test_domain = domain.BaseDomain()
+        test_domain = domain.BaseDomainHalo()
         test_potential = potential.LennardJonesShifted(sigma=1.0,epsilon=1.0)
         
         #Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.6, extent = np.array([5., 5., 5.]), axis = np.array([1,0,0]))
+        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.6, extent = np.array([5., 5., 5.]), axis = np.array([0,0,1]))
         
         #Give first two particles specific velocities
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(interval = 1)
+        plothandle = data.DrawParticles(interval = 2)
     else:
         plothandle = None
     
@@ -125,7 +125,7 @@ if __name__ == '__main__':
     ###########################################################
     
     
-    test_integrator.integrate(dt = 0.0001, T = 0.02, timer=True)
+    test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)

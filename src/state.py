@@ -50,7 +50,7 @@ class BaseMDState(object):
         
         
         self._domain = domain
-        self._domain.BCSetup(self._pos)
+        
         
         
         #potential energy, kenetic energy, total energy.
@@ -64,7 +64,7 @@ class BaseMDState(object):
         
         ''' Initialise particle positions'''
         particle_pos_init.reset(self)
-        
+        self._domain.BCSetup(self._pos)
         
         '''Initialise velocities'''
         if (particle_vel_init != None):

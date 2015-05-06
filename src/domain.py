@@ -101,20 +101,6 @@ class BaseDomain(object):
         
     
     
-    
-    def halo_init(self):
-        '''
-        Method to initialise halos for local domain.
-        '''
-        self._halos = halo.HaloCartesian(self._MPI, self._rank, self._nproc, self._cell_array)
-        
-        
-        
-    
-    @property
-    def halos(self):
-        return self._halos    
-        
         
     @property  
     def extent(self):
@@ -139,8 +125,7 @@ class BaseDomain(object):
         """
         return self._cell_count
     
-        
-        
+          
         
     def _cell_count_recalc(self):
         """    
@@ -150,7 +135,6 @@ class BaseDomain(object):
         self._cell_edge_lengths[0] = self._extent[0]/self._cell_array[0]
         self._cell_edge_lengths[1] = self._extent[1]/self._cell_array[1]
         self._cell_edge_lengths[2] = self._extent[2]/self._cell_array[2]
-        self.halo_init()
         
     @property    
     def volume(self):
@@ -178,8 +162,6 @@ class BaseDomain(object):
         
         """
 
-        
-        
         if (int(self._extent[0]/rn) < 3 or int(self._extent[1]/rn) < 3 or int(self._extent[2]/rn) < 3):
             print "WARNING: Less than three cells per coordinate direction. Cell based domain will not be used"
             
@@ -221,47 +203,58 @@ class BaseDomain(object):
          
 class BaseDomainHalo(BaseDomain):
 
-    def set_cell_array_explicit(self, cell_array):
+    def set_cell_array_radius(self, rn):
         """
-        Set cell array with a vector.
+        Create cell structure based on current extent and extended cutoff distance.
         
-        :arg np.array(3,1) cell_array: new cell array.
+        :arg double rn:  :math:`r_n = r_c + \delta`
+        
         """
         
-        self._cell_array[0:4] = cell_array
+        self._cell_array[0] = int(self._extent[0]/rn)
+        self._cell_array[1] = int(self._extent[1]/rn)
+        self._cell_array[2] = int(self._extent[2]/rn)
         
-        self._cell_array_halo = data.ScalarArray([self._cell_array[0]+2, self._cell_array[1]+2, self._cell_array[2]+2], dtype=ctypes.c_int)
-        
-        self._cell_count_recalc()
-
-
-    def _cell_count_recalc(self):
-        """    
-        Recalculates number of cells in domain. Alongside computing cell edge lengths.
-        """
-        self._cell_count = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]
         self._cell_edge_lengths[0] = self._extent[0]/self._cell_array[0]
         self._cell_edge_lengths[1] = self._extent[1]/self._cell_array[1]
         self._cell_edge_lengths[2] = self._extent[2]/self._cell_array[2]
         
-        self._cell_count_halo = self._cell_array_halo[0]*self._cell_array_halo[1]*self._cell_array_halo[2]       
+        
+        self._cell_array[0] += 2
+        self._cell_array[1] += 2
+        self._cell_array[2] += 2
         
         
+        self._cell_count = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]            
+        self._extent_outer = data.ScalarArray(self._extent.Dat+2*self._cell_edge_lengths.Dat)
         
-
-    @property     
-    def cell_array_halo(self):
+        self.halo_init()
+        
+        return True
+         
+     
+        
+    @property  
+    def extent_outer(self):
         """
-        Return cell array.
+        Returns list of domain extents.
         """
+        if 'self._extent_outer' in locals():
+            return self._extent_outer
+        else:
+            return None        
         
-        return self._cell_array_halo
+    
+    def halo_init(self):
+        '''
+        Method to initialise halos for local domain.
+        '''
+        self._halos = halo.HaloCartesian(self._MPI, self._rank, self._nproc, self._cell_array)
     
     
-    
-    
-    
-    
+    @property
+    def halos(self):
+        return self._halos      
     
     
     
