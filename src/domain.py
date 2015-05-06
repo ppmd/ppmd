@@ -228,6 +228,8 @@ class BaseDomainHalo(BaseDomain):
         self._cell_count = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]            
         self._extent_outer = data.ScalarArray(self._extent.Dat+2*self._cell_edge_lengths.Dat)
         
+        
+        
         self.halo_init()
         
         return True

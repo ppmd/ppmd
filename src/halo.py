@@ -26,9 +26,9 @@ class HaloCartesian(object):
         self._ca = cell_array
         self._halos=[]
         
-        _BASE_SIZES = [1, self._ca[0], 1, self._ca[1], self._ca[0]*self._ca[1], self._ca[1],1,self._ca[0],1]
+        _BASE_SIZES = [1, self._ca[0]-2, 1, self._ca[1]-2, (self._ca[0]-2)*(self._ca[1]-2), self._ca[1]-2,1,self._ca[0]-2,1]
         
-        _MID_SIZES = [self._ca[2], self._ca[0]*self._ca[2], self._ca[2], self._ca[1]*self._ca[2], self._ca[1]*self._ca[2], self._ca[2], self._ca[0]*self._ca[2], self._ca[2]]
+        _MID_SIZES = [self._ca[2]-2, (self._ca[0]-2)*(self._ca[2]-2), self._ca[2]-2, (self._ca[1]-2)*(self._ca[2]-2), (self._ca[1]-2)*(self._ca[2]-2), self._ca[2]-2, (self._ca[0]-2)*(self._ca[2]-2), self._ca[2]-2]
         
         self._SIZES = _BASE_SIZES + _MID_SIZES + _BASE_SIZES
         
@@ -38,7 +38,10 @@ class HaloCartesian(object):
         for ix in range(26):
             self._halos.append(Halo(self._MPI, self._rank,dest,src,ix,self._SIZES[ix]))
            
-            
+        '''TAKE THIS OUT'''
+        self._exchange_size_calc(1)
+        
+        
     def exchange(self,cell_contents_count, cell_list, data):
         '''Get new storage sizes'''
         self._exchange_size_calc(cell_contents_count)
@@ -60,19 +63,27 @@ class HaloCartesian(object):
         
     def _exchange_size_calc(self,cell_contents_count):
         
-        end=self._ca[0]*self._ca[1]*self._ca[2]
+        end=self._ca[0]*self._ca[1]*self._ca[2]-self._ca[0]*self._ca[1]-self._ca[0]-1
+        start = self._ca[0]*self._ca[1]+self._ca[0]+1
         
-        #TOP
+        print self._ca
+        
+        
+        #TOP '''CHECK THIS''
+        _top_slice_start = end-((self._ca[0]-2)*(self._ca[1]-2))
+        
+        print _top_slice_start
+        
         self._cell_indices=[
                             [end-1],
-                            range(self._ca[0]*(self._ca[1]*self._ca[2]-1),end,1),
-                            [self._ca[0]*self._ca[1]*self._ca[2]-self._ca[0]],
-                            range(self._ca[0]*(self._ca[1]*(self._ca[2]-1)+1)-1,end,self._ca[0]),
-                            range(self._ca[0]*self._ca[1]*(self._ca[2]-1),end,1),
-                            range(self._ca[0]*self._ca[1]*(self._ca[2]-1),end,self._ca[0]),
-                            [self._ca[0]*(self._ca[1]*(self._ca[2]-1)+1)-1],
-                            range(self._ca[0]*self._ca[1]*(self._ca[2]-1),self._ca[0]*self._ca[1]*(self._ca[2]-1)+self._ca[0],1),
-                            [self._ca[0]*self._ca[1]*(self._ca[2]-1)]
+                            range(end-self._ca[0]+2,end,1),
+                            [end-self._ca[0]+2],
+                            range(end-1-(self._ca[0]*(self._ca[1]-2)),end,self._ca[0]), 
+                            range(_top_slice_start,end,1), 
+                            range(_top_slice_start,end,self._ca[0]), 
+                            [_top_slice_start+self._ca[0]-3], 
+                            range(_top_slice_start,_top_slice_start+self._ca[0]-2,1),
+                            [_top_slice_start]
                             ]
         
         #MIDDLE
