@@ -182,6 +182,7 @@ class BaseDomain(object):
         return True
         
         
+        
     @property     
     def cell_array(self):
         """

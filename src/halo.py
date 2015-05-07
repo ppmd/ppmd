@@ -11,7 +11,22 @@ import particle
 ################################################################################################################
 # HALO DEFINITIONS
 ################################################################################################################
-             
+
+class cell_basis_calc(object):
+    def __init__(self, extent):
+        self._extent = extent
+    
+    def calc(self,c_in, cell_array):
+        """
+        Convert cell linear index to vector.
+        
+        :arg int c_in: Input index.
+        """    
+        Cz = self._extent[2]*float(c_in)/(cell_array[0]*cell_array[1]*cell_array[2])
+        Cx = self._extent[0]*float(c_in % cell_array[0])/cell_array[0]
+        Cy = self._extent[1]*float(int((c_in - Cz*(cell_array[0]*cell_array[1]))/(cell_array[0])))/cell_array[1]
+        return np.array([Cx,Cy,Cz], dtype=ctypes.c_double)
+           
 class HaloCartesian(object):
     """
     Class to contain and control cartesian halo transfers.
