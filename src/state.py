@@ -59,8 +59,6 @@ class BaseMDState(object):
         self._Q = data.ScalarArray();
 
         
-
-        
         
         ''' Initialise particle positions'''
         particle_pos_init.reset(self)
@@ -90,6 +88,7 @@ class BaseMDState(object):
         if (self._cell_setup_attempt==True):
             self._cell_sort_setup()
             self._cell_sort_all()
+            
             self._looping_method_accel = pairloop.PairLoopRapaport(N=self._N,
                                                                     domain = self._domain, 
                                                                     positions = self._pos, 
@@ -104,6 +103,9 @@ class BaseMDState(object):
                                                                         kernel = self._potential.kernel,
                                                                         particle_dat_dict = _potential_dat_dict,
                                                                         DEBUG = self._DEBUG)
+        
+        
+        
         
         
     
@@ -137,6 +139,7 @@ class BaseMDState(object):
         const int C2 = (int)(R2/CEL[2]);
         
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
+        
         CCC[val]++;
         Q[I[0]] = Q[N[0] + val];
         Q[N[0] + val] = I[0];
@@ -169,10 +172,9 @@ class BaseMDState(object):
         self._internal_index[0]=0
         self._cell_contents_count.scale(0)
         
+        
         self._cell_sort_loop.execute()
-    
-    
-    
+        
     
         
     @property    
@@ -232,9 +234,11 @@ class BaseMDState(object):
         """
         self._cell_sort_all()
         
+        print "Before", self._pos
+        if (self._cell_setup_attempt==True):
+            self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
+        print "After", self._pos  
         
-        #if (self._cell_setup_attempt==True):
-        #    self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
             
                     
         self.set_forces(ctypes.c_double(0.0))
@@ -652,7 +656,7 @@ class MassInitIdentical(object):
         
         :arg Dat mass_input: Dat container with masses.
         '''
-        for ix in range(np.shape(mass_input.Dat)[0]):
+        for ix in range(mass_input.npart):
             mass_input[ix] = self._m
 
 

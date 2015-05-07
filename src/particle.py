@@ -16,7 +16,7 @@ class Dat(object):
     :arg str name: Collective name of stored vars eg positions.
     
     '''
-    def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None, dtype = ctypes.c_double):
+    def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None, dtype = ctypes.c_double, max_size = 30):
         
         self._name = name
         
@@ -33,9 +33,14 @@ class Dat(object):
             else:
                 self._Dat = float(initial_value) * np.ones([N1, N2], dtype=self._dtype, order='C')
         else:
-            self._Dat = np.zeros([N1, N2], dtype=self._dtype, order='C')
+            self._Dat = np.zeros([max_size, N2], dtype=self._dtype, order='C')
         
         self._XYZFile_exists = False
+        
+        self._halo_start = self._N1 + 1
+        
+        
+        
         
     def set_val(self,val):
         self._Dat[...,...] = val
@@ -55,9 +60,19 @@ class Dat(object):
     def __getitem__(self,ix):
         return self._Dat[ix] 
             
-
+    
     def __setitem__(self, ix, val):
-        self._Dat[ix] = val      
+        self._Dat[ix] = val
+        '''
+        if (type(ix)==int):
+            tmp=ix
+        elif (type(ix)==tuple):
+            tmp=ix[0]
+        
+        
+        if (tmp > self._N1):
+            self._halo_start = tmp+1
+        '''    
         
         
     def __str__(self):
@@ -101,6 +116,22 @@ class Dat(object):
         Returns name of particle dat.
         '''
         return self._name
+    
+    @property
+    def halo_start(self):
+        return self._halo_start
+    
+    def halo_start_shift(self, shift):
+        self._halo_start+=shift
+    
+    def halo_start_reset(self):
+        self._halo_start = self._N1+1
+    
+    
+    
+    
+    
+    
         
     def resize(self, npart):
         '''

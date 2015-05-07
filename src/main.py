@@ -76,7 +76,7 @@ if __name__ == '__main__':
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
         
         #Set alternating masses for particles.
-        test_mass_init = state.MassInitIdentical()
+        test_mass_init = state.MassInitIdentical(5.)
         
     
     
@@ -125,7 +125,7 @@ if __name__ == '__main__':
     ###########################################################
     
     
-    test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
+    test_integrator.integrate(dt = 0.00001, T = 0.001, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)

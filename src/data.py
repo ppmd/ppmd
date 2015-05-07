@@ -11,9 +11,11 @@ import os
 import re
 import pickle
 import random
+from mpi4py import MPI
 np.set_printoptions(threshold='nan')
 
 ctypes_map = {ctypes.c_double:'double', ctypes.c_int:'int', 'float64':'double', 'int32':'int'}
+mpi_map = {ctypes.c_double:MPI.DOUBLE, ctypes.c_int:MPI.INT}
 
 
 def XYZWrite(dirname = './output', filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_override=False):
@@ -479,9 +481,12 @@ class PointerArray(object):
     def __setitem__(self,ix,val):
         self._Dat[ix] = val
 
+################################################################################################################
+# Blank arrays.
+################################################################################################################ 
 
-
-
+NullIntScalarArray=ScalarArray(dtype=ctypes.c_int)
+NullDoubleScalarArray=ScalarArray(dtype=ctypes.c_double)
 
 
 

@@ -108,6 +108,8 @@ class BaseDomain(object):
         Returns list of domain extents.
         """
         return self._extent
+                
+        
         
     def set_extent(self, new_extent = np.array([1., 1., 1.])):
         """
@@ -225,26 +227,23 @@ class BaseDomainHalo(BaseDomain):
         self._cell_array[2] += 2
         
         
-        self._cell_count = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]            
+        self._cell_count = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]
         self._extent_outer = data.ScalarArray(self._extent.Dat+2*self._cell_edge_lengths.Dat)
-        
         
         
         self.halo_init()
         
         return True
-         
+        
      
         
     @property  
-    def extent_outer(self):
+    def extent(self):
         """
-        Returns list of domain extents.
+        Returns list of domain extents including halo regions.
         """
-        if 'self._extent_outer' in locals():
-            return self._extent_outer
-        else:
-            return None        
+        
+        return self._extent_outer      
         
     
     def halo_init(self):
@@ -258,8 +257,12 @@ class BaseDomainHalo(BaseDomain):
     def halos(self):
         return self._halos      
     
-    
-    
+    def extent_internal(self):
+        """
+        Returns list of domain extents.
+        """
+        
+        return self._extent
     
     
     
