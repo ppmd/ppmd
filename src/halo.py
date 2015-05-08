@@ -11,7 +11,7 @@ import particle
 ################################################################################################################
 # HALO DEFINITIONS
 ################################################################################################################
-
+'''
 class cell_basis_calc(object):
     def __init__(self, extent):
         self._extent = extent
@@ -26,19 +26,23 @@ class cell_basis_calc(object):
         Cx = self._extent[0]*float(c_in % cell_array[0])/cell_array[0]
         Cy = self._extent[1]*float(int((c_in - Cz*(cell_array[0]*cell_array[1]))/(cell_array[0])))/cell_array[1]
         return np.array([Cx,Cy,Cz], dtype=ctypes.c_double)
-           
-class HaloCartesian(object):
+'''    
+class HaloCartesianSingleProcess(object):
     """
     Class to contain and control cartesian halo transfers.
     
     """
-    def __init__(self, MPICOMM = None, rank = 0, nproc = 1, cell_array = None):
+    def __init__(self, MPICOMM = None, rank = 0, nproc = 1, cell_array = None, extent = None):
         assert cell_array != None, "Error: No cell array passed."
+        assert extent != None, "Error: No extent passed."
+        
         self._rank = rank
         self._nproc = nproc
         self._MPI = MPICOMM
         
         self._ca = cell_array
+        self._extent = extent
+        
         self._halos=[]
         
         _BASE_SIZES = [1, self._ca[0]-2, 1, self._ca[1]-2, (self._ca[0]-2)*(self._ca[1]-2), self._ca[1]-2,1,self._ca[0]-2,1]
@@ -53,8 +57,7 @@ class HaloCartesian(object):
         self._exchange_prepare()
         
         for ix in range(26):
-            self._halos.append(Halo(self._MPI, self._rank,dest,src,ix,self._SIZES[ix],self._cell_indices[ix]))
-            
+            self._halos.append(Halo(self._MPI, self._rank,dest,src,ix,self._SIZES[ix],self._cell_indices[ix], shift=self._cell_shifts[ix], ncol = 3))
         
            
         
@@ -80,13 +83,12 @@ class HaloCartesian(object):
         
         
     def _exchange_size_calc(self,cell_contents_count):
-        
         for i,x in enumerate(self._cell_indices):
             self._exchange_sizes[i]=(sum([y[1] for y in enumerate(cell_contents_count) if y[0] in x]))
         
         
     def _exchange_prepare(self):
-        
+        self._exchange_sizes=range(26)
         
         _E = self._ca[0]*self._ca[1]*(self._ca[2]-1) - self._ca[0] - 1
         _TS = _E - self._ca[0]*(self._ca[1] - 2) + 2
@@ -98,21 +100,6 @@ class HaloCartesian(object):
         for ix in range(self._ca[1]-2):
             _tmp4 += range(_TS + ix*self._ca[0], _TS + (ix+1)*self._ca[0] - 2, 1)
         
-        
-
-        self._cell_indices=[
-                            [_E-1],
-                            range(_E-self._ca[0]+2,_E,1),
-                            [_E-self._ca[0]+2],
-                            range(_TS+self._ca[0]-3, _E, self._ca[0]), 
-                            _tmp4, 
-                            range(_TS,_E,self._ca[0]), 
-                            [_TS+self._ca[0]-3], 
-                            range(_TS,_TS+self._ca[0]-2,1),
-                            [_TS]
-                            ]
-        
-        #MIDDLE
         _tmp10=[]
         for ix in range(self._ca[2]-2):
             _tmp10 += range( _BE-self._ca[0]+2 + ix*self._ca[0]*self._ca[1], _BE + ix*self._ca[0]*self._ca[1],1)
@@ -129,25 +116,31 @@ class HaloCartesian(object):
         for ix in range(self._ca[2]-2):
             _tmp15 += range( _BS + ix*self._ca[0]*self._ca[1], _BS+self._ca[0]-2 + ix*self._ca[0]*self._ca[1], 1)
 
-        
-        
-        self._cell_indices+=[
-                              range(_BE - 1,_E,self._ca[0]*self._ca[1]),
-                              _tmp10,
-                              range(_BE-self._ca[0]+2,_E,self._ca[0]*self._ca[1]),
-                              _tmp12,
-                              _tmp13,
-                              range(_BS+self._ca[0]-3,_E,self._ca[0]*self._ca[1]),
-                              _tmp15,
-                              range(_BS,_E,self._ca[0]*self._ca[1])
-                             ]
-        
         _tmp21=[]
         for ix in range(self._ca[1]-2):
-            _tmp21 += range(_BS + ix*self._ca[0], _BS + (ix+1)*self._ca[0] - 2, 1)
-                    
-        #BOTTOM
-        self._cell_indices+=[
+            _tmp21 += range(_BS + ix*self._ca[0], _BS + (ix+1)*self._ca[0] - 2, 1)          
+        
+
+        self._cell_indices=[
+                            [_E-1],
+                            range(_E-self._ca[0]+2,_E,1),
+                            [_E-self._ca[0]+2],
+                            range(_TS+self._ca[0]-3, _E, self._ca[0]), 
+                            _tmp4, 
+                            range(_TS,_E,self._ca[0]), 
+                            [_TS+self._ca[0]-3], 
+                            range(_TS,_TS+self._ca[0]-2,1),
+                            [_TS],
+                            
+                            range(_BE - 1,_E,self._ca[0]*self._ca[1]),
+                            _tmp10,
+                            range(_BE-self._ca[0]+2,_E,self._ca[0]*self._ca[1]),
+                            _tmp12,
+                            _tmp13,
+                            range(_BS+self._ca[0]-3,_E,self._ca[0]*self._ca[1]),
+                            _tmp15,
+                            range(_BS,_E,self._ca[0]*self._ca[1]),
+                              
                             [_BE-1],
                             range(_BE-self._ca[0]+2,_BE,1),
                             [_BE-self._ca[0]+2],
@@ -159,7 +152,43 @@ class HaloCartesian(object):
                             [_BS]
                             ]
         
-        self._exchange_sizes=range(26)             
+                    
+        
+        self._cell_shifts=[
+                            data.ScalarArray([-1*self._extent[0] ,-1*self._extent[1]  ,-1*self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([0.                 ,-1*self._extent[1]  ,-1*self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([self._extent[0]    ,-1*self._extent[1]  ,-1*self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([-1*self._extent[0] ,0.                  ,-1*self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([0.                 ,0.                  ,-1*self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([self._extent[0]    ,0.                  ,-1*self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([-1*self._extent[0] ,self._extent[1]     ,-1*self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([0.                 ,self._extent[1]     ,-1*self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([self._extent[0]    ,self._extent[1]     ,-1*self._extent[2]]   , dtype=ctypes.c_double),
+
+                            data.ScalarArray([-1*self._extent[0] ,-1*self._extent[1]  ,0.]   , dtype=ctypes.c_double),
+                            data.ScalarArray([0.                 ,-1*self._extent[1]  ,0.]   , dtype=ctypes.c_double),
+                            data.ScalarArray([self._extent[0]    ,-1*self._extent[1]  ,0.]   , dtype=ctypes.c_double),
+                            data.ScalarArray([-1*self._extent[0] ,0.                  ,0.]   , dtype=ctypes.c_double),
+                            data.ScalarArray([self._extent[0]    ,0.                  ,0.]   , dtype=ctypes.c_double),
+                            data.ScalarArray([-1*self._extent[0] ,self._extent[1]     ,0.]   , dtype=ctypes.c_double),
+                            data.ScalarArray([0.                 ,self._extent[1]     ,0.]   , dtype=ctypes.c_double),
+                            data.ScalarArray([self._extent[0]    ,self._extent[1]     ,0.]   , dtype=ctypes.c_double),
+
+                            data.ScalarArray([-1*self._extent[0] ,-1*self._extent[1]  ,self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([0.                 ,-1*self._extent[1]  ,self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([self._extent[0]    ,-1*self._extent[1]  ,self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([-1*self._extent[0] ,0.                  ,self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([0.                 ,0.                  ,self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([self._extent[0]    ,0.                  ,self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([-1*self._extent[0] ,self._extent[1]     ,self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([0.                 ,self._extent[1]     ,self._extent[2]]   , dtype=ctypes.c_double),
+                            data.ScalarArray([self._extent[0]    ,self._extent[1]     ,self._extent[2]]   , dtype=ctypes.c_double)
+                           ]        
+        
+        
+        
+        
+        
         
         
         
@@ -170,7 +199,7 @@ class Halo(object):
     """
     Class to contain a halo.
     """
-    def __init__(self, MPICOMM = None, rank_local = 0, rank_dest = 0, rank_src = 0, local_index = None, cell_count = 1, cell_indices = None, nrow = 1, ncol = 1, dtype = ctypes.c_double):
+    def __init__(self, MPICOMM = None, rank_local = 0, rank_dest = 0, rank_src = 0, local_index = None, cell_count = 1, cell_indices = None, nrow = 1, ncol = 1, shift = None, dtype = ctypes.c_double):
         
         assert local_index != None, "Error: No local index specified."
         
@@ -190,7 +219,13 @@ class Halo(object):
         if (cell_indices!=None):
             self._cell_indices = data.ScalarArray(cell_indices, dtype=ctypes.c_int)
         
+        if (shift == None):
+            self._shift = data.ScalarArray([0., 0., 0.], dtype=ctypes.c_double)
+        else:
+            self._shift = shift
         
+        
+        ##APPLIES SHIFT, NEEDS SHIFT FOR POSITIONS ONLY
         
         _code = '''
         int index = 0;
@@ -202,14 +237,14 @@ class Halo(object):
             while (ix > -1){
                 
                 for(int iy=0;iy<ncomp;iy++){
-                    send_buffer[LINIDX_2D(ncomp,index,iy)] = data_buffer[LINIDX_2D(ncomp,ix,iy)];
+                    send_buffer[LINIDX_2D(ncomp,index,iy)] = data_buffer[LINIDX_2D(ncomp,ix,iy)] + S[iy];
                 }
                 
                 index++;
                 ix=cell_list[ix];
                 
                 }} '''
-         #
+         
         _static_args = {'num_cells':ctypes.c_int, 
                         'npart':ctypes.c_int, 
                         'ncomp':ctypes.c_int}
@@ -217,14 +252,16 @@ class Halo(object):
         _args = {'cell_indices':data.NullIntScalarArray, 
                  'cell_list':data.NullIntScalarArray,
                  'send_buffer':data.NullDoubleScalarArray, 
-                 'data_buffer':data.NullDoubleScalarArray}
+                 'data_buffer':data.NullDoubleScalarArray,
+                 'S':data.NullDoubleScalarArray
+                 }
                  
         _headers = ['stdio.h']
         _kernel = kernel.Kernel('HaloPack', _code, None, _headers, None, _static_args)
         self._packing_lib = build.SharedLib(_kernel,_args,True)
         
         self._send_buffer = particle.Dat(1000, self._nc, name='send_buffer', dtype=ctypes.c_double)
-    
+        
     
     
     
@@ -234,7 +271,8 @@ class Halo(object):
     
     
     def send_prepare(self, count, cell_list, data_buffer, cell_indices = None):
-          
+        
+        #print "halo index:", self._li, "shift:", self._shift
         
         '''Loop over the local cells and collect particle data using the cell list and list of cell indices'''
         
@@ -244,7 +282,8 @@ class Halo(object):
         self._packing_lib.execute( {'cell_indices':self._cell_indices, 
                                     'cell_list':cell_list,
                                     'send_buffer':self._send_buffer, 
-                                    'data_buffer':data_buffer} , 
+                                    'data_buffer':data_buffer,
+                                    'S':self._shift}, 
                      static_args = {'num_cells':ctypes.c_int(self._cell_count),
                                     'npart':ctypes.c_int(data_buffer.npart),
                                     'ncomp':ctypes.c_int(data_buffer.ncomp) })
@@ -252,13 +291,20 @@ class Halo(object):
         
         '''Send data'''
         
+        #print self._li, self._send_buffer.Dat[0:count:1,::], count
+        
+        self._MPI.Sendrecv(self._send_buffer.Dat[0:count:1,::], self._rd, self._rd, data_buffer.Dat[data_buffer.halo_start::,::], self._rs, self._rs, self._MPIstatus)
         
         
-        self._MPI.Sendrecv(self._send_buffer.Dat[0:count+1:1][::], self._rd, self._rd, data_buffer.Dat[data_buffer.halo_start,::], self._rs, self._rs, self._MPIstatus)
         
-        _shift=self._MPIstatus.Get_count( data.mpi_map[data_buffer.dtype])-1
         
-        data_buffer.halo_start_shift(_shift)
+        
+        _shift=self._MPIstatus.Get_count( data.mpi_map[data_buffer.dtype])
+        
+        #print data_buffer.Dat, data_buffer.halo_start
+        
+        #print self._li, _shift, data_buffer.halo_start
+        data_buffer.halo_start_shift(_shift/self._nc)
         
         
         

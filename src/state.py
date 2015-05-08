@@ -89,7 +89,7 @@ class BaseMDState(object):
             self._cell_sort_setup()
             self._cell_sort_all()
             
-            self._looping_method_accel = pairloop.PairLoopRapaport(N=self._N,
+            self._looping_method_accel = pairloop.PairLoopRapaportHalo(N=self._N,
                                                                     domain = self._domain, 
                                                                     positions = self._pos, 
                                                                     potential = self._potential, 
@@ -103,20 +103,14 @@ class BaseMDState(object):
                                                                         kernel = self._potential.kernel,
                                                                         particle_dat_dict = _potential_dat_dict,
                                                                         DEBUG = self._DEBUG)
-        
-        
-        
-        
-        
-    
-                                                                               
+                                                                        
     def _cell_sort_setup(self):
         """
         Creates looping for cell list creation
         """
         
         '''Construct initial cell list'''
-        self._q_list = data.ScalarArray(np.zeros([self._N + self._domain.cell_count], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
+        self._q_list = data.ScalarArray(np.zeros([self._N + self._pos.npart_halo + self._domain.cell_count], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
         
         '''Keep track of number of particles per cell'''
         self._cell_contents_count = data.ScalarArray(np.zeros([self._domain.cell_count], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
@@ -183,6 +177,9 @@ class BaseMDState(object):
         Returns number of particles.
         """
         return self._N
+            
+        
+        
     
     @property  
     def domain(self):
@@ -234,10 +231,10 @@ class BaseMDState(object):
         """
         self._cell_sort_all()
         
-        print "Before", self._pos
+        #print "Before", self._pos
         if (self._cell_setup_attempt==True):
             self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
-        print "After", self._pos  
+        #print "After", self._pos  
         
             
                     

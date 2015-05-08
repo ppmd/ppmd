@@ -8,8 +8,19 @@
 #define abs_md(x) ((x) < 0 ? -1*(x) : (x))
 #define LINIDX_2D(NX,iy,ix)   ((NX)*(iy) + (ix))
 
+/*
+#define LINIDX_ZYX(NX,NY,ix,iy,iz)    \
+  (  ((NX)+2*(OL))*((NY)+2*(OL))*(iz) \
+   + ((NX)+2*(OL))*((iy)-1+(OL))      \
+   + ((ix)-1+(OL))                    \
+  )
+*/
 
-
+#define LINIDX_ZYX(NX,NY,ix,iy,iz)    \
+  (  ((NX)+2)*((NY)+2)*(iz) \
+   + ((NX)+2)*(iy)      \
+   + (ix)                    \
+  )
 
 
 #endif

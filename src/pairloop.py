@@ -1110,6 +1110,193 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
 
         method(*args)        
     
+################################################################################################################
+# RAPAPORT LOOP SERIAL FOR HALO DOMAINS
+################################################################################################################
+
+class PairLoopRapaportHalo(PairLoopRapaport):    
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+        
+        
+        
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+        
+        
+        inline void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cpp, unsigned int *flag, double *offset){
+        
+            const int cell_map[14][3] = {   {0,0,0},
+                                            {1,0,0},
+                                            {0,1,0},
+                                            {1,1,0},
+                                            {1,-1,0},
+                                            {-1,1,1},
+                                            {0,1,1},
+                                            {1,1,1},
+                                            {-1,0,1},
+                                            {0,0,1},
+                                            {1,0,1},
+                                            {-1,-1,1},
+                                            {0,-1,1},
+                                            {1,-1,1}};     
+            
+            //internal cell array dimensions
+            const double ca0 = cell_array[0] - 2;
+            const double ca1 = cell_array[1] - 2;
+            const double ca2 = cell_array[2] - 2;
+            
+                
+            const int tmp = ca0*ca1;
+            int Cz = cp/tmp;
+            int Cx = cp %% ca0;
+            int Cy = (cp - Cz*tmp)/ca0;
+            
+            //LINIDX_ZYX(NX,NY,ix,iy,iz)
+            
+            Cx += cell_map[cpp_i][0];
+            Cy += cell_map[cpp_i][1];
+            Cz += cell_map[cpp_i][2];
+            
+            /*
+            int C0 = (Cx + cell_array[0]) %% cell_array[0];    
+            int C1 = (Cy + cell_array[1]) %% cell_array[1];
+            int C2 = (Cz + cell_array[2]) %% cell_array[2];
+                
+             
+            if ((Cx != C0) || (Cy != C1) || (Cz != C2)) { 
+                *flag = 1;
+                offset[0] = ((double)sign(Cx - C0))*d_extent[0];
+                offset[1] = ((double)sign(Cy - C1))*d_extent[1];
+                offset[2] = ((double)sign(Cz - C2))*d_extent[2];
+                
+                
+                
+            } else {*flag = 0; }
+            
+            *cpp = (C2*cell_array[1] + C1)*cell_array[0] + C0;
+            */
+            
+            *flag = 0;
+            *cpp = LINIDX_ZYX(cell_array[0],cell_array[1],Cx,Cy,Cz);
+            
+            
+            
+            
+                
+            return;      
+        }    
+        
+        void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
+            
+            
+            for(unsigned int cp = 0; cp < cell_count; cp++){
+                for(unsigned int cpp_i=0; cpp_i<14; cpp_i++){
+                
+                    double s[3]; 
+                    unsigned int flag, cpp; 
+                    int i,j;
+                    
+                    
+                    cell_index_offset(cp, cpp_i, cell_array, d_extent, &cpp, &flag, s);
+                    
+                    
+                    double r1[3];
+                    
+                    i = q_list[n+cp];
+                    while (i > -1){
+                        j = q_list[n+cpp];
+                        while (j > -1){
+                            if (cp != cpp || i < j){
+        
+                                %(KERNEL_ARGUMENT_DECL)s
+                                
+                                  //KERNEL CODE START
+                                  
+                                  %(KERNEL)s
+                                  
+                                  //KERNEL CODE END
+                                
+                                
+                            }
+                            j = q_list[j];  
+                        }
+                        i=q_list[i];
+                    }
+                }
+            }
+            
+            
+            return;
+        }        
+        
+        
+        '''    
+    
+    def execute(self, dat_dict = None, static_args = None):
+    
+        '''
+        C version of the pair_locate: Loop over all cells update forces and potential engery.
+        '''
+        
+        '''Allow alternative pointers'''
+        if (dat_dict != None):
+            self._particle_dat_dict = dat_dict    
+        
+        '''Create arg list'''
+        args=[ctypes.c_int(self._N),
+              ctypes.c_int(self._domain.cell_count_internal), 
+              self._domain.cell_array.ctypes_data,
+              self._q_list.ctypes_data,
+              self._domain.extent.ctypes_data]
+
+        
+        '''Add static arguments to launch command'''
+        if (self._kernel.static_args != None):
+            assert static_args != None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+            
+        '''Add pointer arguments to launch command'''
+        for dat in self._particle_dat_dict.values():
+            args.append(dat.ctypes_data)
+            
+        
+        '''Execute the kernel over all particle pairs.'''            
+        method = self._lib[self._kernel.name+'_wrapper']
+        
+        
+        
+        
+        method(*args)        
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     

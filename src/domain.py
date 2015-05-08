@@ -223,6 +223,8 @@ class BaseDomainHalo(BaseDomain):
         self._cell_edge_lengths[2] = self._extent[2]/self._cell_array[2]
         
         
+        self._cell_count_internal = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]
+        
         self._cell_array[0] += 2
         self._cell_array[1] += 2
         self._cell_array[2] += 2
@@ -251,13 +253,14 @@ class BaseDomainHalo(BaseDomain):
         '''
         Method to initialise halos for local domain.
         '''
-        self._halos = halo.HaloCartesian(self._MPI, self._rank, self._nproc, self._cell_array)
+        self._halos = halo.HaloCartesianSingleProcess(self._MPI, self._rank, self._nproc, self._cell_array, self._extent)
     
     
     @property
     def halos(self):
         return self._halos      
     
+    @property
     def extent_internal(self):
         """
         Returns list of domain extents.
@@ -265,8 +268,12 @@ class BaseDomainHalo(BaseDomain):
         
         return self._extent
     
-    
-    
+    @property
+    def cell_count_internal(self):
+        '''
+        Return internal cell count.
+        '''
+        return self._cell_count_internal
     
     
     

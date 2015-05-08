@@ -16,7 +16,7 @@ class Dat(object):
     :arg str name: Collective name of stored vars eg positions.
     
     '''
-    def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None, dtype = ctypes.c_double, max_size = 30):
+    def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None, dtype = ctypes.c_double, max_size = 54):
         
         self._name = name
         
@@ -37,8 +37,11 @@ class Dat(object):
         
         self._XYZFile_exists = False
         
-        self._halo_start = self._N1 + 1
+        self._halo_start = self._N1
         
+        '''Number of halo particles'''
+        
+        self._NH = self._halo_start - self._N1
         
         
         
@@ -91,6 +94,12 @@ class Dat(object):
     def npart(self):
         '''Return number of particles.'''
         return self._N1
+        
+    @property
+    def npart_halo(self):
+        '''Return number of particles in halo region'''
+        return self._NH    
+        
     
     @property    
     def ctypes_data(self):
@@ -125,7 +134,7 @@ class Dat(object):
         self._halo_start+=shift
     
     def halo_start_reset(self):
-        self._halo_start = self._N1+1
+        self._halo_start = self._N1
     
     
     
