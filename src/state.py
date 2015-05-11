@@ -87,7 +87,14 @@ class BaseMDState(object):
         
         if (self._cell_setup_attempt==True):
             self._cell_sort_setup()
+            
+            
             self._cell_sort_all()
+            #self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)            
+            #self._cell_sort_all()
+            
+            
+            
             
             self._looping_method_accel = pairloop.PairLoopRapaportHalo(N=self._N,
                                                                     domain = self._domain, 
@@ -110,7 +117,7 @@ class BaseMDState(object):
         """
         
         '''Construct initial cell list'''
-        self._q_list = data.ScalarArray(np.zeros([self._N + self._pos.npart_halo + self._domain.cell_count], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
+        self._q_list = data.ScalarArray(np.zeros([self._N + self._pos.npart_halo + self._domain.cell_count + 1], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
         
         '''Keep track of number of particles per cell'''
         self._cell_contents_count = data.ScalarArray(np.zeros([self._domain.cell_count], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
@@ -124,6 +131,8 @@ class BaseMDState(object):
         
         self._cell_sort_code = '''
         
+        //printf("start |");
+        
         const double R0 = P[0]+0.5*E[0];
         const double R1 = P[1]+0.5*E[1];
         const double R2 = P[2]+0.5*E[2];
@@ -134,10 +143,31 @@ class BaseMDState(object):
         
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
         
+        
+        /*
+        printf("P0=%f |", P[0]);
+        printf("P1=%f |", P[1]);
+        printf("P2=%f |", P[2]);   
+        
+        printf("R0=%f |", R0);
+        printf("R1=%f |", R1);
+        printf("R2=%f |", R2);
+        
+        printf("E0=%f |", E[0]);
+        printf("E1=%f |", E[1]);
+        printf("E2=%f |", E[2]);        
+        */
+        
+        //printf("val=%d |", val);
+        
         CCC[val]++;
         Q[I[0]] = Q[N[0] + val];
         Q[N[0] + val] = I[0];
         I[0]++;
+        
+        
+        
+        //printf("end |");
         
         '''
         self._cell_sort_dict = {'E':self._domain.extent,
@@ -160,15 +190,41 @@ class BaseMDState(object):
         Construct neighbour list, assigning atoms to cells. Using Rapaport algorithm.
         """
         
+        self._q_list.resize(self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1)
+        
+        #print self._pos.npart
+        #print self._pos.npart_halo
+        #print self._domain.cell_count
+        #print self._pos.npart + self._pos.npart_halo + self._domain.cell_count, self._q_list
+        
+        
+        #print self._pos
+        
+        
+        
         for cx in range(self._domain.cell_count):
-            self._q_list[self._N + cx] = -1
+            self._q_list[self._pos.npart + self._pos.npart_halo + cx] = -1
+        
+        
         
         self._internal_index[0]=0
         self._cell_contents_count.scale(0)
+        self._internal_N[0] = self._pos.npart + self._pos.npart_halo
+        
+        self._q_list.Dat[self._q_list.ncomp-1] = self._pos.npart + self._pos.npart_halo
         
         
-        self._cell_sort_loop.execute()
+        #print "CEL=",self._domain.cell_edge_lengths
+        self._cell_sort_loop.execute(N=self._pos.npart + self._pos.npart_halo, dat_dict = {'E':self._domain.extent,
+                                'P':self._pos,
+                                'CEL':self._domain.cell_edge_lengths,
+                                'CA':self._domain.cell_array,
+                                'Q':self._q_list,
+                                'CCC':self._cell_contents_count,
+                                'I':self._internal_index,
+                                'N':self._internal_N})
         
+        #print self._q_list
     
         
     @property    
@@ -229,18 +285,24 @@ class BaseMDState(object):
         """
         Updates forces dats using given looping method.
         """
-        self._cell_sort_all()
+        
         
         #print "Before", self._pos
         if (self._cell_setup_attempt==True):
             self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
         #print "After", self._pos  
         
-            
-                    
+        #print self._pos.npart+self._pos.npart_halo
+        
+        
+        self._cell_sort_all()
+        
+        
+        
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
-        self._looping_method_accel.execute()
+        
+        self._looping_method_accel.execute(N=(self._pos.npart+self._pos.npart_halo))
 
         
     @property

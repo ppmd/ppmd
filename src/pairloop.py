@@ -1122,37 +1122,56 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
+        #include <stdio.h>
         
+        inline void cell_index_offset(const unsigned int cp_i, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cp, unsigned int* cpp, unsigned int *flag, double *offset){
         
-        inline void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cpp, unsigned int *flag, double *offset){
-        
-            const int cell_map[14][3] = {   {0,0,0},
-                                            {1,0,0},
+            const int cell_map[27][3] = {   
+                                            {-1,1,-1},
+                                            {-1,-1,-1},
+                                            {-1,0,-1},
+                                            {0,1,-1},
+                                            {0,-1,-1},
+                                            {0,0,-1},
+                                            {1,0,-1},
+                                            {1,1,-1},
+                                            {1,-1,-1},                                            
+
+                                            {-1,1,0},
+                                            {-1,0,0},                                            
+                                            {-1,-1,0},
+                                            {0,-1,0},
+                                            {0,0,0},
                                             {0,1,0},
+                                            {1,0,0},                                            
                                             {1,1,0},
                                             {1,-1,0},
-                                            {-1,1,1},
-                                            {0,1,1},
-                                            {1,1,1},
+                                            
                                             {-1,0,1},
-                                            {0,0,1},
-                                            {1,0,1},
+                                            {-1,1,1},
                                             {-1,-1,1},
+                                            {0,0,1},
+                                            {0,1,1},
                                             {0,-1,1},
-                                            {1,-1,1}};     
+                                            {1,0,1},
+                                            {1,1,1},
+                                            {1,-1,1}
+                                            
+                                            };    
             
             //internal cell array dimensions
-            const double ca0 = cell_array[0] - 2;
-            const double ca1 = cell_array[1] - 2;
-            const double ca2 = cell_array[2] - 2;
+            const unsigned int ca0 = cell_array[0] - 2;
+            const unsigned int ca1 = cell_array[1] - 2;
+            const unsigned int ca2 = cell_array[2] - 2;
             
-                
+            
+               
             const int tmp = ca0*ca1;
-            int Cz = cp/tmp;
-            int Cx = cp %% ca0;
-            int Cy = (cp - Cz*tmp)/ca0;
+            int Cz = cp_i/tmp;
+            int Cx = cp_i %% ca0;
+            int Cy = (cp_i - Cz*tmp)/ca0;
             
-            //LINIDX_ZYX(NX,NY,ix,iy,iz)
+            *cp = LINIDX_ZYX(ca0,ca1,Cx,Cy,Cz);
             
             Cx += cell_map[cpp_i][0];
             Cy += cell_map[cpp_i][1];
@@ -1177,12 +1196,15 @@ class PairLoopRapaportHalo(PairLoopRapaport):
             *cpp = (C2*cell_array[1] + C1)*cell_array[0] + C0;
             */
             
+            
+            
+            
+            
+            
             *flag = 0;
-            *cpp = LINIDX_ZYX(cell_array[0],cell_array[1],Cx,Cy,Cz);
+            *cpp = LINIDX_ZYX(ca0,ca1,Cx,Cy,Cz);
             
-            
-            
-            
+            //printf("cp = %%d, cpp = %%d |", *cp, *cpp);
                 
             return;      
         }    
@@ -1190,15 +1212,15 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
             
             
-            for(unsigned int cp = 0; cp < cell_count; cp++){
-                for(unsigned int cpp_i=0; cpp_i<14; cpp_i++){
+            for(unsigned int cp_i = 0; cp_i < cell_count; cp_i++){
+                for(unsigned int cpp_i=0; cpp_i<27; cpp_i++){
                 
                     double s[3]; 
-                    unsigned int flag, cpp; 
+                    unsigned int flag, cpp, cp; 
                     int i,j;
                     
                     
-                    cell_index_offset(cp, cpp_i, cell_array, d_extent, &cpp, &flag, s);
+                    cell_index_offset(cp_i, cpp_i, cell_array, d_extent, &cp, &cpp, &flag, s);
                     
                     
                     double r1[3];
@@ -1207,7 +1229,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                     while (i > -1){
                         j = q_list[n+cpp];
                         while (j > -1){
-                            if (cp != cpp || i < j){
+                            if (cp != cpp || i != j){
         
                                 %(KERNEL_ARGUMENT_DECL)s
                                 
@@ -1233,18 +1255,27 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         
         '''    
     
-    def execute(self, dat_dict = None, static_args = None):
+    def execute(self, N=None ,dat_dict = None, static_args = None):
     
         '''
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         '''
+        
+        
+        
         
         '''Allow alternative pointers'''
         if (dat_dict != None):
             self._particle_dat_dict = dat_dict    
         
         '''Create arg list'''
-        args=[ctypes.c_int(self._N),
+        
+        if (N != None):
+            _N = N
+        else:
+            _N = self._N
+        
+        args=[ctypes.c_int(_N),
               ctypes.c_int(self._domain.cell_count_internal), 
               self._domain.cell_array.ctypes_data,
               self._q_list.ctypes_data,
@@ -1264,8 +1295,6 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         
         '''Execute the kernel over all particle pairs.'''            
         method = self._lib[self._kernel.name+'_wrapper']
-        
-        
         
         
         method(*args)        

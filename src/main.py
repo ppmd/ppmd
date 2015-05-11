@@ -51,7 +51,7 @@ if __name__ == '__main__':
         test_domain = domain.BaseDomainHalo()
         
         #Initialise LJ potential
-        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
+        test_potential = potential.LennardJonesOpenMP(sigma=1.0,epsilon=1.0)    
         
         #Place N particles in a lattice with given density.
         test_pos_init = state.PosInitLatticeNRho(N, rho)
@@ -67,15 +67,19 @@ if __name__ == '__main__':
         
         #See above
         test_domain = domain.BaseDomainHalo()
-        test_potential = potential.LennardJonesShifted(sigma=0.8,epsilon=1.0)
+        test_potential = potential.LennardJonesOpenMP(sigma=1.0,epsilon=1.0)
+        
+        print test_potential.rc
+        
         
         #Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.2, extent = np.array([2., 2., 2.]), axis = np.array([1,0,0]))
+        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([3., 3., 3.]), axis = np.array([0,1,0]))
         
         #Give first two particles specific velocities
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
         
         #Set alternating masses for particles.
+        
         test_mass_init = state.MassInitIdentical(5.)
         
     
@@ -95,6 +99,7 @@ if __name__ == '__main__':
         plothandle = data.DrawParticles(interval = 1)
     else:
         plothandle = None
+    
     
     #energy handle
     if (logging):
@@ -117,15 +122,18 @@ if __name__ == '__main__':
     test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rsteps = 200, DEBUG = debug)
     
 
-    
-    
-    
+    '''
+    for ix in range(2):
+        test_state.forces_update()
+    '''
     
     
     ###########################################################
     
     
-    test_integrator.integrate(dt = 0.00001, T = 0.001, timer=True)
+    
+    
+    test_integrator.integrate(dt = 0.00001, T = 0.02, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
@@ -145,7 +153,7 @@ if __name__ == '__main__':
     #test_gr_method.RawWrite()
     #test_vaf_method.plot()
 
-    #a=input("PRESS ENTER TO CONTINUE.\n")
+    a=input("PRESS ENTER TO CONTINUE.\n")
     
 
     

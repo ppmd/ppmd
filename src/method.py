@@ -598,7 +598,7 @@ class VelocityAutoCorrelation(object):
         
         self._Ni = 1./self._N
         self._datdict['VT'] = self._state.velocities     
-        self._loop.execute(self._datdict, {'I':(ctypes.c_int)(self._VAF_index),'Ni':(ctypes.c_double)(self._Ni)})
+        self._loop.execute(None, self._datdict, {'I':(ctypes.c_int)(self._VAF_index),'Ni':(ctypes.c_double)(self._Ni)})
         
         if (T==None):
             self._T_store[self._VAF_index] = 1 + self._T_base

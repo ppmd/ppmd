@@ -367,14 +367,19 @@ class GenericToolChain(object):
             
         return self._code % d
 
-    def execute(self, dat_dict = None, static_args = None):
+    def execute(self, N=None , dat_dict = None, static_args = None):
         
         '''Allow alternative pointers'''
         if (dat_dict != None):
             self._particle_dat_dict = dat_dict    
         
         '''Currently assume N is always needed'''
-        args=[self._N]
+        if (N!=None):
+            _N=N
+        else:
+            _N=self._N
+        
+        args=[_N]
         
         
         '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''

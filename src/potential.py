@@ -283,7 +283,7 @@ class LennardJonesOpenMP(LennardJones):
             const double r_m4 = r_m2*r_m2;
             const double r_m6 = r_m4*r_m2;
             
-            U[0]+= CV*((r_m6-1.0)*r_m6 + internalshift);
+            U[0]+= 0.5*CV*((r_m6-1.0)*r_m6 + internalshift);
             
             const double r_m8 = r_m4*r_m4;
             const double f_tmp = CF*(r_m6 - 0.5)*r_m8;

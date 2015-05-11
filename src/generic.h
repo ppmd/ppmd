@@ -17,9 +17,9 @@
 */
 
 #define LINIDX_ZYX(NX,NY,ix,iy,iz)    \
-  (  ((NX)+2)*((NY)+2)*(iz) \
-   + ((NX)+2)*(iy)      \
-   + (ix)                    \
+  (  ((NX)+2)*((NY)+2)*(iz+1) \
+   + ((NX)+2)*(iy+1)      \
+   + (ix+1)                    \
   )
 
 

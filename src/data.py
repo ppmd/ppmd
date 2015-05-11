@@ -87,13 +87,16 @@ class DrawParticles(object):
         '''
         
         
+        
         self._N = N
         self._pos = pos
         self._extents = extents
         
         plt.cla()
+        
+        
            
-        for ix in range(self._N):
+        for ix in range(self._pos.npart):
             self._ax.scatter(self._pos.Dat[ix,0], self._pos.Dat[ix,1], self._pos.Dat[ix,2],color=self._key[ix%2])
         self._ax.set_xlim([-0.5*self._extents[0],0.5*self._extents[0]])
         self._ax.set_ylim([-0.5*self._extents[1],0.5*self._extents[1]])
@@ -348,6 +351,11 @@ class ScalarArray(object):
     @property
     def name(self):
         return "ScalarArray"
+    
+    def resize(self, N):
+        if (N>self._N1):
+            self._Dat = np.resize(self._Dat,N)
+            self._N1 = N
     
     
         

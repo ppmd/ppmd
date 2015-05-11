@@ -16,7 +16,7 @@ class Dat(object):
     :arg str name: Collective name of stored vars eg positions.
     
     '''
-    def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None, dtype = ctypes.c_double, max_size = 54):
+    def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None, dtype = ctypes.c_double, max_size = 100000):
         
         self._name = name
         
@@ -132,10 +132,13 @@ class Dat(object):
     
     def halo_start_shift(self, shift):
         self._halo_start+=shift
-    
+        self._NH = self._halo_start - self._N1
+        
+        
+        
     def halo_start_reset(self):
         self._halo_start = self._N1
-    
+        self._NH = 0
     
     
     

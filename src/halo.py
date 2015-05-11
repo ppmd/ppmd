@@ -152,7 +152,7 @@ class HaloCartesianSingleProcess(object):
                             [_BS]
                             ]
         
-                    
+                  
         
         self._cell_shifts=[
                             data.ScalarArray([-1*self._extent[0] ,-1*self._extent[1]  ,-1*self._extent[2]]   , dtype=ctypes.c_double),
@@ -236,6 +236,8 @@ class Halo(object):
             int ix = cell_list[npart+icp];
             while (ix > -1){
                 
+                //printf("npart = %d |", npart);
+                
                 for(int iy=0;iy<ncomp;iy++){
                     send_buffer[LINIDX_2D(ncomp,index,iy)] = data_buffer[LINIDX_2D(ncomp,ix,iy)] + S[iy];
                 }
@@ -279,21 +281,27 @@ class Halo(object):
         if (cell_indices!=None):
             self._cell_indices = data.ScalarArray(cell_indices, dtype=ctypes.c_int)        
         
+        #print "Send buffer prior", self._send_buffer.Dat[0:2:,::], cell_list.Dat[cell_list.ncomp-1]
         self._packing_lib.execute( {'cell_indices':self._cell_indices, 
                                     'cell_list':cell_list,
                                     'send_buffer':self._send_buffer, 
                                     'data_buffer':data_buffer,
                                     'S':self._shift}, 
                      static_args = {'num_cells':ctypes.c_int(self._cell_count),
-                                    'npart':ctypes.c_int(data_buffer.npart),
+                                    'npart':ctypes.c_int(cell_list.Dat[cell_list.ncomp-1]),
                                     'ncomp':ctypes.c_int(data_buffer.ncomp) })
     
         
         '''Send data'''
         
         #print self._li, self._send_buffer.Dat[0:count:1,::], count
+        #print "Send buffer", self._send_buffer.Dat[0:2:,::]
+        
         
         self._MPI.Sendrecv(self._send_buffer.Dat[0:count:1,::], self._rd, self._rd, data_buffer.Dat[data_buffer.halo_start::,::], self._rs, self._rs, self._MPIstatus)
+        
+        
+
         
         
         
@@ -306,6 +314,9 @@ class Halo(object):
         #print self._li, _shift, data_buffer.halo_start
         data_buffer.halo_start_shift(_shift/self._nc)
         
+        #print self._li, self._shift
+        #print "Send buffer", self._send_buffer.Dat[0:2:,::]
+        #print "Recv buffer", data_buffer.Dat[0:data_buffer.halo_start:,::]
         
         
         
