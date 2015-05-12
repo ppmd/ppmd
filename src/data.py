@@ -238,12 +238,14 @@ class ScalarArray(object):
             if (type(initial_value) is np.ndarray):
                 self._Dat = np.array(initial_value, dtype=self._dtype, order='C')
                 self._N1 = initial_value.shape[0]
+                self._max_size = self._N1
             elif (type(initial_value) == list):
                 self._Dat = np.array(np.array(initial_value), dtype=self._dtype, order='C')
                 self._N1 = len(initial_value)
                 self._max_size = self._N1
             else:
                 self._Dat = float(initial_value) * np.ones([self._N1], dtype=self._dtype, order='C')
+                
         elif (val == None):
             self._Dat = np.zeros([self._max_size], dtype=self._dtype, order='C')
         elif (val != None):

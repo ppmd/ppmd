@@ -40,7 +40,7 @@ if __name__ == '__main__':
     
     if (test_1000):
         #n=25 reasonable size
-        n=10
+        n=5
         N=n**3
         print "N =",N
         rho = 0.5
@@ -132,7 +132,7 @@ if __name__ == '__main__':
     
     
     
-    test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
+    test_integrator.integrate(dt = 0.0001, T = 1.6, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
@@ -152,7 +152,7 @@ if __name__ == '__main__':
     #test_gr_method.RawWrite()
     #test_vaf_method.plot()
 
-    #a=input("PRESS ENTER TO CONTINUE.\n")
+    a=input("PRESS ENTER TO CONTINUE.\n")
     
 
     
