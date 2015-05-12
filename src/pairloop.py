@@ -1115,6 +1115,50 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
 ################################################################################################################
 
 class PairLoopRapaportHalo(PairLoopRapaport):    
+    def _kernel_argument_declarations(self):
+        '''Define and declare the kernel arguments.
+
+        For each argument the kernel gets passed a pointer of type
+        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
+        pointer to the data which contains the properties of particle i.
+        These properties are stored consecutively in memory, so for a 
+        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
+        property the vector entry j of particle i is accessed as 
+        ``loc_argXXX[i][j]``.
+
+        This method generates the definitions of the ``loc_argXXX`` variables
+        and populates the data to ensure that ``loc_argXXX[i]`` points to
+        the correct address in the particle_dats.
+        '''
+        s = '\n'
+        for i,dat in enumerate(self._particle_dat_dict.items()):
+            
+            
+            space = ' '*14
+            argname = dat[0]+'_ext'
+            loc_argname = dat[0]
+            
+            
+            if (type(dat[1]) == data.ScalarArray):
+                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
+            
+            if (type(dat[1]) == particle.Dat):
+                if (dat[1].name  == 'positions'):
+                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
+                    
+                    
+                    s += space+loc_argname+'[1] = '+argname+'+3*j;\n' 
+                    s += space+loc_argname+'[0] = '+argname+'+3*i;\n'
+                    
+                else:
+                    ncomp = dat[1].ncomp
+                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
+                    s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
+                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'       
+        
+        return s      
+    
+    
     def _code_init(self):
         self._kernel_code = self._kernel.code
         
@@ -1124,7 +1168,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         #include \"%(UNIQUENAME)s.h\"
         #include <stdio.h>
         
-        inline void cell_index_offset(const unsigned int cp_i, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cp, unsigned int* cpp, unsigned int *flag, double *offset){
+        inline void cell_index_offset(const unsigned int cp_i, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cp, unsigned int* cpp){
         
             const int cell_map[27][3] = {   
                                             {-1,1,-1},
@@ -1177,31 +1221,6 @@ class PairLoopRapaportHalo(PairLoopRapaport):
             Cy += cell_map[cpp_i][1];
             Cz += cell_map[cpp_i][2];
             
-            /*
-            int C0 = (Cx + cell_array[0]) %% cell_array[0];    
-            int C1 = (Cy + cell_array[1]) %% cell_array[1];
-            int C2 = (Cz + cell_array[2]) %% cell_array[2];
-                
-             
-            if ((Cx != C0) || (Cy != C1) || (Cz != C2)) { 
-                *flag = 1;
-                offset[0] = ((double)sign(Cx - C0))*d_extent[0];
-                offset[1] = ((double)sign(Cy - C1))*d_extent[1];
-                offset[2] = ((double)sign(Cz - C2))*d_extent[2];
-                
-                
-                
-            } else {*flag = 0; }
-            
-            *cpp = (C2*cell_array[1] + C1)*cell_array[0] + C0;
-            */
-            
-            
-            
-            
-            
-            
-            *flag = 0;
             *cpp = LINIDX_ZYX(ca0,ca1,Cx,Cy,Cz);
             
             //printf("cp = %%d, cpp = %%d |", *cp, *cpp);
@@ -1215,12 +1234,11 @@ class PairLoopRapaportHalo(PairLoopRapaport):
             for(unsigned int cp_i = 0; cp_i < cell_count; cp_i++){
                 for(unsigned int cpp_i=0; cpp_i<27; cpp_i++){
                 
-                    double s[3]; 
-                    unsigned int flag, cpp, cp; 
+                    unsigned int cpp, cp; 
                     int i,j;
                     
                     
-                    cell_index_offset(cp_i, cpp_i, cell_array, d_extent, &cp, &cpp, &flag, s);
+                    cell_index_offset(cp_i, cpp_i, cell_array, d_extent, &cp, &cpp);
                     
                     
                     double r1[3];

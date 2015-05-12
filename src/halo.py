@@ -7,6 +7,7 @@ import random
 import kernel
 import build
 import particle
+import time
 
 ################################################################################################################
 # HALO DEFINITIONS
@@ -59,10 +60,15 @@ class HaloCartesianSingleProcess(object):
         for ix in range(26):
             self._halos.append(Halo(self._MPI, self._rank,dest,src,ix,self._SIZES[ix],self._cell_indices[ix], shift=self._cell_shifts[ix], ncol = 3))
         
-           
+        self._time = 0.   
         
         
     def exchange(self,cell_contents_count, cell_list, data):
+        timer=True
+        
+        if (timer==True):
+            start = time.time()    
+    
         '''Get new storage sizes'''
         self._exchange_size_calc(cell_contents_count)
         
@@ -73,6 +79,11 @@ class HaloCartesianSingleProcess(object):
         for i,h in enumerate(self._halos):
             h.send_prepare(self._exchange_sizes[i], cell_list, data)
             
+        if (timer==True):
+            end = time.time()
+            self._time+=end - start
+            
+                        
     
         
     def _local_data_pack(self):
@@ -225,6 +236,7 @@ class Halo(object):
             self._shift = shift
         
         
+        
         ##APPLIES SHIFT, NEEDS SHIFT FOR POSITIONS ONLY
         
         _code = '''
@@ -260,7 +272,7 @@ class Halo(object):
                  
         _headers = ['stdio.h']
         _kernel = kernel.Kernel('HaloPack', _code, None, _headers, None, _static_args)
-        self._packing_lib = build.SharedLib(_kernel,_args,True)
+        self._packing_lib = build.SharedLib(_kernel,_args,DEBUG = True)
         
         self._send_buffer = particle.Dat(1000, self._nc, name='send_buffer', dtype=ctypes.c_double)
         

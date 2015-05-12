@@ -34,7 +34,7 @@ if __name__ == '__main__':
     cutoff  = 8.5
     
 
-    domain                  = domain.BaseDomain()
+    domain                  = domain.BaseDomainHalo()
     potential               = potential.LennardJones(sigma,epsilon,cutoff)
     
     initial_position_config = state.PosInitDLPOLYConfig('TEST7/CONFIG')

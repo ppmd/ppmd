@@ -215,10 +215,18 @@ class ScalarArray(object):
     :arg int ncomp: Number of components.
     
     '''
-    def __init__(self, initial_value = None, name = None, ncomp = 1, val = None, dtype=ctypes.c_double):
+    def __init__(self, initial_value = None, name = None, ncomp = 1, val = None, dtype=ctypes.c_double, max_size = None):
         '''
         Creates scalar with given initial value.
         '''
+        
+        if max_size == None:
+            self._max_size = ncomp
+        else:
+            self._max_size = max_size
+        
+        
+        
         
         self._dtype = dtype
         
@@ -233,10 +241,11 @@ class ScalarArray(object):
             elif (type(initial_value) == list):
                 self._Dat = np.array(np.array(initial_value), dtype=self._dtype, order='C')
                 self._N1 = len(initial_value)
+                self._max_size = self._N1
             else:
                 self._Dat = float(initial_value) * np.ones([self._N1], dtype=self._dtype, order='C')
         elif (val == None):
-            self._Dat = np.zeros([self._N1], dtype=self._dtype, order='C')
+            self._Dat = np.zeros([self._max_size], dtype=self._dtype, order='C')
         elif (val != None):
             self._Dat = np.array([val], dtype=self._dtype, order='C')
         
@@ -280,8 +289,27 @@ class ScalarArray(object):
         
         :arg double val: Coefficient to scale all elements by.
         '''
-        self._Dat = np.array([val],dtype=self._dtype) * self._Dat
+        #the below seems to cause glibc errors
+        #self._Dat = self._Dat * np.array([val],dtype=self._dtype)
         
+        #work around
+        for ix in range(self._N1):
+            self._Dat[ix]=val*self._Dat[ix]
+        
+        
+        
+        
+    def zero(self):
+        '''
+        Zero all elements in array.
+        '''
+        #causes glibc errors
+        #self._Dat = np.zeros(self._N1, dtype=self._dtype, order='C')
+        
+        #work around
+        for ix in range(self._N1):
+            self._Dat[ix]=0.
+            
     
     def __setitem__(self,ix, val):
         self._Dat[ix] = np.array([val],dtype=self._dtype)
@@ -353,9 +381,11 @@ class ScalarArray(object):
         return "ScalarArray"
     
     def resize(self, N):
-        if (N>self._N1):
-            self._Dat = np.resize(self._Dat,N)
-            self._N1 = N
+        if (N>self._max_size):
+            self._max_size = N+(N-self._max_size)*10
+            self._Dat = np.resize(self._Dat,self._max_size)
+            print "WARNING RESIZED SCALARARRAY", self._max_size
+        self._N1 = N
     
     
         

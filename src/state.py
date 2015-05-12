@@ -118,6 +118,9 @@ class BaseMDState(object):
         
         '''Construct initial cell list'''
         self._q_list = data.ScalarArray(np.zeros([self._N + self._pos.npart_halo + self._domain.cell_count + 1], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
+        #self._q_list = data.ScalarArray(ncomp=self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1, dtype=ctypes.c_int, max_size=self._pos.npart*30)
+        
+        print "cell count:", self._domain.cell_count
         
         '''Keep track of number of particles per cell'''
         self._cell_contents_count = data.ScalarArray(np.zeros([self._domain.cell_count], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
@@ -158,9 +161,29 @@ class BaseMDState(object):
         printf("E2=%f |", E[2]);        
         */
         
-        //printf("val=%d |", val);
         
         CCC[val]++;
+        
+        /*
+        if (val > 63){
+        printf("val=%d |", val);
+        printf("I[0]=%d |", I[0]);
+        printf("N[0] + val=%d |", N[0] + val);
+        
+        printf("P0=%f |", P[0]);
+        printf("P1=%f |", P[1]);
+        printf("P2=%f |", P[2]);   
+        
+        printf("R0=%f |", R0);
+        printf("R1=%f |", R1);
+        printf("R2=%f |", R2);
+        
+        printf("E0=%f |", E[0]);
+        printf("E1=%f |", E[1]);
+        printf("E2=%f |", E[2]);         
+        }
+        */
+        
         Q[I[0]] = Q[N[0] + val];
         Q[N[0] + val] = I[0];
         I[0]++;
@@ -189,7 +212,7 @@ class BaseMDState(object):
         """
         Construct neighbour list, assigning atoms to cells. Using Rapaport algorithm.
         """
-        
+        #print "before cell list"
         self._q_list.resize(self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1)
         
         #print self._pos.npart
@@ -197,21 +220,34 @@ class BaseMDState(object):
         #print self._domain.cell_count
         #print self._pos.npart + self._pos.npart_halo + self._domain.cell_count, self._q_list
         
-        
+        #print "before cell list 1"
         #print self._pos
         
         
-        
+        #print  np.shape(self._q_list.Dat)
         for cx in range(self._domain.cell_count):
             self._q_list[self._pos.npart + self._pos.npart_halo + cx] = -1
-        
+        #print "before cell list 2"
         
         
         self._internal_index[0]=0
-        self._cell_contents_count.scale(0)
+        
+        #print "before cell list 2.2"
+        
+        #self._cell_contents_count.scale(0)
+        self._cell_contents_count.zero()
+        #print "before cell list 2.3"
+        
         self._internal_N[0] = self._pos.npart + self._pos.npart_halo
         
+        #print "TOTAL N", self._pos.npart + self._pos.npart_halo, self._pos.npart
+        
+        
+        #print "before cell list 2.5"
+        
         self._q_list.Dat[self._q_list.ncomp-1] = self._pos.npart + self._pos.npart_halo
+        
+        #print "before cell list 3"
         
         
         #print "CEL=",self._domain.cell_edge_lengths
@@ -225,7 +261,7 @@ class BaseMDState(object):
                                 'N':self._internal_N})
         
         #print self._q_list
-    
+        #print "after cell list"
         
     @property    
     def N(self):
@@ -285,15 +321,15 @@ class BaseMDState(object):
         """
         Updates forces dats using given looping method.
         """
-        
-        
+        #print "before forces update"
+        self._cell_sort_all()
         #print "Before", self._pos
         if (self._cell_setup_attempt==True):
             self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
         #print "After", self._pos  
         
         #print self._pos.npart+self._pos.npart_halo
-        
+        #print "before forces update 1"
         
         self._cell_sort_all()
         
@@ -301,9 +337,9 @@ class BaseMDState(object):
         
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
-        
+        #print "before forces update 2"
         self._looping_method_accel.execute(N=(self._pos.npart+self._pos.npart_halo))
-
+        #print "after forces update"
         
     @property
     def potential(self):
@@ -483,9 +519,9 @@ class PosInitTwoParticlesInABox(object):
     """
     
     def __init__(self,rx,extent = np.array([1.0,1.0,1.0]), axis = np.array([1.0,0.0,0.0])):
-        self._rx = rx
         self._extent = extent
         self._axis = axis
+        self._rx = (0.5/np.linalg.norm(self._axis))*rx
         
     def reset(self, state_input):
         """
@@ -496,8 +532,8 @@ class PosInitTwoParticlesInABox(object):
         """
         
         if (state_input.N >= 2):
-            state_input.positions[0,] = -0.5*self._rx*self._axis
-            state_input.positions[1,] = 0.5*self._rx*self._axis
+            state_input.positions[0,] = -1.*self._rx*self._axis
+            state_input.positions[1,] = self._rx*self._axis
         else:
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
             

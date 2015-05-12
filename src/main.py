@@ -20,10 +20,10 @@ if __name__ == '__main__':
     test_1000 = True
     
     #2 particles bouncing agasint each other.
-    test_2_bounce = True
+    test_2_bounce = False
     
     #plot as computing + at end?
-    plotting = True
+    plotting = False
     
     #log energy?
     logging = True
@@ -43,7 +43,7 @@ if __name__ == '__main__':
         n=10
         N=n**3
         print "N =",N
-        rho = 1.
+        rho = 0.5
         mu = 0.0
         nsig = 5.0
         
@@ -73,7 +73,7 @@ if __name__ == '__main__':
         
         
         #Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([3., 3., 3.]), axis = np.array([0,1,0]))
+        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([6., 6., 6.]), axis = np.array([0,0,1]))
         
         #Give first two particles specific velocities
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
@@ -96,7 +96,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(interval = 1)
+        plothandle = data.DrawParticles(interval = 10)
     else:
         plothandle = None
     
@@ -132,8 +132,7 @@ if __name__ == '__main__':
     
     
     
-    
-    test_integrator.integrate(dt = 0.00001, T = 0.02, timer=True)
+    test_integrator.integrate(dt = 0.0001, T = 0.2, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
@@ -141,7 +140,7 @@ if __name__ == '__main__':
     #test_gr_method.evaluate(timer=True)
     
     
-    
+    print "Time in halo exchange:", test_domain.halos._time
     ###########################################################
     
     
@@ -153,7 +152,7 @@ if __name__ == '__main__':
     #test_gr_method.RawWrite()
     #test_vaf_method.plot()
 
-    a=input("PRESS ENTER TO CONTINUE.\n")
+    #a=input("PRESS ENTER TO CONTINUE.\n")
     
 
     
