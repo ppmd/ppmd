@@ -278,9 +278,6 @@ class ScalarArray(object):
     def Dat(self, val):
         self._Dat = np.array([val],dtype=self._dtype)     
     
-    @property
-    def test(self):
-        return self._Dat[0]
         
     def __getitem__(self,ix):
         return self._Dat[ix]
@@ -388,6 +385,15 @@ class ScalarArray(object):
             self._Dat = np.resize(self._Dat,self._max_size)
             print "WARNING RESIZED SCALARARRAY", self._max_size
         self._N1 = N
+    
+    @property
+    def end(self):
+        '''
+        Returns end index of array.
+        '''
+        return self._max_size - 1
+    
+    
     
     
         

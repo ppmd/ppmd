@@ -106,7 +106,7 @@ class _base(build.GenericToolChain):
         return s         
               
 ################################################################################################################
-# SINGLE PARTICLE LOOP SERIAL
+# SINGLE ALL PARTICLE LOOP SERIAL
 ################################################################################################################
 class SingleAllParticleLoop(_base):
                    
@@ -135,6 +135,95 @@ class SingleAllParticleLoop(_base):
             }
         }
         '''
+        
+################################################################################################################
+# SINGLE PARTICLE LOOP SERIAL
+################################################################################################################
+class SingleParticleLoop(_base):
+                   
+    def _compiler_set(self):
+        self._cc = build.TMPCC
+        
+        
+    
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+    
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+
+        void %(KERNEL_NAME)s_wrapper(const int start_ix, const int end_ix, %(ARGUMENTS)s) { 
+          int i;
+          for (i=start_ix; i<end_ix; i++) {
+              %(KERNEL_ARGUMENT_DECL)s
+              
+                  //KERNEL CODE START
+                  
+                  %(KERNEL)s
+                  
+                  //KERNEL CODE END
+              
+            }
+        }
+        '''
+    def _generate_header_source(self):
+        '''Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        '''
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+        #include "../generic.h"
+        %(INCLUDED_HEADERS)s
+
+        void %(KERNEL_NAME)s_wrapper(const int start_ix, const int end_ix,%(ARGUMENTS)s);
+
+        #endif
+        '''
+        
+        
+        d = {'UNIQUENAME':self._unique_name,
+             'INCLUDED_HEADERS':self._included_headers(),
+             'KERNEL_NAME':self._kernel.name,
+             'ARGUMENTS':self._argnames()}
+        return (code % d)
+    
+               
+    def execute(self, start = 0 , end = 0, dat_dict = None, static_args = None):
+        
+        '''Allow alternative pointers'''
+        if (dat_dict != None):
+            self._particle_dat_dict = dat_dict    
+        
+        
+        args=[ctypes.c_int(start), ctypes.c_int(end)]
+        
+        
+        '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
+        
+        
+        '''Add static arguments to launch command'''
+        if (self._kernel.static_args != None):
+            assert static_args != None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+            
+        '''Add pointer arguments to launch command'''
+        for dat in self._particle_dat_dict.values():
+            args.append(dat.ctypes_data)
+            
+            
+        '''Execute the kernel over all particle pairs.'''            
+        method = self._lib[self._kernel.name+'_wrapper']
+        method(*args)        
+        
+        
+        
+        
+        
+        
+        
 
 ################################################################################################################
 # SINGLE PARTICLE LOOP OPENMP

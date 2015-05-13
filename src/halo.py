@@ -74,9 +74,9 @@ class HaloCartesianSingleProcess(object):
         
     def exchange(self,cell_contents_count, cell_list, data):
         timer=True
-        
         if (timer==True):
-            start = time.time()    
+            start = time.time()         
+   
     
         '''Get new storage sizes'''
         self._exchange_size_calc(cell_contents_count)
@@ -88,7 +88,8 @@ class HaloCartesianSingleProcess(object):
         data.halo_start_reset()
 
          
-      
+
+                  
         for i,h in enumerate(self._halos):
             h.exchange(self._exchange_sizes[i], cell_list, data)
         
@@ -111,7 +112,6 @@ class HaloCartesianSingleProcess(object):
         for i,x in enumerate(self._cell_indices):
             self._exchange_sizes[i]=sum([y[1] for y in enumerate(cell_contents_count) if y[0] in x])
         '''
-        #print "python", self._exchange_sizes
         
         _args = {
                  'CCC':cell_contents_count, 
@@ -121,11 +121,8 @@ class HaloCartesianSingleProcess(object):
                  }        
         
         
-        #print _args
-        
         self._exchange_sizes_lib.execute(dat_dict = _args)
         
-        #print "C", self._exchange_sizes
         
         
     def _exchange_prepare(self):
@@ -316,8 +313,13 @@ class HaloCartesianSingleProcess(object):
                             data.ScalarArray([0.                 ,self._extent[1]     ,self._extent[2]]   , dtype=ctypes.c_double),
                             data.ScalarArray([self._extent[0]    ,self._extent[1]     ,self._extent[2]]   , dtype=ctypes.c_double)
                            ]        
-        
-        
+    
+    @property
+    def halo_times(self):        
+        _tmp = 0.
+        for i,h in enumerate(self._halos):
+            _tmp+=h._time
+        return _tmp
         
     
 class Halo(object):
@@ -347,13 +349,14 @@ class Halo(object):
                 
             else:
                 self._cell_indices = data.ScalarArray(cell_indices, dtype=ctypes.c_int)
-        #print self._cell_indices
+            self._cell_recv_counts = data.ScalarArray(ncomp = self._cell_indices.ncomp)
         
         if (shift == None):
             self._shift = data.ScalarArray([0., 0., 0.], dtype=ctypes.c_double)
         else:
             self._shift = shift
         
+        self._time = 0.        
         
         
         ##APPLIES SHIFT, NEEDS SHIFT FOR POSITIONS ONLY
@@ -400,18 +403,18 @@ class Halo(object):
     
     def set_cell_indices(self, cell_indices):
         if (type(cell_indices) == data.ScalarArray):
-            self._cell_indices = cell_indices
-            
+            self._cell_indices = cell_indices   
         else:
             self._cell_indices = data.ScalarArray(cell_indices, dtype=ctypes.c_int)
-    
+        self._cell_recv_counts = data.ScalarArray(ncomp = self._cell_indices.ncomp)   
     
     
     def exchange(self, count, cell_list, data_buffer):
-        
+        timer = True
+        if (timer==True):
+            start = time.time()         
         
         '''Loop over the local cells and collect particle data using the cell list and list of cell indices'''
-              
         
         self._packing_lib.execute( {'cell_indices':self._cell_indices, 
                                     'cell_list':cell_list,
@@ -419,15 +422,30 @@ class Halo(object):
                                     'data_buffer':data_buffer,
                                     'S':self._shift}, 
                      static_args = {'num_cells':ctypes.c_int(self._cell_count),
-                                    'npart':ctypes.c_int(cell_list.Dat[cell_list.ncomp-1]),
-                                    'ncomp':ctypes.c_int(data_buffer.ncomp) })
+                                    'npart':ctypes.c_int(cell_list[cell_list.end]),
+                                    'ncomp':ctypes.c_int(data_buffer.ncomp) } )
+        
+        if (timer==True):
+            end = time.time()
+            self._time+=end - start 
         
         
-        '''Send data'''
+        '''Send cell counts'''
+        #self._MPI.Sendrecv(self._send_buffer.Dat[0:count:1,::], self._rd, self._rd, self._cell_recv_counts, self._rs, self._rs, self._MPIstatus)        
+        
+                  
+        '''Send packed data'''
         self._MPI.Sendrecv(self._send_buffer.Dat[0:count:1,::], self._rd, self._rd, data_buffer.Dat[data_buffer.halo_start::,::], self._rs, self._rs, self._MPIstatus)
         
         _shift=self._MPIstatus.Get_count( data.mpi_map[data_buffer.dtype])
         data_buffer.halo_start_shift(_shift/self._nc)
+        
+        
+        
+        
+        
+        
+        
         
         
         
