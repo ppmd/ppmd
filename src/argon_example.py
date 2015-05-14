@@ -35,7 +35,7 @@ if __name__ == '__main__':
     
 
     domain                  = domain.BaseDomainHalo()
-    potential               = potential.LennardJones(sigma,epsilon,cutoff)
+    potential               = potential.LennardJonesOpenMP(sigma,epsilon,cutoff)
     
     initial_position_config = state.PosInitDLPOLYConfig('TEST7/CONFIG')
     initial_velocity_config = state.VelInitDLPOLYConfig('TEST7/CONFIG')
@@ -85,10 +85,12 @@ if __name__ == '__main__':
     
     #control file seems to compute 16000 iterations at dt =10^-3, 1000 to equbrilate then 15k for averaging?
     dt=10**-3
-    T=16000*dt
+    T=3000*dt
     integrator.integrate(dt = dt, T = T, timer=True)
     
-    
+    print "Total time in halo exchange:", domain.halos._time
+    print "Time in halo packing:", domain.halos.halo_times
+    print "Time in forces_update:", test_state._time    
     
     
     
@@ -106,5 +108,5 @@ if __name__ == '__main__':
         energyhandle.plot()
     
     
-    a=input("PRESS ENTER TO CONTINUE.\n")
+    #a=input("PRESS ENTER TO CONTINUE.\n")
     

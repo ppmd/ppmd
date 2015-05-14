@@ -393,8 +393,12 @@ class ScalarArray(object):
         '''
         return self._max_size - 1
     
-    
-    
+    @property
+    def sum(self):
+        '''
+        Return array sum
+        '''
+        return self._Dat.sum()
     
         
     def DatWrite(self, dirname = './output',filename = None, rename_override = False):

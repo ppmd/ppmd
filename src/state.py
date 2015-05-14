@@ -154,7 +154,7 @@ class BaseMDState(object):
         CCC[val]++;
         
         //printf("N[0] + val = %d | ", N[0] + val);
-        //printf("I[0] = %d | ",I[0]);
+        //printf("I[0] = %d, val = %d | ",I[0], val);
         
         Q[I[0]] = Q[N[0] + val];
         Q[N[0] + val] = I[0];
@@ -214,14 +214,28 @@ class BaseMDState(object):
         """
         Construct neighbour list, assigning *local* atoms to cells. Using Rapaport algorithm.
         """
+        
+        
+        
         self._q_list.resize(self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1)
         self._q_list[self._q_list.end] = self._q_list.end - self._domain.cell_count
+        
+       
+        
+        
         self._internal_N[0] = self._q_list[self._q_list.end]
         
+        
+                
+        '''
+        #Takes forever do not use
         _start = self._q_list[self._q_list.end]
         for cx in range(self._domain.cell_count):
             self._q_list[_start + cx] = -1
+        '''
         
+        
+        self._q_list.Dat[self._q_list[self._q_list.end]:self._q_list.end:] = ctypes.c_int(-1)
         
         self._internal_index[0]=0
         
@@ -229,6 +243,7 @@ class BaseMDState(object):
         
         self._internal_N[0] = self._q_list[self._q_list.end]
         
+       
         
         
         self._cell_sort_loop.execute(   start = 0, 
@@ -243,10 +258,16 @@ class BaseMDState(object):
                                                     'N':self._internal_N}
                                      )    
         
+          
+        
+        
     def _cell_sort_halo(self):
         """
         Construct neighbour list, assigning *halo* atoms to cells. Using Rapaport algorithm.
         """
+        
+        
+        
         self._q_list.resize(self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1)
         self._q_list[self._q_list.end] = self._q_list.end - self._domain.cell_count
         self._internal_N[0] = self._q_list[self._q_list.end]
@@ -327,36 +348,49 @@ class BaseMDState(object):
         :arg double val: value to set to.
         """
         
-        self._accel.set_val(val)
+        #self._accel.set_val(val)
+        self._accel.Dat[0:self._accel.npart:,::] = val
+        
+        
         
     def forces_update(self):
         """
         Updates forces dats using given looping method.
         """
-        timer = True         
-        if (timer==True):
-            start = time.time()
+ 
                     
         self._cell_sort_local()               
-        
+                
+        #print "========================================================="
+        #print ""
         if (self._cell_setup_attempt==True):
             self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
         
-
+        timer = True         
+        if (timer==True):
+            start = time.time()
+        
+        
          
-        self._cell_sort_halo()
+        #self._cell_sort_halo()
+        
+        if (timer==True):
+            end = time.time()
+            self._time+=end - start        
+        
+        #print "========================================================="
         
         
+        
+        #print self._q_list
         
         
         
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
-        self._looping_method_accel.execute(N=self._q_list[self._q_list.end])
-        if (timer==True):
-            end = time.time()
-            self._time+=end - start
-         
+                 
+        
+        self._looping_method_accel.execute(N=self._q_list[self._q_list.end])         
         
         
     @property
