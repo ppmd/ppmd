@@ -357,7 +357,9 @@ class BaseMDState(object):
         """
         Updates forces dats using given looping method.
         """
- 
+        timer = True         
+        if (timer==True):
+            start = time.time() 
                     
         self._cell_sort_local()               
                 
@@ -369,29 +371,17 @@ class BaseMDState(object):
 
         
         
-         
-        self._cell_sort_halo()
-        
-       
-        
-        #print "========================================================="
-        
-        
-        
-        #print self._q_list
-        timer = True         
-        if (timer==True):
-            start = time.time()        
+        #~ 6 times slower than method in halo.
+        #self._cell_sort_halo()
         
         
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
         self._looping_method_accel.execute(N=self._q_list[self._q_list.end])   
         
-              
         if (timer==True):
             end = time.time()
-            self._time+=end - start         
+            self._time+=end - start       
         
     @property
     def potential(self):

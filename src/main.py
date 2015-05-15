@@ -141,7 +141,7 @@ if __name__ == '__main__':
     
     
     print "Total time in halo exchange:", test_domain.halos._time
-    print "Time in halo packing:", test_domain.halos.halo_times
+    print "Time in mpi:", test_domain.halos.halo_times
     print "Time in forces_update:", test_state._time
     
     ###########################################################
@@ -155,7 +155,7 @@ if __name__ == '__main__':
     #test_gr_method.RawWrite()
     #test_vaf_method.plot()
 
-    a=input("PRESS ENTER TO CONTINUE.\n")
+    #a=input("PRESS ENTER TO CONTINUE.\n")
     
 
     

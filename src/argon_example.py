@@ -85,15 +85,14 @@ if __name__ == '__main__':
     
     #control file seems to compute 16000 iterations at dt =10^-3, 1000 to equbrilate then 15k for averaging?
     dt=10**-3
-    T=3000*dt
+    T=16000*dt
     integrator.integrate(dt = dt, T = T, timer=True)
+     
+    
     
     print "Total time in halo exchange:", domain.halos._time
-    print "Time in halo packing:", domain.halos.halo_times
+    print "Time in mpi:", domain.halos.halo_times
     print "Time in forces_update:", test_state._time    
-    
-    
-    
     
     
     

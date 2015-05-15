@@ -116,9 +116,9 @@ class HaloCartesianSingleProcess(object):
         
         
 
-        
+        #print self._local_cell_indices_array
         #sort local cells after exchange
-        #self._cell_sort_loop.execute({'Q':cell_list,'LCI':self._local_cell_indices_array,'CRC':self._cell_contents_recv},{'CC':ctypes.c_int(self._cell_contents_recv.ncomp),'shift':ctypes.c_int(data.npart),'end':ctypes.c_int(cell_list[cell_list.end])})
+        self._cell_sort_loop.execute({'Q':cell_list,'LCI':self._local_cell_indices_array,'CRC':self._cell_contents_recv},{'CC':ctypes.c_int(self._cell_contents_recv.ncomp),'shift':ctypes.c_int(data.npart),'end':ctypes.c_int(cell_list[cell_list.end])})
         
                                    
         
@@ -326,7 +326,7 @@ class HaloCartesianSingleProcess(object):
                             range(_LBE-self._ca[0]+1,_LBE-1,1),
                             [_LBE-1],
                             
-                            range(_LBE+self._ca[0]*self._ca[1],_LBE+(self._ca[2]-2)*self._ca[0]*self._ca[1]+1,self._ca[0]*self._ca[1]),
+                            range(_LBS+self._ca[0]*self._ca[1],_LBS+(self._ca[2]-2)*self._ca[0]*self._ca[1]+1,self._ca[0]*self._ca[1]),
                             _Ltmp10,
                             range(_LBE+self._ca[0]-1,_LBE+(self._ca[2]-2)*self._ca[0]*self._ca[1]+self._ca[0] - 1,self._ca[0]*self._ca[1]),
                             _Ltmp12,
@@ -348,7 +348,7 @@ class HaloCartesianSingleProcess(object):
         
         #=====================================================================================================================
         
-        #print self._local_cell_indices
+        
         
         self._cell_indices_len = data.ScalarArray(range(26), dtype=ctypes.c_int)
         _tmp_list=[]
@@ -431,7 +431,7 @@ class HaloCartesianSingleProcess(object):
             
             if (_tmp>0){
                 Q[end+LCI[ix]] = index;
-                //printf("I=%d, val=%d |", index, LCI[ix]);
+                //printf("cell=%d, index=%d |", LCI[ix], index);
                 for(int iy = 0; iy < _tmp-1; iy++){
                     Q[index+iy]=index+iy+1;
                 }
@@ -634,8 +634,7 @@ class Halo(object):
         self._packing_lib = build.SharedLib(_kernel,_args,DEBUG = self._DEBUG)
         
         self._send_buffer = particle.Dat(1000, self._nc, name='send_buffer', dtype=ctypes.c_double)
-        
-        
+                
     
     
     def set_cell_indices(self, cell_indices):
@@ -653,7 +652,7 @@ class Halo(object):
         if (timer==True):
             start = time.time()         
         
-        
+            
         '''Loop over the local cells and collect particle data using the cell list and list of cell indices'''
         '''
         self._packing_lib.execute( {'cell_indices':self._cell_indices, 
@@ -672,20 +671,17 @@ class Halo(object):
         self._MPI.Sendrecv(cell_counts[0::], self._rd, self._rd, recvd_cell_counts, self._rs, self._rs, self._MPIstatus)        
       
         
-        
         '''Send packed data'''
         self._MPI.Sendrecv(self._send_buffer.Dat[0:count:1,::], self._rd, self._rd, data_buffer.Dat[data_buffer.halo_start::,::], self._rs, self._rs, self._MPIstatus)
         
         
-        
         '''Put new halo particles into cell list, about 4 times slower than desired'''
-        
         #self._cell_sort_loop.execute({'Q':cell_list,'LCI':self._local_cell_indices,'CRC':self._cell_recv_counts},{'CC':ctypes.c_int(self._cell_recv_counts.ncomp),'shift':ctypes.c_int(data_buffer.halo_start),'end':ctypes.c_int(cell_list[cell_list.end])})
-        
-        
-        
-                
-        
+    
+    
+    
+            
+    
         #print cell_list
         
         _shift=self._MPIstatus.Get_count( data.mpi_map[data_buffer.dtype])
