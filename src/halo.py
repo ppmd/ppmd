@@ -60,12 +60,12 @@ class HaloCartesianSingleProcess(object):
         dest=0
         src=0
         
-        self._exchange_prepare()
+        self._halo_setup_prepare()
         
         for ix in range(26):
-            
             self._halos.append(Halo(self._MPI, self._rank,dest,src,ix,self._SIZES[ix],self._cell_indices[ix], local_cell_indices=self._local_cell_indices[ix],shift=self._cell_shifts[ix], ncol = 3))
         
+        self._create_packing_pointer_array()
         
         
         self._time = 0.   
@@ -74,7 +74,9 @@ class HaloCartesianSingleProcess(object):
             print "halo setup time = ", end-start, "s"      
         
     def exchange(self,cell_contents_count, cell_list, data):
-         
+        timer=True
+        if (timer==True):
+            start = time.time()          
    
     
         '''Get new storage sizes''' 
@@ -82,27 +84,42 @@ class HaloCartesianSingleProcess(object):
          
          
         
-        
         '''Reset halo starting points'''
         data.halo_start_reset()
-
-        timer=True
-        if (timer==True):
-            start = time.time()          
         
         
         
-        #print self._cell_contents_array_index
+        _static_args = {
+                        'PPA':self._packing_pointers.ctypes_data,
+                        'cell_start':ctypes.c_int(cell_list[cell_list.end]),
+                        'ncomp':ctypes.c_int(data.ncomp)
+                        }
+        
+        _args = {
+                 'Q':cell_list,
+                 'CCA_I':self._cell_contents_array_index,
+                 'CIA':self._cell_indices_array,
+                 'CSA':self._cell_shifts_array,
+                 'data_buffer':data
+                 }        
+        
+        
+        
+        self._packing_lib.execute(static_args = _static_args, dat_dict = _args)
+        
+        #perform halo exchange
         for i,h in enumerate(self._halos):
             h.exchange(self._exchange_sizes[i], self._cell_contents_array[self._cell_contents_array_index[i]:self._cell_contents_array_index[i+1]:], self._cell_contents_recv[self._cell_contents_array_index[i]:self._cell_contents_array_index[i+1]:],cell_list, data)
         
         
         
-        #sort cells after exchange
         
-        self._cell_sort_loop.execute({'Q':cell_list,'LCI':self._local_cell_indices_array,'CRC':self._cell_contents_recv},{'CC':ctypes.c_int(self._cell_contents_recv.ncomp),'shift':ctypes.c_int(data.npart),'end':ctypes.c_int(cell_list[cell_list.end])})
         
-        #print cell_list
+
+        
+        #sort local cells after exchange
+        #self._cell_sort_loop.execute({'Q':cell_list,'LCI':self._local_cell_indices_array,'CRC':self._cell_contents_recv},{'CC':ctypes.c_int(self._cell_contents_recv.ncomp),'shift':ctypes.c_int(data.npart),'end':ctypes.c_int(cell_list[cell_list.end])})
+        
                                    
         
         
@@ -113,8 +130,61 @@ class HaloCartesianSingleProcess(object):
                         
     
         
-    def _local_data_pack(self):
-        pass
+    def _create_packing_pointer_array(self):
+        self._packing_pointers = data.PointerArray(length=26,dtype=ctypes.c_double)
+        for ix in range(26):
+            self._packing_pointers[ix] = self._halos[ix].send_buffer.ctypes_data
+        
+        
+        
+        _packing_code = '''
+        
+        for(int ix = 0; ix<26; ix++ ){
+            const int start = CCA_I[ix];
+            const int end = CCA_I[ix+1];
+            int index = 0;
+            
+            for(int iy = start; iy < end; iy++){
+                
+                int c_i = CIA[iy];
+                int iz = Q[cell_start+c_i];
+                
+                while(iz > -1){
+                    for(int cx = 0; cx<ncomp;cx++){
+                        PPA[ix][LINIDX_2D(ncomp,index,cx)] = data_buffer[LINIDX_2D(ncomp,iz,cx)] + CSA[LINIDX_2D(ncomp,ix,cx)];
+                    }
+                    index++;
+                    iz = Q[iz];
+                
+                
+                }
+            }
+        }
+        
+        '''
+        
+        _static_args = {
+                        'PPA':'doublepointerpointer', #self._packing_pointers.ctypes_data
+                        'cell_start':ctypes.c_int,   #ctypes.c_int(cell_list[cell_list.end])
+                        'ncomp':ctypes.c_int    #ctypes.c_int(data.ncomp)
+                        }
+        
+        _args = {
+                 'Q':data.NullIntScalarArray,   #cell_list.ctypes_data
+                 'CCA_I':self._cell_contents_array_index,
+                 'CIA':self._cell_indices_array,
+                 'CSA':self._cell_shifts_array,
+                 'data_buffer':data.NullDoubleScalarArray, #data
+                 }
+        
+        
+        
+        
+        _headers = ['stdio.h']
+        _kernel = kernel.Kernel('HaloPackingCode', _packing_code, None, _headers, None, _static_args)
+        self._packing_lib = build.SharedLib(_kernel,_args,DEBUG = self._DEBUG)         
+        
+        
         
         
         
@@ -140,7 +210,7 @@ class HaloCartesianSingleProcess(object):
         
         
         
-    def _exchange_prepare(self):
+    def _halo_setup_prepare(self):
         
        
         
@@ -391,10 +461,6 @@ class HaloCartesianSingleProcess(object):
         #==========================================================================================================================        
         
         
-        
-        
-                
-        
         self._cell_shifts=[
                             data.ScalarArray([-1*self._extent[0] ,-1*self._extent[1]  ,-1*self._extent[2]]   , dtype=ctypes.c_double),
                             data.ScalarArray([0.                 ,-1*self._extent[1]  ,-1*self._extent[2]]   , dtype=ctypes.c_double),
@@ -425,6 +491,53 @@ class HaloCartesianSingleProcess(object):
                             data.ScalarArray([0.                 ,self._extent[1]     ,self._extent[2]]   , dtype=ctypes.c_double),
                             data.ScalarArray([self._extent[0]    ,self._extent[1]     ,self._extent[2]]   , dtype=ctypes.c_double)
                            ]        
+    
+        _cell_shifts=[
+                            [-1*self._extent[0] ,-1*self._extent[1]  ,-1*self._extent[2]],
+                            [0.                 ,-1*self._extent[1]  ,-1*self._extent[2]],
+                            [self._extent[0]    ,-1*self._extent[1]  ,-1*self._extent[2]],
+                            [-1*self._extent[0] ,0.                  ,-1*self._extent[2]],
+                            [0.                 ,0.                  ,-1*self._extent[2]],
+                            [self._extent[0]    ,0.                  ,-1*self._extent[2]],
+                            [-1*self._extent[0] ,self._extent[1]     ,-1*self._extent[2]],
+                            [0.                 ,self._extent[1]     ,-1*self._extent[2]],
+                            [self._extent[0]    ,self._extent[1]     ,-1*self._extent[2]],
+
+                            [-1*self._extent[0] ,-1*self._extent[1]  ,0.],
+                            [0.                 ,-1*self._extent[1]  ,0.],
+                            [self._extent[0]    ,-1*self._extent[1]  ,0.],
+                            [-1*self._extent[0] ,0.                  ,0.],
+                            [self._extent[0]    ,0.                  ,0.],
+                            [-1*self._extent[0] ,self._extent[1]     ,0.],
+                            [0.                 ,self._extent[1]     ,0.],
+                            [self._extent[0]    ,self._extent[1]     ,0.],
+
+                            [-1*self._extent[0] ,-1*self._extent[1]  ,self._extent[2]],
+                            [0.                 ,-1*self._extent[1]  ,self._extent[2]],
+                            [self._extent[0]    ,-1*self._extent[1]  ,self._extent[2]],
+                            [-1*self._extent[0] ,0.                  ,self._extent[2]],
+                            [0.                 ,0.                  ,self._extent[2]],
+                            [self._extent[0]    ,0.                  ,self._extent[2]],
+                            [-1*self._extent[0] ,self._extent[1]     ,self._extent[2]],
+                            [0.                 ,self._extent[1]     ,self._extent[2]],
+                            [self._extent[0]    ,self._extent[1]     ,self._extent[2]]
+                           ]    
+        
+        
+        
+        _tmp_list_local=[]
+        for ix in range(26):
+            _tmp_list_local+=_cell_shifts[ix]
+        self._cell_shifts_array = data.ScalarArray(_tmp_list_local, dtype=ctypes.c_double) 
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     @property
     def halo_times(self):        
@@ -523,50 +636,6 @@ class Halo(object):
         self._send_buffer = particle.Dat(1000, self._nc, name='send_buffer', dtype=ctypes.c_double)
         
         
-        
-        """Code to sort incoming halo particles into cell list 
-        #==========================================================================================================================
-        _cell_sort_code = '''
-        
-        int index = shift;
-        for(int ix = 0; ix < CC; ix++){
-            
-            const int _tmp = CRC[ix];
-            
-            if (_tmp>0){
-                Q[end+LCI[ix]] = index;
-                for(int iy = 0; iy < _tmp-1; iy++){
-                    Q[index+iy]=index+iy+1;
-                }
-                Q[index+_tmp-1] = -1;
-            }
-            
-            
-            index += CRC[ix];
-        
-        }
-        '''
-        
-        #number of cells
-        _static_args = {'CC':ctypes.c_int,'shift':ctypes.c_int,'end':ctypes.c_int}
-        
-        
-        _cell_sort_dict = {
-                           'Q':data.NullIntScalarArray,
-                           'LCI':self._local_cell_indices,
-                           'CRC':self._cell_recv_counts
-                           }
-                
-        
-        
-        _cell_sort_kernel = kernel.Kernel('halo_cell_list_method', _cell_sort_code, headers = ['stdio.h'], static_args = _static_args)
-        self._cell_sort_loop = build.SharedLib(_cell_sort_kernel, _cell_sort_dict, DEBUG = self._DEBUG)
-        #==========================================================================================================================
-        """
-        
-        
-        
-        
     
     
     def set_cell_indices(self, cell_indices):
@@ -575,14 +644,6 @@ class Halo(object):
         else:
             self._cell_indices = data.ScalarArray(cell_indices, dtype=ctypes.c_int)
         self._cell_recv_counts = data.ScalarArray(ncomp = self._cell_indices.ncomp, dtype=ctypes.c_int)   
-    '''
-    def set_local_cell_indices(self, local_cell_indices):
-        if (local_cell_indices!=None):
-            if (type(local_cell_indices) == data.ScalarArray):
-                self._local_cell_indices = local_cell_indices
-            else:
-                self._local_cell_indices = data.ScalarArray(local_cell_indices, dtype=ctypes.c_int)       
-    '''
     
     
     
@@ -594,7 +655,7 @@ class Halo(object):
         
         
         '''Loop over the local cells and collect particle data using the cell list and list of cell indices'''
-        
+        '''
         self._packing_lib.execute( {'cell_indices':self._cell_indices, 
                                     'cell_list':cell_list,
                                     'send_buffer':self._send_buffer, 
@@ -603,8 +664,8 @@ class Halo(object):
                      static_args = {'num_cells':ctypes.c_int(self._cell_count),
                                     'npart':ctypes.c_int(cell_list[cell_list.end]),
                                     'ncomp':ctypes.c_int(data_buffer.ncomp) } )
-               
-
+        '''       
+        
         
         
         '''Send cell counts'''
@@ -638,15 +699,6 @@ class Halo(object):
             end = time.time()
             self._time+=end - start         
          
-        
-        
-        
-        
-        
-        
-        
-        
-        
         
         
     def __setitem__(self,ix, val):
@@ -683,8 +735,12 @@ class Halo(object):
         ''' Return Dat c data ctype'''
         return self._dt
     
-    
-    
+    @property
+    def send_buffer(self):
+        '''
+        Return send buffer particle dat
+        '''
+        return self._send_buffer
     
     
     

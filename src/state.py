@@ -366,32 +366,32 @@ class BaseMDState(object):
         if (self._cell_setup_attempt==True):
             self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
         
-        timer = True         
-        if (timer==True):
-            start = time.time()
+
         
         
          
-        #self._cell_sort_halo()
+        self._cell_sort_halo()
         
-        if (timer==True):
-            end = time.time()
-            self._time+=end - start        
+       
         
         #print "========================================================="
         
         
         
         #print self._q_list
-        
+        timer = True         
+        if (timer==True):
+            start = time.time()        
         
         
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
-                 
+        self._looping_method_accel.execute(N=self._q_list[self._q_list.end])   
         
-        self._looping_method_accel.execute(N=self._q_list[self._q_list.end])         
-        
+              
+        if (timer==True):
+            end = time.time()
+            self._time+=end - start         
         
     @property
     def potential(self):

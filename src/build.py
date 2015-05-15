@@ -547,6 +547,7 @@ class SharedLib(GenericToolChain):
             
         '''Execute the kernel over all particle pairs.'''            
         method = self._lib[self._kernel.name+'_wrapper']
+        
         method(*args)        
 
     def _code_init(self):
@@ -577,7 +578,7 @@ class SharedLib(GenericToolChain):
             self._static_arg_order = []
         
             for i,dat in enumerate(self._kernel.static_args.items()):
-                argnames += 'const '+data.ctypes_map[dat[1]]+' '+dat[0]+','        
+                argnames += ''+data.ctypes_map[dat[1]]+' '+dat[0]+','        
                 self._static_arg_order.append(dat[0])
                 self._argtypes.append(dat[1])
                 

@@ -43,7 +43,7 @@ if __name__ == '__main__':
         n=10
         N=n**3
         print "N =",N
-        rho = 0.5
+        rho = 5.
         mu = 0.0
         nsig = 5.0
         
@@ -73,7 +73,7 @@ if __name__ == '__main__':
         
         
         #Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([6., 6., 6.]), axis = np.array([0,0,1]))
+        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([6., 6., 6.]), axis = np.array([0,1,0]))
         
         #Give first two particles specific velocities
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
