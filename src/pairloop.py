@@ -1143,12 +1143,38 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
             if (type(dat[1]) == particle.Dat):
-                if (dat[1].name  == 'positions'):
+                if (dat[1].name  == 'accelerations'):
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
+                
+                    s+= space+'if (cp_h_flag > 0){ \n'
+                    s+= space+'ri = null_array;\n'
+                    s+= space+'}else{ \n'
+                    #if not in halo
+                    s += space+'ri = '+argname+'+3*i;}\n'
+                    
+                    s+='\n'
+                    
+                    s+= space+'if (cpp_h_flag > 0){ \n'
+                    s+= space+'rj = null_array;\n'
+                    s+= space+'}else{ \n'
+                    #if not in halo
+                    s += space+'rj = '+argname+'+3*j;}\n'                    
                     
                     
-                    s += space+loc_argname+'[1] = '+argname+'+3*j;\n' 
-                    s += space+loc_argname+'[0] = '+argname+'+3*i;\n'
+                    s+='\n'
+                    
+                    
+                    
+                    
+                    
+                    
+                    s += space+loc_argname+'[1] = rj;\n'
+                    s += space+loc_argname+'[0] = ri;\n'
+                    
+                    
+                    s+='\n'
+                    
+                    
                     
                 else:
                     ncomp = dat[1].ncomp
@@ -1156,8 +1182,30 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                     s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                     s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'       
         
-        return s      
-    
+        return s
+         
+    def _generate_header_source(self):
+        '''Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        '''
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+
+        %(INCLUDED_HEADERS)s
+
+        #include "../generic.h"
+        
+        void %(KERNEL_NAME)s_wrapper(const int n, int* cell_array, int* q_list,%(ARGUMENTS)s);
+
+        #endif
+        '''
+        d = {'UNIQUENAME':self._unique_name,
+             'INCLUDED_HEADERS':self._included_headers(),
+             'KERNEL_NAME':self._kernel.name,
+             'ARGUMENTS':self._argnames()}
+        return (code % d)       
     
     def _code_init(self):
         self._kernel_code = self._kernel.code
@@ -1168,100 +1216,113 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         #include \"%(UNIQUENAME)s.h\"
         #include <stdio.h>
         
-        inline void cell_index_offset(const unsigned int cp_i, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cp, unsigned int* cpp){
+        inline void cell_index_offset(const unsigned int cp_i, const unsigned int cpp_i, int* cell_array, unsigned int* cpp, unsigned int* cp_h_flag, unsigned int* cpp_h_flag){
         
-            const int cell_map[27][3] = {   
-                                            {-1,1,-1},
-                                            {-1,-1,-1},
-                                            {-1,0,-1},
-                                            {0,1,-1},
-                                            {0,-1,-1},
-                                            {0,0,-1},
-                                            {1,0,-1},
-                                            {1,1,-1},
-                                            {1,-1,-1},                                            
-
-                                            {-1,1,0},
-                                            {-1,0,0},                                            
-                                            {-1,-1,0},
-                                            {0,-1,0},
-                                            {0,0,0},
+            const int cell_map[14][3] = {   {0,0,0},
+                                            {1,0,0},
                                             {0,1,0},
-                                            {1,0,0},                                            
                                             {1,1,0},
                                             {1,-1,0},
-                                            
-                                            {-1,0,1},
                                             {-1,1,1},
-                                            {-1,-1,1},
-                                            {0,0,1},
                                             {0,1,1},
-                                            {0,-1,1},
-                                            {1,0,1},
                                             {1,1,1},
-                                            {1,-1,1}
-                                            
-                                            };    
+                                            {-1,0,1},
+                                            {0,0,1},
+                                            {1,0,1},
+                                            {-1,-1,1},
+                                            {0,-1,1},
+                                            {1,-1,1}};     
             
             //internal cell array dimensions
-            const unsigned int ca0 = cell_array[0] - 2;
-            const unsigned int ca1 = cell_array[1] - 2;
-            const unsigned int ca2 = cell_array[2] - 2;
+            const unsigned int ca0 = cell_array[0];
+            const unsigned int ca1 = cell_array[1];
+            const unsigned int ca2 = cell_array[2];
             
-            
-               
+            //Get index for cell cp as tuple: cp=(Cx, Cy, Cz)
             const int tmp = ca0*ca1;
             int Cz = cp_i/tmp;
             int Cx = cp_i %% ca0;
             int Cy = (cp_i - Cz*tmp)/ca0;
             
-            *cp = LINIDX_ZYX(ca0,ca1,Cx,Cy,Cz);
+            //check if cp is in halo
+            if( (Cx %% (ca0-1) == 0) || (Cy %% (ca1-1) == 0) || (Cz %% (ca2-1) == 0)){
+                *cp_h_flag = 1;
+            }else{*cp_h_flag = 0;}
             
-            Cx += cell_map[cpp_i][0];
-            Cy += cell_map[cpp_i][1];
-            Cz += cell_map[cpp_i][2];
             
-            *cpp = LINIDX_ZYX(ca0,ca1,Cx,Cy,Cz);
+            //compute tuple of adjacent cell cpp
+            Cx = (Cx + cell_map[cpp_i][0] + ca0) %% ca0;
+            Cy = (Cy + cell_map[cpp_i][1] + ca1) %% ca1;
+            Cz = (Cz + cell_map[cpp_i][2] + ca2) %% ca2;
             
-            //printf("cp = %%d, cpp = %%d |", *cp, *cpp);
+            //compute linear index of adjacent cell cpp
+            *cpp = Cz*(ca0*ca1) + Cy*(ca0) + Cx;
+            
+            //check if cpp is in halo
+            if( (Cx %% (ca0-1) == 0) || (Cy %% (ca1-1) == 0) || (Cz %% (ca2-1) == 0)){
+                *cpp_h_flag = 1;
+            }else{*cpp_h_flag = 0;}          
+            
+            
                 
             return;      
         }    
         
-        void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
+        void %(KERNEL_NAME)s_wrapper(const int n, int* cell_array, int* q_list,%(ARGUMENTS)s) { 
             
-            
-            for(unsigned int cp_i = 0; cp_i < cell_count; cp_i++){
-                for(unsigned int cpp_i=0; cpp_i<27; cpp_i++){
-                
-                    unsigned int cpp, cp; 
+            printf("starting");
+            for(unsigned int cp = 0; cp < cell_array[0]*cell_array[1]*(cell_array[2]-1); cp++){
+                for(unsigned int cpp_i=0; cpp_i<14; cpp_i++){
+                    
+                    printf("cp=%%d, cpp_i=%%d |",cp,cpp_i);
+                    
+                    
+                    unsigned int cpp, cp_h_flag, cpp_h_flag; 
                     int i,j;
                     
                     
-                    cell_index_offset(cp_i, cpp_i, cell_array, d_extent, &cp, &cpp);
+                    cell_index_offset(cp, cpp_i, cell_array, &cpp, &cp_h_flag, &cpp_h_flag);
                     
+                    //Check that both cells are not halo cells.
                     
-                    double r1[3];
+                    printf("cpp=%%d, flagi=%%d, flagj=%%d |",cpp, cp_h_flag,cpp_h_flag);
                     
-                    i = q_list[n+cp];
-                    while (i > -1){
-                        j = q_list[n+cpp];
-                        while (j > -1){
-                            if (cp != cpp || i != j){
-        
-                                %(KERNEL_ARGUMENT_DECL)s
-                                
-                                  //KERNEL CODE START
-                                  
-                                  %(KERNEL)s
-                                  
-                                  //KERNEL CODE END
-                                
-                                
+                    if ((cp_h_flag+cpp_h_flag) < 2){
+                        printf("inside halo");
+                    
+                        
+                        
+                        i = q_list[n+cp];
+                        while (i > -1){
+                            j = q_list[n+cpp];
+                            while (j > -1){
+                                if (cp != cpp || i != j){
+                                    
+                                    double *ri, *rj;
+                                    double null_array[3] = {0,0,0};
+                                    
+                                    printf("i=%%d, j=%%d |",i,j);
+                                    
+                                    
+                                    %(KERNEL_ARGUMENT_DECL)s
+                                    
+                                      //KERNEL CODE START
+                                      
+                                      %(KERNEL)s
+                                      
+                                      //KERNEL CODE END
+                                    
+                                    
+                                }
+                                j = q_list[j];  
                             }
-                            j = q_list[j];  
+                            i=q_list[i];
                         }
-                        i=q_list[i];
+                    
+                    
+                    
+                    
+                    
                     }
                 }
             }
@@ -1286,18 +1347,18 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         if (dat_dict != None):
             self._particle_dat_dict = dat_dict    
         
+        print self._particle_dat_dict
+        
         '''Create arg list'''
         
         if (N != None):
             _N = N
         else:
-            _N = self._N
+            _N = self._domain.cell_array[self._domain.cell_array.end]
         
-        args=[ctypes.c_int(_N),
-              ctypes.c_int(self._domain.cell_count_internal), 
+        args=[ctypes.c_int(_N), 
               self._domain.cell_array.ctypes_data,
-              self._q_list.ctypes_data,
-              self._domain.extent.ctypes_data]
+              self._q_list.ctypes_data]
 
         
         '''Add static arguments to launch command'''
@@ -1314,7 +1375,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         '''Execute the kernel over all particle pairs.'''            
         method = self._lib[self._kernel.name+'_wrapper']
         
-        
+        print args
         method(*args)        
     
     

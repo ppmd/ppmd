@@ -20,7 +20,7 @@ if __name__ == '__main__':
     test_1000 = True
     
     #2 particles bouncing agasint each other.
-    test_2_bounce = False
+    test_2_bounce = True
     
     #plot as computing + at end?
     plotting = False
@@ -51,7 +51,7 @@ if __name__ == '__main__':
         test_domain = domain.BaseDomainHalo()
         
         #Initialise LJ potential
-        test_potential = potential.LennardJonesOpenMP(sigma=1.0,epsilon=1.0)    
+        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
         
         #Place N particles in a lattice with given density.
         test_pos_init = state.PosInitLatticeNRho(N, rho)
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         
         #See above
         test_domain = domain.BaseDomainHalo()
-        test_potential = potential.LennardJonesOpenMP(sigma=1.0,epsilon=1.0)
+        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)
         
         print test_potential.rc
         
@@ -155,7 +155,7 @@ if __name__ == '__main__':
     #test_gr_method.RawWrite()
     #test_vaf_method.plot()
 
-    #a=input("PRESS ENTER TO CONTINUE.\n")
+    a=input("PRESS ENTER TO CONTINUE.\n")
     
 
     

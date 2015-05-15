@@ -41,7 +41,7 @@ class BaseMDState(object):
         self._N = N
         self._pos = particle.Dat(N, 3, name='positions')
         self._vel = particle.Dat(N, 3, name='velocities')
-        self._accel = particle.Dat(N, 3, name='forces')
+        self._accel = particle.Dat(N, 3, name='accelerations')
         
         self._mass = particle.Dat(N, 1, 1.0)
         if (particle_mass_init != None):
@@ -136,7 +136,7 @@ class BaseMDState(object):
         
         self._cell_sort_code = '''
         
-        //printf("start ");
+        printf("cell start");
         
         const double R0 = P[0]+0.5*E[0];
         const double R1 = P[1]+0.5*E[1];
@@ -148,21 +148,13 @@ class BaseMDState(object):
         
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
         
-        
-        //printf("val = %d | ",val);
+        printf("val=%d",val);
         
         CCC[val]++;
-        
-        //printf("N[0] + val = %d | ", N[0] + val);
-        //printf("I[0] = %d, val = %d | ",I[0], val);
         
         Q[I[0]] = Q[N[0] + val];
         Q[N[0] + val] = I[0];
         I[0]++;
-        
-        //printf("end ");
-        
-        
         '''
         self._cell_sort_dict = {'E':self._domain.extent,
                                 'P':self._pos,
@@ -187,18 +179,12 @@ class BaseMDState(object):
         self._q_list[self._q_list.end] = self._q_list.end - self._domain.cell_count
         self._internal_N[0] = self._q_list[self._q_list.end]
         
-        _start = self._q_list[self._q_list.end]
-        for cx in range(self._domain.cell_count):
-            self._q_list[_start + cx] = -1
+        self._q_list.Dat[self._q_list[self._q_list.end]:self._q_list.end:] = ctypes.c_int(-1)
         
         
         self._internal_index[0]=0
-        
         self._cell_contents_count.zero()
-        
         self._internal_N[0] = self._q_list[self._q_list.end]
-        
-        
         self._cell_sort_loop.execute(start = 0, end=self._pos.npart + self._pos.npart_halo, dat_dict = {'E':self._domain.extent,
                                 'P':self._pos,
                                 'CEL':self._domain.cell_edge_lengths,
@@ -215,37 +201,15 @@ class BaseMDState(object):
         Construct neighbour list, assigning *local* atoms to cells. Using Rapaport algorithm.
         """
         
-        
-        
         self._q_list.resize(self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1)
         self._q_list[self._q_list.end] = self._q_list.end - self._domain.cell_count
         
-       
-        
-        
         self._internal_N[0] = self._q_list[self._q_list.end]
-        
-        
-                
-        '''
-        #Takes forever do not use
-        _start = self._q_list[self._q_list.end]
-        for cx in range(self._domain.cell_count):
-            self._q_list[_start + cx] = -1
-        '''
-        
-        
         self._q_list.Dat[self._q_list[self._q_list.end]:self._q_list.end:] = ctypes.c_int(-1)
-        
         self._internal_index[0]=0
         
         self._cell_contents_count.zero()
-        
         self._internal_N[0] = self._q_list[self._q_list.end]
-        
-       
-        
-        
         self._cell_sort_loop.execute(   start = 0, 
                                         end=self._pos.npart,
                                         dat_dict = {'E':self._domain.extent,
@@ -263,26 +227,16 @@ class BaseMDState(object):
         
     def _cell_sort_halo(self):
         """
-        Construct neighbour list, assigning *halo* atoms to cells. Using Rapaport algorithm.
+        Construct neighbour list, assigning *halo* atoms to cells. Using Rapaport algorithm. Depreciated, use halo sorting methods within the halo class.
         """
-        
-        
         
         self._q_list.resize(self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1)
         self._q_list[self._q_list.end] = self._q_list.end - self._domain.cell_count
         self._internal_N[0] = self._q_list[self._q_list.end]
         
-        #_start = self._q_list[self._q_list.end]
-        #for cx in range(self._domain.cell_count):
-        #    self._q_list[_start + cx] = -1
-        
         
         self._internal_index[0]=self._pos.npart
-        
-        
         self._internal_N[0] = self._q_list[self._q_list.end]
-        
-        
         self._cell_sort_loop.execute(   start = self._pos.npart, 
                                         end=self._pos.npart + self._pos.npart_halo,
                                         dat_dict = {'E':self._domain.extent,
@@ -360,24 +314,24 @@ class BaseMDState(object):
         timer = True         
         if (timer==True):
             start = time.time() 
-                    
+        
+        print "start local cell sort"
+        print self._q_list.ctypes_data
         self._cell_sort_local()               
-                
-        #print "========================================================="
-        #print ""
+        print "end local cell sort"
+        
+        
         if (self._cell_setup_attempt==True):
             self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
-        
-
-        
-        
-        #~ 6 times slower than method in halo.
-        #self._cell_sort_halo()
         
         
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
-        self._looping_method_accel.execute(N=self._q_list[self._q_list.end])   
+        #const int n, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s
+        
+        
+        
+        self._looping_method_accel.execute()   
         
         if (timer==True):
             end = time.time()
