@@ -40,10 +40,10 @@ if __name__ == '__main__':
     
     if (test_1000):
         #n=25 reasonable size
-        n=15
+        n=20
         N=n**3
         print "N =",N
-        rho = 5.
+        rho = 1.
         mu = 0.0
         nsig = 5.0
         

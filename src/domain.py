@@ -18,15 +18,9 @@ class BaseDomain(object):
 
     def __init__(self, extent = np.array([1., 1., 1.]), cell_count = 1):
         
-        self._MPI = MPI.COMM_WORLD
-        self._rank = self._MPI.Get_rank()
-        self._nproc = self._MPI.Get_size()
         
         
         self._extent = data.ScalarArray(extent)
-        
-        
-        
         
         self._cell_count = cell_count
         self._cell_array = data.ScalarArray(np.array([1,1,1]), dtype=ctypes.c_int)
@@ -206,6 +200,20 @@ class BaseDomain(object):
          
 class BaseDomainHalo(BaseDomain):
 
+    def __init__(self, extent = np.array([1., 1., 1.]), cell_count = 1):
+        
+        self._MPI = MPI.COMM_WORLD
+        
+        
+        self._extent = data.ScalarArray(extent)
+        self._cell_count = cell_count
+        self._cell_array = data.ScalarArray(np.array([1,1,1]), dtype=ctypes.c_int)
+        self._cell_edge_lengths = data.ScalarArray(np.array([1.,1.,1.], dtype=ctypes.c_double))
+        
+        
+        
+        self._BCloop = None
+
     def set_cell_array_radius(self, rn):
         """
         Create cell structure based on current extent and extended cutoff distance.
@@ -234,6 +242,29 @@ class BaseDomainHalo(BaseDomain):
         
         self._cell_count = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]
         self._extent_outer = data.ScalarArray(self._extent.Dat+2*self._cell_edge_lengths.Dat)
+        
+        #_tmp = int(self._cell_array[0]/float(self._MPI.Get_size()))
+        
+        
+        
+        #_dims=(int(self._cell_array[0]/_tmp),1,1)
+        
+        _dims = (1,1,1)
+        
+        _periods = (True, True, True)
+        
+        
+        
+        self._COMM = self._MPI.Create_cart(_dims, _periods,True)
+        
+        self._rank = self._COMM.Get_rank()
+        self._nproc = self._COMM.Get_size()          
+        
+        
+        
+        
+        
+        
         
         
         self.halo_init()

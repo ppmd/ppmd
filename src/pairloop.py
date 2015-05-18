@@ -1311,8 +1311,8 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                                 if (cp != cpp || i < j){
                                     
                                     double *ri, *rj;
-                                    double null_array[3] = {0,0,0};
                                     
+                                    double null_array[3] = {0,0,0};
                                     //printf("i=%%d, j=%%d |",i,j);
                                     
                                     
