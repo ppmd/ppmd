@@ -246,7 +246,7 @@ class BaseDomainHalo(BaseDomain):
         #_tmp = int(self._cell_array[0]/float(self._MPI.Get_size()))
         
         
-        
+        #
         #_dims=(int(self._cell_array[0]/_tmp),1,1)
         
         _dims = (1,1,1)
