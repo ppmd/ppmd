@@ -35,7 +35,7 @@ if __name__ == '__main__':
     
 
     domain                  = domain.BaseDomainHalo()
-    potential               = potential.LennardJonesOpenMP(sigma,epsilon,cutoff)
+    potential               = potential.LennardJones(sigma,epsilon,cutoff)
     
     initial_position_config = state.PosInitDLPOLYConfig('TEST7/CONFIG')
     initial_velocity_config = state.VelInitDLPOLYConfig('TEST7/CONFIG')

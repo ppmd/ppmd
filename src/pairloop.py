@@ -1140,7 +1140,23 @@ class PairLoopRapaportHalo(PairLoopRapaport):
             
             
             if (type(dat[1]) == data.ScalarArray):
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
+                
+                if (dat[1].name  == 'potential_energy'):
+                    
+                    s+= space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'; \n'
+                    s+= '\n'
+                    s+= space+'if (cp_h_flag + cpp_h_flag >= 1){ \n'
+                    
+                    #s+= space+'printf("cp = %d, cpp = %d ,cpf = %d, cppf = %d|", cp,cpp, cp_h_flag, cpp_h_flag);\n'
+                    
+                    s+= space+loc_argname+' = &'+argname+'[1];\n'
+                    
+                    
+                    s+= space+'}else{ \n'
+                    s+= space+loc_argname+' = '+argname+';\n'
+                    s+= space+'}\n'
+                else:
+                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
             if (type(dat[1]) == particle.Dat):
                 if (dat[1].name  == 'accelerations'):
@@ -1162,10 +1178,6 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                     
                     
                     s+='\n'
-                    
-                    
-                    
-                    
                     
                     
                     s += space+loc_argname+'[1] = rj;\n'
@@ -1270,11 +1282,11 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         
         void %(KERNEL_NAME)s_wrapper(const int n, int* cell_array, int* q_list,%(ARGUMENTS)s) { 
             
-            printf("starting");
+            //printf("starting");
             for(unsigned int cp = 0; cp < cell_array[0]*cell_array[1]*(cell_array[2]-1); cp++){
                 for(unsigned int cpp_i=0; cpp_i<14; cpp_i++){
                     
-                    printf("cp=%%d, cpp_i=%%d |",cp,cpp_i);
+                    //printf("cp=%%d, cpp_i=%%d |",cp,cpp_i);
                     
                     
                     unsigned int cpp, cp_h_flag, cpp_h_flag; 
@@ -1285,10 +1297,10 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                     
                     //Check that both cells are not halo cells.
                     
-                    printf("cpp=%%d, flagi=%%d, flagj=%%d |",cpp, cp_h_flag,cpp_h_flag);
+                    //printf("cpp=%%d, flagi=%%d, flagj=%%d |",cpp, cp_h_flag,cpp_h_flag);
                     
                     if ((cp_h_flag+cpp_h_flag) < 2){
-                        printf("inside halo");
+                        //printf("inside halo");
                     
                         
                         
@@ -1296,12 +1308,12 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                         while (i > -1){
                             j = q_list[n+cpp];
                             while (j > -1){
-                                if (cp != cpp || i != j){
+                                if (cp != cpp || i < j){
                                     
                                     double *ri, *rj;
                                     double null_array[3] = {0,0,0};
                                     
-                                    printf("i=%%d, j=%%d |",i,j);
+                                    //printf("i=%%d, j=%%d |",i,j);
                                     
                                     
                                     %(KERNEL_ARGUMENT_DECL)s
@@ -1347,14 +1359,14 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         if (dat_dict != None):
             self._particle_dat_dict = dat_dict    
         
-        print self._particle_dat_dict
+        
         
         '''Create arg list'''
         
         if (N != None):
             _N = N
         else:
-            _N = self._domain.cell_array[self._domain.cell_array.end]
+            _N = self._q_list[self._q_list.end]
         
         args=[ctypes.c_int(_N), 
               self._domain.cell_array.ctypes_data,
@@ -1375,11 +1387,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         '''Execute the kernel over all particle pairs.'''            
         method = self._lib[self._kernel.name+'_wrapper']
         
-        print args
         method(*args)        
-    
-    
-    
     
     
     

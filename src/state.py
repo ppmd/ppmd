@@ -54,7 +54,9 @@ class BaseMDState(object):
         
         
         #potential energy, kenetic energy, total energy.
-        self._U = data.ScalarArray();
+        self._U = data.ScalarArray(max_size = 2, name='potential_energy');
+        self._U.InitHaloDat()
+        
         self._K = data.ScalarArray();
         self._Q = data.ScalarArray();
 
@@ -136,7 +138,7 @@ class BaseMDState(object):
         
         self._cell_sort_code = '''
         
-        printf("cell start");
+        //printf("cell start");
         
         const double R0 = P[0]+0.5*E[0];
         const double R1 = P[1]+0.5*E[1];
@@ -148,7 +150,7 @@ class BaseMDState(object):
         
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
         
-        printf("val=%d",val);
+        //printf("val=%d",val);
         
         CCC[val]++;
         
@@ -315,23 +317,24 @@ class BaseMDState(object):
         if (timer==True):
             start = time.time() 
         
-        print "start local cell sort"
-        print self._q_list.ctypes_data
+        #print "start local cell sort"
+        #print self._q_list.ctypes_data
         self._cell_sort_local()               
-        print "end local cell sort"
+        #print "end local cell sort"
         
         
         if (self._cell_setup_attempt==True):
             self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
         
         
+        #self._cell_sort_all()
+        
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
-        #const int n, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s
         
         
         
-        self._looping_method_accel.execute()   
+        self._looping_method_accel.execute(N=self._q_list[self._q_list.end])   
         
         if (timer==True):
             end = time.time()
@@ -368,7 +371,8 @@ class BaseMDState(object):
         """
         Reset potential energy to 0.0
         """
-        self._U._Dat = np.zeros([1], dtype=ctypes.c_double, order='C')
+        #self._U._Dat = np.zeros([1], dtype=ctypes.c_double, order='C')
+        self._U.scale(0.)
         
         
     def U_set(self, U_in):

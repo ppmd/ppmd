@@ -252,6 +252,7 @@ class ScalarArray(object):
             self._Dat = np.array([val], dtype=self._dtype, order='C')
         
         self._A = False
+        self._DatHaloInit = False
         
     def concatenate(self, size):
         '''
@@ -289,12 +290,18 @@ class ScalarArray(object):
         :arg double val: Coefficient to scale all elements by.
         '''
         #the below seems to cause glibc errors
-        #self._Dat = self._Dat * np.array([val],dtype=self._dtype)
-        
+        self._Dat = self._Dat * np.array([val],dtype=self._dtype)
+        '''
         #work around
-        for ix in range(self._N1):
-            self._Dat[ix]=val*self._Dat[ix]
+        if (self._DatHaloInit == False):
+            _s = 1
+        else:
+            _s = 2
         
+        
+        for ix in range(_s*self._N1):
+            self._Dat[ix]=val*self._Dat[ix]
+        '''
         
         
         
@@ -303,12 +310,12 @@ class ScalarArray(object):
         Zero all elements in array.
         '''
         #causes glibc errors
-        #self._Dat = np.zeros(self._N1, dtype=self._dtype, order='C')
-        
+        self._Dat = np.zeros(self._N1, dtype=self._dtype, order='C')
+        '''
         #work around
         for ix in range(self._N1):
             self._Dat[ix]=0.
-            
+        '''
     
     def __setitem__(self,ix, val):
         self._Dat[ix] = np.array([val],dtype=self._dtype)
@@ -373,17 +380,21 @@ class ScalarArray(object):
     @property
     def mean(self):
         '''Return mean'''
-        return self._Dat.mean()      
+        return self._Dat.mean()
+        
+        
+        
+        
+           
         
     @property
     def name(self):
-        return "ScalarArray"
+        return self._name
     
     def resize(self, N):
         if (N>self._max_size):
             self._max_size = N+(N-self._max_size)*10
             self._Dat = np.resize(self._Dat,self._max_size)
-            print "WARNING RESIZED SCALARARRAY", self._max_size
         self._N1 = N
     
     @property
@@ -492,7 +503,29 @@ class ScalarArray(object):
         else:
             self.AverageReset()
             self._Aarray += self._Dat
-            self._Alength += 1  
+            self._Alength += 1 
+            
+    def InitHaloDat(self):
+        '''
+        Create a secondary dat container.
+        '''
+        
+        if(self._DatHaloInit == False):
+            self._max_size = 2*self._max_size
+            self._Dat = np.resize(self._Dat,self._max_size)
+            self._DatHaloInit = True
+            
+    
+    @property
+    def DatHaloInit(self):
+        '''
+        Return status of halo dat.
+        '''
+        return self._DatHaloInit
+        
+        
+    
+    
                        
 ################################################################################################################
 # Pointer array.

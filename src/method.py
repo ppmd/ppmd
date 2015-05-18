@@ -204,10 +204,10 @@ class VelocityVerlet(object):
                 for ix in range(self._state.N):
                     self._K[0] += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
             
-            
-            self._energy_handle.U_append(self._state.U.Dat/self._N)
+            _U_tmp = (self._state.U.Dat[0]+0.5*self._state.U.Dat[1])
+            self._energy_handle.U_append(_U_tmp/self._N)
             self._energy_handle.K_append((self._K[0])/self._N)
-            self._energy_handle.Q_append((self._state.U[0] + self._K[0])/self._N)
+            self._energy_handle.Q_append((_U_tmp + self._K[0])/self._N)
             self._energy_handle.T_append((i+1)*self._dt)
         
         
