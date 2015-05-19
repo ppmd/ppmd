@@ -33,7 +33,7 @@ class HaloCartesianSingleProcess(object):
     Class to contain and control cartesian halo transfers.
     
     """
-    def __init__(self, MPICOMM = None, rank = 0, nproc = 1, cell_array = None, extent = None):
+    def __init__(self, MPICOMM = None, rank = None, top = None, dims = None, cell_array = None, extent = None):
         self._DEBUG = True
         timer=True
         if (timer==True):
@@ -43,7 +43,8 @@ class HaloCartesianSingleProcess(object):
         assert extent != None, "Error: No extent passed."
         
         self._rank = rank
-        self._nproc = nproc
+        self._top = top
+        self._dims = dims
         self._MPI = MPICOMM
         
         self._ca = cell_array
@@ -51,19 +52,11 @@ class HaloCartesianSingleProcess(object):
         
         self._halos=[]
         
-        _BASE_SIZES = [1, self._ca[0]-2, 1, self._ca[1]-2, (self._ca[0]-2)*(self._ca[1]-2), self._ca[1]-2,1,self._ca[0]-2,1]
-        
-        _MID_SIZES = [self._ca[2]-2, (self._ca[0]-2)*(self._ca[2]-2), self._ca[2]-2, (self._ca[1]-2)*(self._ca[2]-2), (self._ca[1]-2)*(self._ca[2]-2), self._ca[2]-2, (self._ca[0]-2)*(self._ca[2]-2), self._ca[2]-2]
-        
-        self._SIZES = _BASE_SIZES + _MID_SIZES + _BASE_SIZES
-        
-        dest=0
-        src=0
         
         self._halo_setup_prepare()
         
         for ix in range(26):
-            self._halos.append(Halo(self._MPI, self._rank,dest,src,ix,self._SIZES[ix], ncol = 3))
+            self._halos.append(Halo(self._MPI, self._rank, self._send_list[ix], self._recv_list[ix], ix, self._SIZES[ix], ncol = 3))
         
         self._create_packing_pointer_array()
         
@@ -212,6 +205,67 @@ class HaloCartesianSingleProcess(object):
         
     def _halo_setup_prepare(self):
         
+        '''Determine sources and destinations'''
+        
+        _recv_modifiers = [
+                          [-1, -1, -1], #0
+                          [ 0, -1, -1], #1
+                          [ 1, -1, -1], #2
+                          [-1,  0, -1], #3
+                          [ 0,  0, -1], #4
+                          [ 1,  0, -1], #5
+                          [-1,  1, -1], #6
+                          [ 0,  1, -1], #7
+                          [ 1,  1, -1], #8
+                          
+                          [-1, -1, 0], #9
+                          [ 0, -1, 0], #10
+                          [ 1, -1, 0], #11
+                          [-1,  0, 0], #12
+                          [ 0,  0, 0], #13
+                          [ 1,  0, 0], #14
+                          [-1,  1, 0], #15
+                          [ 0,  1, 0], #16
+                          [ 1,  1, 0], #17
+                          
+                          [-1, -1, 1], #18
+                          [ 0, -1, 1], #19
+                          [ 1, -1, 1], #20
+                          [-1,  0, 1], #21
+                          [ 0,  0, 1], #22
+                          [ 1,  0, 1], #23
+                          [-1,  1, 1], #24
+                          [ 0,  1, 1], #25
+                          [ 1,  1, 1]  #26
+                         ]
+        
+        _send_modifiers = [[-1*ix[0],-1*ix[1],-1*ix[2]] for ix in _recv_modifiers]
+        
+        
+        
+        self._send_list = [((self._top[0]+ix[0]) % self._dims[0]) + ((self._top[1]+ix[1]) % self._dims[1])*self._dims[0] + ((self._top[2]+ix[2]) % self._dims[2])*self._dims[0]*self._dims[1] for ix in _send_modifiers]
+        self._recv_list = [((self._top[0]+ix[0]) % self._dims[0]) + ((self._top[1]+ix[1]) % self._dims[1])*self._dims[0] + ((self._top[2]+ix[2]) % self._dims[2])*self._dims[0]*self._dims[1] for ix in _recv_modifiers]
+        
+        
+        
+        '''
+        for ix in range(26):
+            print "rank =", self._rank , "halo =", ix, "dest =", self._send_list[ix]
+        '''
+        
+        
+        
+        
+        
+        
+        
+        
+        '''Sizes of halos measured in number of cells not needed?'''
+        _BASE_SIZES = [1, self._ca[0]-2, 1, self._ca[1]-2, (self._ca[0]-2)*(self._ca[1]-2), self._ca[1]-2,1,self._ca[0]-2,1]
+        
+        _MID_SIZES = [self._ca[2]-2, (self._ca[0]-2)*(self._ca[2]-2), self._ca[2]-2, (self._ca[1]-2)*(self._ca[2]-2), (self._ca[1]-2)*(self._ca[2]-2), self._ca[2]-2, (self._ca[0]-2)*(self._ca[2]-2), self._ca[2]-2]
+        
+        self._SIZES = _BASE_SIZES + _MID_SIZES + _BASE_SIZES        
        
         
         self._exchange_sizes=data.ScalarArray(range(26),dtype=ctypes.c_int)

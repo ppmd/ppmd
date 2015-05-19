@@ -222,51 +222,121 @@ class BaseDomainHalo(BaseDomain):
         
         """
         
+        
+        '''Here everything is global'''
+        
         self._cell_array[0] = int(self._extent[0]/rn)
         self._cell_array[1] = int(self._extent[1]/rn)
         self._cell_array[2] = int(self._extent[2]/rn)
-        
-        
         
         self._cell_edge_lengths[0] = self._extent[0]/self._cell_array[0]
         self._cell_edge_lengths[1] = self._extent[1]/self._cell_array[1]
         self._cell_edge_lengths[2] = self._extent[2]/self._cell_array[2]
         
-        
         self._cell_count_internal = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]
         
-        self._cell_array[0] += 2
-        self._cell_array[1] += 2
-        self._cell_array[2] += 2
         
+        '''Get number of processes'''
+        _Np = self._MPI.Get_size()
         
-        self._cell_count = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]
-        self._extent_outer = data.ScalarArray(self._extent.Dat+2*self._cell_edge_lengths.Dat)
+        '''Prime factor number of processes'''
+        _factors = pfactor(_Np)
         
-        #_tmp = int(self._cell_array[0]/float(self._MPI.Get_size()))
+        '''Create grid from factorisation'''
+        if len(_factors)==0:
+            _NP=[1,1,1]
+        elif len(_factors)==1:
+            _NP=[_factors[0],1,1]
+        elif len(_factors)==2:
+            _NP=[_factors[0],_factors[1],1]
+        else:
+            _factors.sort()
+            _q = len(_factors)/3
+            _NP = []
+            _NP.append(reduce(lambda x, y: x*y, _factors[0:_q:]))
+            _NP.append(reduce(lambda x, y: x*y, _factors[_q:2*_q:]))
+            _NP.append(reduce(lambda x, y: x*y, _factors[2*_q::]))
+            
+        '''Order processor calculated dimension sizes in descending order'''
+        _NP.sort(reverse=True)
         
+        '''Order domain dimension sizes in descending order'''
+        _cal = [[0,self._cell_array[0]], [1,self._cell_array[1]], [2,self._cell_array[2]]]
+        _cal.sort(key=lambda x:x[1], reverse=True)
         
-        #
-        #_dims=(int(self._cell_array[0]/_tmp),1,1)
+        '''Try to match avaible processor dimensions to phyiscal cells'''
+        _dims=[0,0,0]
+        for i in range(3):
+            ix = _cal[i][0]
+            _dims[ix] = _NP[i] 
         
-        _dims = (1,1,1)
+        '''Calculate what cell array sizes would be using given processor grid'''
+        _bsc = [math.ceil(self._cell_array[0]/float(_dims[0])),
+                math.ceil(self._cell_array[1]/float(_dims[1])),
+                math.ceil(self._cell_array[2]/float(_dims[2]))]
         
-        _periods = (True, True, True)
+        '''Round down number of processes per direction if excessive'''
+        _dims = [
+                int(math.ceil(self._cell_array[0]/_bsc[0])),
+                int(math.ceil(self._cell_array[1]/_bsc[1])),
+                int(math.ceil(self._cell_array[2]/_bsc[2]))
+                ]
         
+        '''Create cartesian communicator'''
+        self._dims = tuple(_dims)
+        self._COMM = self._MPI.Create_cart(self._dims[::-1], (True, True, True),True)
         
-        
-        self._COMM = self._MPI.Create_cart(_dims, _periods,True)
-        
+        '''get rank, nprocs'''
         self._rank = self._COMM.Get_rank()
         self._nproc = self._COMM.Get_size()          
         
+        if self._rank == 0:
+            print "Processor layout", self._dims
         
         
+        '''Topology has below indexing, last index reverses'''
+        #[z,y,x]
+        self._top = self._COMM.Get_topo()[2][::-1]
+        
+        #print "rank", self._rank, "top", self._top
         
         
+        '''Calculate global distribtion of cells'''
+        _bs = []
+        for ix in range(3):
+            _tmp = []
+            for iy in range(_dims[ix]-1):
+                _tmp.append(int(_bsc[ix]))
+            _tmp.append(int(self._cell_array[0] - (_dims[ix]-1)*_bsc[ix]))
+            _bs.append(_tmp)
         
+        #print "bs =", _bs
         
+        if self._rank == 0:
+            print "Cell layout", _bs
+                
+        '''Get local cell array'''
+        self._cell_array[0] = _bs[0][self._top[0]]
+        self._cell_array[1] = _bs[1][self._top[1]]
+        self._cell_array[2] = _bs[2][self._top[2]]
         
+        '''Get local extent'''
+        self._extent[0] = self._cell_edge_lengths[0]*self._cell_array[0]
+        self._extent[1] = self._cell_edge_lengths[1]*self._cell_array[1]
+        self._extent[2] = self._cell_edge_lengths[2]*self._cell_array[2]
+        
+        '''Increment cell array to include halo'''
+        self._cell_array[0] += 2
+        self._cell_array[1] += 2
+        self._cell_array[2] += 2        
+        
+        '''Get local cell count'''
+        self._cell_count = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]
+        
+        '''Outer extent including halos, used?'''
+        self._extent_outer = data.ScalarArray(self._extent.Dat+2*self._cell_edge_lengths.Dat)        
+        
+        '''Init halos'''
         self.halo_init()
         
         return True
@@ -278,7 +348,6 @@ class BaseDomainHalo(BaseDomain):
         """
         Returns list of domain extents including halo regions.
         """
-        
         return self._extent_outer      
         
     
@@ -286,7 +355,7 @@ class BaseDomainHalo(BaseDomain):
         '''
         Method to initialise halos for local domain.
         '''
-        self._halos = halo.HaloCartesianSingleProcess(self._MPI, self._rank, self._nproc, self._cell_array, self._extent)
+        self._halos = halo.HaloCartesianSingleProcess(self._COMM, self._rank, self._top, self._dims, self._cell_array, self._extent)
     
     
     @property
@@ -311,9 +380,19 @@ class BaseDomainHalo(BaseDomain):
     
     
     
+def factor(N):
+    return [ix for ix in range(1, N/2 + 1) if not N%ix] + [N]    
     
-    
-    
+def pfactor(N):
+    lst=[]
+    l=2
+    while l<=N:
+        if N%l==0:
+            N/=l
+            lst.append(l)
+        else:
+            l+=1
+    return lst   
     
     
     
