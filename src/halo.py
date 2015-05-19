@@ -239,11 +239,8 @@ class HaloCartesianSingleProcess(object):
                           [ 1,  1, 1]  #26
                          ]
         
-        _send_modifiers = [[-1*ix[0],-1*ix[1],-1*ix[2]] for ix in _recv_modifiers]
         
-        
-        
-        self._send_list = [((self._top[0]+ix[0]) % self._dims[0]) + ((self._top[1]+ix[1]) % self._dims[1])*self._dims[0] + ((self._top[2]+ix[2]) % self._dims[2])*self._dims[0]*self._dims[1] for ix in _send_modifiers]
+        self._send_list = [((self._top[0]-ix[0]) % self._dims[0]) + ((self._top[1]-ix[1]) % self._dims[1])*self._dims[0] + ((self._top[2]-ix[2]) % self._dims[2])*self._dims[0]*self._dims[1] for ix in _recv_modifiers]
         self._recv_list = [((self._top[0]+ix[0]) % self._dims[0]) + ((self._top[1]+ix[1]) % self._dims[1])*self._dims[0] + ((self._top[2]+ix[2]) % self._dims[2])*self._dims[0]*self._dims[1] for ix in _recv_modifiers]
         
         

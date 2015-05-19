@@ -250,7 +250,7 @@ class BaseDomainHalo(BaseDomain):
         elif len(_factors)==2:
             _NP=[_factors[0],_factors[1],1]
         else:
-            _factors.sort()
+            _factors.sort(reverse=True)
             _q = len(_factors)/3
             _NP = []
             _NP.append(reduce(lambda x, y: x*y, _factors[0:_q:]))
@@ -291,7 +291,7 @@ class BaseDomainHalo(BaseDomain):
         self._nproc = self._COMM.Get_size()          
         
         if self._rank == 0:
-            print "Processor layout", self._dims
+            print "Processor count", self._nproc,"Processor layout", self._dims
         
         
         '''Topology has below indexing, last index reverses'''
