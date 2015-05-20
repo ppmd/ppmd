@@ -95,6 +95,13 @@ class Dat(object):
         '''Return number of particles.'''
         return self._N1
         
+    @npart.setter
+    def npart(self,val):
+        '''Set number of particles.'''
+        self._N1 = val
+        
+        
+        
     @property
     def npart_halo(self):
         '''Return number of particles in halo region'''
@@ -134,6 +141,15 @@ class Dat(object):
         self._halo_start+=shift
         self._NH = self._halo_start - self._N1
         
+    def halo_start_set(self,index):
+        if index < self._N1:
+            if (index > 1):
+                self._N1 = index
+            if (index==0):
+                self._N1 = 0
+                self._halo_start = 0
+    
+        self._NH = 0
         
         
     def halo_start_reset(self):

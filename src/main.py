@@ -26,14 +26,11 @@ if __name__ == '__main__':
     plotting = False
     
     #log energy?
-    logging = True
+    logging = False
     
     #Enbale debug flags?
     debug = True
     
-    if (debug):
-        print "Debugging enabled"
-        #subprocess.Popen("make clean", shell=True).wait(); print "build cleaned"
         
         
     
@@ -42,7 +39,6 @@ if __name__ == '__main__':
         #n=25 reasonable size
         n=20
         N=n**3
-        print "N =",N
         rho = 1.
         mu = 0.0
         nsig = 5.0
@@ -85,7 +81,7 @@ if __name__ == '__main__':
     
     
     #Create state class from above initialisations.
-    test_state = state.BaseMDState(domain = test_domain,
+    test_state = state.BaseMDStateHalo(domain = test_domain,
                                    potential = test_potential, 
                                    particle_pos_init = test_pos_init, 
                                    particle_vel_init = test_vel_init,

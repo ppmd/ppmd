@@ -14,6 +14,11 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 np.set_printoptions(threshold='nan')
 
+
+################################################################################################################
+# BaseMDState DEFINITIONS
+################################################################################################################
+
 class BaseMDState(object):
     '''
     Base molecular dynamics class.
@@ -39,6 +44,7 @@ class BaseMDState(object):
         
         self._potential = potential
         self._N = N
+        self._NT = N
         self._pos = particle.Dat(N, 3, name='positions')
         self._vel = particle.Dat(N, 3, name='velocities')
         self._accel = particle.Dat(N, 3, name='accelerations')
@@ -62,8 +68,17 @@ class BaseMDState(object):
 
         
         
+        '''Get domain extent from position config'''
+        particle_pos_init.get_extent(self)
+        
+        '''Attempt to initialise cell array'''
+        self._cell_setup_attempt = self._domain.set_cell_array_radius(self._potential._rn)        
+        
         ''' Initialise particle positions'''
         particle_pos_init.reset(self)
+        
+        
+        
         self._domain.BCSetup(self._pos)
         
         '''Initialise velocities'''
@@ -71,8 +86,7 @@ class BaseMDState(object):
             particle_vel_init.reset(self)
         
         
-        '''Attempt to initialise cell array'''
-        self._cell_setup_attempt = self._domain.set_cell_array_radius(self._potential._rn)
+
         
         
         
@@ -259,7 +273,12 @@ class BaseMDState(object):
         """
         return self._N
             
-        
+    @N.setter    
+    def N(self,val):
+        """
+        Set number of particles.
+        """
+        self._N = val
         
     
     @property  
@@ -397,8 +416,208 @@ class BaseMDState(object):
             
         return float(energy)
         
+        
+################################################################################################################
+# BaseMDStatehalo DEFINITIONS
+################################################################################################################  
+      
+class BaseMDStateHalo(BaseMDState):
+    '''
+    Base molecular dynamics class.
+    
+    :arg domain domain: Container within which the simulation takes place.
+    :arg potential potential: Potential to use between particles.
+    :arg PosInit* particle_pos_init: Class to initialise particles with.
+    :arg VelInit* particle_vel_init: Class to initialise particles velocities with.
+    :arg int N: Number of particles, default 1.
+    :arg double mass: Mass of particles, default 1.0.
+    :arg bool DEBUG: Flag to enable debug flags.
+    '''
+    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, particle_mass_init = None, N = 0, mass = 1., DEBUG = False):
+        '''
+        Intialise class to hold the state of a simulation.
+        :arg domain domain: Container within which the simulation takes place.
+        :arg potential potential: Potential to use between particles.
+        :arg int N: Number of particles, default 1.
+        :arg double mass: Mass of particles, default 1.0        
+        
+        '''
+              
+        
+        self._potential = potential
+        self._N = N
+        self._NT = N
+        self._pos = particle.Dat(N, 3, name='positions')
+        self._vel = particle.Dat(N, 3, name='velocities')
+        self._accel = particle.Dat(N, 3, name='accelerations')
+        
+        self._mass = particle.Dat(N, 1, 1.0)
+        if (particle_mass_init != None):
+            particle_mass_init.reset(self._mass)
+            
+        
+        
+        self._domain = domain
+        
+        
+        
+        #potential energy, kenetic energy, total energy.
+        self._U = data.ScalarArray(max_size = 2, name='potential_energy');
+        self._U.InitHaloDat()
+        
+        self._K = data.ScalarArray();
+        self._Q = data.ScalarArray();
 
         
+        
+        '''Get domain extent from position config'''
+        particle_pos_init.get_extent(self)
+        
+        '''Attempt to initialise cell array'''
+        self._cell_setup_attempt = self._domain.set_cell_array_radius(self._potential._rn)        
+        
+        ''' Initialise particle positions'''
+        particle_pos_init.reset(self)
+        
+        
+        
+        #self._domain.BCSetup(self._pos)
+        
+        '''Initialise velocities'''
+        if (particle_vel_init != None):
+            particle_vel_init.reset(self)
+        
+        
+        
+        
+        if (self.domain.rank==0):
+            
+            if (DEBUG):
+                print "Debugging enabled"
+            print "N =", self._NT
+        
+            #print "Cell array = ", self._domain._cell_array
+            #print "Domain extents = ",self._domain._extent
+            #print "Domain boundary = ",self._domain.boundary
+            #print "Domain boundary_outer = ",self._domain.boundary_outer
+            #print "cell count:", self._domain.cell_count
+            
+        self._domain.Barrier()
+        print "rank:", self.domain.rank,"local particle count =", self._N, "\n", "Domain extents = ", self._domain._extent, "\n", "cell count:", self._domain.cell_count, "\n", "Cell array = ", self._domain._cell_array
+        
+        self._domain.Barrier()       
+        
+        
+        
+        #Setup acceleration updating from given potential
+        self._DEBUG = DEBUG
+        _potential_dat_dict = self._potential.datdict(self)
+        
+        if (self._cell_setup_attempt==True):
+            self._cell_sort_setup()
+            
+            
+            self._cell_sort_local()
+            #self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)            
+            #self._cell_sort_all()
+            
+            
+            
+            
+            self._looping_method_accel = pairloop.PairLoopRapaportHalo(N=self._N,
+                                                                    domain = self._domain, 
+                                                                    positions = self._pos, 
+                                                                    potential = self._potential, 
+                                                                    dat_dict = _potential_dat_dict,
+                                                                    cell_list = self._q_list,
+                                                                    DEBUG = self._DEBUG)
+        
+        else:
+            self._looping_method_accel = pairloop.DoubleAllParticleLoopPBC(N=self._N,
+                                                                        domain = self._domain, 
+                                                                        kernel = self._potential.kernel,
+                                                                        particle_dat_dict = _potential_dat_dict,
+                                                                        DEBUG = self._DEBUG)
+        
+        self._time = 0
+
+    def _cell_sort_setup(self):
+        """
+        Creates looping for cell list creation
+        """
+        
+        '''Construct initial cell list'''
+        self._q_list = data.ScalarArray(dtype=ctypes.c_int, max_size = self._N * (self._domain.cell_count) + self._domain.cell_count + 1)
+        
+        
+        '''Keep track of number of particles per cell'''
+        self._cell_contents_count = data.ScalarArray(np.zeros([self._domain.cell_count], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
+        
+        
+        #temporary method for index awareness inside kernel.
+        self._internal_index = data.ScalarArray(dtype=ctypes.c_int)
+        self._internal_N = data.ScalarArray(dtype=ctypes.c_int)
+        
+        
+        
+        self._cell_sort_code = '''
+        
+        const int C0 = (int)((P[0] - B[0])/CEL[0]);
+        const int C1 = (int)((P[1] - B[2])/CEL[1]);
+        const int C2 = (int)((P[2] - B[4])/CEL[2]);
+        
+        const int val = (C2*CA[1] + C1)*CA[0] + C0;
+        
+        CCC[val]++;
+        
+        Q[I[0]] = Q[N[0] + val];
+        Q[N[0] + val] = I[0];
+        I[0]++;
+        '''
+        self._cell_sort_dict = {'B':self._domain.boundary_outer,
+                                'P':self._pos,
+                                'CEL':self._domain.cell_edge_lengths,
+                                'CA':self._domain.cell_array,
+                                'Q':self._q_list,
+                                'CCC':self._cell_contents_count,
+                                'I':self._internal_index,
+                                'N':self._internal_N}
+                
+        
+        self._cell_sort_kernel = kernel.Kernel('cell_list_method', self._cell_sort_code, headers = ['stdio.h'])
+        self._cell_sort_loop = loop.SingleParticleLoop(None, self._cell_sort_kernel, self._cell_sort_dict, DEBUG = self._DEBUG)
+
+    def _cell_sort_local(self):
+        """
+        Construct neighbour list, assigning *local* atoms to cells. Using Rapaport algorithm.
+        """
+        
+        
+        self._q_list.resize(self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1)
+        self._q_list[self._q_list.end] = self._q_list.end - self._domain.cell_count
+        
+        self._internal_N[0] = self._q_list[self._q_list.end]
+        self._q_list.Dat[self._q_list[self._q_list.end]:self._q_list.end:] = ctypes.c_int(-1)
+        self._internal_index[0]=0
+        
+        self._cell_contents_count.zero()
+        self._internal_N[0] = self._q_list[self._q_list.end]
+        self._cell_sort_loop.execute(   start = 0, 
+                                        end=self._N,
+                                        dat_dict = {'B':self._domain.boundary_outer,
+                                                    'P':self._pos,
+                                                    'CEL':self._domain.cell_edge_lengths,
+                                                    'CA':self._domain.cell_array,
+                                                    'Q':self._q_list,
+                                                    'CCC':self._cell_contents_count,
+                                                    'I':self._internal_index,
+                                                    'N':self._internal_N}
+                                     )    
+        
+
+################################################################################################################
+# PosInitLatticeNRho DEFINITIONS
+################################################################################################################        
         
         
 class PosInitLatticeNRho(object):
@@ -419,6 +638,13 @@ class PosInitLatticeNRho(object):
         
         self._N = N
         self._rho = rho
+        
+    def get_extent(self, state_input):
+        """
+        Initialise domain extents prior to setting particle positions.
+        """
+        Lx = (float(self._N) / float(self._rho))**(1./3.)        
+        state_input.domain.set_extent(np.array([Lx, Lx, Lx]))        
 
     def reset(self, state_input):
         """
@@ -437,24 +663,38 @@ class PosInitLatticeNRho(object):
         #starting point for each dimension. 
         mLx_2 = (-0.5 * Lx) + (0.5*Lx)/math.floor(np1_3)
         
-        #set new domain extents
-        state_input.domain.set_extent(np.array([Lx, Lx, Lx]))
+        #set new domain extents, see get_extent()
+        #state_input.domain.set_extent(np.array([Lx, Lx, Lx]))
         
         #get pointer for positions
-        pos = state_input.positions
+        _p = state_input.positions
+        _d = state_input.domain.boundary
         
         #Loop over all particles
+        _n=0
         for ix in range(self._N):
             
             #Map point into cube side of calculated side length Lx.
             z=math.floor(ix/np2_3)
 
-            pos[ix,0]=mLx_2+(math.fmod((ix - z*np2_3),np1_3)/np1_3)*Lx #x
-            pos[ix,1]=mLx_2+(math.floor((ix - z*np2_3)/np1_3)/np1_3)*Lx #y
-            pos[ix,2]=mLx_2+(z/np1_3)*Lx
+            _tx = mLx_2+(math.fmod((ix - z*np2_3),np1_3)/np1_3)*Lx #x
+            _ty = mLx_2+(math.floor((ix - z*np2_3)/np1_3)/np1_3)*Lx #y
+            _tz = mLx_2+(z/np1_3)*Lx
             
+            if ((_d[0] < _tx < _d[1]) and  (_d[2] < _ty < _d[3]) and (_d[4] < _tz < _d[5])):
+                _p[_n,0] = _tx
+                _p[_n,1] = _ty
+                _p[_n,2] = _tz
+                _n+=1
         
-        
+        state_input.N = _n
+        _p.npart = _n
+        _p.halo_start_reset()
+
+################################################################################################################
+# PosInitLatticeNRhoRand DEFINITIONS
+################################################################################################################          
+                
 class PosInitLatticeNRhoRand(object):
     """
     Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass adds uniform deviantion based on given maximum.
@@ -474,7 +714,15 @@ class PosInitLatticeNRhoRand(object):
         self._N = N
         self._rho = rho
         self._dev = dev
-
+        
+    def get_extent(self, state_input):
+        """
+        Initialise domain extents prior to setting particle positions.
+        """
+        Lx = (float(self._N) / float(self._rho))**(1./3.)        
+        state_input.domain.set_extent(np.array([Lx, Lx, Lx]))
+    
+    
     def reset(self, state_input):
         """
         Applies initial lattice to particle positions.
@@ -493,7 +741,7 @@ class PosInitLatticeNRhoRand(object):
         mLx_2 = (-0.5 * Lx) + (0.5*Lx)/math.floor(np1_3)
         
         #set new domain extents
-        state_input.domain.set_extent(np.array([Lx, Lx, Lx]))
+        #state_input.domain.set_extent(np.array([Lx, Lx, Lx]))
         
         #get pointer for positions
         pos = state_input.positions
@@ -508,6 +756,9 @@ class PosInitLatticeNRhoRand(object):
             pos[ix,1]=random.uniform(0,self._dev) + mLx_2+(math.floor((ix - z*np2_3)/np1_3)/np1_3)*Lx #y
             pos[ix,2]=random.uniform(0,self._dev) + mLx_2+(z/np1_3)*Lx
 
+################################################################################################################
+# PosInitTwoParticlesInABox DEFINITIONS
+################################################################################################################   
 
 class PosInitTwoParticlesInABox(object):
     """
@@ -523,6 +774,13 @@ class PosInitTwoParticlesInABox(object):
         self._axis = axis
         self._rx = (0.5/np.linalg.norm(self._axis))*rx
         
+    def get_extent(self, state_input):
+        """
+        Initialise domain extents prior to setting particle positions.
+        """
+        state_input.domain.set_extent(self._extent)       
+        
+        
     def reset(self, state_input):
         """
         Resets the first two particles in the input state domain to sit on the x-axis the set distance apart.
@@ -537,9 +795,11 @@ class PosInitTwoParticlesInABox(object):
         else:
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
             
-        state_input.domain.set_extent(self._extent)
+        #state_input.domain.set_extent(self._extent)
 
-
+################################################################################################################
+# PosInitDLPOLYConfig DEFINITIONS
+################################################################################################################  
 
 class PosInitDLPOLYConfig(object):
     """
@@ -551,7 +811,31 @@ class PosInitDLPOLYConfig(object):
     def __init__(self,filename = None):
         self._f = filename
         assert self._f!=None, "No position config file specified"
+       
+       
+    def get_extent(self, state_input):
+        """
+        Initialise domain extents prior to setting particle positions.
+        """
+        fh=open(self._f)
+        shift = 7
+        offset= 4
+        count = 0
         
+        extent=np.array([0.,0.,0.])
+        
+        for i, line in enumerate(fh):
+            if (i==2):
+                extent[0]=line.strip().split()[0]
+            if (i==3):
+                extent[1]=line.strip().split()[1]                
+            if (i==4):
+                extent[2]=line.strip().split()[2]                
+            else:
+                break
+        
+        fh.close()
+        state_input.domain.set_extent(extent)  
         
     def reset(self, state_input):
         """
@@ -568,13 +852,14 @@ class PosInitDLPOLYConfig(object):
         extent=np.array([0.,0.,0.])
         
         for i, line in enumerate(fh):
+            '''
             if (i==2):
                 extent[0]=line.strip().split()[0]
             if (i==3):
                 extent[1]=line.strip().split()[1]                
             if (i==4):
                 extent[2]=line.strip().split()[2]                
-                
+            '''
         
             if ((i>(shift-2)) and ((i-shift+1)%offset == 0) and count < state_input.N ):
                 state_input.positions[count,0]=line.strip().split()[0]
@@ -582,14 +867,14 @@ class PosInitDLPOLYConfig(object):
                 state_input.positions[count,2]=line.strip().split()[2]
                 count+=1
         
-        
-        state_input.domain.set_extent(extent)
+        fh.close()
+        #state_input.domain.set_extent(extent)
 
 
 
-
-
-
+################################################################################################################
+# VelInitNormDist DEFINITIONS
+################################################################################################################  
 
         
 class VelInitNormDist(object):
@@ -620,7 +905,9 @@ class VelInitNormDist(object):
         for ix in range(state_input.N):
             vel_in[ix,]=[random.gauss(self._mu, self._sig),random.gauss(self._mu, self._sig),random.gauss(self._mu, self._sig)]
         
-        
+################################################################################################################
+# VelInitTwoParticlesInABox DEFINITIONS
+################################################################################################################        
 class VelInitTwoParticlesInABox(object):
     """
     Sets velocities for two particles.
@@ -646,7 +933,10 @@ class VelInitTwoParticlesInABox(object):
             state_input.velocities[1,] = self._vy        
         else:
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
-
+        
+################################################################################################################
+# VelInitMaxwellBoltzmannDist DEFINITIONS
+################################################################################################################       
 
 class VelInitMaxwellBoltzmannDist(object):
     """
@@ -677,7 +967,10 @@ class VelInitMaxwellBoltzmannDist(object):
             state_input.velocities[ix,0]=stmp*math.cos(V0)
             state_input.velocities[ix,1]=stmp*math.sin(V0)
             state_input.velocities[ix,1]=scale*math.sqrt(-2.0*math.log(random.uniform(0,1)))*math.cos(2.*math.pi*random.uniform(0,1));
-            
+
+################################################################################################################
+# VelInitDLPOLYConfig DEFINITIONS
+################################################################################################################              
 
 class VelInitDLPOLYConfig(object):
     """
@@ -711,7 +1004,9 @@ class VelInitDLPOLYConfig(object):
                 state_input.velocities[count,2]=line.strip().split()[2]
                 count+=1
         
-        
+################################################################################################################
+# MassInitTwoAlternating DEFINITIONS
+################################################################################################################          
 
 class MassInitTwoAlternating(object):
     '''
@@ -733,6 +1028,10 @@ class MassInitTwoAlternating(object):
         '''
         for ix in range(np.shape(mass_input.Dat)[0]):
             mass_input[ix] = self._m[(ix % 2)]
+
+################################################################################################################
+# MassInitIdentical DEFINITIONS
+################################################################################################################ 
 
 class MassInitIdentical(object):
     '''

@@ -314,11 +314,45 @@ class BaseDomainHalo(BaseDomain):
         
         if self._rank == 0:
             print "Cell layout", _bs
+            print "Global extent,", self._extent
                 
         '''Get local cell array'''
         self._cell_array[0] = _bs[0][self._top[0]]
         self._cell_array[1] = _bs[1][self._top[1]]
         self._cell_array[2] = _bs[2][self._top[2]]
+        
+        '''Calculate local boundary'''
+        '''Cumalitive sum up to self_index - 1 '''
+        _Cx = 0
+        for ix in range(self._top[0]):
+            _Cx += _bs[0][ix]
+        
+        _Cy = 0
+        for ix in range(self._top[1]):
+            _Cy += _bs[1][ix]        
+        
+        _Cz = 0
+        for ix in range(self._top[2]):
+            _Cz += _bs[2][ix]
+        
+        
+        self._boundary = [
+                         -0.5*self._extent[0] + _Cx*self._cell_edge_lengths[0], -0.5*self._extent[0] + (_Cx+self._cell_array[0])*self._cell_edge_lengths[0],
+                         -0.5*self._extent[1] + _Cy*self._cell_edge_lengths[1], -0.5*self._extent[1] + (_Cy+self._cell_array[1])*self._cell_edge_lengths[1],
+                         -0.5*self._extent[2] + _Cz*self._cell_edge_lengths[2], -0.5*self._extent[2] + (_Cz+self._cell_array[2])*self._cell_edge_lengths[2]
+                         ]
+        self._boundary = data.ScalarArray(self._boundary, dtype=ctypes.c_double)
+        
+        self._boundary_outer = [
+                         -0.5*self._extent[0]+(_Cx-1)*self._cell_edge_lengths[0], -0.5*self._extent[0]+(_Cx+1+self._cell_array[0])*self._cell_edge_lengths[0],
+                         -0.5*self._extent[1]+(_Cy-1)*self._cell_edge_lengths[1], -0.5*self._extent[1]+(_Cy+1+self._cell_array[1])*self._cell_edge_lengths[1],
+                         -0.5*self._extent[2]+(_Cz-1)*self._cell_edge_lengths[2], -0.5*self._extent[2]+(_Cz+1+self._cell_array[2])*self._cell_edge_lengths[2]]        
+        
+        
+        self._boundary_outer = data.ScalarArray(self._boundary_outer, dtype=ctypes.c_double)
+        
+        
+        
         
         '''Get local extent'''
         self._extent[0] = self._cell_edge_lengths[0]*self._cell_array[0]
@@ -341,7 +375,20 @@ class BaseDomainHalo(BaseDomain):
         
         return True
         
-     
+    @property
+    def boundary(self):
+        '''
+        Return local domain boundary
+        '''
+        return self._boundary
+        
+    @property
+    def boundary_outer(self):
+        '''
+        Return local domain boundary
+        '''
+        return self._boundary_outer 
+        
         
     @property  
     def extent(self):
@@ -376,6 +423,13 @@ class BaseDomainHalo(BaseDomain):
         Return internal cell count.
         '''
         return self._cell_count_internal
+        
+    @property
+    def rank(self):
+        return self._rank
+        
+    def Barrier(self):
+        self._COMM.Barrier()
     
     
     
