@@ -368,6 +368,12 @@ class ScalarArray(object):
         '''   
         return self._N1
         
+    @ncomp.setter
+    def ncomp(self,val):
+        assert val <= self._max_size, "ncomp, max_size error"
+        self._N1 = val
+        
+        
     @property
     def min(self):
         '''Return minimum'''

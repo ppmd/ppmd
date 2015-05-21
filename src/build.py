@@ -324,15 +324,19 @@ class GenericToolChain(object):
             
         
         object_filename = filename_base+'.o'
-        library_filename = filename_base+'.so'        
-        cflags = self._cc.cflags
+        library_filename = filename_base+'.so' 
+        cflags = []       
+        cflags += self._cc.cflags
         if (self._DEBUG):
             cflags+=self._cc.dbgflags
         cc = self._cc.binary
         ld = self._cc.binary
         lflags = self._cc.lflags
+        
         compile_cmd = cc+self._cc.compileflag+cflags+['-I',self._temp_dir] \
                        +['-o',object_filename,impl_filename]
+                       
+        
         link_cmd = ld+self._cc.sharedlibflag+lflags+['-o',library_filename,object_filename]
         stdout_filename = filename_base+'.log'
         stderr_filename = filename_base+'.err'

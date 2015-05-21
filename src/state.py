@@ -79,7 +79,7 @@ class BaseMDState(object):
         
         
         
-        self._domain.BCSetup(self._pos)
+        self._domain.BCSetup(self)
         
         '''Initialise velocities'''
         if (particle_vel_init != None):
@@ -455,7 +455,7 @@ class BaseMDStateHalo(BaseMDState):
         if (particle_mass_init != None):
             particle_mass_init.reset(self._mass)
             
-        
+        self._global_ids = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
         
         self._domain = domain
         
@@ -467,7 +467,7 @@ class BaseMDStateHalo(BaseMDState):
         
         self._K = data.ScalarArray();
         self._Q = data.ScalarArray();
-
+        
         
         
         '''Get domain extent from position config'''
@@ -479,13 +479,14 @@ class BaseMDStateHalo(BaseMDState):
         ''' Initialise particle positions'''
         particle_pos_init.reset(self)
         
-        
-        
-        #self._domain.BCSetup(self._pos)
-        
         '''Initialise velocities'''
         if (particle_vel_init != None):
-            particle_vel_init.reset(self)
+            particle_vel_init.reset(self)        
+        
+        
+        self._domain.BCSetup(self)
+        
+
         
         
         
@@ -502,10 +503,10 @@ class BaseMDStateHalo(BaseMDState):
             #print "Domain boundary_outer = ",self._domain.boundary_outer
             #print "cell count:", self._domain.cell_count
             
-        self._domain.Barrier()
+        self._domain.barrier()
         print "rank:", self.domain.rank,"local particle count =", self._N, "\n", "Domain extents = ", self._domain._extent, "\n", "cell count:", self._domain.cell_count, "\n", "Cell array = ", self._domain._cell_array
         
-        self._domain.Barrier()       
+        self._domain.barrier()       
         
         
         
@@ -540,6 +541,17 @@ class BaseMDStateHalo(BaseMDState):
                                                                         DEBUG = self._DEBUG)
         
         self._time = 0
+    
+    @property
+    def global_ids(self):
+        return self._global_ids
+    
+    @property
+    def NT(self):
+        return self._NT
+        
+        
+        
 
     def _cell_sort_setup(self):
         """
@@ -669,6 +681,7 @@ class PosInitLatticeNRho(object):
         #get pointer for positions
         _p = state_input.positions
         _d = state_input.domain.boundary
+        _gid = state_input.global_ids
         
         #Loop over all particles
         _n=0
@@ -685,9 +698,12 @@ class PosInitLatticeNRho(object):
                 _p[_n,0] = _tx
                 _p[_n,1] = _ty
                 _p[_n,2] = _tz
+                _gid[_n] = ix
                 _n+=1
         
         state_input.N = _n
+        _gid.ncomp = _n
+        
         _p.npart = _n
         _p.halo_start_reset()
 
