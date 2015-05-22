@@ -401,7 +401,7 @@ class ScalarArray(object):
         if (N>self._max_size):
             self._max_size = N+(N-self._max_size)*10
             self._Dat = np.resize(self._Dat,self._max_size)
-        self._N1 = N
+        #self._N1 = N
     
     @property
     def end(self):

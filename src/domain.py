@@ -216,9 +216,13 @@ class BaseDomainHalo(BaseDomain):
     def __init__(self, extent = np.array([1., 1., 1.]), cell_count = 1):
         
         self._MPI = MPI.COMM_WORLD
+        self._MPIstatus=MPI.Status()
         self._DEBUG = True
         
         self._extent = data.ScalarArray(extent)
+        
+        self._extent_global = data.ScalarArray(extent)
+        
         self._cell_count = cell_count
         self._cell_array = data.ScalarArray(np.array([1,1,1]), dtype=ctypes.c_int)
         self._cell_edge_lengths = data.ScalarArray(np.array([1.,1.,1.], dtype=ctypes.c_double))
@@ -226,6 +230,16 @@ class BaseDomainHalo(BaseDomain):
         
         
         self._BCloop = None
+        
+    def set_extent(self, new_extent = np.array([1., 1., 1.])):
+        """
+        Set domain extents
+        
+        :arg np.array(3,1) new_extent: New extents.
+        
+        """
+        self._extent[0:4] = new_extent        
+        self._extent_global[0:4] = new_extent 
 
     def set_cell_array_radius(self, rn):
         """
@@ -524,8 +538,9 @@ class BaseDomainHalo(BaseDomain):
             EI[EII[0]] = I[0];
             EI[EII[0]+1] = BL[b];
             EII[0]+=2;
-            
         }
+        
+        
         
         I[0]++;
         
@@ -546,41 +561,90 @@ class BaseDomainHalo(BaseDomain):
         _escape_guard_kernel = kernel.Kernel('FindEscapingParticles', _escape_guard_code, headers=['math.h'])
         self._escape_guard_loop = loop.SingleAllParticleLoop(self._BC_state.positions.npart, _escape_guard_kernel, _escape_guard_dict, DEBUG = self._DEBUG)       
         
+        
+        '''Calculate shifts that should be applied when passing though the local domain extents
+        Xl 0, Xu 1
+        Yl 2, Yu 3
+        Zl 4, Zu 5
+        '''
+        
+        _sf = range(6)
+        for ix in range(3):
+            if (self._top[ix] == 0):
+                _sf[2*ix] = self._extent_global[ix]
+            else:
+                _sf[2*ix] = 0.
+            if (self._top[ix] == self._dims[ix] - 1):
+                _sf[2*ix+1] = -1.*self._extent_global[ix]
+            else:
+                _sf[2*ix+1] = 0.
+        
+        _sfd = [
+                _sf[1]  , _sf[3]    , _sf[5], #0
+                0.      , _sf[3]    , _sf[5], #1
+                _sf[0]  , _sf[3]    , _sf[5], #2
+                _sf[1]  , 0.        , _sf[5], #3
+                0.      , 0.        , _sf[5], #4
+                _sf[0]  , 0.        , _sf[5], #5
+                _sf[1]  , _sf[2]    , _sf[5], #6
+                0.      , _sf[2]    , _sf[5], #7
+                _sf[0]  , _sf[2]    , _sf[5], #8
+                
+                _sf[1]  , _sf[3]    , 0., #9
+                0.      , _sf[3]    , 0., #10
+                _sf[0]  , _sf[3]    , 0., #11
+                _sf[1]  , 0.        , 0., #12
+                _sf[0]  , 0.        , 0., #13
+                _sf[1]  , _sf[2]    , 0., #14
+                0.      , _sf[2]    , 0., #15
+                _sf[0]  , _sf[2]    , 0., #16            
+                
+                _sf[1]  , _sf[3]    , _sf[4], #17
+                0.      , _sf[3]    , _sf[4], #18
+                _sf[0]  , _sf[3]    , _sf[4], #19
+                _sf[1]  , 0.        , _sf[4], #20
+                0.      , 0.        , _sf[4], #21
+                _sf[0]  , 0.        , _sf[4], #22
+                _sf[1]  , _sf[2]    , _sf[4], #23
+                0.      , _sf[2]    , _sf[4], #24
+                _sf[0]  , _sf[2]    , _sf[4] #25               
+                
+               ]
+        
+        self._sfd = data.ScalarArray(initial_value = _sfd)
+        
         self._escape_send_buffer = data.ScalarArray(ncomp = 7*self._BC_state.NT, dtype = ctypes.c_double)
-        
-        
         _escape_packing_code = '''
         
         int index = 0;
         for (int d = 0; d < 26; d++){
-            for(int ix = 0; ix < ECT[0]; ix++){
+            
+            int ix = 0;
+            int loc_count = 0;
+            
+            while(loc_count < EC[d]){
                 
                 if (EI[(2*ix)+1] == d){
                     const int id = EI[2*ix];
                     
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    ESB[index]   = P[LINIDX_2D(3,id,0)];
-                    ESB[index+1] = P[LINIDX_2D(3,id,1)];
-                    ESB[index+2] = P[LINIDX_2D(3,id,2)];
+                    ESB[index]   = P[LINIDX_2D(3,id,0)] + SFD[3*d];
+                    ESB[index+1] = P[LINIDX_2D(3,id,1)] + SFD[3*d+1];
+                    ESB[index+2] = P[LINIDX_2D(3,id,2)] + SFD[3*d+2];
                     ESB[index+3] = V[LINIDX_2D(3,id,0)];
                     ESB[index+4] = V[LINIDX_2D(3,id,1)];
                     ESB[index+5] = V[LINIDX_2D(3,id,2)];                    
                     ESB[index+6] = (double) EGID[id];
                     index += 7;
+                    
+                    loc_count++;
                 }
+                ix++; 
             }
         }
         
         '''
-        
-        
+        self._escape_count_recv = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)
+        self._escape_recv_buffer = data.ScalarArray(ncomp = 7*self._BC_state.NT, dtype = ctypes.c_double)
         
         _escape_packing_dict={'P':self._BC_state.positions,
                               'V':self._BC_state.velocities,
@@ -588,11 +652,132 @@ class BaseDomainHalo(BaseDomain):
                               'EC':self._escape_count,
                               'EI':self._escaping_ids,
                               'ESB':self._escape_send_buffer,
-                              'ECT':self._escape_count_total
+                              'ECT':self._escape_count_total,
+                              'SFD':self._sfd
                               }        
         
         _pack_escapees_kernel = kernel.Kernel('PackEscapingParticles', _escape_packing_code, headers = ['stdio.h'])
         self._escape_packing_lib = build.SharedLib(_pack_escapees_kernel, _escape_packing_dict, DEBUG = self._DEBUG)
+        
+        _recv_modifiers = [
+                          [-1, -1, -1], #0
+                          [ 0, -1, -1], #1
+                          [ 1, -1, -1], #2
+                          [-1,  0, -1], #3
+                          [ 0,  0, -1], #4
+                          [ 1,  0, -1], #5
+                          [-1,  1, -1], #6
+                          [ 0,  1, -1], #7
+                          [ 1,  1, -1], #8
+                          
+                          [-1, -1, 0], #9
+                          [ 0, -1, 0], #10
+                          [ 1, -1, 0], #11
+                          [-1,  0, 0], #12
+                          [ 0,  0, 0], #13
+                          [ 1,  0, 0], #14
+                          [-1,  1, 0], #15
+                          [ 0,  1, 0], #16
+                          [ 1,  1, 0], #17
+                          
+                          [-1, -1, 1], #18
+                          [ 0, -1, 1], #19
+                          [ 1, -1, 1], #20
+                          [-1,  0, 1], #21
+                          [ 0,  0, 1], #22
+                          [ 1,  0, 1], #23
+                          [-1,  1, 1], #24
+                          [ 0,  1, 1], #25
+                          [ 1,  1, 1]  #26
+                         ]
+        
+        
+        self._send_list = [((self._top[0]-ix[0]) % self._dims[0]) + ((self._top[1]-ix[1]) % self._dims[1])*self._dims[0] + ((self._top[2]-ix[2]) % self._dims[2])*self._dims[0]*self._dims[1] for ix in _recv_modifiers]
+        self._recv_list = [((self._top[0]+ix[0]) % self._dims[0]) + ((self._top[1]+ix[1]) % self._dims[1])*self._dims[0] + ((self._top[2]+ix[2]) % self._dims[2])*self._dims[0]*self._dims[1] for ix in _recv_modifiers]        
+        
+        
+        
+        
+        
+        
+        self._tmp_index = data.ScalarArray(ncomp = 1, dtype = ctypes.c_double)
+        
+        _unpacking_code = '''
+        
+        int fill_count = 0;
+        
+        for (int ix = 0; ix < 7*TI[0]; ix+=7){
+            
+            int IX;
+            //fill in spaces
+            if (ix < ECT[0]) {
+                IX = EI[ix];
+            }
+            else {
+                //put at end if spaces full
+                IX = I[0] + ix - ECT[0];
+            }
+            
+            
+            P[LINIDX_2D(3,IX,0)] = ERB[ix];
+            P[LINIDX_2D(3,IX,1)] = ERB[ix+1];
+            P[LINIDX_2D(3,IX,2)] = ERB[ix+2];
+            
+            V[LINIDX_2D(3,IX,0)] = ERB[ix+3];
+            V[LINIDX_2D(3,IX,1)] = ERB[ix+4];
+            V[LINIDX_2D(3,IX,2)] = ERB[ix+5];
+            
+            RGID[I[0]] = ERB[ix+6];
+            
+        }
+        
+        
+        //if more were sent than recv'd then we have holes.
+        
+        if (TI[0] < ECT[0]){
+            
+            
+            
+            
+        }
+        
+        
+        
+        
+        
+        
+        
+        '''
+        
+        _unpacking_dict={ 'P':self._BC_state.positions,
+                          'V':self._BC_state.velocities,
+                          'RGID':self._BC_state.global_ids,
+                          'ERB':self._escape_recv_buffer,
+                          'ECT':self._escape_count_total,
+                          'I':self._internal_index,
+                          'TI':self._tmp_index,
+                          'EI':self._escaping_ids
+                         }        
+        
+        _unpacking_kernel = kernel.Kernel('unpackingParticles', _unpacking_code, headers = ['stdio.h'])
+        self._unpacking_lib = build.SharedLib(_unpacking_kernel, _unpacking_dict, DEBUG = self._DEBUG)        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         
         
@@ -650,26 +835,77 @@ class BaseDomainHalo(BaseDomain):
     def BCexecute(self):
         
         
-        if (self._nproc == 1):
+        if (self._nproc == 2):
             self._BCloop.execute()
         else:
             
+            '''Potentially all could escape'''
             self._escaping_ids.resize(2*self._BC_state.N)
             #self._escaping_dir.resize(self._BC_state.N)
             
+            '''Zero counts/indices'''
             self._escape_internal_index.zero()
+            self._internal_index.zero()
             self._escape_count_total.zero()
             self._escape_count.zero()
         
+            '''Find escaping particles'''
             self._escape_guard_loop.execute()
             
-            
-            
+            '''Check packing buffer is large enough then pack'''
+            self._escape_send_buffer.resize(7*self._escape_count_total[0])
             self._escape_packing_lib.execute()
             
+            '''Exchange sizes'''
+            for ix in range(26):
+                self._COMM.Sendrecv(self._escape_count.Dat[ix:ix+1:], 
+                                    self._send_list[ix], 
+                                    self._send_list[ix], 
+                                    self._escape_count_recv.Dat[ix:ix+1:],
+                                    self._recv_list[ix], 
+                                    self._recv_list[ix],
+                                    self._MPIstatus)
+            
+            '''Count new incoming particles'''
+            _tmp = self._escape_count_recv.Dat.sum()
+            
+            '''Resize accordingly'''
+            self._BC_state.positions.resize(_tmp)
+            self._BC_state.velocities.resize(_tmp)
+            self._BC_state.global_ids.resize(_tmp)
+            self._escape_recv_buffer.resize(7*_tmp)
+            self._escape_count_total[0] = _tmp
+            
+            
+            '''Exchange packed particle buffers'''
+            _sum_send = 0
+            _sum_recv = 0
+            for ix in range(26):
+                self._COMM.Sendrecv(self._escape_send_buffer.Dat[_sum_send:self._escape_count[ix]:], 
+                                    self._send_list[ix], 
+                                    self._send_list[ix], 
+                                    self._escape_recv_buffer.Dat[_sum_recv:self._escape_count_recv[ix]:],
+                                    self._recv_list[ix], 
+                                    self._recv_list[ix],
+                                    self._MPIstatus)            
+                
+                _sum_send += 7*self._escape_count[ix]
+                _sum_recv += 7*self._escape_count_recv[ix]
+            
+            self._tmp_index[0] = _tmp
+            
+            '''Unpack new particles and compress particle dats'''
+            
+            self._BC_state.positions.halo_start_reset()
+            self._BC_state.velocities.halo_start_reset()
+            self._internal_index[0] = self._BC_state.positions.halo_start
+            
+            self._unpacking_lib.execute()
             
             
             
+            '''For testing remove after'''
+            self._BCloop.execute()
             
             
 

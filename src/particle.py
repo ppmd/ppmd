@@ -24,14 +24,17 @@ class Dat(object):
         
         self._N1 = N1
         self._N2 = N2
+        self._max_size = max_size
         
         if (initial_value != None):
             if (type(initial_value) is np.ndarray):
                 self._Dat = np.array(initial_value, dtype=self._dtype, order='C')
                 self._N1 = initial_value.shape[0]
-                self._N2 = initial_value.shape[1]                
+                self._N2 = initial_value.shape[1]   
+                self._max_size = initial_value.shape[0]          
             else:
                 self._Dat = float(initial_value) * np.ones([N1, N2], dtype=self._dtype, order='C')
+                self._max_size = N1
         else:
             self._Dat = np.zeros([max_size, N2], dtype=self._dtype, order='C')
         
@@ -161,17 +164,17 @@ class Dat(object):
     
     
         
-    def resize(self, npart):
+    def resize(self, N):
         '''
         Resize particle dat to be at least a certain size, does not resize if already large enough.
         
-        :arg int npart: New minimum size.
+        :arg int N: New minimum size.
         '''
         
-        if (npart > self._N1):
-            self._Dat.resize([npart, self._N2], dtype=self._dtype, order='C' )
-        
-        
+        if (N>self._max_size):
+            self._max_size = N+(N-self._max_size)*10
+            self._Dat.resize([N, self._N2], dtype=self._dtype, order='C' )
+        #self._N1 = N        
         
         
         
