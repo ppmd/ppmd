@@ -148,6 +148,7 @@ class Dat(object):
         if index < self._N1:
             if (index > 1):
                 self._N1 = index
+                self._halo_start = index
             if (index==0):
                 self._N1 = 0
                 self._halo_start = 0

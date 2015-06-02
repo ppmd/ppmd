@@ -706,7 +706,7 @@ class BaseDomainHalo(BaseDomain):
         
         int fill_count = 0;
         
-        for (int ix = 0; ix < 7*TI[0]; ix+=7){
+        for (int ix = 0; ix < TI[0]; ix++){
             
             int IX;
             //fill in spaces
@@ -719,34 +719,71 @@ class BaseDomainHalo(BaseDomain):
             }
             
             
-            P[LINIDX_2D(3,IX,0)] = ERB[ix];
-            P[LINIDX_2D(3,IX,1)] = ERB[ix+1];
-            P[LINIDX_2D(3,IX,2)] = ERB[ix+2];
+            P[LINIDX_2D(3,IX,0)] = ERB[7*ix];
+            P[LINIDX_2D(3,IX,1)] = ERB[7*ix+1];
+            P[LINIDX_2D(3,IX,2)] = ERB[7*ix+2];
             
-            V[LINIDX_2D(3,IX,0)] = ERB[ix+3];
-            V[LINIDX_2D(3,IX,1)] = ERB[ix+4];
-            V[LINIDX_2D(3,IX,2)] = ERB[ix+5];
+            V[LINIDX_2D(3,IX,0)] = ERB[7*ix+3];
+            V[LINIDX_2D(3,IX,1)] = ERB[7*ix+4];
+            V[LINIDX_2D(3,IX,2)] = ERB[7*ix+5];
             
-            RGID[I[0]] = ERB[ix+6];
+            RGID[I[0]] = ERB[7*ix+6];
             
         }
         
         
         //if more were sent than recv'd then we have holes.
-        
         if (TI[0] < ECT[0]){
             
+            int ect = ECT[0] - 1;
             
-            
-            
+            for (int ix = ECT[0] - TI[0]; ix < ECT[0]; ix++){
+                
+                int ti = -1;
+
+                //loop from end to empty slot
+                for (int iy = I[0] - 1; iy > EI[ix]; iy--){
+                    
+                    if (iy == EI[ect]){
+                        I[0] = iy;
+                        ect--;
+                    } else {
+                        ti = iy;
+                        break;
+                    }
+                    
+                }
+                
+                if (ti > 0){
+                    //copy code here from index ti to index EI[ix]
+                    
+                    P[LINIDX_2D(3,EI[ix],0)] = P[LINIDX_2D(3,ti,0)];
+                    P[LINIDX_2D(3,EI[ix],1)] = P[LINIDX_2D(3,ti,1)];
+                    P[LINIDX_2D(3,EI[ix],2)] = P[LINIDX_2D(3,ti,2)];
+                    
+                    V[LINIDX_2D(3,EI[ix],0)] = V[LINIDX_2D(3,ti,0)];
+                    V[LINIDX_2D(3,EI[ix],1)] = V[LINIDX_2D(3,ti,1)];
+                    V[LINIDX_2D(3,EI[ix],2)] = V[LINIDX_2D(3,ti,2)];
+                    
+                    RGID[EI[ix]] = RGID[ti];                    
+                    
+                    I[0] = ti;
+                    
+                    
+                    
+                } else {
+                    
+                    I[0] = EI[ix];
+                    break;
+                    
+                }
+                  
+            }   
+        } else {
+        
+        I[0] += TI[0] - ECT[0];
+        
         }
-        
-        
-        
-        
-        
-        
-        
         '''
         
         _unpacking_dict={ 'P':self._BC_state.positions,
@@ -835,7 +872,8 @@ class BaseDomainHalo(BaseDomain):
     def BCexecute(self):
         
         
-        if (self._nproc == 2):
+        
+        if (self._nproc == 1):
             self._BCloop.execute()
         else:
             
@@ -848,7 +886,8 @@ class BaseDomainHalo(BaseDomain):
             self._internal_index.zero()
             self._escape_count_total.zero()
             self._escape_count.zero()
-        
+            
+            
             '''Find escaping particles'''
             self._escape_guard_loop.execute()
             
@@ -856,18 +895,25 @@ class BaseDomainHalo(BaseDomain):
             self._escape_send_buffer.resize(7*self._escape_count_total[0])
             self._escape_packing_lib.execute()
             
+            
+            
             '''Exchange sizes'''
             for ix in range(26):
-                self._COMM.Sendrecv(self._escape_count.Dat[ix:ix+1:], 
+                self._COMM.sendrecv(self._escape_count.Dat[ix:ix+1:], 
                                     self._send_list[ix], 
                                     self._send_list[ix], 
                                     self._escape_count_recv.Dat[ix:ix+1:],
                                     self._recv_list[ix], 
-                                    self._recv_list[ix],
+                                    self._rank,
                                     self._MPIstatus)
+
+                
+            
+            
             
             '''Count new incoming particles'''
             _tmp = self._escape_count_recv.Dat.sum()
+            
             
             '''Resize accordingly'''
             self._BC_state.positions.resize(_tmp)
@@ -877,20 +923,24 @@ class BaseDomainHalo(BaseDomain):
             self._escape_count_total[0] = _tmp
             
             
+            
             '''Exchange packed particle buffers'''
             _sum_send = 0
             _sum_recv = 0
+            
+            
             for ix in range(26):
-                self._COMM.Sendrecv(self._escape_send_buffer.Dat[_sum_send:self._escape_count[ix]:], 
+                self._COMM.sendrecv(self._escape_send_buffer.Dat[_sum_send:self._escape_count[ix]:], 
                                     self._send_list[ix], 
                                     self._send_list[ix], 
                                     self._escape_recv_buffer.Dat[_sum_recv:self._escape_count_recv[ix]:],
                                     self._recv_list[ix], 
-                                    self._recv_list[ix],
+                                    self._rank,
                                     self._MPIstatus)            
                 
                 _sum_send += 7*self._escape_count[ix]
                 _sum_recv += 7*self._escape_count_recv[ix]
+            
             
             self._tmp_index[0] = _tmp
             
@@ -900,13 +950,20 @@ class BaseDomainHalo(BaseDomain):
             self._BC_state.velocities.halo_start_reset()
             self._internal_index[0] = self._BC_state.positions.halo_start
             
+            
             self._unpacking_lib.execute()
             
+            self._BC_state.positions.halo_start_set(self._internal_index[0])
+            self._BC_state.velocities.halo_start_set(self._internal_index[0])
+            self._BC_state.forces.halo_start_set(self._internal_index[0])
             
             
-            '''For testing remove after'''
-            self._BCloop.execute()
             
+            
+            
+            
+            #'''For testing remove after'''
+            #self._BCloop.execute()
             
 
     

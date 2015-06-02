@@ -151,10 +151,14 @@ class VelocityVerlet(object):
             self._percent_int = self._plot_handle.interval
             self._percent_count = self._percent_int
 
-        
+        print "before bc"
         self._domain.BCexecute()
         
+        print "after bc"
+        
         self._state.forces_update()
+        
+        print "after forces"
         
         for i in range(self._max_it):         
             self._velocity_verlet_step()
@@ -176,7 +180,10 @@ class VelocityVerlet(object):
             self._P.Dat[...,...]+=self._dt*self._V.Dat
         
         #update forces
+        
+        
         self._domain.BCexecute()
+        
         
         self._state.forces_update()
         
