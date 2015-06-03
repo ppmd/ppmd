@@ -538,6 +538,7 @@ class BaseDomainHalo(BaseDomain):
             EI[EII[0]] = I[0];
             EI[EII[0]+1] = BL[b];
             EII[0]+=2;
+            //printf("%d |",b);
         }
         
         
@@ -637,6 +638,9 @@ class BaseDomainHalo(BaseDomain):
                     index += 7;
                     
                     loc_count++;
+                    
+                    //printf("index = %d |", index);
+                    
                 }
                 ix++; 
             }
@@ -674,21 +678,20 @@ class BaseDomainHalo(BaseDomain):
                           [ 0, -1, 0], #10
                           [ 1, -1, 0], #11
                           [-1,  0, 0], #12
-                          [ 0,  0, 0], #13
-                          [ 1,  0, 0], #14
-                          [-1,  1, 0], #15
-                          [ 0,  1, 0], #16
-                          [ 1,  1, 0], #17
+                          [ 1,  0, 0], #13
+                          [-1,  1, 0], #14
+                          [ 0,  1, 0], #15
+                          [ 1,  1, 0], #16
                           
-                          [-1, -1, 1], #18
-                          [ 0, -1, 1], #19
-                          [ 1, -1, 1], #20
-                          [-1,  0, 1], #21
-                          [ 0,  0, 1], #22
-                          [ 1,  0, 1], #23
-                          [-1,  1, 1], #24
-                          [ 0,  1, 1], #25
-                          [ 1,  1, 1]  #26
+                          [-1, -1, 1], #17
+                          [ 0, -1, 1], #18
+                          [ 1, -1, 1], #19
+                          [-1,  0, 1], #20
+                          [ 0,  0, 1], #21
+                          [ 1,  0, 1], #22
+                          [-1,  1, 1], #23
+                          [ 0,  1, 1], #24
+                          [ 1,  1, 1], #25
                          ]
         
         
@@ -700,12 +703,11 @@ class BaseDomainHalo(BaseDomain):
         
         
         
-        self._tmp_index = data.ScalarArray(ncomp = 1, dtype = ctypes.c_double)
+        self._tmp_index = data.ScalarArray(ncomp = 1, dtype = ctypes.c_int)
         
         _unpacking_code = '''
         
-        int fill_count = 0;
-        
+        printf("before I[0] = %d, ECT = %d |", I[0], ECT[0]);
         for (int ix = 0; ix < TI[0]; ix++){
             
             int IX;
@@ -737,12 +739,27 @@ class BaseDomainHalo(BaseDomain):
             
             int ect = ECT[0] - 1;
             
-            for (int ix = ECT[0] - TI[0]; ix < ECT[0]; ix++){
+            int ect_ti = ECT[0] - TI[0] - 2;
+            int eix = -1;
+            
+            
+            
+            while ( (++ect_ti < ECT[0]) && (eix < I[0]) ){
+                
+                
+                printf("ect_ti = %d |", ect_ti);
+                
+                eix = EI[ect_ti];
+                
+                printf("eix = %d |", eix);
                 
                 int ti = -1;
 
                 //loop from end to empty slot
-                for (int iy = I[0] - 1; iy > EI[ix]; iy--){
+                for (int iy = I[0] - 1; iy > eix; iy--){
+                    
+                    
+                    printf("EI[ect] = %d |", EI[ect]);
                     
                     if (iy == EI[ect]){
                         I[0] = iy;
@@ -754,36 +771,44 @@ class BaseDomainHalo(BaseDomain):
                     
                 }
                 
+                printf("ti = %d |", ti);
+                
+                
                 if (ti > 0){
-                    //copy code here from index ti to index EI[ix]
+                    //copy code here from index ti to index eix
                     
-                    P[LINIDX_2D(3,EI[ix],0)] = P[LINIDX_2D(3,ti,0)];
-                    P[LINIDX_2D(3,EI[ix],1)] = P[LINIDX_2D(3,ti,1)];
-                    P[LINIDX_2D(3,EI[ix],2)] = P[LINIDX_2D(3,ti,2)];
+                    P[LINIDX_2D(3,eix,0)] = P[LINIDX_2D(3,ti,0)];
+                    P[LINIDX_2D(3,eix,1)] = P[LINIDX_2D(3,ti,1)];
+                    P[LINIDX_2D(3,eix,2)] = P[LINIDX_2D(3,ti,2)];
                     
-                    V[LINIDX_2D(3,EI[ix],0)] = V[LINIDX_2D(3,ti,0)];
-                    V[LINIDX_2D(3,EI[ix],1)] = V[LINIDX_2D(3,ti,1)];
-                    V[LINIDX_2D(3,EI[ix],2)] = V[LINIDX_2D(3,ti,2)];
+                    V[LINIDX_2D(3,eix,0)] = V[LINIDX_2D(3,ti,0)];
+                    V[LINIDX_2D(3,eix,1)] = V[LINIDX_2D(3,ti,1)];
+                    V[LINIDX_2D(3,eix,2)] = V[LINIDX_2D(3,ti,2)];
                     
-                    RGID[EI[ix]] = RGID[ti];                    
+                    RGID[eix] = RGID[ti];                    
                     
                     I[0] = ti;
                     
                     
-                    
                 } else {
-                    
-                    I[0] = EI[ix];
-                    break;
-                    
+                    I[0] = eix;
+                    break;  
                 }
-                  
-            }   
+            
+            
+            
+                
+            }
+            
+             
         } else {
         
         I[0] += TI[0] - ECT[0];
         
         }
+        
+        printf("after I[0] = %d |", I[0]);
+        
         '''
         
         _unpacking_dict={ 'P':self._BC_state.positions,
@@ -798,25 +823,6 @@ class BaseDomainHalo(BaseDomain):
         
         _unpacking_kernel = kernel.Kernel('unpackingParticles', _unpacking_code, headers = ['stdio.h'])
         self._unpacking_lib = build.SharedLib(_unpacking_kernel, _unpacking_dict, DEBUG = self._DEBUG)        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         
         
         
@@ -884,12 +890,19 @@ class BaseDomainHalo(BaseDomain):
             '''Zero counts/indices'''
             self._escape_internal_index.zero()
             self._internal_index.zero()
+            
             self._escape_count_total.zero()
             self._escape_count.zero()
+            
+            self._COMM.Barrier()
+            print "pre guard, rank:",self._rank, "I:",self._internal_index[0], "N=", self._BC_state.N
+            self._COMM.Barrier()            
             
             
             '''Find escaping particles'''
             self._escape_guard_loop.execute()
+            
+            
             
             '''Check packing buffer is large enough then pack'''
             self._escape_send_buffer.resize(7*self._escape_count_total[0])
@@ -897,9 +910,16 @@ class BaseDomainHalo(BaseDomain):
             
             
             
+            self._COMM.Barrier()
+            print "send, rank:",self._rank, "EC:",self._escape_count, "ECT", self._escape_count_total, "\n", "ids:", self._escaping_ids[0:self._escape_count_total[0]:]
+            self._COMM.Barrier()
+            
             '''Exchange sizes'''
             for ix in range(26):
-                self._COMM.sendrecv(self._escape_count.Dat[ix:ix+1:], 
+                #self._COMM.Barrier()
+                #print " index:", ix,"rank",self._rank, "dest:", self._send_list[ix], "count:", self._escape_count.Dat[ix:ix+1:]
+                #self._COMM.Barrier() 
+                self._COMM.Sendrecv(self._escape_count.Dat[ix:ix+1:], 
                                     self._send_list[ix], 
                                     self._send_list[ix], 
                                     self._escape_count_recv.Dat[ix:ix+1:],
@@ -907,12 +927,13 @@ class BaseDomainHalo(BaseDomain):
                                     self._rank,
                                     self._MPIstatus)
 
-                
-            
-            
-            
+            self._COMM.Barrier()
+            print "recvd", self._rank, self._escape_count_recv
+            self._COMM.Barrier()
+                        
             '''Count new incoming particles'''
             _tmp = self._escape_count_recv.Dat.sum()
+            
             
             
             '''Resize accordingly'''
@@ -920,7 +941,7 @@ class BaseDomainHalo(BaseDomain):
             self._BC_state.velocities.resize(_tmp)
             self._BC_state.global_ids.resize(_tmp)
             self._escape_recv_buffer.resize(7*_tmp)
-            self._escape_count_total[0] = _tmp
+            #self._escape_count_total[0] = _tmp
             
             
             
@@ -930,7 +951,7 @@ class BaseDomainHalo(BaseDomain):
             
             
             for ix in range(26):
-                self._COMM.sendrecv(self._escape_send_buffer.Dat[_sum_send:self._escape_count[ix]:], 
+                self._COMM.Sendrecv(self._escape_send_buffer.Dat[_sum_send:self._escape_count[ix]:], 
                                     self._send_list[ix], 
                                     self._send_list[ix], 
                                     self._escape_recv_buffer.Dat[_sum_recv:self._escape_count_recv[ix]:],
@@ -948,21 +969,29 @@ class BaseDomainHalo(BaseDomain):
             
             self._BC_state.positions.halo_start_reset()
             self._BC_state.velocities.halo_start_reset()
-            self._internal_index[0] = self._BC_state.positions.halo_start
+            self._internal_index[0] = self._BC_state.N
             
             
             self._unpacking_lib.execute()
             
+            
+            self._BC_state.N = self._internal_index[0]
             self._BC_state.positions.halo_start_set(self._internal_index[0])
             self._BC_state.velocities.halo_start_set(self._internal_index[0])
             self._BC_state.forces.halo_start_set(self._internal_index[0])
             
+            self._COMM.Barrier()
+            print ""
+            self._COMM.Barrier()
             
+            self._COMM.Barrier()
+            print "end",self._rank, self._internal_index[0], self._escape_count[::], "TI=", self._tmp_index[0], "N=", self._BC_state.N
+            self._COMM.Barrier()
             
-            
-            
-            
-            #'''For testing remove after'''
+            if (self._rank == 0):
+                print "================================================================================"
+            self._COMM.Barrier()
+            '''For testing remove after'''
             #self._BCloop.execute()
             
 

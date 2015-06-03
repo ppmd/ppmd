@@ -102,7 +102,10 @@ class HaloCartesianSingleProcess(object):
         
         #perform halo exchange
         for i,h in enumerate(self._halos):
-            h.exchange(self._exchange_sizes[i], self._cell_contents_array[self._cell_contents_array_index[i]:self._cell_contents_array_index[i+1]:], self._cell_contents_recv[self._cell_contents_array_index[i]:self._cell_contents_array_index[i+1]:],cell_list, data)
+            h.exchange(self._exchange_sizes[i], 
+                       self._cell_contents_array[self._cell_contents_array_index[i]:self._cell_contents_array_index[i+1]:], 
+                       self._cell_contents_recv[self._cell_contents_array_index[i]:self._cell_contents_array_index[i+1]:],
+                       cell_list, data)
         
         
         
@@ -222,21 +225,20 @@ class HaloCartesianSingleProcess(object):
                           [ 0, -1, 0], #10
                           [ 1, -1, 0], #11
                           [-1,  0, 0], #12
-                          [ 0,  0, 0], #13
-                          [ 1,  0, 0], #14
-                          [-1,  1, 0], #15
-                          [ 0,  1, 0], #16
-                          [ 1,  1, 0], #17
+                          [ 1,  0, 0], #13
+                          [-1,  1, 0], #14
+                          [ 0,  1, 0], #15
+                          [ 1,  1, 0], #16
                           
-                          [-1, -1, 1], #18
-                          [ 0, -1, 1], #19
-                          [ 1, -1, 1], #20
-                          [-1,  0, 1], #21
-                          [ 0,  0, 1], #22
-                          [ 1,  0, 1], #23
-                          [-1,  1, 1], #24
-                          [ 0,  1, 1], #25
-                          [ 1,  1, 1]  #26
+                          [-1, -1, 1], #17
+                          [ 0, -1, 1], #18
+                          [ 1, -1, 1], #19
+                          [-1,  0, 1], #20
+                          [ 0,  0, 1], #21
+                          [ 1,  0, 1], #22
+                          [-1,  1, 1], #23
+                          [ 0,  1, 1], #24
+                          [ 1,  1, 1], #25
                          ]
         
         
@@ -592,12 +594,15 @@ class Halo(object):
         if (timer==True):
             start = time.time()         
         
+        
         '''Send cell counts'''
-        self._MPI.Sendrecv(cell_counts[0::], self._rd, self._rd, recvd_cell_counts, self._rs, self._rs, self._MPIstatus)        
+        self._MPI.Sendrecv(cell_counts[0::], self._rd, self._rd, recvd_cell_counts[0::], self._rs, self._rank, self._MPIstatus)        
       
         
+        
         '''Send packed data'''
-        self._MPI.Sendrecv(self._send_buffer.Dat[0:count:1,::], self._rd, self._rd, data_buffer.Dat[data_buffer.halo_start::,::], self._rs, self._rs, self._MPIstatus)
+        self._MPI.Sendrecv(self._send_buffer.Dat[0:count:1,::], self._rd, self._rd, data_buffer.Dat[data_buffer.halo_start::,::], self._rs, self._rank, self._MPIstatus)
+        
         
         
         _shift=self._MPIstatus.Get_count( data.mpi_map[data_buffer.dtype])
