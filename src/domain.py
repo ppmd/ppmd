@@ -93,6 +93,7 @@ class BaseDomain(object):
         }                
         
         
+        
         '''
         
         self._BCcodeDict = {'P':self._BC_state.positions, 'E':self._extent}
@@ -538,7 +539,7 @@ class BaseDomainHalo(BaseDomain):
             EI[EII[0]] = I[0];
             EI[EII[0]+1] = BL[b];
             EII[0]+=2;
-            //printf("%d |",b);
+            printf("escaping: %d, b: %d |",I[0],b);
         }
         
         
@@ -560,7 +561,7 @@ class BaseDomainHalo(BaseDomain):
         
         
         _escape_guard_kernel = kernel.Kernel('FindEscapingParticles', _escape_guard_code, headers=['math.h'])
-        self._escape_guard_loop = loop.SingleAllParticleLoop(self._BC_state.positions.npart, _escape_guard_kernel, _escape_guard_dict, DEBUG = self._DEBUG)       
+        self._escape_guard_loop = loop.SingleAllParticleLoop(self._BC_state.N, _escape_guard_kernel, _escape_guard_dict, DEBUG = self._DEBUG)       
         
         
         '''Calculate shifts that should be applied when passing though the local domain extents
@@ -581,15 +582,15 @@ class BaseDomainHalo(BaseDomain):
                 _sf[2*ix+1] = 0.
         
         _sfd = [
-                _sf[1]  , _sf[3]    , _sf[5], #0
-                0.      , _sf[3]    , _sf[5], #1
-                _sf[0]  , _sf[3]    , _sf[5], #2
-                _sf[1]  , 0.        , _sf[5], #3
-                0.      , 0.        , _sf[5], #4
-                _sf[0]  , 0.        , _sf[5], #5
-                _sf[1]  , _sf[2]    , _sf[5], #6
-                0.      , _sf[2]    , _sf[5], #7
-                _sf[0]  , _sf[2]    , _sf[5], #8
+                _sf[1]  , _sf[3]    , _sf[4], #0
+                0.      , _sf[3]    , _sf[4], #1
+                _sf[0]  , _sf[3]    , _sf[4], #2
+                _sf[1]  , 0.        , _sf[4], #3
+                0.      , 0.        , _sf[4], #4
+                _sf[0]  , 0.        , _sf[4], #5
+                _sf[1]  , _sf[2]    , _sf[4], #6
+                0.      , _sf[2]    , _sf[4], #7
+                _sf[0]  , _sf[2]    , _sf[4], #8
                 
                 _sf[1]  , _sf[3]    , 0., #9
                 0.      , _sf[3]    , 0., #10
@@ -600,17 +601,20 @@ class BaseDomainHalo(BaseDomain):
                 0.      , _sf[2]    , 0., #15
                 _sf[0]  , _sf[2]    , 0., #16            
                 
-                _sf[1]  , _sf[3]    , _sf[4], #17
-                0.      , _sf[3]    , _sf[4], #18
-                _sf[0]  , _sf[3]    , _sf[4], #19
-                _sf[1]  , 0.        , _sf[4], #20
-                0.      , 0.        , _sf[4], #21
-                _sf[0]  , 0.        , _sf[4], #22
-                _sf[1]  , _sf[2]    , _sf[4], #23
-                0.      , _sf[2]    , _sf[4], #24
-                _sf[0]  , _sf[2]    , _sf[4] #25               
+                _sf[1]  , _sf[3]    , _sf[5], #17
+                0.      , _sf[3]    , _sf[5], #18
+                _sf[0]  , _sf[3]    , _sf[5], #19
+                _sf[1]  , 0.        , _sf[5], #20
+                0.      , 0.        , _sf[5], #21
+                _sf[0]  , 0.        , _sf[5], #22
+                _sf[1]  , _sf[2]    , _sf[5], #23
+                0.      , _sf[2]    , _sf[5], #24
+                _sf[0]  , _sf[2]    , _sf[5] #25               
                 
                ]
+        
+        print self._rank, "LOCAL SHIFTS", _sf
+        
         
         self._sfd = data.ScalarArray(initial_value = _sfd)
         
@@ -639,7 +643,7 @@ class BaseDomainHalo(BaseDomain):
                     
                     loc_count++;
                     
-                    //printf("index = %d |", index);
+                    printf("gid = %d |", EGID[id]);
                     
                 }
                 ix++; 
@@ -713,7 +717,7 @@ class BaseDomainHalo(BaseDomain):
             int IX;
             //fill in spaces
             if (ix < ECT[0]) {
-                IX = EI[ix];
+                IX = EI[2*ix];
             }
             else {
                 //put at end if spaces full
@@ -729,7 +733,7 @@ class BaseDomainHalo(BaseDomain):
             V[LINIDX_2D(3,IX,1)] = ERB[7*ix+4];
             V[LINIDX_2D(3,IX,2)] = ERB[7*ix+5];
             
-            RGID[I[0]] = ERB[7*ix+6];
+            RGID[I[0]] = (int) ERB[7*ix+6];
             
         }
         
@@ -746,12 +750,9 @@ class BaseDomainHalo(BaseDomain):
             
             while ( (++ect_ti < ECT[0]) && (eix < I[0]) ){
                 
-                
-                printf("ect_ti = %d |", ect_ti);
-                
-                eix = EI[ect_ti];
-                
-                printf("eix = %d |", eix);
+                eix = EI[2*ect_ti];
+
+                printf("ect_ti = %d, eix = %d|", ect_ti, eix);
                 
                 int ti = -1;
 
@@ -759,9 +760,9 @@ class BaseDomainHalo(BaseDomain):
                 for (int iy = I[0] - 1; iy > eix; iy--){
                     
                     
-                    printf("EI[ect] = %d |", EI[ect]);
+                    printf("EI[2*ect] = %d |", EI[2*ect]);
                     
-                    if (iy == EI[ect]){
+                    if (iy == EI[2*ect]){
                         I[0] = iy;
                         ect--;
                     } else {
@@ -881,10 +882,13 @@ class BaseDomainHalo(BaseDomain):
         
         if (self._nproc == 1):
             self._BCloop.execute()
-        else:
+            print "normal BCs applied"
+        else:  
+        
             
             '''Potentially all could escape'''
             self._escaping_ids.resize(2*self._BC_state.N)
+            self._escaping_ids.zero()
             #self._escaping_dir.resize(self._BC_state.N)
             
             '''Zero counts/indices'''
@@ -899,8 +903,13 @@ class BaseDomainHalo(BaseDomain):
             self._COMM.Barrier()            
             
             
+            if self._BC_state.N > 0:
+                print "pos", self._BC_state.positions[0,::], "rank:", self._rank
+                print "vel", self._BC_state.velocities[0,::], "rank:", self._rank
+            
+            
             '''Find escaping particles'''
-            self._escape_guard_loop.execute()
+            self._escape_guard_loop.execute(N = self._BC_state.N)
             
             
             
@@ -951,13 +960,20 @@ class BaseDomainHalo(BaseDomain):
             
             
             for ix in range(26):
-                self._COMM.Sendrecv(self._escape_send_buffer.Dat[_sum_send:self._escape_count[ix]:], 
+                if self._escape_count[ix]>0:
+                    print "rank",self._rank,"ix=",ix, "pkd=", self._escape_send_buffer.Dat[_sum_send:7*self._escape_count[ix]:]
+                
+                self._COMM.Sendrecv(self._escape_send_buffer.Dat[_sum_send:7*self._escape_count[ix]:], 
                                     self._send_list[ix], 
                                     self._send_list[ix], 
-                                    self._escape_recv_buffer.Dat[_sum_recv:self._escape_count_recv[ix]:],
+                                    self._escape_recv_buffer.Dat[_sum_recv:7*self._escape_count_recv[ix]:],
                                     self._recv_list[ix], 
                                     self._rank,
                                     self._MPIstatus)            
+                
+                if self._escape_count_recv[ix]>0:
+                    print "rank",self._rank, "ix=",ix, "recv=", self._escape_recv_buffer.Dat[_sum_recv:7*self._escape_count_recv[ix]:]
+                
                 
                 _sum_send += 7*self._escape_count[ix]
                 _sum_recv += 7*self._escape_count_recv[ix]
@@ -976,6 +992,9 @@ class BaseDomainHalo(BaseDomain):
             
             
             self._BC_state.N = self._internal_index[0]
+            
+            print "setting halos", self._internal_index[0]
+            
             self._BC_state.positions.halo_start_set(self._internal_index[0])
             self._BC_state.velocities.halo_start_set(self._internal_index[0])
             self._BC_state.forces.halo_start_set(self._internal_index[0])

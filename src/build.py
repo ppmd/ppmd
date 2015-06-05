@@ -383,7 +383,10 @@ class GenericToolChain(object):
         else:
             _N=self._N
         
-        args=[_N]
+        print "N=", _N
+        
+        
+        args=[ctypes.c_int(_N)]
         
         
         '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''

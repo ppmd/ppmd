@@ -48,6 +48,7 @@ class BaseMDState(object):
         self._pos = particle.Dat(N, 3, name='positions')
         self._vel = particle.Dat(N, 3, name='velocities')
         self._accel = particle.Dat(N, 3, name='accelerations')
+        self._global_ids = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
         
         self._mass = particle.Dat(N, 1, 1.0)
         if (particle_mass_init != None):
@@ -93,6 +94,9 @@ class BaseMDState(object):
         print "Cell array = ", self._domain._cell_array
         print "Domain extents = ",self._domain._extent
         print "cell count:", self._domain.cell_count
+        
+        
+        
         
         
         
@@ -279,7 +283,10 @@ class BaseMDState(object):
         Set number of particles.
         """
         self._N = val
-        
+        self._pos.npart = val
+        self._vel.npart = val
+        self._accel.npart = val
+        self._global_ids.ncomp = val
     
     @property  
     def domain(self):
@@ -344,7 +351,6 @@ class BaseMDState(object):
         
         if (self._cell_setup_attempt==True):
             self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
-        
         
         #self._cell_sort_all()
         
@@ -487,7 +493,9 @@ class BaseMDStateHalo(BaseMDState):
         self._domain.BCSetup(self)
         
 
-        
+        print "N, NT", self._N, self._NT
+        print "pos", self._pos[0,::]
+        print "vel", self._vel[0,::]  
         
         
         
@@ -694,7 +702,7 @@ class PosInitLatticeNRho(object):
             _ty = mLx_2+(math.floor((ix - z*np2_3)/np1_3)/np1_3)*Lx #y
             _tz = mLx_2+(z/np1_3)*Lx
             
-            if ((_d[0] < _tx < _d[1]) and  (_d[2] < _ty < _d[3]) and (_d[4] < _tz < _d[5])):
+            if ((_d[0] < _tx <= _d[1]) and  (_d[2] < _ty <= _d[3]) and (_d[4] < _tz <= _d[5])):
                 _p[_n,0] = _tx
                 _p[_n,1] = _ty
                 _p[_n,2] = _tz
@@ -812,6 +820,55 @@ class PosInitTwoParticlesInABox(object):
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
             
         #state_input.domain.set_extent(self._extent)
+
+################################################################################################################
+# PosInitOneParticleInABox DEFINITIONS
+################################################################################################################   
+
+class PosInitOneParticleInABox(object):
+    """
+    Creates one particle in a domain of given extents.
+    
+    :arg double r: particle location.
+    :arg np.array(3,1) extents: Extent for containing volume.
+    """
+    
+    def __init__(self, r = np.array([0.0,0.0,0.0]) ,extent = np.array([1.0,1.0,1.0])):
+        self._extent = extent
+        self._r = r
+        
+    def get_extent(self, state_input):
+        """
+        Initialise domain extents prior to setting particle positions.
+        """
+        state_input.domain.set_extent(self._extent)       
+        
+        
+    def reset(self, state_input):
+        """
+        Resets the first two particles in the input state domain to sit on the x-axis the set distance apart.
+        
+        
+        :arg state state_input: State object containing at least two particles.
+        """
+        
+        _N = 0
+        _d = state_input.domain.boundary
+        
+        
+        if ((_d[0] < self._r[0] <= _d[1]) and  (_d[2] < self._r[1] <= _d[3]) and (_d[4] < self._r[2] <= _d[5])):
+            state_input.positions[0,] = self._r
+            _N+=1
+        state_input.N = _N
+        state_input.global_ids[0] = 0
+        state_input.global_ids.ncomp = _N
+        state_input.positions.halo_start_reset()
+        state_input.velocities.halo_start_reset()
+        
+            
+        #state_input.domain.set_extent(self._extent)
+
+
 
 ################################################################################################################
 # PosInitDLPOLYConfig DEFINITIONS
@@ -949,6 +1006,32 @@ class VelInitTwoParticlesInABox(object):
             state_input.velocities[1,] = self._vy        
         else:
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
+
+################################################################################################################
+# VelInitOneParticleInABox DEFINITIONS
+################################################################################################################        
+class VelInitOneParticleInABox(object):
+    """
+    Sets velocities for first particle.
+    
+    :arg np.array(3,1) vx: Velocity vector for particle 1.
+    
+    """
+
+    def __init__(self, vx = np.array([0., 0., 0.])):
+        self._vx = vx
+        
+    def reset(self, state_input):
+        """
+        Resets the particles in the input state to the required velocities.
+        
+        :arg state state_input: input state.
+        """
+
+        if (state_input.N >= 1):
+            state_input.velocities[0,] = self._vx
+
+
         
 ################################################################################################################
 # VelInitMaxwellBoltzmannDist DEFINITIONS

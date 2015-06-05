@@ -22,6 +22,10 @@ if __name__ == '__main__':
     #2 particles bouncing agasint each other.
     test_2_bounce = False
     
+    #1 1 particle
+    t_1_particle = True
+    
+    
     #plot as computing + at end?
     plotting = False
     
@@ -78,6 +82,31 @@ if __name__ == '__main__':
         
         test_mass_init = state.MassInitIdentical(5.)
         
+    if (t_1_particle):
+        
+        N=1
+        
+        #See above
+        test_domain = domain.BaseDomainHalo()
+        test_potential = potential.NULL(rc = 0.01)
+        
+        print test_potential.rc
+        
+        
+        #Initialise two particles on an axis a set distance apart.
+        test_pos_init = state.PosInitOneParticleInABox(r = np.array([0., 0., 0.]), extent = np.array([0.02, 0.02, 0.02]))
+        
+        #Give first two particles specific velocities
+        test_vel_init = state.VelInitOneParticleInABox(vx = np.array([-10., 0., 0.]))
+        
+        #Set alternating masses for particles.
+        
+        test_mass_init = state.MassInitIdentical(5.)    
+    
+    
+    
+    
+    
     
     
     #Create state class from above initialisations.
@@ -109,7 +138,8 @@ if __name__ == '__main__':
     
     
     #Create VAF method.
-    test_vaf_method = method.VelocityAutoCorrelation(state = test_state, DEBUG = debug)   
+    test_vaf_method = None
+    #test_vaf_method = method.VelocityAutoCorrelation(state = test_state, DEBUG = debug)   
     
     #Create an integrator for above state class.
     test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, VAF_handle = test_vaf_method, DEBUG = debug)

@@ -307,8 +307,62 @@ class LennardJonesOpenMP(LennardJones):
         return kernel.Kernel('LJ_accel_U', kernel_code, constants, None, reductions)
 
 
+################################################################################################################
+# NULL Potential, returns zero for accel
+################################################################################################################  
+        
+class NULL(object):
+    '''
+    
+    NULL potential
+    
+    '''
+    def __init__(self, rc = None):
+        self._rc = rc
+        self._rn = rc
+        
+    @property
+    def rc(self):
+        '''Value of cufoff distance :math:`r_c`'''
+        return self._rc
+        
+    @property
+    def rn(self):
+        '''Value of cufoff distance :math:`r_c`'''
+        return self._rc        
+            
+    
+    @property    
+    def kernel(self):
+        '''
+        Returns a kernel class for the potential.
+        '''
+        
+        kernel_code = '''
+        
+        const double R0 = P[1][0] - P[0][0];
+        const double R1 = P[1][1] - P[0][1];
+        const double R2 = P[1][2] - P[0][2];
+        
+        A[0][0]=0;
+        A[0][1]=0;
+        A[0][2]=0;
+        
+        A[1][0]=0;
+        A[1][1]=0;
+        A[1][2]=0;
+        
+        '''
+        
+        return kernel.Kernel('NULL_Potential', kernel_code, None, None, None)
 
-
+    def datdict(self, input_state):
+        '''
+        Map between state variables and kernel variables, returns required dictonary.
+        
+        :arg state input_state: state with containing variables.
+        '''
+        return {'P':input_state.positions, 'A':input_state.forces, 'U':input_state.U}
 
 
 

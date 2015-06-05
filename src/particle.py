@@ -145,14 +145,16 @@ class Dat(object):
         self._NH = self._halo_start - self._N1
         
     def halo_start_set(self,index):
+    
+    
         if index < self._N1:
-            if (index > 1):
+            if (index >= 0):
                 self._N1 = index
                 self._halo_start = index
-            if (index==0):
-                self._N1 = 0
-                self._halo_start = 0
-    
+                
+        else:
+            self.halo_start_reset()
+            
         self._NH = 0
         
         

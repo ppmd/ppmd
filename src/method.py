@@ -162,24 +162,25 @@ class VelocityVerlet(object):
         for i in range(self._max_it):
             
                    
-            self._velocity_verlet_step()
+            self._velocity_verlet_step(self._state.N)
             
             self._integration_internals(i)
     
         
                 
-    def _velocity_verlet_step(self):
+    def _velocity_verlet_step(self,N):
         """
         Perform one step of Velocity Verlet.
         """
         
         if (self._USE_C):
-            self._p1.execute()
+            self._p1.execute(N)
         else:
             self._V.Dat[...,...]+=0.5*self._dt*self._A.Dat
             self._P.Dat[...,...]+=self._dt*self._V.Dat
         
         #update forces
+        
         
         
         self._domain.BCexecute()
@@ -188,7 +189,7 @@ class VelocityVerlet(object):
         self._state.forces_update()
         
         if (self._USE_C):
-            self._p2.execute()
+            self._p2.execute(N)
         else:
             self._V.Dat[...,...]+= 0.5*self._dt*self._A.Dat
         
