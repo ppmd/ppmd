@@ -98,7 +98,7 @@ class BaseDomain(object):
         
         self._BCcodeDict = {'P':self._BC_state.positions, 'E':self._extent}
         self._BCkernel= kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
-        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.positions.npart, self._BCkernel,self._BCcodeDict) 
+        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.N, self._BCkernel,self._BCcodeDict) 
            
         
     def BCexecute(self):
@@ -463,7 +463,9 @@ class BaseDomainHalo(BaseDomain):
         
         self._BC_state = state
         
-        self._escaping_ids = data.ScalarArray(ncomp = 2*self._BC_state.NT, dtype = ctypes.c_int)
+        
+        
+        self._escaping_ids = data.ScalarArray(ncomp = 2*self._BC_state.NT(), dtype = ctypes.c_int)
         #self._escaping_dir = data.ScalarArray(ncomp = self._BC_state.NT, dtype = ctypes.c_int)
         self._escape_count = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)
         self._escape_count_total = data.ScalarArray(ncomp = 1, dtype = ctypes.c_int)     
@@ -618,7 +620,7 @@ class BaseDomainHalo(BaseDomain):
         
         self._sfd = data.ScalarArray(initial_value = _sfd)
         
-        self._escape_send_buffer = data.ScalarArray(ncomp = 7*self._BC_state.NT, dtype = ctypes.c_double)
+        self._escape_send_buffer = data.ScalarArray(ncomp = 7*self._BC_state.NT(), dtype = ctypes.c_double)
         _escape_packing_code = '''
         
         int index = 0;
@@ -652,7 +654,7 @@ class BaseDomainHalo(BaseDomain):
         
         '''
         self._escape_count_recv = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)
-        self._escape_recv_buffer = data.ScalarArray(ncomp = 7*self._BC_state.NT, dtype = ctypes.c_double)
+        self._escape_recv_buffer = data.ScalarArray(ncomp = 7*self._BC_state.NT(), dtype = ctypes.c_double)
         
         _escape_packing_dict={'P':self._BC_state.positions,
                               'V':self._BC_state.velocities,
@@ -870,7 +872,7 @@ class BaseDomainHalo(BaseDomain):
         
         self._BCcodeDict = {'P':self._BC_state.positions, 'E':self._extent}
         self._BCkernel= kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
-        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.positions.npart, self._BCkernel,self._BCcodeDict, DEBUG = self._DEBUG) 
+        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.N, self._BCkernel,self._BCcodeDict, DEBUG = self._DEBUG) 
     
         
         
@@ -882,14 +884,13 @@ class BaseDomainHalo(BaseDomain):
         
         if (self._nproc == 1):
             self._BCloop.execute()
-            print "normal BCs applied"
+            #print "normal BCs applied"
         else:  
         
             
             '''Potentially all could escape'''
-            self._escaping_ids.resize(2*self._BC_state.N)
+            self._escaping_ids.resize(2*self._BC_state.N())
             self._escaping_ids.zero()
-            #self._escaping_dir.resize(self._BC_state.N)
             
             '''Zero counts/indices'''
             self._escape_internal_index.zero()
@@ -899,17 +900,17 @@ class BaseDomainHalo(BaseDomain):
             self._escape_count.zero()
             
             self._COMM.Barrier()
-            print "pre guard, rank:",self._rank, "I:",self._internal_index[0], "N=", self._BC_state.N
+            print "pre guard, rank:",self._rank, "I:",self._internal_index[0], "N=", self._BC_state.N()
             self._COMM.Barrier()            
             
             
-            if self._BC_state.N > 0:
+            if self._BC_state.N() > 0:
                 print "pos", self._BC_state.positions[0,::], "rank:", self._rank
                 print "vel", self._BC_state.velocities[0,::], "rank:", self._rank
             
             
             '''Find escaping particles'''
-            self._escape_guard_loop.execute(N = self._BC_state.N)
+            self._escape_guard_loop.execute()
             
             
             
@@ -985,13 +986,13 @@ class BaseDomainHalo(BaseDomain):
             
             self._BC_state.positions.halo_start_reset()
             self._BC_state.velocities.halo_start_reset()
-            self._internal_index[0] = self._BC_state.N
+            self._internal_index[0] = self._BC_state.N()
             
             
             self._unpacking_lib.execute()
             
             
-            self._BC_state.N = self._internal_index[0]
+            self._BC_state.set_N ( self._internal_index[0] )
             
             print "setting halos", self._internal_index[0]
             
@@ -1004,7 +1005,7 @@ class BaseDomainHalo(BaseDomain):
             self._COMM.Barrier()
             
             self._COMM.Barrier()
-            print "end",self._rank, self._internal_index[0], self._escape_count[::], "TI=", self._tmp_index[0], "N=", self._BC_state.N
+            print "end",self._rank, self._internal_index[0], self._escape_count[::], "TI=", self._tmp_index[0], "N=", self._BC_state.N()
             self._COMM.Barrier()
             
             if (self._rank == 0):

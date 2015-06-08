@@ -321,7 +321,7 @@ class PairLoopRapaport(_base):
             self._particle_dat_dict = dat_dict    
         
         '''Create arg list'''
-        args=[ctypes.c_int(self._N),
+        args=[ctypes.c_int(self._N()),
               ctypes.c_int(self._domain.cell_count), 
               self._domain.cell_array.ctypes_data,
               self._q_list.ctypes_data,
@@ -598,7 +598,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
             self._particle_dat_dict = dat_dict    
         
         '''Currently assume N is always needed'''
-        args=[self._N, self._domain.extent.ctypes_data]
+        args=[self._N(), self._domain.extent.ctypes_data]
         
         
         '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
@@ -1084,7 +1084,7 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
             self._particle_dat_dict = dat_dict    
 
         '''Create arg list'''
-        args=[ctypes.c_int(self._N),
+        args=[ctypes.c_int(self._N()),
               ctypes.c_int(self._domain.cell_count), 
               self._domain.cell_array.ctypes_data,
               self._q_list.ctypes_data,

@@ -381,9 +381,8 @@ class GenericToolChain(object):
         if (N!=None):
             _N=N
         else:
-            _N=self._N
+            _N=self._N()
         
-        print "N=", _N
         
         
         args=[ctypes.c_int(_N)]

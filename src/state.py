@@ -116,7 +116,7 @@ class BaseMDState(object):
             
             
             
-            self._looping_method_accel = pairloop.PairLoopRapaportHalo(N=self._N,
+            self._looping_method_accel = pairloop.PairLoopRapaportHalo(N=self.N,
                                                                     domain = self._domain, 
                                                                     positions = self._pos, 
                                                                     potential = self._potential, 
@@ -125,7 +125,7 @@ class BaseMDState(object):
                                                                     DEBUG = self._DEBUG)
         
         else:
-            self._looping_method_accel = pairloop.DoubleAllParticleLoopPBC(N=self._N,
+            self._looping_method_accel = pairloop.DoubleAllParticleLoopPBC(N=self.N,
                                                                         domain = self._domain, 
                                                                         kernel = self._potential.kernel,
                                                                         particle_dat_dict = _potential_dat_dict,
@@ -269,24 +269,30 @@ class BaseMDState(object):
                                                     'N':self._internal_N}
                                      )          
         
-        
-    @property    
+    
     def N(self):
         """
         Returns number of particles.
         """
         return self._N
-            
-    @N.setter    
-    def N(self,val):
+               
+    def set_N(self,val):
         """
         Set number of particles.
         """
         self._N = val
+        
         self._pos.npart = val
+        self._pos.halo_start_reset()
+        
         self._vel.npart = val
+        self._vel.halo_start_reset()
+        
         self._accel.npart = val
+        self._accel.halo_start_reset()
+        
         self._global_ids.ncomp = val
+        #self._global_ids.halo_start_reset()
     
     @property  
     def domain(self):
@@ -554,10 +560,10 @@ class BaseMDStateHalo(BaseMDState):
     def global_ids(self):
         return self._global_ids
     
-    @property
+    #@property
     def NT(self):
         return self._NT
-        
+         
         
         
 
@@ -709,10 +715,7 @@ class PosInitLatticeNRho(object):
                 _gid[_n] = ix
                 _n+=1
         
-        state_input.N = _n
-        _gid.ncomp = _n
-        
-        _p.npart = _n
+        state_input.set_N ( _n )
         _p.halo_start_reset()
 
 ################################################################################################################
@@ -812,10 +815,26 @@ class PosInitTwoParticlesInABox(object):
         
         :arg state state_input: State object containing at least two particles.
         """
-        
-        if (state_input.N >= 2):
-            state_input.positions[0,] = -1.*self._rx*self._axis
-            state_input.positions[1,] = self._rx*self._axis
+        if (state_input.N() >= 2):
+            _N = 0 
+            _d = state_input.domain.boundary
+            
+            _tmp = -1.*self._rx*self._axis
+            _tmp2 = self._rx*self._axis
+                    
+            if ((_d[0] < _tmp[0] <= _d[1]) and  (_d[2] < _tmp[1] <= _d[3]) and (_d[4] < _tmp[2] <= _d[5])):
+                state_input.positions[0,] = _tmp
+                state_input.global_ids[0] = 0
+                _N+=1
+            
+            if ((_d[0] < _tmp2[0] <= _d[1]) and  (_d[2] < _tmp2[1] <= _d[3]) and (_d[4] < _tmp2[2] <= _d[5])):
+                state_input.positions[_N,] = _tmp2
+                state_input.global_ids[_N] = 1
+                _N+=1        
+            
+            state_input.set_N(_N)
+            
+            
         else:
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
             
@@ -859,9 +878,8 @@ class PosInitOneParticleInABox(object):
         if ((_d[0] < self._r[0] <= _d[1]) and  (_d[2] < self._r[1] <= _d[3]) and (_d[4] < self._r[2] <= _d[5])):
             state_input.positions[0,] = self._r
             _N+=1
-        state_input.N = _N
+        state_input.set_N(_N)
         state_input.global_ids[0] = 0
-        state_input.global_ids.ncomp = _N
         state_input.positions.halo_start_reset()
         state_input.velocities.halo_start_reset()
         
@@ -975,7 +993,7 @@ class VelInitNormDist(object):
         vel_in = state_input.velocities
         
         #Apply normal distro to velocities.
-        for ix in range(state_input.N):
+        for ix in range(state_input.N()):
             vel_in[ix,]=[random.gauss(self._mu, self._sig),random.gauss(self._mu, self._sig),random.gauss(self._mu, self._sig)]
         
 ################################################################################################################
@@ -1001,9 +1019,18 @@ class VelInitTwoParticlesInABox(object):
         :arg state state_input: input state.
         """
 
-        if (state_input.N >= 2):
-            state_input.velocities[0,] = self._vx
-            state_input.velocities[1,] = self._vy        
+        if (state_input.NT() >= 2):
+            for ix in range(state_input.N()):
+                if state_input.global_ids[ix] == 0:
+                    state_input.velocities[ix] = self._vx
+                elif state_input.global_ids[ix] == 1:
+                    state_input.velocities[ix] = self._vy
+                
+                
+                
+            
+            
+                   
         else:
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
 

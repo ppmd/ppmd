@@ -20,10 +20,10 @@ if __name__ == '__main__':
     test_1000 = True
     
     #2 particles bouncing agasint each other.
-    test_2_bounce = False
+    test_2_bounce = True
     
     #1 1 particle
-    t_1_particle = True
+    t_1_particle = False
     
     
     #plot as computing + at end?
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     
     if (test_1000):
         #n=25 reasonable size
-        n=20
+        n=10
         N=n**3
         rho = 1.
         mu = 0.0
@@ -73,10 +73,10 @@ if __name__ == '__main__':
         
         
         #Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([6., 6., 6.]), axis = np.array([-1,1,0]))
+        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([6., 6., 6.]), axis = np.array([1,0,0]))
         
         #Give first two particles specific velocities
-        test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
+        test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([1., 0., 0.]), vy = np.array([-1., 0., 0.]))
         
         #Set alternating masses for particles.
         
@@ -158,7 +158,7 @@ if __name__ == '__main__':
     
     
     
-    test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
+    test_integrator.integrate(dt = 0.0001, T = 0.3, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)

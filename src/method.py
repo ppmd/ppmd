@@ -162,7 +162,7 @@ class VelocityVerlet(object):
         for i in range(self._max_it):
             
                    
-            self._velocity_verlet_step(self._state.N)
+            self._velocity_verlet_step(self._state.N())
             
             self._integration_internals(i)
     
@@ -209,13 +209,13 @@ class VelocityVerlet(object):
                 self._pK.execute()
                 #self._K.AverageUpdate()
             else:
-                for ix in range(self._state.N):
+                for ix in range(self._state.N()):
                     self._K[0] += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
             
             _U_tmp = (self._state.U.Dat[0]+0.5*self._state.U.Dat[1])
-            self._energy_handle.U_append(_U_tmp/self._N)
-            self._energy_handle.K_append((self._K[0])/self._N)
-            self._energy_handle.Q_append((_U_tmp + self._K[0])/self._N)
+            self._energy_handle.U_append(_U_tmp/self._N())
+            self._energy_handle.K_append((self._K[0])/self._N())
+            self._energy_handle.Q_append((_U_tmp + self._K[0])/self._N())
             self._energy_handle.T_append((i+1)*self._dt)
         
         
@@ -236,7 +236,7 @@ class VelocityVerlet(object):
         if ( (self._plot_handle != None)  & (PERCENT > self._percent_count)):
             
             if (self._plot_handle != None):
-                self._plot_handle.draw(self._state.N, self._P, self._state.domain._extent)
+                self._plot_handle.draw(self._state.N(), self._P, self._state.domain._extent)
             
             self._percent_count += self._percent_int
             print int((100.0*i)/self._max_it),"%", "T=", self._dt*i
@@ -383,7 +383,7 @@ class RadialDistributionPeriodicNVE(object):
         self._state = state
         self._extent = self._state.domain.extent
         self._P = self._state.positions
-        self._N = self._P.npart
+        self._N = self._state.N
         self._rmax = rmax
         
         if (self._rmax == None):
@@ -460,7 +460,7 @@ class RadialDistributionPeriodicNVE(object):
         
     def _scale(self):
         self._r =  np.linspace(0.+0.5*(self._rmax/self._rsteps), self._rmax-0.5*(self._rmax/self._rsteps), num=self._rsteps, endpoint=True)            
-        self._grscaled = self._gr.Dat*self._state.domain.volume/((self._N)*(self._N - 1)*2*math.pi*(self._r**2) * (self._rmax/float(self._rsteps))*self._count)
+        self._grscaled = self._gr.Dat*self._state.domain.volume/((self._N())*(self._N() - 1)*2*math.pi*(self._r**2) * (self._rmax/float(self._rsteps))*self._count)
         
     def plot(self):
         self._scale()
@@ -604,7 +604,7 @@ class VelocityAutoCorrelation(object):
         
         assert int(self._VAF_index) < int(self._VAF.ncomp), "VAF store not large enough"
         
-        self._Ni = 1./self._N
+        self._Ni = 1./self._N()
         self._datdict['VT'] = self._state.velocities     
         self._loop.execute(None, self._datdict, {'I':(ctypes.c_int)(self._VAF_index),'Ni':(ctypes.c_double)(self._Ni)})
         
