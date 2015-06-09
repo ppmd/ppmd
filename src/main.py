@@ -30,7 +30,7 @@ if __name__ == '__main__':
     plotting = False
     
     #log energy?
-    logging = False
+    logging = True
     
     #Enbale debug flags?
     debug = True

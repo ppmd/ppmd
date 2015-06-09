@@ -242,6 +242,7 @@ class BaseMDState(object):
                                                     'N':self._internal_N}
                                      )    
         
+        
           
         
         
@@ -349,20 +350,32 @@ class BaseMDState(object):
         if (timer==True):
             start = time.time() 
         
-        #print "start local cell sort"
-        #print self._q_list.ctypes_data
+    
+       
+        
+        
+        
         self._cell_sort_local()               
-        #print "end local cell sort"
+        
         
         
         if (self._cell_setup_attempt==True):
             self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
         
-        #self._cell_sort_all()
         
+        if self._N > 0:
+            #print "pos", self._pos[0:self._pos.halo_start:,::], "rank:", self._domain._rank
+            #print "vel", self._vel[0:self._vel.halo_start:,::], "rank:", self._domain._rank 
+            print "pos", self._pos[0:self._N:,::], "rank:", self._domain._rank
+            print "vel", self._vel[0:self._N:,::], "rank:", self._domain._rank             
+            
+            
+             
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
         
+        
+        #print "CELL LIST", self._q_list[self._q_list[self._q_list.end]::], self._domain._rank
         
         
         self._looping_method_accel.execute(N=self._q_list[self._q_list.end])   
@@ -533,9 +546,6 @@ class BaseMDStateHalo(BaseMDState):
             
             
             self._cell_sort_local()
-            #self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)            
-            #self._cell_sort_all()
-            
             
             
             

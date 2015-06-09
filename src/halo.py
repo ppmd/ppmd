@@ -510,44 +510,64 @@ class HaloCartesianSingleProcess(object):
         self._cell_sort_loop = build.SharedLib(_cell_sort_kernel, _cell_sort_dict, DEBUG = self._DEBUG)
         #==========================================================================================================================        
         
+        '''
+        Xl 0, Xu 1
+        Yl 2, Yu 3
+        Zl 4, Zu 5
+        '''
+                
+        _bc_flag = [0,0,0,0,0,0]
+        for ix in range(3):
+            if (self._top[ix] == 0):
+                _bc_flag[2*ix] = 1
+            if (self._top[ix] == self._dims[ix]-1):
+                _bc_flag[2*ix + 1] = 1            
+            
+            
+        
     
         _cell_shifts=[
-                            [-1*self._extent[0] ,-1*self._extent[1]  ,-1*self._extent[2]],
-                            [0.                 ,-1*self._extent[1]  ,-1*self._extent[2]],
-                            [self._extent[0]    ,-1*self._extent[1]  ,-1*self._extent[2]],
-                            [-1*self._extent[0] ,0.                  ,-1*self._extent[2]],
-                            [0.                 ,0.                  ,-1*self._extent[2]],
-                            [self._extent[0]    ,0.                  ,-1*self._extent[2]],
-                            [-1*self._extent[0] ,self._extent[1]     ,-1*self._extent[2]],
-                            [0.                 ,self._extent[1]     ,-1*self._extent[2]],
-                            [self._extent[0]    ,self._extent[1]     ,-1*self._extent[2]],
+                            [-1*self._extent[0]*_bc_flag[1] ,-1*self._extent[1]*_bc_flag[3]     ,-1*self._extent[2]*_bc_flag[5]],
+                            [0.                             ,-1*self._extent[1]*_bc_flag[3]     ,-1*self._extent[2]*_bc_flag[5]],
+                            [self._extent[0]*_bc_flag[0]    ,-1*self._extent[1]*_bc_flag[3]     ,-1*self._extent[2]*_bc_flag[5]],
+                            [-1*self._extent[0]*_bc_flag[1] ,0.                                 ,-1*self._extent[2]*_bc_flag[5]],
+                            [0.                             ,0.                                 ,-1*self._extent[2]*_bc_flag[5]],
+                            [self._extent[0]*_bc_flag[0]    ,0.                                 ,-1*self._extent[2]*_bc_flag[5]],
+                            [-1*self._extent[0]*_bc_flag[1] ,self._extent[1]*_bc_flag[2]        ,-1*self._extent[2]*_bc_flag[5]],
+                            [0.                             ,self._extent[1]*_bc_flag[2]        ,-1*self._extent[2]*_bc_flag[5]],
+                            [self._extent[0]*_bc_flag[0]    ,self._extent[1]*_bc_flag[2]        ,-1*self._extent[2]*_bc_flag[5]],
 
-                            [-1*self._extent[0] ,-1*self._extent[1]  ,0.],
-                            [0.                 ,-1*self._extent[1]  ,0.],
-                            [self._extent[0]    ,-1*self._extent[1]  ,0.],
-                            [-1*self._extent[0] ,0.                  ,0.],
-                            [self._extent[0]    ,0.                  ,0.],
-                            [-1*self._extent[0] ,self._extent[1]     ,0.],
-                            [0.                 ,self._extent[1]     ,0.],
-                            [self._extent[0]    ,self._extent[1]     ,0.],
+                            [-1*self._extent[0]*_bc_flag[1] ,-1*self._extent[1]*_bc_flag[3]     ,0.],
+                            [0.                             ,-1*self._extent[1]*_bc_flag[3]     ,0.],
+                            [self._extent[0]*_bc_flag[0]    ,-1*self._extent[1]*_bc_flag[3]     ,0.],
+                            [-1*self._extent[0]*_bc_flag[1] ,0.                                 ,0.],
+                            [self._extent[0]*_bc_flag[0]    ,0.                                 ,0.],
+                            [-1*self._extent[0]*_bc_flag[1] ,self._extent[1]*_bc_flag[2]        ,0.],
+                            [0.                             ,self._extent[1]*_bc_flag[2]        ,0.],
+                            [self._extent[0]*_bc_flag[0]    ,self._extent[1]*_bc_flag[2]        ,0.],
 
-                            [-1*self._extent[0] ,-1*self._extent[1]  ,self._extent[2]],
-                            [0.                 ,-1*self._extent[1]  ,self._extent[2]],
-                            [self._extent[0]    ,-1*self._extent[1]  ,self._extent[2]],
-                            [-1*self._extent[0] ,0.                  ,self._extent[2]],
-                            [0.                 ,0.                  ,self._extent[2]],
-                            [self._extent[0]    ,0.                  ,self._extent[2]],
-                            [-1*self._extent[0] ,self._extent[1]     ,self._extent[2]],
-                            [0.                 ,self._extent[1]     ,self._extent[2]],
-                            [self._extent[0]    ,self._extent[1]     ,self._extent[2]]
+                            [-1*self._extent[0]*_bc_flag[1] ,-1*self._extent[1]*_bc_flag[3]     ,self._extent[2]*_bc_flag[4]],
+                            [0.                             ,-1*self._extent[1]*_bc_flag[3]     ,self._extent[2]*_bc_flag[4]],
+                            [self._extent[0]*_bc_flag[0]    ,-1*self._extent[1]*_bc_flag[3]     ,self._extent[2]*_bc_flag[4]],
+                            [-1*self._extent[0]*_bc_flag[1] ,0.                                 ,self._extent[2]*_bc_flag[4]],
+                            [0.                             ,0.                                 ,self._extent[2]*_bc_flag[4]],
+                            [self._extent[0]*_bc_flag[0]    ,0.                                 ,self._extent[2]*_bc_flag[4]],
+                            [-1*self._extent[0]*_bc_flag[1] ,self._extent[1]*_bc_flag[2]        ,self._extent[2]*_bc_flag[4]],
+                            [0.                             ,self._extent[1]*_bc_flag[2]        ,self._extent[2]*_bc_flag[4]],
+                            [self._extent[0]*_bc_flag[0]    ,self._extent[1]*_bc_flag[2]        ,self._extent[2]*_bc_flag[4]]
                            ]    
         
+        
+        #print "CELL SHIFTS", _cell_shifts, self._rank
         
         
         _tmp_list_local=[]
         for ix in range(26):
             _tmp_list_local+=_cell_shifts[ix]
         self._cell_shifts_array = data.ScalarArray(_tmp_list_local, dtype=ctypes.c_double) 
+    
+        
+    
     
     
     

@@ -430,7 +430,7 @@ class BaseDomainHalo(BaseDomain):
         '''
         Method to initialise halos for local domain.
         '''
-        self._halos = halo.HaloCartesianSingleProcess(self._COMM, self._rank, self._top, self._dims, self._cell_array, self._extent)
+        self._halos = halo.HaloCartesianSingleProcess(self._COMM, self._rank, self._top, self._dims, self._cell_array, self._extent_global)
     
     
     @property
@@ -615,7 +615,7 @@ class BaseDomainHalo(BaseDomain):
                 
                ]
         
-        print self._rank, "LOCAL SHIFTS", _sf
+        #print self._rank, "LOCAL SHIFTS", _sf
         
         
         self._sfd = data.ScalarArray(initial_value = _sfd)
@@ -903,11 +903,11 @@ class BaseDomainHalo(BaseDomain):
             print "pre guard, rank:",self._rank, "I:",self._internal_index[0], "N=", self._BC_state.N()
             self._COMM.Barrier()            
             
-            
+            '''
             if self._BC_state.N() > 0:
                 print "pos", self._BC_state.positions[0,::], "rank:", self._rank
                 print "vel", self._BC_state.velocities[0,::], "rank:", self._rank
-            
+            '''
             
             '''Find escaping particles'''
             self._escape_guard_loop.execute()
@@ -1011,6 +1011,7 @@ class BaseDomainHalo(BaseDomain):
             if (self._rank == 0):
                 print "================================================================================"
             self._COMM.Barrier()
+            
             '''For testing remove after'''
             #self._BCloop.execute()
             
