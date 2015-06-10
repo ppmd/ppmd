@@ -18,6 +18,92 @@ ctypes_map = {ctypes.c_double:'double', ctypes.c_int:'int', 'float64':'double', 
 mpi_map = {ctypes.c_double:MPI.DOUBLE, ctypes.c_int:MPI.INT}
 
 
+
+class MDMPI(object):
+    '''
+    Class to store a MPI communicator such that it can be used everywhere (bottom level of hierarchy).
+    
+    '''
+    
+    def __init__(self):
+        self._COMM = None
+        
+    @property
+    def comm(self):
+        '''
+        Return the current communicator.
+        '''
+        return self._COMM
+    
+    @comm.setter
+    def comm(self, new_comm = None):
+        '''
+        Set the current communicator.
+        '''    
+        assert new_comm != None, "MDMPI error: no new communicator assigned."
+        self._COMM = new_comm
+        
+    def __call__(self):
+        '''
+        Return the current communicator.
+        '''
+        return self._COMM        
+        
+    @property
+    def rank(self):
+        '''
+        Return the current rank.
+        '''    
+        return self._COMM.Get_rank()
+    
+    @property
+    def nproc(self):
+        '''
+        Return the current size.
+        '''    
+        return self._COMM.Get_size()
+    
+    @property
+    def top(self):
+        '''
+        Return the current topology.
+        '''    
+        return self._COMM.Get_topo()[2][::-1]
+    
+    @property
+    def dims(self):
+        '''
+        Return the current dimensions.
+        '''    
+        return self._COMM.Get_topo()[0][::-1]
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def XYZWrite(dirname = './output', filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_override=False):
     '''
     Function to write particle positions in a xyz format.
@@ -68,9 +154,12 @@ class DrawParticles(object):
     
     
     '''
-    def __init__(self, interval = 10):
+    def __init__(self, interval = 10, MPI_handle = None):
+        
         
         self._interval = interval
+        self._MPI_handle = MPI_handle
+        
         
         plt.ion()
         

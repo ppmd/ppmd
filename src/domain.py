@@ -34,7 +34,7 @@ class BaseDomain(object):
 
     def __init__(self, extent = np.array([1., 1., 1.]), cell_count = 1):
         
-        
+        self._COMM = None
         
         self._extent = data.ScalarArray(extent)
         
@@ -45,6 +45,11 @@ class BaseDomain(object):
         
         
         self._BCloop = None
+        
+    @property
+    def comm(self):
+        return self._COMM        
+        
         
         
     def BCSetup(self, state):
@@ -214,8 +219,9 @@ class BaseDomain(object):
          
 class BaseDomainHalo(BaseDomain):
 
-    def __init__(self, extent = np.array([1., 1., 1.]), cell_count = 1):
+    def __init__(self, extent = np.array([1., 1., 1.]), cell_count = 1, MPI_handle = None):
         
+        self._MPI_handle = MPI_handle
         self._MPI = MPI.COMM_WORLD
         self._MPIstatus=MPI.Status()
         self._DEBUG = True
@@ -231,6 +237,17 @@ class BaseDomainHalo(BaseDomain):
         
         
         self._BCloop = None
+    
+    @property
+    def MPI_handle(self):
+        return self._MPI_handle
+    
+    @MPI_handle.setter
+    def MPI_handle(self, handle):
+        self._MPI_handle = handle
+    
+    
+    
         
     def set_extent(self, new_extent = np.array([1., 1., 1.])):
         """
@@ -314,6 +331,10 @@ class BaseDomainHalo(BaseDomain):
         self._dims = tuple(_dims)
         self._COMM = self._MPI.Create_cart(self._dims[::-1], (True, True, True),True)
         
+        '''Set the simulation mpi handle to be the newly created one'''
+        self._MPI_handle.comm = self._COMM
+        
+        
         '''get rank, nprocs'''
         self._rank = self._COMM.Get_rank()
         self._nproc = self._COMM.Get_size()          
@@ -325,6 +346,8 @@ class BaseDomainHalo(BaseDomain):
         '''Topology has below indexing, last index reverses'''
         #[z,y,x]
         self._top = self._COMM.Get_topo()[2][::-1]
+        
+        
         
         #print "rank", self._rank, "top", self._top
         
@@ -455,6 +478,7 @@ class BaseDomainHalo(BaseDomain):
     @property
     def rank(self):
         return self._rank
+        
         
     def barrier(self):
         self._MPI.Barrier()
