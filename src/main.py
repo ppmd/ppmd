@@ -27,7 +27,7 @@ if __name__ == '__main__':
     
     
     #plot as computing + at end?
-    plotting = False
+    plotting = True
     
     #log energy?
     logging = True
@@ -73,10 +73,10 @@ if __name__ == '__main__':
         
         
         #Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([6., 6., 6.]), axis = np.array([1,0,0]))
+        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([6., 6., 6.]), axis = np.array([0,1,0]))
         
         #Give first two particles specific velocities
-        test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([1., 0., 0.]), vy = np.array([-1., 0., 0.]))
+        test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
         
         #Set alternating masses for particles.
         
@@ -94,10 +94,10 @@ if __name__ == '__main__':
         
         
         #Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitOneParticleInABox(r = np.array([0., 0., 0.]), extent = np.array([0.02, 0.02, 0.02]))
+        test_pos_init = state.PosInitOneParticleInABox(r = np.array([0., 0., 0.]), extent = np.array([0.2, 0.2, 0.2]))
         
         #Give first two particles specific velocities
-        test_vel_init = state.VelInitOneParticleInABox(vx = np.array([-10., 0., 0.]))
+        test_vel_init = state.VelInitOneParticleInABox(vx = np.array([5., 0., 0.]))
         
         #Set alternating masses for particles.
         
@@ -121,7 +121,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(interval = 2)
+        plothandle = data.DrawParticles(1, MPI_HANDLE)
     else:
         plothandle = None
     

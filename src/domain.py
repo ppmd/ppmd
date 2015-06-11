@@ -446,8 +446,8 @@ class BaseDomainHalo(BaseDomain):
         """
         Returns list of domain extents including halo regions.
         """
-        return self._extent_outer      
-        
+        #return self._extent_outer      
+        return self._extent_global
     
     def halo_init(self):
         '''

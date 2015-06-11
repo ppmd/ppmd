@@ -17,7 +17,9 @@ np.set_printoptions(threshold='nan')
 ctypes_map = {ctypes.c_double:'double', ctypes.c_int:'int', 'float64':'double', 'int32':'int','doublepointerpointer':'double **'}
 mpi_map = {ctypes.c_double:MPI.DOUBLE, ctypes.c_int:MPI.INT}
 
-
+################################################################################################################
+# MDMPI
+################################################################################################################
 
 class MDMPI(object):
     '''
@@ -77,31 +79,16 @@ class MDMPI(object):
         '''    
         return self._COMM.Get_topo()[0][::-1]
     
-
+    def barrier(self):
+        '''
+        alias to comm barrier method.
+        '''
+        self._COMM.Barrier()
     
     
-    
-    
-    
-    
-    
-    
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+################################################################################################################
+# XYZWrite
+################################################################################################################
 
 
 def XYZWrite(dirname = './output', filename='out.xyz', X = None, title='A',sym='A', N_mol = 1, rename_override=False):
@@ -141,7 +128,9 @@ def XYZWrite(dirname = './output', filename='out.xyz', X = None, title='A',sym='
     f.close()
     
 
-
+################################################################################################################
+# DrawParticles
+################################################################################################################
 
 
 class DrawParticles(object):
@@ -158,44 +147,85 @@ class DrawParticles(object):
         
         
         self._interval = interval
-        self._MPI_handle = MPI_handle
+        self._Mh = MPI_handle
+        
+        self._Dat = None
+        if (self._Mh.rank == 0 or self._Mh == None):
+            plt.ion()
+            
+            self._fig = plt.figure()
+            self._ax = self._fig.add_subplot(111, projection='3d')
+            
+            self._key=['red','blue']
+            plt.show()
         
         
-        plt.ion()
-        
-        self._fig = plt.figure()
-        self._ax = self._fig.add_subplot(111, projection='3d')
-        
-        self._key=['red','blue']
-        plt.show()
-        
-        
-    def draw(self,N,pos,extents):
+    def draw(self, state):
         '''
         Update current plot, use for real time plotting.
         '''
+        self._N = state.N()
+        self._NT = state.NT()
+        self._extents = state.domain.extent
         
         
         
-        self._N = N
-        self._pos = pos
-        self._extents = extents
-        
-        plt.cla()
-        
-        
-           
-        for ix in range(self._pos.npart):
-            self._ax.scatter(self._pos.Dat[ix,0], self._pos.Dat[ix,1], self._pos.Dat[ix,2],color=self._key[ix%2])
-        self._ax.set_xlim([-0.5*self._extents[0],0.5*self._extents[0]])
-        self._ax.set_ylim([-0.5*self._extents[1],0.5*self._extents[1]])
-        self._ax.set_zlim([-0.5*self._extents[2],0.5*self._extents[2]])
+        '''Case where all particles are local''' 
+        if self._Mh == None:
+            self._pos = state.positions
+
+            
+        else:
+            '''Need an mpi handle if not all particles are local'''
+            assert self._Mh != None, "Error: Not all particles are local but MPI_handle = None."
+            
+            '''Allocate if needed'''
+            if self._Dat == None:
+                self._Dat = particle.Dat(self._NT, 3)
+            else:
+                self._Dat.resize(self._NT)
+            
+            
+            _MS=MPI.Status()
+            
+            
+            if self._Mh.rank == 0:
                 
-        self._ax.set_xlabel('x')
-        self._ax.set_ylabel('y')
-        self._ax.set_zlabel('z')
+                '''Copy the local data.'''
+                self._Dat.Dat[0:self._N:,::] = state.positions.Dat[0:self._N:,::]
+                
+                _i = self._N #starting point
+                for ix in range(1,self._Mh.nproc):
+                    self._Mh.comm.Recv(self._Dat.Dat[_i::,::], ix, ix, _MS)
+                    _i+=_MS.Get_count( mpi_map[self._Dat.dtype])/3
+                self._pos = self._Dat
+            else:
+                
+                self._Mh.comm.Send(state.positions.Dat[0:self._N:,::], 0, self._Mh.rank)
         
-        plt.draw()
+        
+        if (self._Mh.rank == 0 or self._Mh == None):
+            
+            
+            
+            
+            plt.cla()
+               
+            for ix in range(self._pos.npart):
+                self._ax.scatter(self._pos.Dat[ix,0], self._pos.Dat[ix,1], self._pos.Dat[ix,2],color=self._key[ix%2])
+            self._ax.set_xlim([-0.5*self._extents[0],0.5*self._extents[0]])
+            self._ax.set_ylim([-0.5*self._extents[1],0.5*self._extents[1]])
+            self._ax.set_zlim([-0.5*self._extents[2],0.5*self._extents[2]])
+                    
+            self._ax.set_xlabel('x')
+            self._ax.set_ylabel('y')
+            self._ax.set_zlabel('z')
+            
+            plt.draw()            
+        
+        self._Mh.barrier()
+            
+        
     
     @property    
     def interval(self):

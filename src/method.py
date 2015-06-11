@@ -236,7 +236,7 @@ class VelocityVerlet(object):
         if ( (self._plot_handle != None)  & (PERCENT > self._percent_count)):
             
             if (self._plot_handle != None):
-                self._plot_handle.draw(self._state.N(), self._P, self._state.domain._extent)
+                self._plot_handle.draw(self._state)
             
             self._percent_count += self._percent_int
             print int((100.0*i)/self._max_it),"%", "T=", self._dt*i

@@ -269,7 +269,56 @@ class BaseMDState(object):
                                                     'I':self._internal_index,
                                                     'N':self._internal_N}
                                      )          
+    
+    def forces_update(self):
+        """
+        Updates forces dats using given looping method.
+        """
+        timer = True         
+        if (timer==True):
+            start = time.time() 
         
+        
+        self._cell_sort_local()               
+        print "CELL LIST", self._q_list[self._q_list[self._q_list.end]::], self._domain.rank, self._N
+        
+        
+        if (self._cell_setup_attempt==True):
+            self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
+        
+        
+        if self._N > 0:
+            #print "pos", self._pos[0:self._pos.halo_start:,::], "rank:", self._domain._rank
+            #print "vel", self._vel[0:self._vel.halo_start:,::], "rank:", self._domain._rank 
+            print "pos", self._pos[0:self._N:,::], "rank:", self._domain._rank
+            print "vel", self._vel[0:self._N:,::], "rank:", self._domain._rank             
+            
+            
+             
+        self.set_forces(ctypes.c_double(0.0))
+        self.reset_U()
+        
+        
+        #print "CELL LIST", self._q_list[self._q_list[self._q_list.end]::], self._domain._rank
+        # check 16/19
+        
+        
+        
+        if (self._N>0):
+            self._looping_method_accel.execute(N=self._q_list[self._q_list.end])   
+        
+        if (timer==True):
+            end = time.time()
+            self._time+=end - start       
+            
+    
+    @property
+    def global_ids(self):
+        return self._global_ids
+    
+    #@property
+    def NT(self):
+        return self._NT        
     
     def N(self):
         """
@@ -341,48 +390,6 @@ class BaseMDState(object):
         self._accel.Dat[0:self._accel.npart:,::] = val
         
         
-        
-    def forces_update(self):
-        """
-        Updates forces dats using given looping method.
-        """
-        timer = True         
-        if (timer==True):
-            start = time.time() 
-        
-    
-       
-        
-        
-        
-        self._cell_sort_local()               
-        
-        
-        
-        if (self._cell_setup_attempt==True):
-            self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
-        
-        
-        if self._N > 0:
-            #print "pos", self._pos[0:self._pos.halo_start:,::], "rank:", self._domain._rank
-            #print "vel", self._vel[0:self._vel.halo_start:,::], "rank:", self._domain._rank 
-            print "pos", self._pos[0:self._N:,::], "rank:", self._domain._rank
-            print "vel", self._vel[0:self._N:,::], "rank:", self._domain._rank             
-            
-            
-             
-        self.set_forces(ctypes.c_double(0.0))
-        self.reset_U()
-        
-        
-        #print "CELL LIST", self._q_list[self._q_list[self._q_list.end]::], self._domain._rank
-        
-        
-        self._looping_method_accel.execute(N=self._q_list[self._q_list.end])   
-        
-        if (timer==True):
-            end = time.time()
-            self._time+=end - start       
         
     @property
     def potential(self):
@@ -566,13 +573,6 @@ class BaseMDStateHalo(BaseMDState):
         
         self._time = 0
     
-    @property
-    def global_ids(self):
-        return self._global_ids
-    
-    #@property
-    def NT(self):
-        return self._NT
          
         
         
@@ -583,7 +583,7 @@ class BaseMDStateHalo(BaseMDState):
         """
         
         '''Construct initial cell list'''
-        self._q_list = data.ScalarArray(dtype=ctypes.c_int, max_size = self._N * (self._domain.cell_count) + self._domain.cell_count + 1)
+        self._q_list = data.ScalarArray(dtype=ctypes.c_int, max_size = self._NT * (self._domain.cell_count) + self._domain.cell_count)
         
         
         '''Keep track of number of particles per cell'''
@@ -629,8 +629,11 @@ class BaseMDStateHalo(BaseMDState):
         """
         
         
+        
         self._q_list.resize(self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1)
         self._q_list[self._q_list.end] = self._q_list.end - self._domain.cell_count
+        
+        
         
         self._internal_N[0] = self._q_list[self._q_list.end]
         self._q_list.Dat[self._q_list[self._q_list.end]:self._q_list.end:] = ctypes.c_int(-1)
