@@ -49,10 +49,8 @@ class BaseMDState(object):
         self._vel = particle.Dat(N, 3, name='velocities')
         self._accel = particle.Dat(N, 3, name='accelerations')
         self._global_ids = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
-        
         self._mass = particle.Dat(N, 1, 1.0)
-        if (particle_mass_init != None):
-            particle_mass_init.reset(self._mass)
+
             
         
         
@@ -86,7 +84,9 @@ class BaseMDState(object):
         if (particle_vel_init != None):
             particle_vel_init.reset(self)
         
-        
+        '''Initialise masses'''
+        if (particle_mass_init != None):
+            particle_mass_init.reset(self)        
 
         
         
@@ -280,21 +280,21 @@ class BaseMDState(object):
         
         
         self._cell_sort_local()               
-        print "CELL LIST", self._q_list[self._q_list[self._q_list.end]::], self._domain.rank, self._N
+        #print "CELL LIST", self._q_list[self._q_list[self._q_list.end]::], self._domain.rank, self._N
         
         
         if (self._cell_setup_attempt==True):
             self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
         
-        
+        '''
         if self._N > 0:
             #print "pos", self._pos[0:self._pos.halo_start:,::], "rank:", self._domain._rank
             #print "vel", self._vel[0:self._vel.halo_start:,::], "rank:", self._domain._rank 
             print "pos", self._pos[0:self._N:,::], "rank:", self._domain._rank
             print "vel", self._vel[0:self._N:,::], "rank:", self._domain._rank             
-            
-            
-             
+            print "acel", self._accel[0:self._N:,::], "rank:", self._domain._rank  
+            print "cell list 16/19:", self._q_list[self._q_list[self._q_list.end]+16], self._q_list[self._q_list[self._q_list.end]+19]
+        '''
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
         
@@ -482,12 +482,11 @@ class BaseMDStateHalo(BaseMDState):
         self._pos = particle.Dat(N, 3, name='positions')
         self._vel = particle.Dat(N, 3, name='velocities')
         self._accel = particle.Dat(N, 3, name='accelerations')
-        
-        self._mass = particle.Dat(N, 1, 1.0)
-        if (particle_mass_init != None):
-            particle_mass_init.reset(self._mass)
-            
         self._global_ids = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
+        self._mass = particle.Dat(N, 1, 1.0)
+
+            
+        
         
         self._domain = domain
         
@@ -514,6 +513,10 @@ class BaseMDStateHalo(BaseMDState):
         '''Initialise velocities'''
         if (particle_vel_init != None):
             particle_vel_init.reset(self)        
+        
+        '''Initialise masses'''
+        if (particle_mass_init != None):
+            particle_mass_init.reset(self)        
         
         
         self._domain.BCSetup(self)
@@ -603,6 +606,7 @@ class BaseMDStateHalo(BaseMDState):
         const int C2 = (int)((P[2] - B[4])/CEL[2]);
         
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
+        
         
         CCC[val]++;
         
@@ -721,7 +725,7 @@ class PosInitLatticeNRho(object):
             _ty = mLx_2+(math.floor((ix - z*np2_3)/np1_3)/np1_3)*Lx #y
             _tz = mLx_2+(z/np1_3)*Lx
             
-            if ((_d[0] < _tx <= _d[1]) and  (_d[2] < _ty <= _d[3]) and (_d[4] < _tz <= _d[5])):
+            if ((_d[0] <= _tx < _d[1]) and  (_d[2] <= _ty < _d[3]) and (_d[4] <= _tz < _d[5])):
                 _p[_n,0] = _tx
                 _p[_n,1] = _ty
                 _p[_n,2] = _tz
@@ -835,12 +839,12 @@ class PosInitTwoParticlesInABox(object):
             _tmp = -1.*self._rx*self._axis
             _tmp2 = self._rx*self._axis
                     
-            if ((_d[0] < _tmp[0] <= _d[1]) and  (_d[2] < _tmp[1] <= _d[3]) and (_d[4] < _tmp[2] <= _d[5])):
+            if ((_d[0] <= _tmp[0] < _d[1]) and  (_d[2] <= _tmp[1] < _d[3]) and (_d[4] <= _tmp[2] < _d[5])):
                 state_input.positions[0,] = _tmp
                 state_input.global_ids[0] = 0
                 _N+=1
             
-            if ((_d[0] < _tmp2[0] <= _d[1]) and  (_d[2] < _tmp2[1] <= _d[3]) and (_d[4] < _tmp2[2] <= _d[5])):
+            if ((_d[0] <= _tmp2[0] < _d[1]) and  (_d[2] <= _tmp2[1] < _d[3]) and (_d[4] <= _tmp2[2] < _d[5])):
                 state_input.positions[_N,] = _tmp2
                 state_input.global_ids[_N] = 1
                 _N+=1        
@@ -888,7 +892,7 @@ class PosInitOneParticleInABox(object):
         _d = state_input.domain.boundary
         
         
-        if ((_d[0] < self._r[0] <= _d[1]) and  (_d[2] < self._r[1] <= _d[3]) and (_d[4] < self._r[2] <= _d[5])):
+        if ((_d[0] <= self._r[0] < _d[1]) and  (_d[2] <= self._r[1] < _d[3]) and (_d[4] <= self._r[2] < _d[5])):
             state_input.positions[0,] = self._r
             _N+=1
         state_input.set_N(_N)
@@ -1159,14 +1163,19 @@ class MassInitTwoAlternating(object):
         self._m = [m1, m2]
 
         
-    def reset(self, mass_input):
+    def reset(self, state):
         '''
         Apply to input mass dat class.
         
         :arg Dat mass_input: Dat container with masses.
         '''
-        for ix in range(np.shape(mass_input.Dat)[0]):
-            mass_input[ix] = self._m[(ix % 2)]
+        
+        mass_input = state.masses
+        
+        print "gids",state.global_ids
+        
+        for ix in range(state.N()):
+            mass_input[ix] = self._m[(state.global_ids[ix] % 2)]
 
 ################################################################################################################
 # MassInitIdentical DEFINITIONS
@@ -1183,12 +1192,14 @@ class MassInitIdentical(object):
         self._m = (float)(m)
 
         
-    def reset(self, mass_input):
+    def reset(self, state):
         '''
         Apply to input mass dat class.
         
         :arg Dat mass_input: Dat container with masses.
         '''
+        mass_input = state.masses
+        
         for ix in range(mass_input.npart):
             mass_input[ix] = self._m
 

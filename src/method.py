@@ -213,11 +213,16 @@ class VelocityVerlet(object):
                     self._K[0] += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
             
             _U_tmp = (self._state.U.Dat[0]+0.5*self._state.U.Dat[1])
-            self._energy_handle.U_append(_U_tmp/self._N())
-            self._energy_handle.K_append((self._K[0])/self._N())
-            self._energy_handle.Q_append((_U_tmp + self._K[0])/self._N())
+            
+            if (self._N()>0):
+                self._energy_handle.U_append(_U_tmp/self._N())
+                self._energy_handle.K_append((self._K[0])/self._N())
+                self._energy_handle.Q_append((_U_tmp + self._K[0])/self._N())
+            else:
+                self._energy_handle.U_append(0.)
+                self._energy_handle.K_append(0.)
+                self._energy_handle.Q_append(0.)
             self._energy_handle.T_append((i+1)*self._dt)
-        
         
             
         if ( (self._writexyz == True) & (DTFLAG == True) ):

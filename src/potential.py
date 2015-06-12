@@ -223,7 +223,7 @@ class LennardJones(LennardJonesShifted):
         const double R2 = P[1][2] - P[0][2];
         
         
-        printf("Positions P[0] = %f, P[1] = %f |", P[0][1], P[1][1]);
+        //printf("Positions P[0] = %f, P[1] = %f |", P[0][1], P[1][1]);
         
         
         const double r2 = R0*R0 + R1*R1 + R2*R2;

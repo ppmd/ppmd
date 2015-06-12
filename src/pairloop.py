@@ -1300,9 +1300,6 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                     //printf("cpp=%%d, flagi=%%d, flagj=%%d |",cpp, cp_h_flag,cpp_h_flag);
                     
                     if ((cp_h_flag+cpp_h_flag) < 2){
-                        printf("inside halo |");
-                    
-                        printf("cp=%%d, cpp=%%d |", cp, cpp);
                         
                         i = q_list[n+cp];
                         while (i > -1){

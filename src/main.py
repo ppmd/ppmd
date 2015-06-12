@@ -73,14 +73,14 @@ if __name__ == '__main__':
         
         
         #Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([6., 6., 6.]), axis = np.array([0,1,0]))
+        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([6., 6., 6.]), axis = np.array([1,0,0]))
         
         #Give first two particles specific velocities
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
         
         #Set alternating masses for particles.
         
-        test_mass_init = state.MassInitIdentical(5.)
+        test_mass_init = state.MassInitTwoAlternating(5., 1000.)
         
     if (t_1_particle):
         
@@ -121,14 +121,14 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(1, MPI_HANDLE)
+        plothandle = data.DrawParticles(5, MPI_HANDLE)
     else:
         plothandle = None
     
     
     #energy handle
     if (logging):
-        energyhandle = data.BasicEnergyStore()
+        energyhandle = data.BasicEnergyStore(MPI_handle = MPI_HANDLE)
     else:
         energyhandle = None
     
@@ -158,7 +158,7 @@ if __name__ == '__main__':
     
     
     
-    test_integrator.integrate(dt = 0.0001, T = 0.3, timer=True)
+    test_integrator.integrate(dt = 0.00001, T = 0.05, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
@@ -181,8 +181,12 @@ if __name__ == '__main__':
     #test_gr_method.RawWrite()
     #test_vaf_method.plot()
 
-    #a=input("PRESS ENTER TO CONTINUE.\n")
-    
+    if (MPI_HANDLE==None or MPI_HANDLE.rank ==0):
+        try:
+            a=input("PRESS ENTER TO CONTINUE.\n")
+        except:
+            pass
+    #MPI_HANDLE.barrier()
 
     
     

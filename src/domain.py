@@ -737,7 +737,7 @@ class BaseDomainHalo(BaseDomain):
         
         _unpacking_code = '''
         
-        printf("before I[0] = %d, ECT = %d |", I[0], ECT[0]);
+        //printf("before I[0] = %d, ECT = %d |", I[0], ECT[0]);
         for (int ix = 0; ix < TI[0]; ix++){
             
             int IX;
@@ -778,7 +778,7 @@ class BaseDomainHalo(BaseDomain):
                 
                 eix = EI[2*ect_ti];
 
-                printf("ect_ti = %d, eix = %d|", ect_ti, eix);
+                //printf("ect_ti = %d, eix = %d|", ect_ti, eix);
                 
                 int ti = -1;
 
@@ -786,7 +786,7 @@ class BaseDomainHalo(BaseDomain):
                 for (int iy = I[0] - 1; iy > eix; iy--){
                     
                     
-                    printf("EI[2*ect] = %d |", EI[2*ect]);
+                    //printf("EI[2*ect] = %d |", EI[2*ect]);
                     
                     if (iy == EI[2*ect]){
                         I[0] = iy;
@@ -798,7 +798,7 @@ class BaseDomainHalo(BaseDomain):
                     
                 }
                 
-                printf("ti = %d |", ti);
+                //printf("ti = %d |", ti);
                 
                 
                 if (ti > 0){
@@ -834,7 +834,7 @@ class BaseDomainHalo(BaseDomain):
         
         }
         
-        printf("after I[0] = %d |", I[0]);
+        //printf("after I[0] = %d |", I[0]);
         
         '''
         
@@ -924,7 +924,7 @@ class BaseDomainHalo(BaseDomain):
             self._escape_count.zero()
             
             self._COMM.Barrier()
-            print "pre guard, rank:",self._rank, "I:",self._internal_index[0], "N=", self._BC_state.N()
+            #print "pre guard, rank:",self._rank, "I:",self._internal_index[0], "N=", self._BC_state.N()
             self._COMM.Barrier()            
             
             '''
@@ -945,7 +945,7 @@ class BaseDomainHalo(BaseDomain):
             
             
             self._COMM.Barrier()
-            print "send, rank:",self._rank, "EC:",self._escape_count, "ECT", self._escape_count_total, "\n", "ids:", self._escaping_ids[0:self._escape_count_total[0]:]
+            #print "send, rank:",self._rank, "EC:",self._escape_count, "ECT", self._escape_count_total, "\n", "ids:", self._escaping_ids[0:self._escape_count_total[0]:]
             self._COMM.Barrier()
             
             '''Exchange sizes'''
@@ -962,7 +962,7 @@ class BaseDomainHalo(BaseDomain):
                                     self._MPIstatus)
 
             self._COMM.Barrier()
-            print "recvd", self._rank, self._escape_count_recv
+            #print "recvd", self._rank, self._escape_count_recv
             self._COMM.Barrier()
                         
             '''Count new incoming particles'''
@@ -986,7 +986,8 @@ class BaseDomainHalo(BaseDomain):
             
             for ix in range(26):
                 if self._escape_count[ix]>0:
-                    print "rank",self._rank,"ix=",ix, "pkd=", self._escape_send_buffer.Dat[_sum_send:7*self._escape_count[ix]:]
+                    pass
+                    #print "rank",self._rank,"ix=",ix, "pkd=", self._escape_send_buffer.Dat[_sum_send:7*self._escape_count[ix]:]
                 
                 self._COMM.Sendrecv(self._escape_send_buffer.Dat[_sum_send:7*self._escape_count[ix]:], 
                                     self._send_list[ix], 
@@ -997,7 +998,8 @@ class BaseDomainHalo(BaseDomain):
                                     self._MPIstatus)            
                 
                 if self._escape_count_recv[ix]>0:
-                    print "rank",self._rank, "ix=",ix, "recv=", self._escape_recv_buffer.Dat[_sum_recv:7*self._escape_count_recv[ix]:]
+                    pass
+                    #print "rank",self._rank, "ix=",ix, "recv=", self._escape_recv_buffer.Dat[_sum_recv:7*self._escape_count_recv[ix]:]
                 
                 
                 _sum_send += 7*self._escape_count[ix]
@@ -1018,22 +1020,23 @@ class BaseDomainHalo(BaseDomain):
             
             self._BC_state.set_N ( self._internal_index[0] )
             
-            print "setting halos", self._internal_index[0]
+            #print "setting halos", self._internal_index[0]
             
             self._BC_state.positions.halo_start_set(self._internal_index[0])
             self._BC_state.velocities.halo_start_set(self._internal_index[0])
             self._BC_state.forces.halo_start_set(self._internal_index[0])
             
             self._COMM.Barrier()
-            print ""
+            #print ""
             self._COMM.Barrier()
             
             self._COMM.Barrier()
-            print "end",self._rank, self._internal_index[0], self._escape_count[::], "TI=", self._tmp_index[0], "N=", self._BC_state.N()
+            #print "end",self._rank, self._internal_index[0], self._escape_count[::], "TI=", self._tmp_index[0], "N=", self._BC_state.N()
             self._COMM.Barrier()
             
             if (self._rank == 0):
-                print "================================================================================"
+                pass
+                #print "================================================================================"
             self._COMM.Barrier()
             
             '''For testing remove after'''

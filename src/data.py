@@ -150,6 +150,8 @@ class DrawParticles(object):
         self._Mh = MPI_handle
         
         self._Dat = None
+        self._gids = None
+        
         if (self._Mh.rank == 0 or self._Mh == None):
             plt.ion()
             
@@ -173,7 +175,7 @@ class DrawParticles(object):
         '''Case where all particles are local''' 
         if self._Mh == None:
             self._pos = state.positions
-
+            self._gid = state.global_ids
             
         else:
             '''Need an mpi handle if not all particles are local'''
@@ -185,6 +187,12 @@ class DrawParticles(object):
             else:
                 self._Dat.resize(self._NT)
             
+            if self._gids == None:
+                self._gids = ScalarArray(ncomp = self._NT, dtype=ctypes.c_int)
+            else:
+                self._gids.resize(self._NT)
+            
+            
             
             _MS=MPI.Status()
             
@@ -193,16 +201,24 @@ class DrawParticles(object):
                 
                 '''Copy the local data.'''
                 self._Dat.Dat[0:self._N:,::] = state.positions.Dat[0:self._N:,::]
+                self._gids[0:self._N:] = state.global_ids[0:self._N:]
                 
-                _i = self._N #starting point
+                _i = self._N #starting point pos
+                _ig = self._N #starting point gids
+                
                 for ix in range(1,self._Mh.nproc):
                     self._Mh.comm.Recv(self._Dat.Dat[_i::,::], ix, ix, _MS)
                     _i+=_MS.Get_count( mpi_map[self._Dat.dtype])/3
+                    
+                    self._Mh.comm.Recv(self._gids.Dat[_ig::], ix, ix, _MS)
+                    _ig+=_MS.Get_count( mpi_map[self._gids.dtype])        
+                    
                 self._pos = self._Dat
+                self._gid = self._gids
             else:
                 
                 self._Mh.comm.Send(state.positions.Dat[0:self._N:,::], 0, self._Mh.rank)
-        
+                self._Mh.comm.Send(state.global_ids.Dat[0:self._N:], 0, self._Mh.rank)
         
         if (self._Mh.rank == 0 or self._Mh == None):
             
@@ -212,7 +228,7 @@ class DrawParticles(object):
             plt.cla()
                
             for ix in range(self._pos.npart):
-                self._ax.scatter(self._pos.Dat[ix,0], self._pos.Dat[ix,1], self._pos.Dat[ix,2],color=self._key[ix%2])
+                self._ax.scatter(self._pos.Dat[ix,0], self._pos.Dat[ix,1], self._pos.Dat[ix,2],color=self._key[self._gid[ix]%2])
             self._ax.set_xlim([-0.5*self._extents[0],0.5*self._extents[0]])
             self._ax.set_ylim([-0.5*self._extents[1],0.5*self._extents[1]])
             self._ax.set_zlim([-0.5*self._extents[2],0.5*self._extents[2]])
@@ -241,23 +257,25 @@ class BasicEnergyStore(object):
     
     :arg int size: Required size of each container.
     '''
-    def __init__(self, size = 0):
+    def __init__(self, size = 0, MPI_handle = None):
     
-        
         
         self._U_store = ScalarArray(initial_value = 0.0, ncomp = size, dtype=ctypes.c_double)
         self._K_store = ScalarArray(initial_value = 0.0, ncomp = size, dtype=ctypes.c_double)
         self._Q_store = ScalarArray(initial_value = 0.0, ncomp = size, dtype=ctypes.c_double)
         self._T_store = ScalarArray(initial_value = 0.0, ncomp = size, dtype=ctypes.c_double)
-    
-    
+        
         self._U_c = 0
         self._K_c = 0
         self._Q_c = 0
         self._T_c = 0
         self._T_base = None
         
+        self._Mh = MPI_handle
+                
     def append_prepare(self,size):
+        
+        self._size = size
         
         if (self._T_base == None):
             self._T_base = 0.0
@@ -279,49 +297,118 @@ class BasicEnergyStore(object):
         :arg double val: value to append
         '''
         
-        self._U_store[self._U_c] = val
-        self._U_c+=1
+        if self._U_c<self._size:
+            self._U_store[self._U_c] = val #float(not(math.isnan(val))) * val
+            self._U_c+=1
+            
     def K_append(self,val): 
         '''
         Append a value to kenetic energy.
         
         :arg double val: value to append
-        '''       
-        self._K_store[self._K_c] = val
-        self._K_c+=1        
+        '''
+        
+        if self._K_c<self._size:
+            self._K_store[self._K_c] = val #float(not(math.isnan(val))) * val
+            self._K_c+=1        
     def Q_append(self,val): 
         '''
         Append a value to total energy.
         
         :arg double val: value to append
-        '''       
-        self._Q_store[self._Q_c] = val
-        self._Q_c+=1
+        '''
+        if self._Q_c<self._size:
+            self._Q_store[self._Q_c] = val #float(not(math.isnan(val))) * val
+            self._Q_c+=1
     def T_append(self,val):
         '''
         Append a value to time store.
         
         :arg double val: value to append
-        '''       
-        self._T_store[self._T_c] = val + self._T_base
-        self._T_c+=1            
+        '''
+        if self._T_c<self._size: 
+            self._T_store[self._T_c] = val + self._T_base
+            self._T_c+=1            
    
     def plot(self):
         '''
         Plot recorded energies against time.
         '''
-        plt.ion()
-        fig2 = plt.figure(num=None)
-        ax2 = fig2.add_subplot(111)
-        ax2.plot(self._T_store.Dat,self._Q_store.Dat,color='r', linewidth=2)
-        ax2.plot(self._T_store.Dat,self._U_store.Dat,color='g')
-        ax2.plot(self._T_store.Dat,self._K_store.Dat,color='b')
         
-        ax2.set_title('Red: Total energy, Green: Potential energy, Blue: kenetic energy')
-        ax2.set_xlabel('Time')
-        ax2.set_ylabel('Energy')
+        if (self._Mh != None and self._Mh.nproc > 1):
+            
+            
+            #data to collect
+            _d = [self._Q_store.Dat, self._U_store.Dat, self._K_store.Dat]
+            
+            
+            
+            #make a temporary buffer.
+            if self._Mh.rank == 0:
+                _buff = ScalarArray(initial_value = 0.0, ncomp = self._T_store.ncomp, dtype=ctypes.c_double)
+                _T = self._T_store.Dat
+                _Q = ScalarArray(initial_value = 0.0, ncomp = self._T_store.ncomp, dtype=ctypes.c_double)
+                _U = ScalarArray(initial_value = 0.0, ncomp = self._T_store.ncomp, dtype=ctypes.c_double)
+                _K = ScalarArray(initial_value = 0.0, ncomp = self._T_store.ncomp, dtype=ctypes.c_double)
+            
+                _Q.Dat[::] += self._Q_store.Dat[::]
+                _U.Dat[::] += self._U_store.Dat[::]
+                _K.Dat[::] += self._K_store.Dat[::]
+                
+                _dl = [_Q.Dat, _U.Dat, _K.Dat]
+            else:
+                _dl = [None, None, None]
+            
+            
+            
+            for _di, _dj in zip(_d, _dl):
+                
+                if self._Mh.rank == 0:
+                    _MS=MPI.Status()
+                    for ix in range(1,self._Mh.nproc):
+                        self._Mh.comm.Recv(_buff.Dat[::], ix, ix, _MS)
+                        _dj[::] += _buff.Dat[::]
+                        
+                        
+                else:
+                    self._Mh.comm.Send(_di[::], 0, self._Mh.rank)
+            
+            if self._Mh.rank == 0:
+                _Q = _Q.Dat
+                _U = _U.Dat
+                _K = _K.Dat
+            
+            
         
-        plt.show()    
+        else:
+            _T = self._T_store.Dat
+            _Q = self._Q_store.Dat
+            _U = self._U_store.Dat
+            _K = self._K_store.Dat
+        
+        
+        
+        
+        if (self._Mh == None or self._Mh.rank == 0):
+            
+            
+            #plt.ion()
+            fig2 = plt.figure()
+            ax2 = fig2.add_subplot(111)
+            
+            
+            ax2.plot(_T,_Q,color='r', linewidth=2)
+            ax2.plot(_T,_U,color='g')
+            ax2.plot(_T,_K,color='b')
+            
+            ax2.set_title('Red: Total energy, Green: Potential energy, Blue: kinetic energy')
+            ax2.set_xlabel('Time')
+            ax2.set_ylabel('Energy')
+            
+            fig2.canvas.draw()
+            plt.show()
+            
+            
 ################################################################################################################
 # Scalar array.
 ################################################################################################################ 
