@@ -491,22 +491,25 @@ class BaseDomainHalo(BaseDomain):
         
         self._BC_state = state
         
-        
-        
+        '''Array to store the local id of scaling particles'''
         self._escaping_ids = data.ScalarArray(ncomp = 2*self._BC_state.NT(), dtype = ctypes.c_int)
-        #self._escaping_dir = data.ScalarArray(ncomp = self._BC_state.NT, dtype = ctypes.c_int)
-        self._escape_count = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)
-        self._escape_count_total = data.ScalarArray(ncomp = 1, dtype = ctypes.c_int)     
-        self._escape_internal_index = data.ScalarArray(ncomp = 1, dtype = ctypes.c_int)
         
+        '''Number of escaping particles in each direction'''
+        self._escape_count = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)
+        
+        '''Total number of escapees'''
+        self._escape_count_total = data.ScalarArray(ncomp = 1, dtype = ctypes.c_int)    
+         
+        '''Temporary indices for library'''
+        self._escape_internal_index = data.ScalarArray(ncomp = 1, dtype = ctypes.c_int)
         self._internal_index = data.ScalarArray(ncomp = 1, dtype = ctypes.c_int)
         
         
+        '''Create a lookup table between xor map and linear index for direction'''
         self._bin_to_lin = data.ScalarArray(ncomp = 57, dtype = ctypes.c_int)
         self._lin_to_bin = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)
         
-         
-        #linear to xor map
+        '''linear to xor map'''
         self._lin_to_bin[0] = 1^2^4
         self._lin_to_bin[1] = 2^1
         self._lin_to_bin[2] = 32^2^1
@@ -536,43 +539,50 @@ class BaseDomainHalo(BaseDomain):
         self._lin_to_bin[24] = 8^16
         self._lin_to_bin[25] = 32^16^8
         
-        #inverse map, probably not ideal
+        '''inverse map, probably not ideal'''
         for ix in range(26):
             self._bin_to_lin[self._lin_to_bin[ix]]=ix
         
+        
+        '''
+        Below code uses the following map between directions and a 6 bit integer.
+        
+        xu yu zu xl yl zl
+        '''
         
         _escape_guard_code = '''
         
         int b = 0;
         
+        //Check x direction
         if (P[0] < B[0]){
             b ^= 32;
         }else if (P[0] > B[1]){
             b ^= 4;
         }
         
+        //check y direction
         if (P[1] < B[2]){
             b ^= 16;
         }else if (P[1] > B[3]){
             b ^= 2;
         }        
         
+        //check z direction
         if (P[2] < B[4]){
             b ^= 1;
         }else if (P[2] > B[5]){
             b ^= 8;
         }        
         
+        //If b > 0 then particle has escaped through some boundary
         if (b>0){
-            EC[BL[b]]++;
-            ECT[0]++;
-            EI[EII[0]] = I[0];
-            EI[EII[0]+1] = BL[b];
+            EC[BL[b]]++;        //lookup which direction then increment that direction escape count.
+            ECT[0]++;           //Increment total escape count by 1.
+            EI[EII[0]] = I[0];  //In escape ids we have pairs of local index and escape index, here write local index
+            EI[EII[0]+1] = BL[b]; //here write escape direction
             EII[0]+=2;
-            printf("escaping: %d, b: %d |",I[0],b);
         }
-        
-        
         
         I[0]++;
         
@@ -667,7 +677,7 @@ class BaseDomainHalo(BaseDomain):
                     ESB[index+2] = P[LINIDX_2D(3,id,2)] + SFD[3*d+2];
                     ESB[index+3] = V[LINIDX_2D(3,id,0)];
                     ESB[index+4] = V[LINIDX_2D(3,id,1)];
-                    ESB[index+5] = V[LINIDX_2D(3,id,2)];                    
+                    ESB[index+5] = V[LINIDX_2D(3,id,2)];
                     ESB[index+6] = (double) EGID[id];
                     index += 7;
                     
@@ -726,7 +736,7 @@ class BaseDomainHalo(BaseDomain):
                           [-1,  1, 1], #23
                           [ 0,  1, 1], #24
                           [ 1,  1, 1], #25
-                         ]
+                          ]
         
         
         self._send_list = [((self._top[0]-ix[0]) % self._dims[0]) + ((self._top[1]-ix[1]) % self._dims[1])*self._dims[0] + ((self._top[2]-ix[2]) % self._dims[2])*self._dims[0]*self._dims[1] for ix in _recv_modifiers]
@@ -901,7 +911,7 @@ class BaseDomainHalo(BaseDomain):
         self._BCcodeDict = {'P':self._BC_state.positions, 'E':self._extent}
         self._BCkernel= kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
         self._BCloop = loop.SingleAllParticleLoop(self._BC_state.N, self._BCkernel,self._BCcodeDict, DEBUG = self._DEBUG) 
-    
+        
         
         
     

@@ -45,6 +45,7 @@ class BaseMDState(object):
         self._potential = potential
         self._N = N
         self._NT = N
+        self._NH = 0 #number in halo
         self._pos = particle.Dat(N, 3, name='positions')
         self._vel = particle.Dat(N, 3, name='velocities')
         self._accel = particle.Dat(N, 3, name='accelerations')
@@ -343,6 +344,11 @@ class BaseMDState(object):
         
         self._global_ids.ncomp = val
         #self._global_ids.halo_start_reset()
+    
+    def NH(self):
+        '''Return number of particles in halo'''
+        return self._pos.npart_halo
+    
     
     @property  
     def domain(self):
