@@ -48,7 +48,7 @@ if __name__ == '__main__':
         nsig = 5.0
         
         #Initialise basci domain
-        test_domain = domain.BaseDomainHalo(MPI_handle = MPI_HANDLE)
+        test_domain = domain.BaseDomainHalo(NT=N, MPI_handle = MPI_HANDLE)
         
         #Initialise LJ potential
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
@@ -66,7 +66,7 @@ if __name__ == '__main__':
         N=2
         
         #See above
-        test_domain = domain.BaseDomainHalo(MPI_handle = MPI_HANDLE)
+        test_domain = domain.BaseDomainHalo(NT=N,MPI_handle = MPI_HANDLE)
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)
         
         print test_potential.rc
@@ -87,7 +87,7 @@ if __name__ == '__main__':
         N=1
         
         #See above
-        test_domain = domain.BaseDomainHalo(MPI_handle = MPI_HANDLE)
+        test_domain = domain.BaseDomainHalo(NT=N,MPI_handle = MPI_HANDLE)
         test_potential = potential.NULL(rc = 0.01)
         
         print test_potential.rc
@@ -167,7 +167,6 @@ if __name__ == '__main__':
     
     
     print "Total time in halo exchange:", test_domain.halos._time
-    print "Time in mpi:", test_domain.halos.halo_times
     print "Time in forces_update:", test_state._time
     
     ###########################################################

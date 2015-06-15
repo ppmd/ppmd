@@ -32,7 +32,9 @@ class BaseDomain(object):
 
     '''
 
-    def __init__(self, extent = np.array([1., 1., 1.]), cell_count = 1):
+    def __init__(self, NT = 1, extent = np.array([1., 1., 1.]), cell_count = 1):
+        
+        self._NT = NT
         
         self._COMM = None
         
@@ -219,7 +221,9 @@ class BaseDomain(object):
          
 class BaseDomainHalo(BaseDomain):
 
-    def __init__(self, extent = np.array([1., 1., 1.]), cell_count = 1, MPI_handle = None):
+    def __init__(self, NT = 1, extent = np.array([1., 1., 1.]), cell_count = 1, MPI_handle = None):
+        
+        self._NT = NT
         
         self._MPI_handle = MPI_handle
         self._MPI = MPI.COMM_WORLD
@@ -453,7 +457,7 @@ class BaseDomainHalo(BaseDomain):
         '''
         Method to initialise halos for local domain.
         '''
-        self._halos = halo.HaloCartesianSingleProcess(self._COMM, self._rank, self._top, self._dims, self._cell_array, self._extent_global)
+        self._halos = halo.HaloCartesianSingleProcess(self._NT, self._COMM, self._rank, self._top, self._dims, self._cell_array, self._extent_global)
     
     
     @property

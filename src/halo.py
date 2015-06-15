@@ -33,7 +33,8 @@ class HaloCartesianSingleProcess(object):
     Class to contain and control cartesian halo transfers.
     
     """
-    def __init__(self, MPICOMM = None, rank = None, top = None, dims = None, cell_array = None, extent = None):
+    def __init__(self, NT = 1, MPICOMM = None, rank = None, top = None, dims = None, cell_array = None, extent = None):
+        self._NT = NT
         self._DEBUG = True
         timer=True
         if (timer==True):
@@ -46,17 +47,21 @@ class HaloCartesianSingleProcess(object):
         self._top = top
         self._dims = dims
         self._MPI = MPICOMM
+        self._MPIstatus=MPI.Status()
         
         self._ca = cell_array
         self._extent = extent
         
         self._halos=[]
         
+        self._nc = 3
         
         self._halo_setup_prepare()
         
+        '''
         for ix in range(26):
             self._halos.append(Halo(self._MPI, self._rank, self._send_list[ix], self._recv_list[ix], ix, self._SIZES[ix], ncol = 3))
+        '''
         
         self._create_packing_pointer_array()
         
@@ -66,7 +71,7 @@ class HaloCartesianSingleProcess(object):
             end = time.time()
             print "halo setup time = ", end-start, "s"      
         
-    def exchange(self,cell_contents_count, cell_list, data):
+    def exchange(self,cell_contents_count, cell_list, data_in):
         timer=True
         if (timer==True):
             start = time.time()          
@@ -78,14 +83,14 @@ class HaloCartesianSingleProcess(object):
          
         
         '''Reset halo starting points'''
-        data.halo_start_reset()
+        data_in.halo_start_reset()
         
         
         
         _static_args = {
                         'PPA':self._packing_pointers.ctypes_data,
                         'cell_start':ctypes.c_int(cell_list[cell_list.end]),
-                        'ncomp':ctypes.c_int(data.ncomp)
+                        'ncomp':ctypes.c_int(data_in.ncomp)
                         }
         
         _args = {
@@ -93,7 +98,7 @@ class HaloCartesianSingleProcess(object):
                  'CCA_I':self._cell_contents_array_index,
                  'CIA':self._cell_indices_array,
                  'CSA':self._cell_shifts_array,
-                 'data_buffer':data
+                 'data_buffer':data_in
                  }        
         
         
@@ -101,12 +106,43 @@ class HaloCartesianSingleProcess(object):
         self._packing_lib.execute(static_args = _static_args, dat_dict = _args)
         
         #perform halo exchange
-        for i,h in enumerate(self._halos):
+        #for i,h in enumerate(self._halos):
+        for i in range(26):
+            
+            
+            #def exchange(self, count, cell_counts, recvd_cell_counts, cell_list, data_buffer):
+            
+            self._MPI.Sendrecv(self._cell_contents_array[self._cell_contents_array_index[i]:self._cell_contents_array_index[i+1]:],
+                               self._send_list[i], 
+                               self._send_list[i], 
+                               self._cell_contents_recv[self._cell_contents_array_index[i]:self._cell_contents_array_index[i+1]:], 
+                               self._recv_list[i], 
+                               self._rank, 
+                               self._MPIstatus) 
+            
+            
+            self._MPI.Sendrecv(self._send_buffers[i].Dat[0:self._exchange_sizes[i]:1,::], 
+                               self._send_list[i],
+                               self._send_list[i],
+                               data_in.Dat[data_in.halo_start::,::],
+                               self._recv_list[i], 
+                               self._rank, 
+                               self._MPIstatus)
+            
+            
+            _shift=self._MPIstatus.Get_count( data.mpi_map[data_in.dtype])
+            data_in.halo_start_shift(_shift/self._nc)
+            
+            
+            
+            
+            
+            '''
             h.exchange(self._exchange_sizes[i], 
                        self._cell_contents_array[self._cell_contents_array_index[i]:self._cell_contents_array_index[i+1]:], 
                        self._cell_contents_recv[self._cell_contents_array_index[i]:self._cell_contents_array_index[i+1]:],
                        cell_list, data)
-        
+            '''
         
         
         
@@ -114,9 +150,9 @@ class HaloCartesianSingleProcess(object):
 
         #print self._local_cell_indices_array
         #sort local cells after exchange
-        self._cell_sort_loop.execute({'Q':cell_list,'LCI':self._local_cell_indices_array,'CRC':self._cell_contents_recv},{'CC':ctypes.c_int(self._cell_contents_recv.ncomp),'shift':ctypes.c_int(data.npart),'end':ctypes.c_int(cell_list[cell_list.end])})
+        self._cell_sort_loop.execute({'Q':cell_list,'LCI':self._local_cell_indices_array,'CRC':self._cell_contents_recv},{'CC':ctypes.c_int(self._cell_contents_recv.ncomp),'shift':ctypes.c_int(data_in.npart),'end':ctypes.c_int(cell_list[cell_list.end])})
         
-                                   
+        
         
         
         if (timer==True):
@@ -127,9 +163,15 @@ class HaloCartesianSingleProcess(object):
     
         
     def _create_packing_pointer_array(self):
+        
+        
         self._packing_pointers = data.PointerArray(length=26,dtype=ctypes.c_double)
+        
+        self._send_buffers = []
+        
         for ix in range(26):
-            self._packing_pointers[ix] = self._halos[ix].send_buffer.ctypes_data
+            self._send_buffers.append(particle.Dat(self._NT, self._nc, name='send_buffer', dtype=ctypes.c_double))
+            self._packing_pointers[ix] = self._send_buffers[ix].ctypes_data
         
         
         
@@ -392,12 +434,12 @@ class HaloCartesianSingleProcess(object):
                             range(_LTS+1,_LTS+self._ca[0]-1,1),
                             [_LTS+self._ca[0]-1],
                             range(_LTS+self._ca[0], _LTS+self._ca[0]*(self._ca[1]-2)+1, self._ca[0]), 
-                            _Ltmp21, 
+                            _Ltmp21,
                             range(_LTS+2*self._ca[0]-1,_LE-self._ca[0],self._ca[0]), 
                             [_LE-self._ca[0]],
                             range(_LE-self._ca[0]+1,_LE-1,1),
                             [_LE-1],
-                            ]          
+                            ]
         
         #=====================================================================================================================
         
@@ -565,121 +607,7 @@ class HaloCartesianSingleProcess(object):
         for ix in range(26):
             _tmp_list_local+=_cell_shifts[ix]
         self._cell_shifts_array = data.ScalarArray(_tmp_list_local, dtype=ctypes.c_double) 
-    
         
     
-    
-    
-    
-    
-    @property
-    def halo_times(self):        
-        _tmp = 0.
-        for i,h in enumerate(self._halos):
-            _tmp+=h._time
-        return _tmp
-        
-    
-class Halo(object):
-    """
-    Class to contain a halo.
-    """
-    def __init__(self, MPICOMM = None, rank_local = 0, rank_dest = 0, rank_src = 0, local_index = None, cell_count = 1, nrow = 1, ncol = 1, dtype = ctypes.c_double):
-        self._DEBUG = True
-        assert local_index != None, "Error: No local index specified."
-        
-        self._MPI = MPICOMM
-        self._rank = rank_local
-        self._rd = rank_dest
-        self._rs = rank_src
-        self._MPIstatus=MPI.Status()
-        
-        
-        self._li = local_index #make linear or 3 tuple? leading towards linear.
-        self._nc = ncol
-        self._nr = nrow
-        self._dt = dtype
-        self._cell_count = cell_count
-        
-        
-        self._time = 0.        
-        
-        
-        self._send_buffer = particle.Dat(1000, self._nc, name='send_buffer', dtype=ctypes.c_double)
-        
-    
-    def exchange(self, count, cell_counts, recvd_cell_counts, cell_list, data_buffer):
-         
-        timer = True
-        if (timer==True):
-            start = time.time()         
-        
-        
-        '''Send cell counts'''
-        self._MPI.Sendrecv(cell_counts[0::], self._rd, self._rd, recvd_cell_counts[0::], self._rs, self._rank, self._MPIstatus)        
-      
-        
-        
-        '''Send packed data'''
-        self._MPI.Sendrecv(self._send_buffer.Dat[0:count:1,::], self._rd, self._rd, data_buffer.Dat[data_buffer.halo_start::,::], self._rs, self._rank, self._MPIstatus)
-        
-        
-        
-        _shift=self._MPIstatus.Get_count( data.mpi_map[data_buffer.dtype])
-        data_buffer.halo_start_shift(_shift/self._nc)
-        
-        
-        if (timer==True):
-            end = time.time()
-            self._time+=end - start         
-         
-        
-        
-    def __setitem__(self,ix, val):
-        self._d[ix] = np.array([val],dtype=self._dt)    
-        
-    def __str__(self):
-        return str(self._d)
-        
-    def __getitem__(self,ix):
-        return self._d[ix]    
-    
-    @property
-    def ctypes_data(self):
-        '''Return ctypes-pointer to data.'''
-        return self._d.ctypes.data_as(ctypes.POINTER(self._dt))
-        
-    @property
-    def ncol(self):
-        '''Return number of columns.'''
-        return self._nc
-        
-    @property
-    def nrow(self):
-        '''Return number of rows.'''    
-        return self._nr
-        
-    @property
-    def index(self):
-        '''Return local index.'''
-        return self._li
-        
-    @property
-    def dtype(self):
-        ''' Return Dat c data ctype'''
-        return self._dt
-    
-    @property
-    def send_buffer(self):
-        '''
-        Return send buffer particle dat
-        '''
-        return self._send_buffer
-    
-    
-    
-    
-    
-    
-    
+
     
