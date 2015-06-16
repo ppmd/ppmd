@@ -121,7 +121,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(2, MPI_HANDLE)
+        plothandle = data.DrawParticles(10, MPI_HANDLE)
     else:
         plothandle = None
     
