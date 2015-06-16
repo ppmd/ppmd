@@ -49,9 +49,15 @@ class BaseMDState(object):
         self._pos = particle.Dat(N, 3, name='positions')
         self._vel = particle.Dat(N, 3, name='velocities')
         self._accel = particle.Dat(N, 3, name='accelerations')
+        
+        '''Store global ids of particles'''
         self._global_ids = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
-        self._mass = particle.Dat(N, 1, 1.0)
-
+        
+        '''Lookup table between global id and particle type'''
+        self._types = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
+        
+        '''Mass is an example of a property dependant on particle type'''
+        self._mass = particle.TypedDat(self._NT, 1, 1.0)
             
         
         
@@ -276,68 +282,42 @@ class BaseMDState(object):
         Updates forces dats using given looping method.
         """
         
-        '''
-        self._domain.barrier()
-        if self._domain.rank == 0:
-            #print "###################################################"
-            pass
-        self._domain.barrier()
-        '''
+        
         timer = True         
         if (timer==True):
             start = time.time() 
         
-        '''
-        self._domain.barrier()
-        if self._domain.rank == 0:
-            print "rank 0"
-            self._cell_sort_local()               
-            print ""
-            print "---------------------------------"
-            sys.stdout.flush()
-        self._domain.barrier()
-        if self._domain.rank == 1:
-            print "rank 1"
-            self._cell_sort_local()               
-            print ""
-            print "---------------------------------"
-            sys.stdout.flush()
-        self._domain.barrier()        
-        '''
+        
         self._cell_sort_local()  
         
         
         if (self._cell_setup_attempt==True):
             self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
         
-        '''
-        if self._N > 0:
-            #print "pos", self._pos[0:self._pos.halo_start:,::], "rank:", self._domain._rank
-            #print "vel", self._vel[0:self._vel.halo_start:,::], "rank:", self._domain._rank 
-            print "pos", self._pos[0:self._N:,::], "rank:", self._domain._rank
-            print "vel", self._vel[0:self._N:,::], "rank:", self._domain._rank             
-            print "acel", self._accel[0:self._N:,::], "rank:", self._domain._rank  
-            print "cell list 16/19:", self._q_list[self._q_list[self._q_list.end]+16], self._q_list[self._q_list[self._q_list.end]+19]
-        '''
+        
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
-        
-        
-        #print "CELL LIST", self._q_list[self._q_list[self._q_list.end]::], self._domain._rank
-        # check 16/19
-        
         
         
         if (self._N>0):
             self._looping_method_accel.execute(N=self._q_list[self._q_list.end])   
         
-        #print self._accel[0:self._N:]
-        
         
         if (timer==True):
             end = time.time()
             self._time+=end - start       
-            
+    
+    
+    def types_map(self):
+        '''
+        Returns the arrays needed by methods to map between particle global ids and particle types.
+        '''
+        return (self._global_ids, self._types)
+    
+    @property    
+    def types(self):
+        return self._types    
+        
     
     @property
     def global_ids(self):
@@ -514,8 +494,15 @@ class BaseMDStateHalo(BaseMDState):
         self._pos = particle.Dat(self._NT, 3, name='positions')
         self._vel = particle.Dat(self._NT, 3, name='velocities')
         self._accel = particle.Dat(self._NT, 3, name='accelerations')
+        
+        '''Store global ids of particles'''
         self._global_ids = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
-        self._mass = particle.Dat(self._NT, 1, 1.0)
+        
+        '''Lookup table between global id and particle type'''
+        self._types = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
+        
+        '''Mass is an example of a property dependant on particle type'''
+        self._mass = particle.TypedDat(self._NT, 1, 1.0)
 
             
         
@@ -549,6 +536,8 @@ class BaseMDStateHalo(BaseMDState):
         '''Initialise masses'''
         if (particle_mass_init != None):
             particle_mass_init.reset(self)        
+        
+        print "TYPES", self._types[0:2:], "RANK", self._domain.rank, "MASSES", self._mass[0:2:,::], "GIDS", self._global_ids
         
         
         self._domain.BCSetup(self)
@@ -608,7 +597,8 @@ class BaseMDStateHalo(BaseMDState):
         
         self._time = 0
     
-         
+        
+        
         
         
 
@@ -642,7 +632,7 @@ class BaseMDStateHalo(BaseMDState):
         //printf("val = %d |", val);
         
         //needed, may improve halo exchange times
-        //CCC[val]++;
+        CCC[val]++;
         
         
         
@@ -667,7 +657,7 @@ class BaseMDStateHalo(BaseMDState):
                 
         
         self._cell_sort_kernel = kernel.Kernel('cell_list_method', self._cell_sort_code, headers = ['stdio.h'])
-        self._cell_sort_loop = loop.SingleParticleLoop(None, self._cell_sort_kernel, self._cell_sort_dict, DEBUG = self._DEBUG)
+        self._cell_sort_loop = loop.SingleParticleLoop(None, self.types_map, self._cell_sort_kernel, self._cell_sort_dict, DEBUG = self._DEBUG)
 
     def _cell_sort_local(self):
         """
@@ -1219,17 +1209,16 @@ class MassInitTwoAlternating(object):
         :arg Dat mass_input: Dat container with masses.
         '''
         
-        mass_input = state.masses
-        
-        
-        for ix in range(state.N()):
-            mass_input[ix] = self._m[state.global_ids[ix] % 2]
-            
-        
         '''
+        for ix in range(state.N()):
+            mass_input[ix] = self._m[(state.global_ids[ix] % 2)]
+        ''' 
+        state.masses[0] = self._m[0]
+        state.masses[1] = self._m[1]        
+        
         for ix in range(state.NT()):
-            mass_input[ix] = self._m[ix % 2]
-        '''            
+            state.types[ix] = ix % 2
+                    
 
 ################################################################################################################
 # MassInitIdentical DEFINITIONS
@@ -1252,10 +1241,10 @@ class MassInitIdentical(object):
         
         :arg Dat mass_input: Dat container with masses.
         '''
-        mass_input = state.masses
+        state.masses[0] = self._m
         
         for ix in range(state.NT()):
-            mass_input[ix] = self._m
+            state.types[ix]=0
 
 
 

@@ -307,7 +307,45 @@ class Dat(object):
         f.write(s)
         f.close()        
         
+class TypedDat(Dat):
+    '''
+    Base class to hold floating point properties of particles based on particle type, creates N1*N2 array with given initial value.
+    
+    :arg int N1: First dimension extent.
+    :arg int N2: Second dimension extent.
+    :arg double initial_value: Value to initialise array with, default 0.0.
+    :arg str name: Collective name of stored vars eg positions.
+    
+    '''
+    def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None, dtype = ctypes.c_double, max_size = 100000):
         
+        self._name = name
+        
+        self._dtype = dtype
+        
+        self._N1 = N1
+        self._N2 = N2
+        self._max_size = max_size
+        
+        if (initial_value != None):
+            if (type(initial_value) is np.ndarray):
+                self._Dat = np.array(initial_value, dtype=self._dtype, order='C')
+                self._N1 = initial_value.shape[0]
+                self._N2 = initial_value.shape[1]   
+                self._max_size = initial_value.shape[0]          
+            else:
+                self._Dat = float(initial_value) * np.ones([N1, N2], dtype=self._dtype, order='C')
+                self._max_size = N1
+        else:
+            self._Dat = np.zeros([max_size, N2], dtype=self._dtype, order='C')
+        
+        self._XYZFile_exists = False
+        
+        self._halo_start = self._N1
+        
+        '''Number of halo particles'''
+        
+        self._NH = self._halo_start - self._N1        
         
         
         

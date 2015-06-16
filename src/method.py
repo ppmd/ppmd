@@ -85,7 +85,7 @@ class VelocityVerlet(object):
         '''      
         self._constants_K = []
         self._K_kernel = kernel.Kernel('K_kernel',self._K_kernel_code,self._constants_K)
-        self._pK = loop.SingleAllParticleLoop(self._N,self._K_kernel,{'V':self._V,'K':self._K, 'M':self._M}, DEBUG = self._DEBUG)         
+        self._pK = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._K_kernel, {'V':self._V,'K':self._K, 'M':self._M}, DEBUG = self._DEBUG)         
         
                
         
@@ -127,10 +127,10 @@ class VelocityVerlet(object):
             self._constants = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
             
             self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-            self._p1 = loop.SingleAllParticleLoop(self._N,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG)
+            self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG)
 
             self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-            self._p2 = loop.SingleAllParticleLoop(self._N,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG)  
+            self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG)  
               
         
         self._velocity_verlet_integration()
@@ -478,7 +478,7 @@ class RadialDistributionPeriodicNVE(object):
         _datdict = {'P':self._P, 'GR':self._gr}
         
         
-        self._p = pairloop.DoubleAllParticleLoop(N = self._N, kernel = _grkernel, particle_dat_dict = _datdict, DEBUG = self._DEBUG)
+        self._p = pairloop.DoubleAllParticleLoop(self._N, self._state.types_map, kernel = _grkernel, particle_dat_dict = _datdict, DEBUG = self._DEBUG)
         
     def evaluate(self, timer=False):
         '''

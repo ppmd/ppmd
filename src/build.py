@@ -362,7 +362,6 @@ class GenericToolChain(object):
         '''
 
         d = {'UNIQUENAME':self._unique_name,
-             'KERNEL_METHODNAME':self._kernel_methodname(),
              'KERNEL':self._kernel_code,
              'ARGUMENTS':self._argnames(),
              'LOC_ARGUMENTS':self._loc_argnames(),
@@ -383,9 +382,15 @@ class GenericToolChain(object):
         else:
             _N=self._N()
         
-        
-        
         args=[ctypes.c_int(_N)]
+        
+        
+        if self._types_map != None:
+            args.append(self._types_map()[0].ctypes_data)
+            args.append(self._types_map()[1].ctypes_data)
+        
+        
+        
         
         
         '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
@@ -447,23 +452,6 @@ class SharedLib(GenericToolChain):
     def _compiler_set(self):
         self._cc = TMPCC
 
-    def _kernel_methodname(self):
-        '''Construct the name of the kernel method.
-        
-        Return a string of the form 
-        ``inline void kernel_name(double *<arg1>, double *<arg2}, ...) {``
-        which is used for defining the name of the kernel method.
-        '''
-        space = ' '*14
-        s = 'inline void '+self._kernel.name+'('
-        
-        #for var_name_kernel, var_name_state  in self._particle_dat_dict.items():
-        for i,dat in enumerate(self._particle_dat_dict.items()):
-            #print var_name_kernel, var_name_state.dattype()
-            s += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+', '
-            
-        s = s[:-2] + ') {'
-        return s  
         
               
     def _kernel_argument_declarations(self):

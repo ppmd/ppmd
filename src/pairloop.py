@@ -16,27 +16,7 @@ import build
 
 class _base(build.GenericToolChain):
     
-    
-    def _kernel_methodname(self):
-        '''Construct the name of the kernel method.
-        
-        Return a string of the form 
-        ``inline void kernel_name(double **<arg1>, double *<arg2}, ...) {``
-        which is used for defining the name of the kernel method.
-        '''
-        space = ' '*14
-        s = 'inline void '+self._kernel.name+'('
-        
-        for i,dat in enumerate(self._particle_dat_dict.items()):
             
-            if (type(dat[1]) == particle.Dat):
-                s += data.ctypes_map[dat[1].dtype]+' **'+dat[0]+', '
-            if (type(dat[1]) == data.ScalarArray):
-                s += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+', '
-            
-        
-        s = s[:-2] + ') {'
-        return s           
 
     
     def _kernel_argument_declarations(self):
@@ -66,11 +46,18 @@ class _base(build.GenericToolChain):
             if (type(dat[1]) == data.ScalarArray):
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
-            if (type(dat[1]) == particle.Dat):
+            elif (type(dat[1]) == particle.Dat):
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                 s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'       
+                s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
+                
+            elif (type(dat[1]) == particle.TypedDat):
+                
+                ncomp = dat[1].ncomp
+                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'   
         
         return s 
 
@@ -259,7 +246,7 @@ class PairLoopRapaport(_base):
             if (type(dat[1]) == data.ScalarArray):
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
-            if (type(dat[1]) == particle.Dat):
+            elif (type(dat[1]) == particle.Dat):
                 if (dat[1].name  == 'positions'):
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                     
@@ -281,7 +268,16 @@ class PairLoopRapaport(_base):
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                     s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'       
+                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
+                    
+            elif (type(dat[1]) == particle.TypedDat):
+                
+                ncomp = dat[1].ncomp
+                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                    
+                    
+                          
         
         return s       
         
@@ -366,27 +362,6 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
     def _compiler_set(self):
         self._cc = build.TMPCC        
     
-    def _kernel_methodname(self):
-        '''Construct the name of the kernel method.
-        
-        Return a string of the form 
-        ``inline void kernel_name(double **<arg1>, double *<arg2}, ...) {``
-        which is used for defining the name of the kernel method.
-        '''
-        space = ' '*14
-        s = 'inline void '+self._kernel.name+'('
-        
-        for i,dat in enumerate(self._particle_dat_dict.items()):
-            
-            if (type(dat[1]) == particle.Dat):
-                s += data.ctypes_map[dat[1].dtype]+' **'+dat[0]+', '
-                
-            if (type(dat[1]) == data.ScalarArray):
-                s += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+', '
-            
-            
-        s = s[:-2] + ') {'
-        return s
 
     def _code_init(self):
         self._kernel_code = self._kernel.code
@@ -434,11 +409,19 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
             if (type(dat[1]) == data.ScalarArray):
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
-            if (type(dat[1]) == particle.Dat):
+            elif (type(dat[1]) == particle.Dat):
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                 s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'    
+                s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
+                
+            elif (type(dat[1]) == particle.TypedDat):
+                
+                ncomp = dat[1].ncomp
+                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                
+                  
         
         return s    
 
@@ -558,7 +541,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
             if (type(dat[1]) == data.ScalarArray):
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
-            if (type(dat[1]) == particle.Dat):
+            elif (type(dat[1]) == particle.Dat):
                 if (dat[1].name  == 'positions'):
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                     
@@ -586,7 +569,15 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                     s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'    
+                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
+                    
+            elif (type(dat[1]) == particle.TypedDat):
+                
+                ncomp = dat[1].ncomp
+                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'
+                        
         
         return s 
 
@@ -835,7 +826,7 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
                 if (type(dat[1]) == data.ScalarArray):
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
                 
-                if (type(dat[1]) == particle.Dat):
+                elif (type(dat[1]) == particle.Dat):
                     if (dat[1].name  == 'positions'):
                         s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                         
@@ -857,7 +848,16 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
                         ncomp = dat[1].ncomp
                         s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                         s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                        s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n' 
+                        s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
+                        
+                elif (type(dat[1]) == particle.TypedDat):
+                    
+                    ncomp = dat[1].ncomp
+                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
+                    s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
+                    s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                        
+                        
+                        
         
         return s 
     
@@ -877,27 +877,6 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
     def _compiler_set(self):
         self._cc = build.TMPCC        
     
-    def _kernel_methodname(self):
-        '''Construct the name of the kernel method.
-        
-        Return a string of the form 
-        ``inline void kernel_name(double **<arg1>, double *<arg2}, ...) {``
-        which is used for defining the name of the kernel method.
-        '''
-        space = ' '*14
-        s = 'inline void '+self._kernel.name+'('
-        
-        for i,dat in enumerate(self._particle_dat_dict.items()):
-            
-            if (type(dat[1]) == particle.Dat):
-                s += data.ctypes_map[dat[1].dtype]+' **'+dat[0]+', '
-                
-            if (type(dat[1]) == data.ScalarArray):
-                s += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+', '
-            
-            
-        s = s[:-2] + ') {'
-        return s
 
     def _code_init(self):
         self._kernel_code = self._kernel.code
@@ -1000,7 +979,15 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                     s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'    
+                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
+                    
+                elif (type(dat[1]) == particle.TypedDat):
+                    
+                    ncomp = dat[1].ncomp
+                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
+                    s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
+                    s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                    
+                      
         
         return s     
     
@@ -1158,7 +1145,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                 else:
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
-            if (type(dat[1]) == particle.Dat):
+            elif (type(dat[1]) == particle.Dat):
                 if (dat[1].name  == 'accelerations'):
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                 
@@ -1192,7 +1179,16 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                     s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'       
+                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n' 
+                    
+            elif (type(dat[1]) == particle.TypedDat):
+                
+                ncomp = dat[1].ncomp
+                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                    
+                    
+                          
         
         return s
          

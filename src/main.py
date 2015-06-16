@@ -80,7 +80,7 @@ if __name__ == '__main__':
         
         #Set alternating masses for particles.
         
-        test_mass_init = state.MassInitTwoAlternating(5., 5.)
+        test_mass_init = state.MassInitTwoAlternating(200., 5.)
         
     if (t_1_particle):
         
@@ -121,7 +121,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(5, MPI_HANDLE)
+        plothandle = data.DrawParticles(2, MPI_HANDLE)
     else:
         plothandle = None
     
