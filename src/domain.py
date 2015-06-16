@@ -6,6 +6,7 @@ import kernel
 import loop
 import halo
 import build
+import sys
 from mpi4py import MPI
 
 
@@ -937,9 +938,8 @@ class BaseDomainHalo(BaseDomain):
             self._escape_count_total.zero()
             self._escape_count.zero()
             
-            self._COMM.Barrier()
-            #print "pre guard, rank:",self._rank, "I:",self._internal_index[0], "N=", self._BC_state.N()
-            self._COMM.Barrier()            
+                       
+                    
             
             '''
             if self._BC_state.N() > 0:
@@ -952,21 +952,11 @@ class BaseDomainHalo(BaseDomain):
             
             
             
-            '''Check packing buffer is large enough then pack'''
-            self._escape_send_buffer.resize(7*self._escape_count_total[0])
-            self._escape_packing_lib.execute()
-            
-            
-            
-            self._COMM.Barrier()
-            #print "send, rank:",self._rank, "EC:",self._escape_count, "ECT", self._escape_count_total, "\n", "ids:", self._escaping_ids[0:self._escape_count_total[0]:]
-            self._COMM.Barrier()
-            
             '''Exchange sizes'''
             for ix in range(26):
-                #self._COMM.Barrier()
-                #print " index:", ix,"rank",self._rank, "dest:", self._send_list[ix], "count:", self._escape_count.Dat[ix:ix+1:]
-                #self._COMM.Barrier() 
+                
+                #print "R", self._rank, "Sending", self._escape_count.Dat[ix:ix+1:], "ix", ix
+                
                 self._COMM.Sendrecv(self._escape_count.Dat[ix:ix+1:], 
                                     self._send_list[ix], 
                                     self._send_list[ix], 
@@ -974,23 +964,28 @@ class BaseDomainHalo(BaseDomain):
                                     self._recv_list[ix], 
                                     self._rank,
                                     self._MPIstatus)
-
-            self._COMM.Barrier()
-            #print "recvd", self._rank, self._escape_count_recv
-            self._COMM.Barrier()
-                        
+                                    
+                #print "R", self._rank, "RECVD" ,self._escape_count_recv.Dat[ix:ix+1:], "ix", ix            
+            
+            
+            
+            '''Check packing buffer is large enough then pack'''
+            self._escape_send_buffer.resize(7*self._escape_count_total[0])
+            self._escape_packing_lib.execute()            
+            
+            
             '''Count new incoming particles'''
-            _tmp = self._escape_count_recv.Dat.sum()
+            #_tmp = self._escape_count_recv.Dat.sum()
             
             
             
-            '''Resize accordingly'''
+            '''Resize accordingly
             self._BC_state.positions.resize(_tmp)
             self._BC_state.velocities.resize(_tmp)
             self._BC_state.global_ids.resize(_tmp)
             self._escape_recv_buffer.resize(7*_tmp)
             #self._escape_count_total[0] = _tmp
-            
+            '''
             
             
             '''Exchange packed particle buffers'''
@@ -999,28 +994,22 @@ class BaseDomainHalo(BaseDomain):
             
             
             for ix in range(26):
-                if self._escape_count[ix]>0:
-                    pass
-                    #print "rank",self._rank,"ix=",ix, "pkd=", self._escape_send_buffer.Dat[_sum_send:7*self._escape_count[ix]:]
                 
-                self._COMM.Sendrecv(self._escape_send_buffer.Dat[_sum_send:7*self._escape_count[ix]:], 
+                self._COMM.Sendrecv(self._escape_send_buffer.Dat[_sum_send:_sum_send+7*self._escape_count[ix]:], 
                                     self._send_list[ix], 
                                     self._send_list[ix], 
-                                    self._escape_recv_buffer.Dat[_sum_recv:7*self._escape_count_recv[ix]:],
+                                    self._escape_recv_buffer.Dat[_sum_recv:_sum_recv+7*self._escape_count_recv[ix]:],
                                     self._recv_list[ix], 
                                     self._rank,
                                     self._MPIstatus)            
                 
-                if self._escape_count_recv[ix]>0:
-                    pass
-                    #print "rank",self._rank, "ix=",ix, "recv=", self._escape_recv_buffer.Dat[_sum_recv:7*self._escape_count_recv[ix]:]
                 
                 
                 _sum_send += 7*self._escape_count[ix]
                 _sum_recv += 7*self._escape_count_recv[ix]
             
             
-            self._tmp_index[0] = _tmp
+            self._tmp_index[0] = _sum_recv/7
             
             '''Unpack new particles and compress particle dats'''
             
@@ -1040,21 +1029,7 @@ class BaseDomainHalo(BaseDomain):
             self._BC_state.velocities.halo_start_set(self._internal_index[0])
             self._BC_state.forces.halo_start_set(self._internal_index[0])
             
-            self._COMM.Barrier()
-            #print ""
-            self._COMM.Barrier()
             
-            self._COMM.Barrier()
-            #print "end",self._rank, self._internal_index[0], self._escape_count[::], "TI=", self._tmp_index[0], "N=", self._BC_state.N()
-            self._COMM.Barrier()
-            
-            if (self._rank == 0):
-                pass
-                #print "================================================================================"
-            self._COMM.Barrier()
-            
-            '''For testing remove after'''
-            #self._BCloop.execute()
             
 
     

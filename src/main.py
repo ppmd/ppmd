@@ -20,7 +20,7 @@ if __name__ == '__main__':
     test_1000 = True
     
     #2 particles bouncing agasint each other.
-    test_2_bounce = True
+    test_2_bounce = False
     
     #1 1 particle
     t_1_particle = False
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     
     if (test_1000):
         #n=25 reasonable size
-        n=10
+        n=4
         N=n**3
         rho = 1.
         mu = 0.0

@@ -425,8 +425,10 @@ class SharedLib(GenericToolChain):
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg bool DEBUG: Flag to enable debug flags.
     '''
-    def __init__(self, kernel, particle_dat_dict, DEBUG = False):
+    def __init__(self, kernel, particle_dat_dict, DEBUG = False, MPI_handle = None):
         self._DEBUG = DEBUG
+        self._Mh = MPI_handle
+        
         self._compiler_set()
         self._temp_dir = './build/'
         if (not os.path.exists(self._temp_dir)):
@@ -443,7 +445,14 @@ class SharedLib(GenericToolChain):
         self._library_filename  = self._unique_name +'.so'
         
         if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
-            self._create_library()
+            if (self._Mh == None):
+                self._create_library()
+            
+            else:
+                if  self._Mh.rank == 0:
+                    self._create_library()
+                self._Mh.barrier()
+                
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:

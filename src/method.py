@@ -34,12 +34,13 @@ class VelocityVerlet(object):
     :arg bool DEBUG: Flag to enable debug flags.
     '''
     
-    def __init__(self, dt = 0.0001, T = 0.01, DT = 0.001,state = None, USE_C = True, plot_handle = None, energy_handle = None, writexyz = False, VAF_handle = None, DEBUG = False):
+    def __init__(self, dt = 0.0001, T = 0.01, DT = 0.001,state = None, USE_C = True, plot_handle = None, energy_handle = None, writexyz = False, VAF_handle = None, DEBUG = False, MPI_handle = None):
     
         self._dt = dt
         self._DT = DT
         self._T = T
         self._DEBUG = DEBUG
+        self._Mh = MPI_handle
 
         self._state = state
         
@@ -85,7 +86,7 @@ class VelocityVerlet(object):
         '''      
         self._constants_K = []
         self._K_kernel = kernel.Kernel('K_kernel',self._K_kernel_code,self._constants_K)
-        self._pK = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._K_kernel, {'V':self._V,'K':self._K, 'M':self._M}, DEBUG = self._DEBUG)         
+        self._pK = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._K_kernel, {'V':self._V,'K':self._K, 'M':self._M}, DEBUG = self._DEBUG, MPI_handle = self._Mh)         
         
                
         
@@ -127,10 +128,10 @@ class VelocityVerlet(object):
             self._constants = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
             
             self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-            self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG)
+            self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, MPI_handle = self._Mh)
 
             self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-            self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG)  
+            self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, MPI_handle = self._Mh)  
               
         
         self._velocity_verlet_integration()
@@ -325,7 +326,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         if (self._USE_C):
             self._constants1 = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
             self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
-            self._p1 = loop.SingleAllParticleLoop(self._N,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG)
+            self._p1 = loop.SingleAllParticleLoop(self._N,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, MPI_handle = self._Mh)
             
             
             
@@ -363,7 +364,7 @@ class VelocityVerletAnderson(VelocityVerlet):
             self._constants2_thermostat = [constant.Constant('rate',self._dt*self._nu), constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt), constant.Constant('temperature',self._Temp),]
             
             self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
-            self._p2_thermostat = loop.SingleAllParticleLoop(self._N,self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG)  
+            self._p2_thermostat = loop.SingleAllParticleLoop(self._N,self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, MPI_handle = self._Mh)  
             
         
         self._velocity_verlet_integration_thermostat()
@@ -417,7 +418,7 @@ class RadialDistributionPeriodicNVE(object):
     :arg int rsteps: Resolution to record to, default 100.
     :arg bool DEBUG: Flag to enable debug flags.
     '''
-    def __init__(self, state, rmax = None, rsteps = 100, DEBUG = False):
+    def __init__(self, state, rmax = None, rsteps = 100, DEBUG = False, MPI_handle = None):
         
         self._count = 0
         self._state = state
@@ -436,6 +437,7 @@ class RadialDistributionPeriodicNVE(object):
         self._gr.scale(0.0)
         
         self._DEBUG = DEBUG
+        self._Mh = MPI_handle
         
         _headers = ['math.h','stdio.h']
         _kernel = '''
@@ -478,7 +480,7 @@ class RadialDistributionPeriodicNVE(object):
         _datdict = {'P':self._P, 'GR':self._gr}
         
         
-        self._p = pairloop.DoubleAllParticleLoop(self._N, self._state.types_map, kernel = _grkernel, particle_dat_dict = _datdict, DEBUG = self._DEBUG)
+        self._p = pairloop.DoubleAllParticleLoop(self._N, self._state.types_map, kernel = _grkernel, particle_dat_dict = _datdict, DEBUG = self._DEBUG, MPI_handle = self._Mh)
         
     def evaluate(self, timer=False):
         '''
@@ -570,8 +572,9 @@ class VelocityAutoCorrelation(object):
     :arg particle.Dat V0: Initial velocity Dat (optional).
     :arg bool DEBUG: Flag to enable debug flags.
     '''
-    def __init__(self, state, size = 0, V0 = None, DEBUG = False):
+    def __init__(self, state, size = 0, V0 = None, DEBUG = False, MPI_handle = None):
         self._DEBUG = DEBUG
+        self._Mh = MPI_handle
         self._state = state
         self._N = self._state.N
         self._V0 = particle.Dat(self._N, 3, name='V0')
@@ -607,7 +610,7 @@ class VelocityAutoCorrelation(object):
         
         self._datdict = {'VAF':self._VAF, 'V0':self._V0, 'VT':self._VT}
         
-        self._loop = loop.SingleAllParticleLoop(N = self._N, kernel = _kernel, particle_dat_dict = self._datdict, DEBUG = self._DEBUG)
+        self._loop = loop.SingleAllParticleLoop(N = self._N, kernel = _kernel, particle_dat_dict = self._datdict, DEBUG = self._DEBUG, MPI_handle = self._Mh)
         
         
         

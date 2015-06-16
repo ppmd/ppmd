@@ -31,7 +31,7 @@ class BaseMDState(object):
     :arg double mass: Mass of particles, default 1.0.
     :arg bool DEBUG: Flag to enable debug flags.
     '''
-    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, particle_mass_init = None, N = 0, mass = 1., DEBUG = False):
+    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, particle_mass_init = None, N = 0, mass = 1., DEBUG = False, MPI_handle = None):
         '''
         Intialise class to hold the state of a simulation.
         :arg domain domain: Container within which the simulation takes place.
@@ -41,7 +41,7 @@ class BaseMDState(object):
         
         '''
               
-        
+        self._Mh = MPI_handle
         self._potential = potential
         self._N = N
         self._NT = N
@@ -129,14 +129,16 @@ class BaseMDState(object):
                                                                     potential = self._potential, 
                                                                     dat_dict = _potential_dat_dict,
                                                                     cell_list = self._q_list,
-                                                                    DEBUG = self._DEBUG)
+                                                                    DEBUG = self._DEBUG,
+                                                                    MPI_handle = self._Mh)
         
         else:
             self._looping_method_accel = pairloop.DoubleAllParticleLoopPBC(N=self.N,
                                                                         domain = self._domain, 
                                                                         kernel = self._potential.kernel,
                                                                         particle_dat_dict = _potential_dat_dict,
-                                                                        DEBUG = self._DEBUG)
+                                                                        DEBUG = self._DEBUG,
+                                                                        MPI_handle = self._Mh)
         
         self._time = 0
         
@@ -195,7 +197,7 @@ class BaseMDState(object):
         
         
         self._cell_sort_kernel = kernel.Kernel('cell_list_method', self._cell_sort_code, headers = ['stdio.h'])
-        self._cell_sort_loop = loop.SingleParticleLoop(None, self._cell_sort_kernel, self._cell_sort_dict, DEBUG = self._DEBUG)
+        self._cell_sort_loop = loop.SingleParticleLoop(None, self._cell_sort_kernel, self._cell_sort_dict, DEBUG = self._DEBUG, MPI_handle = self._Mh)
         
         
     def _cell_sort_all(self):
@@ -477,7 +479,7 @@ class BaseMDStateHalo(BaseMDState):
     :arg double mass: Mass of particles, default 1.0.
     :arg bool DEBUG: Flag to enable debug flags.
     '''
-    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, particle_mass_init = None, N = 0, mass = 1., DEBUG = False):
+    def __init__(self, domain, potential, particle_pos_init = None, particle_vel_init = None, particle_mass_init = None, N = 0, mass = 1., DEBUG = False, MPI_handle = None):
         '''
         Intialise class to hold the state of a simulation.
         :arg domain domain: Container within which the simulation takes place.
@@ -487,7 +489,7 @@ class BaseMDStateHalo(BaseMDState):
         
         '''
               
-        
+        self._Mh = MPI_handle
         self._potential = potential
         self._N = N
         self._NT = N
@@ -537,7 +539,7 @@ class BaseMDStateHalo(BaseMDState):
         if (particle_mass_init != None):
             particle_mass_init.reset(self)        
         
-        print "TYPES", self._types[0:2:], "RANK", self._domain.rank, "MASSES", self._mass[0:2:,::], "GIDS", self._global_ids
+        #print "TYPES", self._types[0:2:], "RANK", self._domain.rank, "MASSES", self._mass[0:2:,::], "GIDS", self._global_ids
         
         
         self._domain.BCSetup(self)
@@ -586,14 +588,16 @@ class BaseMDStateHalo(BaseMDState):
                                                                     potential = self._potential, 
                                                                     dat_dict = _potential_dat_dict,
                                                                     cell_list = self._q_list,
-                                                                    DEBUG = self._DEBUG)
+                                                                    DEBUG = self._DEBUG,
+                                                                    MPI_handle = self._Mh)
         
         else:
             self._looping_method_accel = pairloop.DoubleAllParticleLoopPBC(N=self._N,
                                                                         domain = self._domain, 
                                                                         kernel = self._potential.kernel,
                                                                         particle_dat_dict = _potential_dat_dict,
-                                                                        DEBUG = self._DEBUG)
+                                                                        DEBUG = self._DEBUG,
+                                                                        MPI_handle = self._Mh)
         
         self._time = 0
     
@@ -657,7 +661,7 @@ class BaseMDStateHalo(BaseMDState):
                 
         
         self._cell_sort_kernel = kernel.Kernel('cell_list_method', self._cell_sort_code, headers = ['stdio.h'])
-        self._cell_sort_loop = loop.SingleParticleLoop(None, self.types_map, self._cell_sort_kernel, self._cell_sort_dict, DEBUG = self._DEBUG)
+        self._cell_sort_loop = loop.SingleParticleLoop(None, self.types_map, self._cell_sort_kernel, self._cell_sort_dict, DEBUG = self._DEBUG, MPI_handle = self._Mh)
 
     def _cell_sort_local(self):
         """
