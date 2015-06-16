@@ -45,7 +45,7 @@ if __name__ == '__main__':
         N=n**3
         rho = 1.
         mu = 0.0
-        nsig = 5.0
+        nsig = 100.0
         
         #Initialise basci domain
         test_domain = domain.BaseDomainHalo(NT=N, MPI_handle = MPI_HANDLE)
@@ -54,7 +54,7 @@ if __name__ == '__main__':
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
         
         #Place N particles in a lattice with given density.
-        test_pos_init = state.PosInitLatticeNRho(N, rho)
+        test_pos_init = state.PosInitLatticeNRho(N, rho, 10.)
         
         #Normally distributed velocities.
         test_vel_init = state.VelInitNormDist(mu,nsig)
@@ -80,7 +80,7 @@ if __name__ == '__main__':
         
         #Set alternating masses for particles.
         
-        test_mass_init = state.MassInitTwoAlternating(5., 1000.)
+        test_mass_init = state.MassInitTwoAlternating(5., 5.)
         
     if (t_1_particle):
         
@@ -165,9 +165,9 @@ if __name__ == '__main__':
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
     
-    
-    print "Total time in halo exchange:", test_domain.halos._time
-    print "Time in forces_update:", test_state._time
+    if (MPI_HANDLE==None or MPI_HANDLE.rank ==0):
+        print "Total time in halo exchange:", test_domain.halos._time
+        print "Time in forces_update:", test_state._time
     
     ###########################################################
     
@@ -183,6 +183,7 @@ if __name__ == '__main__':
     if (MPI_HANDLE==None or MPI_HANDLE.rank ==0):
         try:
             a=input("PRESS ENTER TO CONTINUE.\n")
+            
         except:
             pass
     #MPI_HANDLE.barrier()

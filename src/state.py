@@ -9,7 +9,7 @@ import data
 import kernel
 import loop
 from mpi4py import MPI
-
+import sys
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 np.set_printoptions(threshold='nan')
@@ -142,7 +142,7 @@ class BaseMDState(object):
         """
         
         '''Construct initial cell list'''
-        self._q_list = data.ScalarArray(dtype=ctypes.c_int, max_size = self._N * (self._domain.cell_count) + self._domain.cell_count + 1)
+        self._q_list = data.ScalarArray(dtype=ctypes.c_int, max_size = self._NT * (self._domain.cell_count) + self._domain.cell_count + 1)
         
         
         '''Keep track of number of particles per cell'''
@@ -275,13 +275,36 @@ class BaseMDState(object):
         """
         Updates forces dats using given looping method.
         """
+        
+        '''
+        self._domain.barrier()
+        if self._domain.rank == 0:
+            #print "###################################################"
+            pass
+        self._domain.barrier()
+        '''
         timer = True         
         if (timer==True):
             start = time.time() 
         
-        
-        self._cell_sort_local()               
-        #print "CELL LIST", self._q_list[self._q_list[self._q_list.end]::], self._domain.rank, self._N
+        '''
+        self._domain.barrier()
+        if self._domain.rank == 0:
+            print "rank 0"
+            self._cell_sort_local()               
+            print ""
+            print "---------------------------------"
+            sys.stdout.flush()
+        self._domain.barrier()
+        if self._domain.rank == 1:
+            print "rank 1"
+            self._cell_sort_local()               
+            print ""
+            print "---------------------------------"
+            sys.stdout.flush()
+        self._domain.barrier()        
+        '''
+        self._cell_sort_local()  
         
         
         if (self._cell_setup_attempt==True):
@@ -307,6 +330,9 @@ class BaseMDState(object):
         
         if (self._N>0):
             self._looping_method_accel.execute(N=self._q_list[self._q_list.end])   
+        
+        #print self._accel[0:self._N:]
+        
         
         if (timer==True):
             end = time.time()
@@ -485,11 +511,11 @@ class BaseMDStateHalo(BaseMDState):
         self._potential = potential
         self._N = N
         self._NT = N
-        self._pos = particle.Dat(N, 3, name='positions')
-        self._vel = particle.Dat(N, 3, name='velocities')
-        self._accel = particle.Dat(N, 3, name='accelerations')
+        self._pos = particle.Dat(self._NT, 3, name='positions')
+        self._vel = particle.Dat(self._NT, 3, name='velocities')
+        self._accel = particle.Dat(self._NT, 3, name='accelerations')
         self._global_ids = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
-        self._mass = particle.Dat(N, 1, 1.0)
+        self._mass = particle.Dat(self._NT, 1, 1.0)
 
             
         
@@ -592,7 +618,7 @@ class BaseMDStateHalo(BaseMDState):
         """
         
         '''Construct initial cell list'''
-        self._q_list = data.ScalarArray(dtype=ctypes.c_int, max_size = self._NT * (self._domain.cell_count) + self._domain.cell_count)
+        self._q_list = data.ScalarArray(dtype=ctypes.c_int, max_size = self._NT * (self._domain.cell_count) + 2*self._domain.cell_count)
         
         
         '''Keep track of number of particles per cell'''
@@ -613,12 +639,22 @@ class BaseMDStateHalo(BaseMDState):
         
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
         
+        //printf("val = %d |", val);
         
-        CCC[val]++;
+        //needed, may improve halo exchange times
+        //CCC[val]++;
+        
+        
         
         Q[I[0]] = Q[N[0] + val];
+        
+        //printf("I[0] = %d, N[0] = %d, N[0] + val = %d |", I[0], N[0], N[0] + val);
+        
         Q[N[0] + val] = I[0];
+        //printf("I[0] = %d |", I[0]);
+        
         I[0]++;
+        
         '''
         self._cell_sort_dict = {'B':self._domain.boundary_outer,
                                 'P':self._pos,
@@ -678,13 +714,13 @@ class PosInitLatticeNRho(object):
     
     """
     
-    def __init__(self, N, rho):
+    def __init__(self, N, rho, lx = None):
         """
         Initialise required lattice with the number of particles and required density.
         
        
         """
-        
+        self._in_lx = lx
         self._N = N
         self._rho = rho
         
@@ -692,7 +728,11 @@ class PosInitLatticeNRho(object):
         """
         Initialise domain extents prior to setting particle positions.
         """
-        Lx = (float(self._N) / float(self._rho))**(1./3.)        
+        if self._in_lx == None:
+            Lx = (float(self._N) / float(self._rho))**(1./3.)
+        else:
+            Lx = self._in_lx
+            
         state_input.domain.set_extent(np.array([Lx, Lx, Lx]))        
 
     def reset(self, state_input):
@@ -703,7 +743,10 @@ class PosInitLatticeNRho(object):
         """
         
         #Evaluate cube side length.
-        Lx = (float(self._N) / float(self._rho))**(1./3.)
+        if self._in_lx == None:
+            Lx = (float(self._N) / float(self._rho))**(1./3.)
+        else:
+            Lx = self._in_lx
         
         #Cube dimensions of data
         np1_3 = self._N**(1./3.)
@@ -1178,10 +1221,15 @@ class MassInitTwoAlternating(object):
         
         mass_input = state.masses
         
-        print "gids",state.global_ids
         
         for ix in range(state.N()):
-            mass_input[ix] = self._m[(state.global_ids[ix] % 2)]
+            mass_input[ix] = self._m[state.global_ids[ix] % 2]
+            
+        
+        '''
+        for ix in range(state.NT()):
+            mass_input[ix] = self._m[ix % 2]
+        '''            
 
 ################################################################################################################
 # MassInitIdentical DEFINITIONS
@@ -1206,7 +1254,7 @@ class MassInitIdentical(object):
         '''
         mass_input = state.masses
         
-        for ix in range(mass_input.npart):
+        for ix in range(state.NT()):
             mass_input[ix] = self._m
 
 

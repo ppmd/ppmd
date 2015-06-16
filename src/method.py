@@ -136,7 +136,8 @@ class VelocityVerlet(object):
         self._velocity_verlet_integration()
         if (timer==True):
             end = time.time()
-            print "integrate time taken:", end - start,"s"        
+            if (self._state.domain.rank == 0):
+                print "integrate time taken:", end - start,"s"        
         
         
         
@@ -196,6 +197,9 @@ class VelocityVerlet(object):
 
     def _integration_internals(self, i):
         
+        #print i
+        
+        
         DTFLAG = ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )
         PERCENT = ((100.0*i)/self._max_it)
         
@@ -204,17 +208,23 @@ class VelocityVerlet(object):
             
             self._K.scale(0.0)
             
+            
+            
             if(self._USE_C):
                 
                 self._pK.execute()
+                
+                
+                
                 #self._K.AverageUpdate()
+                
             else:
                 for ix in range(self._state.N()):
                     self._K[0] += np.sum(self._V[ix,...]*self._V[ix,...])*0.5*self._M[ix]
             
             
-            print "internal", self._state.U.Dat[0], self._state.domain.rank
-            print "halo", self._state.U.Dat[1], self._state.domain.rank
+            #print "internal", self._state.U.Dat[0], self._state.domain.rank
+            #print "halo", self._state.U.Dat[1], self._state.domain.rank
             
             
             
@@ -267,7 +277,9 @@ class VelocityVerlet(object):
                 self._plot_handle.draw(self._state)
             
             self._percent_count += self._percent_int
-            print int((100.0*i)/self._max_it),"%", "T=", self._dt*i
+            
+            if (self._state.domain.rank == 0):
+                print int((100.0*i)/self._max_it),"%", "T=", self._dt*i
                 
                 
                 
