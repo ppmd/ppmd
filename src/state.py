@@ -648,7 +648,7 @@ class BaseMDStateHalo(BaseMDState):
         
         self._cell_sort_code = '''
         
-        printf("start ");
+        printf("start P[0] = %f, P[1] = %f, P[2] = %f |", P[0], P[1], P[2]);
         
         
         const int C0 = (int)((P[0] - B[0])/CEL[0]);

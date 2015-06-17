@@ -77,7 +77,9 @@ GCC_OpenMP = compiler(['GCC'],['gcc'],['-O3','-fpic','-fopenmp','-lgomp','-lpthr
 
 
 #Define system icc version as compiler.
-ICC = compiler(['ICC'],['icc'],['-O3','-fpic','-std=c99','-fast'],['-lm'],['-g'],['-c'],['-shared'])
+#ICC = compiler(['ICC'],['icc'],['-O3','-fpic','-std=c99','-fast'],['-lm'],['-g'],['-c'],['-shared'])
+
+ICC = compiler(['ICC'],['icc'],['-O0','-fpic','-std=c99',''],[''],['-g'],['-c'],['-shared'])
 
 #Define system icc version as OpenMP compiler.
 ICC_OpenMP = compiler(['ICC'],['icc'],['-O3','-fpic','-openmp','-lgomp','-lpthread','-lc','-lrt','-std=c99','-fast'],['-openmp','-lgomp','-lpthread','-lc','-lrt'],['-g'],['-c'],['-shared'])
@@ -166,11 +168,13 @@ def load_library_exception(kernel_name='None supplied', unique_name='None suppli
                 f.close()        
             except:
                 print "Source file not read"
+                
             code_str=code_str.split('\n')[max(0,err_line-6):err_line+1]
             code_str[-3]=code_str[-3]+"    <-------------"
             code_str = [x+"\n" for x in code_str]
             
             err_code = ''.join(code_str)
+    print "Unique name", unique_name
             
     
     raise RuntimeError("\n"

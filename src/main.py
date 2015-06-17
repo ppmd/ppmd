@@ -25,10 +25,10 @@ if __name__ == '__main__':
     
     
     #plot as computing + at end?
-    plotting = True
+    plotting = False
     
     #log energy?
-    logging = True
+    logging = False
     
     #Enbale debug flags?
     debug = True
@@ -178,8 +178,8 @@ if __name__ == '__main__':
 
     if (MPI_HANDLE==None or MPI_HANDLE.rank ==0):
         try:
-            a=input("PRESS ENTER TO CONTINUE.\n")
-            
+            #a=input("PRESS ENTER TO CONTINUE.\n")
+            pass
         except:
             pass
     #MPI_HANDLE.barrier()

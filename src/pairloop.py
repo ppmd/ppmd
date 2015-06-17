@@ -116,11 +116,13 @@ class PairLoopRapaport(_base):
                 if  self._Mh.rank == 0:
                     self._create_library()
                 self._Mh.barrier()
+        #self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
             build.load_library_exception(self._kernel.name, self._unique_name,type(self))
-    
+        
     def _compiler_set(self):
         self._cc = build.TMPCC
     
@@ -1248,7 +1250,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         #include \"%(UNIQUENAME)s.h\"
         #include <stdio.h>
         
-        inline void cell_index_offset(const unsigned int cp_i, const unsigned int cpp_i, int* cell_array, unsigned int* cpp, unsigned int* cp_h_flag, unsigned int* cpp_h_flag){
+        void cell_index_offset(const unsigned int cp_i, const unsigned int cpp_i, int* cell_array, unsigned int* cpp, unsigned int* cp_h_flag, unsigned int* cpp_h_flag){
         
             const int cell_map[14][3] = {   {0,0,0},
                                             {1,0,0},
