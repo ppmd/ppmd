@@ -375,7 +375,7 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
 
-        void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
+        void %(KERNEL_NAME)s_wrapper(const int n, int *_GID, int *_TYPE_MAP,%(ARGUMENTS)s) { 
           for (int i=0; i<n; i++) { for (int j=0; j<i; j++) {  
               
               %(KERNEL_ARGUMENT_DECL)s
@@ -431,30 +431,7 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
                   
         
         return s 
-        
-    ## added to cope with int *_GID, int *_TYPE_MAP, take out afterwards
-    def _generate_header_source(self):
-        '''Generate the source code of the header file.
-
-        Returns the source code for the header file.
-        '''
-        code = '''
-        #ifndef %(UNIQUENAME)s_H
-        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #include "../generic.h"
-        %(INCLUDED_HEADERS)s
-
-        void %(KERNEL_NAME)s_wrapper(int n, int *_GID, int *_TYPE_MAP,%(ARGUMENTS)s);
-
-        #endif
-        '''
-        
-        
-        d = {'UNIQUENAME':self._unique_name,
-             'INCLUDED_HEADERS':self._included_headers(),
-             'KERNEL_NAME':self._kernel.name,
-             'ARGUMENTS':self._argnames()}
-        return (code % d)            
+                    
 
 
 ################################################################################################################
