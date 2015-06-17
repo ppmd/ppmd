@@ -14,8 +14,6 @@ import os
 if __name__ == '__main__':
     
     
-    
-    
     #1000 particles in a box
     test_1000 = True
     
@@ -37,7 +35,6 @@ if __name__ == '__main__':
     
         
     MPI_HANDLE = data.MDMPI()
-    
     
     if (test_1000):
         #n=25 reasonable size
@@ -104,8 +101,7 @@ if __name__ == '__main__':
         test_mass_init = state.MassInitIdentical(5.)    
     
     
-    
-    
+
     
     
     

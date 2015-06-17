@@ -928,8 +928,8 @@ class BaseDomainHalo(BaseDomain):
         
             
             '''Potentially all could escape'''
-            self._escaping_ids.resize(2*self._BC_state.N())
-            self._escaping_ids.zero()
+            #self._escaping_ids.resize(2*self._BC_state.N())
+            #self._escaping_ids.zero()
             
             '''Zero counts/indices'''
             self._escape_internal_index.zero()

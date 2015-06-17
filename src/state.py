@@ -290,7 +290,28 @@ class BaseMDState(object):
             start = time.time() 
         
         
-        self._cell_sort_local()  
+        
+        
+        #self._cell_sort_local()  
+        sys.stdout.flush()
+        self._domain.barrier()
+        if self._domain.rank == 0:
+            print "Local N", self._N
+            print "rank 0"
+            self._cell_sort_local()               
+            print ""
+            print "---------------------------------"
+        sys.stdout.flush()
+        self._domain.barrier()
+        '''
+        if self._domain.rank == 1:
+            print "rank 1"
+            self._cell_sort_local()               
+            print ""
+            print "---------------------------------"
+        sys.stdout.flush()
+        self._domain.barrier()           
+        '''
         
         
         if (self._cell_setup_attempt==True):
@@ -627,13 +648,16 @@ class BaseMDStateHalo(BaseMDState):
         
         self._cell_sort_code = '''
         
+        printf("start ");
+        
+        
         const int C0 = (int)((P[0] - B[0])/CEL[0]);
         const int C1 = (int)((P[1] - B[2])/CEL[1]);
         const int C2 = (int)((P[2] - B[4])/CEL[2]);
         
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
         
-        //printf("val = %d |", val);
+        printf("val = %d |", val);
         
         //needed, may improve halo exchange times
         CCC[val]++;
@@ -642,13 +666,17 @@ class BaseMDStateHalo(BaseMDState):
         
         Q[I[0]] = Q[N[0] + val];
         
-        //printf("I[0] = %d, N[0] = %d, N[0] + val = %d |", I[0], N[0], N[0] + val);
+        printf("I[0] = %d, N[0] = %d, N[0] + val = %d |", I[0], N[0], N[0] + val);
         
         Q[N[0] + val] = I[0];
-        //printf("I[0] = %d |", I[0]);
         
+         
         I[0]++;
         
+        
+        
+        printf("I[0] = %d |", I[0]);
+        printf("end #");
         '''
         self._cell_sort_dict = {'B':self._domain.boundary_outer,
                                 'P':self._pos,
@@ -670,7 +698,7 @@ class BaseMDStateHalo(BaseMDState):
         
         
         
-        self._q_list.resize(self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1)
+        #self._q_list.resize(self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1)
         self._q_list[self._q_list.end] = self._q_list.end - self._domain.cell_count
         
         
@@ -679,8 +707,9 @@ class BaseMDStateHalo(BaseMDState):
         self._q_list.Dat[self._q_list[self._q_list.end]:self._q_list.end:] = ctypes.c_int(-1)
         self._internal_index[0]=0
         
+        
+        
         self._cell_contents_count.zero()
-        self._internal_N[0] = self._q_list[self._q_list.end]
         self._cell_sort_loop.execute(   start = 0, 
                                         end=self._N,
                                         dat_dict = {'B':self._domain.boundary_outer,
