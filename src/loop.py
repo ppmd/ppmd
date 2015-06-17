@@ -139,6 +139,32 @@ class SingleAllParticleLoop(_base):
             }
         }
         '''
+    
+    ## added to cope with int *_GID, int *_TYPE_MAP, take out afterwards
+    def _generate_header_source(self):
+        '''Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        '''
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+        #include "../generic.h"
+        %(INCLUDED_HEADERS)s
+
+        void %(KERNEL_NAME)s_wrapper(int n, int *_GID, int *_TYPE_MAP,%(ARGUMENTS)s);
+
+        #endif
+        '''
+        
+        
+        d = {'UNIQUENAME':self._unique_name,
+             'INCLUDED_HEADERS':self._included_headers(),
+             'KERNEL_NAME':self._kernel.name,
+             'ARGUMENTS':self._argnames()}
+        return (code % d)        
+        
+        
         
 ################################################################################################################
 # SINGLE PARTICLE LOOP SERIAL
