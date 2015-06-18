@@ -25,10 +25,10 @@ if __name__ == '__main__':
     
     
     #plot as computing + at end?
-    plotting = False
+    plotting = True
     
     #log energy?
-    logging = False
+    logging = True
     
     #Enbale debug flags?
     debug = True
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     
     if (test_1000):
         #n=25 reasonable size
-        n=4
+        n=30
         N=n**3
         rho = 1.
         mu = 0.0
@@ -51,7 +51,7 @@ if __name__ == '__main__':
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
         
         #Place N particles in a lattice with given density.
-        test_pos_init = state.PosInitLatticeNRho(N, rho, 10.)
+        test_pos_init = state.PosInitLatticeNRho(N, rho, 100.)
         
         #Normally distributed velocities.
         test_vel_init = state.VelInitNormDist(mu,nsig)
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(10, MPI_HANDLE)
+        plothandle = data.DrawParticles(25, MPI_HANDLE)
     else:
         plothandle = None
     
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     
     
     
-    test_integrator.integrate(dt = 0.00001, T = 0.05, timer=True)
+    test_integrator.integrate(dt = 0.0001, T = .5, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
@@ -178,8 +178,8 @@ if __name__ == '__main__':
 
     if (MPI_HANDLE==None or MPI_HANDLE.rank ==0):
         try:
-            #a=input("PRESS ENTER TO CONTINUE.\n")
-            pass
+            a=input("PRESS ENTER TO CONTINUE.\n")
+            #pass
         except:
             pass
     #MPI_HANDLE.barrier()

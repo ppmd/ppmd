@@ -684,7 +684,7 @@ class BaseDomainHalo(BaseDomain):
                     
                     loc_count++;
                     
-                    printf("gid = %d |", EGID[id]);
+                    //printf("id = %d, gid = %d |", id, EGID[id]);
                     
                 }
                 ix++; 
@@ -752,8 +752,10 @@ class BaseDomainHalo(BaseDomain):
         
         _unpacking_code = '''
         
-        //printf("before I[0] = %d, ECT = %d |", I[0], ECT[0]);
+        //printf("before I[0] = %d, ECT = %d, TI[0] = %d |", I[0], ECT[0], TI[0]);
         for (int ix = 0; ix < TI[0]; ix++){
+            
+            //printf("ix = %d |", ix);
             
             int IX;
             //fill in spaces
@@ -774,7 +776,7 @@ class BaseDomainHalo(BaseDomain):
             V[LINIDX_2D(3,IX,1)] = ERB[7*ix+4];
             V[LINIDX_2D(3,IX,2)] = ERB[7*ix+5];
             
-            RGID[I[0]] = (int) ERB[7*ix+6];
+            RGID[IX] = (int) ERB[7*ix+6];
             
         }
         
@@ -784,12 +786,13 @@ class BaseDomainHalo(BaseDomain):
             
             int ect = ECT[0] - 1;
             
-            int ect_ti = ECT[0] - TI[0] - 2;
+            //int ect_ti = ECT[0] - TI[0] - 2;
+            int ect_ti = TI[0];
+            
             int eix = -1;
             
             
-            
-            while ( (++ect_ti < ECT[0]) && (eix < I[0]) ){
+            while ( (ect_ti < ECT[0]) && (EI[2*ect_ti] < I[0]) ){
                 
                 eix = EI[2*ect_ti];
 
@@ -837,9 +840,9 @@ class BaseDomainHalo(BaseDomain):
                     break;  
                 }
             
-            
-            
                 
+                ect_ti++;
+                //printf("I[0] = %d |", I[0]);   
             }
             
              
@@ -974,10 +977,14 @@ class BaseDomainHalo(BaseDomain):
             self._escape_packing_lib.execute()            
             
             
+            
             '''Count new incoming particles'''
             #_tmp = self._escape_count_recv.Dat.sum()
             
             
+            
+            #print ""
+            #print "send buffer", self._escape_send_buffer.Dat[0:7*self._escape_count_total[0]:]
             
             '''Resize accordingly
             self._BC_state.positions.resize(_tmp)
@@ -991,7 +998,6 @@ class BaseDomainHalo(BaseDomain):
             '''Exchange packed particle buffers'''
             _sum_send = 0
             _sum_recv = 0
-            
             
             for ix in range(26):
                 
@@ -1008,6 +1014,7 @@ class BaseDomainHalo(BaseDomain):
                 _sum_send += 7*self._escape_count[ix]
                 _sum_recv += 7*self._escape_count_recv[ix]
             
+            #print "recv buffer", self._escape_recv_buffer.Dat[0:_sum_recv:],
             
             self._tmp_index[0] = _sum_recv/7
             
