@@ -495,6 +495,7 @@ class BaseDomainHalo(BaseDomain):
         '''Array to store the local id of scaling particles'''
         self._escaping_ids = data.ScalarArray(ncomp = 2*self._BC_state.NT(), dtype = ctypes.c_int)
         
+        
         '''Number of escaping particles in each direction'''
         self._escape_count = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)
         
@@ -660,35 +661,38 @@ class BaseDomainHalo(BaseDomain):
         self._sfd = data.ScalarArray(initial_value = _sfd)
         
         self._escape_send_buffer = data.ScalarArray(ncomp = 7*self._BC_state.NT(), dtype = ctypes.c_double)
+        
+        '''Starting ixdex for packing'''
+        self._escape_send_buffer_index = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)        
+        
+        
+        
         _escape_packing_code = '''
         
-        int index = 0;
-        for (int d = 0; d < 26; d++){
-            
-            int ix = 0;
-            int loc_count = 0;
-            
-            while(loc_count < EC[d]){
-                
-                if (EI[(2*ix)+1] == d){
-                    const int id = EI[2*ix];
-                    
-                    ESB[index]   = P[LINIDX_2D(3,id,0)] + SFD[3*d];
-                    ESB[index+1] = P[LINIDX_2D(3,id,1)] + SFD[3*d+1];
-                    ESB[index+2] = P[LINIDX_2D(3,id,2)] + SFD[3*d+2];
-                    ESB[index+3] = V[LINIDX_2D(3,id,0)];
-                    ESB[index+4] = V[LINIDX_2D(3,id,1)];
-                    ESB[index+5] = V[LINIDX_2D(3,id,2)];
-                    ESB[index+6] = (double) EGID[id];
-                    index += 7;
-                    
-                    loc_count++;
-                    
-                    //printf("id = %d, gid = %d |", id, EGID[id]);
-                    
-                }
-                ix++; 
+        ESBi[0] = 0;
+        for (int d = 1; d < 26; d++){
+            int ei = 0;
+            for (int j = 0; j < d; j++){
+                ei+=7*EC[j];
             }
+            ESBi[d]=ei;
+        }
+        
+        for (int ix = 0; ix < ECT[0]; ix++){
+            
+            int id = EI[(2*ix)];
+            int d = EI[(2*ix)+1];
+            int index = ESBi[d];
+            ESBi[d]+=7;
+            
+            ESB[index]   = P[LINIDX_2D(3,id,0)] + SFD[3*d];
+            ESB[index+1] = P[LINIDX_2D(3,id,1)] + SFD[3*d+1];
+            ESB[index+2] = P[LINIDX_2D(3,id,2)] + SFD[3*d+2];
+            ESB[index+3] = V[LINIDX_2D(3,id,0)];
+            ESB[index+4] = V[LINIDX_2D(3,id,1)];
+            ESB[index+5] = V[LINIDX_2D(3,id,2)];
+            ESB[index+6] = (double) EGID[id];
+            
         }
         
         '''
@@ -701,6 +705,7 @@ class BaseDomainHalo(BaseDomain):
                               'EC':self._escape_count,
                               'EI':self._escaping_ids,
                               'ESB':self._escape_send_buffer,
+                              'ESBi':self._escape_send_buffer_index,
                               'ECT':self._escape_count_total,
                               'SFD':self._sfd
                               }        
