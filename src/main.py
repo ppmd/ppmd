@@ -25,7 +25,7 @@ if __name__ == '__main__':
     
     
     #plot as computing + at end?
-    plotting = True
+    plotting = False
     
     #log energy?
     logging = True
@@ -38,11 +38,11 @@ if __name__ == '__main__':
     
     if (test_1000):
         #n=25 reasonable size
-        n=30
+        n=10
         N=n**3
-        rho = 1.
+        rho = 3.
         mu = 0.0
-        nsig = 100.0
+        nsig = 10.0
         
         #Initialise basci domain
         test_domain = domain.BaseDomainHalo(NT=N, MPI_handle = MPI_HANDLE)
@@ -51,7 +51,7 @@ if __name__ == '__main__':
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
         
         #Place N particles in a lattice with given density.
-        test_pos_init = state.PosInitLatticeNRho(N, rho, 100.)
+        test_pos_init = state.PosInitLatticeNRho(N, rho, None)
         
         #Normally distributed velocities.
         test_vel_init = state.VelInitNormDist(mu,nsig)
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     
     
     
-    test_integrator.integrate(dt = 0.0001, T = .5, timer=True)
+    test_integrator.integrate(dt = 0.0001, T = .1, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
