@@ -53,7 +53,7 @@ class BaseMDState(object):
         '''Store global ids of particles'''
         self._global_ids = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
         
-        '''Lookup table between global id and particle type'''
+        '''Lookup table between id and particle type'''
         self._types = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
         
         '''Mass is an example of a property dependant on particle type'''
@@ -336,7 +336,7 @@ class BaseMDState(object):
         '''
         Returns the arrays needed by methods to map between particle global ids and particle types.
         '''
-        return (self._global_ids, self._types)
+        return self._types
     
     @property    
     def types(self):
@@ -524,7 +524,7 @@ class BaseMDStateHalo(BaseMDState):
         '''Store global ids of particles'''
         self._global_ids = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
         
-        '''Lookup table between global id and particle type'''
+        '''Lookup table between id and particle type'''
         self._types = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
         
         '''Mass is an example of a property dependant on particle type'''
@@ -1255,8 +1255,8 @@ class MassInitTwoAlternating(object):
         state.masses[0] = self._m[0]
         state.masses[1] = self._m[1]        
         
-        for ix in range(state.NT()):
-            state.types[ix] = ix % 2
+        for ix in range(state.N()):
+            state.types[ix] = state.global_ids[ix] % 2
                     
 
 ################################################################################################################
@@ -1282,7 +1282,7 @@ class MassInitIdentical(object):
         '''
         state.masses[0] = self._m
         
-        for ix in range(state.NT()):
+        for ix in range(state.N()):
             state.types[ix]=0
 
 

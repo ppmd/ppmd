@@ -390,8 +390,8 @@ class GenericToolChain(object):
         
         
         if self._types_map != None:
-            args.append(self._types_map()[0].ctypes_data)
-            args.append(self._types_map()[1].ctypes_data)
+            args.append(self._types_map().ctypes_data)
+            
         
         
         

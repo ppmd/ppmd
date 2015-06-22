@@ -25,7 +25,7 @@ if __name__ == '__main__':
     
     
     #plot as computing + at end?
-    plotting = False
+    plotting = True
     
     #log energy?
     logging = True
@@ -42,7 +42,7 @@ if __name__ == '__main__':
         N=n**3
         rho = 3.
         mu = 0.0
-        nsig = 10.0
+        nsig = 5.0
         
         #Initialise basci domain
         test_domain = domain.BaseDomainHalo(NT=N, MPI_handle = MPI_HANDLE)
@@ -57,7 +57,9 @@ if __name__ == '__main__':
         test_vel_init = state.VelInitNormDist(mu,nsig)
         
         #Initialise masses, in this case sets all to 1.0.
-        test_mass_init = state.MassInitIdentical()
+        #test_mass_init = state.MassInitIdentical()
+        test_mass_init = state.MassInitTwoAlternating(200., 1.)
+        
         
     if (test_2_bounce):
         N=2
@@ -117,7 +119,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(25, MPI_HANDLE)
+        plothandle = data.DrawParticles(10, MPI_HANDLE)
     else:
         plothandle = None
     
@@ -154,7 +156,7 @@ if __name__ == '__main__':
     
     
     
-    test_integrator.integrate(dt = 0.0001, T = .1, timer=True)
+    test_integrator.integrate(dt = 0.0001, T = .5, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)

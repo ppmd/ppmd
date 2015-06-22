@@ -56,8 +56,8 @@ class _base(build.GenericToolChain):
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'   
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'   
         
         return s 
 
@@ -283,8 +283,8 @@ class PairLoopRapaport(_base):
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                    
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                    
                     
                           
         
@@ -377,7 +377,7 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
 
-        void %(KERNEL_NAME)s_wrapper(const int n, int *_GID, int *_TYPE_MAP,%(ARGUMENTS)s) { 
+        void %(KERNEL_NAME)s_wrapper(const int n, int *_TYPE_MAP,%(ARGUMENTS)s) { 
           for (int i=0; i<n; i++) { for (int j=0; j<i; j++) {  
               
               %(KERNEL_ARGUMENT_DECL)s
@@ -428,8 +428,8 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                
                   
         
         return s 
@@ -593,8 +593,8 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'
                         
         
         return s 
@@ -872,8 +872,8 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
                     
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                    s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                    s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                        
+                    s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                    s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                        
                         
                         
         
@@ -1003,8 +1003,8 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
                     
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                    s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                    s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                    
+                    s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                    s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                    
                       
         
         return s     
@@ -1211,8 +1211,8 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                    
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                    
                     
                           
         
