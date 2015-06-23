@@ -279,6 +279,7 @@ class BaseDomainHalo(BaseDomain):
         self._cell_array[1] = int(self._extent[1]/rn)
         self._cell_array[2] = int(self._extent[2]/rn)
         
+        print self._cell_array, self._extent
         
         self._cell_edge_lengths[0] = self._extent[0]/self._cell_array[0]
         self._cell_edge_lengths[1] = self._extent[1]/self._cell_array[1]
@@ -338,7 +339,8 @@ class BaseDomainHalo(BaseDomain):
         self._COMM = self._MPI.Create_cart(self._dims[::-1], (True, True, True),True)
         
         '''Set the simulation mpi handle to be the newly created one'''
-        self._MPI_handle.comm = self._COMM
+        if (self._MPI_handle != None):
+            self._MPI_handle.comm = self._COMM
         
         
         '''get rank, nprocs'''

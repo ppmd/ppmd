@@ -324,6 +324,7 @@ class BaseMDState(object):
         if (self._N>0):
             self._looping_method_accel.execute(N=self._q_list[self._q_list.end])   
         
+        print self._accel[0:self._N:,::]
         
         if (timer==True):
             end = time.time()
@@ -546,6 +547,8 @@ class BaseMDStateHalo(BaseMDState):
         
         '''Get domain extent from position config'''
         particle_pos_init.get_extent(self)
+        
+        
         
         '''Attempt to initialise cell array'''
         self._cell_setup_attempt = self._domain.set_cell_array_radius(self._potential._rn)        
@@ -1024,9 +1027,8 @@ class PosInitDLPOLYConfig(object):
         fh=open(self._f)
         shift = 7
         offset= 4
-        count = 0
         
-        extent=np.array([0.,0.,0.])
+        extent = np.array([0.,0.,0.])
         
         for i, line in enumerate(fh):
             if (i==2):
@@ -1036,9 +1038,14 @@ class PosInitDLPOLYConfig(object):
             if (i==4):
                 extent[2]=line.strip().split()[2]                
             else:
-                break
+                pass
         
         fh.close()
+        
+        assert extent.sum() > 0., "PosInit Error: Bad extent read"
+        
+        
+        
         state_input.domain.set_extent(extent)  
         
     def reset(self, state_input):
@@ -1056,17 +1063,17 @@ class PosInitDLPOLYConfig(object):
         
         _d = state_input.domain.boundary
         
+        
         for i, line in enumerate(fh):
             
-            
-            
             if ((i>(shift-2)) and ((i-shift+1)%offset == 0) and count < state_input.NT() ):
-                _tx=line.strip().split()[0]
-                _ty=line.strip().split()[1]
-                _tz=line.strip().split()[2]
+                _tx=float(line.strip().split()[0])
+                _ty=float(line.strip().split()[1])
+                _tz=float(line.strip().split()[2])
                 
                 
                 if ((_d[0] <= _tx < _d[1]) and  (_d[2] <= _ty < _d[3]) and (_d[4] <= _tz < _d[5])):
+                    
                     state_input.positions[_n,0]=_tx
                     state_input.positions[_n,1]=_ty
                     state_input.positions[_n,2]=_tz

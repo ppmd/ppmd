@@ -25,10 +25,10 @@ if __name__ == '__main__':
     
     
     #plot as computing + at end?
-    plotting = True
+    plotting = False
     
     #log energy?
-    logging = True
+    logging = False
     
     #Enbale debug flags?
     debug = True
@@ -52,14 +52,14 @@ if __name__ == '__main__':
         
         #Place N particles in a lattice with given density.
         #test_pos_init = state.PosInitLatticeNRho(N, rho, None)
-        test_pos_init = state.PosInitLatticeNRhoRand(N,rho,0.1,None)
+        test_pos_init = state.PosInitLatticeNRhoRand(N,rho,0.,None)
         
         #Normally distributed velocities.
         test_vel_init = state.VelInitNormDist(mu,nsig)
         
         #Initialise masses, in this case sets all to 1.0.
-        #test_mass_init = state.MassInitIdentical()
-        test_mass_init = state.MassInitTwoAlternating(200., 1.)
+        test_mass_init = state.MassInitIdentical(50)
+        #test_mass_init = state.MassInitTwoAlternating(200., 1.)
         
         
         
@@ -121,7 +121,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(10, MPI_HANDLE)
+        plothandle = data.DrawParticles(50, MPI_HANDLE)
     else:
         plothandle = None
     
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     #test_vaf_method = method.VelocityAutoCorrelation(state = test_state, DEBUG = debug)   
     
     #Create an integrator for above state class.
-    test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, VAF_handle = test_vaf_method, DEBUG = debug)
+    test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, VAF_handle = test_vaf_method, DEBUG = debug, MPI_handle = MPI_HANDLE)
     
     #create G(r) method.
     test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rsteps = 200, DEBUG = debug)
@@ -159,7 +159,7 @@ if __name__ == '__main__':
     
     
     test_integrator.integrate(dt = 0.0001, T = .1, timer=True)
-    #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
+    #test_integrator.integrate_thermostat(dt = 0.0001, T = 1.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
@@ -182,8 +182,8 @@ if __name__ == '__main__':
 
     if (MPI_HANDLE==None or MPI_HANDLE.rank ==0):
         try:
-            a=input("PRESS ENTER TO CONTINUE.\n")
-            #pass
+            #a=input("PRESS ENTER TO CONTINUE.\n")
+            pass
         except:
             pass
     #MPI_HANDLE.barrier()
