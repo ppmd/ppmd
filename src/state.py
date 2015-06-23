@@ -115,10 +115,8 @@ class BaseMDState(object):
         if (self._cell_setup_attempt==True):
             self._cell_sort_setup()
             
-            
+            self._domain.BCexecute()
             self._cell_sort_all()
-            #self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)            
-            #self._cell_sort_all()
             
             
             
@@ -740,7 +738,7 @@ class PosInitLatticeNRho(object):
     
     :arg int N: N, number of particles.
     :arg double rho: :math:`rho`, required density.
-    
+    :arg double lx: domain side length, overrides density.
     """
     
     def __init__(self, N, rho, lx = None):
@@ -814,25 +812,25 @@ class PosInitLatticeNRho(object):
         _p.halo_start_reset()
 
 ################################################################################################################
-# PosInitLatticeNRhoRand DEFINITIONS
+# PosInitLatticeNRhoRand DEFINITIONS random.uniform(0,self._dev)
 ################################################################################################################          
                 
 class PosInitLatticeNRhoRand(object):
     """
     Arrange N particles into a 3D lattice of density :math:`/rho`. Redfines container volume as a cube with deduced volume, assumes unit mass adds uniform deviantion based on given maximum.
     
-        :arg int N: number of particles.
-        :arg double rho: :math:`/rho`, required density.
-        :arg double dev: maximum possible random deviation from lattice.
-    
+    :arg int N: number of particles.
+    :arg double rho: :math:`/rho`, required density.
+    :arg double dev: maximum possible random deviation (uniform) from lattice.
+    :arg double lx: domain side length, overrides density.    
     """
     
-    def __init__(self, N, rho, dev=0.0):
+    def __init__(self, N, rho, dev, lx = None):
         """
         Initialise required lattice with the number of particles and required density.
         
         """
-        
+        self._in_lx = lx
         self._N = N
         self._rho = rho
         self._dev = dev
@@ -841,10 +839,13 @@ class PosInitLatticeNRhoRand(object):
         """
         Initialise domain extents prior to setting particle positions.
         """
-        Lx = (float(self._N) / float(self._rho))**(1./3.)        
-        state_input.domain.set_extent(np.array([Lx, Lx, Lx]))
-    
-    
+        if self._in_lx == None:
+            Lx = (float(self._N) / float(self._rho))**(1./3.)
+        else:
+            Lx = self._in_lx
+            
+        state_input.domain.set_extent(np.array([Lx, Lx, Lx]))        
+
     def reset(self, state_input):
         """
         Applies initial lattice to particle positions.
@@ -853,7 +854,10 @@ class PosInitLatticeNRhoRand(object):
         """
         
         #Evaluate cube side length.
-        Lx = (float(self._N) / float(self._rho))**(1./3.)
+        if self._in_lx == None:
+            Lx = (float(self._N) / float(self._rho))**(1./3.)
+        else:
+            Lx = self._in_lx
         
         #Cube dimensions of data
         np1_3 = self._N**(1./3.)
@@ -862,21 +866,36 @@ class PosInitLatticeNRhoRand(object):
         #starting point for each dimension. 
         mLx_2 = (-0.5 * Lx) + (0.5*Lx)/math.floor(np1_3)
         
-        #set new domain extents
+        #set new domain extents, see get_extent()
         #state_input.domain.set_extent(np.array([Lx, Lx, Lx]))
         
         #get pointer for positions
-        pos = state_input.positions
+        _p = state_input.positions
+        _d = state_input.domain.boundary
+        _gid = state_input.global_ids
         
         #Loop over all particles
+        _n=0
         for ix in range(self._N):
             
             #Map point into cube side of calculated side length Lx.
             z=math.floor(ix/np2_3)
 
-            pos[ix,0]=random.uniform(0,self._dev) + mLx_2+(math.fmod((ix - z*np2_3),np1_3)/np1_3)*Lx #x
-            pos[ix,1]=random.uniform(0,self._dev) + mLx_2+(math.floor((ix - z*np2_3)/np1_3)/np1_3)*Lx #y
-            pos[ix,2]=random.uniform(0,self._dev) + mLx_2+(z/np1_3)*Lx
+            _tx = mLx_2+(math.fmod((ix - z*np2_3),np1_3)/np1_3)*Lx #x
+            _ty = mLx_2+(math.floor((ix - z*np2_3)/np1_3)/np1_3)*Lx #y
+            _tz = mLx_2+(z/np1_3)*Lx
+            
+            
+            '''Potentially could put particles outside the local domain, reset() should be followed by some BC checking'''
+            if ((_d[0] <= _tx < _d[1]) and  (_d[2] <= _ty < _d[3]) and (_d[4] <= _tz < _d[5])):
+                _p[_n,0] = _tx + random.uniform(-1.*self._dev, self._dev)
+                _p[_n,1] = _ty + random.uniform(-1.*self._dev, self._dev)
+                _p[_n,2] = _tz + random.uniform(-1.*self._dev, self._dev)
+                _gid[_n] = ix
+                _n+=1
+        
+        state_input.set_N ( _n )
+        _p.halo_start_reset()
 
 ################################################################################################################
 # PosInitTwoParticlesInABox DEFINITIONS
@@ -960,10 +979,9 @@ class PosInitOneParticleInABox(object):
         
     def reset(self, state_input):
         """
-        Resets the first two particles in the input state domain to sit on the x-axis the set distance apart.
+        Resets the first particle in the input state domain to sit on the input point.
         
-        
-        :arg state state_input: State object containing at least two particles.
+        :arg state state_input: State object containing at least one particle.
         """
         
         _N = 0
@@ -1034,27 +1052,35 @@ class PosInitDLPOLYConfig(object):
         shift = 7
         offset= 4
         count = 0
+        _n = 0
         
-        extent=np.array([0.,0.,0.])
+        _d = state_input.domain.boundary
         
         for i, line in enumerate(fh):
-            '''
-            if (i==2):
-                extent[0]=line.strip().split()[0]
-            if (i==3):
-                extent[1]=line.strip().split()[1]                
-            if (i==4):
-                extent[2]=line.strip().split()[2]                
-            '''
-        
-            if ((i>(shift-2)) and ((i-shift+1)%offset == 0) and count < state_input.N ):
-                state_input.positions[count,0]=line.strip().split()[0]
-                state_input.positions[count,1]=line.strip().split()[1]
-                state_input.positions[count,2]=line.strip().split()[2]
+            
+            
+            
+            if ((i>(shift-2)) and ((i-shift+1)%offset == 0) and count < state_input.NT() ):
+                _tx=line.strip().split()[0]
+                _ty=line.strip().split()[1]
+                _tz=line.strip().split()[2]
+                
+                
+                if ((_d[0] <= _tx < _d[1]) and  (_d[2] <= _ty < _d[3]) and (_d[4] <= _tz < _d[5])):
+                    state_input.positions[_n,0]=_tx
+                    state_input.positions[_n,1]=_ty
+                    state_input.positions[_n,2]=_tz
+                    
+                    
+                    state_input.global_ids[_n]=count
+                    _n += 1
+                    
                 count+=1
+            
+        state_input.set_N(_n)
+            
         
         fh.close()
-        #state_input.domain.set_extent(extent)
 
 
 
@@ -1120,11 +1146,7 @@ class VelInitTwoParticlesInABox(object):
                     state_input.velocities[ix] = self._vx
                 elif state_input.global_ids[ix] == 1:
                     state_input.velocities[ix] = self._vy
-                
-                
-                
-            
-            
+                  
                    
         else:
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
@@ -1150,7 +1172,7 @@ class VelInitOneParticleInABox(object):
         :arg state state_input: input state.
         """
 
-        if (state_input.N >= 1):
+        if (state_input.N() >= 1):
             state_input.velocities[0,] = self._vx
 
 
@@ -1181,8 +1203,8 @@ class VelInitMaxwellBoltzmannDist(object):
         """
         
         #Apply MB distro to velocities.
-        for ix in range(state_input.N):
-            scale = math.sqrt(self._t/state_input.masses[ix])
+        for ix in range(state_input.N()):
+            scale = math.sqrt(self._t/state_input.masses[state_input.types[ix]])
             stmp = scale*math.sqrt(-2.0*math.log(random.uniform(0,1)))
             V0 = 2.*math.pi*random.uniform(0,1);
             state_input.velocities[ix,0]=stmp*math.cos(V0)
@@ -1216,13 +1238,16 @@ class VelInitDLPOLYConfig(object):
         shift = 8
         offset= 4
         count = 0
-        
+        _n = 0
         
         for i, line in enumerate(fh):
-            if ((i>(shift-2)) and ((i-shift+1)%offset == 0) and count < state_input.N ):
-                state_input.velocities[count,0]=line.strip().split()[0]
-                state_input.velocities[count,1]=line.strip().split()[1]
-                state_input.velocities[count,2]=line.strip().split()[2]
+            if ((i>(shift-2)) and ((i-shift+1)%offset == 0) and count < state_input.NT() ):
+                
+                if (state_input.global_ids[_n] == count):
+                    state_input.velocities[_n,0]=line.strip().split()[0]
+                    state_input.velocities[_n,1]=line.strip().split()[1]
+                    state_input.velocities[_n,2]=line.strip().split()[2]
+                    _n+=1
                 count+=1
         
 ################################################################################################################

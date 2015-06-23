@@ -51,7 +51,8 @@ if __name__ == '__main__':
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
         
         #Place N particles in a lattice with given density.
-        test_pos_init = state.PosInitLatticeNRho(N, rho, None)
+        #test_pos_init = state.PosInitLatticeNRho(N, rho, None)
+        test_pos_init = state.PosInitLatticeNRhoRand(N,rho,0.1,None)
         
         #Normally distributed velocities.
         test_vel_init = state.VelInitNormDist(mu,nsig)
@@ -59,6 +60,7 @@ if __name__ == '__main__':
         #Initialise masses, in this case sets all to 1.0.
         #test_mass_init = state.MassInitIdentical()
         test_mass_init = state.MassInitTwoAlternating(200., 1.)
+        
         
         
     if (test_2_bounce):
@@ -156,7 +158,7 @@ if __name__ == '__main__':
     
     
     
-    test_integrator.integrate(dt = 0.0001, T = .5, timer=True)
+    test_integrator.integrate(dt = 0.0001, T = .1, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 2.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
