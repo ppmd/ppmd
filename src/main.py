@@ -13,6 +13,12 @@ import os
 
 if __name__ == '__main__':
     
+    x=1
+    y=0
+    while (x==0):
+        y+=1    
+    
+    
     
     #1000 particles in a box
     test_1000 = True
@@ -25,10 +31,10 @@ if __name__ == '__main__':
     
     
     #plot as computing + at end?
-    plotting = True
+    plotting = False
     
     #log energy?
-    logging = True
+    logging = False
     
     #Enbale debug flags?
     debug = True
@@ -151,6 +157,10 @@ if __name__ == '__main__':
     
     
     ###########################################################
+    
+
+        
+    
     
     
     
