@@ -326,8 +326,10 @@ class VelocityVerletAnderson(VelocityVerlet):
         if (self._USE_C):
             self._constants1 = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
             self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
-            self._p1 = loop.SingleAllParticleLoop(self._N,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, MPI_handle = self._Mh)
+            self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, MPI_handle = self._Mh)
             
+            
+            #N, types_map ,kernel, particle_dat_dict, DEBUG = False, MPI_handle = None
             
             
             self._kernel2_thermostat_code = '''
@@ -364,12 +366,12 @@ class VelocityVerletAnderson(VelocityVerlet):
             self._constants2_thermostat = [constant.Constant('rate',self._dt*self._nu), constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt), constant.Constant('temperature',self._Temp),]
             
             self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
-            self._p2_thermostat = loop.SingleAllParticleLoop(self._N,self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, MPI_handle = self._Mh)  
+            self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, MPI_handle = self._Mh)  
             
         
         self._velocity_verlet_integration_thermostat()
         
-        if (timer==True):
+        if (timer==True and self._Mh.rank == 0):
             end = time.time()
             print "integrate thermostat time taken:", end - start,"s"           
     

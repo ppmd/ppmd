@@ -279,6 +279,8 @@ class BaseDomainHalo(BaseDomain):
         self._cell_array[1] = int(self._extent[1]/rn)
         self._cell_array[2] = int(self._extent[2]/rn)
         
+        print self._cell_array, self._extent
+        
         self._cell_edge_lengths[0] = self._extent[0]/self._cell_array[0]
         self._cell_edge_lengths[1] = self._extent[1]/self._cell_array[1]
         self._cell_edge_lengths[2] = self._extent[2]/self._cell_array[2]
@@ -337,7 +339,8 @@ class BaseDomainHalo(BaseDomain):
         self._COMM = self._MPI.Create_cart(self._dims[::-1], (True, True, True),True)
         
         '''Set the simulation mpi handle to be the newly created one'''
-        self._MPI_handle.comm = self._COMM
+        if (self._MPI_handle != None):
+            self._MPI_handle.comm = self._COMM
         
         
         '''get rank, nprocs'''
@@ -353,8 +356,6 @@ class BaseDomainHalo(BaseDomain):
         self._top = self._COMM.Get_topo()[2][::-1]
         
         
-        
-        #print "rank", self._rank, "top", self._top
         
         
         '''Calculate global distribtion of cells'''
@@ -391,7 +392,7 @@ class BaseDomainHalo(BaseDomain):
         for ix in range(self._top[2]):
             _Cz += _bs[2][ix]
         
-        
+        '''Inner boundary (inside halo cells)'''
         self._boundary = [
                          -0.5*self._extent[0] + _Cx*self._cell_edge_lengths[0], -0.5*self._extent[0] + (_Cx+self._cell_array[0])*self._cell_edge_lengths[0],
                          -0.5*self._extent[1] + _Cy*self._cell_edge_lengths[1], -0.5*self._extent[1] + (_Cy+self._cell_array[1])*self._cell_edge_lengths[1],
@@ -399,15 +400,12 @@ class BaseDomainHalo(BaseDomain):
                          ]
         self._boundary = data.ScalarArray(self._boundary, dtype=ctypes.c_double)
         
+        '''Domain outer boundary including halo cells'''
         self._boundary_outer = [
                          -0.5*self._extent[0]+(_Cx-1)*self._cell_edge_lengths[0], -0.5*self._extent[0]+(_Cx+1+self._cell_array[0])*self._cell_edge_lengths[0],
                          -0.5*self._extent[1]+(_Cy-1)*self._cell_edge_lengths[1], -0.5*self._extent[1]+(_Cy+1+self._cell_array[1])*self._cell_edge_lengths[1],
-                         -0.5*self._extent[2]+(_Cz-1)*self._cell_edge_lengths[2], -0.5*self._extent[2]+(_Cz+1+self._cell_array[2])*self._cell_edge_lengths[2]]        
-        
-        
+                         -0.5*self._extent[2]+(_Cz-1)*self._cell_edge_lengths[2], -0.5*self._extent[2]+(_Cz+1+self._cell_array[2])*self._cell_edge_lengths[2]]
         self._boundary_outer = data.ScalarArray(self._boundary_outer, dtype=ctypes.c_double)
-        
-        
         
         
         '''Get local extent'''
@@ -494,6 +492,7 @@ class BaseDomainHalo(BaseDomain):
         
         '''Array to store the local id of scaling particles'''
         self._escaping_ids = data.ScalarArray(ncomp = 2*self._BC_state.NT(), dtype = ctypes.c_int)
+        
         
         '''Number of escaping particles in each direction'''
         self._escape_count = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)
@@ -659,50 +658,67 @@ class BaseDomainHalo(BaseDomain):
         
         self._sfd = data.ScalarArray(initial_value = _sfd)
         
-        self._escape_send_buffer = data.ScalarArray(ncomp = 7*self._BC_state.NT(), dtype = ctypes.c_double)
+        
+        '''Number of elements to pack'''
+        self._ncomp = data.ScalarArray(initial_value = [8], dtype = ctypes.c_int)
+        
+        self._escape_send_buffer = data.ScalarArray(ncomp = self._ncomp[0]*self._BC_state.NT(), dtype = ctypes.c_double)
+        
+        
+        
+        '''Starting ixdex for packing'''
+        self._escape_send_buffer_index = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)        
+        
+        
+        
+        '''Packing code, needs to become generated based on types that are dynamic and need sending'''
+        
         _escape_packing_code = '''
         
-        int index = 0;
-        for (int d = 0; d < 26; d++){
-            
-            int ix = 0;
-            int loc_count = 0;
-            
-            while(loc_count < EC[d]){
-                
-                if (EI[(2*ix)+1] == d){
-                    const int id = EI[2*ix];
-                    
-                    ESB[index]   = P[LINIDX_2D(3,id,0)] + SFD[3*d];
-                    ESB[index+1] = P[LINIDX_2D(3,id,1)] + SFD[3*d+1];
-                    ESB[index+2] = P[LINIDX_2D(3,id,2)] + SFD[3*d+2];
-                    ESB[index+3] = V[LINIDX_2D(3,id,0)];
-                    ESB[index+4] = V[LINIDX_2D(3,id,1)];
-                    ESB[index+5] = V[LINIDX_2D(3,id,2)];
-                    ESB[index+6] = (double) EGID[id];
-                    index += 7;
-                    
-                    loc_count++;
-                    
-                    printf("gid = %d |", EGID[id]);
-                    
-                }
-                ix++; 
+        
+        
+        ESBi[0] = 0;
+        for (int d = 1; d < 26; d++){
+            int ei = 0;
+            for (int j = 0; j < d; j++){
+                ei+= NCOMP[0]*EC[j];
             }
+            ESBi[d]=ei;
+        }
+        
+        for (int ix = 0; ix < ECT[0]; ix++){
+            
+            int id = EI[(2*ix)];
+            int d = EI[(2*ix)+1];
+            int index = ESBi[d];
+            ESBi[d]+= NCOMP[0];
+            
+            ESB[index]   = P[LINIDX_2D(3,id,0)] + SFD[3*d];
+            ESB[index+1] = P[LINIDX_2D(3,id,1)] + SFD[3*d+1];
+            ESB[index+2] = P[LINIDX_2D(3,id,2)] + SFD[3*d+2];
+            ESB[index+3] = V[LINIDX_2D(3,id,0)];
+            ESB[index+4] = V[LINIDX_2D(3,id,1)];
+            ESB[index+5] = V[LINIDX_2D(3,id,2)];
+            ESB[index+6] = (double) EGID[id];
+            ESB[index+7] = (double) TYPE[id];
+            
         }
         
         '''
         self._escape_count_recv = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)
-        self._escape_recv_buffer = data.ScalarArray(ncomp = 7*self._BC_state.NT(), dtype = ctypes.c_double)
+        self._escape_recv_buffer = data.ScalarArray(ncomp = self._ncomp[0]*self._BC_state.NT(), dtype = ctypes.c_double)
         
         _escape_packing_dict={'P':self._BC_state.positions,
                               'V':self._BC_state.velocities,
                               'EGID':self._BC_state.global_ids,
+                              'TYPE':self._BC_state.types,
                               'EC':self._escape_count,
                               'EI':self._escaping_ids,
                               'ESB':self._escape_send_buffer,
+                              'ESBi':self._escape_send_buffer_index,
                               'ECT':self._escape_count_total,
-                              'SFD':self._sfd
+                              'SFD':self._sfd,
+                              'NCOMP':self._ncomp
                               }        
         
         _pack_escapees_kernel = kernel.Kernel('PackEscapingParticles', _escape_packing_code, headers = ['stdio.h'])
@@ -752,8 +768,10 @@ class BaseDomainHalo(BaseDomain):
         
         _unpacking_code = '''
         
-        //printf("before I[0] = %d, ECT = %d |", I[0], ECT[0]);
+        //printf("before I[0] = %d, ECT = %d, TI[0] = %d |", I[0], ECT[0], TI[0]);
         for (int ix = 0; ix < TI[0]; ix++){
+            
+            //printf("ix = %d |", ix);
             
             int IX;
             //fill in spaces
@@ -766,15 +784,16 @@ class BaseDomainHalo(BaseDomain):
             }
             
             
-            P[LINIDX_2D(3,IX,0)] = ERB[7*ix];
-            P[LINIDX_2D(3,IX,1)] = ERB[7*ix+1];
-            P[LINIDX_2D(3,IX,2)] = ERB[7*ix+2];
+            P[LINIDX_2D(3,IX,0)] = ERB[NCOMP[0]*ix];
+            P[LINIDX_2D(3,IX,1)] = ERB[NCOMP[0]*ix+1];
+            P[LINIDX_2D(3,IX,2)] = ERB[NCOMP[0]*ix+2];
             
-            V[LINIDX_2D(3,IX,0)] = ERB[7*ix+3];
-            V[LINIDX_2D(3,IX,1)] = ERB[7*ix+4];
-            V[LINIDX_2D(3,IX,2)] = ERB[7*ix+5];
+            V[LINIDX_2D(3,IX,0)] = ERB[NCOMP[0]*ix+3];
+            V[LINIDX_2D(3,IX,1)] = ERB[NCOMP[0]*ix+4];
+            V[LINIDX_2D(3,IX,2)] = ERB[NCOMP[0]*ix+5];
             
-            RGID[I[0]] = (int) ERB[7*ix+6];
+            RGID[IX] = (int) ERB[NCOMP[0]*ix+6];
+            TYPE[IX] = (int) ERB[NCOMP[0]*ix+7];
             
         }
         
@@ -784,12 +803,13 @@ class BaseDomainHalo(BaseDomain):
             
             int ect = ECT[0] - 1;
             
-            int ect_ti = ECT[0] - TI[0] - 2;
+            //int ect_ti = ECT[0] - TI[0] - 2;
+            int ect_ti = TI[0];
+            
             int eix = -1;
             
             
-            
-            while ( (++ect_ti < ECT[0]) && (eix < I[0]) ){
+            while ( (ect_ti < ECT[0]) && (EI[2*ect_ti] < I[0]) ){
                 
                 eix = EI[2*ect_ti];
 
@@ -827,8 +847,9 @@ class BaseDomainHalo(BaseDomain):
                     V[LINIDX_2D(3,eix,1)] = V[LINIDX_2D(3,ti,1)];
                     V[LINIDX_2D(3,eix,2)] = V[LINIDX_2D(3,ti,2)];
                     
-                    RGID[eix] = RGID[ti];                    
-                    
+                    RGID[eix] = RGID[ti];                  
+                    TYPE[eix] = TYPE[ti];
+                                        
                     I[0] = ti;
                     
                     
@@ -837,9 +858,9 @@ class BaseDomainHalo(BaseDomain):
                     break;  
                 }
             
-            
-            
                 
+                ect_ti++;
+                //printf("I[0] = %d |", I[0]);   
             }
             
              
@@ -860,7 +881,9 @@ class BaseDomainHalo(BaseDomain):
                           'ECT':self._escape_count_total,
                           'I':self._internal_index,
                           'TI':self._tmp_index,
-                          'EI':self._escaping_ids
+                          'EI':self._escaping_ids,
+                          'NCOMP':self._ncomp,
+                          'TYPE':self._BC_state.types
                          }        
         
         _unpacking_kernel = kernel.Kernel('unpackingParticles', _unpacking_code, headers = ['stdio.h'])
@@ -970,46 +993,32 @@ class BaseDomainHalo(BaseDomain):
             
             
             '''Check packing buffer is large enough then pack'''
-            self._escape_send_buffer.resize(7*self._escape_count_total[0])
+            self._escape_send_buffer.resize(self._ncomp[0]*self._escape_count_total[0])
             self._escape_packing_lib.execute()            
             
-            
-            '''Count new incoming particles'''
-            #_tmp = self._escape_count_recv.Dat.sum()
-            
-            
-            
-            '''Resize accordingly
-            self._BC_state.positions.resize(_tmp)
-            self._BC_state.velocities.resize(_tmp)
-            self._BC_state.global_ids.resize(_tmp)
-            self._escape_recv_buffer.resize(7*_tmp)
-            #self._escape_count_total[0] = _tmp
-            '''
             
             
             '''Exchange packed particle buffers'''
             _sum_send = 0
             _sum_recv = 0
             
-            
             for ix in range(26):
                 
-                self._COMM.Sendrecv(self._escape_send_buffer.Dat[_sum_send:_sum_send+7*self._escape_count[ix]:], 
+                self._COMM.Sendrecv(self._escape_send_buffer.Dat[_sum_send:_sum_send+self._ncomp[0]*self._escape_count[ix]:], 
                                     self._send_list[ix], 
                                     self._send_list[ix], 
-                                    self._escape_recv_buffer.Dat[_sum_recv:_sum_recv+7*self._escape_count_recv[ix]:],
+                                    self._escape_recv_buffer.Dat[_sum_recv:_sum_recv+self._ncomp[0]*self._escape_count_recv[ix]:],
                                     self._recv_list[ix], 
                                     self._rank,
                                     self._MPIstatus)            
                 
                 
                 
-                _sum_send += 7*self._escape_count[ix]
-                _sum_recv += 7*self._escape_count_recv[ix]
+                _sum_send += self._ncomp[0]*self._escape_count[ix]
+                _sum_recv += self._ncomp[0]*self._escape_count_recv[ix]
             
             
-            self._tmp_index[0] = _sum_recv/7
+            self._tmp_index[0] = _sum_recv/self._ncomp[0]
             
             '''Unpack new particles and compress particle dats'''
             

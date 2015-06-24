@@ -105,7 +105,7 @@ class _base(build.GenericToolChain):
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+' = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'
+                s += space+loc_argname+' = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'
                 
         return s         
               
@@ -125,7 +125,7 @@ class SingleAllParticleLoop(_base):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
 
-        void %(KERNEL_NAME)s_wrapper(const int n, int *_GID, int *_TYPE_MAP,%(ARGUMENTS)s) { 
+        void %(KERNEL_NAME)s_wrapper(const int n, int *_TYPE_MAP,%(ARGUMENTS)s) { 
         
           for (int i=0; i<n; i++) {
               %(KERNEL_ARGUMENT_DECL)s
@@ -383,7 +383,7 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
                     
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                    s += space+loc_argname+' = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                    
+                    s += space+loc_argname+' = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                    
                          
         
         

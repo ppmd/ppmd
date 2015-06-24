@@ -56,8 +56,8 @@ class _base(build.GenericToolChain):
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'   
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'   
         
         return s 
 
@@ -116,11 +116,13 @@ class PairLoopRapaport(_base):
                 if  self._Mh.rank == 0:
                     self._create_library()
                 self._Mh.barrier()
+        #self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
             build.load_library_exception(self._kernel.name, self._unique_name,type(self))
-    
+        
     def _compiler_set(self):
         self._cc = build.TMPCC
     
@@ -281,8 +283,8 @@ class PairLoopRapaport(_base):
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                    
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                    
                     
                           
         
@@ -375,7 +377,7 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
 
-        void %(KERNEL_NAME)s_wrapper(const int n, int *_GID, int *_TYPE_MAP,%(ARGUMENTS)s) { 
+        void %(KERNEL_NAME)s_wrapper(const int n, int *_TYPE_MAP,%(ARGUMENTS)s) { 
           for (int i=0; i<n; i++) { for (int j=0; j<i; j++) {  
               
               %(KERNEL_ARGUMENT_DECL)s
@@ -426,8 +428,8 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                
                   
         
         return s 
@@ -591,8 +593,8 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'
                         
         
         return s 
@@ -870,8 +872,8 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
                     
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                    s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                    s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                        
+                    s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                    s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                        
                         
                         
         
@@ -1001,8 +1003,8 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
                     
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                    s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                    s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                    
+                    s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                    s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                    
                       
         
         return s     
@@ -1209,8 +1211,8 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[i]]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[_GID[j]]'+',0)];\n'                    
+                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
+                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                    
                     
                           
         
@@ -1248,7 +1250,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         #include \"%(UNIQUENAME)s.h\"
         #include <stdio.h>
         
-        inline void cell_index_offset(const unsigned int cp_i, const unsigned int cpp_i, int* cell_array, unsigned int* cpp, unsigned int* cp_h_flag, unsigned int* cpp_h_flag){
+        void cell_index_offset(const unsigned int cp_i, const unsigned int cpp_i, int* cell_array, unsigned int* cpp, unsigned int* cp_h_flag, unsigned int* cpp_h_flag){
         
             const int cell_map[14][3] = {   {0,0,0},
                                             {1,0,0},

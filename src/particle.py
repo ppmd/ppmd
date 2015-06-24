@@ -278,11 +278,6 @@ class Dat(object):
                 assert os.path.exists(os.path.join(dirname,self._XYZfilename)), "XYZWrite Error: No unquie name found."
         self._XYZFile_exists = True
         
-        
-            
-        
-        
-        
             
         space=' '
         
@@ -306,6 +301,12 @@ class Dat(object):
             s+='\n'
         f.write(s)
         f.close()        
+        
+        
+        
+        
+        
+        
         
 class TypedDat(Dat):
     '''

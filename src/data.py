@@ -55,35 +55,48 @@ class MDMPI(object):
     def rank(self):
         '''
         Return the current rank.
-        '''    
-        return self._COMM.Get_rank()
+        '''
+        if (self._COMM != None):
+            return self._COMM.Get_rank()
+        else:
+            return 0
     
     @property
     def nproc(self):
         '''
         Return the current size.
-        '''    
-        return self._COMM.Get_size()
+        '''
+        if (self._COMM != None):  
+            return self._COMM.Get_size()
+        else:
+            return 1
     
     @property
     def top(self):
         '''
         Return the current topology.
-        '''    
-        return self._COMM.Get_topo()[2][::-1]
+        '''
+        if (self._COMM != None):
+            return self._COMM.Get_topo()[2][::-1]
+        else:
+            return (0,0,0)
     
     @property
     def dims(self):
         '''
         Return the current dimensions.
         '''    
-        return self._COMM.Get_topo()[0][::-1]
+        if (self._COMM != None):
+            return self._COMM.Get_topo()[0][::-1]
+        else:
+            return (1,1,1)
     
     def barrier(self):
         '''
         alias to comm barrier method.
         '''
-        self._COMM.Barrier()
+        if (self._COMM != None):
+            self._COMM.Barrier()
     
     
 ################################################################################################################
@@ -143,7 +156,7 @@ class DrawParticles(object):
     
     
     '''
-    def __init__(self, interval = 10, MPI_handle = None):
+    def __init__(self, interval = 10, MPI_handle = MDMPI()):
         
         
         self._interval = interval
@@ -220,13 +233,13 @@ class DrawParticles(object):
                 self._Mh.comm.Send(state.positions.Dat[0:self._N:,::], 0, self._Mh.rank)
                 self._Mh.comm.Send(state.global_ids.Dat[0:self._N:], 0, self._Mh.rank)
         
-        if (self._Mh.rank == 0 or self._Mh == None):
+        if (self._Mh.rank == 0 ):
             
             
             
             
             plt.cla()
-               
+            plt.ion()
             for ix in range(self._pos.npart):
                 self._ax.scatter(self._pos.Dat[ix,0], self._pos.Dat[ix,1], self._pos.Dat[ix,2],color=self._key[self._gid[ix]%2])
             self._ax.set_xlim([-0.5*self._extents[0],0.5*self._extents[0]])
@@ -257,7 +270,7 @@ class BasicEnergyStore(object):
     
     :arg int size: Required size of each container.
     '''
-    def __init__(self, size = 0, MPI_handle = None):
+    def __init__(self, size = 0, MPI_handle = MDMPI()):
     
         
         self._U_store = ScalarArray(initial_value = 0.0, ncomp = size, dtype=ctypes.c_double)
