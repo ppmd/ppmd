@@ -152,7 +152,7 @@ class SingleAllParticleLoop(_base):
         #include "../generic.h"
         %(INCLUDED_HEADERS)s
 
-        void %(KERNEL_NAME)s_wrapper(int n, int *_GID, int *_TYPE_MAP,%(ARGUMENTS)s);
+        void %(KERNEL_NAME)s_wrapper(const int n, int *_TYPE_MAP,%(ARGUMENTS)s);
 
         #endif
         '''
