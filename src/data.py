@@ -403,7 +403,13 @@ class BasicEnergyStore(object):
         
         
         if (self._Mh == None or self._Mh.rank == 0):
-            
+            print "last total" ,self._Q_store.Dat[self._Q_store.end]
+            print "last kinetic", self._K_store.Dat[self._K_store.end]
+            print "last potential", self._U_store.Dat[self._U_store.end]        
+            print "============================================="
+            print "first total" ,self._Q_store.Dat[0]
+            print "first kinetic", self._K_store.Dat[0]
+            print "first potential", self._U_store.Dat[0]
             
             #plt.ion()
             fig2 = plt.figure()
