@@ -324,7 +324,7 @@ class BaseMDState(object):
         if (self._N>0):
             self._looping_method_accel.execute(N=self._q_list[self._q_list.end])   
         
-        print self._accel[0:self._N:,::]
+        #print self._accel[0:self._N:,::]
         
         if (timer==True):
             end = time.time()
@@ -993,7 +993,9 @@ class PosInitOneParticleInABox(object):
         
         if ((_d[0] <= self._r[0] < _d[1]) and  (_d[2] <= self._r[1] < _d[3]) and (_d[4] <= self._r[2] < _d[5])):
             state_input.positions[0,] = self._r
-            _N+=1
+            _N+=1  
+            
+            
         state_input.set_N(_N)
         state_input.global_ids[0] = 0
         state_input.positions.halo_start_reset()
@@ -1081,7 +1083,10 @@ class PosInitDLPOLYConfig(object):
                     
                     state_input.global_ids[_n]=count
                     _n += 1
+                else:
+                    print _tx, _ty, _tz
                     
+                
                 count+=1
             
         state_input.set_N(_n)

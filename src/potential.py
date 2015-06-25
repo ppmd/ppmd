@@ -194,7 +194,7 @@ class LennardJones(LennardJonesShifted):
         else:    
             self._rc = rc
             
-        self._rn = 1.1*self._rc
+        self._rn = 1.*self._rc
         self._rc2 = self._rc**2
         self._sigma2 = self._sigma**2
         self._shift_internal = (self._sigma/self._rc)**6 - (self._sigma/self._rc)**12

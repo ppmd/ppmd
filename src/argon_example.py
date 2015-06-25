@@ -16,7 +16,7 @@ if __name__ == '__main__':
     MPI_HANDLE = data.MDMPI()
 
     #plot as computing + at end?
-    plotting = True
+    plotting = False
     
     #log energy?
     logging = True
@@ -27,23 +27,23 @@ if __name__ == '__main__':
     
     
     #particle properties
-    N       = 1000
+    N       = 10**3
     mass    = 39.948        #g/mol is this the correct mass?
     
     #potential properties
     epsilon = 0.9661
     sigma   = 3.405
-    cutoff  = 8.5
+    cutoff  = 7.5
     
     
     domain                  = domain.BaseDomainHalo(MPI_handle = MPI_HANDLE)
-    potential               = potential.LennardJones(sigma,epsilon,cutoff)
+    potential               = potential.LennardJones(epsilon,sigma,cutoff)
     
     #initial_position_config = state.PosInitDLPOLYConfig('TEST7_CUSTOM/CONFIG')
     #initial_velocity_config = state.VelInitDLPOLYConfig('TEST7_CUSTOM/CONFIG')
     
-    initial_position_config = state.PosInitDLPOLYConfig('DLPOLY_TEST/CONFIG')
-    initial_velocity_config = state.VelInitDLPOLYConfig('DLPOLY_TEST/CONFIG')    
+    initial_position_config = state.PosInitDLPOLYConfig('../util/REVCON')
+    initial_velocity_config = state.VelInitDLPOLYConfig('../util/REVCON')    
     
     intial_mass_config      = state.MassInitIdentical(mass)
     
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(interval = 2, MPI_handle = MPI_HANDLE)
+        plothandle = data.DrawParticles(interval = 25, MPI_handle = MPI_HANDLE)
     else:
         plothandle = None
     
@@ -89,9 +89,12 @@ if __name__ == '__main__':
     
     #control file seems to compute 16000 iterations at dt =10^-3, 1000 to equbrilate then 15k for averaging?
     dt=10**-3
-    T=16000*dt
+    T=5000*dt
     integrator.integrate(dt = dt, T = T, timer=True)
-     
+    
+    print test_state.positions[0,::]
+    print test_state.velocities[0,::]    
+    print test_state.forces[0,::]  
     
     if (MPI_HANDLE.rank ==0):
         print "Total time in halo exchange:", domain.halos._time
