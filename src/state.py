@@ -556,6 +556,9 @@ class BaseMDStateHalo(BaseMDState):
         ''' Initialise particle positions'''
         particle_pos_init.reset(self)
         
+        
+        
+        
         '''Initialise velocities'''
         if (particle_vel_init != None):
             particle_vel_init.reset(self)        
@@ -568,7 +571,7 @@ class BaseMDStateHalo(BaseMDState):
         
         
         self._domain.BCSetup(self)
-        
+        self._domain.BCexecute()
 
         print "N, NT", self._N, self._NT
         print "pos", self._pos[0,::]
@@ -580,7 +583,7 @@ class BaseMDStateHalo(BaseMDState):
             
             if (DEBUG):
                 print "Debugging enabled"
-            print "N =", self._NT
+            print "NT =", self._NT
         
             #print "Cell array = ", self._domain._cell_array
             #print "Domain extents = ",self._domain._extent
@@ -1084,7 +1087,13 @@ class PosInitDLPOLYConfig(object):
                     state_input.global_ids[_n]=count
                     _n += 1
                 else:
-                    print _tx, _ty, _tz
+                    state_input.positions[_n,0]=_tx
+                    state_input.positions[_n,1]=_ty
+                    state_input.positions[_n,2]=_tz
+                    
+                    
+                    state_input.global_ids[_n]=count
+                    _n += 1
                     
                 
                 count+=1

@@ -2,8 +2,28 @@
 import math
 import numpy as np
 import random
+import getopt
+import sys
+
+
 
 N       = 10**3
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "N:")
+except getopt.GetoptError as err:
+    # print help information and exit:
+    print str(err) # will print something like "option -a not recognized"
+    sys.exit(2)
+for o, a in opts:
+    if o == "-N":
+        N=int(a)          
+    else:
+        assert False, "unhandled option"
+
+
+
+
 rho     = 0.05
 sigma   = 3.405
 eps     = 0.9661
@@ -12,19 +32,19 @@ mass    = 39.948
 temp    = 85.0
 pressure= 0.0
 steps   = 5000
-steps_eq= 1000
-steps_scale = 5
-print_steps = 100
+steps_eq= 0
+steps_scale = steps+1
+print_steps = steps
 #extent  = [30.000000000, 30.000000000, 30.000000000]
 extent = [(float(N) / float(rho))**(1./3.),(float(N) / float(rho))**(1./3.),(float(N) / float(rho))**(1./3.)]
 
-print extent
+#print extent
 
 #####################################################################################
 #Create FIELD FILE
 
 FIELD_STR = '''Argon
-UNITS kJ
+UNITS internal
 MOLECULES 1
 Argon Atoms
 NUMMOLS %(NUMMOLS)s
