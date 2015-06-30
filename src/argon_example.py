@@ -10,6 +10,9 @@ import data
 import loop
 import subprocess
 import os
+import getopt
+import sys
+
 
 if __name__ == '__main__':
 
@@ -19,7 +22,7 @@ if __name__ == '__main__':
     plotting = False
     
     #log energy?
-    logging = True
+    logging = False
     
     #Enbale debug flags?
     debug = True   
@@ -28,6 +31,21 @@ if __name__ == '__main__':
     
     #particle properties
     N       = 10**3
+    
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "N:")
+    except getopt.GetoptError as err:
+        # print help information and exit:
+        print str(err) # will print something like "option -a not recognized"
+        sys.exit(2)
+    for o, a in opts:
+        if o == "-N":
+            N=int(a)          
+        else:
+            assert False, "unhandled option"    
+    
+    
+    
     mass    = 39.948        #g/mol is this the correct mass?
     
     #potential properties
@@ -42,8 +60,12 @@ if __name__ == '__main__':
     #initial_position_config = state.PosInitDLPOLYConfig('TEST7_CUSTOM/CONFIG')
     #initial_velocity_config = state.VelInitDLPOLYConfig('TEST7_CUSTOM/CONFIG')
     
-    initial_position_config = state.PosInitDLPOLYConfig('../util/REVCON')
-    initial_velocity_config = state.VelInitDLPOLYConfig('../util/REVCON')    
+    #initial_position_config = state.PosInitDLPOLYConfig('../util/REVCON')
+    #initial_velocity_config = state.VelInitDLPOLYConfig('../util/REVCON')    
+    
+    initial_position_config = state.PosInitDLPOLYConfig('../util/CONFIG')
+    initial_velocity_config = state.VelInitDLPOLYConfig('../util/CONFIG')     
+    
     
     intial_mass_config      = state.MassInitIdentical(mass)
     
@@ -113,5 +135,5 @@ if __name__ == '__main__':
         energyhandle.plot()
     
     
-    a=input("PRESS ENTER TO CONTINUE.\n")
+    #a=input("PRESS ENTER TO CONTINUE.\n")
     
