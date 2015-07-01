@@ -23,7 +23,6 @@ for o, a in opts:
 
 
 
-
 rho     = 0.05
 sigma   = 3.405
 eps     = 0.9661
