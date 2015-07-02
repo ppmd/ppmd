@@ -25,10 +25,10 @@ if __name__ == '__main__':
     
     
     #plot as computing + at end?
-    plotting = False
+    plotting = True
     
     #log energy?
-    logging = False
+    logging = True
     
     #Enbale debug flags?
     debug = True
@@ -40,6 +40,7 @@ if __name__ == '__main__':
         #n=25 reasonable size
         n=10
         N=n**3
+        N=860
         rho = 3.
         mu = 0.0
         nsig = 5.0

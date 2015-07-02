@@ -13,34 +13,44 @@ import sys
 import re
 import os
 import subprocess
+import timeit
+import time
 
 print "--------------------------------------------------------------"
 
 
 
 N       = 10**3
+I       = 5000
+NP      = 2
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "N:")
+    opts, args = getopt.getopt(sys.argv[1:], "N:I:P:")
 except getopt.GetoptError as err:
     # print help information and exit:
     print str(err) # will print something like "option -a not recognized"
     sys.exit(2)
 for o, a in opts:
     if o == "-N":
-        N=int(a)          
+        N=int(a)
+    elif o == "-I":
+        I=int(a)
+    elif o == "-P":
+        NP=int(a)                             
     else:
         assert False, "unhandled option"
 
 print "N =", N
+print "I =", I
 
 #create DLPOLY config scripts
-os.system("./dlpoly_argon_generator.py -N %(N)s" % {'N':N})
+os.system("./dlpoly_argon_generator.py -N %(N)s -I %(I)s" % {'N':N, 'I':I})
 
 #run DL_POLY
-os.system("DLPOLY.Z")
+cmd = "mpirun -n %(NP)s DLPOLY.Z" % {'NP': NP}
+t1 = timeit.timeit(stmt='os.system(cmd)', setup='from __main__ import os, cmd', number=1)
 
-
+print "DL_POLY total time", t1, "s"
 
 #Get DL_POLY time taken
 fh=open('OUTPUT')
@@ -54,9 +64,7 @@ for i, line in enumerate(fh):
         if(len(line.strip().split())>0):
             int_time = line.strip().split()[0]
 fh.close()
-print "DL_POLY time taken ",int_time, "s"
-
-
+print "DL_POLY time taken:",int_time, "s"
 
 
 
@@ -64,11 +72,20 @@ WD=os.getcwd()
 
 os.chdir("../src")
 
-out=subprocess.check_output("./argon_example.py -N %(N)s | grep integrate" % {'N':N}, shell=True)
+cmd0 = "mpirun -n %(NP)s ./argon_example.py -N %(N)s -I %(I)s | grep integrate" % {'NP': NP, 'N':N, 'I':I}
+
+t0_0 = time.time()
+out=subprocess.check_output(cmd0, shell=True)
+t0_1 = time.time()
+t0 = t0_1 - t0_0
+
+#t0 = timeit.timeit(stmt='out=subprocess.check_output(cmd0, shell=True)', setup='from __main__ import subprocess, cmd0', number=1)
+
 
 
 os.chdir(WD)
-
+print "-"
+print "PPMD total time", t0, "s" 
 print "PPMD", out
 
 int_time0 = re.findall('taken:(.*?)s', out)

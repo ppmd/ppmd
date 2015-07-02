@@ -8,16 +8,19 @@ import sys
 
 
 N       = 10**3
+I       = 5000
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "N:")
+    opts, args = getopt.getopt(sys.argv[1:], "N:I:")
 except getopt.GetoptError as err:
     # print help information and exit:
     print str(err) # will print something like "option -a not recognized"
     sys.exit(2)
 for o, a in opts:
     if o == "-N":
-        N=int(a)          
+        N=int(a)
+    elif o == "-I":
+        I=int(a)                
     else:
         assert False, "unhandled option"
 
@@ -30,7 +33,7 @@ cutoff  = 7.5
 mass    = 39.948
 temp    = 85.0
 pressure= 0.0
-steps   = 5000
+steps   = I
 steps_eq= 0
 steps_scale = steps+1
 print_steps = steps
@@ -106,9 +109,9 @@ CFG_STR = '''Argon
 fh = open('CONFIG','w')
 fh.write(CFG_STR)
 
-np1_3 = N**(1./3.)
+np1_3 = math.ceil(N**(1./3.))
 np2_3 = np1_3**2.
-mLx_2 = (-0.5 * extent[0]) + (0.5*extent[0])/math.floor(np1_3)
+mLx_2 = (-0.5 * extent[0]) + (0.5*extent[0])/np1_3
 
 dev = .2
 
