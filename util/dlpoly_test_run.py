@@ -15,6 +15,7 @@ import os
 import subprocess
 import timeit
 import time
+import datetime
 
 print "--------------------------------------------------------------"
 
@@ -23,6 +24,7 @@ print "--------------------------------------------------------------"
 N       = 10**3
 I       = 5000
 NP      = 2
+E       = 100
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "N:I:P:")
@@ -43,8 +45,18 @@ for o, a in opts:
 print "N =", N
 print "I =", I
 
-#create DLPOLY config scripts
-os.system("./dlpoly_argon_generator.py -N %(N)s -I %(I)s" % {'N':N, 'I':I})
+#create DLPOLY EQULIBRIUM config scripts
+os.system("./dlpoly_argon_generator.py -N %(N)s -E %(E)s" % {'N':N, 'E':E})
+
+#run DL_POLY
+cmd = "mpirun -n %(NP)s DLPOLY.Z" % {'NP': 4}
+
+os.system(cmd)
+
+
+#create DLPOLY config scripts for main run
+os.system("./dlpoly_argon_generator.py -N %(N)s -I %(I)s -R" % {'N':N, 'I':I})
+
 
 #run DL_POLY
 cmd = "mpirun -n %(NP)s DLPOLY.Z" % {'NP': NP}
@@ -64,7 +76,7 @@ for i, line in enumerate(fh):
         if(len(line.strip().split())>0):
             int_time = line.strip().split()[0]
 fh.close()
-print "DL_POLY time taken:",int_time, "s"
+print "DL_POLY integrate time taken:",int_time, "s"
 
 
 
@@ -93,9 +105,14 @@ int_time0 = float(int_time0[0])
 
 
 
+fh = open('compare.txt', 'a+')
 
+#_date=datetime.datetime.now().date()
 
+'''NP \t N \t I \t DLPOLY_TOTAL \t PPMD_TOTAL '''
 
+fh.write("%(NP)s\t%(N)s\t%(I)s\t%(DLPOLY_TOTAL)s\t%(PPMD_TOTAL)s\t%(DLPOLY)s\t%(PPMD)s\n" % {'NP': NP, 'N':N, 'I':I, 'DLPOLY_TOTAL':t1, 'PPMD_TOTAL':t0, 'DLPOLY':int_time, 'PPMD':int_time0, })
+fh.close()
 
 
 
