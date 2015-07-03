@@ -31,16 +31,20 @@ if __name__ == '__main__':
     
     #particle properties
     N       = 10**3
+    I       = 5000
+    
     
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "N:")
+        opts, args = getopt.getopt(sys.argv[1:], "N:I:")
     except getopt.GetoptError as err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
         sys.exit(2)
     for o, a in opts:
         if o == "-N":
-            N=int(a)          
+            N=int(a)
+        elif o == "-I":
+            I=int(a)                        
         else:
             assert False, "unhandled option"    
     
@@ -111,7 +115,7 @@ if __name__ == '__main__':
     
     #control file seems to compute 16000 iterations at dt =10^-3, 1000 to equbrilate then 15k for averaging?
     dt=10**-3
-    T=5000*dt
+    T=I*dt
     integrator.integrate(dt = dt, T = T, timer=True)
     
     print test_state.positions[0,::]

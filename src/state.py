@@ -782,11 +782,11 @@ class PosInitLatticeNRho(object):
             Lx = self._in_lx
         
         #Cube dimensions of data
-        np1_3 = self._N**(1./3.)
+        np1_3 = math.ceil(self._N**(1./3.))
         np2_3 = np1_3**2.
         
         #starting point for each dimension. 
-        mLx_2 = (-0.5 * Lx) + (0.5*Lx)/math.floor(np1_3)
+        mLx_2 = (-0.5 * Lx) + (0.5*Lx)/np1_3
         
         #set new domain extents, see get_extent()
         #state_input.domain.set_extent(np.array([Lx, Lx, Lx]))
@@ -866,11 +866,11 @@ class PosInitLatticeNRhoRand(object):
             Lx = self._in_lx
         
         #Cube dimensions of data
-        np1_3 = self._N**(1./3.)
+        np1_3 = math.ceil(self._N**(1./3.))
         np2_3 = np1_3**2.
         
         #starting point for each dimension. 
-        mLx_2 = (-0.5 * Lx) + (0.5*Lx)/math.floor(np1_3)
+        mLx_2 = (-0.5 * Lx) + (0.5*Lx)/np1_3
         
         #set new domain extents, see get_extent()
         #state_input.domain.set_extent(np.array([Lx, Lx, Lx]))
@@ -1087,6 +1087,7 @@ class PosInitDLPOLYConfig(object):
                     state_input.global_ids[_n]=count
                     _n += 1
                 else:
+                    '''
                     state_input.positions[_n,0]=_tx
                     state_input.positions[_n,1]=_ty
                     state_input.positions[_n,2]=_tz
@@ -1094,7 +1095,8 @@ class PosInitDLPOLYConfig(object):
                     
                     state_input.global_ids[_n]=count
                     _n += 1
-                    
+                    '''
+                    pass
                 
                 count+=1
             
