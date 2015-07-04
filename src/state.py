@@ -40,7 +40,7 @@ class BaseMDState(object):
         :arg double mass: Mass of particles, default 1.0        
         
         '''
-              
+        self._verbose = False
         self._Mh = MPI_handle
         self._potential = potential
         self._N = N
@@ -97,10 +97,10 @@ class BaseMDState(object):
 
         
         
-        
-        print "Cell array = ", self._domain._cell_array
-        print "Domain extents = ",self._domain._extent
-        print "cell count:", self._domain.cell_count
+        if (self._verbose):
+            print "Cell array = ", self._domain._cell_array
+            print "Domain extents = ",self._domain._extent
+            print "cell count:", self._domain.cell_count
         
         
         
@@ -511,7 +511,7 @@ class BaseMDStateHalo(BaseMDState):
         :arg double mass: Mass of particles, default 1.0        
         
         '''
-              
+        self._verbose = False
         self._Mh = MPI_handle
         self._potential = potential
         self._N = N
@@ -573,13 +573,14 @@ class BaseMDStateHalo(BaseMDState):
         self._domain.BCSetup(self)
         self._domain.BCexecute()
 
-        print "N, NT", self._N, self._NT
-        print "pos", self._pos[0,::]
-        print "vel", self._vel[0,::]  
+        if (self._verbose):
+            print "N, NT", self._N, self._NT
+            print "pos", self._pos[0,::]
+            print "vel", self._vel[0,::]  
         
         
         
-        if (self.domain.rank==0):
+        if (self._verbose and self.domain.rank==0):
             
             if (DEBUG):
                 print "Debugging enabled"
@@ -592,7 +593,8 @@ class BaseMDStateHalo(BaseMDState):
             #print "cell count:", self._domain.cell_count
             
         self._domain.barrier()
-        print "rank:", self.domain.rank,"local particle count =", self._N, "\n", "Domain extents = ", self._domain._extent, "\n", "cell count:", self._domain.cell_count, "\n", "Cell array = ", self._domain._cell_array
+        if (self._verbose):
+            print "rank:", self.domain.rank,"local particle count =", self._N, "\n", "Domain extents = ", self._domain._extent, "\n", "cell count:", self._domain.cell_count, "\n", "Cell array = ", self._domain._cell_array
         
         self._domain.barrier()       
         
@@ -1101,13 +1103,13 @@ class PosInitDLPOLYConfig(object):
                 count+=1
             
         state_input.set_N(_n)
-            
+        
         
         fh.close()
 
 
 
-################################################################################################################
+############################################################################################################
 # VelInitNormDist DEFINITIONS
 ################################################################################################################  
 

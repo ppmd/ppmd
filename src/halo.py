@@ -27,10 +27,12 @@ class HaloCartesianSingleProcess(object):
     
     """
     def __init__(self, NT = 1, MPI_handle = None, rank = None, top = None, dims = None, cell_array = None, extent = None):
+        
+        self._verbose = False
         self._NT = NT
         self._DEBUG = True
         timer=True
-        if (timer==True):
+        if (self._verbose and timer==True):
             start = time.time() 
                 
         assert cell_array != None, "Error: No cell array passed."
@@ -58,8 +60,8 @@ class HaloCartesianSingleProcess(object):
         
         
         self._time = 0.   
-        if (timer==True):
-            end = time.time()
+        if (self._verbose and timer==True):
+            end = time.time()            
             print "halo setup time = ", end-start, "s"      
         
     def exchange(self,cell_contents_count, cell_list, data_in):

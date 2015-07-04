@@ -25,7 +25,10 @@ if __name__ == '__main__':
     logging = False
     
     #Enbale debug flags?
-    debug = True   
+    debug = True
+    
+    #print things?
+    verbose = False
     
     
     
@@ -118,11 +121,12 @@ if __name__ == '__main__':
     T=I*dt
     integrator.integrate(dt = dt, T = T, timer=True)
     
-    print test_state.positions[0,::]
-    print test_state.velocities[0,::]    
-    print test_state.forces[0,::]  
+    if (verbose):
+        print test_state.positions[0,::]
+        print test_state.velocities[0,::]    
+        print test_state.forces[0,::]  
     
-    if (MPI_HANDLE.rank ==0):
+    if (verbose==True and MPI_HANDLE.rank==0):
         print "Total time in halo exchange:", domain.halos._time
         print "Time in forces_update:", test_state._time    
     
