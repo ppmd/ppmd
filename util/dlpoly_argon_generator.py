@@ -12,8 +12,10 @@ I       = 100
 E       = 0
 R       = False
 K       = 6
+Q       = False
+
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "RN:I:E:K:")
+    opts, args = getopt.getopt(sys.argv[1:], "RN:I:E:K:Q")
 except getopt.GetoptError as err:
     # print help information and exit:
     print str(err) # will print something like "option -a not recognized"
@@ -27,6 +29,8 @@ for o, a in opts:
         E=int(a)
     elif o == "-R":
         R=True
+    elif o == "-Q":
+        Q=True        
     elif o == "-K":
 	K=int(a)
         N=(K**3)*23
@@ -147,7 +151,7 @@ if (R==False):
 
     fh.close()
 
-else:
+elif Q==False:
     os.system("mv REVCON CONFIG")
 
 
