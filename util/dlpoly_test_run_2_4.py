@@ -48,7 +48,7 @@ for o, a in opts:
 
 
 
-Il=[1000, 5000, 1000]
+Il=[1000, 5000, 10000]
 Pl=[1,2,4]
 
 #create DLPOLY EQULIBRIUM config scripts

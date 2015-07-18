@@ -62,7 +62,7 @@ if __name__ == '__main__':
     
     
     domain                  = domain.BaseDomainHalo(MPI_handle = MPI_HANDLE)
-    potential               = potential.LennardJones(epsilon,sigma,cutoff)
+    potential               = potential.LennardJonesCounter(epsilon,sigma,cutoff)
     
     #initial_position_config = state.PosInitDLPOLYConfig('TEST7_CUSTOM/CONFIG')
     #initial_velocity_config = state.VelInitDLPOLYConfig('TEST7_CUSTOM/CONFIG')
@@ -134,7 +134,7 @@ if __name__ == '__main__':
     
     
     
-    
+    print "COUNT", potential._counter.Dat[0], "OUTER COUNT", potential._counter_outer.Dat[0]
     
     
     

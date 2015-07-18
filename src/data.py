@@ -14,7 +14,7 @@ import random
 from mpi4py import MPI
 np.set_printoptions(threshold='nan')
 
-ctypes_map = {ctypes.c_double:'double', ctypes.c_int:'int', 'float64':'double', 'int32':'int','doublepointerpointer':'double **'}
+ctypes_map = {ctypes.c_double:'double', ctypes.c_int:'int', 'float64':'double', 'int32':'int','doublepointerpointer':'double **', ctypes.c_longlong:'long long'}
 mpi_map = {ctypes.c_double:MPI.DOUBLE, ctypes.c_int:MPI.INT}
 
 ################################################################################################################

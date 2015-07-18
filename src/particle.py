@@ -16,7 +16,7 @@ class Dat(object):
     :arg str name: Collective name of stored vars eg positions.
     
     '''
-    def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None, dtype = ctypes.c_double, max_size = 100000):
+    def __init__(self, N1 = 1, N2 = 1, initial_value = None, name = None, dtype = ctypes.c_double, max_size = 200000):
         
         self._name = name
         
