@@ -25,9 +25,10 @@ N       = 10**3
 I       = 5000
 NP      = 2
 E       = 100
+K       = 6
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "N:I:P:")
+    opts, args = getopt.getopt(sys.argv[1:], "N:I:P:K:")
 except getopt.GetoptError as err:
     # print help information and exit:
     print str(err) # will print something like "option -a not recognized"
@@ -38,7 +39,10 @@ for o, a in opts:
     elif o == "-I":
         I=int(a)
     elif o == "-P":
-        NP=int(a)                             
+        NP=int(a)
+    elif o== "-K":
+        K=int(a)
+        N=(K**3)*23
     else:
         assert False, "unhandled option"
 
@@ -46,17 +50,17 @@ print "N =", N
 print "I =", I
 
 #create DLPOLY EQULIBRIUM config scripts
-os.system("./dlpoly_argon_generator.py -N %(N)s -E %(E)s" % {'N':N, 'E':E})
-
+#os.system("./dlpoly_argon_generator.py -N %(N)s -E %(E)s" % {'N':N, 'E':E})
+os.system("./dlpoly_argon_generator.py -K %(K)s -E %(E)s" % {'K':K, 'E':E})
 #run DL_POLY
 cmd = "mpirun -n %(NP)s DLPOLY.Z" % {'NP': 4}
-
 os.system(cmd)
 
 
-#create DLPOLY config scripts for main run
-os.system("./dlpoly_argon_generator.py -N %(N)s -I %(I)s -R" % {'N':N, 'I':I})
 
+#create DLPOLY config scripts for main run
+#os.system("./dlpoly_argon_generator.py -N %(N)s -I %(I)s -R" % {'N':N, 'I':I})
+os.system("./dlpoly_argon_generator.py -K %(K)s -I %(I)s -R" % {'K':K, 'I':I})
 
 #run DL_POLY
 cmd = "mpirun -n %(NP)s DLPOLY.Z" % {'NP': NP}
@@ -84,7 +88,15 @@ WD=os.getcwd()
 
 os.chdir("../src")
 
+'''For testing'''
+#cmd0 = "mpirun -n %(NP)s ./argon_example.py -N %(N)s -I %(I)s" % {'NP': NP, 'N':N, 'I':I}
+#os.system(cmd0)
+
+
+
 cmd0 = "mpirun -n %(NP)s ./argon_example.py -N %(N)s -I %(I)s | grep integrate" % {'NP': NP, 'N':N, 'I':I}
+
+
 
 t0_0 = time.time()
 out=subprocess.check_output(cmd0, shell=True)

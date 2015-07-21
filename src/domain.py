@@ -224,6 +224,8 @@ class BaseDomainHalo(BaseDomain):
 
     def __init__(self, NT = 1, extent = np.array([1., 1., 1.]), cell_count = 1, MPI_handle = None):
         
+        self._verbose = False
+        
         self._NT = NT
         
         self._MPI_handle = MPI_handle
@@ -279,7 +281,10 @@ class BaseDomainHalo(BaseDomain):
         self._cell_array[1] = int(self._extent[1]/rn)
         self._cell_array[2] = int(self._extent[2]/rn)
         
-        print self._cell_array, self._extent
+        print self._cell_array
+        
+        if (self._verbose):        
+            print self._cell_array, self._extent
         
         self._cell_edge_lengths[0] = self._extent[0]/self._cell_array[0]
         self._cell_edge_lengths[1] = self._extent[1]/self._cell_array[1]
@@ -347,7 +352,7 @@ class BaseDomainHalo(BaseDomain):
         self._rank = self._COMM.Get_rank()
         self._nproc = self._COMM.Get_size()          
         
-        if self._rank == 0:
+        if self._verbose and self._rank == 0:
             print "Processor count", self._nproc,"Processor layout", self._dims
         
         
@@ -369,7 +374,7 @@ class BaseDomainHalo(BaseDomain):
         
         #print "bs =", _bs
         
-        if self._rank == 0:
+        if self._verbose and self._rank == 0:
             print "Cell layout", _bs
             print "Global extent,", self._extent
                 

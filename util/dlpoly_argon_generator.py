@@ -11,9 +11,11 @@ N       = 10**3
 I       = 100
 E       = 0
 R       = False
+K       = 6
+Q       = False
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "RN:I:E:")
+    opts, args = getopt.getopt(sys.argv[1:], "RN:I:E:K:Q")
 except getopt.GetoptError as err:
     # print help information and exit:
     print str(err) # will print something like "option -a not recognized"
@@ -26,9 +28,18 @@ for o, a in opts:
     elif o == "-E":
         E=int(a)
     elif o == "-R":
-        R=True                              
+        R=True
+    elif o == "-Q":
+        Q=True        
+    elif o == "-K":
+	K=int(a)
+        N=(K**3)*23
     else:
         assert False, "unhandled option"
+
+if (E>I):
+	I=E
+
 
 
 
@@ -44,9 +55,12 @@ steps_eq= E
 steps_scale = steps+1
 print_steps = steps
 #extent  = [30.000000000, 30.000000000, 30.000000000]
-extent = [(float(N) / float(rho))**(1./3.),(float(N) / float(rho))**(1./3.),(float(N) / float(rho))**(1./3.)]
+#extent = [(float(N) / float(rho))**(1./3.),(float(N) / float(rho))**(1./3.),(float(N) / float(rho))**(1./3.)]
+extent = [float(K*cutoff),float(K*cutoff),float(K*cutoff)]
 
-#print extent
+
+print extent
+print math.ceil(extent[0]/cutoff)
 
 #####################################################################################
 #Create FIELD FILE
@@ -137,7 +151,7 @@ if (R==False):
 
     fh.close()
 
-else:
+elif Q==False:
     os.system("mv REVCON CONFIG")
 
 
