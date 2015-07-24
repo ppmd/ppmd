@@ -243,6 +243,7 @@ class BaseDomainHalo(BaseDomain):
         
         
         
+        
         self._BCloop = None
     
     @property

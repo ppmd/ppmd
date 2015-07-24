@@ -14,8 +14,13 @@ import random
 from mpi4py import MPI
 np.set_printoptions(threshold='nan')
 
+import access
+
 ctypes_map = {ctypes.c_double:'double', ctypes.c_int:'int', 'float64':'double', 'int32':'int','doublepointerpointer':'double **', ctypes.c_longlong:'long long'}
 mpi_map = {ctypes.c_double:MPI.DOUBLE, ctypes.c_int:MPI.INT}
+
+
+
 
 ################################################################################################################
 # MDMPI
@@ -527,8 +532,19 @@ class ScalarArray(object):
         for ix in range(_s*self._N1):
             self._Dat[ix]=val*self._Dat[ix]
         '''
+    
+    def __call__(self, access=access.RW, halo=False):
         
         
+        
+        
+        
+        
+        
+        return self
+    
+    
+    
         
     def zero(self):
         '''
@@ -554,8 +570,6 @@ class ScalarArray(object):
     def __str__(self):
         return str(self._Dat)
     
-    def __call__(self):
-        return self._Dat
     
     @property      
     def ctypes_data(self):
@@ -801,9 +815,6 @@ class PointerArray(object):
 
 NullIntScalarArray=ScalarArray(dtype=ctypes.c_int)
 NullDoubleScalarArray=ScalarArray(dtype=ctypes.c_double)
-
-
-
 
 
 

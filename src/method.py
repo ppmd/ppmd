@@ -474,7 +474,7 @@ class RadialDistributionPeriodicNVE(object):
                     constant.Constant('exto20', 0.5*self._extent[0] ),
                     constant.Constant('exto21', 0.5*self._extent[1] ),
                     constant.Constant('exto22', 0.5*self._extent[2] )
-                    )        
+                    )
         
         
         _grkernel = kernel.Kernel('radial_distro_periodic_static',_kernel, _constants, headers = _headers)

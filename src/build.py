@@ -533,8 +533,13 @@ class SharedLib(GenericToolChain):
         
         '''Allow alternative pointers'''
         if (dat_dict != None):
-            self._particle_dat_dict = dat_dict    
-        
+            #self._particle_dat_dict = dat_dict    
+            for key in self._particle_dat_dict:
+                self._particle_dat_dict[key] = dat_dict[key]
+            
+            
+            
+            
         args=[]
         
         

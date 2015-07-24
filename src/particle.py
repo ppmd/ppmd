@@ -5,6 +5,9 @@ import os
 import re
 import pickle
 import random
+import access
+
+
 
 class Dat(object):
     '''
@@ -84,8 +87,14 @@ class Dat(object):
     def __str__(self):
         return str(self._Dat)
     
-    def __call__(self):
-        return self._Dat
+    
+    def __call__(self, access=access.RW, halo=False):
+        
+                
+        
+        
+        return self
+       
     @property    
     def ncomp(self):
         '''

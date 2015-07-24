@@ -28,7 +28,7 @@ if __name__ == '__main__':
     plotting = True
     
     #log energy?
-    logging = True
+    logging = False
     
     #Enbale debug flags?
     debug = True
@@ -40,7 +40,7 @@ if __name__ == '__main__':
         #n=25 reasonable size
         n=10
         N=n**3
-        N=860
+        #N=860
         rho = 3.
         mu = 0.0
         nsig = 5.0
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(50, MPI_HANDLE)
+        plothandle = data.DrawParticles(5, MPI_HANDLE)
     else:
         plothandle = None
     
