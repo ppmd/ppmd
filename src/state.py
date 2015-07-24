@@ -314,8 +314,9 @@ class BaseMDState(object):
         
         
         if (self._cell_setup_attempt==True):
-            self._domain.halos.exchange(self._cell_contents_count, self._q_list, self._pos)
-        
+            self._domain.halos.set_position_info(self._cell_contents_count, self._q_list)
+            self._domain.halos.exchange(self._pos)
+            #self._domain.halos.exchange(self._vel)
         
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()

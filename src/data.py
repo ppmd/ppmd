@@ -533,7 +533,7 @@ class ScalarArray(object):
             self._Dat[ix]=val*self._Dat[ix]
         '''
     
-    def __call__(self, access=access.RW, halo=False):
+    def __call__(self, access=access.RW, halo=True):
         
         
         
