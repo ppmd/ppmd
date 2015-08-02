@@ -166,7 +166,7 @@ class LennardJonesShifted(BasePotential):
         
         :arg state input_state: state with containing variables.
         '''
-        return {'P':input_state.positions, 'A':input_state.forces, 'U':input_state.U}
+        return {'P':input_state.positions(), 'A':input_state.forces(), 'U':input_state.U()}
         
                
         
@@ -450,7 +450,7 @@ class LennardJonesCounter(LennardJones):
                    constant.Constant('rc2',self._rc**2),
                    constant.Constant('internalshift',self._shift_internal),
                    constant.Constant('CF',self._C_F),
-                   constant.Constant('CV',self._C_V))        
+                   constant.Constant('CV',self._C_V))
         
         reductions = (kernel.reduction('U','U[0]','+'),)
         
