@@ -24,7 +24,7 @@ if __name__ == '__main__':
     test_1000 = True
     
     #2 particles bouncing agasint each other.
-    test_2_bounce = False
+    test_2_bounce = True
     
     #1 1 particle
     t_1_particle = False
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     plotting = True
     
     #log energy?
-    logging = False
+    logging = True
     
     #Enbale debug flags?
     debug = True
@@ -52,7 +52,7 @@ if __name__ == '__main__':
         nsig = 5.0
         
         #Initialise basci domain
-        test_domain = domain.BaseDomainHalo(NT=N, MPI_handle = MPI_HANDLE)
+        test_domain = domain.BaseDomainHalo(NT=N, periods = (True,True,True), MPI_handle = MPI_HANDLE)
         
         #Initialise LJ potential
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
@@ -169,7 +169,7 @@ if __name__ == '__main__':
     
     
     
-    test_integrator.integrate(dt = 0.0001, T = .1, timer=True)
+    test_integrator.integrate(dt = 0.00001, T = .1, timer=True)
     #test_integrator.integrate_thermostat(dt = 0.0001, T = 1.0, Temp=0.01, nu=2.5, timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
@@ -183,6 +183,7 @@ if __name__ == '__main__':
     ###########################################################
     
     
+
     #If logging was enabled, plot data.
     if (logging):
         energyhandle.plot()
@@ -193,8 +194,8 @@ if __name__ == '__main__':
 
     if (MPI_HANDLE==None or MPI_HANDLE.rank ==0):
         try:
-            #a=input("PRESS ENTER TO CONTINUE.\n")
-            pass
+            a=input("PRESS ENTER TO CONTINUE.\n")
+            #pass
         except:
             pass
     #MPI_HANDLE.barrier()

@@ -215,20 +215,24 @@ class BaseDomain(object):
         return self._cell_edge_lengths
         
         
-################################################################################################################
+##############################################################################################################
 # BASE DOMAIN HALO
-################################################################################################################
+##############################################################################################################
 
          
 class BaseDomainHalo(BaseDomain):
 
-    def __init__(self, NT = 1, extent = np.array([1., 1., 1.]), cell_count = 1, MPI_handle = None):
+    def __init__(self, NT = 1, extent = np.array([1., 1., 1.]), cell_count = 1, periods = (1,1,1), MPI_handle = None):
         
         self._verbose = False
+
         
         self._NT = NT
         
+        self._periods = periods
+        
         self._MPI_handle = MPI_handle
+        self._MPI_handle.set_periods = self._periods
         self._MPI = MPI.COMM_WORLD
         self._MPIstatus=MPI.Status()
         self._DEBUG = True
@@ -282,7 +286,7 @@ class BaseDomainHalo(BaseDomain):
         self._cell_array[1] = int(self._extent[1]/rn)
         self._cell_array[2] = int(self._extent[2]/rn)
         
-        print self._cell_array
+        data.print_mpi(self._MPI_handle, self._cell_array)
         
         if (self._verbose):        
             print self._cell_array, self._extent
@@ -342,7 +346,7 @@ class BaseDomainHalo(BaseDomain):
         
         '''Create cartesian communicator'''
         self._dims = tuple(_dims)
-        self._COMM = self._MPI.Create_cart(self._dims[::-1], (True, True, True),True)
+        self._COMM = self._MPI.Create_cart(self._dims[::-1], (bool(self._periods[2]), bool(self._periods[1]), bool(self._periods[0])),True)
         
         '''Set the simulation mpi handle to be the newly created one'''
         if (self._MPI_handle != None):
@@ -406,11 +410,16 @@ class BaseDomainHalo(BaseDomain):
                          ]
         self._boundary = data.ScalarArray(self._boundary, dtype=ctypes.c_double)
         
-        '''Domain outer boundary including halo cells'''
+        '''Domain outer boundary including halo cells'''        
+        
+        
+        _hf = self._MPI_handle.query_halo_exist
+        
         self._boundary_outer = [
-                         -0.5*self._extent[0]+(_Cx-1)*self._cell_edge_lengths[0], -0.5*self._extent[0]+(_Cx+1+self._cell_array[0])*self._cell_edge_lengths[0],
-                         -0.5*self._extent[1]+(_Cy-1)*self._cell_edge_lengths[1], -0.5*self._extent[1]+(_Cy+1+self._cell_array[1])*self._cell_edge_lengths[1],
-                         -0.5*self._extent[2]+(_Cz-1)*self._cell_edge_lengths[2], -0.5*self._extent[2]+(_Cz+1+self._cell_array[2])*self._cell_edge_lengths[2]]
+                         -0.5*self._extent[0]+(_Cx-_hf[0])*self._cell_edge_lengths[0], -0.5*self._extent[0]+(_Cx+_hf[1]+self._cell_array[0])*self._cell_edge_lengths[0],
+                         -0.5*self._extent[1]+(_Cy-_hf[2])*self._cell_edge_lengths[1], -0.5*self._extent[1]+(_Cy+_hf[3]+self._cell_array[1])*self._cell_edge_lengths[1],
+                         -0.5*self._extent[2]+(_Cz-_hf[4])*self._cell_edge_lengths[2], -0.5*self._extent[2]+(_Cz+_hf[5]+self._cell_array[2])*self._cell_edge_lengths[2]]
+        
         self._boundary_outer = data.ScalarArray(self._boundary_outer, dtype=ctypes.c_double)
         
         
@@ -420,9 +429,9 @@ class BaseDomainHalo(BaseDomain):
         self._extent[2] = self._cell_edge_lengths[2]*self._cell_array[2]
         
         '''Increment cell array to include halo'''
-        self._cell_array[0] += 2
-        self._cell_array[1] += 2
-        self._cell_array[2] += 2        
+        self._cell_array[0] += _hf[0] + _hf[1]
+        self._cell_array[1] += _hf[2] + _hf[3]
+        self._cell_array[2] += _hf[4] + _hf[5]      
         
         '''Get local cell count'''
         self._cell_count = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]
@@ -441,14 +450,15 @@ class BaseDomainHalo(BaseDomain):
         Return local domain boundary
         '''
         return self._boundary
-        
+    
+    
     @property
     def boundary_outer(self):
         '''
         Return local domain boundary
         '''
         return self._boundary_outer 
-        
+     
         
     @property  
     def extent(self):
@@ -462,7 +472,7 @@ class BaseDomainHalo(BaseDomain):
         '''
         Method to initialise halos for local domain.
         '''
-        self._halos = halo.HaloCartesianSingleProcess(self._NT, self._COMM, self._rank, self._top, self._dims, self._cell_array, self._extent_global)
+        self._halos = halo.HaloCartesianSingleProcess(self._NT, self._MPI_handle, self._cell_array, self._extent_global)
     
     
     @property

@@ -26,7 +26,7 @@ class HaloCartesianSingleProcess(object):
     :arg data.ScalarArray extent: Global extent of system.
     
     """
-    def __init__(self, NT = 1, MPI_handle = None, rank = None, top = None, dims = None, cell_array = None, extent = None):
+    def __init__(self, NT = 1, MPI_handle = None, cell_array = None, extent = None):
         
         self._verbose = False
         self._NT = NT
@@ -38,10 +38,13 @@ class HaloCartesianSingleProcess(object):
         assert cell_array != None, "Error: No cell array passed."
         assert extent != None, "Error: No extent passed."
         
-        self._rank = rank
-        self._top = top
-        self._dims = dims
-        self._MPI = MPI_handle
+        
+        self._MPI_handle = MPI_handle
+        self._MPI = self._MPI_handle.comm
+        self._rank = self._MPI_handle.rank
+        self._top = self._MPI_handle.top
+        self._dims = self._MPI_handle.dims
+        
         self._MPIstatus=MPI.Status()
         
         self._ca = cell_array
@@ -288,9 +291,19 @@ class HaloCartesianSingleProcess(object):
                           [ 1,  1, 1], #25
                          ]
         
+        '''Count how many halos out of 26 exist. Some may not if directions are not periodic'''
+        _num_halos = 0
+        self._send_list=[]
+        for ix in _recv_modifiers:
+            _tr = self._MPI_handle.shift(ix)
+            self._send_list.append(_tr)
+            if _tr > -1:
+                _num_halos += 1
+                
+            _tr = self._MPI_handle.shift([-1*ix[0],-1*ix[1],-1*ix[2]])
+            self._recv_list.append(_tr)        
         
-        self._send_list = [((self._top[0]-ix[0]) % self._dims[0]) + ((self._top[1]-ix[1]) % self._dims[1])*self._dims[0] + ((self._top[2]-ix[2]) % self._dims[2])*self._dims[0]*self._dims[1] for ix in _recv_modifiers]
-        self._recv_list = [((self._top[0]+ix[0]) % self._dims[0]) + ((self._top[1]+ix[1]) % self._dims[1])*self._dims[0] + ((self._top[2]+ix[2]) % self._dims[2])*self._dims[0]*self._dims[1] for ix in _recv_modifiers]
+        self._num_halos = _num_halos
         
         
         
