@@ -413,12 +413,12 @@ class BaseDomainHalo(BaseDomain):
         '''Domain outer boundary including halo cells'''        
         
         
-        _hf = self._MPI_handle.query_halo_exist
+        
         
         self._boundary_outer = [
-                         -0.5*self._extent[0]+(_Cx-_hf[0])*self._cell_edge_lengths[0], -0.5*self._extent[0]+(_Cx+_hf[1]+self._cell_array[0])*self._cell_edge_lengths[0],
-                         -0.5*self._extent[1]+(_Cy-_hf[2])*self._cell_edge_lengths[1], -0.5*self._extent[1]+(_Cy+_hf[3]+self._cell_array[1])*self._cell_edge_lengths[1],
-                         -0.5*self._extent[2]+(_Cz-_hf[4])*self._cell_edge_lengths[2], -0.5*self._extent[2]+(_Cz+_hf[5]+self._cell_array[2])*self._cell_edge_lengths[2]]
+                         -0.5*self._extent[0]+(_Cx-1)*self._cell_edge_lengths[0], -0.5*self._extent[0]+(_Cx+1+self._cell_array[0])*self._cell_edge_lengths[0],
+                         -0.5*self._extent[1]+(_Cy-1)*self._cell_edge_lengths[1], -0.5*self._extent[1]+(_Cy+1+self._cell_array[1])*self._cell_edge_lengths[1],
+                         -0.5*self._extent[2]+(_Cz-1)*self._cell_edge_lengths[2], -0.5*self._extent[2]+(_Cz+1+self._cell_array[2])*self._cell_edge_lengths[2]]
         
         self._boundary_outer = data.ScalarArray(self._boundary_outer, dtype=ctypes.c_double)
         
@@ -429,15 +429,15 @@ class BaseDomainHalo(BaseDomain):
         self._extent[2] = self._cell_edge_lengths[2]*self._cell_array[2]
         
         '''Increment cell array to include halo'''
-        self._cell_array[0] += _hf[0] + _hf[1]
-        self._cell_array[1] += _hf[2] + _hf[3]
-        self._cell_array[2] += _hf[4] + _hf[5]      
+        self._cell_array[0] += 2
+        self._cell_array[1] += 2
+        self._cell_array[2] += 2      
         
         '''Get local cell count'''
         self._cell_count = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]
         
         '''Outer extent including halos, used?'''
-        self._extent_outer = data.ScalarArray(self._extent.Dat+2*self._cell_edge_lengths.Dat)        
+        self._extent_outer = data.ScalarArray(self._extent.Dat+ np.array([2, 2, 2]) *self._cell_edge_lengths.Dat)        
         
         '''Init halos'''
         self.halo_init()

@@ -77,7 +77,7 @@ GCC_OpenMP = compiler(['GCC'],['gcc'],['-O3','-fpic','-fopenmp','-lgomp','-lpthr
 
 
 #Define system icc version as compiler.
-ICC = compiler(['ICC'],['icc'],['-O3','-fpic','-std=c99','-fast'],['-lm'],['-g'],['-c'],['-shared'])
+ICC = compiler(['ICC'],['icc'],['-fpic','-std=c99'],['-lm'],['-g'],['-c'],['-shared'])
 
 #ICC = compiler(['ICC'],['icc'],['-O0','-fpic','-std=c99',''],[''],['-g'],['-c'],['-shared'])
 

@@ -291,32 +291,21 @@ class BaseMDState(object):
         
         
         self._cell_sort_local()  
-        '''
-        sys.stdout.flush()
-        self._domain.barrier()
-        if self._domain.rank == 0:
-            print "Local N", self._N
-            print "rank 0"
-            self._cell_sort_local()               
-            print ""
-            print "---------------------------------"
-        sys.stdout.flush()
-        self._domain.barrier()
         
-        if self._domain.rank == 1:
-            print "rank 1"
-            self._cell_sort_local()               
-            print ""
-            print "---------------------------------"
-        sys.stdout.flush()
-        self._domain.barrier()           
-        '''
-        
+
         
         if (self._cell_setup_attempt==True):
             self._domain.halos.set_position_info(self._cell_contents_count, self._q_list)
             self._domain.halos.exchange(self._pos)
             #self._domain.halos.exchange(self._vel)
+        
+        '''
+        print "================================"
+        print self._domain.rank, self._q_list[0:4:], self._q_list[self._q_list[self._q_list.end]::]
+        print "--------------------------------"
+        print self._pos[0:4,::]
+        print "================================"
+        '''
         
         self.set_forces(ctypes.c_double(0.0))
         self.reset_U()
