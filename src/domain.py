@@ -6,61 +6,58 @@ import kernel
 import loop
 import halo
 import build
-import sys
 from mpi4py import MPI
 
 
-def factor(N):
-    return [ix for ix in range(1, N/2 + 1) if not N%ix] + [N]    
-    
-def pfactor(N):
-    lst=[]
-    l=2
-    while l<=N:
-        if N%l==0:
-            N/=l
+def factor(n):
+    return [ix for ix in range(1, n/2 + 1) if not n % ix] + [n]
+
+
+def pfactor(n):
+    lst = []
+    l = 2
+    while l <= n:
+        if n % l == 0:
+            n /= l
             lst.append(l)
         else:
-            l+=1
+            l += 1
     return lst   
 
+
 class BaseDomain(object):
-    '''
+    """
     Base class for simulation domain, cartesian, 3D. Initialises domain with given extents.
     
     :arg np.array(3,1) extent: [x,y,z] numpy array with extents of simulation domain.
     :arg int cellcount: Number of cells within domain (optional).
 
-    '''
+    """
 
-    def __init__(self, NT = 1, extent = np.array([1., 1., 1.]), cell_count = 1):
+    def __init__(self, nt=1, extent=np.array([1., 1., 1.]), cell_count=1):
         
-        self._NT = NT
+        self._NT = nt
         
         self._COMM = None
         
         self._extent = data.ScalarArray(extent)
         
         self._cell_count = cell_count
-        self._cell_array = data.ScalarArray(np.array([1,1,1]), dtype=ctypes.c_int)
-        self._cell_edge_lengths = data.ScalarArray(np.array([1.,1.,1.], dtype=ctypes.c_double))
-        
-        
-        
+        self._cell_array = data.ScalarArray(np.array([1, 1, 1]), dtype=ctypes.c_int)
+        self._cell_edge_lengths = data.ScalarArray(np.array([1., 1., 1.], dtype=ctypes.c_double))
+
         self._BCloop = None
         
     @property
     def comm(self):
         return self._COMM        
-        
-        
-        
-    def BCSetup(self, state):
-        '''
+
+    def bc_setup(self, state):
+        """
         Setup loop to apply periodic boundary conditions to input positions.
         
         :arg particle.Dat positions: particle.Dat containing particle positions.
-        '''      
+        """
         self._BC_state = state
         self._BCcode = '''
         
@@ -104,35 +101,26 @@ class BaseDomain(object):
         
         '''
         
-        self._BCcodeDict = {'P':self._BC_state.positions, 'E':self._extent}
-        self._BCkernel= kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
-        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.N, self._BCkernel,self._BCcodeDict) 
-           
-        
-    def BCexecute(self):
-        
-        #self.boundary_correct(self._positions)
-        assert self._BCloop != None, "Run BCSetup first"
+        self._BCcodeDict = {'P':self._BC_state.positions, 'E': self._extent}
+        self._BCkernel = kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
+        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.n, None, self._BCkernel, self._BCcodeDict)
+
+    def bc_execute(self):
+        # self.boundary_correct(self._positions)
+        assert self._BCloop is not None, "Run bc_setup first"
         self._BCloop.execute()
-        
-    
-    
-        
-    @property  
+
+    @property
     def extent(self):
         """
         Returns list of domain extents.
         """
         return self._extent
-                
-        
-        
-    def set_extent(self, new_extent = np.array([1., 1., 1.])):
+
+    def set_extent(self, new_extent=np.array([1., 1., 1.])):
         """
         Set domain extents
-        
         :arg np.array(3,1) new_extent: New extents.
-        
         """
         self._extent[0:4] = new_extent
         
@@ -142,9 +130,7 @@ class BaseDomain(object):
         Return cell count for domain.
         """
         return self._cell_count
-    
-          
-        
+
     def _cell_count_recalc(self):
         """    
         Recalculates number of cells in domain. Alongside computing cell edge lengths.
@@ -170,17 +156,15 @@ class BaseDomain(object):
         
         self._cell_array[0:4] = cell_array
         self._cell_count_recalc()
-        
-        
+
     def set_cell_array_radius(self, rn):
         """
         Create cell structure based on current extent and extended cutoff distance.
         
         :arg double rn:  :math:`r_n = r_c + \delta`
-        
         """
 
-        if (int(self._extent[0]/rn) < 3 or int(self._extent[1]/rn) < 3 or int(self._extent[2]/rn) < 3):
+        if (int(self._extent[0]/rn) < 3) or (int(self._extent[1]/rn) < 3) or (int(self._extent[2]/rn) < 3):
             print "WARNING: Less than three cells per coordinate direction. Cell based domain will not be used"
             
             self._cell_array[0] = 1
@@ -196,10 +180,8 @@ class BaseDomain(object):
             self._cell_count_recalc()
             
         return True
-        
-        
-        
-    @property     
+
+    @property
     def cell_array(self):
         """
         Return cell array.
@@ -222,16 +204,15 @@ class BaseDomain(object):
          
 class BaseDomainHalo(BaseDomain):
 
-    def __init__(self, NT = 1, extent = np.array([1., 1., 1.]), cell_count = 1, periods = (1,1,1), MPI_handle = None):
+    def __init__(self, nt=1, extent=np.array([1., 1., 1.]), cell_count=1, periods=(1, 1, 1), mpi_handle = None):
         
         self._verbose = False
 
-        
-        self._NT = NT
+        self._NT = nt
         
         self._periods = periods
         
-        self._MPI_handle = MPI_handle
+        self._MPI_handle = mpi_handle
         self._MPI_handle.set_periods = self._periods
         self._MPI = MPI.COMM_WORLD
         self._MPIstatus=MPI.Status()
@@ -242,26 +223,20 @@ class BaseDomainHalo(BaseDomain):
         self._extent_global = data.ScalarArray(extent)
         
         self._cell_count = cell_count
-        self._cell_array = data.ScalarArray(np.array([1,1,1]), dtype=ctypes.c_int)
-        self._cell_edge_lengths = data.ScalarArray(np.array([1.,1.,1.], dtype=ctypes.c_double))
-        
-        
-        
-        
+        self._cell_array = data.ScalarArray(np.array([1, 1, 1]), dtype=ctypes.c_int)
+        self._cell_edge_lengths = data.ScalarArray(np.array([1., 1., 1.], dtype=ctypes.c_double))
+
         self._BCloop = None
     
     @property
-    def MPI_handle(self):
+    def mpi_handle(self):
         return self._MPI_handle
     
-    @MPI_handle.setter
-    def MPI_handle(self, handle):
+    @mpi_handle.setter
+    def mpi_handle(self, handle):
         self._MPI_handle = handle
-    
-    
-    
-        
-    def set_extent(self, new_extent = np.array([1., 1., 1.])):
+
+    def set_extent(self, new_extent=np.array([1., 1., 1.])):
         """
         Set domain extents
         
@@ -278,8 +253,7 @@ class BaseDomainHalo(BaseDomain):
         :arg double rn:  :math:`r_n = r_c + \delta`
         
         """
-        
-        
+
         '''Here everything is global'''
         
         self._cell_array[0] = int(self._extent[0]/rn)
@@ -288,7 +262,7 @@ class BaseDomainHalo(BaseDomain):
         
         data.print_mpi(self._MPI_handle, self._cell_array)
         
-        if (self._verbose):        
+        if self._verbose:
             print self._cell_array, self._extent
         
         self._cell_edge_lengths[0] = self._extent[0]/self._cell_array[0]
@@ -296,8 +270,7 @@ class BaseDomainHalo(BaseDomain):
         self._cell_edge_lengths[2] = self._extent[2]/self._cell_array[2]
         
         self._cell_count_internal = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]
-        
-        
+
         '''Get number of processes'''
         _Np = self._MPI.Get_size()
         
@@ -305,12 +278,12 @@ class BaseDomainHalo(BaseDomain):
         _factors = pfactor(_Np)
         
         '''Create grid from factorisation'''
-        if len(_factors)==0:
-            _NP=[1,1,1]
-        elif len(_factors)==1:
-            _NP=[_factors[0],1,1]
-        elif len(_factors)==2:
-            _NP=[_factors[0],_factors[1],1]
+        if len(_factors) == 0:
+            _NP = [1, 1, 1]
+        elif len(_factors) == 1:
+            _NP = [_factors[0], 1, 1]
+        elif len(_factors) == 2:
+            _NP = [_factors[0], _factors[1], 1]
         else:
             _factors.sort(reverse=True)
             _q = len(_factors)/3
@@ -323,11 +296,11 @@ class BaseDomainHalo(BaseDomain):
         _NP.sort(reverse=True)
         
         '''Order domain dimension sizes in descending order'''
-        _cal = [[0,self._cell_array[0]], [1,self._cell_array[1]], [2,self._cell_array[2]]]
-        _cal.sort(key=lambda x:x[1], reverse=True)
+        _cal = [[0, self._cell_array[0]], [1, self._cell_array[1]], [2, self._cell_array[2]]]
+        _cal.sort(key=lambda x: x[1], reverse=True)
         
         '''Try to match avaible processor dimensions to phyiscal cells'''
-        _dims=[0,0,0]
+        _dims = [0, 0, 0]
         for i in range(3):
             ix = _cal[i][0]
             _dims[ix] = _NP[i] 
@@ -349,25 +322,20 @@ class BaseDomainHalo(BaseDomain):
         self._COMM = self._MPI.Create_cart(self._dims[::-1], (bool(self._periods[2]), bool(self._periods[1]), bool(self._periods[0])),True)
         
         '''Set the simulation mpi handle to be the newly created one'''
-        if (self._MPI_handle != None):
+        if self._MPI_handle is not None:
             self._MPI_handle.comm = self._COMM
-        
-        
+
         '''get rank, nprocs'''
         self._rank = self._COMM.Get_rank()
         self._nproc = self._COMM.Get_size()          
         
         if self._verbose and self._rank == 0:
-            print "Processor count", self._nproc,"Processor layout", self._dims
-        
-        
+            print "Processor count", self._nproc, "Processor layout", self._dims
+
         '''Topology has below indexing, last index reverses'''
-        #[z,y,x]
+        # [z,y,x]
         self._top = self._COMM.Get_topo()[2][::-1]
-        
-        
-        
-        
+
         '''Calculate global distribtion of cells'''
         _bs = []
         for ix in range(3):
@@ -377,7 +345,7 @@ class BaseDomainHalo(BaseDomain):
             _tmp.append(int(self._cell_array[0] - (_dims[ix]-1)*_bsc[ix]))
             _bs.append(_tmp)
         
-        #print "bs =", _bs
+        # print "bs =", _bs
         
         if self._verbose and self._rank == 0:
             print "Cell layout", _bs
@@ -421,8 +389,7 @@ class BaseDomainHalo(BaseDomain):
                          -0.5*self._extent[2]+(_Cz-1)*self._cell_edge_lengths[2], -0.5*self._extent[2]+(_Cz+1+self._cell_array[2])*self._cell_edge_lengths[2]]
         
         self._boundary_outer = data.ScalarArray(self._boundary_outer, dtype=ctypes.c_double)
-        
-        
+
         '''Get local extent'''
         self._extent[0] = self._cell_edge_lengths[0]*self._cell_array[0]
         self._extent[1] = self._cell_edge_lengths[1]*self._cell_array[1]
@@ -437,7 +404,7 @@ class BaseDomainHalo(BaseDomain):
         self._cell_count = self._cell_array[0]*self._cell_array[1]*self._cell_array[2]
         
         '''Outer extent including halos, used?'''
-        self._extent_outer = data.ScalarArray(self._extent.Dat+ np.array([2, 2, 2]) *self._cell_edge_lengths.Dat)        
+        self._extent_outer = data.ScalarArray(self._extent.dat+ np.array([2, 2, 2]) *self._cell_edge_lengths.dat)
         
         '''Init halos'''
         self.halo_init()
@@ -446,35 +413,32 @@ class BaseDomainHalo(BaseDomain):
         
     @property
     def boundary(self):
-        '''
+        """
         Return local domain boundary
-        '''
+        """
         return self._boundary
-    
-    
+
     @property
     def boundary_outer(self):
-        '''
+        """
         Return local domain boundary
-        '''
+        """
         return self._boundary_outer 
-     
-        
-    @property  
+
+    @property
     def extent(self):
         """
         Returns list of domain extents including halo regions.
         """
-        #return self._extent_outer      
+        # return self._extent_outer
         return self._extent_global
     
     def halo_init(self):
-        '''
+        """
         Method to initialise halos for local domain.
-        '''
+        """
         self._halos = halo.HaloCartesianSingleProcess(self._NT, self._MPI_handle, self._cell_array, self._extent_global)
-    
-    
+
     @property
     def halos(self):
         return self._halos      
@@ -489,27 +453,25 @@ class BaseDomainHalo(BaseDomain):
     
     @property
     def cell_count_internal(self):
-        '''
+        """
         Return internal cell count.
-        '''
+        """
         return self._cell_count_internal
         
     @property
     def rank(self):
         return self._rank
-        
-        
+
     def barrier(self):
         self._MPI.Barrier()
     
-    def BCSetup(self, state):     
+    def bc_setup(self, state):
         
         self._BC_state = state
         
         '''Array to store the local id of scaling particles'''
-        self._escaping_ids = data.ScalarArray(ncomp = 2*self._BC_state.NT(), dtype = ctypes.c_int)
-        
-        
+        self._escaping_ids = data.ScalarArray(ncomp = 2*self._BC_state.nt(), dtype = ctypes.c_int)
+
         '''Number of escaping particles in each direction'''
         self._escape_count = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)
         
@@ -519,8 +481,7 @@ class BaseDomainHalo(BaseDomain):
         '''Temporary indices for library'''
         self._escape_internal_index = data.ScalarArray(ncomp = 1, dtype = ctypes.c_int)
         self._internal_index = data.ScalarArray(ncomp = 1, dtype = ctypes.c_int)
-        
-        
+
         '''Create a lookup table between xor map and linear index for direction'''
         self._bin_to_lin = data.ScalarArray(ncomp = 57, dtype = ctypes.c_int)
         self._lin_to_bin = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)
@@ -558,8 +519,7 @@ class BaseDomainHalo(BaseDomain):
         '''inverse map, probably not ideal'''
         for ix in range(26):
             self._bin_to_lin[self._lin_to_bin[ix]]=ix
-        
-        
+
         '''
         Below code uses the following map between directions and a 6 bit integer.
         
@@ -617,7 +577,7 @@ class BaseDomainHalo(BaseDomain):
         
         
         _escape_guard_kernel = kernel.Kernel('FindEscapingParticles', _escape_guard_code, headers=['math.h'])
-        self._escape_guard_loop = loop.SingleAllParticleLoop(self._BC_state.N, self._BC_state.types_map, _escape_guard_kernel, _escape_guard_dict, DEBUG = self._DEBUG)       
+        self._escape_guard_loop = loop.SingleAllParticleLoop(self._BC_state.n, self._BC_state.types_map, _escape_guard_kernel, _escape_guard_dict, DEBUG = self._DEBUG)
         
         
         '''Calculate shifts that should be applied when passing though the local domain extents
@@ -628,11 +588,11 @@ class BaseDomainHalo(BaseDomain):
         
         _sf = range(6)
         for ix in range(3):
-            if (self._top[ix] == 0):
+            if self._top[ix] == 0:
                 _sf[2*ix] = self._extent_global[ix]
             else:
                 _sf[2*ix] = 0.
-            if (self._top[ix] == self._dims[ix] - 1):
+            if self._top[ix] == self._dims[ix] - 1:
                 _sf[2*ix+1] = -1.*self._extent_global[ix]
             else:
                 _sf[2*ix+1] = 0.
@@ -669,7 +629,7 @@ class BaseDomainHalo(BaseDomain):
                 
                ]
         
-        #print self._rank, "LOCAL SHIFTS", _sf
+        # print self._rank, "LOCAL SHIFTS", _sf
         
         
         self._sfd = data.ScalarArray(initial_value = _sfd)
@@ -678,7 +638,7 @@ class BaseDomainHalo(BaseDomain):
         '''Number of elements to pack'''
         self._ncomp = data.ScalarArray(initial_value = [8], dtype = ctypes.c_int)
         
-        self._escape_send_buffer = data.ScalarArray(ncomp = self._ncomp[0]*self._BC_state.NT(), dtype = ctypes.c_double)
+        self._escape_send_buffer = data.ScalarArray(ncomp = self._ncomp[0]*self._BC_state.nt(), dtype = ctypes.c_double)
         
         
         
@@ -722,7 +682,7 @@ class BaseDomainHalo(BaseDomain):
         
         '''
         self._escape_count_recv = data.ScalarArray(ncomp = 26, dtype = ctypes.c_int)
-        self._escape_recv_buffer = data.ScalarArray(ncomp = self._ncomp[0]*self._BC_state.NT(), dtype = ctypes.c_double)
+        self._escape_recv_buffer = data.ScalarArray(ncomp = self._ncomp[0]*self._BC_state.nt(), dtype = ctypes.c_double)
         
         _escape_packing_dict={'P':self._BC_state.positions,
                               'V':self._BC_state.velocities,
@@ -950,25 +910,20 @@ class BaseDomainHalo(BaseDomain):
         
         self._BCcodeDict = {'P':self._BC_state.positions, 'E':self._extent}
         self._BCkernel= kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
-        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.N,self._BC_state.types_map, self._BCkernel,self._BCcodeDict, DEBUG = self._DEBUG) 
+        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.n,self._BC_state.types_map, self._BCkernel,self._BCcodeDict, DEBUG = self._DEBUG)
         
-        
-        
+
     
-    
-    def BCexecute(self):
-        
-        
-        
-        if (self._nproc == 1):
+    def bc_execute(self):
+
+        if self._nproc == 1:
             self._BCloop.execute()
-            #print "normal BCs applied"
+            # print "normal BCs applied"
         else:  
-        
-            
+
             '''Potentially all could escape'''
-            #self._escaping_ids.resize(2*self._BC_state.N())
-            #self._escaping_ids.zero()
+            # self._escaping_ids.resize(2*self._BC_state.n())
+            # self._escaping_ids.zero()
             
             '''Zero counts/indices'''
             self._escape_internal_index.zero()
@@ -976,54 +931,47 @@ class BaseDomainHalo(BaseDomain):
             
             self._escape_count_total.zero()
             self._escape_count.zero()
-            
-                       
-                    
-            
+
             '''
-            if self._BC_state.N() > 0:
+            if self._BC_state.n() > 0:
                 print "pos", self._BC_state.positions[0,::], "rank:", self._rank
                 print "vel", self._BC_state.velocities[0,::], "rank:", self._rank
             '''
             
             '''Find escaping particles'''
             self._escape_guard_loop.execute()
-            
-            
+
             
             '''Exchange sizes'''
             for ix in range(26):
                 
-                #print "R", self._rank, "Sending", self._escape_count.Dat[ix:ix+1:], "ix", ix
+                # print "R", self._rank, "Sending", self._escape_count.Dat[ix:ix+1:], "ix", ix
                 
-                self._COMM.Sendrecv(self._escape_count.Dat[ix:ix+1:], 
+                self._COMM.Sendrecv(self._escape_count.dat[ix:ix+1:],
                                     self._send_list[ix], 
                                     self._send_list[ix], 
-                                    self._escape_count_recv.Dat[ix:ix+1:],
+                                    self._escape_count_recv.dat[ix:ix+1:],
                                     self._recv_list[ix], 
                                     self._rank,
                                     self._MPIstatus)
                                     
-                #print "R", self._rank, "RECVD" ,self._escape_count_recv.Dat[ix:ix+1:], "ix", ix            
+                # print "R", self._rank, "RECVD" ,self._escape_count_recv.Dat[ix:ix+1:], "ix", ix
             
-            
-            
+
             '''Check packing buffer is large enough then pack'''
             self._escape_send_buffer.resize(self._ncomp[0]*self._escape_count_total[0])
             self._escape_packing_lib.execute()            
-            
-            
-            
+
             '''Exchange packed particle buffers'''
             _sum_send = 0
             _sum_recv = 0
             
             for ix in range(26):
                 
-                self._COMM.Sendrecv(self._escape_send_buffer.Dat[_sum_send:_sum_send+self._ncomp[0]*self._escape_count[ix]:], 
+                self._COMM.Sendrecv(self._escape_send_buffer.dat[_sum_send:_sum_send+self._ncomp[0]*self._escape_count[ix]:],
                                     self._send_list[ix], 
                                     self._send_list[ix], 
-                                    self._escape_recv_buffer.Dat[_sum_recv:_sum_recv+self._ncomp[0]*self._escape_count_recv[ix]:],
+                                    self._escape_recv_buffer.dat[_sum_recv:_sum_recv+self._ncomp[0]*self._escape_count_recv[ix]:],
                                     self._recv_list[ix], 
                                     self._rank,
                                     self._MPIstatus)            
@@ -1040,13 +988,13 @@ class BaseDomainHalo(BaseDomain):
             
             self._BC_state.positions.halo_start_reset()
             self._BC_state.velocities.halo_start_reset()
-            self._internal_index[0] = self._BC_state.N()
+            self._internal_index[0] = self._BC_state.n()
             
             
             self._unpacking_lib.execute()
             
             
-            self._BC_state.set_N ( self._internal_index[0] )
+            self._BC_state.set_n ( self._internal_index[0] )
             
             #print "setting halos", self._internal_index[0]
             

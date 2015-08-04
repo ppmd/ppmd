@@ -1,26 +1,17 @@
 import numpy as np
 import particle
-import math
 import ctypes
-import random
 import os
-import hashlib
-import subprocess
 import data
-import kernel
 import loop
-import constant
 import build
 
 
 
-class _base(build.GenericToolChain):
-    
-            
+class _Base(build.GenericToolChain):
 
-    
     def _kernel_argument_declarations(self):
-        '''Define and declare the kernel arguments.
+        """Define and declare the kernel arguments.
 
         For each argument the kernel gets passed a pointer of type
         ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
@@ -33,9 +24,9 @@ class _base(build.GenericToolChain):
         This method generates the definitions of the ``loc_argXXX`` variables
         and populates the data to ensure that ``loc_argXXX[i]`` points to
         the correct address in the particle_dats.
-        '''
+        """
         s = '\n'
-        for i,dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._particle_dat_dict.items()):
             
             
             space = ' '*14
@@ -65,20 +56,21 @@ class _base(build.GenericToolChain):
 # RAPAPORT LOOP SERIAL
 ################################################################################################################
 
-class PairLoopRapaport(_base):
-    '''
+
+class PairLoopRapaport(_Base):
+    """
     Class to implement rapaport 14 cell looping.
     
-    :arg int N: Number of elements to loop over.
+    :arg int n: Number of elements to loop over.
     :arg domain domain: Domain containing the particles.
     :arg dat positions: Postitions of particles.
     :arg potential potential: Potential between particles.
     :arg dict dat_dict: Dictonary mapping between state vars and kernel vars.
     :arg bool DEBUG: Flag to enable debug flags.
-    '''
-    def __init__(self,N,domain,positions,potential,dat_dict, cell_list, DEBUG = False, MPI_handle = None):
+    """
+    def __init__(self, N, domain, positions, potential, dat_dict, cell_list, DEBUG=False, mpi_handle = None):
         self._DEBUG = DEBUG
-        self._Mh = MPI_handle
+        self._Mh = mpi_handle
         self._N = N
         self._domain = domain
         self._P = positions
@@ -86,38 +78,33 @@ class PairLoopRapaport(_base):
         self._particle_dat_dict = dat_dict
         self._q_list = cell_list
         self._compiler_set()
-        
-        
+
         ##########
         # End of Rapaport initialisations.
         ##########
         
         self._temp_dir = './build/'
-        if (not os.path.exists(self._temp_dir)):
+        if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = self._potential.kernel
-        
-        
+
         self._nargs = len(self._particle_dat_dict)
-        
 
         self._code_init()
-        
-        
+
         self._unique_name = self._unique_name_calc()
         
-        self._library_filename  = self._unique_name +'.so'
+        self._library_filename = self._unique_name + '.so'
         
-        if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
-            if (self._Mh == None):
+        if not os.path.exists(os.path.join(self._temp_dir,self._library_filename)):
+            if self._Mh is None:
                 self._create_library()
             
             else:
-                if  self._Mh.rank == 0:
+                if self._Mh.rank == 0:
                     self._create_library()
                 self._Mh.barrier()
-        #self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
-        
+
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
@@ -125,8 +112,7 @@ class PairLoopRapaport(_base):
         
     def _compiler_set(self):
         self._cc = build.TMPCC
-    
-                
+
     def _code_init(self):
         self._kernel_code = self._kernel.code
         self._code = '''
@@ -228,8 +214,9 @@ class PairLoopRapaport(_base):
         
         
         '''
+
     def _kernel_argument_declarations(self):
-        '''Define and declare the kernel arguments.
+        """Define and declare the kernel arguments.
 
         For each argument the kernel gets passed a pointer of type
         ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
@@ -242,11 +229,10 @@ class PairLoopRapaport(_base):
         This method generates the definitions of the ``loc_argXXX`` variables
         and populates the data to ensure that ``loc_argXXX[i]`` points to
         the correct address in the particle_dats.
-        '''
+        """
         s = '\n'
-        for i,dat in enumerate(self._particle_dat_dict.items()):
-            
-            
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+
             space = ' '*14
             argname = dat[0]+'_ext'
             loc_argname = dat[0]
@@ -285,16 +271,14 @@ class PairLoopRapaport(_base):
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
                 s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
                 s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                    
-                    
-                          
-        
-        return s       
+
+        return s
         
     def _generate_header_source(self):
-        '''Generate the source code of the header file.
+        """Generate the source code of the header file.
 
         Returns the source code for the header file.
-        '''
+        """
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
@@ -307,22 +291,19 @@ class PairLoopRapaport(_base):
 
         #endif
         '''
-        d = {'UNIQUENAME':self._unique_name,
-             'INCLUDED_HEADERS':self._included_headers(),
-             'KERNEL_NAME':self._kernel.name,
-             'ARGUMENTS':self._argnames()}
-        return (code % d)        
-                
-        
-        
-    def execute(self, dat_dict = None, static_args = None):
-    
-        '''
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames()}
+        return code % d
+
+    def execute(self, dat_dict=None, static_args=None):
+        """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
-        '''
+        """
         
         '''Allow alternative pointers'''
-        if (dat_dict != None):
+        if dat_dict is not None:
             self._particle_dat_dict = dat_dict    
         
         '''Create arg list'''
@@ -346,28 +327,23 @@ class PairLoopRapaport(_base):
         
         '''Execute the kernel over all particle pairs.'''            
         method = self._lib[self._kernel.name+'_wrapper']
-        
-        
-        
-        
-        method(*args)        
-        
-           
-             
-     
+
+        method(*args)
+
 ################################################################################################################
 # DOUBLE PARTICLE LOOP
-################################################################################################################        
-        
+################################################################################################################
+
+
 class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
-    '''
+    """
     Class to loop over all particle pairs once.
     
-    :arg int N: Number of elements to loop over.
+    :arg int n: Number of elements to loop over.
     :arg kernel kernel:  Kernel to apply at each element.
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg list headers: list containing C headers required by kernel.
-    '''     
+    """
     def _compiler_set(self):
         self._cc = build.TMPCC        
     
@@ -392,7 +368,7 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
         '''
     
     def _kernel_argument_declarations(self):
-        '''Define and declare the kernel arguments.
+        """Define and declare the kernel arguments.
 
         For each argument the kernel gets passed a pointer of type
         ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
@@ -405,7 +381,7 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
         This method generates the definitions of the ``loc_argXXX`` variables
         and populates the data to ensure that ``loc_argXXX[i]`` points to
         the correct address in the particle_dats.
-        '''
+        """
         s = '\n'
         for i,dat in enumerate(self._particle_dat_dict.items()):
             
@@ -433,27 +409,27 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
                   
         
         return s 
-                    
-
 
 ################################################################################################################
 # DOUBLE PARTICLE LOOP APPLIES PBC
-################################################################################################################ 
+################################################################################################################
+
+
 class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
-    '''
+    """
     Generic base class to loop over all particles once.
     
-    :arg int N: Number of elements to loop over.
+    :arg int n: Number of elements to loop over.
     :arg kernel kernel:  Kernel to apply at each element.
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg bool DEBUG: Flag to enable debug flags.
-    '''
-    def __init__(self, N, domain, kernel, particle_dat_dict, DEBUG = False, MPI_handle = None):
+    """
+    def __init__(self, n, domain, kernel, particle_dat_dict, DEBUG=False, mpi_handle=None):
         self._DEBUG = DEBUG
-        self._Mh = MPI_handle
+        self._Mh = mpi_handle
         
         self._compiler_set()
-        self._N = N
+        self._N = n
         self._domain = domain
         self._temp_dir = './build/'
         if (not os.path.exists(self._temp_dir)):
@@ -509,10 +485,10 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         '''
         
     def _generate_header_source(self):
-        '''Generate the source code of the header file.
+        """Generate the source code of the header file.
 
         Returns the source code for the header file.
-        '''
+        """
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
@@ -533,7 +509,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         
         
     def _kernel_argument_declarations(self):
-        '''Define and declare the kernel arguments.
+        """Define and declare the kernel arguments.
 
         For each argument the kernel gets passed a pointer of type
         ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
@@ -546,7 +522,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         This method generates the definitions of the ``loc_argXXX`` variables
         and populates the data to ensure that ``loc_argXXX[i]`` points to
         the correct address in the particle_dats.
-        '''
+        """
         s = '\n'
         for i,dat in enumerate(self._particle_dat_dict.items()):
             
@@ -602,11 +578,11 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
 
     def execute(self, dat_dict = None, static_args = None):
         
-        '''Allow alternative pointers'''
+        # Allow alternative pointers
         if (dat_dict != None):
             self._particle_dat_dict = dat_dict    
         
-        '''Currently assume N is always needed'''
+        '''Currently assume n is always needed'''
         args=[self._N(), self._domain.extent.ctypes_data]
         
         
@@ -629,14 +605,10 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         method(*args)
 
 
-
-
-
-
-
 ################################################################################################################
 # RAPAPORT LOOP OPENMP
 ################################################################################################################
+
 
 class PairLoopRapaportOpenMP(PairLoopRapaport):
     def _compiler_set(self):
@@ -773,8 +745,8 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
         
 
     def _generate_impl_source(self):
-        '''Generate the source code the actual implementation.
-        '''
+        """Generate the source code the actual implementation.
+        """
         
 
         d = {'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations_openmp(),
@@ -794,7 +766,7 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
 
     
     def _kernel_argument_declarations_openmp(self):
-        '''Define and declare the kernel arguments.
+        """Define and declare the kernel arguments.
 
         For each argument the kernel gets passed a pointer of type
         ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
@@ -807,7 +779,7 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
         This method generates the definitions of the ``loc_argXXX`` variables
         and populates the data to ensure that ``loc_argXXX[i]`` points to
         the correct address in the particle_dats.
-        '''
+        """
         s = '\n'
         space = ' '*14
         
@@ -830,9 +802,9 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
                 self._ompinitstr += data.ctypes_map[dat[1].dtype]+' '+reduction_argname+' = '+build.omp_operator_init_values[reduction_handle.operator]+';'
                 
                 #Add to omp pragma
-                self._ompdecstr += 'reduction('+reduction_handle.operator+':'+reduction_argname+')'
+                self._ompdecstr += 'Reduction('+reduction_handle.operator+':'+reduction_argname+')'
                 
-                #Modify kernel code to use new reduction variable.
+                #Modify kernel code to use new Reduction variable.
                 self._kernel_code = build.replace(self._kernel_code,reduction_handle.pointer, reduction_argname)
                 
                 #write final value to output pointer
@@ -884,14 +856,14 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
 ################################################################################################################        
         
 class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
-    '''
+    """
     Class to loop over all particle pairs once.
     
-    :arg int N: Number of elements to loop over.
+    :arg int n: Number of elements to loop over.
     :arg kernel kernel:  Kernel to apply at each element.
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg list headers: list containing C headers required by kernel.
-    '''     
+    """
     def _compiler_set(self):
         self._cc = build.TMPCC        
     
@@ -927,8 +899,8 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
         '''
     
     def _generate_impl_source(self):
-        '''Generate the source code the actual implementation.
-        '''
+        """Generate the source code the actual implementation.
+        """
         
 
         d = {'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations_openmp(),
@@ -944,7 +916,7 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
         return self._code % d          
     
     def _kernel_argument_declarations_openmp(self):
-        '''Define and declare the kernel arguments.
+        """Define and declare the kernel arguments.
 
         For each argument the kernel gets passed a pointer of type
         ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
@@ -957,7 +929,7 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
         This method generates the definitions of the ``loc_argXXX`` variables
         and populates the data to ensure that ``loc_argXXX[i]`` points to
         the correct address in the particle_dats.
-        '''
+        """
         s = '\n'
         for i,dat in enumerate(self._particle_dat_dict.items()):
             
@@ -979,9 +951,9 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
                 self._ompinitstr += data.ctypes_map[dat[1].dtype]+' '+reduction_argname+' = '+build.omp_operator_init_values[reduction_handle.operator]+';'
                 
                 #Add to omp pragma
-                self._ompdecstr += 'reduction('+reduction_handle.operator+':'+reduction_argname+')'
+                self._ompdecstr += 'Reduction('+reduction_handle.operator+':'+reduction_argname+')'
                 
-                #Modify kernel code to use new reduction variable.
+                #Modify kernel code to use new Reduction variable.
                 self._kernel_code = build.replace(self._kernel_code,reduction_handle.pointer, reduction_argname)
                 
                 #write final value to output pointer
@@ -1015,21 +987,21 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
 ################################################################################################################
 
 class PairLoopRapaportParticleList(PairLoopRapaport):    
-    '''
+    """
     Applies the Rapapport particle list method
     
-    :arg int N: Number of elements to loop over.
+    :arg int n: Number of elements to loop over.
     :arg domain domain: Domain containing the particles.
     :arg dat positions: Postitions of particles.
     :arg potential potential: Potential between particles.
     :arg dict dat_dict: Dictonary mapping between state vars and kernel vars.
     :arg bool DEBUG: Flag to enable debug flags.
-    '''
-    def __init__(self,N,domain,positions,potential,dat_dict, DEBUG = False, MPI_handle = None):
+    """
+    def __init__(self,n,domain,positions,potential,dat_dict, DEBUG=False, mpi_handle=None):
         self._DEBUG = DEBUG
-        self._Mh = MPI_handle
+        self._Mh = mpi_handle
         
-        self._N = N
+        self._N = n
         self._domain = domain
         self._P = positions
         self._potential = potential
@@ -1071,22 +1043,11 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
             build.load_library_exception(self._kernel.name, self._unique_name,type(self))
-    
-    
-    
-    def _neighbour_list_setup(self):
-        pass
-    
-    
-    
-    
-    
-    
-    
+
     def execute(self, dat_dict = None, static_args = None):
-        '''
+        """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
-        '''
+        """
 
         self._cell_sort_all()
 
@@ -1129,7 +1090,7 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
 
 class PairLoopRapaportHalo(PairLoopRapaport):    
     def _kernel_argument_declarations(self):
-        '''Define and declare the kernel arguments.
+        """Define and declare the kernel arguments.
 
         For each argument the kernel gets passed a pointer of type
         ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
@@ -1142,7 +1103,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         This method generates the definitions of the ``loc_argXXX`` variables
         and populates the data to ensure that ``loc_argXXX[i]`` points to
         the correct address in the particle_dats.
-        '''
+        """
         s = '\n'
         for i,dat in enumerate(self._particle_dat_dict.items()):
             
@@ -1219,10 +1180,10 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         return s
          
     def _generate_header_source(self):
-        '''Generate the source code of the header file.
+        """Generate the source code of the header file.
 
         Returns the source code for the header file.
-        '''
+        """
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
@@ -1365,15 +1326,11 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         
         '''    
     
-    def execute(self, N=None ,dat_dict = None, static_args = None):
-    
-        '''
+    def execute(self, n=None ,dat_dict = None, static_args = None):
+        """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
-        '''
-        
-        
-        
-        
+        """
+
         '''Allow alternative pointers'''
         if (dat_dict != None):
             self._particle_dat_dict = dat_dict    
@@ -1382,8 +1339,8 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         
         '''Create arg list'''
         
-        if (N != None):
-            _N = N
+        if (n != None):
+            _N = n
         else:
             _N = self._q_list[self._q_list.end]
         
@@ -1407,33 +1364,4 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         method = self._lib[self._kernel.name+'_wrapper']
         
         method(*args)        
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     

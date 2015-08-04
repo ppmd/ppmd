@@ -8,7 +8,7 @@ import access
 
 
 class Dat(object):
-    '''
+    """
     Base class to hold floating point properties of particles, creates N1*N2 array with given initial value.
     
     :arg int N1: First dimension extent.
@@ -16,16 +16,16 @@ class Dat(object):
     :arg double initial_value: Value to initialise array with, default 0.0.
     :arg str name: Collective name of stored vars eg positions.
     
-    '''
+    """
 
-    def __init__(self, N1=1, N2=1, initial_value=None, name=None, dtype=ctypes.c_double, max_size=200000):
+    def __init__(self, n1=1, n2=1, initial_value=None, name=None, dtype=ctypes.c_double, max_size=200000):
 
         self._name = name
 
         self._dtype = dtype
 
-        self._N1 = N1
-        self._N2 = N2
+        self._N1 = n1
+        self._N2 = n2
         self._max_size = max_size
 
         if (initial_value != None):
@@ -35,10 +35,10 @@ class Dat(object):
                 self._N2 = initial_value.shape[1]
                 self._max_size = initial_value.shape[0]
             else:
-                self._Dat = float(initial_value) * np.ones([N1, N2], dtype=self._dtype, order='C')
-                self._max_size = N1
+                self._Dat = float(initial_value) * np.ones([n1, n2], dtype=self._dtype, order='C')
+                self._max_size = n1
         else:
-            self._Dat = np.zeros([max_size, N2], dtype=self._dtype, order='C')
+            self._Dat = np.zeros([max_size, n2], dtype=self._dtype, order='C')
 
         self._XYZFile_exists = False
 
@@ -53,9 +53,9 @@ class Dat(object):
 
     @property
     def dat(self):
-        '''
+        """
         Returns entire data array.
-        '''
+        """
         return self._Dat
 
     @dat.setter
@@ -87,48 +87,48 @@ class Dat(object):
 
     @property
     def ncomp(self):
-        '''
+        """
         Return number of components.
-        '''
+        """
         return self._N2
 
     @property
     def npart(self):
-        '''Return number of particles.'''
+        """Return number of particles."""
         return self._N1
 
     @npart.setter
     def npart(self, val):
-        '''Set number of particles.'''
+        """Set number of particles."""
         self._N1 = val
 
     @property
     def npart_halo(self):
-        '''Return number of particles in halo region'''
+        """Return number of particles in halo region"""
         return self._NH
 
     @property
     def ctypes_data(self):
-        '''Return ctypes-pointer to data.'''
+        """Return ctypes-pointer to data."""
         return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
 
     @property
     def dtype(self):
-        ''' Return Dat c data ctype'''
+        """Return Dat c data ctype"""
         return self._dtype
 
     @property
     def dattype(self):
-        '''
+        """
         Returns type of particle dat.
-        '''
+        """
         return self._type
 
     @property
     def name(self):
-        '''
+        """
         Returns name of particle dat.
-        '''
+        """
         return self._name
 
     @property
@@ -155,103 +155,103 @@ class Dat(object):
         self._halo_start = self._N1
         self._NH = 0
 
-    def resize(self, N):
-        '''
+    def resize(self, n):
+        """
         Resize particle dat to be at least a certain size, does not resize if already large enough.
         
-        :arg int N: New minimum size.
-        '''
+        :arg int n: New minimum size.
+        """
 
-        if (N > self._max_size):
-            self._max_size = N + (N - self._max_size) * 10
-            self._Dat.resize([N, self._N2], dtype=self._dtype, order='C')
-            # self._N1 = N
+        if (n > self._max_size):
+            self._max_size = n + (n - self._max_size) * 10
+            self._Dat.resize([n, self._N2], dtype=self._dtype, order='C')
+            # self._N1 = n
 
-    def dat_write(self, dirname='./output', filename=None, rename_override=False):
-        '''
+    def dat_write(self, dir_name='./output', file_name=None, rename_override=False):
+        """
         Function to write Dat objects to disk.
         
-        :arg str dirname: directory to write to, default ./output.
-        :arg str filename: Filename to write to, default dat name or data.Dat if name unset.
+        :arg str dir_name: directory to write to, default ./output.
+        :arg str file_name: Filename to write to, default dat name or data.Dat if name unset.
         :arg bool rename_override: Flagging as True will disable autorenaming of output file.
-        '''
+        """
 
-        if (self._name != None and filename == None):
-            filename = str(self._name) + '.Dat'
-        if (filename == None):
-            filename = 'data.Dat'
+        if (self._name != None and file_name == None):
+            file_name = str(self._name) + '.Dat'
+        if (file_name == None):
+            file_name = 'data.Dat'
 
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
 
-        if (os.path.exists(os.path.join(dirname, filename)) & (rename_override != True)):
-            filename = re.sub('.Dat', datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.Dat', filename)
-            if (os.path.exists(os.path.join(dirname, filename))):
-                filename = re.sub('.Dat', datetime.datetime.now().strftime("_%f") + '.Dat', filename)
-                assert os.path.exists(os.path.join(dirname, filename)), "DatWrite Error: No unquie name found."
+        if (os.path.exists(os.path.join(dir_name, file_name)) & (rename_override != True)):
+            file_name = re.sub('.Dat', datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.Dat', file_name)
+            if (os.path.exists(os.path.join(dir_name, file_name))):
+                file_name = re.sub('.Dat', datetime.datetime.now().strftime("_%f") + '.Dat', file_name)
+                assert os.path.exists(os.path.join(dir_name, file_name)), "DatWrite Error: No unquie name found."
 
-        f = open(os.path.join(dirname, filename), 'w')
+        f = open(os.path.join(dir_name, file_name), 'w')
         pickle.dump(self._Dat, f, pickle.HIGHEST_PROTOCOL)
         f.close()
 
-    def dat_read(self, dirname='./output', filename=None):
-        '''
+    def dat_read(self, dir_name='./output', file_name=None):
+        """
         Function to read Dat objects from disk.
         
-        :arg str dirname: directory to read from, default ./output.
-        :arg str filename: filename to read from.
-        '''
+        :arg str dir_name: directory to read from, default ./output.
+        :arg str file_name: file_name to read from.
+        """
 
-        assert os.path.exists(dirname), "Read directory not found"
-        assert filename != None, "DatRead Error: No filename given."
+        assert os.path.exists(dir_name), "Read directory not found"
+        assert file_name != None, "DatRead Error: No file_name given."
 
-        f = open(os.path.join(dirname, filename), 'r')
+        f = open(os.path.join(dir_name, file_name), 'r')
         self = pickle.load(f)
         f.close()
 
-    def xzy_write(self, dirname='./output', filename='out.xyz', title=None, sym=None, rename_override=False, append=0):
-        '''
+    def xzy_write(self, dir_name='./output', file_name='out.xyz', title=None, sym=None, rename_override=False, append=0):
+        """
         Function to write particle positions in a xyz format.
         
-        :arg str dirname: Directory to write to default ./output.
-        :arg str filename: Filename to write to default out.xyz.
+        :arg str dir_name: Directory to write to default ./output.
+        :arg str file_name: Filename to write to default out.xyz.
         :arg Dat X: Particle dat containing positions.
         :arg str title: title of molecule default ABC. 
         :arg str sym: Atomic symbol for particles, default A.
         :arg int N_mol: Number of atoms per molecule default 1.
         :arg bool rename_override: Flagging as True will disable autorenaming of output file.
-        '''
+        """
 
         if (append == 0):
             self._XYZFile_exists = False
-            self._XYZfilename = filename
+            self._XYZfilename = file_name
 
         if ((append > 0) & (self._XYZFile_exists == False)):
-            self._XYZfilename = filename
+            self._XYZfilename = file_name
 
         if (title == None):
             title = 'AA'
         if (sym == None):
             sym = 'A'
 
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
 
-        if (os.path.exists(os.path.join(dirname, self._XYZfilename)) & (rename_override == False) & (
+        if (os.path.exists(os.path.join(dir_name, self._XYZfilename)) & (rename_override == False) & (
             self._XYZFile_exists == False)):
             self._XYZfilename = re.sub('.xyz', datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz',
                                        self._XYZfilename)
-            if (os.path.exists(os.path.join(dirname, self._XYZfilename))):
+            if (os.path.exists(os.path.join(dir_name, self._XYZfilename))):
                 self._XYZfilename = re.sub('.xyz', datetime.datetime.now().strftime("_%f") + '.xyz', self._XYZfilename)
-                assert os.path.exists(os.path.join(dirname, self._XYZfilename)), "XYZWrite Error: No unquie name found."
+                assert os.path.exists(os.path.join(dir_name, self._XYZfilename)), "XYZWrite Error: No unquie name found."
         self._XYZFile_exists = True
 
         space = ' '
 
         if (append == 0):
-            f = open(os.path.join(dirname, self._XYZfilename), 'w')
+            f = open(os.path.join(dir_name, self._XYZfilename), 'w')
         if (append > 0):
-            f = open(os.path.join(dirname, self._XYZfilename), 'a')
+            f = open(os.path.join(dir_name, self._XYZfilename), 'a')
 
         f.write(str(self._N1) + '\n')
         f.write(str(title) + '\n')
@@ -271,7 +271,7 @@ class Dat(object):
 
 
 class TypedDat(Dat):
-    '''
+    """
     Base class to hold floating point properties of particles based on particle type, creates N1*N2 array with given initial value.
     
     :arg int N1: First dimension extent.
@@ -279,16 +279,16 @@ class TypedDat(Dat):
     :arg double initial_value: Value to initialise array with, default 0.0.
     :arg str name: Collective name of stored vars eg positions.
     
-    '''
+    """
 
-    def __init__(self, N1=1, N2=1, initial_value=None, name=None, dtype=ctypes.c_double, max_size=100000):
+    def __init__(self, n1=1, n2=1, initial_value=None, name=None, dtype=ctypes.c_double, max_size=100000):
 
         self._name = name
 
         self._dtype = dtype
 
-        self._N1 = N1
-        self._N2 = N2
+        self._N1 = n1
+        self._N2 = n2
         self._max_size = max_size
 
         if (initial_value != None):
@@ -298,10 +298,10 @@ class TypedDat(Dat):
                 self._N2 = initial_value.shape[1]
                 self._max_size = initial_value.shape[0]
             else:
-                self._Dat = float(initial_value) * np.ones([N1, N2], dtype=self._dtype, order='C')
-                self._max_size = N1
+                self._Dat = float(initial_value) * np.ones([n1, n2], dtype=self._dtype, order='C')
+                self._max_size = n1
         else:
-            self._Dat = np.zeros([max_size, N2], dtype=self._dtype, order='C')
+            self._Dat = np.zeros([max_size, n2], dtype=self._dtype, order='C')
 
         self._XYZFile_exists = False
 

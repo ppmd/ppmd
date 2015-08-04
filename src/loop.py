@@ -1,37 +1,31 @@
 import numpy as np
 import particle
-import math
 import ctypes
-import random
 import os
-import hashlib
-import subprocess
 import data
-import kernel
 import build
 
 
-
-class _base(build.GenericToolChain):
-    '''
+class _Base(build.GenericToolChain):
+    """
     Generic base class to loop over all particles once.
     
-    :arg int N: Number of elements to loop over.
+    :arg int n: Number of elements to loop over.
     :arg kernel kernel:  Kernel to apply at each element.
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg bool DEBUG: Flag to enable debug flags.
-    '''
-    def __init__(self, N, types_map ,kernel, particle_dat_dict, DEBUG = False, MPI_handle = None):
+    """
+    def __init__(self, n, types_map, kernel, particle_dat_dict, DEBUG=False, mpi_handle=None):
         
         self._DEBUG = DEBUG
         self._compiler_set()
-        self._N = N
+        self._N = n
         self._types_map = types_map
-        self._Mh = MPI_handle
-        
-        
+        self._Mh = mpi_handle
+
         self._temp_dir = './build/'
-        if (not os.path.exists(self._temp_dir)):
+
+        if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = kernel
         
@@ -44,20 +38,16 @@ class _base(build.GenericToolChain):
         
         self._library_filename  = self._unique_name +'.so'
         
-        if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
+        if not os.path.exists(os.path.join(self._temp_dir,self._library_filename)):
             
-            if (self._Mh == None):
+            if self._Mh is None:
                 self._create_library()
             
             else:
-                if  self._Mh.rank == 0:
+                if self._Mh.rank == 0:
                     self._create_library()
                 self._Mh.barrier()
-                
-                
-            
-            
-            
+
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
@@ -68,7 +58,7 @@ class _base(build.GenericToolChain):
         
     
     def _kernel_argument_declarations(self):
-        '''Define and declare the kernel arguments.
+        """Define and declare the kernel arguments.
 
         For each argument the kernel gets passed a pointer of type
         ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
@@ -81,11 +71,11 @@ class _base(build.GenericToolChain):
         This method generates the definitions of the ``loc_argXXX`` variables
         and populates the data to ensure that ``loc_argXXX[i]`` points to
         the correct address in the particle_dats.
-        '''
+        """
         s = '\n'
         
         
-        for i,dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._particle_dat_dict.items()):
             
             
             space = ' '*14
@@ -112,7 +102,9 @@ class _base(build.GenericToolChain):
 ################################################################################################################
 # SINGLE ALL PARTICLE LOOP SERIAL
 ################################################################################################################
-class SingleAllParticleLoop(_base):
+
+
+class SingleAllParticleLoop(_Base):
                    
     def _compiler_set(self):
         self._cc = build.TMPCC
@@ -140,12 +132,12 @@ class SingleAllParticleLoop(_base):
         }
         '''
     
-    ## added to cope with int *_GID, int *_TYPE_MAP, take out afterwards
+    # added to cope with int *_GID, int *_TYPE_MAP, take out afterwards
     def _generate_header_source(self):
-        '''Generate the source code of the header file.
+        """Generate the source code of the header file.
 
         Returns the source code for the header file.
-        '''
+        """
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
@@ -156,26 +148,23 @@ class SingleAllParticleLoop(_base):
 
         #endif
         '''
-        
-        
-        d = {'UNIQUENAME':self._unique_name,
-             'INCLUDED_HEADERS':self._included_headers(),
-             'KERNEL_NAME':self._kernel.name,
-             'ARGUMENTS':self._argnames()}
-        return (code % d)        
-        
-        
-        
+
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS' :self._argnames()}
+        return code % d
+
 ################################################################################################################
 # SINGLE PARTICLE LOOP SERIAL
 ################################################################################################################
-class SingleParticleLoop(_base):
+
+
+class SingleParticleLoop(_Base):
                    
     def _compiler_set(self):
         self._cc = build.TMPCC
-        
-        
-    
+
     def _code_init(self):
         self._kernel_code = self._kernel.code
     
@@ -196,11 +185,12 @@ class SingleParticleLoop(_base):
             }
         }
         '''
+
     def _generate_header_source(self):
-        '''Generate the source code of the header file.
+        """Generate the source code of the header file.
 
         Returns the source code for the header file.
-        '''
+        """
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
@@ -218,11 +208,10 @@ class SingleParticleLoop(_base):
              'KERNEL_NAME':self._kernel.name,
              'ARGUMENTS':self._argnames()}
         return (code % d)
-    
-               
+
     def execute(self, start = 0 , end = 0, dat_dict = None, static_args = None):
         
-        '''Allow alternative pointers'''
+        # Allow alternative pointers
         if (dat_dict != None):
             self._particle_dat_dict = dat_dict    
         
@@ -259,10 +248,11 @@ class SingleParticleLoop(_base):
 # SINGLE PARTICLE LOOP OPENMP
 ################################################################################################################
 
+
 class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
-    '''
+    """
     OpenMP version of single pass pair loop (experimental)
-    '''
+    """
     def _compiler_set(self):
         self._cc = build.TMPCC_OpenMP
     
@@ -302,8 +292,8 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
         '''
     
     def _generate_impl_source(self):
-        '''Generate the source code the actual implementation.
-        '''
+        """Generate the source code the actual implementation.
+        """
         
 
         d = {'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations_openmp(),
@@ -316,12 +306,11 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
              'OPENMP_DECLARATION':self._ompdecstr,
              'OPENMP_FINALISE':self._ompfinalstr
              }
-             
-        
-        return self._code % d     
+
+        return self._code % d
         
     def _kernel_argument_declarations_openmp(self):
-        '''Define and declare the kernel arguments.
+        """Define and declare the kernel arguments.
 
         For each argument the kernel gets passed a pointer of type
         ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
@@ -334,57 +323,52 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
         This method generates the definitions of the ``loc_argXXX`` variables
         and populates the data to ensure that ``loc_argXXX[i]`` points to
         the correct address in the particle_dats.
-        '''
+        """
         s = '\n'
-        
-        
-        for i,dat in enumerate(self._particle_dat_dict.items()):
-            
-            
+
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+
             space = ' '*14
             argname = dat[0]+'_ext'
             loc_argname = dat[0]
 
             reduction_handle = self._kernel.reduction_variable_lookup(dat[0])
             
-            if (reduction_handle != None):
-                #if (dat[1].ncomp != 1): 
-                #print "WARNING, Reductions currently only valid for 1 element."
+            if reduction_handle is not None:
+                # if (dat[1].ncomp != 1):
+                # print "WARNING, Reductions currently only valid for 1 element."
                 
-                #Create a var name a variable to reduce upon.
+                # Create a var name a variable to reduce upon.
                 reduction_argname = dat[0]+'_reduction'
                 
-                #Initialise variable
+                # Initialise variable
                 self._ompinitstr += data.ctypes_map[dat[1].dtype]+' '+reduction_argname+' = '+build.omp_operator_init_values[reduction_handle.operator]+';'
                 
-                #Add to omp pragma
-                self._ompdecstr += 'reduction('+reduction_handle.operator+':'+reduction_argname+')'
+                # Add to omp pragma
+                self._ompdecstr += 'Reduction('+reduction_handle.operator+':'+reduction_argname+')'
                 
-                #Modify kernel code to use new reduction variable.
+                # Modify kernel code to use new Reduction variable.
                 self._kernel_code = build.replace(self._kernel_code,reduction_handle.pointer, reduction_argname)
                 
-                #write final value to output pointer
+                # write final value to output pointer
                 
                 self._ompfinalstr += argname+'['+reduction_handle.index+'] ='+reduction_argname+';'
-                
-            
+
             else:
             
-                if (type(dat[1]) == data.ScalarArray):
+                if type(dat[1]) == data.ScalarArray:
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
                 
-                elif (type(dat[1]) == particle.Dat):
+                elif type(dat[1]) == particle.Dat:
                     
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';\n'
                     s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'
                     
-                elif (type(dat[1]) == particle.TypedDat):
+                elif type(dat[1]) == particle.TypedDat:
                     
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
                     s += space+loc_argname+' = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                    
-                         
-        
-        
+
         return s

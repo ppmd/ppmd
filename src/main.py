@@ -47,19 +47,19 @@ if __name__ == '__main__':
         #n=25 reasonable size
         n=8
         N=n**3
-        #N=860
+        #n=860
         rho = 0.05
         mu = 0.0
         nsig = 5.0
         
         #Initialise basci domain
-        test_domain = domain.BaseDomainHalo(NT=N, periods = (False,False,False), MPI_handle = MPI_HANDLE)
+        test_domain = domain.BaseDomainHalo(nt=N, periods = (False,False,False), mpi_handle= MPI_HANDLE)
         
         #Initialise LJ potential
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
         
-        #Place N particles in a lattice with given density.
-        #test_pos_init = state.PosInitLatticeNRho(N, rho, None)
+        #Place n particles in a lattice with given density.
+        #test_pos_init = state.PosInitLatticeNRho(n, rho, None)
         test_pos_init = state.PosInitLatticeNRhoRand(N,rho,0.,None)
         
         #Normally distributed velocities.
@@ -75,7 +75,7 @@ if __name__ == '__main__':
         N=2
         
         #See above
-        test_domain = domain.BaseDomainHalo(NT=N, periods = (False,False,False), MPI_handle = MPI_HANDLE)
+        test_domain = domain.BaseDomainHalo(nt=N, periods = (False,False,False), mpi_handle= MPI_HANDLE)
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)
         
         print test_potential.rc
@@ -96,7 +96,7 @@ if __name__ == '__main__':
         N=1
         
         #See above
-        test_domain = domain.BaseDomainHalo(NT=N,MPI_handle = MPI_HANDLE)
+        test_domain = domain.BaseDomainHalo(nt=N, mpi_handle= MPI_HANDLE)
         test_potential = potential.NULL(rc = 0.01)
         
         print test_potential.rc
@@ -123,7 +123,7 @@ if __name__ == '__main__':
                                    particle_pos_init = test_pos_init, 
                                    particle_vel_init = test_vel_init,
                                    particle_mass_init = test_mass_init,
-                                   N = N,
+                                   n= N,
                                    DEBUG = debug
                                    )
     
@@ -136,7 +136,7 @@ if __name__ == '__main__':
     
     #energy handle
     if (logging):
-        energyhandle = data.BasicEnergyStore(MPI_handle = MPI_HANDLE)
+        energyhandle = data.BasicEnergyStore(mpi_handle= MPI_HANDLE)
     else:
         energyhandle = None
     
@@ -150,10 +150,10 @@ if __name__ == '__main__':
     #test_vaf_method = method.VelocityAutoCorrelation(state = test_state, DEBUG = debug)   
     
     #Create an integrator for above state class.
-    #test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, VAF_handle = test_vaf_method, DEBUG = debug, MPI_handle = MPI_HANDLE)
+    #test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, VAF_handle = test_vaf_method, DEBUG = debug, mpi_handle = MPI_HANDLE)
     
     
-    test_integrator = method.VelocityVerletBox(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, VAF_handle = test_vaf_method, DEBUG = debug, MPI_handle = MPI_HANDLE)
+    test_integrator = method.VelocityVerletBox(state = test_state, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, vaf_handle= test_vaf_method, DEBUG = debug, mpi_handle= MPI_HANDLE)
     
     
     
@@ -176,11 +176,11 @@ if __name__ == '__main__':
     
     
     
-    test_integrator.integrate(dt = 0.0001, T = 0.5, timer=True)
+    test_integrator.integrate(dt = 0.0001, t= 0.5, timer=True)
     
-    test_integrator.integrate_thermostat(dt = 0.0001, T = 0.5, Temp=0.01, nu=2.5, timer=True)
+    test_integrator.integrate_thermostat(dt = 0.0001, t= 0.5, temp=0.01, nu=2.5, timer=True)
     
-    test_integrator.integrate(dt = 0.0001, T = 2.0, timer=True)
+    test_integrator.integrate(dt = 0.0001, t= 2.0, timer=True)
     #
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
@@ -201,7 +201,7 @@ if __name__ == '__main__':
         
         
     #test_gr_method.plot()
-    #test_gr_method.RawWrite()
+    #test_gr_method.raw_write()
     #test_vaf_method.plot()
     
     

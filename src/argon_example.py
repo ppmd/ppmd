@@ -38,13 +38,13 @@ if __name__ == '__main__':
     
     
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "N:I:")
+        opts, args = getopt.getopt(sys.argv[1:], "n:I:")
     except getopt.GetoptError as err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
         sys.exit(2)
     for o, a in opts:
-        if o == "-N":
+        if o == "-n":
             N=int(a)
         elif o == "-I":
             I=int(a)                        
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     cutoff  = 7.5
     
     
-    domain                  = domain.BaseDomainHalo(MPI_handle = MPI_HANDLE)
+    domain                  = domain.BaseDomainHalo(mpi_handle= MPI_HANDLE)
     potential               = potential.LennardJonesCounter(epsilon,sigma,cutoff)
     
     #initial_position_config = state.PosInitDLPOLYConfig('TEST7_CUSTOM/CONFIG')
@@ -84,9 +84,9 @@ if __name__ == '__main__':
                                        particle_pos_init = initial_position_config, 
                                        particle_vel_init = initial_velocity_config,
                                        particle_mass_init = intial_mass_config,
-                                       N = N,
+                                       n= N,
                                        DEBUG = debug,
-                                       MPI_handle = MPI_HANDLE
+                                       mpi_handle= MPI_HANDLE
                                        )
     
     
@@ -98,13 +98,13 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(interval = 25, MPI_handle = MPI_HANDLE)
+        plothandle = data.DrawParticles(interval = 25, mpi_handle= MPI_HANDLE)
     else:
         plothandle = None
     
     #energy handle
     if (logging):
-        energyhandle = data.BasicEnergyStore(MPI_handle = MPI_HANDLE)
+        energyhandle = data.BasicEnergyStore(mpi_handle= MPI_HANDLE)
     else:
         energyhandle = None
     
@@ -113,7 +113,7 @@ if __name__ == '__main__':
     
     
     
-    integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, DEBUG = debug, MPI_handle = MPI_HANDLE)
+    integrator = method.VelocityVerletAnderson(state = test_state, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, DEBUG = debug, MPI_handle = MPI_HANDLE)
     
     
     #control file seems to compute 16000 iterations at dt =10^-3, 1000 to equbrilate then 15k for averaging?
