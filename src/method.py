@@ -1,11 +1,11 @@
 import math
-import state
 import data
 import pairloop
 import loop
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import collections
 import kernel
 import constant
 import ctypes
@@ -17,9 +17,9 @@ import particle
 np.set_printoptions(threshold='nan')
 
 
-################################################################################################################
+###############################################################################################################
 # Velocity Verlet Method
-################################################################################################################ 
+###############################################################################################################
 
 class VelocityVerlet(object):
     """
@@ -965,13 +965,71 @@ class WriteTrajectoryXYZ(object):
                 self._s.mpi_handle.barrier()
 
 
+################################################################################################################
+# Schedule
+################################################################################################################
 
 
+class Schedule(object):
+    """
+    Class to schedule automated running of functions every set number of steps.
 
+    :arg list steps: List of steps between each run.
+    :arg list items: list of functions to run after set number of steps.
+    """
+    
+    def __init__(self, steps=None, items=None):
+        self._s = collections.defaultdict(list)
+        self._sl = []
 
+        if (steps is not None) and (items is not None):
+            assert len(steps) == len(items), "Schedule error, mis-match between number of steps and number of items."
+            for ix in zip(steps, items):
+                self._s[ix[0]].append(ix[1])
+                self._sl.append(ix[0])
 
+        self._count = 0
 
+    @property
+    def schedule(self):
+        """
+        Returns the held schedule.
+        """
+        return self._s
+        
+    def add_item(self, steps=None, items=None):
+        """
+        Add an item to the schedule.
+        
+        :arg function item: Function to run.
+        :arg int step: Number of steps between running the function. 
+        """
 
+        assert (steps is not None) and (items is not None), "Schedule add_item error: both arguments must be passed"
+        assert len(steps) == len(items), "Schedule item_add error, mis-match between" \
+                                         " number of steps and number of items."
+        for ix in zip(steps, items):
+            self._s[ix[0]].append(ix[1])
+            self._sl.append(ix[0])
+
+    @property
+    def count(self):
+        """
+        Return the currently held count
+        """
+        return self._count
+        
+    def tick(self):
+        """
+        Method ran by integrator or other method per iteration. If the required number of ticks have passed the
+        required functions will be ran.
+        """
+        self._count += 1
+
+        for ix in self._sl:
+            if self._count % ix == 0:
+                for iy in self._s[ix]:
+                    iy()
 
 
 
