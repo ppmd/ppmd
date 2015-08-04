@@ -353,7 +353,7 @@ class VelocityVerletBox(VelocityVerlet):
     :arg bool DEBUG: Flag to enable debug flags.
     """
     
-    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, plot_handle=None, energy_handle=None, writexyz=False, vaf_handle=None, DEBUG=False, mpi_handle=None, writer = None):
+    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, plot_handle=None, energy_handle=None, writexyz=False, vaf_handle=None, DEBUG=False, mpi_handle=None, schedule = None):
     
         self._dt = dt
         self._DT = dt_step
@@ -363,7 +363,7 @@ class VelocityVerletBox(VelocityVerlet):
 
         self._state = state
 
-        self._writer = writer
+        self._schedule = schedule
         
         self._domain = self._state.domain
         self._N = self._state.n
@@ -576,10 +576,8 @@ class VelocityVerletBox(VelocityVerlet):
         DTFLAG = ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )
         PERCENT = ((100.0*i)/self._max_it)
 
-
-
-        if self._writer is not None:
-            self._writer()
+        if self._schedule is not None:
+            self._schedule.tick()
 
         if (self._energy_handle is not None) & (DTFLAG is True):
 

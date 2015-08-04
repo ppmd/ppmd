@@ -134,7 +134,10 @@ if __name__ == '__main__':
 
 
     test_xyz = method.WriteTrajectoryXYZ(state=test_state)
-    test_integrator = method.VelocityVerletBox(state = test_state, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, vaf_handle= test_vaf_method, DEBUG = debug, mpi_handle= MPI_HANDLE, writer=test_xyz.write)
+
+    schedule = method.Schedule([10], [test_xyz.write])
+
+    test_integrator = method.VelocityVerletBox(state = test_state, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, vaf_handle= test_vaf_method, DEBUG = debug, mpi_handle= MPI_HANDLE, schedule=schedule)
     
 
     
