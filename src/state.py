@@ -135,9 +135,11 @@ class BaseMDState(object):
                                                                         mpi_handle= self._Mh)
         
         self._time = 0
-        
-        
-                                                                       
+
+    @property
+    def mpi_handle(self):
+        return self._domain.mpi_handle
+
     def _cell_sort_setup(self):
         """
         Creates looping for cell list creation

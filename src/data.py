@@ -216,12 +216,12 @@ class MDMPI(object):
 ###############################################################################################################
 
 
-def xyz_write(dir_name='./output', filename='out.xyz', x=None, title='A', sym='A', n_mol=1, rename_override=False):
+def xyz_write(dir_name='./output', file_name='out.xyz', x=None, title='A', sym='A', n_mol=1, rename_override=False):
     """
     Function to write particle positions in a xyz format.
     
     :arg str dirname: Directory to write to default ./output.
-    :arg str filename: Filename to write to default out.xyz.
+    :arg str file_name: Filename to write to default out.xyz.
     :arg Dat X: Particle dat containing positions.
     :arg str title: title of molecule default ABC. 
     :arg str sym: Atomic symbol for particles, default A.
@@ -233,15 +233,15 @@ def xyz_write(dir_name='./output', filename='out.xyz', x=None, title='A', sym='A
     if not os.path.exists(dir_name):
         os.makedirs(dir_name)
 
-    if os.path.exists(os.path.join(dir_name, filename)) & (rename_override is not True):
-        filename = re.sub('.xyz', datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz', filename)
-        if os.path.exists(os.path.join(dir_name, filename)):
-            filename = re.sub('.xyz', datetime.datetime.now().strftime("_%f") + '.xyz', filename)
-            assert os.path.exists(os.path.join(dir_name, filename)), "XYZWrite Error: No unique name found."
+    if os.path.exists(os.path.join(dir_name, file_name)) & (rename_override is not True):
+        file_name = re.sub('.xyz', datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz', file_name)
+        if os.path.exists(os.path.join(dir_name, file_name)):
+            file_name = re.sub('.xyz', datetime.datetime.now().strftime("_%f") + '.xyz', file_name)
+            assert os.path.exists(os.path.join(dir_name, file_name)), "XYZWrite Error: No unique name found."
 
     space = ' '
 
-    f = open(os.path.join(dir_name, filename), 'w')
+    f = open(os.path.join(dir_name, file_name), 'w')
     f.write(str(n_mol) + '\n')
     f.write(str(title) + '\n')
     for ix in range(x.npart):

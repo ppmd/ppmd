@@ -410,7 +410,11 @@ class BaseDomainHalo(BaseDomain):
         self.halo_init()
         
         return True
-        
+
+    @property
+    def mpi_handle(self):
+        return self._MPI_handle
+
     @property
     def boundary(self):
         """

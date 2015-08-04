@@ -353,7 +353,7 @@ class VelocityVerletBox(VelocityVerlet):
     :arg bool DEBUG: Flag to enable debug flags.
     """
     
-    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, plot_handle=None, energy_handle=None, writexyz=False, vaf_handle=None, DEBUG=False, mpi_handle=None):
+    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, plot_handle=None, energy_handle=None, writexyz=False, vaf_handle=None, DEBUG=False, mpi_handle=None, writer = None):
     
         self._dt = dt
         self._DT = dt_step
@@ -362,6 +362,8 @@ class VelocityVerletBox(VelocityVerlet):
         self._Mh = mpi_handle
 
         self._state = state
+
+        self._writer = writer
         
         self._domain = self._state.domain
         self._N = self._state.n
@@ -568,6 +570,58 @@ class VelocityVerletBox(VelocityVerlet):
             self._p2_thermostat.execute() 
             
             self._integration_internals(i)
+
+    def _integration_internals(self, i):
+
+        DTFLAG = ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )
+        PERCENT = ((100.0*i)/self._max_it)
+
+
+
+        if self._writer is not None:
+            self._writer()
+
+        if (self._energy_handle is not None) & (DTFLAG is True):
+
+            self._K.scale(0.0)
+            self._pK.execute()
+
+            if self._N() > 0:
+
+                _U_tmp = self._state.u.dat[0]/self._state.nt()
+
+                _U_tmp += 0.5*self._state.u.dat[1]/self._state.nt()
+
+                self._energy_handle.u_append(_U_tmp)
+
+                if self._N() > 0:
+                    self._energy_handle.k_append((self._K[0])/self._state.nt())
+                    self._energy_handle.q_append(_U_tmp + (self._K[0])/self._state.nt())
+                else:
+                    self._energy_handle.k_append(0.)
+                    self._energy_handle.q_append(0.)
+
+            else:
+                self._energy_handle.u_append(0.)
+                self._energy_handle.k_append(0.)
+                self._energy_handle.q_append(0.)
+            self._energy_handle.t_append((i+1)*self._dt)
+
+        if (self._writexyz is True) & (DTFLAG is True):
+            self._state.positions.XYZWrite(append=1)
+
+        if (self._VAF_handle is not None) & (DTFLAG is True):
+            self._VAF_handle.evaluate(t=(i+1)*self._dt)
+
+        if (self._plot_handle is not None) & (PERCENT > self._percent_count):
+
+            if self._plot_handle is not None:
+                self._plot_handle.draw(self._state)
+
+            self._percent_count += self._percent_int
+
+            if self._state.domain.rank == 0:
+                print int((100.0*i)/self._max_it),"%", "T=", self._dt*i
                 
 ################################################################################################################
 # G(R)
@@ -845,6 +899,71 @@ class VelocityAutoCorrelation(object):
             plt.show()
         else:
             print "Warning: run evaluate() at least once before plotting."
+
+
+
+
+class WriteTrajectoryXYZ(object):
+    """
+    Write Positions to file in XYZ format from given state to given filename.
+    """
+    def __init__(self, state=None, dir_name='./output', file_name='out.xyz', title='A', symbol='A' ,overwrite=True, ordered=False):
+
+        assert state is not None, "Error: no state passed"
+
+        self._s = state
+        self._title = title
+        self._symbol = symbol
+        self._ordered = ordered
+
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+
+        if os.path.exists(os.path.join(dir_name, file_name)) & (overwrite is not True):
+            file_name = re.sub('.xyz', datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz', file_name)
+            if os.path.exists(os.path.join(dir_name, file_name)):
+                file_name = re.sub('.xyz', datetime.datetime.now().strftime("_%f") + '.xyz', file_name)
+                assert os.path.exists(os.path.join(dir_name, file_name)), "WriteTrajectoryXYZ Error: No unique name found."
+
+        self._fn = file_name
+        self._dn = dir_name
+        self._fh = None
+
+        if self._s.mpi_handle.rank == 0:
+            self._fh = open(os.path.join(self._dn, self._fn), 'w')
+            self._fh.close()
+
+    def write(self):
+        """
+        Append current positions to file.
+        :return:
+        """
+        space = ' '
+
+
+
+        if self._s.mpi_handle.rank == 0:
+            self._fh = open(os.path.join(self._dn, self._fn), 'a')
+            self._fh.write(str(self._s.nt()) + '\n')
+            self._fh.write(str(self._title) + '\n')
+            self._fh.flush()
+        self._s.mpi_handle.barrier()
+
+        if self._ordered is False:
+            for iz in range(self._s.mpi_handle.nproc):
+                if self._s.mpi_handle.rank == iz:
+                    self._fh = open(os.path.join(self._dn, self._fn), 'a')
+                    for ix in range(self._s.n()):
+                        self._fh.write(str(self._symbol).rjust(3))
+                        for iy in range(3):
+                            self._fh.write(space + str('%.5f' % self._s.positions[ix, iy]))
+                        self._fh.write('\n')
+
+                    self._fh.flush()
+                    self._fh.close()
+
+                self._s.mpi_handle.barrier()
+
 
 
 
