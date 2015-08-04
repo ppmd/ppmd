@@ -324,14 +324,14 @@ class DrawParticles(object):
             if self._Mh.rank == 0:
 
                 '''Copy the local data.'''
-                self._Dat.Dat[0:self._N:, ::] = state.positions.Dat[0:self._N:, ::]
+                self._Dat.dat[0:self._N:, ::] = state.positions.dat[0:self._N:, ::]
                 self._gids[0:self._N:] = state.global_ids[0:self._N:]
 
                 _i = self._N  # starting point pos
                 _ig = self._N  # starting point gids
 
                 for ix in range(1, self._Mh.nproc):
-                    self._Mh.comm.Recv(self._Dat.Dat[_i::, ::], ix, ix, _MS)
+                    self._Mh.comm.Recv(self._Dat.dat[_i::, ::], ix, ix, _MS)
                     _i += _MS.Get_count(mpi_map[self._Dat.dtype]) / 3
 
                     self._Mh.comm.Recv(self._gids.Dat[_ig::], ix, ix, _MS)
@@ -341,15 +341,15 @@ class DrawParticles(object):
                 self._gid = self._gids
             else:
 
-                self._Mh.comm.Send(state.positions.Dat[0:self._N:, ::], 0, self._Mh.rank)
-                self._Mh.comm.Send(state.global_ids.Dat[0:self._N:], 0, self._Mh.rank)
+                self._Mh.comm.Send(state.positions.dat[0:self._N:, ::], 0, self._Mh.rank)
+                self._Mh.comm.Send(state.global_ids.dat[0:self._N:], 0, self._Mh.rank)
 
         if (self._Mh.rank == 0):
 
             plt.cla()
             plt.ion()
             for ix in range(self._pos.npart):
-                self._ax.scatter(self._pos.Dat[ix, 0], self._pos.Dat[ix, 1], self._pos.Dat[ix, 2],
+                self._ax.scatter(self._pos.dat[ix, 0], self._pos.dat[ix, 1], self._pos.dat[ix, 2],
                                  color=self._key[self._gid[ix] % 2])
             self._ax.set_xlim([-0.5 * self._extents[0], 0.5 * self._extents[0]])
             self._ax.set_ylim([-0.5 * self._extents[1], 0.5 * self._extents[1]])

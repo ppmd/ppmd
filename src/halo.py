@@ -168,10 +168,10 @@ class HaloCartesianSingleProcess(object):
             if self._send_list[i]>-1 and self._recv_list[i]>-1:
                 
                 
-                self._MPI.Sendrecv(self._send_buffers[i].Dat[0:self._exchange_sizes[i]:1,::],
+                self._MPI.Sendrecv(self._send_buffers[i].dat[0:self._exchange_sizes[i]:1,::],
                                    self._send_list[i],
                                    self._send_list[i],
-                                   data_in.Dat[data_in.halo_start::,::],
+                                   data_in.dat[data_in.halo_start::,::],
                                    self._recv_list[i],
                                    self._rank,
                                    self._MPIstatus)
@@ -183,14 +183,14 @@ class HaloCartesianSingleProcess(object):
             
             elif self._send_list[i]>-1:
                 
-                self._MPI.Send(self._send_buffers[i].Dat[0:self._exchange_sizes[i]:1,::],
+                self._MPI.Send(self._send_buffers[i].dat[0:self._exchange_sizes[i]:1,::],
                                self._send_list[i],
                                self._send_list[i])
                                
             
             elif self._recv_list[i]>-1:
                 
-                self._MPI.Recv(data_in.Dat[data_in.halo_start::,::],
+                self._MPI.Recv(data_in.dat[data_in.halo_start::,::],
                                self._recv_list[i],
                                self._rank,
                                self._MPIstatus)

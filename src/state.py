@@ -414,7 +414,7 @@ class BaseMDState(object):
         """
         
         #self._accel.set_val(val)
-        self._accel.Dat[0:self._accel.npart:,::] = val
+        self._accel.dat[0:self._accel.npart:,::] = val
         
         
         

@@ -177,8 +177,8 @@ class VelocityVerlet(object):
         if (self._USE_C):
             self._p1.execute(N)
         else:
-            self._V.Dat[...,...]+=0.5*self._dt*self._A.Dat
-            self._P.Dat[...,...]+=self._dt*self._V.Dat
+            self._V.dat[...,...]+=0.5*self._dt*self._A.dat
+            self._P.dat[...,...]+=self._dt*self._V.dat
         
         #update forces
         
@@ -192,7 +192,7 @@ class VelocityVerlet(object):
         if (self._USE_C):
             self._p2.execute(N)
         else:
-            self._V.Dat[...,...]+= 0.5*self._dt*self._A.Dat
+            self._V.dat[...,...]+= 0.5*self._dt*self._A.dat
         
 
     def _integration_internals(self, i):
@@ -233,10 +233,10 @@ class VelocityVerlet(object):
             
             if (self._N()>0):
                 
-                _U_tmp = self._state.U.Dat[0]/self._state.NT()
+                _U_tmp = self._state.U.dat[0]/self._state.NT()
                 
                 
-                _U_tmp += 0.5*self._state.U.Dat[1]/self._state.NT()
+                _U_tmp += 0.5*self._state.U.dat[1]/self._state.NT()
                 
                 self._energy_handle.U_append(_U_tmp)
                 
@@ -862,10 +862,10 @@ class VelocityAutoCorrelation(object):
         '''
         
         if (V0!=None):
-            self._V0.Dat = np.copy(V0.Dat)
+            self._V0.dat = np.copy(V0.dat)
             self._V0_SET = True
         if (state!=None):
-            self._V0.Dat = np.copy(state.velocities.Dat)
+            self._V0.dat = np.copy(state.velocities.dat)
             self._V0_SET = True            
         assert self._V0_SET == True, "No velocities set, check input data."
         

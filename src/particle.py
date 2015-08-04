@@ -52,14 +52,14 @@ class Dat(object):
         self._Dat[..., ...] = val
 
     @property
-    def Dat(self):
+    def dat(self):
         '''
         Returns entire data array.
         '''
         return self._Dat
 
-    @Dat.setter
-    def Dat(self, val):
+    @dat.setter
+    def dat(self, val):
         self._Dat = np.array([val], dtype=self._dtype)
 
     def __getitem__(self, ix):

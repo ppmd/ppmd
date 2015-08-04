@@ -134,7 +134,7 @@ if __name__ == '__main__':
     
     
     
-    print "COUNT", potential._counter.Dat[0], "OUTER COUNT", potential._counter_outer.Dat[0]
+    print "COUNT", potential._counter.dat[0], "OUTER COUNT", potential._counter_outer.dat[0]
     
     
     
