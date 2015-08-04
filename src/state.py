@@ -476,6 +476,8 @@ class BaseMDState(object):
         return float(energy)
         
         
+        
+        
 ################################################################################################################
 # BaseMDStatehalo DEFINITIONS
 ################################################################################################################  
@@ -528,7 +530,7 @@ class BaseMDStateHalo(BaseMDState):
         
         #potential energy, kenetic energy, total energy.
         self._U = data.ScalarArray(max_size = 2, name='potential_energy');
-        self._U.InitHaloDat()
+        self._U.init_halo_dat()
         
         self._K = data.ScalarArray();
         self._Q = data.ScalarArray();

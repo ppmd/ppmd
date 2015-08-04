@@ -399,13 +399,250 @@ class VelocityVerletAnderson(VelocityVerlet):
             self._p2_thermostat.execute() 
             
             self._integration_internals(i)
+
+
             
-  
+################################################################################################################
+# SOLID BOUNDARY TEST INTEGRATOR
+################################################################################################################ 
+
+class VelocityVerletBox(VelocityVerlet):
+    '''
+    Class to apply Velocity-Verlet to a given state using a given looping method.
+    
+    :arg double dt: Time step size, can be specified at integrate call.
+    :arg double T: End time, can be specified at integrate call.
+    :arg bool USE_C: Flag to use C looping and kernel.
+    :arg DrawParticles plot_handle: PLotting class to plot state at certain progress points.
+    :arg BasicEnergyStore energy_handle: Energy storage class to log energy at each iteration.
+    :arg bool writexyz: Flag to indicate writing of xyz at each DT.
+    :arg bool DEBUG: Flag to enable debug flags.
+    '''
+    
+    def __init__(self, dt = 0.0001, T = 0.01, DT = 0.001,state = None, USE_C = True, plot_handle = None, energy_handle = None, writexyz = False, VAF_handle = None, DEBUG = False, MPI_handle = None):
+    
+        self._dt = dt
+        self._DT = DT
+        self._T = T
+        self._DEBUG = DEBUG
+        self._Mh = MPI_handle
+
+        self._state = state
+        
+        self._domain = self._state.domain
+        self._N = self._state.N
+        self._A = self._state.forces
+        self._V = self._state.velocities
+        self._P = self._state.positions
+        self._M = self._state.masses
+        self._K = self._state.K
+        
+        
+        self._USE_C = USE_C
+        self._plot_handle = plot_handle
+        self._energy_handle = energy_handle
+        self._writexyz = writexyz
+        self._VAF_handle = VAF_handle
+        
+        self._kernel1_code = '''
+        //self._V+=0.5*self._dt*self._A
+        //self._P+=self._dt*self._V
+        const double M_tmp = 1/M[0];
+        V[0] += dht*A[0]*M_tmp;
+        V[1] += dht*A[1]*M_tmp;
+        V[2] += dht*(A[2]-100.0)*M_tmp;
+        P[0] += dt*V[0];
+        P[1] += dt*V[1];
+        P[2] += dt*V[2];
+        
+        if (P[0] > 0.5*E[0]){ P[0] = 0.5*E[0]-0.000001; V[0]=-0.8*V[0]; }
+        if (P[1] > 0.5*E[1]){ P[1] = 0.5*E[1]-0.000001; V[1]=-0.8*V[1]; }
+        if (P[2] > 0.5*E[2]){ P[2] = 0.5*E[2]-0.000001; V[2]=-0.8*V[2]; }
+        
+        if (P[0] < -0.5*E[0]){ P[0] = -0.5*E[0]+0.000001; V[0]=-0.8*V[0]; }
+        if (P[1] < -0.5*E[1]){ P[1] = -0.5*E[1]+0.000001; V[1]=-0.8*V[1]; }
+        if (P[2] < -0.5*E[2]){ P[2] = -0.5*E[2]+0.000001; V[2]=-0.8*V[2]; }        
+        
+        
+        '''
+                
+        self._kernel2_code = '''
+        //self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat
+        const double M_tmp = 1/M[0];
+        V[0] += dht*A[0]*M_tmp;
+        V[1] += dht*A[1]*M_tmp;
+        V[2] += dht*(A[2]-100.0)*M_tmp;
+        '''
+        
+        self._K_kernel_code = '''
+        
+        K[0] += (V[0]*V[0] + V[1]*V[1] + V[2]*V[2])*0.5*M[0];
+        
+        '''      
+        self._constants_K = []
+        self._K_kernel = kernel.Kernel('K_kernel',self._K_kernel_code,self._constants_K)
+        self._pK = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._K_kernel, {'V':self._V,'K':self._K, 'M':self._M, 'E':self._domain.extent}, DEBUG = self._DEBUG, MPI_handle = self._Mh)     
+    
+    def integrate(self, dt = None, DT = None, T = None, timer=False):
+        '''
+        Integrate state forward in time.
+        
+        :arg double dt: Time step size.
+        :arg double T: End time.
+        :arg bool timer: display approximate timing information.
+        '''
+
+        
+        
+        if (dt != None):
+            self._dt = dt
+        if (T != None):
+            self._T = T
+        if (DT != None):
+            self._DT = DT
+        else:
+            self._DT = 10.0*self._dt
+            
+        self._max_it = int(math.ceil(self._T/self._dt))
+        self._DT_Count = int(math.ceil(self._T/self._DT))
+        
+        if (self._energy_handle != None):
+            self._energy_handle.append_prepare(self._DT_Count)
+        
+        if (self._VAF_handle != None):
+            self._VAF_handle.append_prepare(self._DT_Count)
+            
+            
+        
+        if (self._USE_C):
+        
+            self._constants = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
+            
+            self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
+            self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent}, DEBUG = self._DEBUG, MPI_handle = self._Mh)
+
+            self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
+            self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent}, DEBUG = self._DEBUG, MPI_handle = self._Mh)  
+              
+        if (timer==True):
+            start = time.time()        
+        self._velocity_verlet_integration()
+        if (timer==True):
+            end = time.time()
+            if (self._state.domain.rank == 0):
+                print "integrate time taken:", end - start,"s"      
     
     
+    def integrate_thermostat(self, dt = None, DT = None, T = None, Temp = 273.15, nu = 1.0, timer=False):
+        '''
+        Integrate state forward in time.
+        
+        :arg double dt: Time step size.
+        :arg double T: End time.
+        :arg double Temp: Temperature of heat bath.
+        :arg bool timer: display approximate timing information.
+        '''
+        if (timer==True):
+            start = time.time()
+        
+        self._Temp = Temp
+        self._nu = nu
+        
+        if (dt != None):
+            self._dt = dt
+        if (T != None):
+            self._T = T
+        if (DT != None):
+            self._DT = DT
+        else:
+            self._DT = 10.0*self._dt
+            
+        self._max_it = int(math.ceil(self._T/self._dt))
+        self._DT_Count = int(math.ceil(self._T/self._DT))
+        if (self._energy_handle != None):
+            self._energy_handle.append_prepare(self._DT_Count)
+            
+        if (self._VAF_handle != None):
+            self._VAF_handle.append_prepare(self._DT_Count)
+        
+        if (self._USE_C):
+            self._constants1 = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
+            self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
+            self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent}, DEBUG = self._DEBUG, MPI_handle = self._Mh)
+            
+            
+            #N, types_map ,kernel, particle_dat_dict, DEBUG = False, MPI_handle = None
+            
+            
+            self._kernel2_thermostat_code = '''
+            
+            //Anderson thermostat here.
+            //probably horrific random code.
+            
+            const double tmp_rand_max = 1.0/RAND_MAX;
+            
+            if (rand()*tmp_rand_max < rate) {
+            
+                //Box-Muller method.
+                
+                
+                const double scale = sqrt(temperature/M[0]);
+                const double stmp = scale*sqrt(-2.0*log(rand()*tmp_rand_max));
+                
+                const double V0 = 2.0*M_PI*rand()*tmp_rand_max;
+                V[0] = stmp*cos(V0);
+                V[1] = stmp*sin(V0);
+                V[2] = scale*sqrt(-2.0*log(rand()*tmp_rand_max))*cos(2.0*M_PI*rand()*tmp_rand_max);
+                      
+            }
+            else {
+                const double M_tmp = 1/M[0];
+                V[0] += dht*A[0]*M_tmp;
+                V[1] += dht*A[1]*M_tmp;
+                V[2] += dht*(A[2]-100.0)*M_tmp;
+            }
+            
+            '''
+            
+            
+            self._constants2_thermostat = [constant.Constant('rate',self._dt*self._nu), constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt), constant.Constant('temperature',self._Temp),]
+            
+            self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
+            self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, MPI_handle = self._Mh)  
+            
+        
+        self._velocity_verlet_integration_thermostat()
+        
+        if (timer==True and self._Mh.rank == 0):
+            end = time.time()
+            print "integrate thermostat time taken:", end - start,"s"           
     
-    
-    
+    def _velocity_verlet_integration_thermostat(self):
+        """
+        Perform Velocity Verlet integration up to time T.
+        """    
+
+        
+        self._percent_count = 101
+        if (self._plot_handle != None):
+            self._percent_int = self._plot_handle.interval
+            self._percent_count = self._percent_int
+
+        self._domain.BCexecute()
+        self._state.forces_update()
+
+        for i in range(self._max_it):
+              
+            self._p1.execute()
+            
+            #update forces
+            self._domain.BCexecute()
+            self._state.forces_update()
+            
+            self._p2_thermostat.execute() 
+            
+            self._integration_internals(i)
+                
 ################################################################################################################
 # G(R)
 ################################################################################################################  

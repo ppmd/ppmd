@@ -11,6 +11,7 @@ import loop
 import subprocess
 import os
 
+
 if __name__ == '__main__':
     
     x=1
@@ -24,7 +25,7 @@ if __name__ == '__main__':
     test_1000 = True
     
     #2 particles bouncing agasint each other.
-    test_2_bounce = True
+    test_2_bounce = False
     
     #1 1 particle
     t_1_particle = False
@@ -44,15 +45,15 @@ if __name__ == '__main__':
     
     if (test_1000):
         #n=25 reasonable size
-        n=10
+        n=8
         N=n**3
         #N=860
-        rho = 3.
+        rho = 0.05
         mu = 0.0
         nsig = 5.0
         
         #Initialise basci domain
-        test_domain = domain.BaseDomainHalo(NT=N, periods = (True,True,True), MPI_handle = MPI_HANDLE)
+        test_domain = domain.BaseDomainHalo(NT=N, periods = (False,False,False), MPI_handle = MPI_HANDLE)
         
         #Initialise LJ potential
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
@@ -65,7 +66,7 @@ if __name__ == '__main__':
         test_vel_init = state.VelInitNormDist(mu,nsig)
         
         #Initialise masses, in this case sets all to 1.0.
-        test_mass_init = state.MassInitIdentical(50)
+        test_mass_init = state.MassInitIdentical(1.)
         #test_mass_init = state.MassInitTwoAlternating(200., 1.)
         
         
@@ -149,10 +150,16 @@ if __name__ == '__main__':
     #test_vaf_method = method.VelocityAutoCorrelation(state = test_state, DEBUG = debug)   
     
     #Create an integrator for above state class.
-    test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, VAF_handle = test_vaf_method, DEBUG = debug, MPI_handle = MPI_HANDLE)
+    #test_integrator = method.VelocityVerletAnderson(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, VAF_handle = test_vaf_method, DEBUG = debug, MPI_handle = MPI_HANDLE)
+    
+    
+    test_integrator = method.VelocityVerletBox(state = test_state, USE_C = True, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, VAF_handle = test_vaf_method, DEBUG = debug, MPI_handle = MPI_HANDLE)
+    
+    
+    
     
     #create G(r) method.
-    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rsteps = 200, DEBUG = debug)
+    #test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rsteps = 200, DEBUG = debug)
     
 
     '''
@@ -169,8 +176,12 @@ if __name__ == '__main__':
     
     
     
-    test_integrator.integrate(dt = 0.00001, T = 0.1, timer=True)
-    #test_integrator.integrate_thermostat(dt = 0.0001, T = 1.0, Temp=0.01, nu=2.5, timer=True)
+    test_integrator.integrate(dt = 0.0001, T = 0.5, timer=True)
+    
+    test_integrator.integrate_thermostat(dt = 0.0001, T = 0.5, Temp=0.01, nu=2.5, timer=True)
+    
+    test_integrator.integrate(dt = 0.0001, T = 2.0, timer=True)
+    #
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
@@ -187,11 +198,14 @@ if __name__ == '__main__':
     #If logging was enabled, plot data.
     if (logging):
         energyhandle.plot()
-
+        
+        
     #test_gr_method.plot()
     #test_gr_method.RawWrite()
     #test_vaf_method.plot()
-
+    
+    
+    
     if (MPI_HANDLE==None or MPI_HANDLE.rank ==0):
         try:
             a=input("PRESS ENTER TO CONTINUE.\n")
