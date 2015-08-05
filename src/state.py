@@ -86,11 +86,11 @@ class BaseMDState(object):
         self._domain.bc_setup(self)
         
         '''Initialise velocities'''
-        if (particle_vel_init != None):
+        if (particle_vel_init is not None):
             particle_vel_init.reset(self)
         
         '''Initialise masses'''
-        if (particle_mass_init != None):
+        if (particle_mass_init is not None):
             particle_mass_init.reset(self)        
 
         
@@ -120,12 +120,12 @@ class BaseMDState(object):
                                                                     mpi_handle = self._Mh)
         
         else:
-            self._looping_method_accel = pairloop.DoubleAllParticleLoopPBC(n=self.n,
-                                                                        domain = self._domain, 
-                                                                        kernel = self._potential.kernel,
-                                                                        particle_dat_dict = _potential_dat_dict,
-                                                                        DEBUG = self._DEBUG,
-                                                                        mpi_handle= self._Mh)
+            self._looping_method_accel = pairloop.DoubleAllParticleLoopPBC( n=self.n,
+                                                                            domain=self._domain,
+                                                                            kernel=self._potential.kernel,
+                                                                            particle_dat_dict=_potential_dat_dict,
+                                                                            DEBUG=self._DEBUG,
+                                                                            mpi_handle=self._Mh)
         
         self._time_prof = 0
 
@@ -201,7 +201,7 @@ class BaseMDState(object):
         
         
         self._cell_sort_kernel = kernel.Kernel('cell_list_method', self._cell_sort_code, headers = ['stdio.h'])
-        self._cell_sort_loop = loop.SingleParticleLoop(None, self._cell_sort_kernel, self._cell_sort_dict, DEBUG = self._DEBUG, mpi_handle = self._Mh)
+        self._cell_sort_loop = loop.SingleParticleLoop(None, None, self._cell_sort_kernel, self._cell_sort_dict, DEBUG = self._DEBUG, mpi_handle = self._Mh)
         
         
     def _cell_sort_all(self):
@@ -315,9 +315,8 @@ class BaseMDState(object):
         
         self.set_forces(ctypes.c_double(0.0))
         self.reset_u()
-        
-        
-        if (self._N>0):
+
+        if self._N > 0:
             self._looping_method_accel.execute(n=self._q_list[self._q_list.end])
         
         #print self._accel[0:self._N:,::]
@@ -765,7 +764,7 @@ class PosInitLatticeNRho(object):
         """
         Initialise domain extents prior to setting particle positions.
         """
-        if self._in_lx == None:
+        if self._in_lx is None:
             Lx = (float(self._N) / float(self._rho))**(1./3.)
         else:
             Lx = self._in_lx
@@ -780,7 +779,7 @@ class PosInitLatticeNRho(object):
         """
         
         #Evaluate cube side length.
-        if self._in_lx == None:
+        if self._in_lx is None:
             Lx = (float(self._N) / float(self._rho))**(1./3.)
         else:
             Lx = self._in_lx
@@ -849,7 +848,7 @@ class PosInitLatticeNRhoRand(object):
         """
         Initialise domain extents prior to setting particle positions.
         """
-        if self._in_lx == None:
+        if self._in_lx is None:
             Lx = (float(self._N) / float(self._rho))**(1./3.)
         else:
             Lx = self._in_lx
@@ -864,7 +863,7 @@ class PosInitLatticeNRhoRand(object):
         """
         
         #Evaluate cube side length.
-        if self._in_lx == None:
+        if self._in_lx is None:
             Lx = (float(self._N) / float(self._rho))**(1./3.)
         else:
             Lx = self._in_lx
@@ -1026,7 +1025,7 @@ class PosInitDLPOLYConfig(object):
     
     def __init__(self,filename = None):
         self._f = filename
-        assert self._f!=None, "No position config file specified"
+        assert self._f is not None, "No position config file specified"
        
        
     def get_extent(self, state_input):
@@ -1249,7 +1248,7 @@ class VelInitDLPOLYConfig(object):
     
     def __init__(self,filename = None):
         self._f = filename
-        assert self._f!=None, "No position config file specified"
+        assert self._f is not None, "No position config file specified"
         
         
     def reset(self, state_input):

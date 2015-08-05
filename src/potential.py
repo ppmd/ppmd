@@ -189,7 +189,7 @@ class LennardJones(LennardJonesShifted):
         self._sigma = sigma
         self._C_V = 4.*self._epsilon
         self._C_F = -48*self._epsilon/self._sigma**2
-        if (rc==None):
+        if (rc is None):
             self._rc = self._sigma*(5./2.)
         else:    
             self._rc = rc
@@ -360,7 +360,8 @@ class NULL(object):
         
         return kernel.Kernel('NULL_Potential', kernel_code, None, None, None)
 
-    def datdict(self, input_state):
+    @staticmethod
+    def datdict(input_state):
         """
         Map between state variables and kernel variables, returns required dictonary.
         
@@ -385,7 +386,7 @@ class LennardJonesCounter(LennardJones):
         self._sigma = sigma
         self._C_V = 4.*self._epsilon
         self._C_F = -48*self._epsilon/self._sigma**2
-        if (rc==None):
+        if (rc is None):
             self._rc = self._sigma*(5./2.)
         else:    
             self._rc = rc

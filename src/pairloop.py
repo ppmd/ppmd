@@ -315,8 +315,8 @@ class PairLoopRapaport(_Base):
 
         
         '''Add static arguments to launch command'''
-        if (self._kernel.static_args != None):
-            assert static_args != None, "Error: static arguments not passed to loop."
+        if (self._kernel.static_args is not None):
+            assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
             
@@ -446,7 +446,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         self._library_filename  = self._unique_name +'.so'
         
         if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
-            if (self._Mh == None):
+            if (self._Mh is None):
                 self._create_library()
             
             else:
@@ -579,27 +579,24 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
     def execute(self, dat_dict = None, static_args = None):
         
         # Allow alternative pointers
-        if (dat_dict != None):
+        if dat_dict is not None:
             self._particle_dat_dict = dat_dict    
         
         '''Currently assume n is always needed'''
-        args=[self._N(), self._domain.extent.ctypes_data]
-        
-        
+        args = [self._N(), self._domain.extent.ctypes_data]
+
         '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
-        
-        
+
         '''Add static arguments to launch command'''
-        if (self._kernel.static_args != None):
-            assert static_args != None, "Error: static arguments not passed to loop."
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
             
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data)
-            
-            
+
         '''Execute the kernel over all particle pairs.'''            
         method = self._lib[self._kernel.name+'_wrapper']
         method(*args)
@@ -792,7 +789,7 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
             
             reduction_handle = self._kernel.reduction_variable_lookup(dat[0])
             
-            if (reduction_handle != None):
+            if (reduction_handle is not None):
                 assert dat[1].ncomp == 1, "Not valid for more than 1 element"
                 
                 #Create a var name a variable to reduce upon.
@@ -940,7 +937,7 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
             
             reduction_handle = self._kernel.reduction_variable_lookup(dat[0])
             
-            if (reduction_handle != None):
+            if (reduction_handle is not None):
                 if (dat[1].ncomp != 1): 
                     print "WARNING, Reductions not valid for more than 1 element"
                 
@@ -1032,7 +1029,7 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
         self._library_filename  = self._unique_name +'.so'
         
         if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
-            if (self._Mh == None):
+            if (self._Mh is None):
                 self._create_library()
             
             else:
@@ -1054,7 +1051,7 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
 
           
         '''Allow alternative pointers'''
-        if (dat_dict != None):
+        if (dat_dict is not None):
             self._particle_dat_dict = dat_dict    
 
         '''Create arg list'''
@@ -1066,8 +1063,8 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
 
 
         '''Add static arguments to launch command'''
-        if (self._kernel.static_args != None):
-            assert static_args != None, "Error: static arguments not passed to loop."
+        if (self._kernel.static_args is not None):
+            assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
             
@@ -1332,14 +1329,14 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         """
 
         '''Allow alternative pointers'''
-        if (dat_dict != None):
+        if (dat_dict is not None):
             self._particle_dat_dict = dat_dict    
         
         
         
         '''Create arg list'''
         
-        if (n != None):
+        if (n is not None):
             _N = n
         else:
             _N = self._q_list[self._q_list.end]
@@ -1350,8 +1347,8 @@ class PairLoopRapaportHalo(PairLoopRapaport):
 
         
         '''Add static arguments to launch command'''
-        if (self._kernel.static_args != None):
-            assert static_args != None, "Error: static arguments not passed to loop."
+        if (self._kernel.static_args is not None):
+            assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
             

@@ -91,11 +91,11 @@ class VelocityVerlet(object):
         :arg bool timer: display approximate timing information.
         """
         
-        if (dt != None):
+        if (dt is not None):
             self._dt = dt
-        if (t != None):
+        if (t is not None):
             self._T = t
-        if (dt_step != None):
+        if (dt_step is not None):
             self._DT = dt_step
         else:
             self._DT = 10.0*self._dt
@@ -618,7 +618,7 @@ class RadialDistributionPeriodicNVE(object):
     :arg bool DEBUG: Flag to enable debug flags.
     """
 
-    def __init__(self, state, rmax=None, rsteps=100, DEBUG=False, mpi_handle=None):
+    def __init__(self, state, rmax=None, rsteps=100, DEBUG=False, mpi_handle=None, timer=False):
         
         self._count = 0
         self._state = state
@@ -638,6 +638,7 @@ class RadialDistributionPeriodicNVE(object):
         
         self._DEBUG = DEBUG
         self._Mh = mpi_handle
+        self._timer = timer
         
         _headers = ['math.h', 'stdio.h']
         _kernel = '''
@@ -680,21 +681,19 @@ class RadialDistributionPeriodicNVE(object):
 
         self._p = pairloop.DoubleAllParticleLoop(self._N, self._state.types_map, kernel=_grkernel, particle_dat_dict=_datdict, DEBUG=self._DEBUG, mpi_handle=self._Mh)
         
-    def evaluate(self, timer=False):
+    def evaluate(self):
         """
         Evaluate the radial distribution function.
-        
-        :arg bool timer: display approximate timing information.
         """
         
         assert self._rmax <= 0.5*self._state.domain.extent.min, "Maximum radius too large."
 
-        if timer:
+        if self._timer:
             start = time.time()    
         self._p.execute()
         self._count += 1
 
-        if timer:
+        if self._timer:
             end = time.time()
             print "rdf time taken:", end - start, "s"
         
@@ -704,7 +703,7 @@ class RadialDistributionPeriodicNVE(object):
         
     def plot(self):
         self._scale()
-        if (self._count > 0):
+        if self._count > 0:
             plt.ion()
             _fig = plt.figure()
             _ax = _fig.add_subplot(111)
@@ -716,8 +715,7 @@ class RadialDistributionPeriodicNVE(object):
             plt.show()
         else:
             print "Warning: run evaluate() at least once before plotting."
-    
-    
+
     def reset(self):
         self._gr.scale(0.0)
 
@@ -779,7 +777,7 @@ class VelocityAutoCorrelation(object):
         if v0 is not None:
             self.set_v0(v0)
         else:
-            self.set_v0(state = self._state)
+            self.set_v0(state=self._state)
 
         self._VAF = data.ScalarArray(ncomp=size)
         self._VAF_index = 0
@@ -804,7 +802,7 @@ class VelocityAutoCorrelation(object):
         
         self._loop = loop.SingleAllParticleLoop(self._N, None, kernel=_kernel, particle_dat_dict=self._datdict, DEBUG=self._DEBUG, mpi_handle=self._Mh)
 
-    def set_v0(self, v0=None, state=None):
+    def set_v0(self, v0=None, state=None, timer=False):
         """
         Set an initial velocity Dat to use as V_0. Requires either a velocity Dat or a state as an argument. V_0 will be set to either the passed velocities or to the velocities in the passed state.        
         
@@ -820,36 +818,39 @@ class VelocityAutoCorrelation(object):
             self._V0_SET = True            
         assert self._V0_SET is True, "No velocities set, check input data."
 
-    def evaluate(self, t=None, timer=False):
+        self._timer = timer
+
+    def evaluate(self):
         """
         Evaluate VAF using the current velocities held in the state with the velocities in V0.
         
         :arg double t: Time within block of integration.
         :arg bool timer: Flag to time evaluation of VAF.
         """
-        if timer:
+        if self._timer:
             start = time.time()
+
+        _t = self._state.time
 
         assert int(self._VAF_index) < int(self._VAF.ncomp), "VAF store not large enough"
         
-        self._Ni = 1./self._N()
+        _Ni = 1./self._N()
         self._datdict['VT'] = self._state.velocities     
-        self._loop.execute(None, self._datdict, {'I':(ctypes.c_int)(self._VAF_index),'Ni':(ctypes.c_double)(self._Ni)})
+        self._loop.execute(None, self._datdict, {'I': ctypes.c_int(self._VAF_index), 'Ni': ctypes.c_double(_Ni)})
         
-        if t is None:
+        if _t is None:
             self._T_store[self._VAF_index] = 1 + self._T_base
         else:
             
-            self._T_store[self._VAF_index] = t + self._T_base
+            self._T_store[self._VAF_index] = _t + self._T_base
         
         self._VAF_index += 1
 
-        if timer:
+        if self._timer:
             end = time.time()
-            print "VAF time taken:", end - start,"s"         
+            print "VAF time taken:", end - start, "s"
 
-
-    def append_prepare(self,size):
+    def append_prepare(self, size):
         """
         Function to prepare storage arrays for forthcoming VAF evaluations.
         
@@ -881,7 +882,9 @@ class VelocityAutoCorrelation(object):
         else:
             print "Warning: run evaluate() at least once before plotting."
 
-
+################################################################################################################
+# WriteTrajectoryXYZ
+################################################################################################################
 
 
 class WriteTrajectoryXYZ(object):
@@ -904,7 +907,8 @@ class WriteTrajectoryXYZ(object):
             file_name = re.sub('.xyz', datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz', file_name)
             if os.path.exists(os.path.join(dir_name, file_name)):
                 file_name = re.sub('.xyz', datetime.datetime.now().strftime("_%f") + '.xyz', file_name)
-                assert os.path.exists(os.path.join(dir_name, file_name)), "WriteTrajectoryXYZ Error: No unique name found."
+                assert os.path.exists(os.path.join(dir_name, file_name)), "WriteTrajectoryXYZ Error:" \
+                                                                          " No unique name found."
 
         self._fn = file_name
         self._dn = dir_name
@@ -965,8 +969,12 @@ class Schedule(object):
         if (steps is not None) and (items is not None):
             assert len(steps) == len(items), "Schedule error, mis-match between number of steps and number of items."
             for ix in zip(steps, items):
-                assert (inspect.isfunction(ix[1]) or inspect.ismethod(ix[1])) is True, "Schedule error: Passed argument is not a function/method."
-                self._s[ix[0]].append(ix[1])
+                assert (inspect.isfunction(ix[1]) or inspect.ismethod(ix[1])) is True, "Schedule error: Passed argument" \
+                                                                                       " is not a function/method."
+                if ix[0] < 1:
+                    print "Schedule warning: 0 step items will be ignored."
+                else:
+                    self._s[ix[0]].append(ix[1])
 
         self._count = 0
 
@@ -989,7 +997,10 @@ class Schedule(object):
         assert len(steps) == len(items), "Schedule item_add error, mis-match between" \
                                          " number of steps and number of items."
         for ix in zip(steps, items):
-            self._s[ix[0]].append(ix[1])
+            if ix[0] < 1:
+                print "Schedule warning: 0 step items will be ignored."
+            else:
+                self._s[ix[0]].append(ix[1])
 
     @property
     def count(self):

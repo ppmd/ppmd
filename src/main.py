@@ -164,7 +164,7 @@ if __name__ == '__main__':
 
 
 
-    if (MPI_HANDLE==None or MPI_HANDLE.rank ==0):
+    if (MPI_HANDLE is None or MPI_HANDLE.rank ==0):
         print "Total time in halo exchange:", test_domain.halos._time
         print "Time in forces_update:", test_state._time_prof
     
@@ -183,7 +183,7 @@ if __name__ == '__main__':
     
     
     
-    if (MPI_HANDLE==None or MPI_HANDLE.rank ==0):
+    if (MPI_HANDLE is None or MPI_HANDLE.rank ==0):
         try:
             a=input("PRESS ENTER TO CONTINUE.\n")
             #pass

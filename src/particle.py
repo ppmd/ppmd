@@ -28,7 +28,7 @@ class Dat(object):
         self._N2 = n2
         self._max_size = max_size
 
-        if (initial_value != None):
+        if (initial_value is not None):
             if (type(initial_value) is np.ndarray):
                 self._Dat = np.array(initial_value, dtype=self._dtype, order='C')
                 self._N1 = initial_value.shape[0]
@@ -176,9 +176,9 @@ class Dat(object):
         :arg bool rename_override: Flagging as True will disable autorenaming of output file.
         """
 
-        if (self._name != None and file_name == None):
+        if (self._name is not None and file_name is None):
             file_name = str(self._name) + '.Dat'
-        if (file_name == None):
+        if (file_name is None):
             file_name = 'data.Dat'
 
         if not os.path.exists(dir_name):
@@ -203,7 +203,7 @@ class Dat(object):
         """
 
         assert os.path.exists(dir_name), "Read directory not found"
-        assert file_name != None, "DatRead Error: No file_name given."
+        assert file_name is not None, "DatRead Error: No file_name given."
 
         f = open(os.path.join(dir_name, file_name), 'r')
         self = pickle.load(f)
@@ -229,9 +229,9 @@ class Dat(object):
         if ((append > 0) & (self._XYZFile_exists == False)):
             self._XYZfilename = file_name
 
-        if (title == None):
+        if (title is None):
             title = 'AA'
-        if (sym == None):
+        if (sym is None):
             sym = 'A'
 
         if not os.path.exists(dir_name):
@@ -291,7 +291,7 @@ class TypedDat(Dat):
         self._N2 = n2
         self._max_size = max_size
 
-        if (initial_value != None):
+        if (initial_value is not None):
             if (type(initial_value) is np.ndarray):
                 self._Dat = np.array(initial_value, dtype=self._dtype, order='C')
                 self._N1 = initial_value.shape[0]

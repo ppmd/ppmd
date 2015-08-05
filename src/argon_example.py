@@ -113,7 +113,7 @@ if __name__ == '__main__':
     
     
     
-    integrator = method.VelocityVerletAnderson(state = test_state, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, DEBUG = debug, MPI_handle = MPI_HANDLE)
+    integrator = method.VelocityVerletAnderson(state = test_state, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, DEBUG = debug, mpi_handle = MPI_HANDLE)
     
     
     #control file seems to compute 16000 iterations at dt =10^-3, 1000 to equbrilate then 15k for averaging?

@@ -212,7 +212,7 @@ class SingleParticleLoop(_Base):
     def execute(self, start = 0 , end = 0, dat_dict = None, static_args = None):
         
         # Allow alternative pointers
-        if (dat_dict != None):
+        if (dat_dict is not None):
             self._particle_dat_dict = dat_dict    
         
         
@@ -223,8 +223,8 @@ class SingleParticleLoop(_Base):
         
         
         '''Add static arguments to launch command'''
-        if (self._kernel.static_args != None):
-            assert static_args != None, "Error: static arguments not passed to loop."
+        if (self._kernel.static_args is not None):
+            assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
             
