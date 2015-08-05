@@ -14,6 +14,7 @@ import os
 import re
 import datetime
 import particle
+import inspect
 np.set_printoptions(threshold='nan')
 
 
@@ -34,13 +35,13 @@ class VelocityVerlet(object):
     :arg bool DEBUG: Flag to enable debug flags.
     """
     
-    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, plot_handle = None, energy_handle = None, writexyz = False, VAF_handle = None, DEBUG = False, MPI_handle = None):
+    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, plot_handle = None, energy_handle = None, writexyz = False, VAF_handle = None, DEBUG = False, mpi_handle = None, schedule=None):
     
         self._dt = dt
         self._DT = dt_step
         self._T = t
         self._DEBUG = DEBUG
-        self._Mh = MPI_handle
+        self._Mh = mpi_handle
 
         self._state = state
         
@@ -57,6 +58,8 @@ class VelocityVerlet(object):
         self._energy_handle = energy_handle
         self._writexyz = writexyz
         self._VAF_handle = VAF_handle
+
+        self._schedule = schedule
         
         self._kernel1_code = '''
         //self._V+=0.5*self._dt*self._A
@@ -77,35 +80,23 @@ class VelocityVerlet(object):
         V[1] += dht*A[1]*M_tmp;
         V[2] += dht*A[2]*M_tmp;
         '''
-        
-        self._K_kernel_code = '''
-        
-        k[0] += (V[0]*V[0] + V[1]*V[1] + V[2]*V[2])*0.5*M[0];
-        
-        '''      
-        self._constants_K = []
-        self._K_kernel = kernel.Kernel('K_kernel',self._K_kernel_code,self._constants_K)
-        self._pK = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._K_kernel, {'V':self._V,'k':self._K, 'M':self._M}, DEBUG = self._DEBUG, mpi_handle = self._Mh)
-        
-               
-        
-    def integrate(self, dt = None, DT = None, T = None, timer=False):
+
+
+    def integrate(self, dt = None, dt_step = None, t = None, timer=False):
         """
         Integrate state forward in time.
         
         :arg double dt: Time step size.
-        :arg double T: End time.
+        :arg double t: End time.
         :arg bool timer: display approximate timing information.
         """
-
-        
         
         if (dt != None):
             self._dt = dt
-        if (T != None):
-            self._T = T
-        if (DT != None):
-            self._DT = DT
+        if (t != None):
+            self._T = t
+        if (dt_step != None):
+            self._DT = dt_step
         else:
             self._DT = 10.0*self._dt
             
@@ -157,22 +148,21 @@ class VelocityVerlet(object):
 
         for i in range(self._max_it):
 
-            self._velocity_verlet_step(self._state.n())
-            
+            self._p1.execute(self._state.n())
+
+            # update forces
+
+            self._domain.bc_execute()
+            self._state.forces_update()
+            self._p2.execute(self._state.n())
+
+            self._state.kinetic_energy_update()
+            self._state.add_time(self._dt)
+
+            if self._schedule is not None:
+                self._schedule.tick()
+
             self._integration_internals(i)
-
-    def _velocity_verlet_step(self, N):
-        """
-        Perform one step of Velocity Verlet.
-        """
-
-        self._p1.execute(N)
-        
-        # update forces
-
-        self._domain.bc_execute()
-        self._state.forces_update()
-        self._p2.execute(N)
 
     def _integration_internals(self, i):
 
@@ -181,8 +171,7 @@ class VelocityVerlet(object):
         
         if (self._energy_handle is not None) & (DTFLAG is True):
 
-            self._K.scale(0.0)
-            self._pK.execute()
+
 
             if self._N() > 0:
                 
@@ -330,8 +319,14 @@ class VelocityVerletAnderson(VelocityVerlet):
             self._domain.bc_execute()
             self._state.forces_update()
             
-            self._p2_thermostat.execute() 
-            
+            self._p2_thermostat.execute()
+
+            self._state.kinetic_energy_update()
+            self._state.add_time(self._dt)
+
+            if self._schedule is not None:
+                self._schedule.tick()
+
             self._integration_internals(i)
 
 
@@ -407,20 +402,7 @@ class VelocityVerletBox(VelocityVerlet):
         V[1] += dht*A[1]*M_tmp;
         V[2] += dht*(A[2]-100.0)*M_tmp;
         '''
-        
-        self._K_kernel_code = '''
-        
-        k[0] += (V[0]*V[0] + V[1]*V[1] + V[2]*V[2])*0.5*M[0];
-        
-        '''      
-        self._constants_K = []
-        self._K_kernel = kernel.Kernel('K_kernel', self._K_kernel_code, self._constants_K)
-        self._pK = loop.SingleAllParticleLoop(self._N,
-                                              self._state.types_map,
-                                              self._K_kernel,
-                                              {'V': self._V, 'k': self._K, 'M': self._M, 'E': self._domain.extent},
-                                              DEBUG=self._DEBUG,
-                                              mpi_handle=self._Mh)
+
     
     def integrate(self, dt=None, dt_step=None, t=None, timer=False):
         """
@@ -567,22 +549,22 @@ class VelocityVerletBox(VelocityVerlet):
             self._domain.bc_execute()
             self._state.forces_update()
             
-            self._p2_thermostat.execute() 
-            
-            self._integration_internals(i)
+            self._p2_thermostat.execute()
+
+            self._state.kinetic_energy_update()
+            self._state.add_time(self._dt)
+
+            if self._schedule is not None:
+                self._schedule.tick()
 
     def _integration_internals(self, i):
 
         DTFLAG = ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )
         PERCENT = ((100.0*i)/self._max_it)
 
-        if self._schedule is not None:
-            self._schedule.tick()
-
         if (self._energy_handle is not None) & (DTFLAG is True):
 
-            self._K.scale(0.0)
-            self._pK.execute()
+            self._state.kinetic_energy_update()
 
             if self._N() > 0:
 
@@ -866,6 +848,7 @@ class VelocityAutoCorrelation(object):
             end = time.time()
             print "VAF time taken:", end - start,"s"         
 
+
     def append_prepare(self,size):
         """
         Function to prepare storage arrays for forthcoming VAF evaluations.
@@ -973,18 +956,17 @@ class Schedule(object):
     Class to schedule automated running of functions every set number of steps.
 
     :arg list steps: List of steps between each run.
-    :arg list items: list of functions to run after set number of steps.
+    :arg list items: List of functions to run after set number of steps.
     """
     
     def __init__(self, steps=None, items=None):
         self._s = collections.defaultdict(list)
-        self._sl = []
 
         if (steps is not None) and (items is not None):
             assert len(steps) == len(items), "Schedule error, mis-match between number of steps and number of items."
             for ix in zip(steps, items):
+                assert (inspect.isfunction(ix[1]) or inspect.ismethod(ix[1])) is True, "Schedule error: Passed argument is not a function/method."
                 self._s[ix[0]].append(ix[1])
-                self._sl.append(ix[0])
 
         self._count = 0
 
@@ -1008,7 +990,6 @@ class Schedule(object):
                                          " number of steps and number of items."
         for ix in zip(steps, items):
             self._s[ix[0]].append(ix[1])
-            self._sl.append(ix[0])
 
     @property
     def count(self):
@@ -1024,12 +1005,10 @@ class Schedule(object):
         """
         self._count += 1
 
-        for ix in self._sl:
+        for ix in self._s.keys():
             if self._count % ix == 0:
                 for iy in self._s[ix]:
                     iy()
-
-
 
 
 

@@ -119,7 +119,7 @@ if __name__ == '__main__':
     #control file seems to compute 16000 iterations at dt =10^-3, 1000 to equbrilate then 15k for averaging?
     dt=10**-3
     T=I*dt
-    integrator.integrate(dt = dt, T = T, timer=True)
+    integrator.integrate(dt = dt, t= T, timer=True)
     
     if (verbose):
         print test_state.positions[0,::]
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     
     if (verbose==True and MPI_HANDLE.rank==0):
         print "Total time in halo exchange:", domain.halos._time
-        print "Time in forces_update:", test_state._time    
+        print "Time in forces_update:", test_state._time_prof
     
     
     

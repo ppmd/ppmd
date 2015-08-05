@@ -58,15 +58,15 @@ class BaseMDState(object):
         
         
         self._domain = domain
-        
+        self._kinetic_energy_loop = None
         
         
         #potential energy, kenetic energy, total energy.
-        self._U = data.ScalarArray(max_size = 2, name='potential_energy');
+        self._U = data.ScalarArray(max_size = 2, name='potential_energy')
         self._U.InitHaloDat()
         
-        self._K = data.ScalarArray();
-        self._Q = data.ScalarArray();
+        self._K = data.ScalarArray()
+        self._Q = data.ScalarArray()
 
         
         
@@ -79,8 +79,10 @@ class BaseMDState(object):
         ''' Initialise particle positions'''
         particle_pos_init.reset(self)
         
-        
-        
+        ''' Initialise state time to zero'''
+        self._time = 0.0
+
+        '''Setup boundaries'''
         self._domain.bc_setup(self)
         
         '''Initialise velocities'''
@@ -93,30 +95,21 @@ class BaseMDState(object):
 
         
         
-        if (self._verbose):
+        if self._verbose:
             print "Cell array = ", self._domain._cell_array
             print "Domain extents = ",self._domain._extent
             print "cell count:", self._domain.cell_count
-        
-        
-        
-        
-        
-        
-        #Setup acceleration updating from given potential
+
+        # Setup acceleration updating from given potential
         self._DEBUG = DEBUG
         _potential_dat_dict = self._potential.datdict(self)
-        
-        
-        if (self._cell_setup_attempt==True):
+
+        if self._cell_setup_attempt is True:
             self._cell_sort_setup()
             
             self._domain.bc_execute()
             self._cell_sort_all()
-            
-            
-            
-            
+
             self._looping_method_accel = pairloop.PairLoopRapaportHalo(N=self.n,
                                                                     domain = self._domain, 
                                                                     positions = self._pos, 
@@ -134,7 +127,22 @@ class BaseMDState(object):
                                                                         DEBUG = self._DEBUG,
                                                                         mpi_handle= self._Mh)
         
-        self._time = 0
+        self._time_prof = 0
+
+    @property
+    def time(self):
+        """
+        Returns the time of the system.
+        """
+        return self._time
+
+    def add_time(self, increment=0.0):
+        """
+        Increases the state time by the increment amount.
+        :param increment: Amount to increment time by.
+        :return:
+        """
+        self._time += increment
 
     @property
     def mpi_handle(self):
@@ -316,8 +324,39 @@ class BaseMDState(object):
         
         if (timer==True):
             end = time.time()
-            self._time+=end - start       
-    
+            self._time_prof+=end - start
+
+    def kinetic_energy_update(self):
+        """
+        Method to update the recorded kinetic energy of the system.
+        :return: New kinetic energy.
+        """
+
+        if self._kinetic_energy_loop is None:
+
+            _K_kernel_code = '''
+
+            k[0] += (V[0]*V[0] + V[1]*V[1] + V[2]*V[2])*0.5*M[0];
+
+            '''
+            _constants_K = []
+            _K_kernel = kernel.Kernel('K_kernel', _K_kernel_code, _constants_K)
+            self._kinetic_energy_loop = loop.SingleAllParticleLoop(   self.n,
+                                                                      self._types,
+                                                                      _K_kernel,
+                                                                      {'V': self._vel, 'k': self._K, 'M': self._mass},
+                                                                      DEBUG=self._DEBUG,
+                                                                      mpi_handle=self._Mh)
+        self._K.scale(0.0)
+        self._kinetic_energy_loop.execute()
+
+        return self._K[0]
+
+
+
+
+
+
     
     def types_map(self):
         """
@@ -508,22 +547,22 @@ class BaseMDStateHalo(BaseMDState):
         self._accel = particle.Dat(self._NT, 3, name='accelerations')
         
         '''Store global ids of particles'''
-        self._global_ids = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
+        self._global_ids = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int)
         
         '''Lookup table between id and particle type'''
-        self._types = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int);
+        self._types = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int)
         
         '''Mass is an example of a property dependant on particle type'''
         self._mass = particle.TypedDat(self._NT, 1, 1.0)
 
         self._domain = domain
 
-        #potential energy, kenetic energy, total energy.
-        self._U = data.ScalarArray(max_size = 2, name='potential_energy');
+        # potential energy, kenetic energy, total energy.
+        self._U = data.ScalarArray(max_size = 2, name='potential_energy')
         self._U.init_halo_dat()
         
-        self._K = data.ScalarArray();
-        self._Q = data.ScalarArray();
+        self._K = data.ScalarArray()
+        self._Q = data.ScalarArray()
 
         '''Get domain extent from position config'''
         particle_pos_init.get_extent(self)
@@ -535,58 +574,46 @@ class BaseMDStateHalo(BaseMDState):
         particle_pos_init.reset(self)
 
         '''Initialise velocities'''
-        if (particle_vel_init != None):
+        if particle_vel_init is not None:
             particle_vel_init.reset(self)        
         
         '''Initialise masses'''
-        if (particle_mass_init != None):
-            particle_mass_init.reset(self)        
-        
-        #print "TYPES", self._types[0:2:], "RANK", self._domain.rank, "MASSES", self._mass[0:2:,::], "GIDS", self._global_ids
-        
+        if particle_mass_init is not None:
+            particle_mass_init.reset(self)
+
+        ''' Initialise state time to zero'''
+        self._time = 0.0
         
         self._domain.bc_setup(self)
         self._domain.bc_execute()
 
-        if (self._verbose):
+        if self._verbose:
             print "n, nt", self._N, self._NT
             print "pos", self._pos[0,::]
             print "vel", self._vel[0,::]  
-        
-        
-        
-        if (self._verbose and self.domain.rank==0):
+
+        if self._verbose and self.domain.rank == 0:
             
-            if (DEBUG):
+            if DEBUG:
                 print "Debugging enabled"
             print "nt =", self._NT
-        
-            #print "Cell array = ", self._domain._cell_array
-            #print "Domain extents = ",self._domain._extent
-            #print "Domain boundary = ",self._domain.boundary
-            #print "Domain boundary_outer = ",self._domain.boundary_outer
-            #print "cell count:", self._domain.cell_count
             
         self._domain.barrier()
-        if (self._verbose):
+        if self._verbose:
             print "rank:", self.domain.rank,"local particle count =", self._N, "\n", "Domain extents = ", self._domain._extent, "\n", "cell count:", self._domain.cell_count, "\n", "Cell array = ", self._domain._cell_array
         
         self._domain.barrier()       
-        
-        
-        
-        #Setup acceleration updating from given potential
+        self._kinetic_energy_loop = None
+
+        # Setup acceleration updating from given potential
         self._DEBUG = DEBUG
         _potential_dat_dict = self._potential.datdict(self)
         
-        if (self._cell_setup_attempt==True):
+        if self._cell_setup_attempt is True:
             self._cell_sort_setup()
-            
-            
+
             self._cell_sort_local()
-            
-            
-            
+
             self._looping_method_accel = pairloop.PairLoopRapaportHalo(N=self._N,
                                                                     domain = self._domain, 
                                                                     positions = self._pos, 
@@ -604,7 +631,7 @@ class BaseMDStateHalo(BaseMDState):
                                                                         DEBUG = self._DEBUG,
                                                                         mpi_handle= self._Mh)
         
-        self._time = 0
+        self._time_prof = 0
     
         
         

@@ -371,12 +371,16 @@ class DrawParticles(object):
 
 class BasicEnergyStore(object):
     """
+    Depreiciated, use EnergyStore
+
     Class to contain recorded values of potential energy u, kenetic energy k, total energy q and time T.
     
     :arg int size: Required size of each container.
     """
 
-    def __init__(self, size=0, mpi_handle=MDMPI()):
+    def __init__(self, state=None, size=0, mpi_handle=MDMPI()):
+
+        self._state = state
 
         self._U_store = ScalarArray(initial_value=0.0, ncomp=size, dtype=ctypes.c_double)
         self._K_store = ScalarArray(initial_value=0.0, ncomp=size, dtype=ctypes.c_double)
@@ -861,3 +865,144 @@ class PointerArray(object):
 
 NullIntScalarArray = ScalarArray(dtype=ctypes.c_int)
 NullDoubleScalarArray = ScalarArray(dtype=ctypes.c_double)
+
+################################################################################################################
+# Basic Energy Store
+################################################################################################################
+
+class EnergyStore(object):
+    """
+    Class to hold energy data more sensibly
+
+    :arg state state: Input state to track energy of.
+    """
+
+    def __init__(self, state=None):
+
+        assert state is not None, "EnergyStore error, no state passed."
+
+        self._state = state
+        self._Mh = self._state.mpi_handle
+
+        self._t = []
+        self._k = []
+        self._u = []
+        self._q = []
+
+    def update(self):
+        """
+        Update energy tracking of tracked state.
+        :return:
+        """
+
+        if self._state.n() > 0:
+            _U_tmp = self._state.u.dat[0]/self._state.nt()
+            _U_tmp += 0.5*self._state.u.dat[1]/self._state.nt()
+
+            self._k.append(self._state.k[0]/self._state.nt())
+            self._u.append(_U_tmp)
+            self._q.append(_U_tmp+(self._state.k[0])/self._state.nt())
+
+        else:
+            self._k.append(0.)
+            self._u.append(0.)
+            self._q.append(0.)
+
+        self._t.append(self._state.time)
+
+
+    def plot(self):
+        """
+        Plot the stored energy data.
+
+        :return:
+        """
+
+        assert len(self._t) > 0, "EnergyStore error, no data to plot"
+
+        self._T_store = ScalarArray(self._t)
+        self._K_store = ScalarArray(self._k)
+        self._U_store = ScalarArray(self._u)
+        self._Q_store = ScalarArray(self._q)
+
+
+        if (self._Mh is not None) and (self._Mh.nproc > 1):
+
+            # data to collect
+            _d = [self._Q_store.dat, self._U_store.dat, self._K_store.dat]
+
+            # make a temporary buffer.
+            if self._Mh.rank == 0:
+                _buff = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+                _T = self._T_store.dat
+                _Q = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+                _U = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+                _K = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+
+                _Q.dat[::] += self._Q_store.dat[::]
+                _U.dat[::] += self._U_store.dat[::]
+                _K.dat[::] += self._K_store.dat[::]
+
+                _dl = [_Q.dat, _U.dat, _K.dat]
+            else:
+                _dl = [None, None, None]
+
+            for _di, _dj in zip(_d, _dl):
+
+                if self._Mh.rank == 0:
+                    _MS = MPI.Status()
+                    for ix in range(1, self._Mh.nproc):
+                        self._Mh.comm.Recv(_buff.dat[::], ix, ix, _MS)
+                        _dj[::] += _buff.dat[::]
+
+                else:
+                    self._Mh.comm.Send(_di[::], 0, self._Mh.rank)
+
+            if self._Mh.rank == 0:
+                _Q = _Q.dat
+                _U = _U.dat
+                _K = _K.dat
+
+        else:
+            _T = self._T_store.dat
+            _Q = self._Q_store.dat
+            _U = self._U_store.dat
+            _K = self._K_store.dat
+
+        if (self._Mh is None) or (self._Mh.rank == 0):
+            print "last total", _Q[-1]
+            print "last kinetic", _K[-1]
+            print "last potential", _U[-1]
+            print "============================================="
+            print "first total", _Q[0]
+            print "first kinetic", _K[0]
+            print "first potential", _U[0]
+
+            plt.ion()
+            fig2 = plt.figure()
+            ax2 = fig2.add_subplot(111)
+
+            ax2.plot(_T, _Q, color='r', linewidth=2)
+            ax2.plot(_T, _U, color='g')
+            ax2.plot(_T, _K, color='b')
+
+            ax2.set_title('Red: Total energy, Green: Potential energy, Blue: kinetic energy')
+            ax2.set_xlabel('Time')
+            ax2.set_ylabel('Energy')
+
+            fig2.canvas.draw()
+            plt.show(block=False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
