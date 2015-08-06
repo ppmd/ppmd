@@ -28,8 +28,8 @@ class Dat(object):
         self._N2 = n2
         self._max_size = max_size
 
-        if (initial_value is not None):
-            if (type(initial_value) is np.ndarray):
+        if initial_value is not None:
+            if type(initial_value) is np.ndarray:
                 self._Dat = np.array(initial_value, dtype=self._dtype, order='C')
                 self._N1 = initial_value.shape[0]
                 self._N2 = initial_value.shape[1]
@@ -142,7 +142,7 @@ class Dat(object):
     def halo_start_set(self, index):
 
         if index < self._N1:
-            if (index >= 0):
+            if index >= 0:
                 self._N1 = index
                 self._halo_start = index
 
@@ -162,9 +162,9 @@ class Dat(object):
         :arg int n: New minimum size.
         """
 
-        if (n > self._max_size):
+        if n > self._max_size:
             self._max_size = n + (n - self._max_size) * 10
-            self._Dat.resize([n, self._N2], dtype=self._dtype, order='C')
+            self._Dat.resize([n, self._N2])
             # self._N1 = n
 
     def dat_write(self, dir_name='./output', file_name=None, rename_override=False):
@@ -176,17 +176,17 @@ class Dat(object):
         :arg bool rename_override: Flagging as True will disable autorenaming of output file.
         """
 
-        if (self._name is not None and file_name is None):
+        if self._name is not None and file_name is None:
             file_name = str(self._name) + '.Dat'
-        if (file_name is None):
+        if file_name is None:
             file_name = 'data.Dat'
 
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
 
-        if (os.path.exists(os.path.join(dir_name, file_name)) & (rename_override != True)):
+        if os.path.exists(os.path.join(dir_name, file_name)) & (rename_override != True):
             file_name = re.sub('.Dat', datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.Dat', file_name)
-            if (os.path.exists(os.path.join(dir_name, file_name))):
+            if os.path.exists(os.path.join(dir_name, file_name)):
                 file_name = re.sub('.Dat', datetime.datetime.now().strftime("_%f") + '.Dat', file_name)
                 assert os.path.exists(os.path.join(dir_name, file_name)), "DatWrite Error: No unquie name found."
 
@@ -222,16 +222,16 @@ class Dat(object):
         :arg bool rename_override: Flagging as True will disable autorenaming of output file.
         """
 
-        if (append == 0):
+        if append == 0:
             self._XYZFile_exists = False
             self._XYZfilename = file_name
 
-        if ((append > 0) & (self._XYZFile_exists == False)):
+        if (append > 0) & (self._XYZFile_exists == False):
             self._XYZfilename = file_name
 
-        if (title is None):
+        if title is None:
             title = 'AA'
-        if (sym is None):
+        if sym is None:
             sym = 'A'
 
         if not os.path.exists(dir_name):
@@ -241,16 +241,16 @@ class Dat(object):
             self._XYZFile_exists == False)):
             self._XYZfilename = re.sub('.xyz', datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz',
                                        self._XYZfilename)
-            if (os.path.exists(os.path.join(dir_name, self._XYZfilename))):
+            if os.path.exists(os.path.join(dir_name, self._XYZfilename)):
                 self._XYZfilename = re.sub('.xyz', datetime.datetime.now().strftime("_%f") + '.xyz', self._XYZfilename)
                 assert os.path.exists(os.path.join(dir_name, self._XYZfilename)), "XYZWrite Error: No unquie name found."
         self._XYZFile_exists = True
 
         space = ' '
 
-        if (append == 0):
+        if append == 0:
             f = open(os.path.join(dir_name, self._XYZfilename), 'w')
-        if (append > 0):
+        if append > 0:
             f = open(os.path.join(dir_name, self._XYZfilename), 'a')
 
         f.write(str(self._N1) + '\n')
@@ -291,8 +291,8 @@ class TypedDat(Dat):
         self._N2 = n2
         self._max_size = max_size
 
-        if (initial_value is not None):
-            if (type(initial_value) is np.ndarray):
+        if initial_value is not None:
+            if type(initial_value) is np.ndarray:
                 self._Dat = np.array(initial_value, dtype=self._dtype, order='C')
                 self._N1 = initial_value.shape[0]
                 self._N2 = initial_value.shape[1]

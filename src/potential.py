@@ -15,20 +15,20 @@ class BasePotential(object):
         pass
 
     def evaluate(self,r):
-        '''Evaluate potential :math:`V(r)`
-    
+        """Evaluate potential :math:`V(r)`
+
         :arg r: Inter-atom distance :math:`r=|r_i-r_j|`
-        '''
+        """
 
     def evaluate_force(self,rx,ry):
-        '''Evaluate force.
+        """Evaluate force.
 
         Calculate the interatomic force :math:`\\vec{F}(r) = -\\nabla V(r)` for
         atomic distance :\\vec{r}=(r_x,r_y)=\\vec{r}_i - \\vec{r}_j:
 
         :arg rx: x-component of distance :math:`r_x`
         :arg ry: y-component of distance :math:`r_y`
-        '''
+        """
         
 ################################################################################################################
 # LJ 2**(1/6) sigma
@@ -76,7 +76,7 @@ class LennardJonesShifted(BasePotential):
 
         :arg r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
         """
-        if (r < self._rc):
+        if r < self._rc:
             r_m6 = (r/self._sigma)**(-6)
             return self._C_V*((r_m6-1.0)*r_m6 + 0.25)
         else:
@@ -103,7 +103,7 @@ class LennardJonesShifted(BasePotential):
         :arg ry: y-component of distance :math:`r_y`
         """
         
-        if (r2 < self._rc2):
+        if r2 < self._rc2:
             r_m2 = self._sigma2/r2
             return  self._C_F*(r_m2**7 - 0.5*r_m2**4)
             
@@ -189,7 +189,7 @@ class LennardJones(LennardJonesShifted):
         self._sigma = sigma
         self._C_V = 4.*self._epsilon
         self._C_F = -48*self._epsilon/self._sigma**2
-        if (rc is None):
+        if rc is None:
             self._rc = self._sigma*(5./2.)
         else:    
             self._rc = rc
@@ -204,7 +204,7 @@ class LennardJones(LennardJonesShifted):
 
         :arg r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
         """
-        if (r < self._rc):
+        if r < self._rc:
             r_m6 = (r/self._sigma)**(-6)
             return self._C_V*((r_m6-1.0)*r_m6 + self._shift_internal)
         else:
@@ -386,7 +386,7 @@ class LennardJonesCounter(LennardJones):
         self._sigma = sigma
         self._C_V = 4.*self._epsilon
         self._C_F = -48*self._epsilon/self._sigma**2
-        if (rc is None):
+        if rc is None:
             self._rc = self._sigma*(5./2.)
         else:    
             self._rc = rc

@@ -6,8 +6,6 @@ import data
 import loop
 import build
 
-
-
 class _Base(build.GenericToolChain):
 
     def _kernel_argument_declarations(self):
@@ -32,18 +30,17 @@ class _Base(build.GenericToolChain):
             space = ' '*14
             argname = dat[0]+'_ext'
             loc_argname = dat[0]
-            
-            
-            if (type(dat[1]) == data.ScalarArray):
+
+            if type(dat[1]) == data.ScalarArray:
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
-            elif (type(dat[1]) == particle.Dat):
+            elif type(dat[1]) == particle.Dat:
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                 s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                 s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
                 
-            elif (type(dat[1]) == particle.TypedDat):
+            elif type(dat[1]) == particle.TypedDat:
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
@@ -68,8 +65,8 @@ class PairLoopRapaport(_Base):
     :arg dict dat_dict: Dictonary mapping between state vars and kernel vars.
     :arg bool DEBUG: Flag to enable debug flags.
     """
-    def __init__(self, N, domain, positions, potential, dat_dict, cell_list):
-        self._N = N
+    def __init__(self, n, domain, positions, potential, dat_dict, cell_list):
+        self._N = n
         self._domain = domain
         self._P = positions
         self._potential = potential
@@ -236,11 +233,11 @@ class PairLoopRapaport(_Base):
             loc_argname = dat[0]
             
             
-            if (type(dat[1]) == data.ScalarArray):
+            if type(dat[1]) == data.ScalarArray:
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
-            elif (type(dat[1]) == particle.Dat):
-                if (dat[1].name  == 'positions'):
+            elif type(dat[1]) == particle.Dat:
+                if dat[1].name  == 'positions':
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                     
                     
@@ -263,7 +260,7 @@ class PairLoopRapaport(_Base):
                     s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                     s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
                     
-            elif (type(dat[1]) == particle.TypedDat):
+            elif type(dat[1]) == particle.TypedDat:
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
@@ -313,7 +310,7 @@ class PairLoopRapaport(_Base):
 
         
         '''Add static arguments to launch command'''
-        if (self._kernel.static_args is not None):
+        if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
@@ -389,16 +386,16 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
             loc_argname = dat[0]
             
             
-            if (type(dat[1]) == data.ScalarArray):
+            if type(dat[1]) == data.ScalarArray:
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
-            elif (type(dat[1]) == particle.Dat):
+            elif type(dat[1]) == particle.Dat:
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                 s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                 s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
                 
-            elif (type(dat[1]) == particle.TypedDat):
+            elif type(dat[1]) == particle.TypedDat:
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
@@ -526,11 +523,11 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
             loc_argname = dat[0]
             
             
-            if (type(dat[1]) == data.ScalarArray):
+            if type(dat[1]) == data.ScalarArray:
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
-            elif (type(dat[1]) == particle.Dat):
-                if (dat[1].name  == 'positions'):
+            elif type(dat[1]) == particle.Dat:
+                if dat[1].name  == 'positions':
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                     
                     s += space+'r1[0] ='+argname+'[LINIDX_2D(3,i,0)] -'+argname+'[LINIDX_2D(3,j,0)]; \n'
@@ -559,7 +556,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
                     s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                     s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
                     
-            elif (type(dat[1]) == particle.TypedDat):
+            elif type(dat[1]) == particle.TypedDat:
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
@@ -783,7 +780,7 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
             
             reduction_handle = self._kernel.reduction_variable_lookup(dat[0])
             
-            if (reduction_handle is not None):
+            if reduction_handle is not None:
                 assert dat[1].ncomp == 1, "Not valid for more than 1 element"
                 
                 #Create a var name a variable to reduce upon.
@@ -804,11 +801,11 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
                 
             
             else:
-                if (type(dat[1]) == data.ScalarArray):
+                if type(dat[1]) == data.ScalarArray:
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
                 
-                elif (type(dat[1]) == particle.Dat):
-                    if (dat[1].name  == 'positions'):
+                elif type(dat[1]) == particle.Dat:
+                    if dat[1].name  == 'positions':
                         s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                         
                         
@@ -831,7 +828,7 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
                         s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                         s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
                         
-                elif (type(dat[1]) == particle.TypedDat):
+                elif type(dat[1]) == particle.TypedDat:
                     
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
@@ -931,8 +928,8 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
             
             reduction_handle = self._kernel.reduction_variable_lookup(dat[0])
             
-            if (reduction_handle is not None):
-                if (dat[1].ncomp != 1): 
+            if reduction_handle is not None:
+                if dat[1].ncomp != 1:
                     print "WARNING, Reductions not valid for more than 1 element"
                 
                 #Create a var name a variable to reduce upon.
@@ -953,16 +950,16 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
                 
             
             else:
-                if (type(dat[1]) == data.ScalarArray):
+                if type(dat[1]) == data.ScalarArray:
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
                 
-                elif (type(dat[1]) == particle.Dat):
+                elif type(dat[1]) == particle.Dat:
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                     s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                     s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
                     
-                elif (type(dat[1]) == particle.TypedDat):
+                elif type(dat[1]) == particle.TypedDat:
                     
                     ncomp = dat[1].ncomp
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
@@ -1004,7 +1001,7 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
         ##########
         
         self._temp_dir = './build/'
-        if (not os.path.exists(self._temp_dir)):
+        if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = self._potential.kernel
         
@@ -1043,7 +1040,7 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
 
           
         '''Allow alternative pointers'''
-        if (dat_dict is not None):
+        if dat_dict is not None:
             self._particle_dat_dict = dat_dict    
 
         '''Create arg list'''
@@ -1055,7 +1052,7 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
 
 
         '''Add static arguments to launch command'''
-        if (self._kernel.static_args is not None):
+        if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
@@ -1102,9 +1099,9 @@ class PairLoopRapaportHalo(PairLoopRapaport):
             loc_argname = dat[0]
             
             
-            if (type(dat[1]) == data.ScalarArray):
+            if type(dat[1]) == data.ScalarArray:
                 
-                if (dat[1].name  == 'potential_energy'):
+                if dat[1].name  == 'potential_energy':
                     
                     s+= space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'; \n'
                     s+= '\n'
@@ -1121,8 +1118,8 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                 else:
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
-            elif (type(dat[1]) == particle.Dat):
-                if (dat[1].name  == 'accelerations'):
+            elif type(dat[1]) == particle.Dat:
+                if dat[1].name  == 'accelerations':
                     s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
                 
                     s+= space+'if (cp_h_flag > 0){ \n'
@@ -1157,7 +1154,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                     s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
                     s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n' 
                     
-            elif (type(dat[1]) == particle.TypedDat):
+            elif type(dat[1]) == particle.TypedDat:
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
@@ -1189,7 +1186,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
              'INCLUDED_HEADERS':self._included_headers(),
              'KERNEL_NAME':self._kernel.name,
              'ARGUMENTS':self._argnames()}
-        return (code % d)       
+        return code % d
     
     def _code_init(self):
         self._kernel_code = self._kernel.code

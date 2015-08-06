@@ -79,54 +79,39 @@ if __name__ == '__main__':
     
     
     
-    test_state = state.BaseMDStateHalo(domain = domain,
-                                       potential = potential, 
-                                       particle_pos_init = initial_position_config, 
-                                       particle_vel_init = initial_velocity_config,
-                                       particle_mass_init = intial_mass_config,
-                                       n= N,
-                                       DEBUG = debug,
-                                       mpi_handle= MPI_HANDLE
+    test_state = state.BaseMDStateHalo(domain=domain,
+                                       potential=potential,
+                                       particle_pos_init=initial_position_config,
+                                       particle_vel_init=initial_velocity_config,
+                                       particle_mass_init=intial_mass_config,
+                                       n=N
                                        )
-    
-    
-    
-    
-    
-    
-    
-    
+
     #plotting handle
-    if (plotting):
-        plothandle = data.DrawParticles(interval=25)
+    if plotting:
+        plothandle = data.DrawParticles(state=test_state)
     else:
         plothandle = None
     
     #energy handle
-    if (logging):
+    if logging:
         energyhandle = data.BasicEnergyStore(mpi_handle= MPI_HANDLE)
     else:
         energyhandle = None
-    
-    
-    
-    
-    
-    
-    integrator = method.VelocityVerletAnderson(state = test_state, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False)
-    
-    
-    #control file seems to compute 16000 iterations at dt =10^-3, 1000 to equbrilate then 15k for averaging?
-    dt=10**-3
-    T=I*dt
+
+    integrator = method.VelocityVerletAnderson(state = test_state)
+
+    # control file seems to compute 16000 iterations at dt =10^-3, 1000 to equbrilate then 15k for averaging?
+    dt = 10**-3
+    T = I*dt
     integrator.integrate(dt = dt, t= T, timer=True)
     
-    if (verbose):
+    if verbose:
         print test_state.positions[0,::]
         print test_state.velocities[0,::]    
         print test_state.forces[0,::]  
     
-    if (verbose==True and MPI_HANDLE.rank==0):
+    if verbose is True and MPI_HANDLE.rank == 0:
         print "Total time in halo exchange:", domain.halos._time
         print "Time in forces_update:", test_state._time_prof
     
@@ -139,7 +124,7 @@ if __name__ == '__main__':
     
     
     
-    if (logging):
+    if logging:
         energyhandle.plot()
     
     

@@ -146,16 +146,7 @@ if __name__ == '__main__':
     ###########################################################
 
 
-    test_integrator.integrate(dt = 0.0001, t= 0.5, timer=True)
-
-    #test_integrator.integrate_thermostat(dt = 0.0001, t= 0.5, temp=0.01, nu=2.5, timer=True)
-    
-    #test_integrator.integrate(dt = 0.0001, t= 2.0, timer=True)
-    #
-    #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
-    #test_gr_method.evaluate(timer=True)
-    #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
-    #test_gr_method.evaluate(timer=True)
+    test_integrator.integrate(dt = 0.0001, t= 0.1, timer=True)
 
 
     data.pprint("Total time in halo exchange:", test_domain.halos._time)

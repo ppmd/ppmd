@@ -150,7 +150,7 @@ def replace(code, old, new):
     
     regex = '(?<=[\W])('+old+')(?=[\W])'
           
-    code = re.sub(regex,str(new),code)
+    code = re.sub(regex, str(new), code)
     
     return code
 
@@ -199,7 +199,7 @@ def load_library_exception(kernel_name='None supplied', unique_name='None suppli
         if err_line > 0:
             try:
                 f = open('./build/'+unique_name+'.c', 'r')
-                code_str=f.read()
+                code_str = f.read()
                 f.close()        
             except:
                 print "Source file not read"
@@ -395,15 +395,15 @@ class GenericToolChain(object):
             
         return self._code % d
 
-    def execute(self, N=None , dat_dict=None, static_args=None):
+    def execute(self, n=None, dat_dict=None, static_args=None):
         
         """Allow alternative pointers"""
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict    
         
         '''Currently assume n is always needed'''
-        if N is not None:
-            _N = N
+        if n is not None:
+            _N = n
         else:
             _N = self._N()
         

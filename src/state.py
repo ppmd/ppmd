@@ -90,7 +90,7 @@ class BaseMDState(object):
 
         if self._verbose:
             print "Cell array = ", self._domain._cell_array
-            print "Domain extents = ",self._domain._extent
+            print "Domain extents = ", self._domain._extent
             print "cell count:", self._domain.cell_count
 
         # Setup acceleration updating from given potential
@@ -102,18 +102,18 @@ class BaseMDState(object):
             self._domain.bc_execute()
             self._cell_sort_all()
 
-            self._looping_method_accel = pairloop.PairLoopRapaportHalo(N=self.n,
-                                                                    domain = self._domain, 
-                                                                    positions = self._pos, 
-                                                                    potential = self._potential, 
-                                                                    dat_dict = _potential_dat_dict,
-                                                                    cell_list = self._q_list)
+            self._looping_method_accel = pairloop.PairLoopRapaportHalo(n=self.n,
+                                                                       domain=self._domain,
+                                                                       positions=self._pos,
+                                                                       potential=self._potential,
+                                                                       dat_dict=_potential_dat_dict,
+                                                                       cell_list=self._q_list)
         
         else:
-            self._looping_method_accel = pairloop.DoubleAllParticleLoopPBC( n=self.n,
-                                                                            domain=self._domain,
-                                                                            kernel=self._potential.kernel,
-                                                                            particle_dat_dict=_potential_dat_dict)
+            self._looping_method_accel = pairloop.DoubleAllParticleLoopPBC(n=self.n,
+                                                                           domain=self._domain,
+                                                                           kernel=self._potential.kernel,
+                                                                           particle_dat_dict=_potential_dat_dict)
         
         self._time_prof = 0
 
@@ -142,7 +142,7 @@ class BaseMDState(object):
         """
         
         '''Construct initial cell list'''
-        self._q_list = data.ScalarArray(dtype=ctypes.c_int, max_size = self._NT * (self._domain.cell_count) + self._domain.cell_count + 1)
+        self._q_list = data.ScalarArray(dtype=ctypes.c_int, max_size = self._NT * self._domain.cell_count + self._domain.cell_count + 1)
         
         
         '''Keep track of number of particles per cell'''
@@ -278,7 +278,7 @@ class BaseMDState(object):
         
         
         timer = True         
-        if (timer==True):
+        if timer==True:
             start = time.time() 
         
         
@@ -288,7 +288,7 @@ class BaseMDState(object):
         
 
         
-        if (self._cell_setup_attempt==True):
+        if self._cell_setup_attempt==True:
             self._domain.halos.set_position_info(self._cell_contents_count, self._q_list)
             self._domain.halos.exchange(self._pos)
         
@@ -577,7 +577,7 @@ class BaseMDStateHalo(BaseMDState):
 
             self._cell_sort_local()
 
-            self._looping_method_accel = pairloop.PairLoopRapaportHalo(N=self._N,
+            self._looping_method_accel = pairloop.PairLoopRapaportHalo(n=self._N,
                                                                        domain=self._domain,
                                                                        positions=self._pos,
                                                                        potential=self._potential,
@@ -601,7 +601,7 @@ class BaseMDStateHalo(BaseMDState):
         """
         
         '''Construct initial cell list'''
-        self._q_list = data.ScalarArray(dtype=ctypes.c_int, max_size = self._NT * (self._domain.cell_count) + 2*self._domain.cell_count)
+        self._q_list = data.ScalarArray(dtype=ctypes.c_int, max_size = self._NT * self._domain.cell_count + 2*self._domain.cell_count)
 
         '''Keep track of number of particles per cell'''
         self._cell_contents_count = data.ScalarArray(np.zeros([self._domain.cell_count], dtype=ctypes.c_int, order='C'), dtype=ctypes.c_int)
@@ -748,7 +748,7 @@ class PosInitLatticeNRho(object):
             _ty = mLx_2+(math.floor((ix - z*np2_3)/np1_3)/np1_3)*Lx #y
             _tz = mLx_2+(z/np1_3)*Lx
             
-            if ((_d[0] <= _tx < _d[1]) and  (_d[2] <= _ty < _d[3]) and (_d[4] <= _tz < _d[5])):
+            if (_d[0] <= _tx < _d[1]) and  (_d[2] <= _ty < _d[3]) and (_d[4] <= _tz < _d[5]):
                 _p[_n,0] = _tx
                 _p[_n,1] = _ty
                 _p[_n,2] = _tz
@@ -834,7 +834,7 @@ class PosInitLatticeNRhoRand(object):
             
             
             '''Potentially could put particles outside the local domain, reset() should be followed by some BC checking'''
-            if ((_d[0] <= _tx < _d[1]) and  (_d[2] <= _ty < _d[3]) and (_d[4] <= _tz < _d[5])):
+            if (_d[0] <= _tx < _d[1]) and  (_d[2] <= _ty < _d[3]) and (_d[4] <= _tz < _d[5]):
                 _p[_n,0] = _tx + random.uniform(-1.*self._dev, self._dev)
                 _p[_n,1] = _ty + random.uniform(-1.*self._dev, self._dev)
                 _p[_n,2] = _tz + random.uniform(-1.*self._dev, self._dev)
@@ -876,19 +876,19 @@ class PosInitTwoParticlesInABox(object):
         
         :arg state state_input: State object containing at least two particles.
         """
-        if (state_input.n() >= 2):
+        if state_input.n() >= 2:
             _N = 0 
             _d = state_input.domain.boundary
             
             _tmp = -1.*self._rx*self._axis
             _tmp2 = self._rx*self._axis
                     
-            if ((_d[0] <= _tmp[0] < _d[1]) and  (_d[2] <= _tmp[1] < _d[3]) and (_d[4] <= _tmp[2] < _d[5])):
+            if (_d[0] <= _tmp[0] < _d[1]) and  (_d[2] <= _tmp[1] < _d[3]) and (_d[4] <= _tmp[2] < _d[5]):
                 state_input.positions[0,] = _tmp
                 state_input.global_ids[0] = 0
                 _N+=1
             
-            if ((_d[0] <= _tmp2[0] < _d[1]) and  (_d[2] <= _tmp2[1] < _d[3]) and (_d[4] <= _tmp2[2] < _d[5])):
+            if (_d[0] <= _tmp2[0] < _d[1]) and  (_d[2] <= _tmp2[1] < _d[3]) and (_d[4] <= _tmp2[2] < _d[5]):
                 state_input.positions[_N,] = _tmp2
                 state_input.global_ids[_N] = 1
                 _N+=1        
@@ -935,7 +935,7 @@ class PosInitOneParticleInABox(object):
         _d = state_input.domain.boundary
         
         
-        if ((_d[0] <= self._r[0] < _d[1]) and  (_d[2] <= self._r[1] < _d[3]) and (_d[4] <= self._r[2] < _d[5])):
+        if (_d[0] <= self._r[0] < _d[1]) and  (_d[2] <= self._r[1] < _d[3]) and (_d[4] <= self._r[2] < _d[5]):
             state_input.positions[0,] = self._r
             _N+=1  
             
@@ -1096,7 +1096,7 @@ class VelInitTwoParticlesInABox(object):
         :arg state state_input: input state.
         """
 
-        if (state_input.nt() >= 2):
+        if state_input.nt() >= 2:
             for ix in range(state_input.n()):
                 if state_input.global_ids[ix] == 0:
                     state_input.velocities[ix] = self._vx
@@ -1130,7 +1130,7 @@ class VelInitOneParticleInABox(object):
         :arg state state_input: input state.
         """
 
-        if (state_input.n() >= 1):
+        if state_input.n() >= 1:
             state_input.velocities[0,] = self._vx
 
 
@@ -1150,7 +1150,7 @@ class VelInitMaxwellBoltzmannDist(object):
     """
 
     def __init__(self, temperature=293.15):
-        self._t = (float)(temperature)
+        self._t = float(temperature)
         print "Warning not yet functional"
 
     def reset(self, state_input):
@@ -1163,11 +1163,11 @@ class VelInitMaxwellBoltzmannDist(object):
         # Apply MB distro to velocities.
         for ix in range(state_input.n()):
             scale = math.sqrt(self._t/state_input.masses[state_input.types[ix]])
-            stmp = scale*math.sqrt(-2.0*math.log(random.uniform(0,1)))
-            V0 = 2.*math.pi*random.uniform(0,1);
-            state_input.velocities[ix,0]=stmp*math.cos(V0)
+            stmp = scale*math.sqrt(-2.0*math.log(random.uniform(0, 1)))
+            V0 = 2.*math.pi*random.uniform(0, 1)
+            state_input.velocities[ix, 0]=stmp*math.cos(V0)
             state_input.velocities[ix,1]=stmp*math.sin(V0)
-            state_input.velocities[ix,1]=scale*math.sqrt(-2.0*math.log(random.uniform(0,1)))*math.cos(2.*math.pi*random.uniform(0,1));
+            state_input.velocities[ix,1]=scale*math.sqrt(-2.0*math.log(random.uniform(0,1)))*math.cos(2.*math.pi*random.uniform(0,1))
 
 ################################################################################################################
 # VelInitDLPOLYConfig DEFINITIONS

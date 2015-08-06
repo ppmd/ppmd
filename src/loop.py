@@ -20,7 +20,6 @@ class _Base(build.GenericToolChain):
         self._compiler_set()
         self._N = n
         self._types_map = types_map
-        self._Mh = data.MPI_HANDLE
 
         self._temp_dir = './build/'
 
@@ -35,27 +34,26 @@ class _Base(build.GenericToolChain):
         
         self._unique_name = self._unique_name_calc()
         
-        self._library_filename  = self._unique_name +'.so'
+        self._library_filename = self._unique_name + '.so'
         
-        if not os.path.exists(os.path.join(self._temp_dir,self._library_filename)):
+        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
             
-            if self._Mh is None:
+            if data.MPI_HANDLE is None:
                 self._create_library()
             
             else:
-                if self._Mh.rank == 0:
+                if data.MPI_HANDLE.rank == 0:
                     self._create_library()
-                self._Mh.barrier()
+                data.MPI_HANDLE.barrier()
 
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
-            build.load_library_exception(self._kernel.name, self._unique_name,type(self))
+            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
         
     def _compiler_set(self):
         self._cc = build.TMPCC
-        
-    
+
     def _kernel_argument_declarations(self):
         """Define and declare the kernel arguments.
 
@@ -72,25 +70,23 @@ class _Base(build.GenericToolChain):
         the correct address in the particle_dats.
         """
         s = '\n'
-        
-        
+
         for i, dat in enumerate(self._particle_dat_dict.items()):
-            
-            
+
             space = ' '*14
             argname = dat[0]+'_ext'
             loc_argname = dat[0]
             
-            if (type(dat[1]) == data.ScalarArray or type(dat[1]) == data.PointerArray):
+            if (type(dat[1]) == data.ScalarArray) or (type(dat[1]) == data.PointerArray):
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
             
-            if (type(dat[1]) == particle.Dat):
+            if type(dat[1]) == particle.Dat:
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';\n'
                 s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'
                 
-            if (type(dat[1]) == particle.TypedDat):
+            if type(dat[1]) == particle.TypedDat:
                 
                 ncomp = dat[1].ncomp
                 s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
@@ -107,9 +103,7 @@ class SingleAllParticleLoop(_Base):
                    
     def _compiler_set(self):
         self._cc = build.TMPCC
-        
-        
-    
+
     def _code_init(self):
         self._kernel_code = self._kernel.code
     
@@ -151,7 +145,7 @@ class SingleAllParticleLoop(_Base):
         d = {'UNIQUENAME': self._unique_name,
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS' :self._argnames()}
+             'ARGUMENTS': self._argnames()}
         return code % d
 
 ################################################################################################################
@@ -200,29 +194,25 @@ class SingleParticleLoop(_Base):
 
         #endif
         '''
-        
-        
-        d = {'UNIQUENAME':self._unique_name,
-             'INCLUDED_HEADERS':self._included_headers(),
-             'KERNEL_NAME':self._kernel.name,
-             'ARGUMENTS':self._argnames()}
-        return (code % d)
 
-    def execute(self, start = 0 , end = 0, dat_dict = None, static_args = None):
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames()}
+        return code % d
+
+    def execute(self, start=0, end=0, dat_dict=None, static_args=None):
         
         # Allow alternative pointers
-        if (dat_dict is not None):
+        if dat_dict is not None:
             self._particle_dat_dict = dat_dict    
-        
-        
-        args=[ctypes.c_int(start), ctypes.c_int(end)]
-        
-        
+
+        args = [ctypes.c_int(start), ctypes.c_int(end)]
+
         '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
-        
-        
+
         '''Add static arguments to launch command'''
-        if (self._kernel.static_args is not None):
+        if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
@@ -230,18 +220,11 @@ class SingleParticleLoop(_Base):
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data)
-            
-            
-        '''Execute the kernel over all particle pairs.'''            
+
+        '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name+'_wrapper']
         method(*args)        
-        
-        
-        
-        
-        
-        
-        
+
 
 ################################################################################################################
 # SINGLE PARTICLE LOOP OPENMP
@@ -293,17 +276,16 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
     def _generate_impl_source(self):
         """Generate the source code the actual implementation.
         """
-        
 
-        d = {'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations_openmp(),
-             'UNIQUENAME':self._unique_name,
-             'KERNEL':self._kernel_code,
-             'ARGUMENTS':self._argnames(),
-             'LOC_ARGUMENTS':self._loc_argnames(),
-             'KERNEL_NAME':self._kernel.name,
-             'OPENMP_INIT':self._ompinitstr,
-             'OPENMP_DECLARATION':self._ompdecstr,
-             'OPENMP_FINALISE':self._ompfinalstr
+        d = {'KERNEL_ARGUMENT_DECL': self._kernel_argument_declarations_openmp(),
+             'UNIQUENAME': self._unique_name,
+             'KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'LOC_ARGUMENTS': self._loc_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'OPENMP_INIT': self._ompinitstr,
+             'OPENMP_DECLARATION': self._ompdecstr,
+             'OPENMP_FINALISE': self._ompfinalstr
              }
 
         return self._code % d
@@ -341,13 +323,16 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
                 reduction_argname = dat[0]+'_reduction'
                 
                 # Initialise variable
-                self._ompinitstr += data.ctypes_map[dat[1].dtype]+' '+reduction_argname+' = '+build.omp_operator_init_values[reduction_handle.operator]+';'
+                self._ompinitstr += data.ctypes_map[dat[1].dtype] + ' '\
+                                    + reduction_argname\
+                                    + ' = '\
+                                    + build.omp_operator_init_values[reduction_handle.operator]+';'
                 
                 # Add to omp pragma
                 self._ompdecstr += 'Reduction('+reduction_handle.operator+':'+reduction_argname+')'
                 
                 # Modify kernel code to use new Reduction variable.
-                self._kernel_code = build.replace(self._kernel_code,reduction_handle.pointer, reduction_argname)
+                self._kernel_code = build.replace(self._kernel_code, reduction_handle.pointer, reduction_argname)
                 
                 # write final value to output pointer
                 

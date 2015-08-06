@@ -630,9 +630,9 @@ class HaloCartesianSingleProcess(object):
         '''Calculate flag to determine if a boundary between processes is also a boundary in domain.'''
         _bc_flag = [0,0,0,0,0,0]
         for ix in range(3):
-            if (self._top[ix] == 0):
+            if self._top[ix] == 0:
                 _bc_flag[2*ix] = 1
-            if (self._top[ix] == self._dims[ix]-1):
+            if self._top[ix] == self._dims[ix]-1:
                 _bc_flag[2*ix + 1] = 1
 
 
