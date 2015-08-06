@@ -204,7 +204,7 @@ class BaseDomain(object):
          
 class BaseDomainHalo(BaseDomain):
 
-    def __init__(self, nt=1, extent=np.array([1., 1., 1.]), cell_count=1, periods=(1, 1, 1), mpi_handle = None):
+    def __init__(self, nt=1, extent=np.array([1., 1., 1.]), cell_count=1, periods=(1, 1, 1)):
         
         self._verbose = False
 
@@ -212,7 +212,7 @@ class BaseDomainHalo(BaseDomain):
         
         self._periods = periods
         
-        self._MPI_handle = mpi_handle
+        self._MPI_handle = data.MPI_HANDLE
         self._MPI_handle.set_periods = self._periods
         self._MPI = MPI.COMM_WORLD
         self._MPIstatus=MPI.Status()
@@ -260,7 +260,7 @@ class BaseDomainHalo(BaseDomain):
         self._cell_array[1] = int(self._extent[1]/rn)
         self._cell_array[2] = int(self._extent[2]/rn)
         
-        data.print_mpi(self._MPI_handle, self._cell_array)
+        data.pprint(self._cell_array)
         
         if self._verbose:
             print self._cell_array, self._extent

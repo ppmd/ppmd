@@ -8,6 +8,7 @@ import pairloop
 import data
 import kernel
 import loop
+import build
 np.set_printoptions(threshold='nan')
 
 
@@ -514,7 +515,8 @@ class BaseMDState(object):
 ################################################################################################################
 # BaseMDStatehalo DEFINITIONS
 ################################################################################################################  
-      
+
+
 class BaseMDStateHalo(BaseMDState):
     """
     Base molecular dynamics class.
@@ -536,6 +538,7 @@ class BaseMDStateHalo(BaseMDState):
         :arg double mass: Mass of particles, default 1.0        
         
         """
+
         self._verbose = False
         self._Mh = mpi_handle
         self._potential = potential
@@ -544,12 +547,12 @@ class BaseMDStateHalo(BaseMDState):
         self._pos = particle.Dat(self._NT, 3, name='positions')
         self._vel = particle.Dat(self._NT, 3, name='velocities')
         self._accel = particle.Dat(self._NT, 3, name='accelerations')
-        
+
         '''Store global ids of particles'''
-        self._global_ids = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int)
+        self._global_ids = data.ScalarArray(ncomp=self._NT, dtype=ctypes.c_int)
         
         '''Lookup table between id and particle type'''
-        self._types = data.ScalarArray(ncomp=self._NT, dtype = ctypes.c_int)
+        self._types = data.ScalarArray(ncomp=self._NT, dtype=ctypes.c_int)
         
         '''Mass is an example of a property dependant on particle type'''
         self._mass = particle.TypedDat(self._NT, 1, 1.0)
@@ -567,8 +570,8 @@ class BaseMDStateHalo(BaseMDState):
         particle_pos_init.get_extent(self)
 
         '''Attempt to initialise cell array'''
-        self._cell_setup_attempt = self._domain.set_cell_array_radius(self._potential._rn)        
-        
+        self._cell_setup_attempt = self._domain.set_cell_array_radius(self._potential._rn)
+
         ''' Initialise particle positions'''
         particle_pos_init.reset(self)
 
@@ -607,7 +610,9 @@ class BaseMDStateHalo(BaseMDState):
         # Setup acceleration updating from given potential
         self._DEBUG = DEBUG
         _potential_dat_dict = self._potential.datdict(self)
-        
+
+
+
         if self._cell_setup_attempt is True:
             self._cell_sort_setup()
 
@@ -631,8 +636,10 @@ class BaseMDStateHalo(BaseMDState):
                                                                         mpi_handle= self._Mh)
         
         self._time_prof = 0
-    
-        
+
+        if build.DEBUG.level > 0:
+            print "DEBUG IS ON"
+
         
         
         
@@ -1026,8 +1033,7 @@ class PosInitDLPOLYConfig(object):
     def __init__(self,filename = None):
         self._f = filename
         assert self._f is not None, "No position config file specified"
-       
-       
+
     def get_extent(self, state_input):
         """
         Initialise domain extents prior to setting particle positions.
@@ -1037,22 +1043,20 @@ class PosInitDLPOLYConfig(object):
         extent = np.array([0.,0.,0.])
         
         for i, line in enumerate(fh):
-            if (i==2):
-                extent[0]=line.strip().split()[0]
-            if (i==3):
-                extent[1]=line.strip().split()[1]                
-            if (i==4):
-                extent[2]=line.strip().split()[2]                
+            if i == 2:
+                extent[0] = line.strip().split()[0]
+            if i == 3:
+                extent[1] = line.strip().split()[1]
+            if i == 4:
+                extent[2] = line.strip().split()[2]
             else:
                 pass
         
         fh.close()
         
         assert extent.sum() > 0., "PosInit Error: Bad extent read"
-        
-        
-        
-        state_input.domain.set_extent(extent)  
+
+        state_input.domain.set_extent(extent)
         
     def reset(self, state_input):
         """
@@ -1061,31 +1065,28 @@ class PosInitDLPOLYConfig(object):
         :arg state state_input: State object containing required number of particles.
         """
         
-        fh=open(self._f)
+        fh = open(self._f)
         shift = 7
-        offset= 4
+        offset = 4
         count = 0
         _n = 0
         
         _d = state_input.domain.boundary
-        
-        
+
         for i, line in enumerate(fh):
             
-            if ((i>(shift-2)) and ((i-shift+1)%offset == 0) and count < state_input.nt() ):
-                _tx=float(line.strip().split()[0])
-                _ty=float(line.strip().split()[1])
-                _tz=float(line.strip().split()[2])
-                
-                
-                if ((_d[0] <= _tx < _d[1]) and  (_d[2] <= _ty < _d[3]) and (_d[4] <= _tz < _d[5])):
+            if (i > (shift-2)) and ((i-shift+1) % offset == 0) and count < state_input.nt():
+                _tx = float(line.strip().split()[0])
+                _ty = float(line.strip().split()[1])
+                _tz = float(line.strip().split()[2])
+
+                if (_d[0] <= _tx < _d[1]) and (_d[2] <= _ty < _d[3]) and (_d[4] <= _tz < _d[5]):
                     
-                    state_input.positions[_n,0]=_tx
-                    state_input.positions[_n,1]=_ty
-                    state_input.positions[_n,2]=_tz
-                    
-                    
-                    state_input.global_ids[_n]=count
+                    state_input.positions[_n, 0] = _tx
+                    state_input.positions[_n, 1] = _ty
+                    state_input.positions[_n, 2] = _tz
+
+                    state_input.global_ids[_n] = count
                     _n += 1
                 else:
                     '''
@@ -1099,18 +1100,16 @@ class PosInitDLPOLYConfig(object):
                     '''
                     pass
                 
-                count+=1
+                count += 1
             
         state_input.set_n(_n)
-        
-        
-        fh.close()
 
+        fh.close()
 
 
 ############################################################################################################
 # VelInitNormDist DEFINITIONS
-################################################################################################################  
+############################################################################################################
 
         
 class VelInitNormDist(object):
@@ -1143,7 +1142,9 @@ class VelInitNormDist(object):
         
 ################################################################################################################
 # VelInitTwoParticlesInABox DEFINITIONS
-################################################################################################################        
+################################################################################################################
+
+
 class VelInitTwoParticlesInABox(object):
     """
     Sets velocities for two particles.
@@ -1177,7 +1178,9 @@ class VelInitTwoParticlesInABox(object):
 
 ################################################################################################################
 # VelInitOneParticleInABox DEFINITIONS
-################################################################################################################        
+################################################################################################################
+
+
 class VelInitOneParticleInABox(object):
     """
     Sets velocities for first particle.
@@ -1205,6 +1208,7 @@ class VelInitOneParticleInABox(object):
 # VelInitMaxwellBoltzmannDist DEFINITIONS
 ################################################################################################################       
 
+
 class VelInitMaxwellBoltzmannDist(object):
     """
     Initialise velocities by sampling from a gaussian distribution.
@@ -1214,19 +1218,18 @@ class VelInitMaxwellBoltzmannDist(object):
     
     """
 
-    def __init__(self,temperature=293.15):
+    def __init__(self, temperature=293.15):
         self._t = (float)(temperature)
         print "Warning not yet functional"
-    
-    
-    def reset(self,state_input):
+
+    def reset(self, state_input):
         """
         Resets particle velocities to Maxwell-Boltzmann distribution.
         
         :arg state state_input: Input state class oject containing velocities and masses.
         """
         
-        #Apply MB distro to velocities.
+        # Apply MB distro to velocities.
         for ix in range(state_input.n()):
             scale = math.sqrt(self._t/state_input.masses[state_input.types[ix]])
             stmp = scale*math.sqrt(-2.0*math.log(random.uniform(0,1)))
@@ -1237,7 +1240,8 @@ class VelInitMaxwellBoltzmannDist(object):
 
 ################################################################################################################
 # VelInitDLPOLYConfig DEFINITIONS
-################################################################################################################              
+################################################################################################################
+
 
 class VelInitDLPOLYConfig(object):
     """
@@ -1246,11 +1250,10 @@ class VelInitDLPOLYConfig(object):
     :arg str filename: Config filename.
     """
     
-    def __init__(self,filename = None):
+    def __init__(self, filename=None):
         self._f = filename
         assert self._f is not None, "No position config file specified"
-        
-        
+
     def reset(self, state_input):
         """
         Resets particle velocities to those in file.
@@ -1258,25 +1261,26 @@ class VelInitDLPOLYConfig(object):
         :arg state state_input: State object containing required number of particles.
         """
         
-        fh=open(self._f)
+        fh = open(self._f)
         shift = 8
-        offset= 4
+        offset = 4
         count = 0
         _n = 0
         
         for i, line in enumerate(fh):
-            if ((i>(shift-2)) and ((i-shift+1)%offset == 0) and count < state_input.nt() ):
-                
-                if (state_input.global_ids[_n] == count):
-                    state_input.velocities[_n,0]=line.strip().split()[0]
-                    state_input.velocities[_n,1]=line.strip().split()[1]
-                    state_input.velocities[_n,2]=line.strip().split()[2]
-                    _n+=1
-                count+=1
+            if (i > (shift-2)) and ((i-shift + 1) % offset == 0) and count < state_input.nt():
+
+                if state_input.global_ids[_n] == count:
+                    state_input.velocities[_n, 0] = line.strip().split()[0]
+                    state_input.velocities[_n, 1] = line.strip().split()[1]
+                    state_input.velocities[_n, 2] = line.strip().split()[2]
+                    _n += 1
+                count += 1
         
 ################################################################################################################
 # MassInitTwoAlternating DEFINITIONS
-################################################################################################################          
+################################################################################################################
+
 
 class MassInitTwoAlternating(object):
     """
@@ -1286,10 +1290,9 @@ class MassInitTwoAlternating(object):
     :arg double m2:  Second mass
     """
     
-    def __init__(self, m1 = 1.0, m2 = 1.0):
+    def __init__(self, m1=1.0, m2=1.0):
         self._m = [m1, m2]
 
-        
     def reset(self, state):
         """
         Apply to input mass dat class.
@@ -1310,7 +1313,8 @@ class MassInitTwoAlternating(object):
 
 ################################################################################################################
 # MassInitIdentical DEFINITIONS
-################################################################################################################ 
+################################################################################################################
+
 
 class MassInitIdentical(object):
     """
@@ -1319,10 +1323,9 @@ class MassInitIdentical(object):
     :arg double m: Mass default 1.0
     """
     
-    def __init__(self, m = 1.0):
-        self._m = (float)(m)
+    def __init__(self, m=1.0):
+        self._m = float(m)
 
-        
     def reset(self, state):
         """
         Apply to input mass dat class.
@@ -1332,24 +1335,4 @@ class MassInitIdentical(object):
         state.masses[0] = self._m
         
         for ix in range(state.n()):
-            state.types[ix]=0
-
-
-
-
-
-
-
-
-
-
-
-    
-    
-        
-        
-        
-        
-        
-        
-        
+            state.types[ix] = 0

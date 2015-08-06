@@ -7,6 +7,37 @@ import subprocess
 import data
 import re
 
+
+################################################################################################################
+# DEBUG class, avoids passing debug handles everywhere
+################################################################################################################
+
+class Debug(object):
+    """
+    Class to hold a debug level.
+    """
+    _level = 0
+
+    def __init__(self, level=0):
+        self._level = level
+
+    @property
+    def level(self):
+        """
+        Return current debug level.
+        """
+        return self._level
+
+    @level.setter
+    def level(self, level):
+        """
+        Set a debug level.
+        :arg int level: New debug level.
+        """
+        self._level = level
+
+DEBUG = Debug(0)
+
 ################################################################################################################
 # COMPILERS START
 ################################################################################################################

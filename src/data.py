@@ -7,6 +7,7 @@ import os
 import re
 import pickle
 from mpi4py import MPI
+import sys
 
 np.set_printoptions(threshold='nan')
 
@@ -17,12 +18,6 @@ ctypes_map = {ctypes.c_double: 'double', ctypes.c_int: 'int', 'float64': 'double
 mpi_map = {ctypes.c_double: MPI.DOUBLE, ctypes.c_int: MPI.INT}
 
 
-# MPI_printing tool
-def print_mpi(MPI_handle, string):
-    if MPI_handle is None:
-        print string
-    else:
-        MPI_handle.print_str(string)
 
 
 ###############################################################################################################
@@ -33,10 +28,9 @@ class MDMPI(object):
     """
     Class to store a MPI communicator such that it can be used everywhere (bottom level of hierarchy).
     """
-
-    def __init__(self, periods=(0, 0, 0)):
-        self._COMM = None
-        self._p = periods
+    def __init__(self):
+        self._COMM = MPI.COMM_WORLD
+        self._p = (0, 0, 0)
 
     @property
     def comm(self):
@@ -123,13 +117,19 @@ class MDMPI(object):
         if self._COMM is not None:
             self._COMM.Barrier()
 
-    def print_str(self, s):
+    def print_str(self, *args):
         """
         Method to print on rank 0 to stdout
         """
 
         if self.rank == 0:
-            print s
+            _s = ''
+            for ix in args:
+                _s += str(ix)
+            print _s
+            sys.stdout.flush()
+
+        self.barrier()
 
     def _check_comm(self):
         self._top = self._COMM.Get_topo()[2][::-1]
@@ -210,6 +210,23 @@ class MDMPI(object):
 
         return _r[0] + _r[1] * self._dims[0] + _r[2] * self._dims[0] * self._dims[1]
 
+###############################################################################################################
+# MPI_HANDLE
+###############################################################################################################
+
+MPI_HANDLE = MDMPI()
+
+###############################################################################################################
+# MPI_HANDLE
+###############################################################################################################
+
+def pprint(*args):
+    """
+    Print a string on stdout using the default MPI handle.
+    :param string:
+    :return:
+    """
+    MPI_HANDLE.print_str(*args)
 
 ###############################################################################################################
 # XYZWrite
@@ -267,10 +284,10 @@ class DrawParticles(object):
 
     """
 
-    def __init__(self, interval=10, mpi_handle=MDMPI()):
+    def __init__(self, interval=10):
 
         self._interval = interval
-        self._Mh = mpi_handle
+        self._Mh = MPI_HANDLE
 
         self._Dat = None
         self._gids = None

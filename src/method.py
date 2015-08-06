@@ -35,13 +35,13 @@ class VelocityVerlet(object):
     :arg bool DEBUG: Flag to enable debug flags.
     """
     
-    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, plot_handle = None, energy_handle = None, writexyz = False, VAF_handle = None, DEBUG = False, mpi_handle = None, schedule=None):
+    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, plot_handle = None, energy_handle = None, writexyz = False, VAF_handle = None, DEBUG = False, schedule=None):
     
         self._dt = dt
         self._DT = dt_step
         self._T = t
         self._DEBUG = DEBUG
-        self._Mh = mpi_handle
+        self._Mh = data.MPI_HANDLE
 
         self._state = state
         
@@ -751,11 +751,11 @@ class RadialDistributionPeriodicNVE(object):
         f.close()
 
 ################################################################################################################
-# VAF
+# VAF basic
 ################################################################################################################
 
 
-class VelocityAutoCorrelation(object):
+class VelocityAutoCorrelationBasic(object):
     """
     Method to calculate Velocity Autocorrelation Function.
     
@@ -796,7 +796,7 @@ class VelocityAutoCorrelation(object):
         
         _static_args = {'I': ctypes.c_int, 'Ni': ctypes.c_double}
         
-        _kernel = kernel.Kernel('VelocityAutocorrelation', _kernel_code, _constants, _headers, _reduction, _static_args)
+        _kernel = kernel.Kernel('VelocityAutocorrelationBasic', _kernel_code, _constants, _headers, _reduction, _static_args)
 
         self._datdict = {'VAF': self._VAF, 'v0': self._V0, 'VT': self._VT}
         
@@ -1022,7 +1022,121 @@ class Schedule(object):
                     iy()
 
 
+################################################################################################################
+# VAF
+################################################################################################################
 
+
+class VelocityAutoCorrelation(object):
+    """
+    Method to calculate Velocity Autocorrelation Function.
+
+    :arg state state: Input state containing velocities.
+    :arg int size: Initial length of VAF array (optional).
+    :arg particle.Dat V0: Initial velocity Dat (optional).
+    :arg bool DEBUG: Flag to enable debug flags.
+    """
+
+    def __init__(self, state, size=0, v0=None, DEBUG=False):
+        self._DEBUG = DEBUG
+        self._state = state
+        self._Mh = self._state.mpi_handle
+        self._N = self._state.n
+        self._V0 = particle.Dat(self._N, 3, name='v0')
+        self._VT = self._V0
+
+        self._VO_SET = False
+        if v0 is not None:
+            self.set_v0(v0)
+        else:
+            self.set_v0(state=self._state)
+
+        self._VAF = data.ScalarArray(ncomp=1)
+        self._V = []
+        self._T = []
+
+        _headers = ['stdio.h']
+        _constants = None
+        _kernel_code = '''
+
+        VAF[0] += (v0[0]*VT[0] + v0[1]*VT[1] + v0[2]*VT[2])*Ni;
+
+        '''
+        _reduction = (kernel.Reduction('VAF', 'VAF[I]', '+'),)
+
+        _static_args = {'Ni': ctypes.c_double}
+
+        _kernel = kernel.Kernel('VelocityAutocorrelation', _kernel_code, _constants, _headers, _reduction, _static_args)
+
+        self._datdict = {'VAF': self._VAF, 'v0': self._V0, 'VT': self._VT}
+
+        self._loop = loop.SingleAllParticleLoop(self._N, None, kernel=_kernel, particle_dat_dict=self._datdict, DEBUG=self._DEBUG, mpi_handle=self._Mh)
+
+    def set_v0(self, v0=None, state=None, timer=False):
+        """
+        Set an initial velocity Dat to use as V_0. Requires either a velocity Dat or a state as an argument. V_0 will be set to either the passed velocities or to the velocities in the passed state.
+
+        :arg particle.Dat v0: Velocity Dat.
+        :arg state state: State class containing velocities.
+        """
+
+        if v0 is not None:
+            self._V0.dat = np.copy(v0.dat)
+            self._V0_SET = True
+        if state is not None:
+            self._V0.dat = np.copy(state.velocities.dat)
+            self._V0_SET = True
+        assert self._V0_SET is True, "No velocities set, check input data."
+
+        self._timer = timer
+
+    def evaluate(self):
+        """
+        Evaluate VAF using the current velocities held in the state with the velocities in V0.
+
+        :arg double t: Time within block of integration.
+        :arg bool timer: Flag to time evaluation of VAF.
+        """
+        if self._timer:
+            start = time.time()
+
+        _t = self._state.time
+
+        assert int(self._VAF_index) < int(self._VAF.ncomp), "VAF store not large enough"
+
+        _Ni = 1./self._N()
+        self._datdict['VT'] = self._state.velocities
+        self._loop.execute(None, self._datdict, {'I': ctypes.c_int(self._VAF_index), 'Ni': ctypes.c_double(_Ni)})
+
+        if _t is None:
+            self._T_store[self._VAF_index] = 1 + self._T_base
+        else:
+
+            self._T_store[self._VAF_index] = _t + self._T_base
+
+        self._VAF_index += 1
+
+        if self._timer:
+            end = time.time()
+            print "VAF time taken:", end - start, "s"
+
+    def plot(self):
+        """
+        Plot array of recorded VAF evaluations.
+        """
+
+        if self._VAF_index > 0:
+            plt.ion()
+            _fig = plt.figure()
+            _ax = _fig.add_subplot(111)
+
+            plt.plot(self._T_store.dat, self._VAF.dat)
+            _ax.set_title('Velocity Autocorrelation Function')
+            _ax.set_xlabel('Time')
+            _ax.set_ylabel('VAF')
+            plt.show()
+        else:
+            print "Warning: run evaluate() at least once before plotting."
 
 
 
