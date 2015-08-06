@@ -26,8 +26,8 @@ class Constant(object):
         """
 
         # forbiddenChars='[^a-zA-Z0-9_]' #='[\W]'='[^\w]'
-        
+
         forbiddenchars = '[\W]'
-        regex = '(?<='+forbiddenchars+')('+self._name+')(?='+forbiddenchars+')'
-        
+        regex = '(?<=' + forbiddenchars + ')(' + self._name + ')(?=' + forbiddenchars + ')'
+
         return re.sub(regex, str(self._value), s)

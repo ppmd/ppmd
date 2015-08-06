@@ -3,6 +3,7 @@ import constant
 import data
 import ctypes
 
+
 class BasePotential(object):
     """Abstract base class for inter-atomic potentials.
 
@@ -11,16 +12,17 @@ class BasePotential(object):
     between two atoms i and j. In MD simulations we need this potential and
     the force :math:`\\vec{F}(r) = -\\nabla V(r)`.
     """
+
     def __init__(self):
         pass
 
-    def evaluate(self,r):
+    def evaluate(self, r):
         """Evaluate potential :math:`V(r)`
 
         :arg r: Inter-atom distance :math:`r=|r_i-r_j|`
         """
 
-    def evaluate_force(self,rx,ry):
+    def evaluate_force(self, rx, ry):
         """Evaluate force.
 
         Calculate the interatomic force :math:`\\vec{F}(r) = -\\nabla V(r)` for
@@ -29,11 +31,12 @@ class BasePotential(object):
         :arg rx: x-component of distance :math:`r_x`
         :arg ry: y-component of distance :math:`r_y`
         """
-        
+
+
 ################################################################################################################
 # LJ 2**(1/6) sigma
 ################################################################################################################          
-        
+
 class LennardJonesShifted(BasePotential):
     """Shifted Lennard Jones potential.
     
@@ -45,16 +48,16 @@ class LennardJonesShifted(BasePotential):
     :arg epsilon: Potential parameter :math:`\epsilon`
     :arg sigma: Potential parameter :math:`\sigma`
     """
-    def __init__(self,epsilon = 1.0,sigma = 1.0):
+
+    def __init__(self, epsilon=1.0, sigma=1.0):
         self._epsilon = epsilon
         self._sigma = sigma
-        self._C_V = 4.*self._epsilon
-        self._C_F = -48*self._epsilon/self._sigma**2
-        self._rc = 2.**(1./6.)*self._sigma
-        self._rn = 1.2*self._rc
-        self._rc2 = self._rc**2
-        self._sigma2 = self._sigma**2
-        
+        self._C_V = 4. * self._epsilon
+        self._C_F = -48 * self._epsilon / self._sigma ** 2
+        self._rc = 2. ** (1. / 6.) * self._sigma
+        self._rn = 1.2 * self._rc
+        self._rc2 = self._rc ** 2
+        self._sigma2 = self._sigma ** 2
 
     @property
     def epsilon(self):
@@ -71,16 +74,17 @@ class LennardJonesShifted(BasePotential):
         """Value of cufoff distance :math:`r_c`"""
         return self._rc
 
-    def evaluate(self,r):
+    def evaluate(self, r):
         """Evaluate potential.
 
         :arg r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
         """
         if r < self._rc:
-            r_m6 = (r/self._sigma)**(-6)
-            return self._C_V*((r_m6-1.0)*r_m6 + 0.25)
+            r_m6 = (r / self._sigma) ** (-6)
+            return self._C_V * ((r_m6 - 1.0) * r_m6 + 0.25)
         else:
             return 0.0
+
     """
     def evaluate_force(self,rx,ry):
         '''Evaluate force.
@@ -96,26 +100,27 @@ class LennardJonesShifted(BasePotential):
         else:
             return (0.0,0.0)
     """
-    def evaluate_force(self,r2):
+
+    def evaluate_force(self, r2):
         """Evaluate force.
 
         :arg rx: x-component of distance :math:`r_x`
         :arg ry: y-component of distance :math:`r_y`
         """
-        
+
         if r2 < self._rc2:
-            r_m2 = self._sigma2/r2
-            return  self._C_F*(r_m2**7 - 0.5*r_m2**4)
-            
+            r_m2 = self._sigma2 / r2
+            return self._C_F * (r_m2 ** 7 - 0.5 * r_m2 ** 4)
+
         else:
-            return 0.0   
-    
+            return 0.0
+
     @property
     def kernel(self):
         """
         Returns a kernel class for the potential.
         """
-        
+
         kernel_code = '''
         
         const double R0 = P[1][0] - P[0][0];
@@ -149,14 +154,13 @@ class LennardJonesShifted(BasePotential):
         }
         
         '''
-        constants=(constant.Constant('sigma2',self._sigma**2),
-                   constant.Constant('rc2',self._rc**2),
-                   constant.Constant('CF',self._C_F),
-                   constant.Constant('CV',self._C_V))        
-        
-        
-        reductions = (kernel.Reduction('u','u[0]','+'),)
-        
+        constants = (constant.Constant('sigma2', self._sigma ** 2),
+                     constant.Constant('rc2', self._rc ** 2),
+                     constant.Constant('CF', self._C_F),
+                     constant.Constant('CV', self._C_V))
+
+        reductions = (kernel.Reduction('u', 'u[0]', '+'),)
+
         return kernel.Kernel('LJ_accel_U', kernel_code, constants, None, reductions)
 
     def datdict(self, input_state):
@@ -165,14 +169,13 @@ class LennardJonesShifted(BasePotential):
         
         :arg state input_state: state with containing variables.
         """
-        return {'P':input_state.positions(), 'A':input_state.forces(), 'u':input_state.u()}
-        
-               
-        
+        return {'P': input_state.positions(), 'A': input_state.forces(), 'u': input_state.u()}
+
+
 ################################################################################################################
 # LJ 2.5 sigma
 ################################################################################################################  
-        
+
 class LennardJones(LennardJonesShifted):
     """Lennard Jones potential.
     
@@ -184,38 +187,39 @@ class LennardJones(LennardJonesShifted):
     :arg epsilon: Potential parameter :math:`\epsilon`
     :arg sigma: Potential parameter :math:`\sigma`
     """
-    def __init__(self,epsilon = 1.0,sigma = 1.0, rc = None):
+
+    def __init__(self, epsilon=1.0, sigma=1.0, rc=None):
         self._epsilon = epsilon
         self._sigma = sigma
-        self._C_V = 4.*self._epsilon
-        self._C_F = -48*self._epsilon/self._sigma**2
+        self._C_V = 4. * self._epsilon
+        self._C_F = -48 * self._epsilon / self._sigma ** 2
         if rc is None:
-            self._rc = self._sigma*(5./2.)
-        else:    
+            self._rc = self._sigma * (5. / 2.)
+        else:
             self._rc = rc
-            
-        self._rn = 1.*self._rc
-        self._rc2 = self._rc**2
-        self._sigma2 = self._sigma**2
-        self._shift_internal = (self._sigma/self._rc)**6 - (self._sigma/self._rc)**12
-        
-    def evaluate(self,r):
+
+        self._rn = 1. * self._rc
+        self._rc2 = self._rc ** 2
+        self._sigma2 = self._sigma ** 2
+        self._shift_internal = (self._sigma / self._rc) ** 6 - (self._sigma / self._rc) ** 12
+
+    def evaluate(self, r):
         """Evaluate potential.
 
         :arg r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
         """
         if r < self._rc:
-            r_m6 = (r/self._sigma)**(-6)
-            return self._C_V*((r_m6-1.0)*r_m6 + self._shift_internal)
+            r_m6 = (r / self._sigma) ** (-6)
+            return self._C_V * ((r_m6 - 1.0) * r_m6 + self._shift_internal)
         else:
-            return 0.0        
-    
-    @property    
+            return 0.0
+
+    @property
     def kernel(self):
         """
         Returns a kernel class for the potential.
         """
-        
+
         kernel_code = '''
         
         const double R0 = P[1][0] - P[0][0];
@@ -253,24 +257,24 @@ class LennardJones(LennardJonesShifted):
         }
         
         '''
-        constants=(constant.Constant('sigma2',self._sigma**2),
-                   constant.Constant('rc2',self._rc**2),
-                   constant.Constant('internalshift',self._shift_internal),
-                   constant.Constant('CF',self._C_F),
-                   constant.Constant('CV',self._C_V))        
-        
-        reductions = (kernel.Reduction('u','u[0]','+'),)
-        
+        constants = (constant.Constant('sigma2', self._sigma ** 2),
+                     constant.Constant('rc2', self._rc ** 2),
+                     constant.Constant('internalshift', self._shift_internal),
+                     constant.Constant('CF', self._C_F),
+                     constant.Constant('CV', self._C_V))
+
+        reductions = (kernel.Reduction('u', 'u[0]', '+'),)
+
         return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'], reductions)
-        
-        
+
+
 class LennardJonesOpenMP(LennardJones):
     @property
     def kernel(self):
         """
         Returns a kernel class for the potential.
         """
-        
+
         kernel_code = '''
         
         const double R0 = P[1][0] - P[0][0];
@@ -300,48 +304,48 @@ class LennardJonesOpenMP(LennardJones):
         }
         
         '''
-        constants=(constant.Constant('sigma2',self._sigma**2),
-                   constant.Constant('rc2',self._rc**2),
-                   constant.Constant('internalshift',self._shift_internal),
-                   constant.Constant('CF',self._C_F),
-                   constant.Constant('CV',self._C_V))        
-        
-        reductions = (kernel.Reduction('u','u[0]','+'),)
-        
+        constants = (constant.Constant('sigma2', self._sigma ** 2),
+                     constant.Constant('rc2', self._rc ** 2),
+                     constant.Constant('internalshift', self._shift_internal),
+                     constant.Constant('CF', self._C_F),
+                     constant.Constant('CV', self._C_V))
+
+        reductions = (kernel.Reduction('u', 'u[0]', '+'),)
+
         return kernel.Kernel('LJ_accel_U', kernel_code, constants, None, reductions)
 
 
 ################################################################################################################
 # NULL Potential, returns zero for accel
 ################################################################################################################  
-        
+
 class NULL(object):
     """
     
     NULL potential
     
     """
-    def __init__(self, rc = None):
+
+    def __init__(self, rc=None):
         self._rc = rc
         self._rn = rc
-        
+
     @property
     def rc(self):
         """Value of cufoff distance :math:`r_c`"""
         return self._rc
-        
+
     @property
     def rn(self):
         """Value of cufoff distance :math:`r_c`"""
-        return self._rc        
-            
-    
-    @property    
+        return self._rc
+
+    @property
     def kernel(self):
         """
         Returns a kernel class for the potential.
         """
-        
+
         kernel_code = '''
         
         const double R0 = P[1][0] - P[0][0];
@@ -357,7 +361,7 @@ class NULL(object):
         A[1][2]=0;
         
         '''
-        
+
         return kernel.Kernel('NULL_Potential', kernel_code, None, None, None)
 
     @staticmethod
@@ -367,7 +371,7 @@ class NULL(object):
         
         :arg state input_state: state with containing variables.
         """
-        return {'P':input_state.positions, 'A':input_state.forces, 'u':input_state.u}
+        return {'P': input_state.positions, 'A': input_state.forces, 'u': input_state.u}
 
 
 class LennardJonesCounter(LennardJones):
@@ -381,32 +385,33 @@ class LennardJonesCounter(LennardJones):
     :arg epsilon: Potential parameter :math:`\epsilon`
     :arg sigma: Potential parameter :math:`\sigma`
     """
-    def __init__(self,epsilon = 1.0,sigma = 1.0, rc = None):
+
+    def __init__(self, epsilon=1.0, sigma=1.0, rc=None):
         self._epsilon = epsilon
         self._sigma = sigma
-        self._C_V = 4.*self._epsilon
-        self._C_F = -48*self._epsilon/self._sigma**2
+        self._C_V = 4. * self._epsilon
+        self._C_F = -48 * self._epsilon / self._sigma ** 2
         if rc is None:
-            self._rc = self._sigma*(5./2.)
-        else:    
+            self._rc = self._sigma * (5. / 2.)
+        else:
             self._rc = rc
-            
-        self._rn = 1.*self._rc
-        self._rc2 = self._rc**2
-        self._sigma2 = self._sigma**2
-        self._shift_internal = (self._sigma/self._rc)**6 - (self._sigma/self._rc)**12
-        
-        self._counter = data.ScalarArray([0], dtype=ctypes.c_longlong, name = "counter")
-        self._counter.dat[0]=0
-        self._counter_outer = data.ScalarArray([0], dtype=ctypes.c_longlong, name = "counter")
-        self._counter_outer.dat[0]=0
-        
-    @property    
+
+        self._rn = 1. * self._rc
+        self._rc2 = self._rc ** 2
+        self._sigma2 = self._sigma ** 2
+        self._shift_internal = (self._sigma / self._rc) ** 6 - (self._sigma / self._rc) ** 12
+
+        self._counter = data.ScalarArray([0], dtype=ctypes.c_longlong, name="counter")
+        self._counter.dat[0] = 0
+        self._counter_outer = data.ScalarArray([0], dtype=ctypes.c_longlong, name="counter")
+        self._counter_outer.dat[0] = 0
+
+    @property
     def kernel(self):
         """
         Returns a kernel class for the potential.
         """
-        
+
         kernel_code = '''
         
         OUTCOUNT[0]++;
@@ -446,14 +451,14 @@ class LennardJonesCounter(LennardJones):
         }
         
         '''
-        constants=(constant.Constant('sigma2',self._sigma**2),
-                   constant.Constant('rc2',self._rc**2),
-                   constant.Constant('internalshift',self._shift_internal),
-                   constant.Constant('CF',self._C_F),
-                   constant.Constant('CV',self._C_V))
-        
-        reductions = (kernel.Reduction('u','u[0]','+'),)
-        
+        constants = (constant.Constant('sigma2', self._sigma ** 2),
+                     constant.Constant('rc2', self._rc ** 2),
+                     constant.Constant('internalshift', self._shift_internal),
+                     constant.Constant('CF', self._C_F),
+                     constant.Constant('CV', self._C_V))
+
+        reductions = (kernel.Reduction('u', 'u[0]', '+'),)
+
         return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'], reductions)
 
     def datdict(self, input_state):
@@ -462,15 +467,5 @@ class LennardJonesCounter(LennardJones):
         
         :arg state input_state: state with containing variables.
         """
-        return {'P':input_state.positions, 'A':input_state.forces, 'u':input_state.u, 'COUNT':self._counter, 'OUTCOUNT':self._counter_outer}
-
-
-
-
-
-
-
-
-
-
-
+        return {'P': input_state.positions, 'A': input_state.forces, 'u': input_state.u, 'COUNT': self._counter,
+                'OUTCOUNT': self._counter_outer}

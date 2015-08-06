@@ -15,6 +15,7 @@ class _Base(build.GenericToolChain):
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg bool DEBUG: Flag to enable debug flags.
     """
+
     def __init__(self, n, types_map, kernel, particle_dat_dict):
 
         self._compiler_set()
@@ -26,21 +27,21 @@ class _Base(build.GenericToolChain):
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = kernel
-        
+
         self._particle_dat_dict = particle_dat_dict
         self._nargs = len(self._particle_dat_dict)
 
         self._code_init()
-        
+
         self._unique_name = self._unique_name_calc()
-        
+
         self._library_filename = self._unique_name + '.so'
-        
+
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            
+
             if data.MPI_HANDLE is None:
                 self._create_library()
-            
+
             else:
                 if data.MPI_HANDLE.rank == 0:
                     self._create_library()
@@ -50,7 +51,7 @@ class _Base(build.GenericToolChain):
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
             build.load_library_exception(self._kernel.name, self._unique_name, type(self))
-        
+
     def _compiler_set(self):
         self._cc = build.TMPCC
 
@@ -73,40 +74,40 @@ class _Base(build.GenericToolChain):
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
 
-            space = ' '*14
-            argname = dat[0]+'_ext'
+            space = ' ' * 14
+            argname = dat[0] + '_ext'
             loc_argname = dat[0]
-            
+
             if (type(dat[1]) == data.ScalarArray) or (type(dat[1]) == data.PointerArray):
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
-            
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+
             if type(dat[1]) == particle.Dat:
-                
                 ncomp = dat[1].ncomp
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';\n'
-                s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'
-                
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
+                s += space + loc_argname + ' = ' + argname + '+' + str(ncomp) + '*i;\n'
+
             if type(dat[1]) == particle.TypedDat:
-                
                 ncomp = dat[1].ncomp
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+' = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'
-                
-        return s         
-              
-################################################################################################################
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                s += space + loc_argname + ' = &' + argname + '[LINIDX_2D(' + str(
+                    ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
+
+        return s
+
+    ################################################################################################################
+
+
 # SINGLE ALL PARTICLE LOOP SERIAL
 ################################################################################################################
 
 
 class SingleAllParticleLoop(_Base):
-                   
     def _compiler_set(self):
         self._cc = build.TMPCC
 
     def _code_init(self):
         self._kernel_code = self._kernel.code
-    
+
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
 
@@ -124,7 +125,7 @@ class SingleAllParticleLoop(_Base):
             }
         }
         '''
-    
+
     # added to cope with int *_GID, int *_TYPE_MAP, take out afterwards
     def _generate_header_source(self):
         """Generate the source code of the header file.
@@ -148,19 +149,19 @@ class SingleAllParticleLoop(_Base):
              'ARGUMENTS': self._argnames()}
         return code % d
 
+
 ################################################################################################################
 # SINGLE PARTICLE LOOP SERIAL
 ################################################################################################################
 
 
 class SingleParticleLoop(_Base):
-                   
     def _compiler_set(self):
         self._cc = build.TMPCC
 
     def _code_init(self):
         self._kernel_code = self._kernel.code
-    
+
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
 
@@ -202,10 +203,10 @@ class SingleParticleLoop(_Base):
         return code % d
 
     def execute(self, start=0, end=0, dat_dict=None, static_args=None):
-        
+
         # Allow alternative pointers
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict    
+            self._particle_dat_dict = dat_dict
 
         args = [ctypes.c_int(start), ctypes.c_int(end)]
 
@@ -216,17 +217,18 @@ class SingleParticleLoop(_Base):
             assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
-            
+
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
-        method = self._lib[self._kernel.name+'_wrapper']
-        method(*args)        
+        method = self._lib[self._kernel.name + '_wrapper']
+        method(*args)
+
+    ################################################################################################################
 
 
-################################################################################################################
 # SINGLE PARTICLE LOOP OPENMP
 ################################################################################################################
 
@@ -235,16 +237,17 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
     """
     OpenMP version of single pass pair loop (experimental)
     """
+
     def _compiler_set(self):
         self._cc = build.TMPCC_OpenMP
-    
+
     def _code_init(self):
         self._kernel_code = self._kernel.code
-    
+
         self._ompinitstr = ''
         self._ompdecstr = ''
-        self._ompfinalstr = '' 
-    
+        self._ompfinalstr = ''
+
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
         #include <omp.h>
@@ -272,7 +275,7 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
         }
         
         '''
-    
+
     def _generate_impl_source(self):
         """Generate the source code the actual implementation.
         """
@@ -289,7 +292,7 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
              }
 
         return self._code % d
-        
+
     def _kernel_argument_declarations_openmp(self):
         """Define and declare the kernel arguments.
 
@@ -309,50 +312,51 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
 
-            space = ' '*14
-            argname = dat[0]+'_ext'
+            space = ' ' * 14
+            argname = dat[0] + '_ext'
             loc_argname = dat[0]
 
             reduction_handle = self._kernel.reduction_variable_lookup(dat[0])
-            
+
             if reduction_handle is not None:
                 # if (dat[1].ncomp != 1):
                 # print "WARNING, Reductions currently only valid for 1 element."
-                
+
                 # Create a var name a variable to reduce upon.
-                reduction_argname = dat[0]+'_reduction'
-                
+                reduction_argname = dat[0] + '_reduction'
+
                 # Initialise variable
-                self._ompinitstr += data.ctypes_map[dat[1].dtype] + ' '\
-                                    + reduction_argname\
-                                    + ' = '\
-                                    + build.omp_operator_init_values[reduction_handle.operator]+';'
-                
+                self._ompinitstr += data.ctypes_map[dat[1].dtype] + ' ' \
+                                    + reduction_argname \
+                                    + ' = ' \
+                                    + build.omp_operator_init_values[reduction_handle.operator] + ';'
+
                 # Add to omp pragma
-                self._ompdecstr += 'Reduction('+reduction_handle.operator+':'+reduction_argname+')'
-                
+                self._ompdecstr += 'Reduction(' + reduction_handle.operator + ':' + reduction_argname + ')'
+
                 # Modify kernel code to use new Reduction variable.
                 self._kernel_code = build.replace(self._kernel_code, reduction_handle.pointer, reduction_argname)
-                
+
                 # write final value to output pointer
-                
-                self._ompfinalstr += argname+'['+reduction_handle.index+'] ='+reduction_argname+';'
+
+                self._ompfinalstr += argname + '[' + reduction_handle.index + '] =' + reduction_argname + ';'
 
             else:
-            
+
                 if type(dat[1]) == data.ScalarArray:
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
-                
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+
                 elif type(dat[1]) == particle.Dat:
-                    
+
                     ncomp = dat[1].ncomp
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';\n'
-                    s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'
-                    
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
+                    s += space + loc_argname + ' = ' + argname + '+' + str(ncomp) + '*i;\n'
+
                 elif type(dat[1]) == particle.TypedDat:
-                    
+
                     ncomp = dat[1].ncomp
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                    s += space+loc_argname+' = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                    
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                    s += space + loc_argname + ' = &' + argname + '[LINIDX_2D(' + str(
+                        ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
 
         return s

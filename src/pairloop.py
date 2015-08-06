@@ -6,8 +6,8 @@ import data
 import loop
 import build
 
-class _Base(build.GenericToolChain):
 
+class _Base(build.GenericToolChain):
     def _kernel_argument_declarations(self):
         """Define and declare the kernel arguments.
 
@@ -25,31 +25,33 @@ class _Base(build.GenericToolChain):
         """
         s = '\n'
         for i, dat in enumerate(self._particle_dat_dict.items()):
-            
-            
-            space = ' '*14
-            argname = dat[0]+'_ext'
+
+            space = ' ' * 14
+            argname = dat[0] + '_ext'
             loc_argname = dat[0]
 
             if type(dat[1]) == data.ScalarArray:
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
-            
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+
             elif type(dat[1]) == particle.Dat:
                 ncomp = dat[1].ncomp
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
-                s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
-                
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
+                s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
+
             elif type(dat[1]) == particle.TypedDat:
-                
+
                 ncomp = dat[1].ncomp
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'   
-        
-        return s 
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
+                    ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
+                s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
+                    ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
+
+        return s
 
 ################################################################################################################
+
 # RAPAPORT LOOP SERIAL
 ################################################################################################################
 
@@ -65,6 +67,7 @@ class PairLoopRapaport(_Base):
     :arg dict dat_dict: Dictonary mapping between state vars and kernel vars.
     :arg bool DEBUG: Flag to enable debug flags.
     """
+
     def __init__(self, n, domain, positions, potential, dat_dict, cell_list):
         self._N = n
         self._domain = domain
@@ -77,7 +80,7 @@ class PairLoopRapaport(_Base):
         ##########
         # End of Rapaport initialisations.
         ##########
-        
+
         self._temp_dir = './build/'
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
@@ -88,13 +91,13 @@ class PairLoopRapaport(_Base):
         self._code_init()
 
         self._unique_name = self._unique_name_calc()
-        
+
         self._library_filename = self._unique_name + '.so'
-        
-        if not os.path.exists(os.path.join(self._temp_dir,self._library_filename)):
+
+        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
             if data.MPI_HANDLE is None:
                 self._create_library()
-            
+
             else:
                 if data.MPI_HANDLE.rank == 0:
                     self._create_library()
@@ -103,8 +106,8 @@ class PairLoopRapaport(_Base):
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
-            build.load_library_exception(self._kernel.name, self._unique_name,type(self))
-        
+            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
+
     def _compiler_set(self):
         self._cc = build.TMPCC
 
@@ -228,47 +231,47 @@ class PairLoopRapaport(_Base):
         s = '\n'
         for i, dat in enumerate(self._particle_dat_dict.items()):
 
-            space = ' '*14
-            argname = dat[0]+'_ext'
+            space = ' ' * 14
+            argname = dat[0] + '_ext'
             loc_argname = dat[0]
-            
-            
-            if type(dat[1]) == data.ScalarArray:
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
-            
-            elif type(dat[1]) == particle.Dat:
-                if dat[1].name  == 'positions':
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
-                    
-                    
-                    s += space+'if (flag){ \n'
 
-                    #s += space+'double r1[3];\n'
-                    s += space+'r1[0] ='+argname+'[LINIDX_2D(3,j,0)] + s[0]; \n'
-                    s += space+'r1[1] ='+argname+'[LINIDX_2D(3,j,1)] + s[1]; \n'
-                    s += space+'r1[2] ='+argname+'[LINIDX_2D(3,j,2)] + s[2]; \n'
-                    s += space+loc_argname+'[1] = r1;\n'
-                    
-                    s += space+'}else{ \n'
-                    s += space+loc_argname+'[1] = '+argname+'+3*j;\n' 
-                    s += space+'} \n'
-                    s += space+loc_argname+'[0] = '+argname+'+3*i;\n'
-                    
+            if type(dat[1]) == data.ScalarArray:
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+
+            elif type(dat[1]) == particle.Dat:
+                if dat[1].name == 'positions':
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+
+                    s += space + 'if (flag){ \n'
+
+                    # s += space+'double r1[3];\n'
+                    s += space + 'r1[0] =' + argname + '[LINIDX_2D(3,j,0)] + s[0]; \n'
+                    s += space + 'r1[1] =' + argname + '[LINIDX_2D(3,j,1)] + s[1]; \n'
+                    s += space + 'r1[2] =' + argname + '[LINIDX_2D(3,j,2)] + s[2]; \n'
+                    s += space + loc_argname + '[1] = r1;\n'
+
+                    s += space + '}else{ \n'
+                    s += space + loc_argname + '[1] = ' + argname + '+3*j;\n'
+                    s += space + '} \n'
+                    s += space + loc_argname + '[0] = ' + argname + '+3*i;\n'
+
                 else:
                     ncomp = dat[1].ncomp
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
-                    s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
-                    
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
+                    s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
+
             elif type(dat[1]) == particle.TypedDat:
-                
+
                 ncomp = dat[1].ncomp
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                    
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
+                    ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
+                s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
+                    ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
 
         return s
-        
+
     def _generate_header_source(self):
         """Generate the source code of the header file.
 
@@ -296,34 +299,33 @@ class PairLoopRapaport(_Base):
         """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
-        
+
         '''Allow alternative pointers'''
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict    
-        
-        '''Create arg list'''
-        args=[ctypes.c_int(self._N()),
-              ctypes.c_int(self._domain.cell_count), 
-              self._domain.cell_array.ctypes_data,
-              self._q_list.ctypes_data,
-              self._domain.extent.ctypes_data]
+            self._particle_dat_dict = dat_dict
 
-        
+        '''Create arg list'''
+        args = [ctypes.c_int(self._N()),
+                ctypes.c_int(self._domain.cell_count),
+                self._domain.cell_array.ctypes_data,
+                self._q_list.ctypes_data,
+                self._domain.extent.ctypes_data]
+
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
-            
+
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data)
-            
-        
-        '''Execute the kernel over all particle pairs.'''            
-        method = self._lib[self._kernel.name+'_wrapper']
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
 
         method(*args)
+
 
 ################################################################################################################
 # DOUBLE PARTICLE LOOP
@@ -339,9 +341,9 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg list headers: list containing C headers required by kernel.
     """
+
     def _compiler_set(self):
-        self._cc = build.TMPCC        
-    
+        self._cc = build.TMPCC
 
     def _code_init(self):
         self._kernel_code = self._kernel.code
@@ -361,7 +363,7 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
           }}
         }
         '''
-    
+
     def _kernel_argument_declarations(self):
         """Define and declare the kernel arguments.
 
@@ -378,32 +380,31 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
         the correct address in the particle_dats.
         """
         s = '\n'
-        for i,dat in enumerate(self._particle_dat_dict.items()):
-            
-            
-            space = ' '*14
-            argname = dat[0]+'_ext'
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+
+            space = ' ' * 14
+            argname = dat[0] + '_ext'
             loc_argname = dat[0]
-            
-            
+
             if type(dat[1]) == data.ScalarArray:
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
-            
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+
             elif type(dat[1]) == particle.Dat:
                 ncomp = dat[1].ncomp
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
-                s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
-                
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
+                s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
+
             elif type(dat[1]) == particle.TypedDat:
-                
+
                 ncomp = dat[1].ncomp
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                
-                  
-        
-        return s 
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
+                    ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
+                s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
+                    ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
+
+        return s
 
 ################################################################################################################
 # DOUBLE PARTICLE LOOP APPLIES PBC
@@ -419,8 +420,9 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg bool DEBUG: Flag to enable debug flags.
     """
+
     def __init__(self, n, domain, kernel, particle_dat_dict):
-        
+
         self._compiler_set()
         self._N = n
         self._domain = domain
@@ -428,20 +430,20 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = kernel
-        
+
         self._particle_dat_dict = particle_dat_dict
         self._nargs = len(self._particle_dat_dict)
 
         self._code_init()
-        
+
         self._unique_name = self._unique_name_calc()
-        
+
         self._library_filename = self._unique_name + '.so'
-        
-        if not os.path.exists(os.path.join(self._temp_dir,self._library_filename)):
+
+        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
             if data.MPI_HANDLE is None:
                 self._create_library()
-            
+
             else:
                 if data.MPI_HANDLE.rank == 0:
                     self._create_library()
@@ -476,7 +478,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
           }}
         }
         '''
-        
+
     def _generate_header_source(self):
         """Generate the source code of the header file.
 
@@ -515,64 +517,59 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         the correct address in the particle_dats.
         """
         s = '\n'
-        for i,dat in enumerate(self._particle_dat_dict.items()):
-            
-            
-            space = ' '*14
-            argname = dat[0]+'_ext'
-            loc_argname = dat[0]
-            
-            
-            if type(dat[1]) == data.ScalarArray:
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
-            
-            elif type(dat[1]) == particle.Dat:
-                if dat[1].name  == 'positions':
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
-                    
-                    s += space+'r1[0] ='+argname+'[LINIDX_2D(3,i,0)] -'+argname+'[LINIDX_2D(3,j,0)]; \n'
-                    s += space+'r1[1] ='+argname+'[LINIDX_2D(3,i,1)] -'+argname+'[LINIDX_2D(3,j,1)]; \n'
-                    s += space+'r1[2] ='+argname+'[LINIDX_2D(3,i,2)] -'+argname+'[LINIDX_2D(3,j,2)]; \n'
-                    
-                    
-                    #s += space+'s1[0] = ((abs_md(r1[0]))>_E_2[0]? sign(r1[0])*_E[0]:0.0); \n'
-                    #s += space+'s1[1] = ((abs_md(r1[1]))>_E_2[1]? sign(r1[1])*_E[1]:0.0); \n'
-                    #s += space+'s1[2] = ((abs_md(r1[2]))>_E_2[2]? sign(r1[2])*_E[2]:0.0); \n'
-                    
-                    s += space+'s1[0] = r1[0]>_E_2[0] ? _E[0]:  r1[0]<-1*_E_2[0] ? -1*_E[0]:  0 ; \n'
-                    s += space+'s1[1] = r1[1]>_E_2[1] ? _E[1]:  r1[1]<-1*_E_2[1] ? -1*_E[1]:  0 ; \n'
-                    s += space+'s1[2] = r1[2]>_E_2[2] ? _E[2]:  r1[2]<-1*_E_2[2] ? -1*_E[2]:  0 ; \n'
-                    
-                    
-                    
+        for i, dat in enumerate(self._particle_dat_dict.items()):
 
-                    s += space+loc_argname+'[0] = r1;\n'
-                    s += space+loc_argname+'[1] = s1;\n'
-                    
-                    
+            space = ' ' * 14
+            argname = dat[0] + '_ext'
+            loc_argname = dat[0]
+
+            if type(dat[1]) == data.ScalarArray:
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+
+            elif type(dat[1]) == particle.Dat:
+                if dat[1].name == 'positions':
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+
+                    s += space + 'r1[0] =' + argname + '[LINIDX_2D(3,i,0)] -' + argname + '[LINIDX_2D(3,j,0)]; \n'
+                    s += space + 'r1[1] =' + argname + '[LINIDX_2D(3,i,1)] -' + argname + '[LINIDX_2D(3,j,1)]; \n'
+                    s += space + 'r1[2] =' + argname + '[LINIDX_2D(3,i,2)] -' + argname + '[LINIDX_2D(3,j,2)]; \n'
+
+
+                    # s += space+'s1[0] = ((abs_md(r1[0]))>_E_2[0]? sign(r1[0])*_E[0]:0.0); \n'
+                    # s += space+'s1[1] = ((abs_md(r1[1]))>_E_2[1]? sign(r1[1])*_E[1]:0.0); \n'
+                    # s += space+'s1[2] = ((abs_md(r1[2]))>_E_2[2]? sign(r1[2])*_E[2]:0.0); \n'
+
+                    s += space + 's1[0] = r1[0]>_E_2[0] ? _E[0]:  r1[0]<-1*_E_2[0] ? -1*_E[0]:  0 ; \n'
+                    s += space + 's1[1] = r1[1]>_E_2[1] ? _E[1]:  r1[1]<-1*_E_2[1] ? -1*_E[1]:  0 ; \n'
+                    s += space + 's1[2] = r1[2]>_E_2[2] ? _E[2]:  r1[2]<-1*_E_2[2] ? -1*_E[2]:  0 ; \n'
+
+                    s += space + loc_argname + '[0] = r1;\n'
+                    s += space + loc_argname + '[1] = s1;\n'
+
+
                 else:
                     ncomp = dat[1].ncomp
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
-                    s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
-                    
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
+                    s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
+
             elif type(dat[1]) == particle.TypedDat:
-                
+
                 ncomp = dat[1].ncomp
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'
-                        
-        
-        return s 
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
+                    ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
+                s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
+                    ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
 
+        return s
 
-    def execute(self, dat_dict = None, static_args = None):
-        
+    def execute(self, dat_dict=None, static_args=None):
+
         # Allow alternative pointers
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict    
-        
+            self._particle_dat_dict = dat_dict
+
         '''Currently assume n is always needed'''
         args = [self._N(), self._domain.extent.ctypes_data]
 
@@ -583,13 +580,13 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
             assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
-            
+
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data)
 
-        '''Execute the kernel over all particle pairs.'''            
-        method = self._lib[self._kernel.name+'_wrapper']
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
         method(*args)
 
 
@@ -601,12 +598,13 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
 class PairLoopRapaportOpenMP(PairLoopRapaport):
     def _compiler_set(self):
         self._cc = build.TMPCC_OpenMP
+
     def _code_init(self):
         self._kernel_code = self._kernel.code
         self._ompinitstr = ''
         self._ompdecstr = ''
-        self._ompfinalstr = ''    
-    
+        self._ompfinalstr = ''
+
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
         #include <omp.h>
@@ -730,29 +728,24 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
         
         
         '''
-        
 
     def _generate_impl_source(self):
         """Generate the source code the actual implementation.
         """
-        
 
-        d = {'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations_openmp(),
-             'UNIQUENAME':self._unique_name,
-             'KERNEL':self._kernel_code,
-             'ARGUMENTS':self._argnames(),
-             'LOC_ARGUMENTS':self._loc_argnames(),
-             'KERNEL_NAME':self._kernel.name,
-             'OPENMP_INIT':self._ompinitstr,
-             'OPENMP_DECLARATION':self._ompdecstr,
-             'OPENMP_FINALISE':self._ompfinalstr
+        d = {'KERNEL_ARGUMENT_DECL': self._kernel_argument_declarations_openmp(),
+             'UNIQUENAME': self._unique_name,
+             'KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'LOC_ARGUMENTS': self._loc_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'OPENMP_INIT': self._ompinitstr,
+             'OPENMP_DECLARATION': self._ompdecstr,
+             'OPENMP_FINALISE': self._ompfinalstr
              }
-        
-        return self._code % d        
-    
-    
 
-    
+        return self._code % d
+
     def _kernel_argument_declarations_openmp(self):
         """Define and declare the kernel arguments.
 
@@ -769,80 +762,78 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
         the correct address in the particle_dats.
         """
         s = '\n'
-        space = ' '*14
-        
-        for i,dat in enumerate(self._particle_dat_dict.items()):
-            
-            
-            
-            argname = dat[0]+'_ext'
+        space = ' ' * 14
+
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+
+            argname = dat[0] + '_ext'
             loc_argname = dat[0]
-            
+
             reduction_handle = self._kernel.reduction_variable_lookup(dat[0])
-            
+
             if reduction_handle is not None:
                 assert dat[1].ncomp == 1, "Not valid for more than 1 element"
-                
-                #Create a var name a variable to reduce upon.
-                reduction_argname = dat[0]+'_reduction'
-                
-                #Initialise variable
-                self._ompinitstr += data.ctypes_map[dat[1].dtype]+' '+reduction_argname+' = '+build.omp_operator_init_values[reduction_handle.operator]+';'
-                
-                #Add to omp pragma
-                self._ompdecstr += 'Reduction('+reduction_handle.operator+':'+reduction_argname+')'
-                
-                #Modify kernel code to use new Reduction variable.
-                self._kernel_code = build.replace(self._kernel_code,reduction_handle.pointer, reduction_argname)
-                
-                #write final value to output pointer
-                
-                self._ompfinalstr += argname+'['+reduction_handle.index+'] ='+reduction_argname+';'
-                
-            
+
+                # Create a var name a variable to reduce upon.
+                reduction_argname = dat[0] + '_reduction'
+
+                # Initialise variable
+                self._ompinitstr += data.ctypes_map[dat[1].dtype] + ' ' + reduction_argname + ' = ' + \
+                                    build.omp_operator_init_values[reduction_handle.operator] + ';'
+
+                # Add to omp pragma
+                self._ompdecstr += 'Reduction(' + reduction_handle.operator + ':' + reduction_argname + ')'
+
+                # Modify kernel code to use new Reduction variable.
+                self._kernel_code = build.replace(self._kernel_code, reduction_handle.pointer, reduction_argname)
+
+                # write final value to output pointer
+
+                self._ompfinalstr += argname + '[' + reduction_handle.index + '] =' + reduction_argname + ';'
+
+
             else:
                 if type(dat[1]) == data.ScalarArray:
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
-                
-                elif type(dat[1]) == particle.Dat:
-                    if dat[1].name  == 'positions':
-                        s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
-                        
-                        
-                        s += space+'if (flag){ \n'
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
-                        #s += space+'double r1[3];\n'
-                        s += space+'r1[0] ='+argname+'[LINIDX_2D(3,j,0)] + s[0]; \n'
-                        s += space+'r1[1] ='+argname+'[LINIDX_2D(3,j,1)] + s[1]; \n'
-                        s += space+'r1[2] ='+argname+'[LINIDX_2D(3,j,2)] + s[2]; \n'
-                        s += space+loc_argname+'[1] = r1;\n'
-                        
-                        s += space+'}else{ \n'
-                        s += space+loc_argname+'[1] = '+argname+'+3*j;\n' 
-                        s += space+'} \n'
-                        s += space+loc_argname+'[0] = '+argname+'+3*i;\n'
-                        
+                elif type(dat[1]) == particle.Dat:
+                    if dat[1].name == 'positions':
+                        s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+
+                        s += space + 'if (flag){ \n'
+
+                        # s += space+'double r1[3];\n'
+                        s += space + 'r1[0] =' + argname + '[LINIDX_2D(3,j,0)] + s[0]; \n'
+                        s += space + 'r1[1] =' + argname + '[LINIDX_2D(3,j,1)] + s[1]; \n'
+                        s += space + 'r1[2] =' + argname + '[LINIDX_2D(3,j,2)] + s[2]; \n'
+                        s += space + loc_argname + '[1] = r1;\n'
+
+                        s += space + '}else{ \n'
+                        s += space + loc_argname + '[1] = ' + argname + '+3*j;\n'
+                        s += space + '} \n'
+                        s += space + loc_argname + '[0] = ' + argname + '+3*i;\n'
+
                     else:
                         ncomp = dat[1].ncomp
-                        s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
-                        s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                        s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
-                        
+                        s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                        s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
+                        s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
+
                 elif type(dat[1]) == particle.TypedDat:
-                    
+
                     ncomp = dat[1].ncomp
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                    s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
-                    s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                        
-                        
-                        
-        
-        return s 
-    
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                    s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
+                        ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
+                    s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
+                        ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
+
+        return s
+
 ################################################################################################################
 # DOUBLE PARTICLE LOOP
 ################################################################################################################        
-        
+
 class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
     """
     Class to loop over all particle pairs once.
@@ -852,18 +843,17 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg list headers: list containing C headers required by kernel.
     """
+
     def _compiler_set(self):
-        self._cc = build.TMPCC        
-    
+        self._cc = build.TMPCC
 
     def _code_init(self):
         self._kernel_code = self._kernel.code
 
-            
         self._ompinitstr = ''
         self._ompdecstr = ''
-        self._ompfinalstr = ''         
-        
+        self._ompfinalstr = ''
+
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
 
@@ -885,24 +875,23 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
           %(OPENMP_FINALISE)s
         }
         '''
-    
+
     def _generate_impl_source(self):
         """Generate the source code the actual implementation.
         """
-        
 
-        d = {'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations_openmp(),
-             'UNIQUENAME':self._unique_name,
-             'KERNEL':self._kernel_code,
-             'ARGUMENTS':self._argnames(),
-             'LOC_ARGUMENTS':self._loc_argnames(),
-             'KERNEL_NAME':self._kernel.name,
-             'OPENMP_INIT':self._ompinitstr,
-             'OPENMP_DECLARATION':self._ompdecstr,
-             'OPENMP_FINALISE':self._ompfinalstr
+        d = {'KERNEL_ARGUMENT_DECL': self._kernel_argument_declarations_openmp(),
+             'UNIQUENAME': self._unique_name,
+             'KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'LOC_ARGUMENTS': self._loc_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'OPENMP_INIT': self._ompinitstr,
+             'OPENMP_DECLARATION': self._ompdecstr,
+             'OPENMP_FINALISE': self._ompfinalstr
              }
-        return self._code % d          
-    
+        return self._code % d
+
     def _kernel_argument_declarations_openmp(self):
         """Define and declare the kernel arguments.
 
@@ -919,62 +908,62 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
         the correct address in the particle_dats.
         """
         s = '\n'
-        for i,dat in enumerate(self._particle_dat_dict.items()):
-            
-            
-            space = ' '*14
-            argname = dat[0]+'_ext'
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+
+            space = ' ' * 14
+            argname = dat[0] + '_ext'
             loc_argname = dat[0]
-            
+
             reduction_handle = self._kernel.reduction_variable_lookup(dat[0])
-            
+
             if reduction_handle is not None:
                 if dat[1].ncomp != 1:
                     print "WARNING, Reductions not valid for more than 1 element"
-                
-                #Create a var name a variable to reduce upon.
-                reduction_argname = dat[0]+'_reduction'
-                
-                #Initialise variable
-                self._ompinitstr += data.ctypes_map[dat[1].dtype]+' '+reduction_argname+' = '+build.omp_operator_init_values[reduction_handle.operator]+';'
-                
-                #Add to omp pragma
-                self._ompdecstr += 'Reduction('+reduction_handle.operator+':'+reduction_argname+')'
-                
-                #Modify kernel code to use new Reduction variable.
-                self._kernel_code = build.replace(self._kernel_code,reduction_handle.pointer, reduction_argname)
-                
-                #write final value to output pointer
-                
-                self._ompfinalstr += argname+'['+reduction_handle.index+'] ='+reduction_argname+';'
-                
-            
+
+                # Create a var name a variable to reduce upon.
+                reduction_argname = dat[0] + '_reduction'
+
+                # Initialise variable
+                self._ompinitstr += data.ctypes_map[dat[1].dtype] + ' ' + reduction_argname + ' = ' + \
+                                    build.omp_operator_init_values[reduction_handle.operator] + ';'
+
+                # Add to omp pragma
+                self._ompdecstr += 'Reduction(' + reduction_handle.operator + ':' + reduction_argname + ')'
+
+                # Modify kernel code to use new Reduction variable.
+                self._kernel_code = build.replace(self._kernel_code, reduction_handle.pointer, reduction_argname)
+
+                # write final value to output pointer
+
+                self._ompfinalstr += argname + '[' + reduction_handle.index + '] =' + reduction_argname + ';'
+
+
             else:
                 if type(dat[1]) == data.ScalarArray:
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
-                
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+
                 elif type(dat[1]) == particle.Dat:
                     ncomp = dat[1].ncomp
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
-                    s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n'
-                    
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
+                    s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
+
                 elif type(dat[1]) == particle.TypedDat:
-                    
+
                     ncomp = dat[1].ncomp
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                    s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
-                    s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                    
-                      
-        
-        return s     
-    
-   
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                    s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
+                        ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
+                    s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
+                        ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
+
+        return s
+
 ################################################################################################################
 # RAPAPORT LOOP SERIAL PARTICLE LIST
 ################################################################################################################
 
-class PairLoopRapaportParticleList(PairLoopRapaport):    
+class PairLoopRapaportParticleList(PairLoopRapaport):
     """
     Applies the Rapapport particle list method
     
@@ -985,42 +974,41 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
     :arg dict dat_dict: Dictonary mapping between state vars and kernel vars.
     :arg bool DEBUG: Flag to enable debug flags.
     """
+
     def __init__(self, n, domain, positions, potential, dat_dict):
-        
+
         self._N = n
         self._domain = domain
         self._P = positions
         self._potential = potential
         self._particle_dat_dict = dat_dict
-        
+
         self._compiler_set()
-        
-        
+
+
         ##########
         # End of Rapaport initialisations.
         ##########
-        
+
         self._temp_dir = './build/'
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = self._potential.kernel
-        
-        
+
         self._nargs = len(self._particle_dat_dict)
-        
 
         self._code_init()
         self._cell_sort_setup()
         self._neighbour_list_setup()
-        
+
         self._unique_name = self._unique_name_calc()
-        
-        self._library_filename  = self._unique_name +'.so'
-        
-        if not os.path.exists(os.path.join(self._temp_dir,self._library_filename)):
+
+        self._library_filename = self._unique_name + '.so'
+
+        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
             if data.MPI_HANDLE is None:
                 self._create_library()
-            
+
             else:
                 if data.MPI_HANDLE.rank == 0:
                     self._create_library()
@@ -1028,7 +1016,7 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
-            build.load_library_exception(self._kernel.name, self._unique_name,type(self))
+            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
 
     def execute(self, dat_dict=None, static_args=None):
         """
@@ -1037,44 +1025,38 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
 
         self._cell_sort_all()
 
-
-          
         '''Allow alternative pointers'''
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict    
+            self._particle_dat_dict = dat_dict
 
         '''Create arg list'''
-        args=[ctypes.c_int(self._N()),
-              ctypes.c_int(self._domain.cell_count), 
-              self._domain.cell_array.ctypes_data,
-              self._q_list.ctypes_data,
-              self._domain.extent.ctypes_data]
-
+        args = [ctypes.c_int(self._N()),
+                ctypes.c_int(self._domain.cell_count),
+                self._domain.cell_array.ctypes_data,
+                self._q_list.ctypes_data,
+                self._domain.extent.ctypes_data]
 
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
-            
+
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data)
-            
 
-        '''Execute the kernel over all particle pairs.'''            
-        method = self._lib[self._kernel.name+'_wrapper']
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
 
+        method(*args)
 
-
-
-        method(*args)        
-    
 ################################################################################################################
 # RAPAPORT LOOP SERIAL FOR HALO DOMAINS
 ################################################################################################################
 
-class PairLoopRapaportHalo(PairLoopRapaport):    
+
+class PairLoopRapaportHalo(PairLoopRapaport):
     def _kernel_argument_declarations(self):
         """Define and declare the kernel arguments.
 
@@ -1091,80 +1073,74 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         the correct address in the particle_dats.
         """
         s = '\n'
-        for i,dat in enumerate(self._particle_dat_dict.items()):
-            
-            
-            space = ' '*14
-            argname = dat[0]+'_ext'
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+
+            space = ' ' * 14
+            argname = dat[0] + '_ext'
             loc_argname = dat[0]
-            
-            
+
             if type(dat[1]) == data.ScalarArray:
-                
-                if dat[1].name  == 'potential_energy':
-                    
-                    s+= space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'; \n'
-                    s+= '\n'
-                    s+= space+'if (cp_h_flag + cpp_h_flag >= 1){ \n'
-                    
-                    #s+= space+'printf("cp = %d, cpp = %d ,cpf = %d, cppf = %d|", cp,cpp, cp_h_flag, cpp_h_flag);\n'
-                    
-                    s+= space+loc_argname+' = &'+argname+'[1];\n'
-                    
-                    
-                    s+= space+'}else{ \n'
-                    s+= space+loc_argname+' = '+argname+';\n'
-                    s+= space+'}\n'
+
+                if dat[1].name == 'potential_energy':
+
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '; \n'
+                    s += '\n'
+                    s += space + 'if (cp_h_flag + cpp_h_flag >= 1){ \n'
+
+                    # s+= space+'printf("cp = %d, cpp = %d ,cpf = %d, cppf = %d|", cp,cpp, cp_h_flag, cpp_h_flag);\n'
+
+                    s += space + loc_argname + ' = &' + argname + '[1];\n'
+
+                    s += space + '}else{ \n'
+                    s += space + loc_argname + ' = ' + argname + ';\n'
+                    s += space + '}\n'
                 else:
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
-            
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+
             elif type(dat[1]) == particle.Dat:
-                if dat[1].name  == 'accelerations':
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
-                
-                    s+= space+'if (cp_h_flag > 0){ \n'
-                    s+= space+'ri = null_array;\n'
-                    s+= space+'}else{ \n'
-                    #if not in halo
-                    s += space+'ri = '+argname+'+3*i;}\n'
-                    
-                    s+='\n'
-                    
-                    s+= space+'if (cpp_h_flag > 0){ \n'
-                    s+= space+'rj = null_array;\n'
-                    s+= space+'}else{ \n'
-                    #if not in halo
-                    s += space+'rj = '+argname+'+3*j;}\n'                    
-                    
-                    
-                    s+='\n'
-                    
-                    
-                    s += space+loc_argname+'[1] = rj;\n'
-                    s += space+loc_argname+'[0] = ri;\n'
-                    
-                    
-                    s+='\n'
-                    
-                    
-                    
+                if dat[1].name == 'accelerations':
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+
+                    s += space + 'if (cp_h_flag > 0){ \n'
+                    s += space + 'ri = null_array;\n'
+                    s += space + '}else{ \n'
+                    # if not in halo
+                    s += space + 'ri = ' + argname + '+3*i;}\n'
+
+                    s += '\n'
+
+                    s += space + 'if (cpp_h_flag > 0){ \n'
+                    s += space + 'rj = null_array;\n'
+                    s += space + '}else{ \n'
+                    # if not in halo
+                    s += space + 'rj = ' + argname + '+3*j;}\n'
+
+                    s += '\n'
+
+                    s += space + loc_argname + '[1] = rj;\n'
+                    s += space + loc_argname + '[0] = ri;\n'
+
+                    s += '\n'
+
+
+
                 else:
                     ncomp = dat[1].ncomp
-                    s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+'[2];\n'
-                    s += space+loc_argname+'[0] = '+argname+'+'+str(ncomp)+'*i;\n'
-                    s += space+loc_argname+'[1] = '+argname+'+'+str(ncomp)+'*j;\n' 
-                    
+                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
+                    s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
+
             elif type(dat[1]) == particle.TypedDat:
-                
+
                 ncomp = dat[1].ncomp
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';  \n'
-                s += space+loc_argname+'[0] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[i]'+',0)];\n'                
-                s += space+loc_argname+'[1] = &'+argname+'[LINIDX_2D('+str(ncomp)+','+'_TYPE_MAP[j]'+',0)];\n'                    
-                    
-                          
-        
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
+                    ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
+                s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
+                    ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
+
         return s
-         
+
     def _generate_header_source(self):
         """Generate the source code of the header file.
 
@@ -1182,17 +1158,15 @@ class PairLoopRapaportHalo(PairLoopRapaport):
 
         #endif
         '''
-        d = {'UNIQUENAME':self._unique_name,
-             'INCLUDED_HEADERS':self._included_headers(),
-             'KERNEL_NAME':self._kernel.name,
-             'ARGUMENTS':self._argnames()}
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames()}
         return code % d
-    
+
     def _code_init(self):
         self._kernel_code = self._kernel.code
-        
-        
-        
+
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
         #include <stdio.h>
@@ -1310,40 +1284,40 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         }        
         
         
-        '''    
-    
-    def execute(self, n=None ,dat_dict = None, static_args = None):
+        '''
+
+    def execute(self, n=None, dat_dict=None, static_args=None):
         """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
 
         '''Allow alternative pointers'''
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict    
+            self._particle_dat_dict = dat_dict
 
         '''Create arg list'''
-        
+
         if n is not None:
             _N = n
         else:
             _N = self._q_list[self._q_list.end]
-        
+
         args = [ctypes.c_int(_N),
 
-              self._domain.cell_array.ctypes_data,
-              self._q_list.ctypes_data]
+                self._domain.cell_array.ctypes_data,
+                self._q_list.ctypes_data]
 
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
-            
+
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
-        method = self._lib[self._kernel.name+'_wrapper']
-        
+        method = self._lib[self._kernel.name + '_wrapper']
+
         method(*args)

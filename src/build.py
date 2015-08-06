@@ -36,7 +36,9 @@ class Debug(object):
         """
         self._level = level
 
+
 DEBUG = Debug(0)
+
 
 ################################################################################################################
 # COMPILERS START
@@ -55,6 +57,7 @@ class Compiler(object):
     :arg list compile_flag: List of compile flag as single string (eg ['-c'] for gcc).
     :arg list sharedlibraryflag: List of flags as strings to link as shared library.
     """
+
     def __init__(self, name, binary, cflags, lflags, dbgflags, compileflag, sharedlibraryflag):
         self._name = name
         self._binary = binary
@@ -97,10 +100,11 @@ class Compiler(object):
     @property
     def shared_lib_flag(self):
         """Return Compiler link as shared library flag."""
-        return self._sharedlibf            
+        return self._sharedlibf
+
+        # Define system gcc version as Compiler.
 
 
-# Define system gcc version as Compiler.
 GCC = Compiler(['GCC'], ['gcc'], ['-O3', '-fpic', '-std=c99'], ['-lm'], ['-g'], ['-c'], ['-shared'])
 
 # Define system gcc version as OpenMP Compiler.
@@ -138,24 +142,25 @@ else:
 
 def replace_dict(code, new_dict):
     for x in new_dict.items():
-        regex = '(?<=[\W])('+x[0]+')(?=[\W])'        
+        regex = '(?<=[\W])(' + x[0] + ')(?=[\W])'
         code = re.sub(regex, str(x[1]), code)
     return code
 
 
 def replace(code, old, new):
-
     old = old.replace('[', '\[')
     old = old.replace(']', '\]')
-    
-    regex = '(?<=[\W])('+old+')(?=[\W])'
-          
+
+    regex = '(?<=[\W])(' + old + ')(?=[\W])'
+
     code = re.sub(regex, str(new), code)
-    
+
     return code
+
 
 # OpenMP Reduction definitions
 omp_operator_init_values = {'+': '0', '-': '0', '*': '1', '&': '~0', '|': '0', '^': '0', '&&': '1', '||': '0'}
+
 
 ################################################################################################################
 # AUTOCODE TOOLS START
@@ -174,17 +179,17 @@ def load_library_exception(kernel_name='None supplied', unique_name='None suppli
     err_read = False
     err_line = -1
     err_code = "Source not read."
-    
+
     # Try to open error file.
     try:
-        f = open('./build/'+unique_name+'.err', 'r')
+        f = open('./build/' + unique_name + '.err', 'r')
         err_msg = f.read()
         f.close()
         err_read = True
 
     except:
         print "Error file not read"
-    
+
     # Try to read source lines around error.
     if err_read:
         m = re.search('[0-9]+:[0-9]', err_msg)
@@ -198,33 +203,33 @@ def load_library_exception(kernel_name='None supplied', unique_name='None suppli
             pass
         if err_line > 0:
             try:
-                f = open('./build/'+unique_name+'.c', 'r')
+                f = open('./build/' + unique_name + '.c', 'r')
                 code_str = f.read()
-                f.close()        
+                f.close()
             except:
                 print "Source file not read"
-                
-            code_str = code_str.split('\n')[max(0,err_line-6):err_line+1]
+
+            code_str = code_str.split('\n')[max(0, err_line - 6):err_line + 1]
             code_str[-3] += "    <-------------"
-            code_str = [x+"\n" for x in code_str]
-            
+            code_str = [x + "\n" for x in code_str]
+
             err_code = ''.join(code_str)
     print "Unique name", unique_name
 
     raise RuntimeError("\n"
                        "###################################################### \n"
                        "\t \t \t ERROR \n"
-                       "###################################################### \n" 
-                       "kernel name: "+str(kernel_name)+"\n"
-                       "------------------------------------------------------ \n"
-                       "looping class: "+str(looping_type)+"\n"
-                       "------------------------------------------------------ \n"
-                       "Compile/link error message: \n \n"+
-                       str(err_msg) + "\n"
-                       "------------------------------------------------------ \n"
-                       "Error location attempt: \n \n"+
-                       str(err_code) + "\n \n"
                        "###################################################### \n"
+                       "kernel name: " + str(kernel_name) + "\n"
+                                                            "------------------------------------------------------ \n"
+                                                            "looping class: " + str(looping_type) + "\n"
+                                                                                                    "------------------------------------------------------ \n"
+                                                                                                    "Compile/link error message: \n \n" +
+                       str(err_msg) + "\n"
+                                      "------------------------------------------------------ \n"
+                                      "Error location attempt: \n \n" +
+                       str(err_code) + "\n \n"
+                                       "###################################################### \n"
                        )
 
 
@@ -242,10 +247,10 @@ def loop_unroll(str_start, i, j, step, str_end=None, key=None):
 
     if key is None:
         for ix in range(i, j, step):
-            _s += str(str_start)+str(ix)+str(str_end)
+            _s += str(str_start) + str(ix) + str(str_end)
     else:
-        _regex = '(?<=[\W])('+key+')(?=[\W])'
-        for ix in range(i, j+1, step):
+        _regex = '(?<=[\W])(' + key + ')(?=[\W])'
+        for ix in range(i, j + 1, step):
             _s += re.sub(_regex, str(ix), str_start) + '\n'
 
     return _s
@@ -265,42 +270,42 @@ class GenericToolChain(object):
         If, for example, the pairloop gets passed two particle_dats, 
         then the result will be ``double** arg_000,double** arg_001`.`
         """
-        
+
         self._argtypes = []
-        
+
         argnames = ''
         if self._kernel.static_args is not None:
             self._static_arg_order = []
-        
+
             for i, dat in enumerate(self._kernel.static_args.items()):
-                argnames += 'const '+data.ctypes_map[dat[1]]+' '+dat[0]+','        
+                argnames += 'const ' + data.ctypes_map[dat[1]] + ' ' + dat[0] + ','
                 self._static_arg_order.append(dat[0])
                 self._argtypes.append(dat[1])
-                
+
         for i, dat in enumerate(self._particle_dat_dict.items()):
-            argnames += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+'_ext,'
+            argnames += data.ctypes_map[dat[1].dtype] + ' *' + dat[0] + '_ext,'
             self._argtypes.append(dat[1].dtype)
-        
-        return argnames[:-1]  
-        
+
+        return argnames[:-1]
+
     def _loc_argnames(self):
         """Comma separated string of local argument names.
         """
         argnames = ''
         for i, dat in enumerate(self._particle_dat_dict.items()):
-            argnames += dat[0]+','
-        return argnames[:-1]        
+            argnames += dat[0] + ','
+        return argnames[:-1]
 
     def _unique_name_calc(self):
         """Return name which can be used to identify the pair loop
         in a unique way.
         """
-        return self._kernel.name+'_'+self.hexdigest()
+        return self._kernel.name + '_' + self.hexdigest()
 
     def hexdigest(self):
         """Create unique hex digest"""
         m = hashlib.md5()
-        m.update(self._kernel.code+self._code)
+        m.update(self._kernel.code + self._code)
         if self._kernel.headers is not None:
             for header in self._kernel.headers:
                 m.update(header)
@@ -334,24 +339,24 @@ class GenericToolChain(object):
         if self._kernel.headers is not None:
             s += '\n'
             for x in self._kernel.headers:
-                s += '#include \"'+x+'\" \n'
+                s += '#include \"' + x + '\" \n'
         return s
 
     def _create_library(self):
         """
         Create a shared library from the source code.
         """
-        
+
         filename_base = os.path.join(self._temp_dir, self._unique_name)
-        header_filename = filename_base+'.h'
-        impl_filename = filename_base+'.c'
+        header_filename = filename_base + '.h'
+        impl_filename = filename_base + '.c'
         with open(header_filename, 'w') as f:
-            print >> f, self._generate_header_source()        
+            print >> f, self._generate_header_source()
         with open(impl_filename, 'w') as f:
             print >> f, self._generate_impl_source()
 
-        object_filename = filename_base+'.o'
-        library_filename = filename_base+'.so' 
+        object_filename = filename_base + '.o'
+        library_filename = filename_base + '.so'
         cflags = []
         cflags += self._cc.c_flags
         if DEBUG > 0:
@@ -359,12 +364,13 @@ class GenericToolChain(object):
         cc = self._cc.binary
         ld = self._cc.binary
         lflags = self._cc.l_flags
-        
-        compile_cmd = cc+self._cc.compile_flag+cflags+['-I', self._temp_dir]+['-o', object_filename, impl_filename]
 
-        link_cmd = ld+self._cc.shared_lib_flag+lflags+['-o', library_filename, object_filename]
-        stdout_filename = filename_base+'.log'
-        stderr_filename = filename_base+'.err'
+        compile_cmd = cc + self._cc.compile_flag + cflags + ['-I', self._temp_dir] + ['-o', object_filename,
+                                                                                      impl_filename]
+
+        link_cmd = ld + self._cc.shared_lib_flag + lflags + ['-o', library_filename, object_filename]
+        stdout_filename = filename_base + '.log'
+        stderr_filename = filename_base + '.err'
         with open(stdout_filename, 'w') as stdout:
             with open(stderr_filename, 'w') as stderr:
                 stdout.write('Compilation command:\n')
@@ -380,33 +386,33 @@ class GenericToolChain(object):
                 p = subprocess.Popen(link_cmd,
                                      stdout=stdout,
                                      stderr=stderr)
-                p.communicate() 
+                p.communicate()
 
     def _generate_impl_source(self):
         """Generate the source code the actual implementation.
         """
 
-        d = {'UNIQUENAME':self._unique_name,
-             'KERNEL':self._kernel_code,
-             'ARGUMENTS':self._argnames(),
-             'LOC_ARGUMENTS':self._loc_argnames(),
-             'KERNEL_NAME':self._kernel.name,
-             'KERNEL_ARGUMENT_DECL':self._kernel_argument_declarations()}
-            
+        d = {'UNIQUENAME': self._unique_name,
+             'KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'LOC_ARGUMENTS': self._loc_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'KERNEL_ARGUMENT_DECL': self._kernel_argument_declarations()}
+
         return self._code % d
 
     def execute(self, n=None, dat_dict=None, static_args=None):
-        
+
         """Allow alternative pointers"""
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict    
-        
+            self._particle_dat_dict = dat_dict
+
         '''Currently assume n is always needed'''
         if n is not None:
             _N = n
         else:
             _N = self._N()
-        
+
         args = [ctypes.c_int(_N)]
 
         if self._types_map is not None:
@@ -419,13 +425,13 @@ class GenericToolChain(object):
             assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
-            
+
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
-        method = self._lib[self._kernel.name+'_wrapper']
+        method = self._lib[self._kernel.name + '_wrapper']
         method(*args)
 
 
@@ -442,37 +448,38 @@ class SharedLib(GenericToolChain):
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg bool DEBUG: Flag to enable debug flags.
     """
+
     def __init__(self, kernel, particle_dat_dict):
-        
+
         self._compiler_set()
         self._temp_dir = './build/'
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = kernel
-        
+
         self._particle_dat_dict = particle_dat_dict
         self._nargs = len(self._particle_dat_dict)
 
         self._code_init()
-        
+
         self._unique_name = self._unique_name_calc()
-        
+
         self._library_filename = self._unique_name + '.so'
-        
+
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
             if data.MPI_HANDLE is None:
                 self._create_library()
-            
+
             else:
                 if data.MPI_HANDLE.rank == 0:
                     self._create_library()
                 data.MPI_HANDLE.barrier()
-                
+
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
             load_library_exception(self._kernel.name, self._unique_name, type(self))
-        
+
     def _compiler_set(self):
         self._cc = TMPCC
 
@@ -495,21 +502,19 @@ class SharedLib(GenericToolChain):
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
 
-            space = ' '*14
+            space = ' ' * 14
             argname = dat[0]  # +'_ext'
             loc_argname = argname  # dat[0]
-            
+
             if type(dat[1]) == data.ScalarArray:
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+' = '+argname+';\n'
-            
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+
             if type(dat[1]) == particle.Dat:
-                
                 ncomp = dat[1].ncomp
-                s += space+data.ctypes_map[dat[1].dtype]+' *'+loc_argname+';\n'
-                s += space+loc_argname+' = '+argname+'+'+str(ncomp)+'*i;\n'     
-        
-        
-        return s  
+                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
+                s += space + loc_argname + ' = ' + argname + '+' + str(ncomp) + '*i;\n'
+
+        return s
 
     def _generate_header_source(self):
         """Generate the source code of the header file.
@@ -527,15 +532,13 @@ class SharedLib(GenericToolChain):
         #endif
         '''
 
-        d = {'UNIQUENAME' :self._unique_name,
+        d = {'UNIQUENAME': self._unique_name,
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames()}
         return code % d
-    
-    
-       
-    def execute(self, dat_dict = None, static_args = None):
+
+    def execute(self, dat_dict=None, static_args=None):
 
         """Allow alternative pointers"""
         if dat_dict is not None:
@@ -552,19 +555,19 @@ class SharedLib(GenericToolChain):
             assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
-            
+
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
-        method = self._lib[self._kernel.name+'_wrapper']
-        
-        method(*args)        
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        method(*args)
 
     def _code_init(self):
         self._kernel_code = self._kernel.code
-    
+
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
 
@@ -583,21 +586,20 @@ class SharedLib(GenericToolChain):
         If, for example, the pairloop gets passed two particle_dats, 
         then the result will be ``double** arg_000,double** arg_001`.`
         """
-        
+
         self._argtypes = []
-        
+
         argnames = ''
         if self._kernel.static_args is not None:
             self._static_arg_order = []
-        
+
             for i, dat in enumerate(self._kernel.static_args.items()):
-                argnames += ''+data.ctypes_map[dat[1]]+' '+dat[0]+','        
+                argnames += '' + data.ctypes_map[dat[1]] + ' ' + dat[0] + ','
                 self._static_arg_order.append(dat[0])
                 self._argtypes.append(dat[1])
-                
+
         for i, dat in enumerate(self._particle_dat_dict.items()):
-            
-            argnames += data.ctypes_map[dat[1].dtype]+' *'+dat[0]+','
+            argnames += data.ctypes_map[dat[1].dtype] + ' *' + dat[0] + ','
             self._argtypes.append(dat[1].dtype)
-        
+
         return argnames[:-1]

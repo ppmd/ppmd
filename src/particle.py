@@ -209,7 +209,8 @@ class Dat(object):
         self = pickle.load(f)
         f.close()
 
-    def xzy_write(self, dir_name='./output', file_name='out.xyz', title=None, sym=None, rename_override=False, append=0):
+    def xzy_write(self, dir_name='./output', file_name='out.xyz', title=None, sym=None, rename_override=False,
+                  append=0):
         """
         Function to write particle positions in a xyz format.
         
@@ -238,12 +239,13 @@ class Dat(object):
             os.makedirs(dir_name)
 
         if (os.path.exists(os.path.join(dir_name, self._XYZfilename)) & (rename_override == False) & (
-            self._XYZFile_exists == False)):
+                    self._XYZFile_exists == False)):
             self._XYZfilename = re.sub('.xyz', datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz',
                                        self._XYZfilename)
             if os.path.exists(os.path.join(dir_name, self._XYZfilename)):
                 self._XYZfilename = re.sub('.xyz', datetime.datetime.now().strftime("_%f") + '.xyz', self._XYZfilename)
-                assert os.path.exists(os.path.join(dir_name, self._XYZfilename)), "XYZWrite Error: No unquie name found."
+                assert os.path.exists(
+                    os.path.join(dir_name, self._XYZfilename)), "XYZWrite Error: No unquie name found."
         self._XYZFile_exists = True
 
         space = ' '

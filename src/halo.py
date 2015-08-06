@@ -6,6 +6,7 @@ import build
 import particle
 import time
 
+
 ################################################################################################################
 # HALO DEFINITIONS
 ################################################################################################################
@@ -24,6 +25,7 @@ class HaloCartesianSingleProcess(object):
     :arg data.ScalarArray extent: Global extent of system.
     
     """
+
     def __init__(self, nt=1, mpi_handle=None, cell_array=None, extent=None):
 
         self._verbose = False
@@ -36,27 +38,25 @@ class HaloCartesianSingleProcess(object):
         assert cell_array is not None, "Error: No cell array passed."
         assert extent is not None, "Error: No extent passed."
 
-
         self._MPI_handle = mpi_handle
         self._MPI = self._MPI_handle.comm
         self._rank = self._MPI_handle.rank
         self._top = self._MPI_handle.top
         self._dims = self._MPI_handle.dims
 
-        self._MPIstatus=MPI.Status()
+        self._MPIstatus = MPI.Status()
 
         self._ca = cell_array
 
         # n.B. this is a global extent.
         self._extent = extent
 
-        self._halos=[]
+        self._halos = []
 
         # Will need at least 3 components for positions
         self._nc = 3
 
         self._halo_setup_prepare()
-
 
         self._create_packing_pointer_array()
         self._create_packing_lib()
@@ -64,7 +64,7 @@ class HaloCartesianSingleProcess(object):
         self._time = 0.
         if self._verbose and timer is True:
             end = time.time()
-            print "halo setup time = ", end-start, "s"
+            print "halo setup time = ", end - start, "s"
 
     def set_position_info(self, cell_contents_count, cell_list):
         """
@@ -72,7 +72,6 @@ class HaloCartesianSingleProcess(object):
         """
         self._cell_contents_count = cell_contents_count
         self._cell_list = cell_list
-
 
     def exchange(self, data_in):
         """
@@ -84,8 +83,7 @@ class HaloCartesianSingleProcess(object):
         
         """
 
-
-        if self._nc < data_in.ncomp :
+        if self._nc < data_in.ncomp:
             self._nc = data_in.ncomp
             self._create_packing_pointer_array()
 
@@ -107,110 +105,113 @@ class HaloCartesianSingleProcess(object):
         else:
             self._cell_shifts_array = self._cell_shifts_array_zero
 
-
         '''Pack data for each direction'''
         _static_args = {
-                        'PPA':self._packing_pointers.ctypes_data,
-                        'cell_start':ctypes.c_int(self._cell_list[self._cell_list.end]),
-                        'ncomp':ctypes.c_int(data_in.ncomp)
-                        }
+            'PPA': self._packing_pointers.ctypes_data,
+            'cell_start': ctypes.c_int(self._cell_list[self._cell_list.end]),
+            'ncomp': ctypes.c_int(data_in.ncomp)
+        }
         _args = {
-                 'q':self._cell_list,
-                 'CCA_I':self._cell_contents_array_index,
-                 'CIA':self._cell_indices_array,
-                 'CSA':self._cell_shifts_array,
-                 'data_buffer':data_in
-                 }
-        self._packing_lib.execute(static_args = _static_args, dat_dict = _args)
+            'q': self._cell_list,
+            'CCA_I': self._cell_contents_array_index,
+            'CIA': self._cell_indices_array,
+            'CSA': self._cell_shifts_array,
+            'data_buffer': data_in
+        }
+        self._packing_lib.execute(static_args=_static_args, dat_dict=_args)
 
         '''Exchange in each direction.'''
-        
+
         self._cell_contents_recv.zero()
-        
+
         # print self._rank, self._send_list
-        
+
         for i in range(26):
-            
+
             # SIZES ------------------------------------------------------------------------------------------
 
-            if self._send_list[i]>-1 and self._recv_list[i]>-1:
-                
-                self._MPI.Sendrecv(self._cell_contents_array[self._cell_contents_array_index[i]:self._cell_contents_array_index[i+1]:],
-                                   self._send_list[i],
-                                   self._send_list[i],
-                                   self._cell_contents_recv[self._cell_contents_recv_array_index[i]:self._cell_contents_recv_array_index[i+1]:],
-                                   self._recv_list[i],
-                                   self._rank,
-                                   self._MPIstatus)
-
-            elif self._send_list[i] > -1:
-                
-                self._MPI.Send(self._cell_contents_array[self._cell_contents_array_index[i]:self._cell_contents_array_index[i+1]:],
-                               self._send_list[i],
-                               self._send_list[i])
-                                              
-            elif self._recv_list[i] > -1:
-                
-                self._MPI.Recv(self._cell_contents_recv[self._cell_contents_recv_array_index[i]:self._cell_contents_recv_array_index[i+1]:],
-                                   self._recv_list[i],
-                                   self._rank,
-                                   self._MPIstatus)
-            # DATA ------------------------------------------------------------------------------------------
-                           
             if self._send_list[i] > -1 and self._recv_list[i] > -1:
 
-                self._MPI.Sendrecv(self._send_buffers[i].dat[0:self._exchange_sizes[i]:1,::],
+                self._MPI.Sendrecv(self._cell_contents_array[
+                                   self._cell_contents_array_index[i]:self._cell_contents_array_index[i + 1]:],
                                    self._send_list[i],
                                    self._send_list[i],
-                                   data_in.dat[data_in.halo_start::,::],
+                                   self._cell_contents_recv[
+                                   self._cell_contents_recv_array_index[i]:self._cell_contents_recv_array_index[
+                                       i + 1]:],
                                    self._recv_list[i],
                                    self._rank,
                                    self._MPIstatus)
-                
-                _shift=self._MPIstatus.Get_count( data.mpi_map[data_in.dtype])
-                data_in.halo_start_shift(_shift/self._nc)
 
             elif self._send_list[i] > -1:
-                
-                self._MPI.Send(self._send_buffers[i].dat[0:self._exchange_sizes[i]:1,::],
+
+                self._MPI.Send(self._cell_contents_array[
+                               self._cell_contents_array_index[i]:self._cell_contents_array_index[i + 1]:],
                                self._send_list[i],
                                self._send_list[i])
 
             elif self._recv_list[i] > -1:
-                
-                self._MPI.Recv(data_in.dat[data_in.halo_start::,::],
+
+                self._MPI.Recv(self._cell_contents_recv[
+                               self._cell_contents_recv_array_index[i]:self._cell_contents_recv_array_index[i + 1]:],
                                self._recv_list[i],
                                self._rank,
                                self._MPIstatus)
-                                  
-                _shift = self._MPIstatus.Get_count( data.mpi_map[data_in.dtype])
+            # DATA ------------------------------------------------------------------------------------------
 
-                data_in.halo_start_shift(_shift/self._nc)
+            if self._send_list[i] > -1 and self._recv_list[i] > -1:
+
+                self._MPI.Sendrecv(self._send_buffers[i].dat[0:self._exchange_sizes[i]:1, ::],
+                                   self._send_list[i],
+                                   self._send_list[i],
+                                   data_in.dat[data_in.halo_start::, ::],
+                                   self._recv_list[i],
+                                   self._rank,
+                                   self._MPIstatus)
+
+                _shift = self._MPIstatus.Get_count(data.mpi_map[data_in.dtype])
+                data_in.halo_start_shift(_shift / self._nc)
+
+            elif self._send_list[i] > -1:
+
+                self._MPI.Send(self._send_buffers[i].dat[0:self._exchange_sizes[i]:1, ::],
+                               self._send_list[i],
+                               self._send_list[i])
+
+            elif self._recv_list[i] > -1:
+
+                self._MPI.Recv(data_in.dat[data_in.halo_start::, ::],
+                               self._recv_list[i],
+                               self._rank,
+                               self._MPIstatus)
+
+                _shift = self._MPIstatus.Get_count(data.mpi_map[data_in.dtype])
+
+                data_in.halo_start_shift(_shift / self._nc)
 
         '''sort local cells after exchange'''
         if data_in.name == 'positions':
-            self._cell_sort_loop.execute({'q':self._cell_list,'LCI':self._local_cell_indices_array,'CRC':self._cell_contents_recv},{'CC':ctypes.c_int(self._cell_contents_recv.ncomp),'shift':ctypes.c_int(data_in.npart),'end':ctypes.c_int(self._cell_list[self._cell_list.end])})
+            self._cell_sort_loop.execute(
+                {'q': self._cell_list, 'LCI': self._local_cell_indices_array, 'CRC': self._cell_contents_recv},
+                {'CC': ctypes.c_int(self._cell_contents_recv.ncomp), 'shift': ctypes.c_int(data_in.npart),
+                 'end': ctypes.c_int(self._cell_list[self._cell_list.end])})
 
         if timer is True:
             end = time.time()
-            self._time+=end - start
-
-
-
+            self._time += end - start
 
     def _create_packing_pointer_array(self):
-        self._packing_pointers = data.PointerArray(length=26,dtype=ctypes.c_double)
+        self._packing_pointers = data.PointerArray(length=26, dtype=ctypes.c_double)
 
         self._send_buffers = []
 
         for ix in range(26):
             # create send buffer when needed
-            if self._send_list[ix]>-1:
+            if self._send_list[ix] > -1:
                 self._send_buffers.append(particle.Dat(self._NT, self._nc, name='send_buffer', dtype=ctypes.c_double))
                 self._packing_pointers[ix] = self._send_buffers[ix].ctypes_data
             else:
                 self._send_buffers.append(None)
-
 
     def _create_packing_lib(self):
 
@@ -245,24 +246,24 @@ class HaloCartesianSingleProcess(object):
         }
         
         '''
-        
+
         _static_args = {
-                        'PPA':'doublepointerpointer', #self._packing_pointers.ctypes_data
-                        'cell_start':ctypes.c_int,   #ctypes.c_int(self._cell_list[self._cell_list.end])
-                        'ncomp':ctypes.c_int    #ctypes.c_int(data.ncomp)
-                        }
+            'PPA': 'doublepointerpointer',  # self._packing_pointers.ctypes_data
+            'cell_start': ctypes.c_int,  # ctypes.c_int(self._cell_list[self._cell_list.end])
+            'ncomp': ctypes.c_int  # ctypes.c_int(data.ncomp)
+        }
 
         _args = {
-                 'q':data.NullIntScalarArray,   #self._cell_list.ctypes_data
-                 'CCA_I':self._cell_contents_array_index,
-                 'CIA':self._cell_indices_array,
-                 'CSA':data.NullDoubleScalarArray, #self._cell_shifts_array
-                 'data_buffer':data.NullDoubleScalarArray, #data
-                 }
+            'q': data.NullIntScalarArray,  # self._cell_list.ctypes_data
+            'CCA_I': self._cell_contents_array_index,
+            'CIA': self._cell_indices_array,
+            'CSA': data.NullDoubleScalarArray,  # self._cell_shifts_array
+            'data_buffer': data.NullDoubleScalarArray,  # data
+        }
 
         _headers = ['stdio.h']
         _kernel = kernel.Kernel('HaloPackingCode', _packing_code, None, _headers, None, _static_args)
-        self._packing_lib = build.SharedLib(_kernel,_args)
+        self._packing_lib = build.SharedLib(_kernel, _args)
 
     def _exchange_size_calc(self):
         """
@@ -271,263 +272,265 @@ class HaloCartesianSingleProcess(object):
         """
 
         _args = {
-                 'CCC':self._cell_contents_count,
-                 'ES':self._exchange_sizes,
-                 'CI':self._cell_indices_array,
-                 'CIL':self._cell_indices_len,
-                 'CCA':self._cell_contents_array,
-                 }
+            'CCC': self._cell_contents_count,
+            'ES': self._exchange_sizes,
+            'CI': self._cell_indices_array,
+            'CIL': self._cell_indices_len,
+            'CCA': self._cell_contents_array,
+        }
 
-
-        self._exchange_sizes_lib.execute(dat_dict = _args)
+        self._exchange_sizes_lib.execute(dat_dict=_args)
 
     def _halo_setup_prepare(self):
 
         """Determine sources and destinations"""
         _recv_modifiers = [
-                          [-1, -1, -1], #0
-                          [ 0, -1, -1], #1
-                          [ 1, -1, -1], #2
-                          [-1,  0, -1], #3
-                          [ 0,  0, -1], #4
-                          [ 1,  0, -1], #5
-                          [-1,  1, -1], #6
-                          [ 0,  1, -1], #7
-                          [ 1,  1, -1], #8
+            [-1, -1, -1],  # 0
+            [0, -1, -1],  # 1
+            [1, -1, -1],  # 2
+            [-1, 0, -1],  # 3
+            [0, 0, -1],  # 4
+            [1, 0, -1],  # 5
+            [-1, 1, -1],  # 6
+            [0, 1, -1],  # 7
+            [1, 1, -1],  # 8
 
-                          [-1, -1, 0], #9
-                          [ 0, -1, 0], #10
-                          [ 1, -1, 0], #11
-                          [-1,  0, 0], #12
-                          [ 1,  0, 0], #13
-                          [-1,  1, 0], #14
-                          [ 0,  1, 0], #15
-                          [ 1,  1, 0], #16
+            [-1, -1, 0],  # 9
+            [0, -1, 0],  # 10
+            [1, -1, 0],  # 11
+            [-1, 0, 0],  # 12
+            [1, 0, 0],  # 13
+            [-1, 1, 0],  # 14
+            [0, 1, 0],  # 15
+            [1, 1, 0],  # 16
 
-                          [-1, -1, 1], #17
-                          [ 0, -1, 1], #18
-                          [ 1, -1, 1], #19
-                          [-1,  0, 1], #20
-                          [ 0,  0, 1], #21
-                          [ 1,  0, 1], #22
-                          [-1,  1, 1], #23
-                          [ 0,  1, 1], #24
-                          [ 1,  1, 1], #25
-                         ]
+            [-1, -1, 1],  # 17
+            [0, -1, 1],  # 18
+            [1, -1, 1],  # 19
+            [-1, 0, 1],  # 20
+            [0, 0, 1],  # 21
+            [1, 0, 1],  # 22
+            [-1, 1, 1],  # 23
+            [0, 1, 1],  # 24
+            [1, 1, 1],  # 25
+        ]
 
-        #'''Count how many halos out of 26 exist. Some may not if directions are not periodic'''
-        #_num_halos = 0
+        # '''Count how many halos out of 26 exist. Some may not if directions are not periodic'''
+        # _num_halos = 0
         self._send_list = []
         self._recv_list = []
         for ix in _recv_modifiers:
-            
-            _tr = self._MPI_handle.shift([-1*ix[0],-1*ix[1],-1*ix[2]])
+            _tr = self._MPI_handle.shift([-1 * ix[0], -1 * ix[1], -1 * ix[2]])
             self._send_list.append(_tr)
 
             _tr = self._MPI_handle.shift(ix)
             self._recv_list.append(_tr)
-        
-
 
         '''Array to store the number of particles to exchange for each halo'''
-        self._exchange_sizes=data.ScalarArray(range(26),dtype=ctypes.c_int)
+        self._exchange_sizes = data.ScalarArray(range(26), dtype=ctypes.c_int)
 
 
-        #CELL INDICES TO PACK ===========================================================================================
+        # CELL INDICES TO PACK ===========================================================================================
 
-        _E = self._ca[0]*self._ca[1]*(self._ca[2]-1) - self._ca[0] - 1
-        _TS = _E - self._ca[0]*(self._ca[1] - 2) + 2
+        _E = self._ca[0] * self._ca[1] * (self._ca[2] - 1) - self._ca[0] - 1
+        _TS = _E - self._ca[0] * (self._ca[1] - 2) + 2
 
-        _BE = self._ca[0]*(2*self._ca[1] - 1) - 1
-        _BS = self._ca[0]*(self._ca[1] + 1) + 1
+        _BE = self._ca[0] * (2 * self._ca[1] - 1) - 1
+        _BS = self._ca[0] * (self._ca[1] + 1) + 1
 
-        _tmp4=[]
-        for ix in range(self._ca[1]-2):
-            _tmp4 += range(_TS + ix*self._ca[0], _TS + (ix+1)*self._ca[0] - 2, 1)
+        _tmp4 = []
+        for ix in range(self._ca[1] - 2):
+            _tmp4 += range(_TS + ix * self._ca[0], _TS + (ix + 1) * self._ca[0] - 2, 1)
 
-        _tmp10=[]
-        for ix in range(self._ca[2]-2):
-            _tmp10 += range( _BE-self._ca[0]+2 + ix*self._ca[0]*self._ca[1], _BE + ix*self._ca[0]*self._ca[1],1)
+        _tmp10 = []
+        for ix in range(self._ca[2] - 2):
+            _tmp10 += range(_BE - self._ca[0] + 2 + ix * self._ca[0] * self._ca[1],
+                            _BE + ix * self._ca[0] * self._ca[1], 1)
 
-        _tmp12=[]
-        for ix in range(self._ca[2]-2):
-            _tmp12 += range( _BS+self._ca[0]-3 + ix*self._ca[0]*self._ca[1], _BE + ix*self._ca[0]*self._ca[1], self._ca[0])
+        _tmp12 = []
+        for ix in range(self._ca[2] - 2):
+            _tmp12 += range(_BS + self._ca[0] - 3 + ix * self._ca[0] * self._ca[1],
+                            _BE + ix * self._ca[0] * self._ca[1], self._ca[0])
 
-        _tmp13=[]
-        for ix in range(self._ca[2]-2):
-            _tmp13 += range( _BS + ix*self._ca[0]*self._ca[1], _BE + ix*self._ca[0]*self._ca[1], self._ca[0])
+        _tmp13 = []
+        for ix in range(self._ca[2] - 2):
+            _tmp13 += range(_BS + ix * self._ca[0] * self._ca[1], _BE + ix * self._ca[0] * self._ca[1], self._ca[0])
 
-        _tmp15=[]
-        for ix in range(self._ca[2]-2):
-            _tmp15 += range( _BS + ix*self._ca[0]*self._ca[1], _BS+self._ca[0]-2 + ix*self._ca[0]*self._ca[1], 1)
+        _tmp15 = []
+        for ix in range(self._ca[2] - 2):
+            _tmp15 += range(_BS + ix * self._ca[0] * self._ca[1],
+                            _BS + self._ca[0] - 2 + ix * self._ca[0] * self._ca[1], 1)
 
-        _tmp21=[]
-        for ix in range(self._ca[1]-2):
-            _tmp21 += range(_BS + ix*self._ca[0], _BS + (ix+1)*self._ca[0] - 2, 1)
+        _tmp21 = []
+        for ix in range(self._ca[1] - 2):
+            _tmp21 += range(_BS + ix * self._ca[0], _BS + (ix + 1) * self._ca[0] - 2, 1)
 
+        self._cell_indices = [
+            [_E - 1],
+            range(_E - self._ca[0] + 2, _E, 1),
+            [_E - self._ca[0] + 2],
+            range(_TS + self._ca[0] - 3, _E, self._ca[0]),
+            _tmp4,
+            range(_TS, _E, self._ca[0]),
+            [_TS + self._ca[0] - 3],
+            range(_TS, _TS + self._ca[0] - 2, 1),
+            [_TS],
 
+            range(_BE - 1, _E, self._ca[0] * self._ca[1]),
+            _tmp10,
+            range(_BE - self._ca[0] + 2, _E, self._ca[0] * self._ca[1]),
+            _tmp12,
+            _tmp13,
+            range(_BS + self._ca[0] - 3, _E, self._ca[0] * self._ca[1]),
+            _tmp15,
+            range(_BS, _E, self._ca[0] * self._ca[1]),
 
-        self._cell_indices=[
-                            [_E-1],
-                            range(_E-self._ca[0]+2,_E,1),
-                            [_E-self._ca[0]+2],
-                            range(_TS+self._ca[0]-3, _E, self._ca[0]),
-                            _tmp4,
-                            range(_TS,_E,self._ca[0]),
-                            [_TS+self._ca[0]-3],
-                            range(_TS,_TS+self._ca[0]-2,1),
-                            [_TS],
+            [_BE - 1],
+            range(_BE - self._ca[0] + 2, _BE, 1),
+            [_BE - self._ca[0] + 2],
+            range(_BS + self._ca[0] - 3, _BE, self._ca[0]),
+            _tmp21,
+            range(_BS, _BE, self._ca[0]),
+            [_BS + self._ca[0] - 3],
+            range(_BS, _BS + self._ca[0] - 2, 1),
+            [_BS]
+        ]
 
-                            range(_BE - 1,_E,self._ca[0]*self._ca[1]),
-                            _tmp10,
-                            range(_BE-self._ca[0]+2,_E,self._ca[0]*self._ca[1]),
-                            _tmp12,
-                            _tmp13,
-                            range(_BS+self._ca[0]-3,_E,self._ca[0]*self._ca[1]),
-                            _tmp15,
-                            range(_BS,_E,self._ca[0]*self._ca[1]),
+        # =====================================================================================================================
+        # LOCAL CELL INDICES TO SORT INTO
 
-                            [_BE-1],
-                            range(_BE-self._ca[0]+2,_BE,1),
-                            [_BE-self._ca[0]+2],
-                            range(_BS+self._ca[0]-3, _BE, self._ca[0]),
-                            _tmp21,
-                            range(_BS,_BE,self._ca[0]),
-                            [_BS+self._ca[0]-3],
-                            range(_BS,_BS+self._ca[0]-2,1),
-                            [_BS]
-                            ]
+        _LE = self._ca[0] * self._ca[1] * self._ca[2]
+        _LTS = _LE - self._ca[0] * self._ca[1]
 
-        #=====================================================================================================================
-        #LOCAL CELL INDICES TO SORT INTO
-
-        _LE = self._ca[0]*self._ca[1]*self._ca[2]
-        _LTS = _LE - self._ca[0]*self._ca[1]
-
-        _LBE = self._ca[0]*self._ca[1]
+        _LBE = self._ca[0] * self._ca[1]
         _LBS = 0
 
-        _Ltmp4=[]
-        for ix in range(self._ca[1]-2):
-            _Ltmp4 += range(_LBS + 1 + (ix+1)*self._ca[0], _LBS + (ix+2)*self._ca[0] - 1, 1)
-        
-        _Ltmp10=[]
-        for ix in range(self._ca[2]-2):
-            _Ltmp10 += range( _LBS + 1 + (ix+1)*self._ca[0]*self._ca[1], _LBS + (ix+1)*self._ca[0]*self._ca[1] + self._ca[0] - 1,1)
-        
-        _Ltmp12=[]
-        for ix in range(self._ca[2]-2):
-            _Ltmp12 += range( _LBS + self._ca[0] + (ix+1)*self._ca[0]*self._ca[1], _LBS + self._ca[0]*(self._ca[1]-1) + (ix+1)*self._ca[0]*self._ca[1], self._ca[0])
-        
-        _Ltmp13=[]
-        for ix in range(self._ca[2]-2):
-            _Ltmp13 += range( _LBS + 2*self._ca[0] - 1 + (ix+1)*self._ca[0]*self._ca[1], _LBE + (ix+1)*self._ca[0]*self._ca[1] - 3, self._ca[0])
-        
-        _Ltmp15=[]
-        for ix in range(self._ca[2]-2):
-            _Ltmp15 += range( _LBE + (ix+1)*self._ca[0]*self._ca[1] - self._ca[0] + 1, _LBE + (ix+1)*self._ca[0]*self._ca[1] - 1, 1)
-        
-        _Ltmp21=[]
-        for ix in range(self._ca[1]-2):
-            _Ltmp21 += range(_LTS + (ix+1)*self._ca[0] + 1, _LTS + (ix+2)*self._ca[0] - 1, 1)
+        _Ltmp4 = []
+        for ix in range(self._ca[1] - 2):
+            _Ltmp4 += range(_LBS + 1 + (ix + 1) * self._ca[0], _LBS + (ix + 2) * self._ca[0] - 1, 1)
 
-        self._local_cell_indices=[
-                            [_LBS],
-                            range(_LBS+1,_LBS+self._ca[0]-1,1),
-                            [_LBS+self._ca[0]-1],
-                            range(_LBS+self._ca[0], _LBS+self._ca[0]*(self._ca[1]-2)+1, self._ca[0]),
-                            _Ltmp4,
-                            range(_LBS+2*self._ca[0]-1,_LBE-self._ca[0],self._ca[0]),
-                            [_LBE-self._ca[0]],
-                            range(_LBE-self._ca[0]+1,_LBE-1,1),
-                            [_LBE-1],
+        _Ltmp10 = []
+        for ix in range(self._ca[2] - 2):
+            _Ltmp10 += range(_LBS + 1 + (ix + 1) * self._ca[0] * self._ca[1],
+                             _LBS + (ix + 1) * self._ca[0] * self._ca[1] + self._ca[0] - 1, 1)
 
-                            range(_LBS+self._ca[0]*self._ca[1],_LBS+(self._ca[2]-2)*self._ca[0]*self._ca[1]+1,self._ca[0]*self._ca[1]),
-                            _Ltmp10,
-                            range(_LBE+self._ca[0]-1,_LBE+(self._ca[2]-2)*self._ca[0]*self._ca[1]+self._ca[0] - 1,self._ca[0]*self._ca[1]),
-                            _Ltmp12,
-                            _Ltmp13,
-                            range(_LBE+self._ca[0]*(self._ca[1]-1),_LE-self._ca[0]*self._ca[1],self._ca[0]*self._ca[1]),
-                            _Ltmp15,
-                            range(_LBE+self._ca[0]*self._ca[1] - 1,_LE-self._ca[0]*self._ca[1],self._ca[0]*self._ca[1]),
+        _Ltmp12 = []
+        for ix in range(self._ca[2] - 2):
+            _Ltmp12 += range(_LBS + self._ca[0] + (ix + 1) * self._ca[0] * self._ca[1],
+                             _LBS + self._ca[0] * (self._ca[1] - 1) + (ix + 1) * self._ca[0] * self._ca[1], self._ca[0])
 
-                            [_LTS],
-                            range(_LTS+1,_LTS+self._ca[0]-1,1),
-                            [_LTS+self._ca[0]-1],
-                            range(_LTS+self._ca[0], _LTS+self._ca[0]*(self._ca[1]-2)+1, self._ca[0]),
-                            _Ltmp21,
-                            range(_LTS+2*self._ca[0]-1,_LE-self._ca[0],self._ca[0]),
-                            [_LE-self._ca[0]],
-                            range(_LE-self._ca[0]+1,_LE-1,1),
-                            [_LE-1],
-                            ]
+        _Ltmp13 = []
+        for ix in range(self._ca[2] - 2):
+            _Ltmp13 += range(_LBS + 2 * self._ca[0] - 1 + (ix + 1) * self._ca[0] * self._ca[1],
+                             _LBE + (ix + 1) * self._ca[0] * self._ca[1] - 3, self._ca[0])
 
-        #=====================================================================================================================
+        _Ltmp15 = []
+        for ix in range(self._ca[2] - 2):
+            _Ltmp15 += range(_LBE + (ix + 1) * self._ca[0] * self._ca[1] - self._ca[0] + 1,
+                             _LBE + (ix + 1) * self._ca[0] * self._ca[1] - 1, 1)
+
+        _Ltmp21 = []
+        for ix in range(self._ca[1] - 2):
+            _Ltmp21 += range(_LTS + (ix + 1) * self._ca[0] + 1, _LTS + (ix + 2) * self._ca[0] - 1, 1)
+
+        self._local_cell_indices = [
+            [_LBS],
+            range(_LBS + 1, _LBS + self._ca[0] - 1, 1),
+            [_LBS + self._ca[0] - 1],
+            range(_LBS + self._ca[0], _LBS + self._ca[0] * (self._ca[1] - 2) + 1, self._ca[0]),
+            _Ltmp4,
+            range(_LBS + 2 * self._ca[0] - 1, _LBE - self._ca[0], self._ca[0]),
+            [_LBE - self._ca[0]],
+            range(_LBE - self._ca[0] + 1, _LBE - 1, 1),
+            [_LBE - 1],
+
+            range(_LBS + self._ca[0] * self._ca[1], _LBS + (self._ca[2] - 2) * self._ca[0] * self._ca[1] + 1,
+                  self._ca[0] * self._ca[1]),
+            _Ltmp10,
+            range(_LBE + self._ca[0] - 1, _LBE + (self._ca[2] - 2) * self._ca[0] * self._ca[1] + self._ca[0] - 1,
+                  self._ca[0] * self._ca[1]),
+            _Ltmp12,
+            _Ltmp13,
+            range(_LBE + self._ca[0] * (self._ca[1] - 1), _LE - self._ca[0] * self._ca[1], self._ca[0] * self._ca[1]),
+            _Ltmp15,
+            range(_LBE + self._ca[0] * self._ca[1] - 1, _LE - self._ca[0] * self._ca[1], self._ca[0] * self._ca[1]),
+
+            [_LTS],
+            range(_LTS + 1, _LTS + self._ca[0] - 1, 1),
+            [_LTS + self._ca[0] - 1],
+            range(_LTS + self._ca[0], _LTS + self._ca[0] * (self._ca[1] - 2) + 1, self._ca[0]),
+            _Ltmp21,
+            range(_LTS + 2 * self._ca[0] - 1, _LE - self._ca[0], self._ca[0]),
+            [_LE - self._ca[0]],
+            range(_LE - self._ca[0] + 1, _LE - 1, 1),
+            [_LE - 1],
+        ]
+
+        # =====================================================================================================================
 
 
         '''How many cells are in each halo (internal to pack)'''
         self._cell_indices_len = data.ScalarArray(range(26), dtype=ctypes.c_int)
-        
-        '''How many cells are in each halo (external to recv)'''
-        self._cell_indices_recv_len = data.ScalarArray(range(26), dtype=ctypes.c_int)        
 
-        _tmp_list=[]
-        _tmp_list_local=[]
+        '''How many cells are in each halo (external to recv)'''
+        self._cell_indices_recv_len = data.ScalarArray(range(26), dtype=ctypes.c_int)
+
+        _tmp_list = []
+        _tmp_list_local = []
         for ix in range(26):
-            #determine internal cells to pack
+            # determine internal cells to pack
             if self._send_list[ix] > -1:
                 self._cell_indices_len[ix] = len(self._cell_indices[ix])
-                _tmp_list+=self._cell_indices[ix]
+                _tmp_list += self._cell_indices[ix]
             else:
                 self._cell_indices_len[ix] = 0
-            
-            #detmine halo cells to unpack into
+
+            # detmine halo cells to unpack into
             if self._recv_list[ix] > -1:
                 self._cell_indices_recv_len[ix] = len(self._local_cell_indices[ix])
                 _tmp_list_local += self._local_cell_indices[ix]
             else:
                 self._cell_indices_recv_len[ix] = 0
-        
+
         '''Array containing the internal cell indices'''
         self._cell_indices_array = data.ScalarArray(_tmp_list, dtype=ctypes.c_int)
-        
+
         '''Array containing the halo cell indices'''
         self._local_cell_indices_array = data.ScalarArray(_tmp_list_local, dtype=ctypes.c_int)
-        
+
         '''create cell contents array for each halo that is being sent.'''
         self._cell_contents_array = data.ScalarArray(ncomp=self._cell_indices_array.ncomp, dtype=ctypes.c_int)
 
         '''create cell contents array for each halo that are being recv'd.'''
         self._cell_contents_recv = data.ScalarArray(ncomp=self._local_cell_indices_array.ncomp, dtype=ctypes.c_int)
-        
+
         '''SEND: create list to extract start and end points for each halo from above lists.'''
         self._cell_contents_array_index = data.ScalarArray(ncomp=27, dtype=ctypes.c_int)
-        
+
         '''RECV: create list to extract start and end points for each halo from above lists.'''
-        self._cell_contents_recv_array_index = data.ScalarArray(ncomp=27, dtype=ctypes.c_int)        
-        
-        
+        self._cell_contents_recv_array_index = data.ScalarArray(ncomp=27, dtype=ctypes.c_int)
+
         '''Indices for sending'''
         _start_index = 0
-        self._cell_contents_array_index[0]=0
+        self._cell_contents_array_index[0] = 0
         for ix in range(26):
-            _start_index+=self._cell_indices_len[ix]
-            self._cell_contents_array_index[ix+1] = _start_index
-        
+            _start_index += self._cell_indices_len[ix]
+            self._cell_contents_array_index[ix + 1] = _start_index
+
         '''Indices for receving'''
         _start_index = 0
-        self._cell_contents_recv_array_index[0]=0
+        self._cell_contents_recv_array_index[0] = 0
         for ix in range(26):
-            _start_index+=self._cell_indices_recv_len[ix]
-            self._cell_contents_recv_array_index[ix+1] = _start_index        
-        
-        
-        
-        
-        #Code to calculate exchange sizes
-        #==========================================================================================================================
-        
-        _exchange_sizes_code='''
+            _start_index += self._cell_indices_recv_len[ix]
+            self._cell_contents_recv_array_index[ix + 1] = _start_index
+
+
+
+
+            # Code to calculate exchange sizes
+        # ==========================================================================================================================
+
+        _exchange_sizes_code = '''
         int start_index = 0;
         
         //loop over the different halos
@@ -549,22 +552,22 @@ class HaloCartesianSingleProcess(object):
         '''
 
         _args = {
-                 'CCC':data.NullIntScalarArray, #cell countents count, number of particles in each cell.
-                 'ES':data.NullIntScalarArray, # total number of particles to be exchanged for each halo.
-                 'CI':data.NullIntScalarArray, # array containing the local cells to pass over for each halo.
-                 'CIL':data.NullIntScalarArray, # array holding how many cells are in each halo used to pass over the above array
-                 'CCA':data.NullIntScalarArray, # array containing the particle count for each cell in the same order as CI
-                 }
-
+            'CCC': data.NullIntScalarArray,  # cell countents count, number of particles in each cell.
+            'ES': data.NullIntScalarArray,  # total number of particles to be exchanged for each halo.
+            'CI': data.NullIntScalarArray,  # array containing the local cells to pass over for each halo.
+            'CIL': data.NullIntScalarArray,
+            # array holding how many cells are in each halo used to pass over the above array
+            'CCA': data.NullIntScalarArray,  # array containing the particle count for each cell in the same order as CI
+        }
 
         _headers = ['stdio.h']
         _kernel = kernel.Kernel('ExchangeSizeCalc', _exchange_sizes_code, None, _headers, None, None)
         self._exchange_sizes_lib = build.SharedLib(_kernel, _args)
 
-        #==========================================================================================================================
+        # ==========================================================================================================================
 
         '''Code to sort incoming halo particles into cell list '''
-        #==========================================================================================================================
+        # ==========================================================================================================================
         '''
         
         
@@ -580,7 +583,7 @@ class HaloCartesianSingleProcess(object):
                                       
                                       })
         '''
-        
+
         _cell_sort_code = '''
         
         int index = shift;
@@ -606,20 +609,18 @@ class HaloCartesianSingleProcess(object):
         }
         '''
 
-        _static_args = {'CC':ctypes.c_int,'shift':ctypes.c_int,'end':ctypes.c_int}
-
+        _static_args = {'CC': ctypes.c_int, 'shift': ctypes.c_int, 'end': ctypes.c_int}
 
         _cell_sort_dict = {
-                           'q':data.NullIntScalarArray,
-                           'LCI':self._local_cell_indices_array,
-                           'CRC':self._cell_contents_recv
-                           }
+            'q': data.NullIntScalarArray,
+            'LCI': self._local_cell_indices_array,
+            'CRC': self._cell_contents_recv
+        }
 
-
-
-        _cell_sort_kernel = kernel.Kernel('halo_cell_list_method', _cell_sort_code, headers = ['stdio.h'], static_args = _static_args)
+        _cell_sort_kernel = kernel.Kernel('halo_cell_list_method', _cell_sort_code, headers=['stdio.h'],
+                                          static_args=_static_args)
         self._cell_sort_loop = build.SharedLib(_cell_sort_kernel, _cell_sort_dict)
-        #==========================================================================================================================
+        # ==========================================================================================================================
 
         '''
         Xl 0, Xu 1
@@ -628,58 +629,53 @@ class HaloCartesianSingleProcess(object):
         '''
 
         '''Calculate flag to determine if a boundary between processes is also a boundary in domain.'''
-        _bc_flag = [0,0,0,0,0,0]
+        _bc_flag = [0, 0, 0, 0, 0, 0]
         for ix in range(3):
             if self._top[ix] == 0:
-                _bc_flag[2*ix] = 1
-            if self._top[ix] == self._dims[ix]-1:
-                _bc_flag[2*ix + 1] = 1
-
-
+                _bc_flag[2 * ix] = 1
+            if self._top[ix] == self._dims[ix] - 1:
+                _bc_flag[2 * ix + 1] = 1
 
         '''Shifts to apply to positions when exchanging over boundaries.'''
-        _cell_shifts=[
-                            [-1*self._extent[0]*_bc_flag[1] ,-1*self._extent[1]*_bc_flag[3]     ,-1*self._extent[2]*_bc_flag[5]],
-                            [0.                             ,-1*self._extent[1]*_bc_flag[3]     ,-1*self._extent[2]*_bc_flag[5]],
-                            [self._extent[0]*_bc_flag[0]    ,-1*self._extent[1]*_bc_flag[3]     ,-1*self._extent[2]*_bc_flag[5]],
-                            [-1*self._extent[0]*_bc_flag[1] ,0.                                 ,-1*self._extent[2]*_bc_flag[5]],
-                            [0.                             ,0.                                 ,-1*self._extent[2]*_bc_flag[5]],
-                            [self._extent[0]*_bc_flag[0]    ,0.                                 ,-1*self._extent[2]*_bc_flag[5]],
-                            [-1*self._extent[0]*_bc_flag[1] ,self._extent[1]*_bc_flag[2]        ,-1*self._extent[2]*_bc_flag[5]],
-                            [0.                             ,self._extent[1]*_bc_flag[2]        ,-1*self._extent[2]*_bc_flag[5]],
-                            [self._extent[0]*_bc_flag[0]    ,self._extent[1]*_bc_flag[2]        ,-1*self._extent[2]*_bc_flag[5]],
+        _cell_shifts = [
+            [-1 * self._extent[0] * _bc_flag[1], -1 * self._extent[1] * _bc_flag[3],
+             -1 * self._extent[2] * _bc_flag[5]],
+            [0., -1 * self._extent[1] * _bc_flag[3], -1 * self._extent[2] * _bc_flag[5]],
+            [self._extent[0] * _bc_flag[0], -1 * self._extent[1] * _bc_flag[3], -1 * self._extent[2] * _bc_flag[5]],
+            [-1 * self._extent[0] * _bc_flag[1], 0., -1 * self._extent[2] * _bc_flag[5]],
+            [0., 0., -1 * self._extent[2] * _bc_flag[5]],
+            [self._extent[0] * _bc_flag[0], 0., -1 * self._extent[2] * _bc_flag[5]],
+            [-1 * self._extent[0] * _bc_flag[1], self._extent[1] * _bc_flag[2], -1 * self._extent[2] * _bc_flag[5]],
+            [0., self._extent[1] * _bc_flag[2], -1 * self._extent[2] * _bc_flag[5]],
+            [self._extent[0] * _bc_flag[0], self._extent[1] * _bc_flag[2], -1 * self._extent[2] * _bc_flag[5]],
 
-                            [-1*self._extent[0]*_bc_flag[1] ,-1*self._extent[1]*_bc_flag[3]     ,0.],
-                            [0.                             ,-1*self._extent[1]*_bc_flag[3]     ,0.],
-                            [self._extent[0]*_bc_flag[0]    ,-1*self._extent[1]*_bc_flag[3]     ,0.],
-                            [-1*self._extent[0]*_bc_flag[1] ,0.                                 ,0.],
-                            [self._extent[0]*_bc_flag[0]    ,0.                                 ,0.],
-                            [-1*self._extent[0]*_bc_flag[1] ,self._extent[1]*_bc_flag[2]        ,0.],
-                            [0.                             ,self._extent[1]*_bc_flag[2]        ,0.],
-                            [self._extent[0]*_bc_flag[0]    ,self._extent[1]*_bc_flag[2]        ,0.],
+            [-1 * self._extent[0] * _bc_flag[1], -1 * self._extent[1] * _bc_flag[3], 0.],
+            [0., -1 * self._extent[1] * _bc_flag[3], 0.],
+            [self._extent[0] * _bc_flag[0], -1 * self._extent[1] * _bc_flag[3], 0.],
+            [-1 * self._extent[0] * _bc_flag[1], 0., 0.],
+            [self._extent[0] * _bc_flag[0], 0., 0.],
+            [-1 * self._extent[0] * _bc_flag[1], self._extent[1] * _bc_flag[2], 0.],
+            [0., self._extent[1] * _bc_flag[2], 0.],
+            [self._extent[0] * _bc_flag[0], self._extent[1] * _bc_flag[2], 0.],
 
-                            [-1*self._extent[0]*_bc_flag[1] ,-1*self._extent[1]*_bc_flag[3]     ,self._extent[2]*_bc_flag[4]],
-                            [0.                             ,-1*self._extent[1]*_bc_flag[3]     ,self._extent[2]*_bc_flag[4]],
-                            [self._extent[0]*_bc_flag[0]    ,-1*self._extent[1]*_bc_flag[3]     ,self._extent[2]*_bc_flag[4]],
-                            [-1*self._extent[0]*_bc_flag[1] ,0.                                 ,self._extent[2]*_bc_flag[4]],
-                            [0.                             ,0.                                 ,self._extent[2]*_bc_flag[4]],
-                            [self._extent[0]*_bc_flag[0]    ,0.                                 ,self._extent[2]*_bc_flag[4]],
-                            [-1*self._extent[0]*_bc_flag[1] ,self._extent[1]*_bc_flag[2]        ,self._extent[2]*_bc_flag[4]],
-                            [0.                             ,self._extent[1]*_bc_flag[2]        ,self._extent[2]*_bc_flag[4]],
-                            [self._extent[0]*_bc_flag[0]    ,self._extent[1]*_bc_flag[2]        ,self._extent[2]*_bc_flag[4]]
-                           ]
-
+            [-1 * self._extent[0] * _bc_flag[1], -1 * self._extent[1] * _bc_flag[3], self._extent[2] * _bc_flag[4]],
+            [0., -1 * self._extent[1] * _bc_flag[3], self._extent[2] * _bc_flag[4]],
+            [self._extent[0] * _bc_flag[0], -1 * self._extent[1] * _bc_flag[3], self._extent[2] * _bc_flag[4]],
+            [-1 * self._extent[0] * _bc_flag[1], 0., self._extent[2] * _bc_flag[4]],
+            [0., 0., self._extent[2] * _bc_flag[4]],
+            [self._extent[0] * _bc_flag[0], 0., self._extent[2] * _bc_flag[4]],
+            [-1 * self._extent[0] * _bc_flag[1], self._extent[1] * _bc_flag[2], self._extent[2] * _bc_flag[4]],
+            [0., self._extent[1] * _bc_flag[2], self._extent[2] * _bc_flag[4]],
+            [self._extent[0] * _bc_flag[0], self._extent[1] * _bc_flag[2], self._extent[2] * _bc_flag[4]]
+        ]
 
         '''make scalar array object from above shifts'''
-        _tmp_list_local=[]
+        _tmp_list_local = []
         '''zero scalar array for data that is not position dependent'''
         _tmp_zero = range(26)
         for ix in range(26):
-            _tmp_list_local+=_cell_shifts[ix]
+            _tmp_list_local += _cell_shifts[ix]
             _tmp_zero[ix] = 0
 
         self._cell_shifts_array_pbc = data.ScalarArray(_tmp_list_local, dtype=ctypes.c_double)
         self._cell_shifts_array_zero = data.ScalarArray(_tmp_zero, dtype=ctypes.c_double)
-
-
-
