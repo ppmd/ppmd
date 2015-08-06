@@ -30,7 +30,16 @@ if __name__ == '__main__':
     
     # log energy?
     logging = True
-    
+
+    # Write XYZ?
+    writing = True
+
+    t=0.1
+    dt=0.0001
+
+
+
+
     # Enbale debug flags?
     build.DEBUG.level = 0
     
@@ -39,7 +48,7 @@ if __name__ == '__main__':
         n = 10
         N = n**3
         # n=860
-        rho = 3
+        rho = 1
         mu = 0.0
         nsig = 5.0
         
@@ -114,43 +123,63 @@ if __name__ == '__main__':
     # plotting handle
     if plotting:
         plothandle = data.DrawParticles(state=test_state)
-        plotsteps = 1000
+        plotsteps = 500
         plotfn = plothandle.draw
     else:
         plothandle = None
         plotsteps = 0
         plotfn = None
+
+    # xyz writing handle
+    if writing:
+        test_xyz = method.WriteTrajectoryXYZ(state=test_state)
+        test_xyz_steps = 20
+        writefn = test_xyz.write
+    else:
+        test_xyz_steps = 0
+        writefn = None
+
+    # xyz writing handle
+    if logging:
+        energyhandle = data.EnergyStore(state=test_state)
+        energy_steps = 20
+        energyfn = energyhandle.update
+    else:
+        energy_steps = 0
+        energyfn = None
     
 
-    test_xyz = method.WriteTrajectoryXYZ(state=test_state)
-    energyhandle = data.EnergyStore(state=test_state)
     test_vaf_method = method.VelocityAutoCorrelation(state = test_state)
     test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rsteps = 200)
 
+    per_printer = data.PercentagePrinter(dt,t,10)
+
     schedule = method.Schedule([
                                 plotsteps,
-                                0,
-                                10
+                                test_xyz_steps,
+                                energy_steps,
+                                1
                                 ],
                                [
                                 plotfn,
-                                test_xyz.write,
-                                energyhandle.update
+                                writefn,
+                                energyfn,
+                                per_printer.tick
                                 ])
 
     # Create an integrator for above state class.
     test_integrator = method.VelocityVerletAnderson(state = test_state, schedule=schedule)
-    #test_integrator = method.VelocityVerletBox(state = test_state, schedule=schedule)
+    # test_integrator = method.VelocityVerletBox(state = test_state, schedule=schedule)
 
 
     ###########################################################
 
 
-    test_integrator.integrate(dt = 0.0001, t= 0.1, timer=True)
+    test_integrator.integrate(dt=dt, t=t, timer=True)
 
 
-    data.pprint("Total time in halo exchange:", test_domain.halos._time)
-    data.pprint("Time in forces_update:", test_state._time_prof)
+    data.pprint("Total time in halo exchange: ", test_domain.halos._time)
+    data.pprint("Time in forces_update: ", test_state._time_prof)
     
     ###########################################################
     

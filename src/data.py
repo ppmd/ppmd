@@ -8,6 +8,7 @@ import re
 import pickle
 from mpi4py import MPI
 import sys
+import math
 
 np.set_printoptions(threshold='nan')
 
@@ -1008,8 +1009,47 @@ class EnergyStore(object):
             fig2.canvas.draw()
             plt.show(block=False)
 
+class PercentagePrinter(object):
+    """
+    Class to print percentage completion to console.
 
+    :arg float dt: Time step size.
+    :arg float t: End time.
+    :arg int percent: Percent to print on.
+    """
+    def __init__(self, dt, t, percent):
+        _dt = dt
+        _t = t
+        self._p = percent
+        self._max_it = math.ceil(_t/_dt)
+        self._count = 0
+        self._curr_p = percent
 
+    def new_times(self, dt, t):
+        """
+        Change times.
+
+        :arg float dt: Time step size.
+        :arg float t: End time.
+        :arg int percent: Percent to print on.
+        """
+        _dt = dt
+        _t = t
+        self._p = percent
+        self._max_it = math.ceil(_t/_dt)
+        self._count = 0
+        self._curr_p = percent
+
+    def tick(self):
+        """
+        Method to call per iteration.
+        """
+
+        self._count += 1
+
+        if (float(self._count)/self._max_it)*100 > self._curr_p:
+            pprint(self._curr_p, "%")
+            self._curr_p += self._p
 
 
 

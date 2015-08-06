@@ -36,7 +36,7 @@ class VelocityVerlet(object):
     :arg bool DEBUG: Flag to enable debug flags.
     """
     
-    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, schedule=None):
+    def __init__(self, dt=0.0001, t=0.01, state=None, schedule=None):
     
         self._dt = dt
         self._T = t
@@ -74,7 +74,7 @@ class VelocityVerlet(object):
         '''
 
 
-    def integrate(self, dt = None, dt_step = None, t = None, timer=False):
+    def integrate(self, dt = None, t = None, timer=False):
         """
         Integrate state forward in time.
         
@@ -141,7 +141,7 @@ class VelocityVerlet(object):
 
 class VelocityVerletAnderson(VelocityVerlet):
     
-    def integrate_thermostat(self, dt=None, dt_step=None, t=None, temp=273.15, nu=1.0, timer=False):
+    def integrate_thermostat(self, dt=None, t=None, temp=273.15, nu=1.0, timer=False):
         """
         Integrate state forward in time.
         
@@ -252,7 +252,7 @@ class VelocityVerletBox(VelocityVerlet):
     :arg bool DEBUG: Flag to enable debug flags.
     """
     
-    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, plot_handle=None, energy_handle=None, writexyz=False, vaf_handle=None, schedule = None):
+    def __init__(self, dt=0.0001, t=0.01, state=None, plot_handle=None, energy_handle=None, writexyz=False, vaf_handle=None, schedule = None):
     
         self._dt = dt
         self._T = t
@@ -305,7 +305,7 @@ class VelocityVerletBox(VelocityVerlet):
         '''
 
     
-    def integrate(self, dt=None, dt_step=None, t=None, timer=False):
+    def integrate(self, dt=None, t=None, timer=False):
         """
         Integrate state forward in time.
         
@@ -338,7 +338,7 @@ class VelocityVerletBox(VelocityVerlet):
             if self._state.domain.rank == 0:
                 print "integrate time taken:", end - start, "s"
 
-    def integrate_thermostat(self, dt=None, dt_step=None, t=None, temp=273.15, nu=1.0, timer=False):
+    def integrate_thermostat(self, dt=None, t=None, temp=273.15, nu=1.0, timer=False):
         """
         Integrate state forward in time.
         
@@ -793,7 +793,7 @@ class Schedule(object):
         if (steps is not None) and (items is not None):
             assert len(steps) == len(items), "Schedule error, mis-match between number of steps and number of items."
             for ix in zip(steps, items):
-                if (ix[0] > 1) and (ix[1] is not None):
+                if (ix[0] > 0) and (ix[1] is not None):
                     assert (inspect.isfunction(ix[1]) or inspect.ismethod(ix[1])) is True, "Schedule error: Passed argument" \
                                                                                            " is not a function/method."
 
