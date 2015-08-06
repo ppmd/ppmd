@@ -68,9 +68,7 @@ class PairLoopRapaport(_Base):
     :arg dict dat_dict: Dictonary mapping between state vars and kernel vars.
     :arg bool DEBUG: Flag to enable debug flags.
     """
-    def __init__(self, N, domain, positions, potential, dat_dict, cell_list, DEBUG=False, mpi_handle = None):
-        self._DEBUG = DEBUG
-        self._Mh = mpi_handle
+    def __init__(self, N, domain, positions, potential, dat_dict, cell_list):
         self._N = N
         self._domain = domain
         self._P = positions
@@ -97,13 +95,13 @@ class PairLoopRapaport(_Base):
         self._library_filename = self._unique_name + '.so'
         
         if not os.path.exists(os.path.join(self._temp_dir,self._library_filename)):
-            if self._Mh is None:
+            if data.MPI_HANDLE is None:
                 self._create_library()
             
             else:
-                if self._Mh.rank == 0:
+                if data.MPI_HANDLE.rank == 0:
                     self._create_library()
-                self._Mh.barrier()
+                data.MPI_HANDLE.barrier()
 
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
@@ -424,15 +422,13 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg bool DEBUG: Flag to enable debug flags.
     """
-    def __init__(self, n, domain, kernel, particle_dat_dict, DEBUG=False, mpi_handle=None):
-        self._DEBUG = DEBUG
-        self._Mh = mpi_handle
+    def __init__(self, n, domain, kernel, particle_dat_dict):
         
         self._compiler_set()
         self._N = n
         self._domain = domain
         self._temp_dir = './build/'
-        if (not os.path.exists(self._temp_dir)):
+        if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = kernel
         
@@ -443,20 +439,20 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         
         self._unique_name = self._unique_name_calc()
         
-        self._library_filename  = self._unique_name +'.so'
+        self._library_filename = self._unique_name + '.so'
         
-        if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
-            if (self._Mh is None):
+        if not os.path.exists(os.path.join(self._temp_dir,self._library_filename)):
+            if data.MPI_HANDLE is None:
                 self._create_library()
             
             else:
-                if  self._Mh.rank == 0:
+                if data.MPI_HANDLE.rank == 0:
                     self._create_library()
-                self._Mh.barrier()
+                data.MPI_HANDLE.barrier()
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
-            build.load_library_exception(self._kernel.name, self._unique_name,type(self))
+            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
 
     def _code_init(self):
         self._kernel_code = self._kernel.code
@@ -499,15 +495,13 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
 
         #endif
         '''
-        
-        
-        d = {'UNIQUENAME':self._unique_name,
-             'INCLUDED_HEADERS':self._included_headers(),
-             'KERNEL_NAME':self._kernel.name,
-             'ARGUMENTS':self._argnames()}
-        return (code % d)        
-        
-        
+
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames()}
+        return code % d
+
     def _kernel_argument_declarations(self):
         """Define and declare the kernel arguments.
 
@@ -994,9 +988,7 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
     :arg dict dat_dict: Dictonary mapping between state vars and kernel vars.
     :arg bool DEBUG: Flag to enable debug flags.
     """
-    def __init__(self,n,domain,positions,potential,dat_dict, DEBUG=False, mpi_handle=None):
-        self._DEBUG = DEBUG
-        self._Mh = mpi_handle
+    def __init__(self, n, domain, positions, potential, dat_dict):
         
         self._N = n
         self._domain = domain
@@ -1028,20 +1020,20 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
         
         self._library_filename  = self._unique_name +'.so'
         
-        if (not os.path.exists(os.path.join(self._temp_dir,self._library_filename))):
-            if (self._Mh is None):
+        if not os.path.exists(os.path.join(self._temp_dir,self._library_filename)):
+            if data.MPI_HANDLE is None:
                 self._create_library()
             
             else:
-                if  self._Mh.rank == 0:
+                if data.MPI_HANDLE.rank == 0:
                     self._create_library()
-                self._Mh.barrier()
+                data.MPI_HANDLE.barrier()
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
             build.load_library_exception(self._kernel.name, self._unique_name,type(self))
 
-    def execute(self, dat_dict = None, static_args = None):
+    def execute(self, dat_dict=None, static_args=None):
         """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
@@ -1329,25 +1321,23 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         """
 
         '''Allow alternative pointers'''
-        if (dat_dict is not None):
+        if dat_dict is not None:
             self._particle_dat_dict = dat_dict    
-        
-        
-        
+
         '''Create arg list'''
         
-        if (n is not None):
+        if n is not None:
             _N = n
         else:
             _N = self._q_list[self._q_list.end]
         
-        args=[ctypes.c_int(_N), 
+        args = [ctypes.c_int(_N),
+
               self._domain.cell_array.ctypes_data,
               self._q_list.ctypes_data]
 
-        
         '''Add static arguments to launch command'''
-        if (self._kernel.static_args is not None):
+        if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
@@ -1355,10 +1345,8 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
             args.append(dat.ctypes_data)
-            
-        
-        '''Execute the kernel over all particle pairs.'''            
+
+        '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name+'_wrapper']
         
-        method(*args)        
-    
+        method(*args)

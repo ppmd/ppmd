@@ -581,7 +581,7 @@ class BaseDomainHalo(BaseDomain):
         
         
         _escape_guard_kernel = kernel.Kernel('FindEscapingParticles', _escape_guard_code, headers=['math.h'])
-        self._escape_guard_loop = loop.SingleAllParticleLoop(self._BC_state.n, self._BC_state.types_map, _escape_guard_kernel, _escape_guard_dict, DEBUG = self._DEBUG)
+        self._escape_guard_loop = loop.SingleAllParticleLoop(self._BC_state.n, self._BC_state.types_map, _escape_guard_kernel, _escape_guard_dict)
         
         
         '''Calculate shifts that should be applied when passing though the local domain extents
@@ -702,7 +702,7 @@ class BaseDomainHalo(BaseDomain):
                               }        
         
         _pack_escapees_kernel = kernel.Kernel('PackEscapingParticles', _escape_packing_code, headers = ['stdio.h'])
-        self._escape_packing_lib = build.SharedLib(_pack_escapees_kernel, _escape_packing_dict, DEBUG = self._DEBUG)
+        self._escape_packing_lib = build.SharedLib(_pack_escapees_kernel, _escape_packing_dict)
         
         _recv_modifiers = [
                           [-1, -1, -1], #0
@@ -867,7 +867,7 @@ class BaseDomainHalo(BaseDomain):
                          }        
         
         _unpacking_kernel = kernel.Kernel('unpackingParticles', _unpacking_code, headers = ['stdio.h'])
-        self._unpacking_lib = build.SharedLib(_unpacking_kernel, _unpacking_dict, DEBUG = self._DEBUG)        
+        self._unpacking_lib = build.SharedLib(_unpacking_kernel, _unpacking_dict)
         
         
         
@@ -913,8 +913,8 @@ class BaseDomainHalo(BaseDomain):
         '''
         
         self._BCcodeDict = {'P':self._BC_state.positions, 'E':self._extent}
-        self._BCkernel= kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
-        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.n,self._BC_state.types_map, self._BCkernel,self._BCcodeDict, DEBUG = self._DEBUG)
+        self._BCkernel = kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
+        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.n,self._BC_state.types_map, self._BCkernel,self._BCcodeDict)
         
 
     

@@ -284,9 +284,12 @@ class DrawParticles(object):
 
     """
 
-    def __init__(self, interval=10):
+    def __init__(self, state=None):
 
-        self._interval = interval
+        assert state is not None, "DrawParticles error: no state passed."
+
+        self._state = state
+
         self._Mh = MPI_HANDLE
 
         self._Dat = None
@@ -305,18 +308,18 @@ class DrawParticles(object):
             self._key = ['red', 'blue']
             plt.show(block=False)
 
-    def draw(self, state):
+    def draw(self):
         """
         Update current plot, use for real time plotting.
         """
-        self._N = state.n()
-        self._NT = state.nt()
-        self._extents = state.domain.extent
+        self._N = self._state.n()
+        self._NT = self._state.nt()
+        self._extents = self._state.domain.extent
 
         '''Case where all particles are local'''
         if self._Mh is None:
-            self._pos = state.positions
-            self._gid = state.global_ids
+            self._pos = self._state.positions
+            self._gid = self._state.global_ids
 
         else:
             '''Need an mpi handle if not all particles are local'''
@@ -338,8 +341,8 @@ class DrawParticles(object):
             if self._Mh.rank == 0:
 
                 '''Copy the local data.'''
-                self._Dat.dat[0:self._N:, ::] = state.positions.dat[0:self._N:, ::]
-                self._gids[0:self._N:] = state.global_ids[0:self._N:]
+                self._Dat.dat[0:self._N:, ::] = self._state.positions.dat[0:self._N:, ::]
+                self._gids[0:self._N:] = self._state.global_ids[0:self._N:]
 
                 _i = self._N  # starting point pos
                 _ig = self._N  # starting point gids
@@ -355,8 +358,8 @@ class DrawParticles(object):
                 self._gid = self._gids
             else:
 
-                self._Mh.comm.Send(state.positions.dat[0:self._N:, ::], 0, self._Mh.rank)
-                self._Mh.comm.Send(state.global_ids.dat[0:self._N:], 0, self._Mh.rank)
+                self._Mh.comm.Send(self._state.positions.dat[0:self._N:, ::], 0, self._Mh.rank)
+                self._Mh.comm.Send(self._state.global_ids.dat[0:self._N:], 0, self._Mh.rank)
 
         if self._Mh.rank == 0:
 
@@ -375,11 +378,6 @@ class DrawParticles(object):
 
             plt.draw()
             plt.show(block=False)
-            # self._Mh.barrier()
-
-    @property
-    def interval(self):
-        return self._interval
 
 
 ################################################################################################################

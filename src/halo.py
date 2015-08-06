@@ -262,7 +262,7 @@ class HaloCartesianSingleProcess(object):
 
         _headers = ['stdio.h']
         _kernel = kernel.Kernel('HaloPackingCode', _packing_code, None, _headers, None, _static_args)
-        self._packing_lib = build.SharedLib(_kernel,_args,DEBUG = self._DEBUG)
+        self._packing_lib = build.SharedLib(_kernel,_args)
 
     def _exchange_size_calc(self):
         """
@@ -559,7 +559,7 @@ class HaloCartesianSingleProcess(object):
 
         _headers = ['stdio.h']
         _kernel = kernel.Kernel('ExchangeSizeCalc', _exchange_sizes_code, None, _headers, None, None)
-        self._exchange_sizes_lib = build.SharedLib(_kernel,_args,DEBUG = True)
+        self._exchange_sizes_lib = build.SharedLib(_kernel, _args)
 
         #==========================================================================================================================
 
@@ -618,7 +618,7 @@ class HaloCartesianSingleProcess(object):
 
 
         _cell_sort_kernel = kernel.Kernel('halo_cell_list_method', _cell_sort_code, headers = ['stdio.h'], static_args = _static_args)
-        self._cell_sort_loop = build.SharedLib(_cell_sort_kernel, _cell_sort_dict, DEBUG = self._DEBUG)
+        self._cell_sort_loop = build.SharedLib(_cell_sort_kernel, _cell_sort_dict)
         #==========================================================================================================================
 
         '''

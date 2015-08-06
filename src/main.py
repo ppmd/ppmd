@@ -20,7 +20,7 @@ if __name__ == '__main__':
     test_1000 = True
     
     # 2 particles bouncing agasint each other.
-    test_2_bounce = True
+    test_2_bounce = False
     
     # 1 1 particle
     t_1_particle = False
@@ -29,26 +29,22 @@ if __name__ == '__main__':
     plotting = True
     
     # log energy?
-    logging = False
+    logging = True
     
     # Enbale debug flags?
-    debug = True
-
     build.DEBUG.level = 0
-
-    MPI_HANDLE = data.MPI_HANDLE
     
     if test_1000:
         # n=25 reasonable size
         n = 10
         N = n**3
         # n=860
-        rho = 0.05
+        rho = 3
         mu = 0.0
         nsig = 5.0
         
         # Initialise basic domain
-        test_domain = domain.BaseDomainHalo(nt=N, periods = (False,False,False))
+        test_domain = domain.BaseDomainHalo(nt=N, periods = (True,True,True))
         
         # Initialise LJ potential
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
@@ -111,50 +107,46 @@ if __name__ == '__main__':
                                        particle_pos_init=test_pos_init,
                                        particle_vel_init=test_vel_init,
                                        particle_mass_init=test_mass_init,
-                                       n=N,
-                                       DEBUG=debug
+                                       n=N
                                        )
 
 
     # plotting handle
     if plotting:
-        plothandle = data.DrawParticles()
+        plothandle = data.DrawParticles(state=test_state)
+        plotsteps = 1000
+        plotfn = plothandle.draw
     else:
         plothandle = None
-
-    # Create VAF method.
-    test_vaf_method = None
-    # test_vaf_method = method.VelocityAutoCorrelation(state = test_state, DEBUG = debug)
+        plotsteps = 0
+        plotfn = None
     
 
     test_xyz = method.WriteTrajectoryXYZ(state=test_state)
     energyhandle = data.EnergyStore(state=test_state)
+    test_vaf_method = method.VelocityAutoCorrelation(state = test_state)
+    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rsteps = 200)
 
-    schedule = method.Schedule([1000, 1], [test_xyz.write, energyhandle.update])
+    schedule = method.Schedule([
+                                plotsteps,
+                                0,
+                                10
+                                ],
+                               [
+                                plotfn,
+                                test_xyz.write,
+                                energyhandle.update
+                                ])
 
     # Create an integrator for above state class.
-    test_integrator = method.VelocityVerletAnderson(state = test_state, plot_handle = plothandle, energy_handle = None, writexyz = False, VAF_handle = test_vaf_method, DEBUG = debug, schedule=schedule)
-    #test_integrator = method.VelocityVerletBox(state = test_state, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, vaf_handle= test_vaf_method, DEBUG = debug, mpi_handle= MPI_HANDLE, schedule=schedule)
-    
+    test_integrator = method.VelocityVerletAnderson(state = test_state, schedule=schedule)
+    #test_integrator = method.VelocityVerletBox(state = test_state, schedule=schedule)
 
 
-    
-    #create G(r) method.
-    #test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rsteps = 200, DEBUG = debug)
-    
-
-    '''
-    for ix in range(2):
-        test_state.forces_update()
-    '''
-    
-    
     ###########################################################
 
 
-
-    
-    test_integrator.integrate(dt = 0.00001, t= 0.05, timer=True)
+    test_integrator.integrate(dt = 0.0001, t= 0.5, timer=True)
 
     #test_integrator.integrate_thermostat(dt = 0.0001, t= 0.5, temp=0.01, nu=2.5, timer=True)
     
@@ -164,7 +156,6 @@ if __name__ == '__main__':
     #test_gr_method.evaluate(timer=True)
     #test_integrator.integrate(dt = 0.0001, T = 0.1, timer=True)
     #test_gr_method.evaluate(timer=True)
-
 
 
     data.pprint("Total time in halo exchange:", test_domain.halos._time)
@@ -177,29 +168,11 @@ if __name__ == '__main__':
     #If logging was enabled, plot data.
     if (logging):
         energyhandle.plot()
-        
-        
-    #test_gr_method.plot()
-    #test_gr_method.raw_write()
-    #test_vaf_method.plot()
     
-    
-    
-    if (MPI_HANDLE is None or MPI_HANDLE.rank ==0):
+    if data.MPI_HANDLE.rank ==0:
         try:
             a=input("PRESS ENTER TO CONTINUE.\n")
             #pass
         except:
             pass
     #MPI_HANDLE.barrier()
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    

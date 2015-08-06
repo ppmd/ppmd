@@ -15,13 +15,12 @@ class _Base(build.GenericToolChain):
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg bool DEBUG: Flag to enable debug flags.
     """
-    def __init__(self, n, types_map, kernel, particle_dat_dict, DEBUG=False, mpi_handle=None):
-        
-        self._DEBUG = DEBUG
+    def __init__(self, n, types_map, kernel, particle_dat_dict):
+
         self._compiler_set()
         self._N = n
         self._types_map = types_map
-        self._Mh = mpi_handle
+        self._Mh = data.MPI_HANDLE
 
         self._temp_dir = './build/'
 

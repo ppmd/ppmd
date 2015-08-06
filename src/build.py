@@ -352,9 +352,9 @@ class GenericToolChain(object):
 
         object_filename = filename_base+'.o'
         library_filename = filename_base+'.so' 
-        cflags = []       
+        cflags = []
         cflags += self._cc.c_flags
-        if self._DEBUG:
+        if DEBUG > 0:
             cflags += self._cc.dbg_flags
         cc = self._cc.binary
         ld = self._cc.binary
@@ -442,9 +442,7 @@ class SharedLib(GenericToolChain):
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
     :arg bool DEBUG: Flag to enable debug flags.
     """
-    def __init__(self, kernel, particle_dat_dict, DEBUG=False, mpi_handle=None):
-        self._DEBUG = DEBUG
-        self._Mh = mpi_handle
+    def __init__(self, kernel, particle_dat_dict):
         
         self._compiler_set()
         self._temp_dir = './build/'
@@ -462,13 +460,13 @@ class SharedLib(GenericToolChain):
         self._library_filename = self._unique_name + '.so'
         
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if self._Mh is None:
+            if data.MPI_HANDLE is None:
                 self._create_library()
             
             else:
-                if self._Mh.rank is 0:
+                if data.MPI_HANDLE.rank == 0:
                     self._create_library()
-                self._Mh.barrier()
+                data.MPI_HANDLE.barrier()
                 
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)

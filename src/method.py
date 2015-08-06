@@ -15,6 +15,7 @@ import re
 import datetime
 import particle
 import inspect
+import build
 np.set_printoptions(threshold='nan')
 
 
@@ -35,13 +36,10 @@ class VelocityVerlet(object):
     :arg bool DEBUG: Flag to enable debug flags.
     """
     
-    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, plot_handle = None, energy_handle = None, writexyz = False, VAF_handle = None, DEBUG = False, schedule=None):
+    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, schedule=None):
     
         self._dt = dt
-        self._DT = dt_step
         self._T = t
-        self._DEBUG = DEBUG
-        self._Mh = data.MPI_HANDLE
 
         self._state = state
         
@@ -52,12 +50,6 @@ class VelocityVerlet(object):
         self._P = self._state.positions
         self._M = self._state.masses
         self._K = self._state.k
-        
-
-        self._plot_handle = plot_handle
-        self._energy_handle = energy_handle
-        self._writexyz = writexyz
-        self._VAF_handle = VAF_handle
 
         self._schedule = schedule
         
@@ -91,32 +83,20 @@ class VelocityVerlet(object):
         :arg bool timer: display approximate timing information.
         """
         
-        if (dt is not None):
+        if dt is not None:
             self._dt = dt
-        if (t is not None):
+        if t is not None:
             self._T = t
-        if (dt_step is not None):
-            self._DT = dt_step
-        else:
-            self._DT = 10.0*self._dt
-            
-        self._max_it = int(math.ceil(self._T/self._dt))
-        self._DT_Count = int(math.ceil(self._T/self._DT))
-        
-        if self._energy_handle is not None:
-            self._energy_handle.append_prepare(self._DT_Count)
-        
-        if self._VAF_handle is not None:
-            self._VAF_handle.append_prepare(self._DT_Count)
 
+        self._max_it = int(math.ceil(self._T/self._dt))
 
         self._constants = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
 
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, mpi_handle=self._Mh)
+        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
 
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-        self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, mpi_handle=self._Mh)
+        self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
               
         if timer is True:
             start = time.time()        
@@ -132,25 +112,15 @@ class VelocityVerlet(object):
     def _velocity_verlet_integration(self):
         """
         Perform Velocity Verlet integration up to time T.
-        """    
+        """
 
-        self._percent_count = 101
-        if self._plot_handle is not None:
-            self._percent_int = self._plot_handle.interval
-            self._percent_count = self._percent_int
-
-        # print "before bc"
         self._domain.bc_execute()
-        
-        # print "after bc"
-        
+
         self._state.forces_update()
 
         for i in range(self._max_it):
 
             self._p1.execute(self._state.n())
-
-            # update forces
 
             self._domain.bc_execute()
             self._state.forces_update()
@@ -162,53 +132,6 @@ class VelocityVerlet(object):
             if self._schedule is not None:
                 self._schedule.tick()
 
-            self._integration_internals(i)
-
-    def _integration_internals(self, i):
-
-        DTFLAG = ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )
-        PERCENT = ((100.0*i)/self._max_it)
-        
-        if (self._energy_handle is not None) & (DTFLAG is True):
-
-
-
-            if self._N() > 0:
-                
-                _U_tmp = self._state.u.dat[0]/self._state.nt()
-
-                _U_tmp += 0.5*self._state.u.dat[1]/self._state.nt()
-                
-                self._energy_handle.u_append(_U_tmp)
-
-                if self._N() > 0:
-                    self._energy_handle.k_append((self._K[0])/self._state.nt())
-                    self._energy_handle.q_append(_U_tmp + (self._K[0])/self._state.nt())
-                else:
-                    self._energy_handle.k_append(0.)
-                    self._energy_handle.q_append(0.)
-
-            else:
-                self._energy_handle.u_append(0.)
-                self._energy_handle.k_append(0.)
-                self._energy_handle.q_append(0.)
-            self._energy_handle.t_append((i+1)*self._dt)
-
-        if (self._writexyz is True) & (DTFLAG is True):
-            self._state.positions.XYZWrite(append=1)
-
-        if (self._VAF_handle is not None) & (DTFLAG is True):
-            self._VAF_handle.evaluate(t=(i+1)*self._dt)
-
-        if (self._plot_handle is not None) & (PERCENT > self._percent_count):
-            
-            if self._plot_handle is not None:
-                self._plot_handle.draw(self._state)
-            
-            self._percent_count += self._percent_int
-            
-            if self._state.domain.rank == 0:
-                print int((100.0*i)/self._max_it),"%", "T=", self._dt*i
                 
 
 ################################################################################################################
@@ -237,22 +160,12 @@ class VelocityVerletAnderson(VelocityVerlet):
             self._dt = dt
         if t is not None:
             self._T = t
-        if dt_step is not None:
-            self._DT = dt_step
-        else:
-            self._DT = 10.0*self._dt
             
         self._max_it = int(math.ceil(self._T/self._dt))
-        self._DT_Count = int(math.ceil(self._T/self._DT))
-        if self._energy_handle is not None:
-            self._energy_handle.append_prepare(self._DT_Count)
-            
-        if self._VAF_handle is not None:
-            self._VAF_handle.append_prepare(self._DT_Count)
 
         self._constants1 = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
-        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, mpi_handle = self._Mh)
+        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
 
         self._kernel2_thermostat_code = '''
 
@@ -284,29 +197,22 @@ class VelocityVerletAnderson(VelocityVerlet):
 
         '''
 
-
         self._constants2_thermostat = [constant.Constant('rate',self._dt*self._nu), constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt), constant.Constant('temperature',self._Temp),]
 
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
-        self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, mpi_handle = self._Mh)
+        self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
 
         
         self._velocity_verlet_integration_thermostat()
         
-        if (timer is True) and (self._Mh.rank == 0):
+        if timer is True:
             end = time.time()
-            print "integrate thermostat time taken:", end - start, "s"
+            data.pprint("integrate thermostat time taken:", end - start, "s")
     
     def _velocity_verlet_integration_thermostat(self):
         """
         Perform Velocity Verlet integration up to time T.
-        """    
-
-        
-        self._percent_count = 101
-        if self._plot_handle is not None:
-            self._percent_int = self._plot_handle.interval
-            self._percent_count = self._percent_int
+        """
 
         self._domain.bc_execute()
         self._state.forces_update()
@@ -327,8 +233,6 @@ class VelocityVerletAnderson(VelocityVerlet):
             if self._schedule is not None:
                 self._schedule.tick()
 
-            self._integration_internals(i)
-
 
 ################################################################################################################
 # SOLID BOUNDARY TEST INTEGRATOR
@@ -348,13 +252,10 @@ class VelocityVerletBox(VelocityVerlet):
     :arg bool DEBUG: Flag to enable debug flags.
     """
     
-    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, plot_handle=None, energy_handle=None, writexyz=False, vaf_handle=None, DEBUG=False, mpi_handle=None, schedule = None):
+    def __init__(self, dt=0.0001, t=0.01, dt_step=0.001, state=None, plot_handle=None, energy_handle=None, writexyz=False, vaf_handle=None, schedule = None):
     
         self._dt = dt
-        self._DT = dt_step
         self._T = t
-        self._DEBUG = DEBUG
-        self._Mh = mpi_handle
 
         self._state = state
 
@@ -417,27 +318,16 @@ class VelocityVerletBox(VelocityVerlet):
             self._dt = dt
         if t is not None:
             self._T = t
-        if dt_step is not None:
-            self._DT = dt_step
-        else:
-            self._DT = 10.0*self._dt
             
         self._max_it = int(math.ceil(self._T/self._dt))
-        self._DT_Count = int(math.ceil(self._T/self._DT))
-        
-        if self._energy_handle is not None:
-            self._energy_handle.append_prepare(self._DT_Count)
-        
-        if self._VAF_handle is not None:
-            self._VAF_handle.append_prepare(self._DT_Count)
-        
+
         self._constants = [constant.Constant('dt', self._dt), constant.Constant('dht', 0.5*self._dt), ]
 
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent}, DEBUG = self._DEBUG, mpi_handle = self._Mh)
+        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
 
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-        self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent}, DEBUG = self._DEBUG, mpi_handle = self._Mh)
+        self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
 
 
         if timer:
@@ -468,23 +358,12 @@ class VelocityVerletBox(VelocityVerlet):
             self._dt = dt
         if t is not None:
             self._T = t
-        if dt_step is not None:
-            self._DT = dt_step
-        else:
-            self._DT = 10.0*self._dt
             
         self._max_it = int(math.ceil(self._T/self._dt))
-        self._DT_Count = int(math.ceil(self._T/self._DT))
-
-        if self._energy_handle is not None:
-            self._energy_handle.append_prepare(self._DT_Count)
-            
-        if self._VAF_handle is not None:
-            self._VAF_handle.append_prepare(self._DT_Count)
 
         self._constants1 = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
-        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent}, DEBUG = self._DEBUG, mpi_handle = self._Mh)
+        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
 
         self._kernel2_thermostat_code = '''
 
@@ -519,24 +398,18 @@ class VelocityVerletBox(VelocityVerlet):
         self._constants2_thermostat = [constant.Constant('rate',self._dt*self._nu), constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt), constant.Constant('temperature',self._Temp),]
 
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
-        self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M}, DEBUG = self._DEBUG, mpi_handle = self._Mh)
+        self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
 
-        
         self._velocity_verlet_integration_thermostat()
         
-        if (timer is True) and (self._Mh.rank == 0):
+        if timer is True:
             end = time.time()
-            print "integrate thermostat time taken:", end - start, "s"
+            data.pprint("integrate thermostat time taken: ", end - start, "s")
     
     def _velocity_verlet_integration_thermostat(self):
         """
         Perform Velocity Verlet integration up to time T.
         """
-
-        self._percent_count = 101
-        if self._plot_handle is not None:
-            self._percent_int = self._plot_handle.interval
-            self._percent_count = self._percent_int
 
         self._domain.bc_execute()
         self._state.forces_update()
@@ -556,52 +429,6 @@ class VelocityVerletBox(VelocityVerlet):
 
             if self._schedule is not None:
                 self._schedule.tick()
-
-    def _integration_internals(self, i):
-
-        DTFLAG = ( ((i + 1) % (self._max_it/self._DT_Count) == 0) | (i == (self._max_it-1)) )
-        PERCENT = ((100.0*i)/self._max_it)
-
-        if (self._energy_handle is not None) & (DTFLAG is True):
-
-            self._state.kinetic_energy_update()
-
-            if self._N() > 0:
-
-                _U_tmp = self._state.u.dat[0]/self._state.nt()
-
-                _U_tmp += 0.5*self._state.u.dat[1]/self._state.nt()
-
-                self._energy_handle.u_append(_U_tmp)
-
-                if self._N() > 0:
-                    self._energy_handle.k_append((self._K[0])/self._state.nt())
-                    self._energy_handle.q_append(_U_tmp + (self._K[0])/self._state.nt())
-                else:
-                    self._energy_handle.k_append(0.)
-                    self._energy_handle.q_append(0.)
-
-            else:
-                self._energy_handle.u_append(0.)
-                self._energy_handle.k_append(0.)
-                self._energy_handle.q_append(0.)
-            self._energy_handle.t_append((i+1)*self._dt)
-
-        if (self._writexyz is True) & (DTFLAG is True):
-            self._state.positions.XYZWrite(append=1)
-
-        if (self._VAF_handle is not None) & (DTFLAG is True):
-            self._VAF_handle.evaluate(t=(i+1)*self._dt)
-
-        if (self._plot_handle is not None) & (PERCENT > self._percent_count):
-
-            if self._plot_handle is not None:
-                self._plot_handle.draw(self._state)
-
-            self._percent_count += self._percent_int
-
-            if self._state.domain.rank == 0:
-                print int((100.0*i)/self._max_it),"%", "T=", self._dt*i
                 
 ################################################################################################################
 # G(R)
@@ -618,7 +445,7 @@ class RadialDistributionPeriodicNVE(object):
     :arg bool DEBUG: Flag to enable debug flags.
     """
 
-    def __init__(self, state, rmax=None, rsteps=100, DEBUG=False, mpi_handle=None, timer=False):
+    def __init__(self, state, rmax=None, rsteps=100, timer=False):
         
         self._count = 0
         self._state = state
@@ -635,9 +462,7 @@ class RadialDistributionPeriodicNVE(object):
         
         self._gr = data.ScalarArray(ncomp=self._rsteps, dtype=ctypes.c_int)
         self._gr.scale(0.0)
-        
-        self._DEBUG = DEBUG
-        self._Mh = mpi_handle
+
         self._timer = timer
         
         _headers = ['math.h', 'stdio.h']
@@ -679,7 +504,7 @@ class RadialDistributionPeriodicNVE(object):
         _grkernel = kernel.Kernel('radial_distro_periodic_static', _kernel, _constants, headers=_headers)
         _datdict = {'P':self._P, 'GR':self._gr}
 
-        self._p = pairloop.DoubleAllParticleLoop(self._N, self._state.types_map, kernel=_grkernel, particle_dat_dict=_datdict, DEBUG=self._DEBUG, mpi_handle=self._Mh)
+        self._p = pairloop.DoubleAllParticleLoop(self._N, self._state.types_map, kernel=_grkernel, particle_dat_dict=_datdict)
         
     def evaluate(self):
         """
@@ -765,9 +590,8 @@ class VelocityAutoCorrelationBasic(object):
     :arg bool DEBUG: Flag to enable debug flags.
     """
 
-    def __init__(self, state, size=0, v0=None, DEBUG=False, mpi_handle=None):
-        self._DEBUG = DEBUG
-        self._Mh = mpi_handle
+    def __init__(self, state, size=0, v0=None):
+
         self._state = state
         self._N = self._state.n
         self._V0 = particle.Dat(self._N, 3, name='v0')
@@ -800,7 +624,7 @@ class VelocityAutoCorrelationBasic(object):
 
         self._datdict = {'VAF': self._VAF, 'v0': self._V0, 'VT': self._VT}
         
-        self._loop = loop.SingleAllParticleLoop(self._N, None, kernel=_kernel, particle_dat_dict=self._datdict, DEBUG=self._DEBUG, mpi_handle=self._Mh)
+        self._loop = loop.SingleAllParticleLoop(self._N, None, kernel=_kernel, particle_dat_dict=self._datdict)
 
     def set_v0(self, v0=None, state=None, timer=False):
         """
@@ -914,7 +738,7 @@ class WriteTrajectoryXYZ(object):
         self._dn = dir_name
         self._fh = None
 
-        if self._s.mpi_handle.rank == 0:
+        if data.MPI_HANDLE.rank == 0:
             self._fh = open(os.path.join(self._dn, self._fn), 'w')
             self._fh.close()
 
@@ -927,15 +751,15 @@ class WriteTrajectoryXYZ(object):
 
 
 
-        if self._s.mpi_handle.rank == 0:
+        if data.MPI_HANDLE.rank == 0:
             self._fh = open(os.path.join(self._dn, self._fn), 'a')
             self._fh.write(str(self._s.nt()) + '\n')
             self._fh.write(str(self._title) + '\n')
             self._fh.flush()
-        self._s.mpi_handle.barrier()
+        data.MPI_HANDLE.barrier()
 
         if self._ordered is False:
-            for iz in range(self._s.mpi_handle.nproc):
+            for iz in range(data.MPI_HANDLE.nproc):
                 if self._s.mpi_handle.rank == iz:
                     self._fh = open(os.path.join(self._dn, self._fn), 'a')
                     for ix in range(self._s.n()):
@@ -947,7 +771,7 @@ class WriteTrajectoryXYZ(object):
                     self._fh.flush()
                     self._fh.close()
 
-                self._s.mpi_handle.barrier()
+                data.MPI_HANDLE.barrier()
 
 
 ################################################################################################################
@@ -969,12 +793,13 @@ class Schedule(object):
         if (steps is not None) and (items is not None):
             assert len(steps) == len(items), "Schedule error, mis-match between number of steps and number of items."
             for ix in zip(steps, items):
-                assert (inspect.isfunction(ix[1]) or inspect.ismethod(ix[1])) is True, "Schedule error: Passed argument" \
-                                                                                       " is not a function/method."
-                if ix[0] < 1:
-                    print "Schedule warning: 0 step items will be ignored."
-                else:
+                if (ix[0] > 1) and (ix[1] is not None):
+                    assert (inspect.isfunction(ix[1]) or inspect.ismethod(ix[1])) is True, "Schedule error: Passed argument" \
+                                                                                           " is not a function/method."
+
                     self._s[ix[0]].append(ix[1])
+                else:
+                    data.pprint("Schedule warning: steps<1 and None type functions will be ignored.")
 
         self._count = 0
 
@@ -1034,16 +859,13 @@ class VelocityAutoCorrelation(object):
     :arg state state: Input state containing velocities.
     :arg int size: Initial length of VAF array (optional).
     :arg particle.Dat V0: Initial velocity Dat (optional).
-    :arg bool DEBUG: Flag to enable debug flags.
     """
 
-    def __init__(self, state, size=0, v0=None, DEBUG=False):
-        self._DEBUG = DEBUG
+    def __init__(self, state, size=0, v0=None):
         self._state = state
-        self._Mh = self._state.mpi_handle
         self._N = self._state.n
-        self._V0 = particle.Dat(self._N, 3, name='v0')
-        self._VT = self._V0
+        self._V0 = particle.Dat(self._N(), 3, name='v0')
+        self._VT = state.velocities
 
         self._VO_SET = False
         if v0 is not None:
@@ -1070,7 +892,7 @@ class VelocityAutoCorrelation(object):
 
         self._datdict = {'VAF': self._VAF, 'v0': self._V0, 'VT': self._VT}
 
-        self._loop = loop.SingleAllParticleLoop(self._N, None, kernel=_kernel, particle_dat_dict=self._datdict, DEBUG=self._DEBUG, mpi_handle=self._Mh)
+        self._loop = loop.SingleAllParticleLoop(self._N, None, kernel=_kernel, particle_dat_dict=self._datdict)
 
     def set_v0(self, v0=None, state=None, timer=False):
         """
@@ -1102,19 +924,13 @@ class VelocityAutoCorrelation(object):
 
         _t = self._state.time
 
-        assert int(self._VAF_index) < int(self._VAF.ncomp), "VAF store not large enough"
-
         _Ni = 1./self._N()
+
         self._datdict['VT'] = self._state.velocities
-        self._loop.execute(None, self._datdict, {'I': ctypes.c_int(self._VAF_index), 'Ni': ctypes.c_double(_Ni)})
+        self._loop.execute(None, self._datdict, {'Ni': ctypes.c_double(_Ni)})
 
-        if _t is None:
-            self._T_store[self._VAF_index] = 1 + self._T_base
-        else:
-
-            self._T_store[self._VAF_index] = _t + self._T_base
-
-        self._VAF_index += 1
+        self._V.append(self._VAF[0])
+        self._T.append(_t)
 
         if self._timer:
             end = time.time()
@@ -1125,24 +941,22 @@ class VelocityAutoCorrelation(object):
         Plot array of recorded VAF evaluations.
         """
 
-        if self._VAF_index > 0:
+        _Vloc = np.array(self._V)
+        _V = np.zeros(len(self._T))
+
+        print _Vloc
+
+        data.MPI_HANDLE.comm.Reduce(_Vloc, _V, data.MPI.SUM, 0)
+
+        if len(self._T) > 0:
             plt.ion()
             _fig = plt.figure()
             _ax = _fig.add_subplot(111)
 
-            plt.plot(self._T_store.dat, self._VAF.dat)
+            plt.plot(self._T, _V)
             _ax.set_title('Velocity Autocorrelation Function')
             _ax.set_xlabel('Time')
             _ax.set_ylabel('VAF')
             plt.show()
         else:
             print "Warning: run evaluate() at least once before plotting."
-
-
-
-
-
-
-
-
-    

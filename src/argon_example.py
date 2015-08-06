@@ -61,7 +61,7 @@ if __name__ == '__main__':
     cutoff  = 7.5
     
     
-    domain                  = domain.BaseDomainHalo(mpi_handle= MPI_HANDLE)
+    domain                  = domain.BaseDomainHalo()
     potential               = potential.LennardJonesCounter(epsilon,sigma,cutoff)
     
     #initial_position_config = state.PosInitDLPOLYConfig('TEST7_CUSTOM/CONFIG')
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     
     #plotting handle
     if (plotting):
-        plothandle = data.DrawParticles(interval = 25, mpi_handle= MPI_HANDLE)
+        plothandle = data.DrawParticles(interval=25)
     else:
         plothandle = None
     
@@ -113,7 +113,7 @@ if __name__ == '__main__':
     
     
     
-    integrator = method.VelocityVerletAnderson(state = test_state, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False, DEBUG = debug, mpi_handle = MPI_HANDLE)
+    integrator = method.VelocityVerletAnderson(state = test_state, plot_handle = plothandle, energy_handle = energyhandle, writexyz = False)
     
     
     #control file seems to compute 16000 iterations at dt =10^-3, 1000 to equbrilate then 15k for averaging?
