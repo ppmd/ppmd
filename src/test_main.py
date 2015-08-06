@@ -12,9 +12,8 @@ import constant
 import kernel
 import ctypes
 
-
 if __name__ == '__main__':
-    ctypes_map = {ctypes.c_double:'double'}
+    ctypes_map = {ctypes.c_double: 'double'}
     a = data.ScalarArray()
     print a.dtype
     print ctypes_map[a.dtype]
