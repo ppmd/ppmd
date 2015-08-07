@@ -132,7 +132,7 @@ class MDMPI(object):
         if self.rank == 0:
             _s = ''
             for ix in args:
-                _s += str(ix)
+                _s += str(ix)+ ' '
             print _s
             sys.stdout.flush()
 

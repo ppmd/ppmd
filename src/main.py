@@ -10,7 +10,14 @@ import build
 import gpucuda
 
 if __name__ == '__main__':
-    
+
+    # debug level
+    build.DEBUG.level = 0
+    #verbosity level
+    build.VERBOSE.level = 2
+    #timer level
+    build.TIMER.level = 1
+
     x = 1
     y = 0
     while x == 0:
@@ -37,11 +44,7 @@ if __name__ == '__main__':
     t=0.1
     dt=0.0001
 
-    # Enbale debug flags?
-    build.DEBUG.level = 0
 
-    #verbosity level
-    build.VERBOSE.level = 1
 
 
     #gpu set device
@@ -183,7 +186,7 @@ if __name__ == '__main__':
     ###########################################################
 
 
-    test_integrator.integrate(dt=dt, t=t, timer=True)
+    test_integrator.integrate(dt=dt, t=t)
 
 
     data.pprint("Total time in halo exchange: ", test_domain.halos._time)
@@ -204,3 +207,4 @@ if __name__ == '__main__':
         except:
             pass
     #MPI_HANDLE.barrier()
+    gpucuda.cuda_device_reset()

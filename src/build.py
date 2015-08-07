@@ -39,7 +39,7 @@ class Debug(object):
 DEBUG = Debug(0)
 
 ################################################################################################################
-# Verbose Class, store verbosity
+# Verbose Class, store verbosity, avoids passing verbosity handles everywhere
 ################################################################################################################
 
 class Verbose(object):
@@ -68,6 +68,35 @@ class Verbose(object):
 
 VERBOSE = Verbose(0)
 
+################################################################################################################
+# Timer Class, store Timer, avoids passing Timer handles everywhere
+################################################################################################################
+
+class Timer(object):
+    """
+    Class to hold a Timer level.
+    """
+    _level = 0
+
+    def __init__(self, level=0):
+        self._level = level
+
+    @property
+    def level(self):
+        """
+        Return current Timer level.
+        """
+        return self._level
+
+    @level.setter
+    def level(self, level):
+        """
+        Set a Timer level.
+        :arg int level: New Timer level.
+        """
+        self._level = level
+
+TIMER = Timer(0)
 
 
 ################################################################################################################

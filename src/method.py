@@ -84,13 +84,12 @@ class VelocityVerlet(object):
         '''
 
 
-    def integrate(self, dt = None, t = None, timer=False):
+    def integrate(self, dt = None, t = None):
         """
         Integrate state forward in time.
         
         :arg double dt: Time step size.
         :arg double t: End time.
-        :arg bool timer: display approximate timing information.
         """
         
         if dt is not None:
@@ -108,10 +107,10 @@ class VelocityVerlet(object):
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
         self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
               
-        if timer is True:
+        if build.TIMER.level > 0:
             start = time.time()        
         self._velocity_verlet_integration()
-        if timer is True:
+        if build.TIMER.level > 0:
             end = time.time()
             if self._state.domain.rank == 0:
                 print "integrate time taken:", end - start, "s"
@@ -151,16 +150,15 @@ class VelocityVerlet(object):
 
 class VelocityVerletAnderson(VelocityVerlet):
     
-    def integrate_thermostat(self, dt=None, t=None, temp=273.15, nu=1.0, timer=False):
+    def integrate_thermostat(self, dt=None, t=None, temp=273.15, nu=1.0):
         """
         Integrate state forward in time.
         
         :arg double dt: Time step size.
         :arg double t: End time.
         :arg double temp: Temperature of heat bath.
-        :arg bool timer: display approximate timing information.
         """
-        if timer:
+        if build.TIMER.level > 0:
             start = time.time()
         
         self._Temp = temp
@@ -215,7 +213,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         
         self._velocity_verlet_integration_thermostat()
         
-        if timer is True:
+        if build.TIMER.level > 0:
             end = time.time()
             data.pprint("integrate thermostat time taken:", end - start, "s")
     
@@ -315,13 +313,12 @@ class VelocityVerletBox(VelocityVerlet):
         '''
 
     
-    def integrate(self, dt=None, t=None, timer=False):
+    def integrate(self, dt=None, t=None):
         """
         Integrate state forward in time.
         
         :arg double dt: Time step size.
         :arg double t: End time.
-        :arg bool timer: display approximate timing information.
         """
 
         if dt is not None:
@@ -340,25 +337,23 @@ class VelocityVerletBox(VelocityVerlet):
         self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
 
 
-        if timer:
+        if build.TIMER.level > 0:
             start = time.time()        
         self._velocity_verlet_integration()
-        if timer:
+        if build.TIMER.level > 0:
             end = time.time()
-            if self._state.domain.rank == 0:
-                print "integrate time taken:", end - start, "s"
+            data.pprint("integrate time taken:", end - start, "s")
 
-    def integrate_thermostat(self, dt=None, t=None, temp=273.15, nu=1.0, timer=False):
+    def integrate_thermostat(self, dt=None, t=None, temp=273.15, nu=1.0):
         """
         Integrate state forward in time.
         
         :arg double dt: Time step size.
         :arg double t: End time.
         :arg double temp: Temperature of heat bath.
-        :arg bool timer: display approximate timing information.
         """
 
-        if timer:
+        if build.TIMER.level > 0:
             start = time.time()
         
         self._Temp = temp
@@ -412,7 +407,7 @@ class VelocityVerletBox(VelocityVerlet):
 
         self._velocity_verlet_integration_thermostat()
         
-        if timer is True:
+        if build.TIMER.level > 0:
             end = time.time()
             data.pprint("integrate thermostat time taken: ", end - start, "s")
     
@@ -455,7 +450,7 @@ class RadialDistributionPeriodicNVE(object):
     :arg bool DEBUG: Flag to enable debug flags.
     """
 
-    def __init__(self, state, rmax=None, rsteps=100, timer=False):
+    def __init__(self, state, rmax=None, rsteps=100):
         
         self._count = 0
         self._state = state
@@ -472,8 +467,6 @@ class RadialDistributionPeriodicNVE(object):
         
         self._gr = data.ScalarArray(ncomp=self._rsteps, dtype=ctypes.c_int)
         self._gr.scale(0.0)
-
-        self._timer = timer
         
         _headers = ['math.h', 'stdio.h']
         _kernel = '''
@@ -523,14 +516,14 @@ class RadialDistributionPeriodicNVE(object):
         
         assert self._rmax <= 0.5*self._state.domain.extent.min, "Maximum radius too large."
 
-        if self._timer:
+        if build.TIMER.level > 0:
             start = time.time()    
         self._p.execute()
         self._count += 1
 
-        if self._timer:
+        if build.TIMER.level > 0:
             end = time.time()
-            print "rdf time taken:", end - start, "s"
+            data.pprint( "rdf time taken:", end - start, "s")
         
     def _scale(self):
         self._r = np.linspace(0.+0.5*(self._rmax/self._rsteps), self._rmax-0.5*(self._rmax/self._rsteps), num=self._rsteps, endpoint=True)
@@ -639,7 +632,7 @@ class VelocityAutoCorrelationBasic(object):
         
         self._loop = loop.SingleAllParticleLoop(self._N, None, kernel=_kernel, particle_dat_dict=self._datdict)
 
-    def set_v0(self, v0=None, state=None, timer=False):
+    def set_v0(self, v0=None, state=None):
         """
         Set an initial velocity Dat to use as V_0. Requires either a velocity Dat or a state as an argument. V_0 will be set to either the passed velocities or to the velocities in the passed state.        
         
@@ -655,16 +648,13 @@ class VelocityAutoCorrelationBasic(object):
             self._V0_SET = True            
         assert self._V0_SET is True, "No velocities set, check input data."
 
-        self._timer = timer
-
     def evaluate(self):
         """
         Evaluate VAF using the current velocities held in the state with the velocities in V0.
         
         :arg double t: Time within block of integration.
-        :arg bool timer: Flag to time evaluation of VAF.
         """
-        if self._timer:
+        if build.TIMER.level > 0:
             start = time.time()
 
         _t = self._state.time
@@ -683,9 +673,9 @@ class VelocityAutoCorrelationBasic(object):
         
         self._VAF_index += 1
 
-        if self._timer:
+        if build.TIMER.level > 0:
             end = time.time()
-            print "VAF time taken:", end - start, "s"
+            data.pprint("VAF time taken:", end - start, "s")
 
     def append_prepare(self, size):
         """
@@ -909,7 +899,7 @@ class VelocityAutoCorrelation(object):
 
         self._loop = loop.SingleAllParticleLoop(self._N, None, kernel=_kernel, particle_dat_dict=self._datdict)
 
-    def set_v0(self, v0=None, state=None, timer=False):
+    def set_v0(self, v0=None, state=None):
         """
         Set an initial velocity Dat to use as V_0. Requires either a velocity Dat or a state as an argument. V_0 will be set to either the passed velocities or to the velocities in the passed state.
 
@@ -925,16 +915,14 @@ class VelocityAutoCorrelation(object):
             self._V0_SET = True
         assert self._V0_SET is True, "No velocities set, check input data."
 
-        self._timer = timer
 
     def evaluate(self):
         """
         Evaluate VAF using the current velocities held in the state with the velocities in V0.
 
         :arg double t: Time within block of integration.
-        :arg bool timer: Flag to time evaluation of VAF.
         """
-        if self._timer:
+        if build.TIMER.level > 0:
             start = time.time()
 
         _t = self._state.time
@@ -947,9 +935,9 @@ class VelocityAutoCorrelation(object):
         self._V.append(self._VAF[0])
         self._T.append(_t)
 
-        if self._timer:
+        if build.TIMER.level > 0:
             end = time.time()
-            print "VAF time taken:", end - start, "s"
+            data.pprint("VAF time taken:", end - start, "s")
 
     def plot(self):
         """

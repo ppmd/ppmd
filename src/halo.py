@@ -28,11 +28,10 @@ class HaloCartesianSingleProcess(object):
 
     def __init__(self, nt=1, mpi_handle=None, cell_array=None, extent=None):
 
-        self._verbose = False
         self._NT = nt
-        self._DEBUG = True
-        timer = True
-        if self._verbose and timer is True:
+
+
+        if build.TIMER.level > 0:
             start = time.time()
 
         assert cell_array is not None, "Error: No cell array passed."
@@ -62,9 +61,9 @@ class HaloCartesianSingleProcess(object):
         self._create_packing_lib()
 
         self._time = 0.
-        if self._verbose and timer is True:
+        if build.TIMER.level > 0:
             end = time.time()
-            print "halo setup time = ", end - start, "s"
+            data.pprint("halo setup time = ", end - start, "s")
 
     def set_position_info(self, cell_contents_count, cell_list):
         """
@@ -89,8 +88,7 @@ class HaloCartesianSingleProcess(object):
 
         self._nc = data_in.ncomp
 
-        timer = True
-        if timer is True:
+        if build.TIMER.level > 0:
             start = time.time()
 
         '''Get new storage sizes'''
@@ -196,7 +194,7 @@ class HaloCartesianSingleProcess(object):
                 {'CC': ctypes.c_int(self._cell_contents_recv.ncomp), 'shift': ctypes.c_int(data_in.npart),
                  'end': ctypes.c_int(self._cell_list[self._cell_list.end])})
 
-        if timer is True:
+        if build.TIMER.level > 0:
             end = time.time()
             self._time += end - start
 

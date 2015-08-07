@@ -95,7 +95,7 @@ if __name__ == '__main__':
     # control file seems to compute 16000 iterations at dt =10^-3, 1000 to equbrilate then 15k for averaging?
     dt = 10 ** -3
     T = I * dt
-    integrator.integrate(dt=dt, t=T, timer=True)
+    integrator.integrate(dt=dt, t=T)
 
     if verbose:
         print test_state.positions[0, ::]

@@ -205,8 +205,6 @@ class BaseDomain(object):
 class BaseDomainHalo(BaseDomain):
     def __init__(self, nt=1, extent=np.array([1., 1., 1.]), cell_count=1, periods=(1, 1, 1)):
 
-        self._verbose = False
-
         self._NT = nt
 
         self._periods = periods
@@ -259,10 +257,9 @@ class BaseDomainHalo(BaseDomain):
         self._cell_array[1] = int(self._extent[1] / rn)
         self._cell_array[2] = int(self._extent[2] / rn)
 
-        data.pprint(self._cell_array)
 
-        if self._verbose:
-            print self._cell_array, self._extent
+        if build.VERBOSE.level > 1:
+            data.pprint("Global cell array:", self._cell_array, ", Global cell extent:",self._extent)
 
         self._cell_edge_lengths[0] = self._extent[0] / self._cell_array[0]
         self._cell_edge_lengths[1] = self._extent[1] / self._cell_array[1]
@@ -330,8 +327,8 @@ class BaseDomainHalo(BaseDomain):
         self._rank = self._COMM.Get_rank()
         self._nproc = self._COMM.Get_size()
 
-        if self._verbose and self._rank == 0:
-            print "Processor count", self._nproc, "Processor layout", self._dims
+        if build.VERBOSE.level > 1:
+            data.pprint("Processor count ", self._nproc, " Processor layout ", self._dims)
 
         '''Topology has below indexing, last index reverses'''
         # [z,y,x]
@@ -348,9 +345,8 @@ class BaseDomainHalo(BaseDomain):
 
         # print "bs =", _bs
 
-        if self._verbose and self._rank == 0:
-            print "Cell layout", _bs
-            print "Global extent,", self._extent
+        if build.VERBOSE.level > 1:
+            data.pprint("Cell layout", _bs)
 
         '''Get local cell array'''
         self._cell_array[0] = _bs[0][self._top[0]]

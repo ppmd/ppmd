@@ -17,7 +17,11 @@ except:
     LIBCUDART = None
 
 def cuda_set_device(device=None):
-
+    """
+    Set the cuda device.
+    :param int device: Dev id to use. If not set a device will be chosen based on rank.
+    :return:
+    """
     if device is None:
         _r = 0
 
@@ -53,12 +57,15 @@ def cuda_set_device(device=None):
     else:
         data.rprint("gpucuda warning: No device set")
 
-
     if (build.VERBOSE.level > 0) and (LIBCUDART is not None):
-        dev = ctypes.c_int()
-        LIBCUDART['cudaGetDevice'](ctypes.byref(dev))
-        data.rprint("cudaGetDevice returned device ", dev.value)
+        _dev = ctypes.c_int()
+        LIBCUDART['cudaGetDevice'](ctypes.byref(_dev))
+        data.rprint("cudaGetDevice returned device ", _dev.value)
 
-
-
-
+def cuda_device_reset():
+    """
+    Reset the current cuda device.
+    :return:
+    """
+    if LIBCUDART is not None:
+        LIBCUDART['cudaDeviceReset']()

@@ -39,7 +39,7 @@ class BaseMDState(object):
         :arg double mass: Mass of particles, default 1.0        
         
         """
-        self._verbose = build.VERBOSE.level
+
         self._potential = potential
         self._N = n
         self._NT = n
@@ -89,11 +89,6 @@ class BaseMDState(object):
         '''Initialise masses'''
         if particle_mass_init is not None:
             particle_mass_init.reset(self)
-
-        if self._verbose:
-            print "Cell array = ", self._domain._cell_array
-            print "Domain extents = ", self._domain._extent
-            print "cell count:", self._domain.cell_count
 
         # Setup acceleration updating from given potential
         _potential_dat_dict = self._potential.datdict(self)
@@ -267,8 +262,7 @@ class BaseMDState(object):
         Updates forces dats using given looping method.
         """
 
-        timer = True
-        if timer == True:
+        if build.TIMER.level > 0:
             start = time.time()
 
         self._cell_sort_local()
@@ -291,7 +285,7 @@ class BaseMDState(object):
         if self._N > 0:
             self._looping_method_accel.execute(n=self._q_list[self._q_list.end])
 
-        if timer is True:
+        if build.TIMER.level > 0:
             end = time.time()
             self._time_prof += end - start
 
@@ -492,7 +486,6 @@ class BaseMDStateHalo(BaseMDState):
         :arg double mass: Mass of particles, default 1.0        
         
         """
-        self._verbose = False
         self._potential = potential
         self._N = n
         self._NT = n
@@ -540,17 +533,6 @@ class BaseMDStateHalo(BaseMDState):
 
         self._domain.bc_setup(self)
         self._domain.bc_execute()
-
-        if self._verbose:
-            print "n, nt", self._N, self._NT
-            print "pos", self._pos[0, ::]
-            print "vel", self._vel[0, ::]
-
-        if self._verbose and data.MPI_HANDLE.rank == 0:
-
-            if build.DEBUG > 0:
-                data.pprint("Debugging enabled")
-            data.pprint("nt =", self._NT)
 
         self._kinetic_energy_loop = None
 
