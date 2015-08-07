@@ -915,26 +915,32 @@ class EnergyStore(object):
         self._u = []
         self._q = []
 
+
     def update(self):
         """
         Update energy tracking of tracked state.
         :return:
         """
 
+        _k = 0.0
+        _u = 0.0
+        _q = 0.0
+        _t = self._state.time
+
         if self._state.n() > 0:
             _U_tmp = self._state.u.dat[0]/self._state.nt()
             _U_tmp += 0.5*self._state.u.dat[1]/self._state.nt()
 
-            self._k.append(self._state.k[0]/self._state.nt())
-            self._u.append(_U_tmp)
-            self._q.append(_U_tmp+(self._state.k[0])/self._state.nt())
+            _k = self._state.k[0]/self._state.nt()
+            _u = _U_tmp
+            _q = _U_tmp+(self._state.k[0])/self._state.nt()
 
-        else:
-            self._k.append(0.)
-            self._u.append(0.)
-            self._q.append(0.)
+        self._k.append(_k)
+        self._u.append(_u)
+        self._q.append(_q)
+        self._t.append(_t)
 
-        self._t.append(self._state.time)
+
 
 
     def plot(self):
@@ -944,84 +950,90 @@ class EnergyStore(object):
         :return:
         """
 
-        if _GRAPHICS:
+        assert len(self._t) > 0, "EnergyStore error, no data to plot"
 
-            assert len(self._t) > 0, "EnergyStore error, no data to plot"
-
-            self._T_store = ScalarArray(self._t)
-            self._K_store = ScalarArray(self._k)
-            self._U_store = ScalarArray(self._u)
-            self._Q_store = ScalarArray(self._q)
+        self._T_store = ScalarArray(self._t)
+        self._K_store = ScalarArray(self._k)
+        self._U_store = ScalarArray(self._u)
+        self._Q_store = ScalarArray(self._q)
 
 
-            '''REPLACE THIS WITH AN MPI4PY REDUCE CALL'''
+        '''REPLACE THIS WITH AN MPI4PY REDUCE CALL'''
 
-            if (self._Mh is not None) and (self._Mh.nproc > 1):
+        if (self._Mh is not None) and (self._Mh.nproc > 1):
 
-                # data to collect
-                _d = [self._Q_store.dat, self._U_store.dat, self._K_store.dat]
+            # data to collect
+            _d = [self._Q_store.dat, self._U_store.dat, self._K_store.dat]
 
-                # make a temporary buffer.
-                if self._Mh.rank == 0:
-                    _buff = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
-                    _T = self._T_store.dat
-                    _Q = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
-                    _U = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
-                    _K = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
-
-                    _Q.dat[::] += self._Q_store.dat[::]
-                    _U.dat[::] += self._U_store.dat[::]
-                    _K.dat[::] += self._K_store.dat[::]
-
-                    _dl = [_Q.dat, _U.dat, _K.dat]
-                else:
-                    _dl = [None, None, None]
-
-                for _di, _dj in zip(_d, _dl):
-
-                    if self._Mh.rank == 0:
-                        _MS = MPI.Status()
-                        for ix in range(1, self._Mh.nproc):
-                            self._Mh.comm.Recv(_buff.dat[::], ix, ix, _MS)
-                            _dj[::] += _buff.dat[::]
-
-                    else:
-                        self._Mh.comm.Send(_di[::], 0, self._Mh.rank)
-
-                if self._Mh.rank == 0:
-                    _Q = _Q.dat
-                    _U = _U.dat
-                    _K = _K.dat
-
-            else:
+            # make a temporary buffer.
+            if self._Mh.rank == 0:
+                _buff = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
                 _T = self._T_store.dat
-                _Q = self._Q_store.dat
-                _U = self._U_store.dat
-                _K = self._K_store.dat
+                _Q = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+                _U = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+                _K = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
 
-            if (self._Mh is None) or (self._Mh.rank == 0):
-                print "last total", _Q[-1]
-                print "last kinetic", _K[-1]
-                print "last potential", _U[-1]
-                print "============================================="
-                print "first total", _Q[0]
-                print "first kinetic", _K[0]
-                print "first potential", _U[0]
+                _Q.dat[::] += self._Q_store.dat[::]
+                _U.dat[::] += self._U_store.dat[::]
+                _K.dat[::] += self._K_store.dat[::]
 
-                plt.ion()
-                fig2 = plt.figure()
-                ax2 = fig2.add_subplot(111)
+                _dl = [_Q.dat, _U.dat, _K.dat]
+            else:
+                _dl = [None, None, None]
 
-                ax2.plot(_T, _Q, color='r', linewidth=2)
-                ax2.plot(_T, _U, color='g')
-                ax2.plot(_T, _K, color='b')
+            for _di, _dj in zip(_d, _dl):
 
-                ax2.set_title('Red: Total energy, Green: Potential energy, Blue: kinetic energy')
-                ax2.set_xlabel('Time')
-                ax2.set_ylabel('Energy')
+                if self._Mh.rank == 0:
+                    _MS = MPI.Status()
+                    for ix in range(1, self._Mh.nproc):
+                        self._Mh.comm.Recv(_buff.dat[::], ix, ix, _MS)
+                        _dj[::] += _buff.dat[::]
 
-                fig2.canvas.draw()
-                plt.show(block=False)
+                else:
+                    self._Mh.comm.Send(_di[::], 0, self._Mh.rank)
+
+            if self._Mh.rank == 0:
+                _Q = _Q.dat
+                _U = _U.dat
+                _K = _K.dat
+
+        else:
+            _T = self._T_store.dat
+            _Q = self._Q_store.dat
+            _U = self._U_store.dat
+            _K = self._K_store.dat
+
+        if (MPI_HANDLE.rank == 0) and _GRAPHICS:
+            print "last total", _Q[-1]
+            print "last kinetic", _K[-1]
+            print "last potential", _U[-1]
+            print "============================================="
+            print "first total", _Q[0]
+            print "first kinetic", _K[0]
+            print "first potential", _U[0]
+
+            plt.ion()
+            fig2 = plt.figure()
+            ax2 = fig2.add_subplot(111)
+
+            ax2.plot(_T, _Q, color='r', linewidth=2)
+            ax2.plot(_T, _U, color='g')
+            ax2.plot(_T, _K, color='b')
+
+            ax2.set_title('Red: Total energy, Green: Potential energy, Blue: kinetic energy')
+            ax2.set_xlabel('Time')
+            ax2.set_ylabel('Energy')
+
+            fig2.canvas.draw()
+            plt.show(block=False)
+
+        if MPI_HANDLE.rank == 0:
+            _fh = open('./output/energy.txt', 'w')
+            _fh.write("Time\tKinetic\tPotential\tTotal\n")
+            for ix in range(len(self._t)):
+                _fh.write("%(T)s\t%(K)s\t%(P)s\t%(Q)s\n" % {'T':_T[ix], 'K':_K[ix], 'P':_U[ix], 'Q':_Q[ix]})
+            _fh.close()
+
 
 class PercentagePrinter(object):
     """

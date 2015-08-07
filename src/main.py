@@ -191,8 +191,8 @@ if __name__ == '__main__':
     
     if data.MPI_HANDLE.rank ==0:
         try:
-            a=input("PRESS ENTER TO CONTINUE.\n")
-            #pass
+            #a=input("PRESS ENTER TO CONTINUE.\n")
+            pass
         except:
             pass
     #MPI_HANDLE.barrier()
