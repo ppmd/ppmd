@@ -19,7 +19,7 @@ class Debug(object):
     _level = 0
 
     def __init__(self, level=0):
-        self._level = level
+        self._level = int(level)
 
     @property
     def level(self):
@@ -34,7 +34,7 @@ class Debug(object):
         Set a debug level.
         :arg int level: New debug level.
         """
-        self._level = level
+        self._level = int(level)
 
 DEBUG = Debug(0)
 
@@ -49,7 +49,7 @@ class Verbose(object):
     _level = 0
 
     def __init__(self, level=0):
-        self._level = level
+        self._level = int(level)
 
     @property
     def level(self):
@@ -64,7 +64,7 @@ class Verbose(object):
         Set a verbose level.
         :arg int level: New verbose level.
         """
-        self._level = level
+        self._level = int(level)
 
 VERBOSE = Verbose(0)
 
@@ -79,7 +79,7 @@ class Timer(object):
     _level = 0
 
     def __init__(self, level=0):
-        self._level = level
+        self._level = int(level)
 
     @property
     def level(self):
@@ -94,7 +94,7 @@ class Timer(object):
         Set a Timer level.
         :arg int level: New Timer level.
         """
-        self._level = level
+        self._level = int(level)
 
 TIMER = Timer(0)
 
