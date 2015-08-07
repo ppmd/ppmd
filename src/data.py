@@ -1029,9 +1029,9 @@ class EnergyStore(object):
 
         if MPI_HANDLE.rank == 0:
             _fh = open('./output/energy.txt', 'w')
-            _fh.write("Time\tKinetic\tPotential\tTotal\n")
+            _fh.write("Time Kinetic Potential Total\n")
             for ix in range(len(self._t)):
-                _fh.write("%(T)s\t%(K)s\t%(P)s\t%(Q)s\n" % {'T':_T[ix], 'K':_K[ix], 'P':_U[ix], 'Q':_Q[ix]})
+                _fh.write("%(T)s %(K)s %(P)s %(Q)s\n" % {'T':_T[ix], 'K':_K[ix], 'P':_U[ix], 'Q':_Q[ix]})
             _fh.close()
 
 
