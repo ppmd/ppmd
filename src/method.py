@@ -3,8 +3,18 @@ import data
 import pairloop
 import loop
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+
+_GRAPHICS = True
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    _GRAPHICS = False
+
+try:
+    from mpl_toolkits.mplot3d import Axes3D
+except ImportError:
+    _GRAPHICS = False
+
 import collections
 import kernel
 import constant
@@ -527,19 +537,22 @@ class RadialDistributionPeriodicNVE(object):
         self._grscaled = self._gr.dat*self._state.domain.volume/((self._N())*(self._N() - 1)*2*math.pi*(self._r**2) * (self._rmax/float(self._rsteps))*self._count)
         
     def plot(self):
-        self._scale()
-        if self._count > 0:
-            plt.ion()
-            _fig = plt.figure()
-            _ax = _fig.add_subplot(111)
-            
-            plt.plot(self._r, self._grscaled)
-            _ax.set_title('Radial Distribution Function')
-            _ax.set_xlabel('r')
-            _ax.set_ylabel('G(r)')
-            plt.show()
-        else:
-            print "Warning: run evaluate() at least once before plotting."
+
+        if _GRAPHICS:
+
+            self._scale()
+            if self._count > 0:
+                plt.ion()
+                _fig = plt.figure()
+                _ax = _fig.add_subplot(111)
+
+                plt.plot(self._r, self._grscaled)
+                _ax.set_title('Radial Distribution Function')
+                _ax.set_xlabel('r')
+                _ax.set_ylabel('G(r)')
+                plt.show()
+            else:
+                print "Warning: run evaluate() at least once before plotting."
 
     def reset(self):
         self._gr.scale(0.0)
@@ -692,19 +705,21 @@ class VelocityAutoCorrelationBasic(object):
         """
         Plot array of recorded VAF evaluations.
         """
-        
-        if self._VAF_index > 0:
-            plt.ion()
-            _fig = plt.figure()
-            _ax = _fig.add_subplot(111)
-            
-            plt.plot(self._T_store.dat, self._VAF.dat)
-            _ax.set_title('Velocity Autocorrelation Function')
-            _ax.set_xlabel('Time')
-            _ax.set_ylabel('VAF')
-            plt.show()
-        else:
-            print "Warning: run evaluate() at least once before plotting."
+
+        if _GRAPHICS:
+
+            if self._VAF_index > 0:
+                plt.ion()
+                _fig = plt.figure()
+                _ax = _fig.add_subplot(111)
+
+                plt.plot(self._T_store.dat, self._VAF.dat)
+                _ax.set_title('Velocity Autocorrelation Function')
+                _ax.set_xlabel('Time')
+                _ax.set_ylabel('VAF')
+                plt.show()
+            else:
+                print "Warning: run evaluate() at least once before plotting."
 
 ################################################################################################################
 # WriteTrajectoryXYZ
@@ -941,22 +956,24 @@ class VelocityAutoCorrelation(object):
         Plot array of recorded VAF evaluations.
         """
 
-        _Vloc = np.array(self._V)
-        _V = np.zeros(len(self._T))
+        if _GRAPHICS:
 
-        print _Vloc
+            _Vloc = np.array(self._V)
+            _V = np.zeros(len(self._T))
 
-        data.MPI_HANDLE.comm.Reduce(_Vloc, _V, data.MPI.SUM, 0)
+            print _Vloc
 
-        if len(self._T) > 0:
-            plt.ion()
-            _fig = plt.figure()
-            _ax = _fig.add_subplot(111)
+            data.MPI_HANDLE.comm.Reduce(_Vloc, _V, data.MPI.SUM, 0)
 
-            plt.plot(self._T, _V)
-            _ax.set_title('Velocity Autocorrelation Function')
-            _ax.set_xlabel('Time')
-            _ax.set_ylabel('VAF')
-            plt.show()
-        else:
-            print "Warning: run evaluate() at least once before plotting."
+            if len(self._T) > 0:
+                plt.ion()
+                _fig = plt.figure()
+                _ax = _fig.add_subplot(111)
+
+                plt.plot(self._T, _V)
+                _ax.set_title('Velocity Autocorrelation Function')
+                _ax.set_xlabel('Time')
+                _ax.set_ylabel('VAF')
+                plt.show()
+            else:
+                print "Warning: run evaluate() at least once before plotting."
