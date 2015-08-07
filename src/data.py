@@ -224,7 +224,7 @@ class MDMPI(object):
 MPI_HANDLE = MDMPI()
 
 ###############################################################################################################
-# MPI_HANDLE
+# pprint
 ###############################################################################################################
 
 def pprint(*args):
@@ -234,6 +234,25 @@ def pprint(*args):
     :return:
     """
     MPI_HANDLE.print_str(*args)
+
+def rprint(*args):
+    """
+    Print a string on stdout from all procs.
+    :param string:
+    :return:
+    """
+    _s = ''
+    for ix in args:
+        _s += str(ix)
+
+    for ix in range(MPI_HANDLE.nproc):
+        if MPI_HANDLE.rank == ix:
+            print "rank",MPI_HANDLE.rank,":",_s
+            sys.stdout.flush()
+
+        MPI_HANDLE.barrier()
+
+
 
 ###############################################################################################################
 # XYZWrite

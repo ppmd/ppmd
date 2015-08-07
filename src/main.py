@@ -7,7 +7,7 @@ import numpy as np
 import method
 import data
 import build
-
+import gpucuda
 
 if __name__ == '__main__':
     
@@ -37,12 +37,20 @@ if __name__ == '__main__':
     t=0.1
     dt=0.0001
 
-
-
-
     # Enbale debug flags?
     build.DEBUG.level = 0
-    
+
+    #verbosity level
+    build.VERBOSE.level = 1
+
+
+    #gpu set device
+    gpucuda.cuda_set_device()
+
+
+
+
+
     if test_1000:
         # n=25 reasonable size
         n = 10

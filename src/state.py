@@ -39,7 +39,7 @@ class BaseMDState(object):
         :arg double mass: Mass of particles, default 1.0        
         
         """
-        self._verbose = False
+        self._verbose = build.VERBOSE.level
         self._potential = potential
         self._N = n
         self._NT = n

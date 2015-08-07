@@ -36,8 +36,38 @@ class Debug(object):
         """
         self._level = level
 
-
 DEBUG = Debug(0)
+
+################################################################################################################
+# Verbose Class, store verbosity
+################################################################################################################
+
+class Verbose(object):
+    """
+    Class to hold a verbose level.
+    """
+    _level = 0
+
+    def __init__(self, level=0):
+        self._level = level
+
+    @property
+    def level(self):
+        """
+        Return current verbose level.
+        """
+        return self._level
+
+    @level.setter
+    def level(self, level):
+        """
+        Set a verbose level.
+        :arg int level: New verbose level.
+        """
+        self._level = level
+
+VERBOSE = Verbose(0)
+
 
 
 ################################################################################################################
