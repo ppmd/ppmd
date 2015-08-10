@@ -280,15 +280,15 @@ def load_library_exception(kernel_name='None supplied', unique_name='None suppli
                        "\t \t \t ERROR \n"
                        "###################################################### \n"
                        "kernel name: " + str(kernel_name) + "\n"
-                                                            "------------------------------------------------------ \n"
-                                                            "looping class: " + str(looping_type) + "\n"
-                                                                                                    "------------------------------------------------------ \n"
-                                                                                                    "Compile/link error message: \n \n" +
+                       "------------------------------------------------------ \n"
+                       "looping class: " + str(looping_type) + "\n"
+                       "------------------------------------------------------ \n"
+                       "Compile/link error message: \n \n" +
                        str(err_msg) + "\n"
-                                      "------------------------------------------------------ \n"
-                                      "Error location attempt: \n \n" +
+                       "------------------------------------------------------ \n"
+                       "Error location attempt: \n \n" +
                        str(err_code) + "\n \n"
-                                       "###################################################### \n"
+                       "###################################################### \n"
                        )
 
 

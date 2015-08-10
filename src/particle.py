@@ -34,6 +34,11 @@ class Dat(object):
                 self._N1 = initial_value.shape[0]
                 self._N2 = initial_value.shape[1]
                 self._max_size = initial_value.shape[0]
+            elif type(initial_value) is list:
+                self._Dat = np.array(initial_value, dtype=self._dtype, order='C')
+                self._N1 = len(initial_value)
+                self._N2 = 1
+                self._max_size = self._N1
             else:
                 self._Dat = float(initial_value) * np.ones([n1, n2], dtype=self._dtype, order='C')
                 self._max_size = n1
@@ -163,7 +168,7 @@ class Dat(object):
         """
 
         if n > self._max_size:
-            self._max_size = n + (n - self._max_size) * 10
+            self._max_size = n  # + (n - self._max_size) * 10
             self._Dat.resize([n, self._N2])
             # self._N1 = n
 

@@ -8,13 +8,14 @@ import method
 import data
 import build
 import gpucuda
+import os
 
 if __name__ == '__main__':
 
     # debug level
     build.DEBUG.level = 0
     #verbosity level
-    build.VERBOSE.level = 2
+    build.VERBOSE.level = 3
     #timer level
     build.TIMER.level = 1
 
@@ -41,7 +42,7 @@ if __name__ == '__main__':
     # Write XYZ?
     writing = True
 
-    t=0.1
+    t=0.01
     dt=0.0001
 
 
@@ -51,6 +52,23 @@ if __name__ == '__main__':
     gpucuda.cuda_set_device()
 
 
+
+    a_N = 10000000
+
+    d_a = gpucuda.CudaDeviceDat(size=a_N)
+
+    a = data.ScalarArray(initial_value=range(a_N))
+
+    d_a.cpy_host_to_device(a.ctypes_data)
+
+    print a[0:10:]
+    a.scale(0.)
+    os.system("nvidia-smi")
+    print a[0:10:]
+
+    d_a.cpy_device_to_host(a.ctypes_data)
+
+    print a[0:10:]
 
 
 
@@ -199,12 +217,14 @@ if __name__ == '__main__':
     #If logging was enabled, plot data.
     if (logging):
         energyhandle.plot()
-    
+
+
+    gpucuda.cuda_device_reset()
+
     if data.MPI_HANDLE.rank ==0:
         try:
-            #a=input("PRESS ENTER TO CONTINUE.\n")
-            pass
+            a=input("PRESS ENTER TO CONTINUE.\n")
+            #pass
         except:
             pass
     #MPI_HANDLE.barrier()
-    gpucuda.cuda_device_reset()
