@@ -6,7 +6,7 @@ import hashlib
 import subprocess
 import data
 import re
-
+import time
 
 ################################################################################################################
 # Level class, avoids passing handles everywhere
@@ -39,6 +39,68 @@ class Level(object):
 DEBUG = Level(0)
 VERBOSE = Level(0)
 TIMER = Level(0)
+
+
+######################################################################
+# Timer class
+######################################################################
+
+class Timer(object):
+    """
+    Automatic timing class.
+    """
+    def __init__(self, level_object, level=0, start=False):
+        self._lo = level_object
+        self._l = level
+        self._ts = 0.0
+        self._tt = 0.0
+        self._running = False
+
+        if start:
+            self.start()
+
+
+
+    def start(self):
+        """
+        Start the timer.
+        """
+        if (self._lo.level > self._l) and (self._running is False):
+            self._ts = time.time()
+            self._running = True
+
+    def pause(self):
+        """
+        Pause the timer.
+        """
+        if (self._lo.level > self._l) and (self._running is True):
+            self._tt += time.time() - self._ts
+            self._ts = 0.0
+            self._running = False
+
+
+    def stop(self, str=''):
+        """
+        Stop timer and print time.
+        :arg string str: string to append after time. If None time printing will be suppressed.
+        """
+        if (self._lo.level > self._l) and (self._running is True):
+            self._tt += time.time() - self._ts
+
+
+        data.pprint(self._tt, "s :", str)
+
+
+        self._ts = 0.0
+        self._tt = 0.0
+
+        self._running = False
+
+
+
+
+
+
 
 
 ################################################################################################################

@@ -80,7 +80,7 @@ def _build_static_libs(lib):
 
 
 #####################################################################################
-# load cuda runtime library
+# load libraries
 #####################################################################################
 
 try:
@@ -97,6 +97,7 @@ except:
         raise RuntimeError('gpucuda error: Module is not initialised correctly, CUDA runtime not loaded')
     LIBCUDART = None
 
+# wrapper library for functions involving types.
 try:
     LIBHELPER = ct.cdll.LoadLibrary(_build_static_libs('cudaHelperLib'))
 except:
@@ -104,7 +105,7 @@ except:
 
 
 #####################################################################################
-# cuda_set_device
+# Device id of currently used device. Assuming model of one mpi process per gpu.
 #####################################################################################
 
 class Device(object):
@@ -121,6 +122,9 @@ class Device(object):
 
 DEVICE = Device()
 
+#####################################################################################
+# cuda_set_device. Assuming model of one mpi process per gpu.
+#####################################################################################
 
 def cuda_set_device(device=None):
     """
@@ -183,8 +187,6 @@ def INIT_STATUS():
         return True
     else:
         return False
-
-
 
 
 #####################################################################################
@@ -258,7 +260,7 @@ class CudaDeviceDat(object):
 
     def free(self):
         """
-        Free allocated device memory.
+        Free allocated device memory. Do not call after a device reset.
         :return:
         """
         libcudart('cudaFree', self._d_p)
@@ -290,7 +292,6 @@ class CudaDeviceDat(object):
         :return:
         """
 
-
         if size is None:
             _s = ct.c_size_t(self._size * ct.sizeof(self._dtype))
         else:
@@ -301,7 +302,7 @@ class CudaDeviceDat(object):
     @property
     def dtype(self):
         """
-        :return: Datatype of array.
+        :return: Data type of array.
         """
         return self._dtype
 
@@ -312,7 +313,6 @@ class CudaDeviceDat(object):
         :return: device pointer
         """
         return self._d_p
-
 
 
 
