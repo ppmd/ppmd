@@ -8,7 +8,7 @@ import data
 import kernel
 import loop
 import build
-import linker
+
 
 np.set_printoptions(threshold='nan')
 

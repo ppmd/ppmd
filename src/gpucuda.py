@@ -87,14 +87,16 @@ try:
     CUDA_INC_PATH = os.environ['CUDA_INC_PATH']
 except KeyError:
     if ERROR_LEVEL.level > 2:
-        raise RuntimeError('gpucuda error: cuda toolkit environment path not found, expecting CUDA_INC_PATH')
+        raise RuntimeError('gpucuda error: cuda toolkit environment path not '
+                           'found, expecting CUDA_INC_PATH')
     CUDA_INC_PATH = None
 
 try:
     LIBCUDART = ct.cdll.LoadLibrary(CUDA_INC_PATH + "/lib64/libcudart.so.6.5")
 except:
     if ERROR_LEVEL.level > 2:
-        raise RuntimeError('gpucuda error: Module is not initialised correctly, CUDA runtime not loaded')
+        raise RuntimeError('gpucuda error: Module is not initialised correctly,'
+                           ' CUDA runtime not loaded')
     LIBCUDART = None
 
 # wrapper library for functions involving types.
@@ -252,7 +254,8 @@ class CudaDeviceDat(object):
         self._d_p = ct.POINTER(self._dtype)()
 
         #allocate space.
-        libcudart('cudaMalloc', ct.byref(self._d_p), ct.c_size_t(self._size * ct.sizeof(self._dtype)))
+        libcudart('cudaMalloc', ct.byref(self._d_p),
+                  ct.c_size_t(self._size * ct.sizeof(self._dtype)))
 
         # Bool to flag if memory is allocated on device.
         self._alloc = True
@@ -270,8 +273,8 @@ class CudaDeviceDat(object):
         """
         Copy data from host pointer to device.
         :param host_ptr: host pointer to copy from.
-        :param size: amount to copy (bytes). If not specified Method will copy with size equal to the length
-        of the allocated device array.
+        :param size: amount to copy (bytes). If not specified Method will copy
+        with size equal to the length of the allocated device array.
         :return:
         """
 
@@ -287,8 +290,8 @@ class CudaDeviceDat(object):
         """
         Copy data from host pointer to device.
         :param host_ptr: host pointer to copy into.
-        :param size: amount to copy (bytes). If not specified Method will copy with size equal to the length
-        of the allocated device array.
+        :param size: amount to copy (bytes). If not specified Method
+        will copy with size equal to the length of the allocated device array.
         :return:
         """
 
