@@ -191,9 +191,7 @@ if __name__ == '__main__':
 
     ###########################################################
 
-
     test_integrator.integrate(dt=dt, t=t)
-
 
     test_domain.halos.timer.time("Total time in halo exchange.")
     test_state.timer.time("Total time in forces update.")
@@ -208,8 +206,8 @@ if __name__ == '__main__':
 
     if data.MPI_HANDLE.rank ==0:
         try:
-            a=input("PRESS ENTER TO CONTINUE.\n")
-            #pass
+            #a=input("PRESS ENTER TO CONTINUE.\n")
+            pass
         except:
             pass
     #MPI_HANDLE.barrier()

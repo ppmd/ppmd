@@ -901,6 +901,7 @@ NullDoubleScalarArray = ScalarArray(dtype=ctypes.c_double)
 # Basic Energy Store
 ####################################################################################################
 
+
 class EnergyStore(object):
     """
     Class to hold energy data more sensibly
@@ -1091,6 +1092,22 @@ class PercentagePrinter(object):
                 pprint(self._curr_p, "%")
 
             self._curr_p += self._p
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

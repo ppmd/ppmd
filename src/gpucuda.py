@@ -314,6 +314,17 @@ class CudaDeviceDat(object):
         """
         return self._d_p
 
+    def resize(self, size):
+        """
+        Resize the array, will be slow.
+        :param size:
+        :return:
+        """
+        _d_tp = ct.POINTER(self._dtype)()
+        libcudart('cudaMalloc', ct.byref(_d_tp), ct.c_size_t(size * ct.sizeof(self._dtype)))
+        self.free()
+        self._d_p = _d_tp
+
 
 
 #####################################################################################
