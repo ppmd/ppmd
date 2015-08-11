@@ -12,5 +12,6 @@ void cudaCpyHostToDevice(void* dst, const void* src, size_t count){
 
 void cudaCpyDeviceToHost(void* dst, const void* src, size_t count){
     checkCudaErrors(cudaMemcpy(dst,src,count,cudaMemcpyDeviceToHost));
+
     return;
 }

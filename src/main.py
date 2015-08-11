@@ -45,30 +45,18 @@ if __name__ == '__main__':
     t=0.01
     dt=0.0001
 
-
-
-
-    #gpu set device
-    gpucuda.cuda_set_device()
-
-
-
-    a_N = 10000000
-
-    d_a = gpucuda.CudaDeviceDat(size=a_N)
-
-    a = data.ScalarArray(initial_value=range(a_N))
-
-    d_a.cpy_host_to_device(a.ctypes_data)
-
-    print a[0:10:]
-    a.scale(0.)
-    os.system("nvidia-smi")
-    print a[0:10:]
-
-    d_a.cpy_device_to_host(a.ctypes_data)
-
-    print a[0:10:]
+    # check gpucuda Module initalised correctly.
+    if gpucuda.INIT_STATUS():
+        a_N = 10000000
+        d_a = gpucuda.CudaDeviceDat(size=a_N)
+        a = data.ScalarArray(initial_value=range(a_N))
+        d_a.cpy_htd(a.ctypes_data)
+        print a[0:10:]
+        a.scale(0.)
+        os.system("nvidia-smi")
+        print a[0:10:]
+        d_a.cpy_dth(a.ctypes_data)
+        print a[0:10:]
 
 
 
@@ -217,9 +205,6 @@ if __name__ == '__main__':
     #If logging was enabled, plot data.
     if (logging):
         energyhandle.plot()
-
-
-    gpucuda.cuda_device_reset()
 
     if data.MPI_HANDLE.rank ==0:
         try:

@@ -9,12 +9,12 @@ import re
 
 
 ################################################################################################################
-# DEBUG class, avoids passing debug handles everywhere
+# Level class, avoids passing handles everywhere
 ################################################################################################################
 
-class Debug(object):
+class Level(object):
     """
-    Class to hold a debug level.
+    Class to hold a level.
     """
     _level = 0
 
@@ -36,67 +36,9 @@ class Debug(object):
         """
         self._level = int(level)
 
-DEBUG = Debug(0)
-
-################################################################################################################
-# Verbose Class, store verbosity, avoids passing verbosity handles everywhere
-################################################################################################################
-
-class Verbose(object):
-    """
-    Class to hold a verbose level.
-    """
-    _level = 0
-
-    def __init__(self, level=0):
-        self._level = int(level)
-
-    @property
-    def level(self):
-        """
-        Return current verbose level.
-        """
-        return self._level
-
-    @level.setter
-    def level(self, level):
-        """
-        Set a verbose level.
-        :arg int level: New verbose level.
-        """
-        self._level = int(level)
-
-VERBOSE = Verbose(0)
-
-################################################################################################################
-# Timer Class, store Timer, avoids passing Timer handles everywhere
-################################################################################################################
-
-class Timer(object):
-    """
-    Class to hold a Timer level.
-    """
-    _level = 0
-
-    def __init__(self, level=0):
-        self._level = int(level)
-
-    @property
-    def level(self):
-        """
-        Return current Timer level.
-        """
-        return self._level
-
-    @level.setter
-    def level(self, level):
-        """
-        Set a Timer level.
-        :arg int level: New Timer level.
-        """
-        self._level = int(level)
-
-TIMER = Timer(0)
+DEBUG = Level(0)
+VERBOSE = Level(0)
+TIMER = Level(0)
 
 
 ################################################################################################################

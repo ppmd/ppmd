@@ -6,7 +6,10 @@ import ctypes as ct
 import data
 import build
 import subprocess
+import hashlib
+import atexit
 
+ERROR_LEVEL = build.Level(1)
 
 
 #####################################################################################
@@ -25,14 +28,24 @@ NVCC = build.Compiler(['nvcc_system_default'],
 # build static libs
 #####################################################################################
 
-def _build_static_libs():
+def _build_static_libs(lib):
 
-    _libs = ['cudaHelperLib']
-    for lib in _libs:
+    with open("./lib/" + lib + ".cu", "r") as fh:
+        _code = fh.read()
+        fh.close()
+    with open("./lib/" + lib + ".h", "r") as fh:
+        _code += fh.read()
+        fh.close()
 
-        if not os.path.exists(os.path.join('./lib/', lib + '.so')):
+    _m = hashlib.md5()
+    _m.update(_code)
+    _m = _m.hexdigest()
 
-            _lib_filename = './lib/' + lib + '.so'
+    _lib_filename = os.path.join('./build/', lib + '_' +str(_m) +'.so')
+
+    if data.MPI_HANDLE.rank == 0:
+        if not os.path.exists(_lib_filename):
+
             _lib_src_filename = './lib/' + lib + '.cu'
             _c_cmd = NVCC.binary + [_lib_src_filename] + ['-o'] + [_lib_filename] + NVCC.l_flags
             if build.DEBUG.level > 0:
@@ -40,10 +53,10 @@ def _build_static_libs():
             _c_cmd += NVCC.shared_lib_flag
 
             if build.VERBOSE.level > 1:
-                print "gpucuda _build_static_libs compile cmd:", _c_cmd
+                data.pprint("gpucuda _build_static_libs compile cmd:", _c_cmd)
 
-            stdout_filename = './lib/' + lib + '.log'
-            stderr_filename = './lib/' + lib + '.err'
+            stdout_filename = './build/' + lib + '_' +str(_m) + '.log'
+            stderr_filename = './build/' + lib + '_' +str(_m) + '.err'
             try:
                 with open(stdout_filename, 'w') as stdout:
                     with open(stderr_filename, 'w') as stderr:
@@ -55,14 +68,15 @@ def _build_static_libs():
                                              stderr=stderr)
                         p.communicate()
             except:
-                print "gpucuda error: Shared library not built:", lib
+                if ERROR_LEVEL.level > 2:
+                    raise RuntimeError('gpucuda error: helper library not built.')
+                elif build.VERBOSE.level > 2:
+                    data.pprint("gpucuda warning: Shared library not built:", lib)
 
-        if not os.path.exists(os.path.join('./lib/', lib + '.so')):
-            print "gpucuda error: Shared library not build:", lib
 
+    data.MPI_HANDLE.barrier()
 
-
-_build_static_libs()
+    return _lib_filename
 
 
 #####################################################################################
@@ -72,23 +86,40 @@ _build_static_libs()
 try:
     CUDA_INC_PATH = os.environ['CUDA_INC_PATH']
 except KeyError:
+    if ERROR_LEVEL.level > 2:
+        raise RuntimeError('gpucuda error: cuda toolkit environment path not found, expecting CUDA_INC_PATH')
     CUDA_INC_PATH = None
 
 try:
     LIBCUDART = ct.cdll.LoadLibrary(CUDA_INC_PATH + "/lib64/libcudart.so.6.5")
 except:
+    if ERROR_LEVEL.level > 2:
+        raise RuntimeError('gpucuda error: Module is not initialised correctly, CUDA runtime not loaded')
     LIBCUDART = None
 
 try:
-    LIBHELPER = ct.cdll.LoadLibrary("./lib/cudaHelperLib.so")
+    LIBHELPER = ct.cdll.LoadLibrary(_build_static_libs('cudaHelperLib'))
 except:
     LIBHELPER = None
-
 
 
 #####################################################################################
 # cuda_set_device
 #####################################################################################
+
+class Device(object):
+    def __init__(self):
+        self._dev_id = None
+
+    @property
+    def id(self):
+        return self._dev_id
+
+    @id.setter
+    def id(self, new_id):
+        self._dev_id = int(new_id)
+
+DEVICE = Device()
 
 
 def cuda_set_device(device=None):
@@ -129,6 +160,7 @@ def cuda_set_device(device=None):
             data.rprint("setting device ", _r)
 
         LIBCUDART['cudaSetDevice'](ct.c_int(_r))
+        DEVICE.id = _r
     else:
         data.rprint("gpucuda warning: No device set")
 
@@ -136,6 +168,23 @@ def cuda_set_device(device=None):
         _dev = ct.c_int()
         LIBCUDART['cudaGetDevice'](ct.byref(_dev))
         data.rprint("cudaGetDevice returned device ", _dev.value)
+
+#####################################################################################
+# Is module ready to use?
+#####################################################################################
+
+def INIT_STATUS():
+    """
+    Function to determine if the module is correctly loaded and can be used.
+    :return: True/False.
+    """
+
+    if (LIBCUDART is not None) and (LIBHELPER is not None) and (DEVICE.id is not None):
+        return True
+    else:
+        return False
+
+
 
 
 #####################################################################################
@@ -162,7 +211,7 @@ def libcudart(*args):
     assert LIBCUDART is not None, "gpucuda error: No CUDA Runtime library loaded"
 
     if build.VERBOSE.level > 2:
-        print args
+        data.rprint(args)
 
     cuda_err_check(LIBCUDART[args[0]](*args[1::]))
 
@@ -176,7 +225,9 @@ def cuda_device_reset():
     Reset the current cuda device.
     :return:
     """
-    libcudart('cudaDeviceReset')
+
+    if (DEVICE.id is not None) and (LIBCUDART is not None):
+        libcudart('cudaDeviceReset')
 
 #####################################################################################
 # CudaDeviceDat
@@ -195,11 +246,14 @@ class CudaDeviceDat(object):
         self._size = size
         self._dtype = dtype
 
-        #create device pointer.
+        # create device pointer.
         self._d_p = ct.POINTER(self._dtype)()
 
         #allocate space.
         libcudart('cudaMalloc', ct.byref(self._d_p), ct.c_size_t(self._size * ct.sizeof(self._dtype)))
+
+        # Bool to flag if memory is allocated on device.
+        self._alloc = True
 
 
     def free(self):
@@ -209,7 +263,8 @@ class CudaDeviceDat(object):
         """
         libcudart('cudaFree', self._d_p)
 
-    def cpy_host_to_device(self, host_ptr, size=None):
+
+    def cpy_htd(self, host_ptr, size=None):
         """
         Copy data from host pointer to device.
         :param host_ptr: host pointer to copy from.
@@ -226,7 +281,7 @@ class CudaDeviceDat(object):
 
         LIBHELPER['cudaCpyHostToDevice'](self._d_p, host_ptr,_s)
 
-    def cpy_device_to_host(self, host_ptr, size=None):
+    def cpy_dth(self, host_ptr, size=None):
         """
         Copy data from host pointer to device.
         :param host_ptr: host pointer to copy into.
@@ -243,6 +298,35 @@ class CudaDeviceDat(object):
 
         LIBHELPER['cudaCpyDeviceToHost'](host_ptr, self._d_p, _s)
 
+    @property
+    def dtype(self):
+        """
+        :return: Datatype of array.
+        """
+        return self._dtype
+
+    @property
+    def ctypes_data(self):
+        """
+        Get pointer to device memory.
+        :return: device pointer
+        """
+        return self._d_p
 
 
 
+
+#####################################################################################
+# Module Init
+#####################################################################################
+
+cuda_set_device()
+
+#####################################################################################
+# Module cleanup
+#####################################################################################
+
+def gpucuda_cleanup():
+    cuda_device_reset()
+
+atexit.register(gpucuda_cleanup)
