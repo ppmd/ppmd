@@ -13,7 +13,7 @@ import os
 if __name__ == '__main__':
 
     # debug level
-    build.DEBUG.level = 0
+    build.DEBUG.level = 1
     #verbosity level
     build.VERBOSE.level = 3
     #timer level
@@ -195,8 +195,8 @@ if __name__ == '__main__':
     test_integrator.integrate(dt=dt, t=t)
 
 
-    data.pprint("Total time in halo exchange: ", test_domain.halos._time)
-    data.pprint("Time in forces_update: ", test_state._time_prof)
+    test_domain.halos.timer.time("Total time in halo exchange.")
+    test_state.timer.time("Total time in forces update.")
     
     ###########################################################
     

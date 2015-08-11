@@ -112,7 +112,7 @@ class BaseMDState(object):
                                                                            kernel=self._potential.kernel,
                                                                            particle_dat_dict=_potential_dat_dict)
 
-        self._time_prof = 0
+        self.timer = build.Timer(build.TIMER, 0)
 
     @property
     def time(self):
@@ -262,8 +262,7 @@ class BaseMDState(object):
         Updates forces dats using given looping method.
         """
 
-        if build.TIMER.level > 0:
-            start = time.time()
+        self.timer.start()
 
         self._cell_sort_local()
 
@@ -285,9 +284,7 @@ class BaseMDState(object):
         if self._N > 0:
             self._looping_method_accel.execute(n=self._q_list[self._q_list.end])
 
-        if build.TIMER.level > 0:
-            end = time.time()
-            self._time_prof += end - start
+        self.timer.pause()
 
     def kinetic_energy_update(self):
         """
@@ -557,7 +554,7 @@ class BaseMDStateHalo(BaseMDState):
                                                                            kernel=self._potential.kernel,
                                                                            particle_dat_dict=_potential_dat_dict)
 
-        self._time_prof = 0
+        self.timer = build.Timer(build.TIMER, 0)
 
         if build.DEBUG.level > 0:
             print "DEBUG IS ON"

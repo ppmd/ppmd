@@ -59,8 +59,6 @@ class Timer(object):
         if start:
             self.start()
 
-
-
     def start(self):
         """
         Start the timer.
@@ -78,7 +76,6 @@ class Timer(object):
             self._ts = 0.0
             self._running = False
 
-
     def stop(self, str=''):
         """
         Stop timer and print time.
@@ -87,17 +84,38 @@ class Timer(object):
         if (self._lo.level > self._l) and (self._running is True):
             self._tt += time.time() - self._ts
 
-
-        data.pprint(self._tt, "s :", str)
-
+        if self._lo.level > self._l:
+            data.pprint(self._tt, "s :", str)
 
         self._ts = 0.0
         self._tt = 0.0
 
         self._running = False
 
+    def time(self, str=None):
+        """
+        Return current total time.
+        :arg string str: string to append after time. If None time printing will be suppressed.
+        :return: Current total time as float.
+        """
+        if (str is not None) and (self._lo.level > self._l):
+            data.pprint(self._tt, "s :", str)
 
+        return self._tt
 
+    def reset(self, str=None):
+        """
+        Resets the timer. Returns the time taken up until the reset.
+        :arg string str: If not None will print time followed by string.
+        """
+        _tt = self._tt + time.time() - self._ts
+        self._tt = 0.0
+        self._ts = time.time()
+
+        if (str is not None) and (self._lo.level > self._l):
+            data.pprint(_tt, "s :", str)
+
+        return _tt
 
 
 

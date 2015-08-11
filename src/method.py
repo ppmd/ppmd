@@ -106,16 +106,11 @@ class VelocityVerlet(object):
 
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
         self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
-              
-        if build.TIMER.level > 0:
-            start = time.time()        
+
+        _t = build.Timer(build.TIMER, 0, start=True)
         self._velocity_verlet_integration()
-        if build.TIMER.level > 0:
-            end = time.time()
-            if self._state.domain.rank == 0:
-                print "integrate time taken:", end - start, "s"
-        
-        
+        _t.stop("VelocityVerlet")
+
         
         
     def _velocity_verlet_integration(self):
@@ -158,8 +153,6 @@ class VelocityVerletAnderson(VelocityVerlet):
         :arg double t: End time.
         :arg double temp: Temperature of heat bath.
         """
-        if build.TIMER.level > 0:
-            start = time.time()
         
         self._Temp = temp
         self._nu = nu
@@ -210,12 +203,9 @@ class VelocityVerletAnderson(VelocityVerlet):
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
         self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
 
-        
+        _t = build.Timer(build.TIMER, 0, start=True)
         self._velocity_verlet_integration_thermostat()
-        
-        if build.TIMER.level > 0:
-            end = time.time()
-            data.pprint("integrate thermostat time taken:", end - start, "s")
+        _t.stop("VelocityVerletAnderson")
     
     def _velocity_verlet_integration_thermostat(self):
         """
@@ -337,12 +327,9 @@ class VelocityVerletBox(VelocityVerlet):
         self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
 
 
-        if build.TIMER.level > 0:
-            start = time.time()        
+        _t = build.Timer(build.TIMER, 0, start=True)
         self._velocity_verlet_integration()
-        if build.TIMER.level > 0:
-            end = time.time()
-            data.pprint("integrate time taken:", end - start, "s")
+        _t.stop("VelocityVerletBox")
 
     def integrate_thermostat(self, dt=None, t=None, temp=273.15, nu=1.0):
         """
@@ -352,9 +339,6 @@ class VelocityVerletBox(VelocityVerlet):
         :arg double t: End time.
         :arg double temp: Temperature of heat bath.
         """
-
-        if build.TIMER.level > 0:
-            start = time.time()
         
         self._Temp = temp
         self._nu = nu
@@ -405,11 +389,10 @@ class VelocityVerletBox(VelocityVerlet):
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
         self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
 
+        _t = build.Timer(build.TIMER, 0, start=True)
         self._velocity_verlet_integration_thermostat()
-        
-        if build.TIMER.level > 0:
-            end = time.time()
-            data.pprint("integrate thermostat time taken: ", end - start, "s")
+        _t.stop("VelocityVerletAndersenBox")
+
     
     def _velocity_verlet_integration_thermostat(self):
         """
@@ -508,7 +491,9 @@ class RadialDistributionPeriodicNVE(object):
         _datdict = {'P':self._P, 'GR':self._gr}
 
         self._p = pairloop.DoubleAllParticleLoop(self._N, self._state.types_map, kernel=_grkernel, particle_dat_dict=_datdict)
-        
+
+        self.timer = build.Timer(build.TIMER, 0)
+
     def evaluate(self):
         """
         Evaluate the radial distribution function.
@@ -516,14 +501,12 @@ class RadialDistributionPeriodicNVE(object):
         
         assert self._rmax <= 0.5*self._state.domain.extent.min, "Maximum radius too large."
 
-        if build.TIMER.level > 0:
-            start = time.time()    
+        self.timer.start()
+
         self._p.execute()
         self._count += 1
 
-        if build.TIMER.level > 0:
-            end = time.time()
-            data.pprint( "rdf time taken:", end - start, "s")
+        self.timer.pause()
         
     def _scale(self):
         self._r = np.linspace(0.+0.5*(self._rmax/self._rsteps), self._rmax-0.5*(self._rmax/self._rsteps), num=self._rsteps, endpoint=True)
@@ -632,6 +615,8 @@ class VelocityAutoCorrelationBasic(object):
         
         self._loop = loop.SingleAllParticleLoop(self._N, None, kernel=_kernel, particle_dat_dict=self._datdict)
 
+        self.timer = build.Timer(build.TIMER, 0)
+
     def set_v0(self, v0=None, state=None):
         """
         Set an initial velocity Dat to use as V_0. Requires either a velocity Dat or a state as an argument. V_0 will be set to either the passed velocities or to the velocities in the passed state.        
@@ -654,8 +639,8 @@ class VelocityAutoCorrelationBasic(object):
         
         :arg double t: Time within block of integration.
         """
-        if build.TIMER.level > 0:
-            start = time.time()
+
+        self.timer.start()
 
         _t = self._state.time
 
@@ -673,9 +658,7 @@ class VelocityAutoCorrelationBasic(object):
         
         self._VAF_index += 1
 
-        if build.TIMER.level > 0:
-            end = time.time()
-            data.pprint("VAF time taken:", end - start, "s")
+        self.timer.pause()
 
     def append_prepare(self, size):
         """
@@ -747,14 +730,17 @@ class WriteTrajectoryXYZ(object):
             self._fh = open(os.path.join(self._dn, self._fn), 'w')
             self._fh.close()
 
+        self.timer = build.Timer(build.TIMER, 0)
+
     def write(self):
         """
         Append current positions to file.
         :return:
         """
+
+        self.timer.start()
+
         space = ' '
-
-
 
         if data.MPI_HANDLE.rank == 0:
             self._fh = open(os.path.join(self._dn, self._fn), 'a')
@@ -778,6 +764,7 @@ class WriteTrajectoryXYZ(object):
 
                 data.MPI_HANDLE.barrier()
 
+        self.timer.pause()
 
 ################################################################################################################
 # Schedule

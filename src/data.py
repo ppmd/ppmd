@@ -15,6 +15,7 @@ import pickle
 from mpi4py import MPI
 import sys
 import math
+import build
 
 np.set_printoptions(threshold='nan')
 
@@ -1054,6 +1055,8 @@ class PercentagePrinter(object):
         self._max_it = math.ceil(_t/_dt)
         self._count = 0
         self._curr_p = percent
+        self.timer = build.Timer(build.TIMER, 0, start=False)
+        self._timing = False
 
     def new_times(self, dt, t):
         """
@@ -1075,10 +1078,18 @@ class PercentagePrinter(object):
         Method to call per iteration.
         """
 
+        if (self._timing is False) and (build.TIMER.level > 0):
+            self.timer.start()
+
         self._count += 1
 
         if (float(self._count)/self._max_it)*100 > self._curr_p:
-            pprint(self._curr_p, "%")
+
+            if build.TIMER.level > 0:
+                pprint(self._curr_p, "%", self.timer.reset(), 's')
+            else:
+                pprint(self._curr_p, "%")
+
             self._curr_p += self._p
 
 
