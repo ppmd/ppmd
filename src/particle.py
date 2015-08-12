@@ -189,7 +189,7 @@ class Dat(object):
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
 
-        if os.path.exists(os.path.join(dir_name, file_name)) & (rename_override != True):
+        if os.path.exists(os.path.join(dir_name, file_name)) & (rename_override is not True):
             file_name = re.sub('.Dat', datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.Dat', file_name)
             if os.path.exists(os.path.join(dir_name, file_name)):
                 file_name = re.sub('.Dat', datetime.datetime.now().strftime("_%f") + '.Dat', file_name)
@@ -232,7 +232,7 @@ class Dat(object):
             self._XYZFile_exists = False
             self._XYZfilename = file_name
 
-        if (append > 0) & (self._XYZFile_exists == False):
+        if (append > 0) & (self._XYZFile_exists is False):
             self._XYZfilename = file_name
 
         if title is None:
@@ -243,7 +243,7 @@ class Dat(object):
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
 
-        if (os.path.exists(os.path.join(dir_name, self._XYZfilename)) & (rename_override == False) & (
+        if (os.path.exists(os.path.join(dir_name, self._XYZfilename)) & (rename_override is False) & (
                     self._XYZFile_exists == False)):
             self._XYZfilename = re.sub('.xyz', datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.xyz',
                                        self._XYZfilename)

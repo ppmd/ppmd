@@ -8,6 +8,7 @@ import data
 import kernel
 import loop
 import build
+import runtime
 
 
 np.set_printoptions(threshold='nan')
@@ -112,7 +113,7 @@ class BaseMDState(object):
                                                                            kernel=self._potential.kernel,
                                                                            particle_dat_dict=_potential_dat_dict)
 
-        self.timer = build.Timer(build.TIMER, 0)
+        self.timer = build.Timer(runtime.TIMER, 0)
 
     @property
     def time(self):
@@ -266,7 +267,7 @@ class BaseMDState(object):
 
         self._cell_sort_local()
 
-        if self._cell_setup_attempt == True:
+        if self._cell_setup_attempt is True:
             self._domain.halos.set_position_info(self._cell_contents_count, self._q_list)
             self._domain.halos.exchange(self._pos)
 
@@ -554,9 +555,9 @@ class BaseMDStateHalo(BaseMDState):
                                                                            kernel=self._potential.kernel,
                                                                            particle_dat_dict=_potential_dat_dict)
 
-        self.timer = build.Timer(build.TIMER, 0)
+        self.timer = build.Timer(runtime.TIMER, 0)
 
-        if build.DEBUG.level > 0:
+        if runtime.DEBUG.level > 0:
             print "DEBUG IS ON"
 
     def _cell_sort_setup(self):

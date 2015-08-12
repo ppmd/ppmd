@@ -26,6 +26,8 @@ import datetime
 import particle
 import inspect
 import build
+
+import runtime
 np.set_printoptions(threshold='nan')
 
 
@@ -107,7 +109,7 @@ class VelocityVerlet(object):
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
         self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
 
-        _t = build.Timer(build.TIMER, 0, start=True)
+        _t = build.Timer(runtime.TIMER, 0, start=True)
         self._velocity_verlet_integration()
         _t.stop("VelocityVerlet")
 
@@ -203,7 +205,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
         self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
 
-        _t = build.Timer(build.TIMER, 0, start=True)
+        _t = build.Timer(runtime.TIMER, 0, start=True)
         self._velocity_verlet_integration_thermostat()
         _t.stop("VelocityVerletAnderson")
     
@@ -327,7 +329,7 @@ class VelocityVerletBox(VelocityVerlet):
         self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
 
 
-        _t = build.Timer(build.TIMER, 0, start=True)
+        _t = build.Timer(runtime.TIMER, 0, start=True)
         self._velocity_verlet_integration()
         _t.stop("VelocityVerletBox")
 
@@ -389,7 +391,7 @@ class VelocityVerletBox(VelocityVerlet):
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
         self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
 
-        _t = build.Timer(build.TIMER, 0, start=True)
+        _t = build.Timer(runtime.TIMER, 0, start=True)
         self._velocity_verlet_integration_thermostat()
         _t.stop("VelocityVerletAndersenBox")
 
@@ -492,7 +494,7 @@ class RadialDistributionPeriodicNVE(object):
 
         self._p = pairloop.DoubleAllParticleLoop(self._N, self._state.types_map, kernel=_grkernel, particle_dat_dict=_datdict)
 
-        self.timer = build.Timer(build.TIMER, 0)
+        self.timer = build.Timer(runtime.TIMER, 0)
 
     def evaluate(self):
         """
@@ -615,7 +617,7 @@ class VelocityAutoCorrelationBasic(object):
         
         self._loop = loop.SingleAllParticleLoop(self._N, None, kernel=_kernel, particle_dat_dict=self._datdict)
 
-        self.timer = build.Timer(build.TIMER, 0)
+        self.timer = build.Timer(runtime.TIMER, 0)
 
     def set_v0(self, v0=None, state=None):
         """
@@ -726,11 +728,11 @@ class WriteTrajectoryXYZ(object):
         self._dn = dir_name
         self._fh = None
 
-        if data.MPI_HANDLE.rank == 0:
+        if runtime.MPI_HANDLE.rank == 0:
             self._fh = open(os.path.join(self._dn, self._fn), 'w')
             self._fh.close()
 
-        self.timer = build.Timer(build.TIMER, 0)
+        self.timer = build.Timer(runtime.TIMER, 0)
 
     def write(self):
         """
@@ -742,15 +744,15 @@ class WriteTrajectoryXYZ(object):
 
         space = ' '
 
-        if data.MPI_HANDLE.rank == 0:
+        if runtime.MPI_HANDLE.rank == 0:
             self._fh = open(os.path.join(self._dn, self._fn), 'a')
             self._fh.write(str(self._s.nt()) + '\n')
             self._fh.write(str(self._title) + '\n')
             self._fh.flush()
-        data.MPI_HANDLE.barrier()
+        runtime.MPI_HANDLE.barrier()
 
         if self._ordered is False:
-            for iz in range(data.MPI_HANDLE.nproc):
+            for iz in range(runtime.MPI_HANDLE.nproc):
                 if self._s.mpi_handle.rank == iz:
                     self._fh = open(os.path.join(self._dn, self._fn), 'a')
                     for ix in range(self._s.n()):
@@ -762,7 +764,7 @@ class WriteTrajectoryXYZ(object):
                     self._fh.flush()
                     self._fh.close()
 
-                data.MPI_HANDLE.barrier()
+                runtime.MPI_HANDLE.barrier()
 
         self.timer.pause()
 
@@ -909,7 +911,7 @@ class VelocityAutoCorrelation(object):
 
         :arg double t: Time within block of integration.
         """
-        if build.TIMER.level > 0:
+        if runtime.TIMER.level > 0:
             start = time.time()
 
         _t = self._state.time
@@ -922,7 +924,7 @@ class VelocityAutoCorrelation(object):
         self._V.append(self._VAF[0])
         self._T.append(_t)
 
-        if build.TIMER.level > 0:
+        if runtime.TIMER.level > 0:
             end = time.time()
             data.pprint("VAF time taken:", end - start, "s")
 
@@ -938,7 +940,7 @@ class VelocityAutoCorrelation(object):
 
             print _Vloc
 
-            data.MPI_HANDLE.comm.Reduce(_Vloc, _V, data.MPI.SUM, 0)
+            runtime.MPI_HANDLE.comm.Reduce(_Vloc, _V, data.MPI.SUM, 0)
 
             if len(self._T) > 0:
                 plt.ion()

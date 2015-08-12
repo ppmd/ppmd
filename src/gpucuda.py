@@ -8,8 +8,9 @@ import build
 import subprocess
 import hashlib
 import atexit
+import runtime
 
-ERROR_LEVEL = build.Level(1)
+ERROR_LEVEL = runtime.Level(1)
 
 
 #####################################################################################
@@ -43,16 +44,16 @@ def _build_static_libs(lib):
 
     _lib_filename = os.path.join('./build/', lib + '_' +str(_m) +'.so')
 
-    if data.MPI_HANDLE.rank == 0:
+    if runtime.MPI_HANDLE.rank == 0:
         if not os.path.exists(_lib_filename):
 
             _lib_src_filename = './lib/' + lib + '.cu'
             _c_cmd = NVCC.binary + [_lib_src_filename] + ['-o'] + [_lib_filename] + NVCC.l_flags
-            if build.DEBUG.level > 0:
+            if runtime.DEBUG.level > 0:
                 _c_cmd += NVCC.dbg_flags
             _c_cmd += NVCC.shared_lib_flag
 
-            if build.VERBOSE.level > 1:
+            if runtime.VERBOSE.level > 1:
                 data.pprint("gpucuda _build_static_libs compile cmd:", _c_cmd)
 
             stdout_filename = './build/' + lib + '_' +str(_m) + '.log'
@@ -70,11 +71,11 @@ def _build_static_libs(lib):
             except:
                 if ERROR_LEVEL.level > 2:
                     raise RuntimeError('gpucuda error: helper library not built.')
-                elif build.VERBOSE.level > 2:
+                elif runtime.VERBOSE.level > 2:
                     data.pprint("gpucuda warning: Shared library not built:", lib)
 
 
-    data.MPI_HANDLE.barrier()
+    runtime.MPI_HANDLE.barrier()
 
     return _lib_filename
 
@@ -154,15 +155,15 @@ def cuda_set_device(device=None):
             print("gpucuda warning: Found two local ranks, defaulting to device 0")
 
         if _mv2r is not None:
-            _r = int(_mv2r) % data.MPI_HANDLE.nproc
+            _r = int(_mv2r) % runtime.MPI_HANDLE.nproc
         if _ompr is not None:
-            _r = int(_ompr) % data.MPI_HANDLE.nproc
+            _r = int(_ompr) % runtime.MPI_HANDLE.nproc
 
     else:
         _r = int(device)
 
     if LIBCUDART is not None:
-        if build.VERBOSE.level > 0:
+        if runtime.VERBOSE.level > 0:
             data.rprint("setting device ", _r)
 
         LIBCUDART['cudaSetDevice'](ct.c_int(_r))
@@ -170,7 +171,7 @@ def cuda_set_device(device=None):
     else:
         data.rprint("gpucuda warning: No device set")
 
-    if (build.VERBOSE.level > 0) and (LIBCUDART is not None):
+    if (runtime.VERBOSE.level > 0) and (LIBCUDART is not None):
         _dev = ct.c_int()
         LIBCUDART['cudaGetDevice'](ct.byref(_dev))
         data.rprint("cudaGetDevice returned device ", _dev.value)
@@ -214,7 +215,7 @@ def libcudart(*args):
 
     assert LIBCUDART is not None, "gpucuda error: No CUDA Runtime library loaded"
 
-    if build.VERBOSE.level > 2:
+    if runtime.VERBOSE.level > 2:
         data.rprint(args)
 
     cuda_err_check(LIBCUDART[args[0]](*args[1::]))

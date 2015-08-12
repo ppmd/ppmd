@@ -5,6 +5,7 @@ import os
 import data
 import loop
 import build
+import runtime
 
 
 class _Base(build.GenericToolChain):
@@ -94,13 +95,13 @@ class PairLoopRapaport(_Base):
         self._library_filename = self._unique_name + '.so'
 
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if data.MPI_HANDLE is None:
+            if runtime.MPI_HANDLE is None:
                 self._create_library()
 
             else:
-                if data.MPI_HANDLE.rank == 0:
+                if runtime.MPI_HANDLE.rank == 0:
                     self._create_library()
-                data.MPI_HANDLE.barrier()
+                runtime.MPI_HANDLE.barrier()
 
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
@@ -440,13 +441,13 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         self._library_filename = self._unique_name + '.so'
 
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if data.MPI_HANDLE is None:
+            if runtime.MPI_HANDLE is None:
                 self._create_library()
 
             else:
-                if data.MPI_HANDLE.rank == 0:
+                if runtime.MPI_HANDLE.rank == 0:
                     self._create_library()
-                data.MPI_HANDLE.barrier()
+                runtime.MPI_HANDLE.barrier()
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
@@ -1005,13 +1006,13 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
         self._library_filename = self._unique_name + '.so'
 
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if data.MPI_HANDLE is None:
+            if runtime.MPI_HANDLE is None:
                 self._create_library()
 
             else:
-                if data.MPI_HANDLE.rank == 0:
+                if runtime.MPI_HANDLE.rank == 0:
                     self._create_library()
-                data.MPI_HANDLE.barrier()
+                runtime.MPI_HANDLE.barrier()
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:

@@ -9,15 +9,16 @@ import data
 import build
 import gpucuda
 import os
+import runtime
 
 if __name__ == '__main__':
 
     # debug level
-    build.DEBUG.level = 1
+    runtime.DEBUG.level = 1
     #verbosity level
-    build.VERBOSE.level = 3
+    runtime.VERBOSE.level = 3
     #timer level
-    build.TIMER.level = 1
+    runtime.TIMER.level = 1
 
     x = 1
     y = 0
@@ -204,10 +205,10 @@ if __name__ == '__main__':
     if (logging):
         energyhandle.plot()
 
-    if data.MPI_HANDLE.rank ==0:
+    if runtime.MPI_HANDLE.rank ==0:
         try:
-            #a=input("PRESS ENTER TO CONTINUE.\n")
-            pass
+            a=input("PRESS ENTER TO CONTINUE.\n")
+            #pass
         except:
             pass
     #MPI_HANDLE.barrier()

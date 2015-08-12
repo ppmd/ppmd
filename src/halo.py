@@ -4,7 +4,7 @@ from mpi4py import MPI
 import kernel
 import build
 import particle
-import time
+import runtime
 
 
 ################################################################################################################
@@ -31,7 +31,7 @@ class HaloCartesianSingleProcess(object):
         self._NT = nt
 
 
-        self.timer = build.Timer(build.TIMER, 0, start=True)
+        self.timer = build.Timer(runtime.TIMER, 0, start=True)
 
         assert cell_array is not None, "Error: No cell array passed."
         assert extent is not None, "Error: No extent passed."

@@ -25,3 +25,6 @@ clean:
 
 cout:
 	rm ./output/*
+
+chart:
+	pyreverse -a1 -s1 -f ALL -my -o png *.py

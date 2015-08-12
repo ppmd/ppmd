@@ -7,38 +7,9 @@ import subprocess
 import data
 import re
 import time
+import runtime
 
-################################################################################################################
-# Level class, avoids passing handles everywhere
-################################################################################################################
 
-class Level(object):
-    """
-    Class to hold a level.
-    """
-    _level = 0
-
-    def __init__(self, level=0):
-        self._level = int(level)
-
-    @property
-    def level(self):
-        """
-        Return current debug level.
-        """
-        return self._level
-
-    @level.setter
-    def level(self, level):
-        """
-        Set a debug level.
-        :arg int level: New debug level.
-        """
-        self._level = int(level)
-
-DEBUG = Level(0)
-VERBOSE = Level(0)
-TIMER = Level(0)
 
 
 ######################################################################
@@ -134,7 +105,7 @@ class Compiler(object):
     :arg str binary: Name(+path) of Compiler binary.
     :arg list c_flags: List of compile flags as strings.
     :arg list l_flags: List of link flags as strings.
-    :arg list dbg_flags: List of debug flags as strings.
+    :arg list dbg_flags: List of runtime.DEBUG flags as strings.
     :arg list compile_flag: List of compile flag as single string (eg ['-c'] for gcc).
     :arg list sharedlibraryflag: List of flags as strings to link as shared library.
     """
@@ -170,7 +141,7 @@ class Compiler(object):
 
     @property
     def dbg_flags(self):
-        """Return Compiler debug flags"""
+        """Return Compiler runtime.DEBUG flags"""
         return self._dbgflags
 
     @property
@@ -440,7 +411,7 @@ class GenericToolChain(object):
         library_filename = filename_base + '.so'
         cflags = []
         cflags += self._cc.c_flags
-        if DEBUG > 0:
+        if runtime.DEBUG > 0:
             cflags += self._cc.dbg_flags
         cc = self._cc.binary
         ld = self._cc.binary
@@ -527,7 +498,7 @@ class SharedLib(GenericToolChain):
     :arg int n: Number of elements to loop over.
     :arg kernel kernel:  Kernel to apply at each element.
     :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
-    :arg bool DEBUG: Flag to enable debug flags.
+    :arg bool runtime.DEBUG: Flag to enable runtime.DEBUG flags.
     """
 
     def __init__(self, kernel, particle_dat_dict):
@@ -548,13 +519,13 @@ class SharedLib(GenericToolChain):
         self._library_filename = self._unique_name + '.so'
 
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if data.MPI_HANDLE is None:
+            if runtime.MPI_HANDLE is None:
                 self._create_library()
 
             else:
-                if data.MPI_HANDLE.rank == 0:
+                if runtime.MPI_HANDLE.rank == 0:
                     self._create_library()
-                data.MPI_HANDLE.barrier()
+                runtime.MPI_HANDLE.barrier()
 
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
