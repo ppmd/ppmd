@@ -31,7 +31,7 @@ class HaloCartesianSingleProcess(object):
         self._NT = nt
 
 
-        self.timer = build.Timer(runtime.TIMER, 0, start=True)
+        self.timer = runtime.Timer(runtime.TIMER, 0, start=True)
 
         assert cell_array is not None, "Error: No cell array passed."
         assert extent is not None, "Error: No extent passed."

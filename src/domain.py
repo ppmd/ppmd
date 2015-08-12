@@ -8,7 +8,7 @@ import halo
 import build
 from mpi4py import MPI
 import runtime
-
+import pio
 
 def factor(n):
     return [ix for ix in range(1, n / 2 + 1) if not n % ix] + [n]
@@ -260,7 +260,7 @@ class BaseDomainHalo(BaseDomain):
 
 
         if runtime.VERBOSE.level > 1:
-            data.pprint("Global cell array:", self._cell_array, ", Global cell extent:",self._extent)
+            pio.pprint("Global cell array:", self._cell_array, ", Global cell extent:",self._extent)
 
         self._cell_edge_lengths[0] = self._extent[0] / self._cell_array[0]
         self._cell_edge_lengths[1] = self._extent[1] / self._cell_array[1]
@@ -329,7 +329,7 @@ class BaseDomainHalo(BaseDomain):
         self._nproc = self._COMM.Get_size()
 
         if runtime.VERBOSE.level > 1:
-            data.pprint("Processor count ", self._nproc, " Processor layout ", self._dims)
+            pio.pprint("Processor count ", self._nproc, " Processor layout ", self._dims)
 
         '''Topology has below indexing, last index reverses'''
         # [z,y,x]
@@ -347,7 +347,7 @@ class BaseDomainHalo(BaseDomain):
         # print "bs =", _bs
 
         if runtime.VERBOSE.level > 1:
-            data.pprint("Cell layout", _bs)
+            pio.pprint("Cell layout", _bs)
 
         '''Get local cell array'''
         self._cell_array[0] = _bs[0][self._top[0]]

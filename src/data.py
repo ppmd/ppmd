@@ -17,6 +17,7 @@ import sys
 import math
 import build
 import runtime
+import pio
 
 
 np.set_printoptions(threshold='nan')
@@ -27,39 +28,6 @@ ctypes_map = {ctypes.c_double: 'double', ctypes.c_int: 'int', 'float64': 'double
               'doublepointerpointer': 'double **', ctypes.c_longlong: 'long long'}
 mpi_map = {ctypes.c_double: MPI.DOUBLE, ctypes.c_int: MPI.INT}
 
-
-
-
-
-
-###############################################################################################################
-# pprint
-###############################################################################################################
-
-def pprint(*args):
-    """
-    Print a string on stdout using the default MPI handle.
-    :param string:
-    :return:
-    """
-    runtime.MPI_HANDLE.print_str(*args)
-
-def rprint(*args):
-    """
-    Print a string on stdout from all procs.
-    :param string:
-    :return:
-    """
-    _s = ''
-    for ix in args:
-        _s += str(ix)
-
-    for ix in range(runtime.MPI_HANDLE.nproc):
-        if runtime.MPI_HANDLE.rank == ix:
-            print "rank",runtime.MPI_HANDLE.rank,":",_s
-            sys.stdout.flush()
-
-        runtime.MPI_HANDLE.barrier()
 
 
 
@@ -864,7 +832,7 @@ class PercentagePrinter(object):
         self._max_it = math.ceil(_t/_dt)
         self._count = 0
         self._curr_p = percent
-        self.timer = build.Timer(runtime.TIMER, 0, start=False)
+        self.timer = runtime.Timer(runtime.TIMER, 0, start=False)
         self._timing = False
 
     def new_times(self, dt, t):
@@ -895,9 +863,9 @@ class PercentagePrinter(object):
         if (float(self._count)/self._max_it)*100 > self._curr_p:
 
             if runtime.TIMER.level > 0:
-                pprint(self._curr_p, "%", self.timer.reset(), 's')
+                pio.pprint(self._curr_p, "%", self.timer.reset(), 's')
             else:
-                pprint(self._curr_p, "%")
+                pio.pprint(self._curr_p, "%")
 
             self._curr_p += self._p
 

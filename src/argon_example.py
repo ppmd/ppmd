@@ -3,13 +3,8 @@
 import domain
 import potential
 import state
-import numpy as np
-import math
 import method
 import data
-import loop
-import subprocess
-import os
 import getopt
 import sys
 

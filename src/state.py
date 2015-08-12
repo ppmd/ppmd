@@ -7,7 +7,6 @@ import pairloop
 import data
 import kernel
 import loop
-import build
 import runtime
 
 
@@ -113,7 +112,7 @@ class BaseMDState(object):
                                                                            kernel=self._potential.kernel,
                                                                            particle_dat_dict=_potential_dat_dict)
 
-        self.timer = build.Timer(runtime.TIMER, 0)
+        self.timer = runtime.Timer(runtime.TIMER, 0)
 
     @property
     def time(self):
@@ -555,7 +554,7 @@ class BaseMDStateHalo(BaseMDState):
                                                                            kernel=self._potential.kernel,
                                                                            particle_dat_dict=_potential_dat_dict)
 
-        self.timer = build.Timer(runtime.TIMER, 0)
+        self.timer = runtime.Timer(runtime.TIMER, 0)
 
         if runtime.DEBUG.level > 0:
             print "DEBUG IS ON"

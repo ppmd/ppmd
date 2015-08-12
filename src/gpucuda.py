@@ -3,12 +3,12 @@ Module to hold CUDA related code.
 """
 import os
 import ctypes as ct
-import data
 import build
 import subprocess
 import hashlib
 import atexit
 import runtime
+import pio
 
 ERROR_LEVEL = runtime.Level(1)
 
@@ -54,7 +54,7 @@ def _build_static_libs(lib):
             _c_cmd += NVCC.shared_lib_flag
 
             if runtime.VERBOSE.level > 1:
-                data.pprint("gpucuda _build_static_libs compile cmd:", _c_cmd)
+                pio.pprint("gpucuda _build_static_libs compile cmd:", _c_cmd)
 
             stdout_filename = './build/' + lib + '_' +str(_m) + '.log'
             stderr_filename = './build/' + lib + '_' +str(_m) + '.err'
@@ -72,7 +72,7 @@ def _build_static_libs(lib):
                 if ERROR_LEVEL.level > 2:
                     raise RuntimeError('gpucuda error: helper library not built.')
                 elif runtime.VERBOSE.level > 2:
-                    data.pprint("gpucuda warning: Shared library not built:", lib)
+                    pio.pprint("gpucuda warning: Shared library not built:", lib)
 
 
     runtime.MPI_HANDLE.barrier()
@@ -164,17 +164,17 @@ def cuda_set_device(device=None):
 
     if LIBCUDART is not None:
         if runtime.VERBOSE.level > 0:
-            data.rprint("setting device ", _r)
+            pio.rprint("setting device ", _r)
 
         LIBCUDART['cudaSetDevice'](ct.c_int(_r))
         DEVICE.id = _r
     else:
-        data.rprint("gpucuda warning: No device set")
+        pio.rprint("gpucuda warning: No device set")
 
     if (runtime.VERBOSE.level > 0) and (LIBCUDART is not None):
         _dev = ct.c_int()
         LIBCUDART['cudaGetDevice'](ct.byref(_dev))
-        data.rprint("cudaGetDevice returned device ", _dev.value)
+        pio.rprint("cudaGetDevice returned device ", _dev.value)
 
 #####################################################################################
 # Is module ready to use?
@@ -216,7 +216,7 @@ def libcudart(*args):
     assert LIBCUDART is not None, "gpucuda error: No CUDA Runtime library loaded"
 
     if runtime.VERBOSE.level > 2:
-        data.rprint(args)
+        pio.rprint(args)
 
     cuda_err_check(LIBCUDART[args[0]](*args[1::]))
 
