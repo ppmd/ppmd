@@ -576,7 +576,7 @@ class HaloCartesianSingleProcess(object):
         '''
 
         _cell_sort_code = '''
-        
+
         int index = shift;
         for(int ix = 0; ix < CC; ix++){
             

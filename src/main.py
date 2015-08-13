@@ -43,8 +43,9 @@ if __name__ == '__main__':
     # Write XYZ?
     writing = True
 
-    t=0.1
-    dt=0.0001
+    t=0.005
+    dt=0.00001
+
 
     # check gpucuda Module initalised correctly.
     if gpucuda.INIT_STATUS():
@@ -104,7 +105,7 @@ if __name__ == '__main__':
 
 
         # Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([6., 6., 6.]), axis = np.array([1,0,0]))
+        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([6., 6., 6.]), axis = np.array([0,0,1]))
 
         # Give first two particles specific velocities
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
@@ -147,7 +148,7 @@ if __name__ == '__main__':
     # plotting handle
     if plotting:
         plothandle = data.DrawParticles(state=test_state)
-        plotsteps = 500
+        plotsteps = 1000
         plotfn = plothandle.draw
     else:
         plothandle = None
@@ -213,7 +214,7 @@ if __name__ == '__main__':
 
     if runtime.MPI_HANDLE.rank ==0:
         try:
-            # a=input("PRESS ENTER TO CONTINUE.\n")
+            #a=input("PRESS ENTER TO CONTINUE.\n")
             pass
         except:
             pass

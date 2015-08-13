@@ -258,6 +258,18 @@ class BaseMDState(object):
                                                'I': self._internal_index,
                                                'n': self._internal_N}
                                      )
+    def _group_by_cell_setup(self):
+        """
+        Setup library to group data in postitions, global ids and types such that particles in the same cell are sequential.
+        """
+        pass
+
+    def _group_by_cell(self):
+        """
+        Run library to group data by cell.
+        """
+        pass
+
 
     def forces_update(self):
         """
@@ -267,10 +279,18 @@ class BaseMDState(object):
         self.timer.start()
 
         self._cell_sort_local()
+        self._group_by_cell()
+
+
 
         if self._cell_setup_attempt is True:
             self._domain.halos.set_position_info(self._cell_contents_count, self._q_list)
             self._domain.halos.exchange(self._pos)
+
+        #print self._q_list[0:16:]
+        #print self._q_list[self._q_list.end - self._domain.cell_count:self._q_list.end:]
+
+
 
         '''
         print "================================"
@@ -651,22 +671,31 @@ class BaseMDStateHalo(BaseMDState):
         """
 
         self._pos_new = particle.Dat(self._pos.max_size, 3, name='positions')
+        self._vel_new = particle.Dat(self._vel.max_size, 3, name='positions')
         self._global_ids_new = data.ScalarArray(ncomp=self._global_ids.max_size, dtype=ctypes.c_int)
         self._types_new = data.ScalarArray(ncomp=self._types.max_size, dtype=ctypes.c_int)
         self._q_list_new = data.ScalarArray(ncomp=self._q_list.max_size, dtype=ctypes.c_int)
 
         _code = '''
+
         int index = 0;
-        for(int ix = 1; ix < (CA[0]-1); ix++){ for(int iy = 1; iy < (CA[1]-1); iy++) { for(int iz = 1; iz < (CA[2]-1); iz++) {
+
+        for(int iz = 1; iz < (CA[2]-1); iz++){ for(int iy = 1; iy < (CA[1]-1); iy++) { for(int ix = 1; ix < (CA[0]-1); ix++) {
+
 
             const int c = iz*CA[0]*CA[1] + iy*CA[0] + ix;
 
-            int i = q[n +  c];
-            if (i > -1) { q_new[n+c] = index;} else { q_new[n+c] = -1; }
+
+            int i = q[n + c];
+            if (i > -1) { q_new[n + c] = index; }
 
             while (i > -1){
                 for(int ni = 0; ni < pos_ncomp; ni++){
                     pos_new[(index*pos_ncomp)+ni] = pos[(i*pos_ncomp)+ni];
+                }
+
+                for(int ni = 0; ni < vel_ncomp; ni++){
+                    vel_new[(index*vel_ncomp)+ni] = vel[(i*vel_ncomp)+ni];
                 }
 
                 gid_new[index] = gid[i];
@@ -680,7 +709,7 @@ class BaseMDStateHalo(BaseMDState):
         }}}
         '''
 
-        _constants = (constant.Constant('pos_ncomp', self._pos.ncomp),)
+        _constants = (constant.Constant('pos_ncomp', self._pos.ncomp),constant.Constant('vel_ncomp', self._vel.ncomp))
 
         _static_args = {
             'n': ctypes.c_int
@@ -690,9 +719,11 @@ class BaseMDStateHalo(BaseMDState):
             'CA': self._domain.cell_array,
             'q': self._q_list,
             'pos': self._pos,
+            'vel': self._vel,
             'gid': self._global_ids,
             'type': self._types,
             'pos_new': self._pos_new,
+            'vel_new': self._vel_new,
             'gid_new': self._global_ids_new,
             'type_new': self._types_new,
             'q_new': self._q_list_new
@@ -700,7 +731,57 @@ class BaseMDStateHalo(BaseMDState):
 
         _headers = ['stdio.h']
         _kernel = kernel.Kernel('GroupCollect', _code, _constants, _headers, None, _static_args)
-        self._packing_lib = build.SharedLib(_kernel, _args)
+        self._group_by_cell_lib = build.SharedLib(_kernel, _args)
+
+    def _group_by_cell(self):
+        """
+        Run library to group data by cell.
+        """
+
+        self._q_list_new.dat[self._q_list[self._q_list.end]:self._q_list.end:] = ctypes.c_int(-1)
+
+        self._group_by_cell_lib.execute(static_args={'n':ctypes.c_int(self._q_list[self._q_list.end])})
+
+        # swap array pointers
+        _tmp = self._pos.dat
+        self._pos.dat = self._pos_new.dat
+        self._pos_new.dat = _tmp
+
+        _tmp = self._vel.dat
+        self._vel.dat = self._vel_new.dat
+        self._vel_new.dat = _tmp
+
+        _tmp = self._global_ids.dat
+        self._global_ids.dat = self._global_ids_new.dat
+        self._global_ids_new.dat = _tmp
+
+        _tmp = self._types.dat
+        self._types.dat = self._types_new.dat
+        self._types_new.dat = _tmp
+
+        _tmp = self._q_list.dat
+        self._q_list.dat = self._q_list_new.dat
+        self._q_list_new.dat = _tmp
+
+        self._q_list.dat[self._q_list.end] = self._q_list.end - self._domain.cell_count
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ########################################################################################################

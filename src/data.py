@@ -420,7 +420,10 @@ class ScalarArray(object):
 
     @dat.setter
     def dat(self, val):
-        self._Dat = np.array([val], dtype=self._dtype)
+        if type(val) is np.ndarray:
+            self._Dat = val
+        else:
+            self._Dat = np.array([val], dtype=self._dtype)
 
     def __getitem__(self, ix):
         return self._Dat[ix]

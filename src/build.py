@@ -493,6 +493,7 @@ class SharedLib(GenericToolChain):
             if runtime.MPI_HANDLE is None:
                 self._create_library()
 
+
             else:
                 if runtime.MPI_HANDLE.rank == 0:
                     self._create_library()
