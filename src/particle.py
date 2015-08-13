@@ -113,6 +113,13 @@ class Dat(object):
         return self._NH
 
     @property
+    def max_size(self):
+        """
+        Return actual length of array.
+        """
+        return self._max_size
+
+    @property
     def ctypes_data(self):
         """Return ctypes-pointer to data."""
         return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))

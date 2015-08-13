@@ -18,12 +18,14 @@ ERROR_LEVEL = runtime.Level(1)
 #####################################################################################
 
 NVCC = build.Compiler(['nvcc_system_default'],
-                ['nvcc'],
-                ['-O3'],
-                ['-lm'],
-                ['-g'],
-                ['-c'],
-                ['-shared', '-Xcompiler','-fPIC'])
+                      ['nvcc'],
+                      ['-Xcompiler','-fPIC'],
+                      ['-lm'],
+                      ['-O3', '-m64'],
+                      ['-g'],
+                      ['-c'],
+                      ['-shared'],
+                      '__restrict__')
 
 #####################################################################################
 # build static libs
@@ -47,14 +49,18 @@ def _build_static_libs(lib):
     if runtime.MPI_HANDLE.rank == 0:
         if not os.path.exists(_lib_filename):
 
+
             _lib_src_filename = './lib/' + lib + '.cu'
             _c_cmd = NVCC.binary + [_lib_src_filename] + ['-o'] + [_lib_filename] + NVCC.l_flags
             if runtime.DEBUG.level > 0:
                 _c_cmd += NVCC.dbg_flags
+            else:
+                _c_cmd += NVCC.opt_flags
+
             _c_cmd += NVCC.shared_lib_flag
 
-            if runtime.VERBOSE.level > 1:
-                pio.pprint("gpucuda _build_static_libs compile cmd:", _c_cmd)
+            if runtime.VERBOSE.level > 2:
+                pio.pprint("Building", _lib_filename)
 
             stdout_filename = './build/' + lib + '_' +str(_m) + '.log'
             stderr_filename = './build/' + lib + '_' +str(_m) + '.err'

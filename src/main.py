@@ -14,11 +14,11 @@ import runtime
 if __name__ == '__main__':
 
     # debug level
-    runtime.DEBUG.level = 1
+    runtime.DEBUG.level = 0
     #verbosity level
     runtime.VERBOSE.level = 3
     #timer level
-    runtime.TIMER.level = 1
+    runtime.TIMER.level = 3
 
     x = 1
     y = 0
@@ -43,14 +43,16 @@ if __name__ == '__main__':
     # Write XYZ?
     writing = True
 
-    t=0.01
+    t=0.1
     dt=0.0001
 
     # check gpucuda Module initalised correctly.
     if gpucuda.INIT_STATUS():
-        a_N = 10000000
+        a_N = 100
         d_a = gpucuda.CudaDeviceDat(size=a_N)
         a = data.ScalarArray(initial_value=range(a_N))
+
+
         d_a.cpy_htd(a.ctypes_data)
         print a[0:10:]
         a.scale(0.)
@@ -58,6 +60,10 @@ if __name__ == '__main__':
         print a[0:10:]
         d_a.cpy_dth(a.ctypes_data)
         print a[0:10:]
+
+
+
+
 
 
 
@@ -207,8 +213,8 @@ if __name__ == '__main__':
 
     if runtime.MPI_HANDLE.rank ==0:
         try:
-            a=input("PRESS ENTER TO CONTINUE.\n")
-            #pass
+            # a=input("PRESS ENTER TO CONTINUE.\n")
+            pass
         except:
             pass
     #MPI_HANDLE.barrier()

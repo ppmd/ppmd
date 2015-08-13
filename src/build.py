@@ -7,6 +7,7 @@ import subprocess
 import data
 import re
 import runtime
+import pio
 
 
 
@@ -24,19 +25,27 @@ class Compiler(object):
     :arg str binary: Name(+path) of Compiler binary.
     :arg list c_flags: List of compile flags as strings.
     :arg list l_flags: List of link flags as strings.
+    :arg list opt_flags: List of optimisation flags.
     :arg list dbg_flags: List of runtime.DEBUG flags as strings.
     :arg list compile_flag: List of compile flag as single string (eg ['-c'] for gcc).
-    :arg list sharedlibraryflag: List of flags as strings to link as shared library.
+    :arg list shared_lib_flag: List of flags as strings to link as shared library.
+    :arg string restrict_keyword: keyword to use for non aliased pointers
     """
 
-    def __init__(self, name, binary, cflags, lflags, dbgflags, compileflag, sharedlibraryflag):
+    def __init__(self, name, binary, c_flags, l_flags, opt_flags, dbg_flags, compile_flag, shared_lib_flag, restrict_keyword=''):
         self._name = name
         self._binary = binary
-        self._cflags = cflags
-        self._lflags = lflags
-        self._dbgflags = dbgflags
-        self._compileflag = compileflag
-        self._sharedlibf = sharedlibraryflag
+        self._cflags = c_flags
+        self._lflags = l_flags
+        self._optflags = opt_flags
+        self._dbgflags = dbg_flags
+        self._compileflag = compile_flag
+        self._sharedlibf = shared_lib_flag
+        self._restrictkeyword = restrict_keyword
+
+    @property
+    def restrict_keyword(self):
+        return self._restrictkeyword
 
     @property
     def name(self):
@@ -59,6 +68,11 @@ class Compiler(object):
         return self._lflags
 
     @property
+    def opt_flags(self):
+        """Return Compiler runtime.DEBUG flags"""
+        return self._optflags
+
+    @property
     def dbg_flags(self):
         """Return Compiler runtime.DEBUG flags"""
         return self._dbgflags
@@ -76,22 +90,49 @@ class Compiler(object):
         # Define system gcc version as Compiler.
 
 
-GCC = Compiler(['GCC'], ['gcc'], ['-O3', '-fpic', '-std=c99'], ['-lm'], ['-g'], ['-c'], ['-shared'])
+GCC = Compiler(['GCC'],
+               ['gcc'],
+               ['-fpic', '-std=c99'],
+               ['-lm'],
+               ['-O3', '-march=native', '-m64'],
+               ['-g'],
+               ['-c'],
+               ['-shared'],
+               '__restrict__')
 
 # Define system gcc version as OpenMP Compiler.
-GCC_OpenMP = Compiler(['GCC'], ['gcc'], ['-O3', '-fpic', '-fopenmp', '-lgomp', '-lpthread', '-lc', '-lrt', '-std=c99'],
-                      ['-fopenmp', '-lgomp', '-lpthread', '-lc', '-lrt'], ['-g'], ['-c'], ['-shared'])
+GCC_OpenMP = Compiler(['GCC'],
+                      ['gcc'],
+                      ['-fpic', '-fopenmp', '-std=c99'],
+                      ['-fopenmp', '-lgomp', '-lpthread', '-lc', '-lrt'],
+                      ['-O3', '-march=native', '-m64'],
+                      ['-g'],
+                      ['-c'],
+                      ['-shared'],
+                      '__restrict__')
 
 
 # Define system icc version as Compiler.
-ICC = Compiler(['ICC'], ['icc'], ['-fpic', '-std=c99'], ['-lm'], ['-g'], ['-c'], ['-shared'])
-
-# ICC = Compiler(['ICC'], ['icc'], ['-O0', '-fpic', '-std=c99', ''], [''], ['-g'], ['-c'], ['-shared'])
+ICC = Compiler(['ICC'],
+               ['icc'],
+               ['-fpic', '-std=c99'],
+               ['-lm'],
+               ['-O3', '-xHost', '-restrict', '-m64'],
+               ['-g'],
+               ['-c'],
+               ['-shared'],
+               'restrict')
 
 # Define system icc version as OpenMP Compiler.
-ICC_OpenMP = Compiler(['ICC'], ['icc'], ['-O3', '-fpic', '-openmp', '-lgomp', '-lpthread', '-lc', '-lrt', '-std=c99',
-                                         '-fast'], ['-openmp', '-lgomp', '-lpthread', '-lc', '-lrt'], ['-g'], ['-c'],
-                      ['-shared'])
+ICC_OpenMP = Compiler(['ICC'],
+                      ['icc'],
+                      ['-fpic', '-openmp', '-std=c99'],
+                      ['-openmp', '-lgomp', '-lpthread', '-lc', '-lrt'],
+                      ['-O3', '-xHost', '-restrict', '-m64'],
+                      ['-g'],
+                      ['-c'],
+                      ['-shared'],
+                      'restrict')
 
 
 # Temporary Compiler flag
@@ -254,7 +295,7 @@ class GenericToolChain(object):
                 self._argtypes.append(dat[1])
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
-            argnames += data.ctypes_map[dat[1].dtype] + ' *' + dat[0] + '_ext,'
+            argnames += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
             self._argtypes.append(dat[1].dtype)
 
         return argnames[:-1]
@@ -319,6 +360,7 @@ class GenericToolChain(object):
         """
 
         filename_base = os.path.join(self._temp_dir, self._unique_name)
+
         header_filename = filename_base + '.h'
         impl_filename = filename_base + '.c'
         with open(header_filename, 'w') as f:
@@ -328,10 +370,20 @@ class GenericToolChain(object):
 
         object_filename = filename_base + '.o'
         library_filename = filename_base + '.so'
+
+        if runtime.VERBOSE.level > 2:
+            pio.pprint("Building", library_filename)
+
+
         cflags = []
         cflags += self._cc.c_flags
-        if runtime.DEBUG > 0:
+
+        if runtime.DEBUG.level > 0:
             cflags += self._cc.dbg_flags
+        else:
+            cflags += self._cc.opt_flags
+
+
         cc = self._cc.binary
         ld = self._cc.binary
         lflags = self._cc.l_flags
@@ -570,7 +622,7 @@ class SharedLib(GenericToolChain):
                 self._argtypes.append(dat[1])
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
-            argnames += data.ctypes_map[dat[1].dtype] + ' *' + dat[0] + ','
+            argnames += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
             self._argtypes.append(dat[1].dtype)
 
         return argnames[:-1]

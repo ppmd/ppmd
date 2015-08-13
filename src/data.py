@@ -484,6 +484,13 @@ class ScalarArray(object):
         """
         return self._N1
 
+    @property
+    def max_size(self):
+        """
+        Return actual length of array.
+        """
+        return self._max_size
+
     @ncomp.setter
     def ncomp(self, val):
         assert val <= self._max_size, "ncomp, max_size error"

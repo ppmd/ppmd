@@ -8,6 +8,8 @@ import data
 import kernel
 import loop
 import runtime
+import build
+import constant
 
 
 np.set_printoptions(threshold='nan')
@@ -538,8 +540,11 @@ class BaseMDStateHalo(BaseMDState):
 
         if self._cell_setup_attempt is True:
             self._cell_sort_setup()
-
             self._cell_sort_local()
+
+
+            self._group_by_cell_setup()
+
 
             self._looping_method_accel = pairloop.PairLoopRapaportHalo(n=self._N,
                                                                        domain=self._domain,
@@ -640,11 +645,67 @@ class BaseMDStateHalo(BaseMDState):
                                                'n': self._internal_N}
                                      )
 
-        ################################################################################################################
+    def _group_by_cell_setup(self):
+        """
+        Setup library to group data in postitions, global ids and types such that particles in the same cell are sequential.
+        """
+
+        self._pos_new = particle.Dat(self._pos.max_size, 3, name='positions')
+        self._global_ids_new = data.ScalarArray(ncomp=self._global_ids.max_size, dtype=ctypes.c_int)
+        self._types_new = data.ScalarArray(ncomp=self._types.max_size, dtype=ctypes.c_int)
+        self._q_list_new = data.ScalarArray(ncomp=self._q_list.max_size, dtype=ctypes.c_int)
+
+        _code = '''
+        int index = 0;
+        for(int ix = 1; ix < (CA[0]-1); ix++){ for(int iy = 1; iy < (CA[1]-1); iy++) { for(int iz = 1; iz < (CA[2]-1); iz++) {
+
+            const int c = iz*CA[0]*CA[1] + iy*CA[0] + ix;
+
+            int i = q[n +  c];
+            if (i > -1) { q_new[n+c] = index;} else { q_new[n+c] = -1; }
+
+            while (i > -1){
+                for(int ni = 0; ni < pos_ncomp; ni++){
+                    pos_new[(index*pos_ncomp)+ni] = pos[(i*pos_ncomp)+ni];
+                }
+
+                gid_new[index] = gid[i];
+                type_new[index] = type[i];
+
+                i = q[i];
+                if (i > -1) { q_new[index] = index+1; } else { q_new[index] = -1; }
+
+                index++;
+            }
+        }}}
+        '''
+
+        _constants = (constant.Constant('pos_ncomp', self._pos.ncomp),)
+
+        _static_args = {
+            'n': ctypes.c_int
+        }
+
+        _args = {
+            'CA': self._domain.cell_array,
+            'q': self._q_list,
+            'pos': self._pos,
+            'gid': self._global_ids,
+            'type': self._types,
+            'pos_new': self._pos_new,
+            'gid_new': self._global_ids_new,
+            'type_new': self._types_new,
+            'q_new': self._q_list_new
+        }
+
+        _headers = ['stdio.h']
+        _kernel = kernel.Kernel('GroupCollect', _code, _constants, _headers, None, _static_args)
+        self._packing_lib = build.SharedLib(_kernel, _args)
 
 
+########################################################################################################
 # PosInitLatticeNRho DEFINITIONS
-################################################################################################################        
+########################################################################################################
 
 
 class PosInitLatticeNRho(object):
