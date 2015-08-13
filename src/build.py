@@ -8,8 +8,7 @@ import data
 import re
 import runtime
 import pio
-
-
+from mpi4py import MPI
 
 
 ################################################################################################################
@@ -226,7 +225,7 @@ def load_library_exception(kernel_name='None supplied', unique_name='None suppli
             code_str = [x + "\n" for x in code_str]
 
             err_code = ''.join(code_str)
-    print "Unique name", unique_name
+    print "Unique name", unique_name, "Rank", runtime.MPI_HANDLE.rank
 
     raise RuntimeError("\n"
                        "###################################################### \n"
@@ -372,8 +371,7 @@ class GenericToolChain(object):
         library_filename = filename_base + '.so'
 
         if runtime.VERBOSE.level > 2:
-            pio.pprint("Building", library_filename)
-
+            print "Building", library_filename
 
         cflags = []
         cflags += self._cc.c_flags
@@ -410,6 +408,7 @@ class GenericToolChain(object):
                                      stdout=stdout,
                                      stderr=stderr)
                 p.communicate()
+
 
     def _generate_impl_source(self):
         """Generate the source code the actual implementation.
@@ -490,15 +489,9 @@ class SharedLib(GenericToolChain):
         self._library_filename = self._unique_name + '.so'
 
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if runtime.MPI_HANDLE is None:
+            if runtime.MPI_HANDLE.rank == 0:
                 self._create_library()
-
-
-            else:
-                if runtime.MPI_HANDLE.rank == 0:
-                    self._create_library()
-                runtime.MPI_HANDLE.barrier()
-
+            runtime.MPI_HANDLE.barrier()
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:

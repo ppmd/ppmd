@@ -43,8 +43,8 @@ if __name__ == '__main__':
     # Write XYZ?
     writing = True
 
-    t=0.005
-    dt=0.00001
+    t=0.1
+    dt=0.0001
 
 
     # check gpucuda Module initalised correctly.
@@ -70,10 +70,10 @@ if __name__ == '__main__':
 
     if test_1000:
         # n=25 reasonable size
-        n = 10
+        n = 22
         N = n**3
         # n=860
-        rho = 1
+        rho = 1.
         mu = 0.0
         nsig = 5.0
         

@@ -206,6 +206,8 @@ class MDMPI(object):
         """
         alias to comm barrier method.
         """
+
+        MPI.COMM_WORLD.Barrier()
         if self._COMM is not None:
             self._COMM.Barrier()
 
