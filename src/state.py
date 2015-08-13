@@ -282,14 +282,9 @@ class BaseMDState(object):
         self._group_by_cell()
 
 
-
         if self._cell_setup_attempt is True:
             self._domain.halos.set_position_info(self._cell_contents_count, self._q_list)
             self._domain.halos.exchange(self._pos)
-
-        #print self._q_list[0:16:]
-        #print self._q_list[self._q_list.end - self._domain.cell_count:self._q_list.end:]
-
 
 
         '''
@@ -764,23 +759,6 @@ class BaseMDStateHalo(BaseMDState):
         self._q_list_new.dat = _tmp
 
         self._q_list.dat[self._q_list.end] = self._q_list.end - self._domain.cell_count
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
