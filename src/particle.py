@@ -5,6 +5,8 @@ import os
 import re
 import pickle
 import access
+import gpucuda
+import runtime
 
 
 class Dat(object):
@@ -52,6 +54,9 @@ class Dat(object):
         '''Number of halo particles'''
 
         self._NH = self._halo_start - self._N1
+
+        self._cuda_dat = None
+
 
     def set_val(self, val):
         self._Dat[..., ...] = val
@@ -285,6 +290,39 @@ class Dat(object):
             s += '\n'
         f.write(s)
         f.close()
+
+
+    def add_cuda_dat(self):
+        """
+        Create a corresponding CudaDeviceDat.
+        """
+        if self._cuda_dat is None:
+            self._cuda_dat = gpucuda.CudaDeviceDat(size=self._N2 * self._max_size, dtype=self._dtype)
+
+    def get_cuda_dat(self):
+        """
+        Returns associated cuda dat, or None if not initialised.
+        """
+        return self._cuda_dat
+
+    def copy_to_cuda_dat(self):
+        """
+        Copy the CPU dat to the cuda device.
+        """
+        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
+        self._cuda_dat.cpy_htd(self.ctypes_data)
+
+    def copy_from_cuda_dat(self):
+        """
+        Copy the device dat into the cuda dat.
+        """
+        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
+        self._cuda_dat.cpy_dth(self.ctypes_data)
+
+
+
+
+
 
 
 class TypedDat(Dat):

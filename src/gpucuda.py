@@ -9,8 +9,9 @@ import hashlib
 import atexit
 import runtime
 import pio
+import kernel
 
-ERROR_LEVEL = runtime.Level(1)
+ERROR_LEVEL = runtime.Level(3)
 
 
 #####################################################################################
@@ -51,7 +52,8 @@ def _build_static_libs(lib):
 
 
             _lib_src_filename = './lib/' + lib + '.cu'
-            _c_cmd = NVCC.binary + [_lib_src_filename] + ['-o'] + [_lib_filename] + NVCC.l_flags
+
+            _c_cmd = NVCC.binary + [_lib_src_filename] + ['-o'] + [_lib_filename] + NVCC.c_flags + NVCC.l_flags
             if runtime.DEBUG.level > 0:
                 _c_cmd += NVCC.dbg_flags
             else:
@@ -100,6 +102,7 @@ except KeyError:
 
 try:
     LIBCUDART = ct.cdll.LoadLibrary(CUDA_INC_PATH + "/lib64/libcudart.so.6.5")
+
 except:
     if ERROR_LEVEL.level > 2:
         raise RuntimeError('gpucuda error: Module is not initialised correctly,'
@@ -351,3 +354,65 @@ def gpucuda_cleanup():
     cuda_device_reset()
 
 atexit.register(gpucuda_cleanup)
+
+
+#####################################################################################
+# CUDA a=b+c test kernel.
+#####################################################################################
+
+class aebpc(object):
+    def __init__(self,a,b,c):
+
+        _kernel_code = '''
+            a[0] = b[0] + c[0];
+        '''
+
+        _dat_dict = {
+            'a': a,
+            'b': b,
+            'c': c
+        }
+
+        _kernel = kernel.Kernel('aebpc', _kernel_code, None, None)
+
+        self._lib = SingleParticleLoop
+
+# TODO: continue this ^
+
+#####################################################################################
+# CUDA SingleParticleLoop
+#####################################################################################
+
+
+
+
+class SingleParticleLoop(object):
+    def __init__(self, n, types_map, kernel, particle_dat_dict):
+        self._n = n
+        self._types_map = types_map
+        self._kernel = kernel
+        self._particle_dat_dict = particle_dat_dict
+
+
+# TODO: continue this ^. Will need to create the cuda kernel and a wrapper to call it.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

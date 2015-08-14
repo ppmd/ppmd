@@ -18,6 +18,7 @@ import math
 import build
 import runtime
 import pio
+import gpucuda
 
 
 np.set_printoptions(threshold='nan')
