@@ -10,6 +10,7 @@ import loop
 import runtime
 import build
 import constant
+import pio
 
 
 np.set_printoptions(threshold='nan')
@@ -577,7 +578,7 @@ class BaseMDStateHalo(BaseMDState):
         self.timer = runtime.Timer(runtime.TIMER, 0)
 
         if runtime.DEBUG.level > 0:
-            print "DEBUG IS ON"
+            pio.pprint("DEBUG IS ON")
 
     def _cell_sort_setup(self):
         """

@@ -6,7 +6,7 @@ import re
 import pickle
 import access
 import gpucuda
-import runtime
+
 
 
 class Dat(object):

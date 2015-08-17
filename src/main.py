@@ -2,7 +2,7 @@
 
 import runtime
 # debug level
-runtime.DEBUG.level = 0
+runtime.DEBUG.level = 1
 #verbosity level
 runtime.VERBOSE.level = 3
 #timer level
@@ -72,7 +72,7 @@ if __name__ == '__main__':
         print a[-1]
     else:
         print runtime.MPI_HANDLE.rank, "gpucuda not init", gpucuda.INIT_STATUS()
-        quit()
+
 
 
 
