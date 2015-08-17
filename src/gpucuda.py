@@ -1,8 +1,10 @@
 """
 Module to hold CUDA related code.
 """
+import numpy as np
 import os
 import ctypes as ct
+import math
 import build
 import subprocess
 import hashlib
@@ -10,6 +12,9 @@ import atexit
 import runtime
 import pio
 import kernel
+import particle
+import data
+import constant
 
 ERROR_LEVEL = runtime.Level(3)
 
@@ -20,12 +25,12 @@ ERROR_LEVEL = runtime.Level(3)
 
 NVCC = build.Compiler(['nvcc_system_default'],
                       ['nvcc'],
-                      ['-Xcompiler','-fPIC'],
+                      ['-Xcompiler', '"-fPIC"'],
                       ['-lm'],
-                      ['-O3', '-m64'],
+                      ['-O3', '-m64', '-Xptxas', '"-v"'],
                       ['-g'],
                       ['-c'],
-                      ['-shared'],
+                      ['-shared', '-Xcompiler', '"-fPIC"'],
                       '__restrict__')
 
 #####################################################################################
@@ -364,7 +369,7 @@ class aebpc(object):
     def __init__(self,a,b,c):
 
         _kernel_code = '''
-            a[0] = b[0] + c[0];
+            a[0] = b[0] + c[0] + d + e;
         '''
 
         _dat_dict = {
@@ -373,40 +378,355 @@ class aebpc(object):
             'c': c
         }
 
-        _kernel = kernel.Kernel('aebpc', _kernel_code, None, None)
+        _consts = (constant.Constant('e', 4),)
 
-        self._lib = SingleParticleLoop
+        _static_args = {'d': ct.c_int}
 
-# TODO: continue this ^
+
+        _kernel = kernel.Kernel('aebpc', _kernel_code, _consts, ['stdio.h'], None, _static_args)
+
+        self._lib = SingleAllParticleLoop(None, _kernel, _dat_dict)
+
+    def execute(self):
+        self._lib.execute(static_args={'d': ct.c_int(7)})
+
+
+#####################################################################################
+# CUDA _Base
+#####################################################################################
+
+
+class _Base(object):
+    def __init__(self, types_map, kernel, particle_dat_dict):
+        self._types_map = types_map
+        self._kernel = kernel
+        self._particle_dat_dict = particle_dat_dict
+
+        # set compiler
+        self._cc = NVCC
+        self._temp_dir = './build/'
+
+        #start code creation
+        self._static_arg_init()
+        self._code_init()
+
+
+        # set unique names.
+        self._unique_name = self._unique_name_calc()
+        self._library_filename = self._unique_name + '.so'
+
+        # see if exists
+        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
+
+            if runtime.MPI_HANDLE is None:
+                self._create_library()
+
+            else:
+                if runtime.MPI_HANDLE.rank == 0:
+                    self._create_library()
+                runtime.MPI_HANDLE.barrier()
+
+        self._lib = ct.cdll.LoadLibrary(os.path.join(self._temp_dir, self._library_filename))
+
+    def _unique_name_calc(self):
+        """Return name which can be used to identify the pair loop
+        in a unique way.
+        """
+        return self._kernel.name + '_' + self.hexdigest()
+
+    def hexdigest(self):
+        """Create unique hex digest"""
+        m = hashlib.md5()
+        m.update(self._kernel.code + self._code)
+        if self._kernel.headers is not None:
+            for header in self._kernel.headers:
+                m.update(header)
+        return m.hexdigest()
+
+    def _included_headers(self):
+        """Return names of included header files."""
+        s = ''
+        if self._kernel.headers is not None:
+            s += '\n'
+            for x in self._kernel.headers:
+                s += '#include \"' + x + '\" \n'
+        return s
+
+    def _static_arg_init(self):
+        """
+        Create code to handle device constants.
+        """
+
+        self._device_const_dec = ''
+        self._device_const_copy = ''
+
+        if self._kernel.static_args is not None:
+
+            for ix in self._kernel.static_args.items():
+                self._device_const_dec += '__constant__ ' + data.ctypes_map[ix[1]] + ' ' + ix[0] + '; \n'
+                self._device_const_copy += 'checkCudaErrors(cudaMemcpyToSymbol(' + ix[0] + ', &h_' + ix[0] + ', sizeof(h_' + ix[0] + '))); \n'
+
+
+    def _argnames(self):
+        """
+        Comma separated string of argument name declarations.
+
+        This string of argument names is used in the declaration of
+        the method which executes the pairloop over the grid.
+        If, for example, the pairloop gets passed two particle_dats,
+        then the result will be ``double** arg_000,double** arg_001`.`
+        """
+
+        self._argtypes = []
+
+        argnames = ''
+        if self._kernel.static_args is not None:
+            self._static_arg_order = []
+
+            for i, dat in enumerate(self._kernel.static_args.items()):
+                argnames += 'const ' + data.ctypes_map[dat[1]] + ' h_' + dat[0] + ','
+                self._static_arg_order.append(dat[0])
+                self._argtypes.append(dat[1])
+
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+            argnames += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' h_' + dat[0] + ','
+            self._argtypes.append(dat[1].dtype)
+
+        return argnames[:-1]
+
+
+    def _kernel_argnames(self):
+        """
+        Comma separated string of argument names to be passed to kernel launch.
+        """
+        args = ''
+        for arg in self._particle_dat_dict.items():
+            args += 'h_' + arg[0] + ','
+        return args[:-1]
+
+
+    def _kernel_argument_declarations(self):
+        """Define and declare the kernel arguments.
+
+        For each argument the kernel gets passed a pointer of type
+        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
+        pointer to the data which contains the properties of particle i.
+        These properties are stored consecutively in memory, so for a
+        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
+        property the vector entry j of particle i is accessed as
+        ``loc_argXXX[i][j]``.
+
+        This method generates the definitions of the ``loc_argXXX`` variables
+        and populates the data to ensure that ``loc_argXXX[i]`` points to
+        the correct address in the particle_dats.
+        """
+        s = ''
+
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+            loc_argname = dat[0]
+
+            if type(dat[1]) == particle.Dat:
+                s += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' d_' + loc_argname + ','
+
+        return s[:-1]
+
+    def _kernel_pointer_mapping(self):
+        """
+        Create string for thread id and pointer mapping.
+        """
+        _s = 'int _ix = threadIdx.x + blockIdx.x*blockDim.x; \n \n'
+
+        space = ' ' * 14
+
+        for dat in self._particle_dat_dict.items():
+            argname = 'd_' + dat[0]
+            loc_argname = dat[0]
+
+            if type(dat[1]) == particle.Dat:
+                _s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
+                _s += space + loc_argname + ' = ' + argname + '+' + str(dat[1].ncomp) + '*_ix;\n'
+
+        return _s
+
+    def _generate_header_source(self):
+        """Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        """
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+        #include "../generic.h"
+        #include <cuda.h>
+        #include "../lib/helper_cuda.h"
+
+        %(INCLUDED_HEADERS)s
+
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int blocksize[3], const int threadsize[3], const int _h_n, %(ARGUMENTS)s);
+
+        #endif
+        '''
+
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames()}
+        return code % d
+
+
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+
+        //device constant decelerations.
+        __constant__ int _d_n;
+        %(DEVICE_CONSTANT_DECELERATION)s
+
+        //device kernel decelerations.
+        __global__ void %(KERNEL_NAME)s_gpukernel(%(KERNEL_ARGUMENTS_DECL)s){
+
+            %(GPU_POINTER_MAPPING)s
+            if (_ix < _d_n){
+                %(GPU_KERNEL)s
+            }
+        }
+
+        void %(KERNEL_NAME)s_wrapper(const int blocksize[3], const int threadsize[3], const int _h_n, %(ARGUMENTS)s) {
+
+            //device constant copy.
+            checkCudaErrors(cudaMemcpyToSymbol(_d_n, &_h_n, sizeof(_h_n)));
+            %(DEVICE_CONSTANT_COPY)s
+
+            dim3 bs; bs.x = blocksize[0]; bs.y = blocksize[1]; bs.z = blocksize[2];
+            dim3 ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
+
+
+            %(KERNEL_NAME)s_gpukernel<<<bs,ts>>>(%(KERNEL_ARGUMENTS)s);
+            checkCudaErrors(cudaDeviceSynchronize());
+            getLastCudaError(" %(KERNEL_NAME)s Execution failed. \\n");
+        }
+        '''
+
+    def _generate_impl_source(self):
+        """Generate the source code the actual implementation.
+        """
+
+        d = {'UNIQUENAME': self._unique_name,
+             'GPU_POINTER_MAPPING': self._kernel_pointer_mapping(),
+             'GPU_KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'KERNEL_ARGUMENTS': self._kernel_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'KERNEL_ARGUMENTS_DECL': self._kernel_argument_declarations(),
+             'DEVICE_CONSTANT_DECELERATION': self._device_const_dec,
+             'DEVICE_CONSTANT_COPY': self._device_const_copy}
+
+        return self._code % d
+
+    def _create_library(self):
+            """
+            Create a shared library from the source code.
+            """
+            filename_base = os.path.join(self._temp_dir, self._unique_name)
+
+            header_filename = filename_base + '.h'
+            impl_filename = filename_base + '.cu'
+            with open(header_filename, 'w') as f:
+                print >> f, self._generate_header_source()
+            with open(impl_filename, 'w') as f:
+                print >> f, self._generate_impl_source()
+
+            object_filename = filename_base + '.o'
+            library_filename = filename_base + '.so'
+
+            if runtime.VERBOSE.level > 2:
+                print "Building", library_filename
+
+            cflags = []
+            cflags += self._cc.c_flags
+
+            if runtime.DEBUG.level > 0:
+                cflags += self._cc.dbg_flags
+            else:
+                cflags += self._cc.opt_flags
+
+
+            cc = self._cc.binary
+            ld = self._cc.binary
+            lflags = self._cc.l_flags
+
+            compile_cmd = cc + self._cc.compile_flag + cflags + ['-I', self._temp_dir] + ['-o', object_filename,
+                                                                                          impl_filename]
+
+            link_cmd = ld + self._cc.shared_lib_flag + lflags + ['-o', library_filename, object_filename]
+            stdout_filename = filename_base + '.log'
+            stderr_filename = filename_base + '.err'
+            with open(stdout_filename, 'w') as stdout:
+                with open(stderr_filename, 'w') as stderr:
+                    stdout.write('Compilation command:\n')
+                    stdout.write(' '.join(compile_cmd))
+                    stdout.write('\n\n')
+                    p = subprocess.Popen(compile_cmd,
+                                         stdout=stdout,
+                                         stderr=stderr)
+                    p.communicate()
+                    stdout.write('Link command:\n')
+                    stdout.write(' '.join(link_cmd))
+                    stdout.write('\n\n')
+                    p = subprocess.Popen(link_cmd,
+                                         stdout=stdout,
+                                         stderr=stderr)
+                    p.communicate()
+
+    def execute(self, dat_dict=None, static_args=None):
+
+        """Allow alternative pointers"""
+        if dat_dict is not None:
+            self._particle_dat_dict = dat_dict
+
+        if self._particle_dat_dict.values()[0].npart < 1025:
+            _blocksize = (ct.c_int * 3)(1, 1, 1)
+            _threadsize = (ct.c_int * 3)(self._particle_dat_dict.values()[0].npart, 1, 1)
+
+        else:
+            _blocksize = (ct.c_int * 3)(int(math.ceil(self._particle_dat_dict.values()[0].npart / 1024.)), 1, 1)
+            _threadsize = (ct.c_int * 3)(1024, 1, 1)
+
+
+        args = [_blocksize, _threadsize, ct.c_int(self._particle_dat_dict.values()[0].npart)]
+
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+        '''Add pointer arguments to launch command'''
+        for dat in self._particle_dat_dict.values():
+            args.append(dat.get_cuda_dat().ctypes_data)
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        method(*args)
+
+#####################################################################################
+# CUDA SingleAllParticleLoop
+#####################################################################################
+
+class SingleAllParticleLoop(_Base):
+    pass
 
 #####################################################################################
 # CUDA SingleParticleLoop
 #####################################################################################
 
+class SingleParticleLoop(_Base):
+    pass
 
-
-
-class SingleParticleLoop(object):
-    def __init__(self, n, types_map, kernel, particle_dat_dict):
-        self._n = n
-        self._types_map = types_map
-        self._kernel = kernel
-        self._particle_dat_dict = particle_dat_dict
-
-
-# TODO: continue this ^. Will need to create the cuda kernel and a wrapper to call it.
-
-
-
-
-
-
-
-
-
-
-
-
+# TODO: Add start and end points to this.
 
 
 

@@ -2,7 +2,7 @@
 
 import runtime
 # debug level
-runtime.DEBUG.level = 1
+runtime.DEBUG.level = 0
 #verbosity level
 runtime.VERBOSE.level = 3
 #timer level
@@ -53,23 +53,25 @@ if __name__ == '__main__':
     # check gpucuda Module initalised correctly.
 
     if gpucuda.INIT_STATUS():
-        a_N = 100
-        d_a = gpucuda.CudaDeviceDat(size=a_N)
-        d_b = gpucuda.CudaDeviceDat(size=a_N)
-        d_c = gpucuda.CudaDeviceDat(size=a_N)
+        a_N = 10000000
 
-        a = particle.Dat(initial_value=range(a_N))
-        a.add_cuda_dat()
-        a.copy_to_cuda_dat()
+        b = particle.Dat(initial_value=range(a_N)); b.add_cuda_dat() ;b.copy_to_cuda_dat()
+        c = particle.Dat(initial_value=range(a_N)); c.add_cuda_dat() ;c.copy_to_cuda_dat()
+        a = particle.Dat(initial_value=range(a_N)); a.add_cuda_dat() ;a.copy_to_cuda_dat()
+
+        print a[-1]
+
+        a.dat[0:a_N:] = 0.0
+        print a[0:10:]
+
+        _aebpc = gpucuda.aebpc(a,b,c).execute()
+
         a.copy_from_cuda_dat()
-
-        d_a.cpy_htd(a.ctypes_data)
         print a[0:10:]
-        os.system("nvidia-smi")
-        print a[0:10:]
-        d_a.cpy_dth(a.ctypes_data)
-        print a[0:10:]
-
+        print a[-1]
+    else:
+        print "gpucuda not init", gpucuda.INIT_STATUS()
+        quit()
 
 
 
