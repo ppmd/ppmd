@@ -24,6 +24,7 @@ def rprint(*args):
     :param string:
     :return:
     """
+
     _s = ''
     for ix in args:
         _s += str(ix)

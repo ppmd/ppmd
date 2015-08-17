@@ -50,6 +50,7 @@ if __name__ == '__main__':
     dt=0.0001
 
 
+
     # check gpucuda Module initalised correctly.
 
     if gpucuda.INIT_STATUS():
@@ -70,11 +71,8 @@ if __name__ == '__main__':
         print a[0:10:]
         print a[-1]
     else:
-        print "gpucuda not init", gpucuda.INIT_STATUS()
+        print runtime.MPI_HANDLE.rank, "gpucuda not init", gpucuda.INIT_STATUS()
         quit()
-
-
-
 
 
 

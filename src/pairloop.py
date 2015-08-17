@@ -97,7 +97,6 @@ class PairLoopRapaport(_Base):
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
             if runtime.MPI_HANDLE is None:
                 self._create_library()
-
             else:
                 if runtime.MPI_HANDLE.rank == 0:
                     self._create_library()

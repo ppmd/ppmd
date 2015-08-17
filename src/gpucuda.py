@@ -1,7 +1,7 @@
 """
 Module to hold CUDA related code.
 """
-import numpy as np
+
 import os
 import ctypes as ct
 import math
@@ -16,7 +16,7 @@ import particle
 import data
 import constant
 
-ERROR_LEVEL = runtime.Level(3)
+ERROR_LEVEL = runtime.Level(2)
 
 
 #####################################################################################
@@ -67,7 +67,7 @@ def _build_static_libs(lib):
             _c_cmd += NVCC.shared_lib_flag
 
             if runtime.VERBOSE.level > 2:
-                pio.pprint("Building", _lib_filename)
+                print "Building", _lib_filename
 
             stdout_filename = './build/' + lib + '_' +str(_m) + '.log'
             stderr_filename = './build/' + lib + '_' +str(_m) + '.err'
@@ -85,7 +85,8 @@ def _build_static_libs(lib):
                 if ERROR_LEVEL.level > 2:
                     raise RuntimeError('gpucuda error: helper library not built.')
                 elif runtime.VERBOSE.level > 2:
-                    pio.pprint("gpucuda warning: Shared library not built:", lib)
+                    print "gpucuda warning: Shared library not built:", lib
+
 
 
     runtime.MPI_HANDLE.barrier()
@@ -418,13 +419,9 @@ class _Base(object):
         # see if exists
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
 
-            if runtime.MPI_HANDLE is None:
+            if runtime.MPI_HANDLE.rank == 0:
                 self._create_library()
-
-            else:
-                if runtime.MPI_HANDLE.rank == 0:
-                    self._create_library()
-                runtime.MPI_HANDLE.barrier()
+            runtime.MPI_HANDLE.barrier()
 
         self._lib = ct.cdll.LoadLibrary(os.path.join(self._temp_dir, self._library_filename))
 
