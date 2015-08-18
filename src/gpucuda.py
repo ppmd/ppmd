@@ -37,6 +37,7 @@ NVCC = build.Compiler(['nvcc_system_default'],
 # build static libs
 #####################################################################################
 
+
 def _build_static_libs(lib):
 
     with open("./lib/" + lib + ".cu", "r") as fh:
@@ -269,7 +270,7 @@ class CudaDeviceDat(object):
         # create device pointer.
         self._d_p = ct.POINTER(self._dtype)()
 
-        #allocate space.
+        # allocate space.
         libcudart('cudaMalloc', ct.byref(self._d_p),
                   ct.c_size_t(self._size * ct.sizeof(self._dtype)))
 
@@ -858,8 +859,11 @@ class SimpleCudaPairLoop(_Base):
                 for(unsigned int cpp_i=0; cpp_i<27; cpp_i++){
                     double s[3];
                     unsigned int flag, cpp;
+
                     cell_index_offset(PCL[_ix], cpp_i, &cpp, &flag, s);
 
+
+                    // CHECK THIS IS NON NEGATIVE !!!!!!!!!!!!
                     for(int _iy = cell_list[_d_cell_offset+cpp];
                      _iy < cell_list[_d_cell_offset+cpp]+CCC[cpp];
                      _iy++){
