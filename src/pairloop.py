@@ -104,6 +104,8 @@ class PairLoopRapaport(_Base):
 
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        except OSError as e:
+            raise OSError(e)
         except:
             build.load_library_exception(self._kernel.name, self._unique_name, type(self))
 
@@ -116,7 +118,7 @@ class PairLoopRapaport(_Base):
         #include \"%(UNIQUENAME)s.h\"
         
         
-        inline void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cpp, unsigned int *flag, double *offset){
+        void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cpp, unsigned int *flag, double *offset){
         
             const int cell_map[14][3] = {   {0,0,0},
                                             {1,0,0},
@@ -294,17 +296,22 @@ class PairLoopRapaport(_Base):
              'ARGUMENTS': self._argnames()}
         return code % d
 
-    def execute(self, dat_dict=None, static_args=None):
+    def execute(self, n=None, dat_dict=None, static_args=None):
         """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
+
+        if n is not None:
+            _N = n
+        else:
+            _N = self._q_list[self._q_list.end]
 
         '''Allow alternative pointers'''
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
         '''Create arg list'''
-        args = [ctypes.c_int(self._N()),
+        args = [ctypes.c_int(_N),
                 ctypes.c_int(self._domain.cell_count),
                 self._domain.cell_array.ctypes_data,
                 self._q_list.ctypes_data,
@@ -1302,7 +1309,6 @@ class PairLoopRapaportHalo(PairLoopRapaport):
             _N = self._q_list[self._q_list.end]
 
         args = [ctypes.c_int(_N),
-
                 self._domain.cell_array.ctypes_data,
                 self._q_list.ctypes_data]
 

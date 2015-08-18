@@ -755,7 +755,7 @@ class WriteTrajectoryXYZ(object):
 
         if self._ordered is False:
             for iz in range(runtime.MPI_HANDLE.nproc):
-                if self._s.mpi_handle.rank == iz:
+                if runtime.MPI_HANDLE.rank == iz:
                     self._fh = open(os.path.join(self._dn, self._fn), 'a')
                     for ix in range(self._s.n()):
                         self._fh.write(str(self._symbol).rjust(3))

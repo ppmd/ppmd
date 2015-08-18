@@ -11,475 +11,17 @@ import runtime
 import build
 import constant
 import pio
+import domain
 
 
 np.set_printoptions(threshold='nan')
-
-
-################################################################################################################
-# BaseMDState DEFINITIONS
-################################################################################################################
-
-class BaseMDState(object):
-    """
-    Base molecular dynamics class.
-    
-    :arg domain domain: Container within which the simulation takes place.
-    :arg potential potential: Potential to use between particles.
-    :arg PosInit* particle_pos_init: Class to initialise particles with.
-    :arg VelInit* particle_vel_init: Class to initialise particles velocities with.
-    :arg int n: Number of particles, default 1.
-    :arg double mass: Mass of particles, default 1.0.
-    :arg bool DEBUG: Flag to enable debug flags.
-    """
-
-    def __init__(self, domain, potential, particle_pos_init=None, particle_vel_init=None, particle_mass_init=None, n=0):
-        """
-        Initialise class to hold the state of a simulation.
-        :arg domain domain: Container within which the simulation takes place.
-        :arg potential potential: Potential to use between particles.
-        :arg int n: Number of particles, default 1.
-        :arg double mass: Mass of particles, default 1.0        
-        
-        """
-
-        self._potential = potential
-        self._N = n
-        self._NT = n
-        self._NH = 0  # number in halo
-        self._pos = particle.Dat(n, 3, name='positions')
-        self._vel = particle.Dat(n, 3, name='velocities')
-        self._accel = particle.Dat(n, 3, name='accelerations')
-
-        '''Store global ids of particles'''
-        self._global_ids = data.ScalarArray(ncomp=self._NT, dtype=ctypes.c_int)
-
-        '''Lookup table between id and particle type'''
-        self._types = data.ScalarArray(ncomp=self._NT, dtype=ctypes.c_int)
-
-        '''Mass is an example of a property dependant on particle type'''
-        self._mass = particle.TypedDat(self._NT, 1, 1.0)
-
-        self._domain = domain
-        self._kinetic_energy_loop = None
-
-        # potential energy, kinetic energy, total energy.
-        self._U = data.ScalarArray(max_size=2, name='potential_energy')
-        self._U.InitHaloDat()
-
-        self._K = data.ScalarArray()
-        self._Q = data.ScalarArray()
-
-        '''Get domain extent from position config'''
-        particle_pos_init.get_extent(self)
-
-        '''Attempt to initialise cell array'''
-        self._cell_setup_attempt = self._domain.set_cell_array_radius(self._potential._rn)
-
-        ''' Initialise particle positions'''
-        particle_pos_init.reset(self)
-
-        ''' Initialise state time to zero'''
-        self._time = 0.0
-
-        '''Setup boundaries'''
-        self._domain.bc_setup(self)
-
-        '''Initialise velocities'''
-        if particle_vel_init is not None:
-            particle_vel_init.reset(self)
-
-        '''Initialise masses'''
-        if particle_mass_init is not None:
-            particle_mass_init.reset(self)
-
-        # Setup acceleration updating from given potential
-        _potential_dat_dict = self._potential.datdict(self)
-
-        if self._cell_setup_attempt is True:
-            self._cell_sort_setup()
-
-            self._domain.bc_execute()
-            self._cell_sort_all()
-
-            self._looping_method_accel = pairloop.PairLoopRapaportHalo(n=self.n,
-                                                                       domain=self._domain,
-                                                                       positions=self._pos,
-                                                                       potential=self._potential,
-                                                                       dat_dict=_potential_dat_dict,
-                                                                       cell_list=self._q_list)
-
-        else:
-            self._looping_method_accel = pairloop.DoubleAllParticleLoopPBC(n=self.n,
-                                                                           domain=self._domain,
-                                                                           kernel=self._potential.kernel,
-                                                                           particle_dat_dict=_potential_dat_dict)
-
-        self.timer = runtime.Timer(runtime.TIMER, 0)
-
-    @property
-    def time(self):
-        """
-        Returns the time of the system.
-        """
-        return self._time
-
-    def add_time(self, increment=0.0):
-        """
-        Increases the state time by the increment amount.
-        :param increment: Amount to increment time by.
-        :return:
-        """
-        self._time += increment
-
-    @property
-    def mpi_handle(self):
-        return self._domain.mpi_handle
-
-    def _cell_sort_setup(self):
-        """
-        Creates looping for cell list creation
-        """
-
-        '''Construct initial cell list'''
-        self._q_list = data.ScalarArray(dtype=ctypes.c_int,
-                                        max_size=self._NT * self._domain.cell_count + self._domain.cell_count + 1)
-
-        '''Keep track of number of particles per cell'''
-        self._cell_contents_count = data.ScalarArray(np.zeros([self._domain.cell_count], dtype=ctypes.c_int, order='C'),
-                                                     dtype=ctypes.c_int)
-
-
-        # temporary method for index awareness inside kernel.
-        self._internal_index = data.ScalarArray(dtype=ctypes.c_int)
-        self._internal_N = data.ScalarArray(dtype=ctypes.c_int)
-
-        self._cell_sort_code = '''
-        
-        //printf("cell start");
-        
-        const double R0 = P[0]+0.5*E[0];
-        const double R1 = P[1]+0.5*E[1];
-        const double R2 = P[2]+0.5*E[2];
-        
-        const int C0 = (int)(R0/CEL[0]);
-        const int C1 = (int)(R1/CEL[1]);
-        const int C2 = (int)(R2/CEL[2]);
-        
-        const int val = (C2*CA[1] + C1)*CA[0] + C0;
-        
-        //printf("val=%d",val);
-        
-        CCC[val]++;
-        
-        q[I[0]] = q[n[0] + val];
-        q[n[0] + val] = I[0];
-        I[0]++;
-        '''
-        self._cell_sort_dict = {'E': self._domain.extent,
-                                'P': self._pos,
-                                'CEL': self._domain.cell_edge_lengths,
-                                'CA': self._domain.cell_array,
-                                'q': self._q_list,
-                                'CCC': self._cell_contents_count,
-                                'I': self._internal_index,
-                                'n': self._internal_N}
-
-        self._cell_sort_kernel = kernel.Kernel('cell_list_method', self._cell_sort_code, headers=['stdio.h'])
-        self._cell_sort_loop = loop.SingleParticleLoop(None, None, self._cell_sort_kernel, self._cell_sort_dict)
-
-    def _cell_sort_all(self):
-        """
-        Construct neighbour list, assigning *all* atoms to cells. Using Rapaport algorithm.
-        """
-        self._q_list.resize(self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1)
-        self._q_list[self._q_list.end] = self._q_list.end - self._domain.cell_count
-        self._internal_N[0] = self._q_list[self._q_list.end]
-
-        self._q_list.dat[self._q_list[self._q_list.end]:self._q_list.end:] = ctypes.c_int(-1)
-
-        self._internal_index[0] = 0
-        self._cell_contents_count.zero()
-        self._internal_N[0] = self._q_list[self._q_list.end]
-        self._cell_sort_loop.execute(start=0, end=self._pos.npart + self._pos.npart_halo,
-                                     dat_dict={'E': self._domain.extent,
-                                               'P': self._pos,
-                                               'CEL': self._domain.cell_edge_lengths,
-                                               'CA': self._domain.cell_array,
-                                               'q': self._q_list,
-                                               'CCC': self._cell_contents_count,
-                                               'I': self._internal_index,
-                                               'n': self._internal_N})
-
-    def _cell_sort_local(self):
-        """
-        Construct neighbour list, assigning *local* atoms to cells. Using Rapaport algorithm.
-        """
-
-        self._q_list.resize(self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1)
-        self._q_list[self._q_list.end] = self._q_list.end - self._domain.cell_count
-
-        self._internal_N[0] = self._q_list[self._q_list.end]
-        self._q_list.dat[self._q_list[self._q_list.end]:self._q_list.end:] = ctypes.c_int(-1)
-        self._internal_index[0] = 0
-
-        self._cell_contents_count.zero()
-        self._internal_N[0] = self._q_list[self._q_list.end]
-        self._cell_sort_loop.execute(start=0,
-                                     end=self._pos.npart,
-                                     dat_dict={'E': self._domain.extent,
-                                               'P': self._pos,
-                                               'CEL': self._domain.cell_edge_lengths,
-                                               'CA': self._domain.cell_array,
-                                               'q': self._q_list,
-                                               'CCC': self._cell_contents_count,
-                                               'I': self._internal_index,
-                                               'n': self._internal_N}
-                                     )
-
-    def _cell_sort_halo(self):
-        """
-        Construct neighbour list, assigning *halo* atoms to cells. Using Rapaport algorithm. Depreciated, use halo sorting methods within the halo class.
-        """
-
-        self._q_list.resize(self._pos.npart + self._pos.npart_halo + self._domain.cell_count + 1)
-        self._q_list[self._q_list.end] = self._q_list.end - self._domain.cell_count
-        self._internal_N[0] = self._q_list[self._q_list.end]
-
-        self._internal_index[0] = self._pos.npart
-        self._internal_N[0] = self._q_list[self._q_list.end]
-        self._cell_sort_loop.execute(start=self._pos.npart,
-                                     end=self._pos.npart + self._pos.npart_halo,
-                                     dat_dict={'E': self._domain.extent,
-                                               'P': self._pos,
-                                               'CEL': self._domain.cell_edge_lengths,
-                                               'CA': self._domain.cell_array,
-                                               'q': self._q_list,
-                                               'CCC': self._cell_contents_count,
-                                               'I': self._internal_index,
-                                               'n': self._internal_N}
-                                     )
-    def _group_by_cell_setup(self):
-        """
-        Setup library to group data in postitions, global ids and types such that particles in the same cell are sequential.
-        """
-        pass
-
-    def _group_by_cell(self):
-        """
-        Run library to group data by cell.
-        """
-        pass
-
-
-    def forces_update(self):
-        """
-        Updates forces dats using given looping method.
-        """
-
-        self.timer.start()
-
-        self._cell_sort_local()
-        self._group_by_cell()
-
-
-        if self._cell_setup_attempt is True:
-            self._domain.halos.set_position_info(self._cell_contents_count, self._q_list)
-            self._domain.halos.exchange(self._pos)
-
-
-        '''
-        print "================================"
-        print self._domain.rank, self._q_list[0:4:], self._q_list[self._q_list[self._q_list.end]::]
-        print "--------------------------------"
-        print self._pos[0:4,::]
-        print "================================"
-        '''
-
-        self.set_forces(ctypes.c_double(0.0))
-        self.reset_u()
-
-        if self._N > 0:
-            self._looping_method_accel.execute(n=self._q_list[self._q_list.end])
-
-        self.timer.pause()
-
-    def kinetic_energy_update(self):
-        """
-        Method to update the recorded kinetic energy of the system.
-        :return: New kinetic energy.
-        """
-
-        if self._kinetic_energy_loop is None:
-            _K_kernel_code = '''
-
-            k[0] += (V[0]*V[0] + V[1]*V[1] + V[2]*V[2])*0.5*M[0];
-
-            '''
-            _constants_K = []
-            _K_kernel = kernel.Kernel('K_kernel', _K_kernel_code, _constants_K)
-            self._kinetic_energy_loop = loop.SingleAllParticleLoop(self.n,
-                                                                   self._types,
-                                                                   _K_kernel,
-                                                                   {'V': self._vel, 'k': self._K, 'M': self._mass})
-        self._K.scale(0.0)
-        self._kinetic_energy_loop.execute()
-
-        return self._K[0]
-
-    def types_map(self):
-        """
-        Returns the arrays needed by methods to map between particle global ids and particle types.
-        """
-        return self._types
-
-    @property
-    def types(self):
-        return self._types
-
-    @property
-    def global_ids(self):
-        return self._global_ids
-
-    # @property
-    def nt(self):
-        return self._NT
-
-    def n(self):
-        """
-        Returns number of particles.
-        """
-        return self._N
-
-    def set_n(self, val):
-        """
-        Set number of particles.
-        """
-
-        self._N = val
-
-        self._pos.npart = val
-        self._pos.halo_start_reset()
-
-        self._vel.npart = val
-        self._vel.halo_start_reset()
-
-        self._accel.npart = val
-        self._accel.halo_start_reset()
-
-        self._global_ids.ncomp = val
-        # self._global_ids.halo_start_reset()
-
-    def nh(self):
-        """Return number of particles in halo"""
-        return self._pos.npart_halo
-
-    @property
-    def domain(self):
-        """
-        Return the domain used by the state.
-        """
-        return self._domain
-
-    @property
-    def positions(self):
-        """
-        Return all particle positions.
-        """
-        return self._pos
-
-    @property
-    def velocities(self):
-        """
-        Return all particle velocities.
-        """
-        return self._vel
-
-    @property
-    def forces(self):
-        """
-        Return all particle forces.
-        """
-        return self._accel
-
-    @property
-    def masses(self):
-        """
-        Return all particle masses.
-        """
-        return self._mass
-
-    def set_forces(self, val):
-        """
-        Set all forces to given value.
-        
-        :arg double val: value to set to.
-        """
-
-        # self._accel.set_val(val)
-        self._accel.dat[0:self._accel.npart:, ::] = val
-
-    @property
-    def potential(self):
-        return self._potential
-
-    @property
-    def u(self):
-        """
-        Return potential energy
-        """
-        return self._U
-
-    @property
-    def k(self):
-        """
-        Return Kenetic energy
-        """
-        return self._K
-
-    @property
-    def q(self):
-        """
-        Return Total energy
-        """
-        return self._Q
-
-    def reset_u(self):
-        """
-        Reset potential energy to 0.0
-        """
-        # self._U._Dat = np.zeros([1], dtype=ctypes.c_double, order='C')
-        self._U.scale(0.)
-
-    def u_set(self, u_in):
-        """
-        Set a kenetic energy value.
-        """
-        self._U = u_in
-
-    def energy_kinetic(self):
-        """
-        Calculate and return kinetic energy.
-        """
-
-        def squared_sum(x):
-            return (x[0] ** 2) + (x[1] ** 2) + (x[2] ** 2)
-
-        print self._N
-
-        energy = 0.
-        for i in range(self._N):
-            energy += 0.5 * self._mass[i] * squared_sum(self._vel[i, :])
-
-        return float(energy)
-
 
 ################################################################################################################
 # BaseMDStatehalo DEFINITIONS
 ################################################################################################################
 
 
-class BaseMDStateHalo(BaseMDState):
+class BaseMDStateHalo(object):
     """
     Base molecular dynamics class.
     
@@ -492,16 +34,15 @@ class BaseMDStateHalo(BaseMDState):
     :arg bool DEBUG: Flag to enable debug flags.
     """
 
-    def __init__(self, domain, potential, particle_pos_init=None, particle_vel_init=None, particle_mass_init=None, n=0):
+    def __init__(self, domain_in, potential_in, particle_pos_init=None, particle_vel_init=None, particle_mass_init=None, n=0):
         """
         Initialise class to hold the state of a simulation.
-        :arg domain domain: Container within which the simulation takes place.
-        :arg potential potential: Potential to use between particles.
+        :arg domain_in domain_in: Container within which the simulation takes place.
+        :arg potential_in potential_in: Potential to use between particles.
         :arg int n: Number of particles, default 1.
-        :arg double mass: Mass of particles, default 1.0        
-        
+        :arg double mass: Mass of particles, default 1.0
         """
-        self._potential = potential
+        self._potential = potential_in
         self._N = n
         self._NT = n
         self._pos = particle.Dat(self._NT, 3, name='positions')
@@ -517,16 +58,17 @@ class BaseMDStateHalo(BaseMDState):
         '''Mass is an example of a property dependant on particle type'''
         self._mass = particle.TypedDat(self._NT, 1, 1.0)
 
-        self._domain = domain
+        self._domain = domain_in
 
-        # potential energy, kenetic energy, total energy.
+
+        # potential_in energy, kenetic energy, total energy.
         self._U = data.ScalarArray(max_size=2, name='potential_energy')
         self._U.init_halo_dat()
 
         self._K = data.ScalarArray()
         self._Q = data.ScalarArray()
 
-        '''Get domain extent from position config'''
+        '''Get domain_in extent from position config'''
         particle_pos_init.get_extent(self)
 
         '''Attempt to initialise cell array'''
@@ -547,12 +89,14 @@ class BaseMDStateHalo(BaseMDState):
         self._time = 0.0
 
         self._domain.bc_setup(self)
+
         self._domain.bc_execute()
 
         self._kinetic_energy_loop = None
 
-        # Setup acceleration updating from given potential
+        # Setup acceleration updating from given potential_in
         _potential_dat_dict = self._potential.datdict(self)
+
 
         if self._cell_setup_attempt is True:
             self._cell_sort_setup()
@@ -561,8 +105,15 @@ class BaseMDStateHalo(BaseMDState):
 
             self._group_by_cell_setup()
 
-
-            self._looping_method_accel = pairloop.PairLoopRapaportHalo(n=self._N,
+            if type(self._domain) is domain.BaseDomainHalo:
+                self._looping_method_accel = pairloop.PairLoopRapaportHalo(n=self._N,
+                                                                           domain=self._domain,
+                                                                           positions=self._pos,
+                                                                           potential=self._potential,
+                                                                           dat_dict=_potential_dat_dict,
+                                                                           cell_list=self._q_list)
+            elif type(self._domain) is domain.BaseDomain:
+                self._looping_method_accel = pairloop.PairLoopRapaport(n=self._N,
                                                                        domain=self._domain,
                                                                        positions=self._pos,
                                                                        potential=self._potential,
@@ -579,6 +130,23 @@ class BaseMDStateHalo(BaseMDState):
 
         if runtime.DEBUG.level > 0:
             pio.pprint("DEBUG IS ON")
+
+
+
+    @property
+    def time(self):
+        """
+        Returns the time of the system.
+        """
+        return self._time
+
+    def add_time(self, increment=0.0):
+        """
+        Increases the state time by the increment amount.
+        :param increment: Amount to increment time by.
+        :return:
+        """
+        self._time += increment
 
     def _cell_sort_setup(self):
         """
@@ -598,31 +166,19 @@ class BaseMDStateHalo(BaseMDState):
         self._internal_N = data.ScalarArray(dtype=ctypes.c_int)
 
         self._cell_sort_code = '''
-        
-        //printf("start P[0] = %f, P[1] = %f, P[2] = %f |", P[0], P[1], P[2]);
-        
-        
+
         const int C0 = (int)((P[0] - B[0])/CEL[0]);
         const int C1 = (int)((P[1] - B[2])/CEL[1]);
         const int C2 = (int)((P[2] - B[4])/CEL[2]);
         
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
         
-        //printf("val = %d |", val);
-        
         //needed, may improve halo exchange times
         CCC[val]++;
 
         q[I[0]] = q[n[0] + val];
-        
-        //printf("I[0] = %d, n[0] = %d, n[0] + val = %d |", I[0], n[0], n[0] + val);
-        
         q[n[0] + val] = I[0];
-
         I[0]++;
-
-        //printf("I[0] = %d |", I[0]);
-        //printf("end #");
         '''
         self._cell_sort_dict = {'B': self._domain.boundary_outer,
                                 'P': self._pos,
@@ -672,12 +228,20 @@ class BaseMDStateHalo(BaseMDState):
         self._types_new = data.ScalarArray(ncomp=self._types.max_size, dtype=ctypes.c_int)
         self._q_list_new = data.ScalarArray(ncomp=self._q_list.max_size, dtype=ctypes.c_int)
 
+        if self._domain.halos is not False:
+            _triple_loop = 'for(int iz = 1; iz < (CA[2]-1); iz++){' \
+                           'for(int iy = 1; iy < (CA[1]-1); iy++){ ' \
+                           'for(int ix = 1; ix < (CA[0]-1); ix++){'
+        else:
+            _triple_loop = 'for(int iz = 0; iz < CA[2]; iz++){' \
+                           'for(int iy = 0; iy < CA[1]; iy++){' \
+                           'for(int ix = 0; ix < CA[0]; ix++){'
+
         _code = '''
 
         int index = 0;
 
-        for(int iz = 1; iz < (CA[2]-1); iz++){ for(int iy = 1; iy < (CA[1]-1); iy++) { for(int ix = 1; ix < (CA[0]-1); ix++) {
-
+        %(TRIPLE_LOOP)s
 
             const int c = iz*CA[0]*CA[1] + iy*CA[0] + ix;
 
@@ -703,7 +267,7 @@ class BaseMDStateHalo(BaseMDState):
                 index++;
             }
         }}}
-        '''
+        ''' % {'TRIPLE_LOOP': _triple_loop}
 
         _constants = (constant.Constant('pos_ncomp', self._pos.ncomp),constant.Constant('vel_ncomp', self._vel.ncomp))
 
@@ -760,6 +324,165 @@ class BaseMDStateHalo(BaseMDState):
         self._q_list_new.dat = _tmp
 
         self._q_list.dat[self._q_list.end] = self._q_list.end - self._domain.cell_count
+
+    def reset_u(self):
+        """
+        Reset potential energy to 0.0
+        """
+        # self._U._Dat = np.zeros([1], dtype=ctypes.c_double, order='C')
+        self._U.scale(0.)
+
+    def forces_update(self):
+        """
+        Updates forces dats using given looping method.
+        """
+
+        self.timer.start()
+
+        self._cell_sort_local()
+        self._group_by_cell()
+
+        if (self._cell_setup_attempt is True) and (self._domain.halos is not False):
+            self._domain.halos.set_position_info(self._cell_contents_count, self._q_list)
+            self._domain.halos.exchange(self._pos)
+
+        self.set_forces(ctypes.c_double(0.0))
+        self.reset_u()
+
+        if self._N > 0:
+            self._looping_method_accel.execute()
+
+        self.timer.pause()
+
+    def kinetic_energy_update(self):
+        """
+        Method to update the recorded kinetic energy of the system.
+        :return: New kinetic energy.
+        """
+
+        if self._kinetic_energy_loop is None:
+            _K_kernel_code = '''
+
+            k[0] += (V[0]*V[0] + V[1]*V[1] + V[2]*V[2])*0.5*M[0];
+
+            '''
+            _constants_K = []
+            _K_kernel = kernel.Kernel('K_kernel', _K_kernel_code, _constants_K)
+            self._kinetic_energy_loop = loop.SingleAllParticleLoop(self.n,
+                                                                   self._types,
+                                                                   _K_kernel,
+                                                                   {'V': self._vel, 'k': self._K, 'M': self._mass})
+        self._K.scale(0.0)
+        self._kinetic_energy_loop.execute()
+
+        return self._K[0]
+
+    def types_map(self):
+        """
+        Returns the arrays needed by methods to map between particle global ids and particle types.
+        """
+        return self._types
+
+
+    @property
+    def k(self):
+        """
+        Return Kenetic energy
+        """
+        return self._K
+
+    @property
+    def domain(self):
+        """
+        Return the domain used by the state.
+        """
+        return self._domain
+
+    @property
+    def positions(self):
+        """
+        Return all particle positions.
+        """
+        return self._pos
+
+    @property
+    def velocities(self):
+        """
+        Return all particle velocities.
+        """
+        return self._vel
+
+    @property
+    def forces(self):
+        """
+        Return all particle forces.
+        """
+        return self._accel
+
+    @property
+    def masses(self):
+        """
+        Return all particle masses.
+        """
+        return self._mass
+
+    def set_forces(self, val):
+        """
+        Set all forces to given value.
+
+        :arg double val: value to set to.
+        """
+
+        # self._accel.set_val(val)
+        self._accel.dat[0:self._accel.npart:, ::] = val
+
+    @property
+    def potential(self):
+        return self._potential
+
+    @property
+    def u(self):
+        """
+        Return potential energy
+        """
+        return self._U
+
+    def set_n(self, val):
+        """
+        Set number of particles.
+        """
+
+        self._N = val
+
+        self._pos.npart = val
+        self._pos.halo_start_reset()
+
+        self._vel.npart = val
+        self._vel.halo_start_reset()
+
+        self._accel.npart = val
+        self._accel.halo_start_reset()
+
+        self._global_ids.ncomp = val
+        # self._global_ids.halo_start_reset()
+
+    @property
+    def types(self):
+        return self._types
+
+    @property
+    def global_ids(self):
+        return self._global_ids
+
+    # @property
+    def nt(self):
+        return self._NT
+
+    def n(self):
+        """
+        Returns number of particles.
+        """
+        return self._N
 
 
 

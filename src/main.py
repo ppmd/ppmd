@@ -46,7 +46,7 @@ if __name__ == '__main__':
     # Write XYZ?
     writing = True
 
-    t=0.01
+    t=1.0
     dt=0.0001
 
 
@@ -86,8 +86,8 @@ if __name__ == '__main__':
         nsig = 5.0
         
         # Initialise basic domain
-        test_domain = domain.BaseDomainHalo(nt=N, periods = (True,True,True))
-        
+        test_domain = domain.BaseDomain(nt=N)
+
         # Initialise LJ potential
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
         
@@ -144,14 +144,13 @@ if __name__ == '__main__':
 
 
     # Create state class from above initialisations.
-    test_state = state.BaseMDStateHalo(domain=test_domain,
-                                       potential=test_potential,
+    test_state = state.BaseMDStateHalo(domain_in=test_domain,
+                                       potential_in=test_potential,
                                        particle_pos_init=test_pos_init,
                                        particle_vel_init=test_vel_init,
                                        particle_mass_init=test_mass_init,
                                        n=N
                                        )
-
 
     # plotting handle
     if plotting:
@@ -209,7 +208,8 @@ if __name__ == '__main__':
 
     test_integrator.integrate(dt=dt, t=t)
 
-    test_domain.halos.timer.time("Total time in halo exchange.")
+    if test_domain.halos is not False:
+        test_domain.halos.timer.time("Total time in halo exchange.")
     test_state.timer.time("Total time in forces update.")
     
     ###########################################################
@@ -222,7 +222,7 @@ if __name__ == '__main__':
 
     if runtime.MPI_HANDLE.rank ==0:
         try:
-            #a=input("PRESS ENTER TO CONTINUE.\n")
+            a=input("PRESS ENTER TO CONTINUE.\n")
             pass
         except:
             pass

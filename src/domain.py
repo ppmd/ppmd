@@ -48,6 +48,16 @@ class BaseDomain(object):
         self._cell_edge_lengths = data.ScalarArray(np.array([1., 1., 1.], dtype=ctypes.c_double))
 
         self._BCloop = None
+        self._boundary = [
+            -0.5 * self._extent[0],
+            0.5 * self._extent[0],
+            -0.5 * self._extent[1],
+            0.5 * self._extent[1],
+            -0.5 * self._extent[2],
+            0.5 * self._extent[2]
+        ]
+        self._boundary = data.ScalarArray(self._boundary, dtype=ctypes.c_double)
+        self._halos = False
 
     @property
     def comm(self):
@@ -97,18 +107,17 @@ class BaseDomain(object):
                 P[2] = fmod( x , E[2] ) - E2_2;
             }
         }                
-        
-        
-        
+
         '''
 
         self._BCcodeDict = {'P': self._BC_state.positions, 'E': self._extent}
-        self._BCkernel = kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
-        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.n, None, self._BCkernel, self._BCcodeDict)
+        self._BCkernel = kernel.Kernel('BCkernel_simple', self._BCcode, headers=['math.h'])
+        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.n, self._BC_state.types_map, self._BCkernel, self._BCcodeDict)
 
     def bc_execute(self):
         # self.boundary_correct(self._positions)
         assert self._BCloop is not None, "Run bc_setup first"
+
         self._BCloop.execute()
 
     @property
@@ -123,7 +132,17 @@ class BaseDomain(object):
         Set domain extents
         :arg np.array(3,1) new_extent: New extents.
         """
-        self._extent[0:4] = new_extent
+        self._extent[0:4:] = new_extent
+
+        self._boundary = [
+            -0.5 * self._extent[0],
+            0.5 * self._extent[0],
+            -0.5 * self._extent[1],
+            0.5 * self._extent[1],
+            -0.5 * self._extent[2],
+            0.5 * self._extent[2]
+        ]
+        self._boundary = data.ScalarArray(self._boundary, dtype=ctypes.c_double)
 
     @property
     def cell_count(self):
@@ -197,6 +216,23 @@ class BaseDomain(object):
         """
         return self._cell_edge_lengths
 
+    @property
+    def boundary(self):
+        """
+        Return local domain boundary
+        """
+        return self._boundary
+
+    @property
+    def boundary_outer(self):
+        """
+        Return local domain boundary
+        """
+        return self._boundary
+
+    @property
+    def halos(self):
+        return self._halos
 
 ##############################################################################################################
 # BASE DOMAIN HALO
@@ -225,6 +261,7 @@ class BaseDomainHalo(BaseDomain):
         self._cell_edge_lengths = data.ScalarArray(np.array([1., 1., 1.], dtype=ctypes.c_double))
 
         self._BCloop = None
+        self._halos = False
 
     @property
     def mpi_handle(self):
@@ -924,12 +961,6 @@ class BaseDomainHalo(BaseDomain):
 
             self._escape_count_total.zero()
             self._escape_count.zero()
-
-            '''
-            if self._BC_state.n() > 0:
-                print "pos", self._BC_state.positions[0,::], "rank:", self._rank
-                print "vel", self._BC_state.velocities[0,::], "rank:", self._rank
-            '''
 
             '''Find escaping particles'''
             self._escape_guard_loop.execute()
