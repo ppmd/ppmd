@@ -46,7 +46,7 @@ if __name__ == '__main__':
     # Write XYZ?
     writing = True
 
-    t=1.0
+    t=0.01
     dt=0.0001
 
 
@@ -54,13 +54,13 @@ if __name__ == '__main__':
     # check gpucuda Module initalised correctly.
 
     if gpucuda.INIT_STATUS():
-        a_N = 10000000
+        a_N = 1000
 
-        b = particle.Dat(initial_value=range(a_N)); b.add_cuda_dat() ;b.copy_to_cuda_dat()
-        c = particle.Dat(initial_value=range(a_N)); c.add_cuda_dat() ;c.copy_to_cuda_dat()
-        a = particle.Dat(initial_value=range(a_N)); a.add_cuda_dat() ;a.copy_to_cuda_dat()
+        b = particle.Dat(initial_value=list(np.linspace(0,10,a_N-1))); b.add_cuda_dat() ;b.copy_to_cuda_dat()
+        c = particle.Dat(initial_value=list(np.linspace(0,10,a_N-1))); c.add_cuda_dat() ;c.copy_to_cuda_dat()
+        a = particle.Dat(initial_value=list(np.linspace(0,10,a_N-1))); a.add_cuda_dat() ;a.copy_to_cuda_dat()
 
-        print a[-1]
+        print a[-1], a.dat[0:10:]
 
         a.dat[0:a_N:] = 0.0
         print a[0:10:]
@@ -222,7 +222,7 @@ if __name__ == '__main__':
 
     if runtime.MPI_HANDLE.rank ==0:
         try:
-            a=input("PRESS ENTER TO CONTINUE.\n")
+            #a=input("PRESS ENTER TO CONTINUE.\n")
             pass
         except:
             pass

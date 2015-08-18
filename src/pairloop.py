@@ -615,7 +615,7 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
         #include \"%(UNIQUENAME)s.h\"
         #include <omp.h>
         
-        inline void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cpp, unsigned int *flag, double *offset){
+        void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cpp, unsigned int *flag, double *offset){
         
             const int cell_map[27][3] = {   
                                             {-1,1,-1},
@@ -647,17 +647,12 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
                                             {1,0,1},
                                             {1,1,1},
                                             {1,-1,1}
-                                            
-                                            };
-                                            
-                                             
-                
-                
+                                        };
+
             unsigned int tmp = cell_array[0]*cell_array[1];    
             int Cz = cp/tmp;
             int Cx = cp %% cell_array[0];
             int Cy = (cp - Cz*tmp)/cell_array[0];
-            
             
             Cx += cell_map[cpp_i][0];
             Cy += cell_map[cpp_i][1];
@@ -666,22 +661,18 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
             int C0 = (Cx + cell_array[0]) %% cell_array[0];    
             int C1 = (Cy + cell_array[1]) %% cell_array[1];
             int C2 = (Cz + cell_array[2]) %% cell_array[2];
-                
-             
+
             if ((Cx != C0) || (Cy != C1) || (Cz != C2)) { 
                 *flag = 1;
                 offset[0] = ((double)sign(Cx - C0))*d_extent[0];
                 offset[1] = ((double)sign(Cy - C1))*d_extent[1];
                 offset[2] = ((double)sign(Cz - C2))*d_extent[2];
                 
-                
-                
+
             } else {*flag = 0; }
             
             *cpp = (C2*cell_array[1] + C1)*cell_array[0] + C0;
-            
-            
-                
+
             return;      
         }    
         

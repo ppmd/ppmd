@@ -12,6 +12,7 @@ import build
 import constant
 import pio
 import domain
+import gpucuda
 
 
 np.set_printoptions(threshold='nan')
@@ -49,6 +50,11 @@ class BaseMDStateHalo(object):
         self._vel = particle.Dat(self._NT, 3, name='velocities')
         self._accel = particle.Dat(self._NT, 3, name='accelerations')
 
+
+        if gpucuda.INIT_STATUS():
+            self._pos.add_cuda_dat()
+            self._accel.add_cuda_dat()
+
         '''Store global ids of particles'''
         self._global_ids = data.ScalarArray(ncomp=self._NT, dtype=ctypes.c_int)
 
@@ -64,6 +70,8 @@ class BaseMDStateHalo(object):
         # potential_in energy, kenetic energy, total energy.
         self._U = data.ScalarArray(max_size=2, name='potential_energy')
         self._U.init_halo_dat()
+        if gpucuda.INIT_STATUS():
+            self._U.add_cuda_dat()
 
         self._K = data.ScalarArray()
         self._Q = data.ScalarArray()
@@ -120,6 +128,19 @@ class BaseMDStateHalo(object):
                                                                        dat_dict=_potential_dat_dict,
                                                                        cell_list=self._q_list)
 
+            if gpucuda.INIT_STATUS():
+                self._accel_comparison = particle.Dat(self._NT, 3, name='accel_compare')
+                self._looping_method_accel_test = gpucuda.SimpleCudaPairLoop(n=self.n,
+                                                                             domain=self._domain,
+                                                                             positions=self._pos,
+                                                                             potential=self._potential,
+                                                                             dat_dict=_potential_dat_dict,
+                                                                             cell_list=self._q_list,
+                                                                             cell_contents_count=self._cell_contents_count,
+                                                                             particle_cell_lookup=self._particle_cell_lookup)
+
+
+
         else:
             self._looping_method_accel = pairloop.DoubleAllParticleLoopPBC(n=self._N,
                                                                            domain=self._domain,
@@ -161,6 +182,16 @@ class BaseMDStateHalo(object):
         self._cell_contents_count = data.ScalarArray(np.zeros([self._domain.cell_count], dtype=ctypes.c_int, order='C'),
                                                      dtype=ctypes.c_int)
 
+        # TODO, make this dependent on looping method used.
+        '''Reverse lookup, given a local particle id, get containing cell.'''
+        self._particle_cell_lookup = data.ScalarArray(np.zeros([self._NT], dtype=ctypes.c_int, order='C'),dtype=ctypes.c_int)
+
+        if gpucuda.INIT_STATUS():
+            self._particle_cell_lookup.add_cuda_dat()
+            self._cell_contents_count.add_cuda_dat()
+            self._q_list.add_cuda_dat()
+
+
         # temporary method for index awareness inside kernel.
         self._internal_index = data.ScalarArray(dtype=ctypes.c_int)
         self._internal_N = data.ScalarArray(dtype=ctypes.c_int)
@@ -175,6 +206,7 @@ class BaseMDStateHalo(object):
         
         //needed, may improve halo exchange times
         CCC[val]++;
+        PCL[I[0]] = val;
 
         q[I[0]] = q[n[0] + val];
         q[n[0] + val] = I[0];
@@ -186,6 +218,7 @@ class BaseMDStateHalo(object):
                                 'CA': self._domain.cell_array,
                                 'q': self._q_list,
                                 'CCC': self._cell_contents_count,
+                                'PCL': self._particle_cell_lookup,
                                 'I': self._internal_index,
                                 'n': self._internal_N}
 
@@ -213,6 +246,7 @@ class BaseMDStateHalo(object):
                                                'CA': self._domain.cell_array,
                                                'q': self._q_list,
                                                'CCC': self._cell_contents_count,
+                                               'PCL': self._particle_cell_lookup,
                                                'I': self._internal_index,
                                                'n': self._internal_N}
                                      )
@@ -348,9 +382,30 @@ class BaseMDStateHalo(object):
 
         self.set_forces(ctypes.c_double(0.0))
         self.reset_u()
+        if gpucuda.INIT_STATUS():
+            self._U.copy_to_cuda_dat()
+            self._accel.copy_to_cuda_dat()
+
 
         if self._N > 0:
             self._looping_method_accel.execute()
+
+        if gpucuda.INIT_STATUS():
+            # copy data to gpu
+            self._q_list.copy_to_cuda_dat()
+            self._pos.copy_to_cuda_dat()
+            self._cell_contents_count.copy_to_cuda_dat()
+            self._particle_cell_lookup.copy_to_cuda_dat()
+
+            # execute pair loop
+            self._looping_method_accel_test.execute()
+
+            self._accel.get_cuda_dat().cpy_dth(self._accel_comparison.ctypes_data)
+            print "GPU", self._accel_comparison.dat[0:1]
+            print "CPU", self._accel.dat[0:1]
+
+
+
 
         self.timer.pause()
 

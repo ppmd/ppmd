@@ -201,7 +201,7 @@ def INIT_STATUS():
     :return: True/False.
     """
 
-    if (LIBCUDART is not None) and (LIBHELPER is not None) and (DEVICE.id is not None):
+    if (LIBCUDART is not None) and (LIBHELPER is not None) and (DEVICE.id is not None) and runtime.CUDA_ENABLED.flag:
         return True
     else:
         return False
@@ -413,7 +413,7 @@ class _Base(object):
 
 
         # set unique names.
-        self._unique_name = self._unique_name_calc()
+        self._unique_name = 'CUDA_' + self._unique_name_calc()
         self._library_filename = self._unique_name + '.so'
 
         # see if exists
@@ -524,14 +524,15 @@ class _Base(object):
 
             if type(dat[1]) == particle.Dat:
                 s += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' d_' + loc_argname + ','
-
+            if type(dat[1]) == data.ScalarArray:
+                s += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' d_' + loc_argname + ','
         return s[:-1]
 
     def _kernel_pointer_mapping(self):
         """
         Create string for thread id and pointer mapping.
         """
-        _s = 'int _ix = threadIdx.x + blockIdx.x*blockDim.x; \n \n'
+        _s = ''
 
         space = ' ' * 14
 
@@ -584,8 +585,10 @@ class _Base(object):
         //device kernel decelerations.
         __global__ void %(KERNEL_NAME)s_gpukernel(%(KERNEL_ARGUMENTS_DECL)s){
 
-            %(GPU_POINTER_MAPPING)s
+            int _ix = threadIdx.x + blockIdx.x*blockDim.x;
             if (_ix < _d_n){
+            %(GPU_POINTER_MAPPING)s
+
                 %(GPU_KERNEL)s
             }
         }
@@ -725,10 +728,318 @@ class SingleParticleLoop(_Base):
 
 # TODO: Add start and end points to this.
 
+#####################################################################################
+# CUDA SimpleCudaPairLoop
+#####################################################################################
+
+class SimpleCudaPairLoop(_Base):
+    def __init__(self, n, domain, positions, potential, dat_dict, cell_list, cell_contents_count, particle_cell_lookup):
+        self._N = n
+        self._domain = domain
+        self._P = positions
+        self._potential = potential
+        self._particle_dat_dict = dat_dict
+        self._q_list = cell_list
+        self._cell_contents_count = cell_contents_count
+        self._particle_cell_lookup = particle_cell_lookup
+
+
+        self._cc = NVCC
+        self._temp_dir = './build/'
+        if not os.path.exists(self._temp_dir):
+            os.mkdir(self._temp_dir)
+        self._kernel = self._potential.kernel
+
+        self._nargs = len(self._particle_dat_dict)
+
+        self._static_arg_init()
+        self._code_init()
+
+        self._unique_name = 'CUDA_' + self._unique_name_calc()
+
+        self._library_filename = self._unique_name + '.so'
+
+        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
+            if runtime.MPI_HANDLE is None:
+                self._create_library()
+            else:
+                if runtime.MPI_HANDLE.rank == 0:
+                    self._create_library()
+                runtime.MPI_HANDLE.barrier()
+
+        try:
+            self._lib = ct.cdll.LoadLibrary(os.path.join(self._temp_dir, self._library_filename))
+        except OSError as e:
+            raise OSError(e)
+        except:
+            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
+
+
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+
+        //device constant decelerations.
+        __constant__ int _d_n;
+        __constant__ int _d_cell_offset;
+        __constant__ int _d_cell_array[3];
+        __constant__ double _d_extent[3];
+        %(DEVICE_CONSTANT_DECELERATION)s
+
+
+        __device__ void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, unsigned int* cpp, unsigned int *flag, double *offset){
+
+           const int cell_map[27][3] = {
+                                            {-1,1,-1},
+                                            {-1,-1,-1},
+                                            {-1,0,-1},
+                                            {0,1,-1},
+                                            {0,-1,-1},
+                                            {0,0,-1},
+                                            {1,0,-1},
+                                            {1,1,-1},
+                                            {1,-1,-1},
+
+                                            {-1,1,0},
+                                            {-1,0,0},
+                                            {-1,-1,0},
+                                            {0,-1,0},
+                                            {0,0,0},
+                                            {0,1,0},
+                                            {1,0,0},
+                                            {1,1,0},
+                                            {1,-1,0},
+
+                                            {-1,0,1},
+                                            {-1,1,1},
+                                            {-1,-1,1},
+                                            {0,0,1},
+                                            {0,1,1},
+                                            {0,-1,1},
+                                            {1,0,1},
+                                            {1,1,1},
+                                            {1,-1,1}
+                                        };
+
+            unsigned int tmp = _d_cell_array[0]*_d_cell_array[1];
+            int Cz = cp/tmp;
+            int Cx = cp %% _d_cell_array[0];
+            int Cy = (cp - Cz*tmp)/_d_cell_array[0];
+
+            Cx += cell_map[cpp_i][0];
+            Cy += cell_map[cpp_i][1];
+            Cz += cell_map[cpp_i][2];
+
+            int C0 = (Cx + _d_cell_array[0]) %% _d_cell_array[0];
+            int C1 = (Cy + _d_cell_array[1]) %% _d_cell_array[1];
+            int C2 = (Cz + _d_cell_array[2]) %% _d_cell_array[2];
+
+            if ((Cx != C0) || (Cy != C1) || (Cz != C2)) {
+                *flag = 1;
+                offset[0] = ((double)sign(Cx - C0))*_d_extent[0];
+                offset[1] = ((double)sign(Cy - C1))*_d_extent[1];
+                offset[2] = ((double)sign(Cz - C2))*_d_extent[2];
+
+            } else {*flag = 0; }
+
+            *cpp = (C2*_d_cell_array[1] + C1)*_d_cell_array[0] + C0;
+
+            return;
+        }
+
+        //device kernel decelerations.
+        __global__ void %(KERNEL_NAME)s_gpukernel(int *CCC, int *PCL, int *cell_list, %(KERNEL_ARGUMENTS_DECL)s){
+
+            int _ix = threadIdx.x + blockIdx.x*blockDim.x;
+
+            if (_ix < _d_n){
+                for(unsigned int cpp_i=0; cpp_i<27; cpp_i++){
+                    double s[3];
+                    unsigned int flag, cpp;
+                    cell_index_offset(PCL[_ix], cpp_i, &cpp, &flag, s);
+
+                    for(int _iy = cell_list[_d_cell_offset+cpp];
+                     _iy < cell_list[_d_cell_offset+cpp]+CCC[cpp];
+                     _iy++){
+
+                        if (_iy != _ix){
+
+
+                        double r1[3];
+
+                        %(GPU_POINTER_MAPPING)s
+
+                        %(GPU_KERNEL)s
 
 
 
+                        }
 
+                    }
+
+
+                }
+
+            }
+        }
+
+        void %(KERNEL_NAME)s_wrapper(const int blocksize[3],
+                                     const int threadsize[3],
+                                     const int _h_n,
+                                     const int _h_cell_offset,
+                                     const int _h_cell_array[3],
+                                     const double _h_extent[3],
+                                     int *CCC,
+                                     int *PCL,
+                                     int *cell_list,
+                                     %(ARGUMENTS)s){
+
+            //device constant copy.
+            checkCudaErrors(cudaMemcpyToSymbol(_d_n, &_h_n, sizeof(_h_n)));
+            checkCudaErrors(cudaMemcpyToSymbol(_d_cell_offset, &_h_cell_offset, sizeof(_h_cell_offset)));
+            checkCudaErrors(cudaMemcpyToSymbol(_d_cell_array, &_h_cell_array, sizeof(_h_cell_array)));
+            checkCudaErrors(cudaMemcpyToSymbol(_d_extent, &_h_extent, sizeof(_h_extent)));
+
+
+            %(DEVICE_CONSTANT_COPY)s
+
+            dim3 bs; bs.x = blocksize[0]; bs.y = blocksize[1]; bs.z = blocksize[2];
+            dim3 ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
+
+            getLastCudaError(" %(KERNEL_NAME)s Execution failed before kernel launch. \\n");
+            %(KERNEL_NAME)s_gpukernel<<<bs,ts>>>(CCC,PCL,cell_list,%(KERNEL_ARGUMENTS)s);
+            checkCudaErrors(cudaDeviceSynchronize());
+            getLastCudaError(" %(KERNEL_NAME)s Execution failed. \\n");
+        }
+        '''
+
+    def _kernel_pointer_mapping(self):
+        """
+        Create string for thread id and pointer mapping.
+        """
+        _s = ''
+
+        space = ' ' * 14
+
+        for dat in self._particle_dat_dict.items():
+            argname = 'd_' + dat[0]
+            loc_argname = dat[0]
+
+            if type(dat[1]) == particle.Dat:
+                if dat[1].name == 'positions':
+                    _s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+
+                    _s += space + 'if (flag){ \n'
+
+                    # s += space+'double r1[3];\n'
+                    _s += space + 'r1[0] =' + argname + '[LINIDX_2D(3,_iy,0)] + s[0]; \n'
+                    _s += space + 'r1[1] =' + argname + '[LINIDX_2D(3,_iy,1)] + s[1]; \n'
+                    _s += space + 'r1[2] =' + argname + '[LINIDX_2D(3,_iy,2)] + s[2]; \n'
+                    _s += space + loc_argname + '[1] = r1;\n'
+
+                    _s += space + '}else{ \n'
+                    _s += space + loc_argname + '[1] = ' + argname + '+3*_iy;\n'
+                    _s += space + '} \n'
+                    _s += space + loc_argname + '[0] = ' + argname + '+3*_ix;\n'
+                elif dat[1].name == 'accelerations':
+                    _s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    _s += space + data.ctypes_map[dat[1].dtype] + ' dummy[3];\n'
+                    _s += space + loc_argname + '[0] = ' + argname + '+' + str(dat[1].ncomp) + '*_ix;\n'
+                    _s += space + loc_argname + '[1] = dummy;\n'
+
+
+                else:
+                    _s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    _s += space + loc_argname + '[0] = ' + argname + '+' + str(dat[1].ncomp) + '*_ix;\n'
+                    _s += space + loc_argname + '[1] = ' + argname + '+' + str(dat[1].ncomp) + '*_iy;\n'
+
+            elif type(dat[1]) == data.ScalarArray:
+                _s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+
+        return _s
+
+    def _generate_header_source(self):
+        """Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        """
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+        #include "../generic.h"
+        #include <cuda.h>
+        #include "../lib/helper_cuda.h"
+
+        %(INCLUDED_HEADERS)s
+
+        extern "C"         void %(KERNEL_NAME)s_wrapper(const int blocksize[3],
+                                     const int threadsize[3],
+                                     const int _h_n,
+                                     const int _h_cell_offset,
+                                     const int _h_cell_array[3],
+                                     const double _h_extent[3],
+                                     int * CCC,
+                                     int * PCL,
+                                     int *cell_list,
+                                     %(ARGUMENTS)s);
+
+        #endif
+        '''
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames()}
+        return code % d
+
+    def execute(self, dat_dict=None, static_args=None):
+
+        """Allow alternative pointers"""
+        if dat_dict is not None:
+            self._particle_dat_dict = dat_dict
+
+        if self._N() < 1025:
+            _blocksize = (ct.c_int * 3)(1, 1, 1)
+            _threadsize = (ct.c_int * 3)(self._N(), 1, 1)
+
+        else:
+            _blocksize = (ct.c_int * 3)(int(self._N() / 1024.), 1, 1)
+            _threadsize = (ct.c_int * 3)(1024, 1, 1)
+
+        _h_cell_array = (ct.c_int * 3)(self._domain.cell_array[0],
+                                       self._domain.cell_array[1],
+                                       self._domain.cell_array[2])
+
+        _h_extent = (ct.c_double * 3)(self._domain.extent[0],
+                                      self._domain.extent[1],
+                                      self._domain.extent[2])
+
+        args = [_blocksize,
+                _threadsize,
+                ct.c_int(self._N()),
+                ct.c_int(self._q_list[self._q_list.end]),
+                _h_cell_array,
+                _h_extent,
+                self._cell_contents_count.get_cuda_dat().ctypes_data,
+                self._particle_cell_lookup.get_cuda_dat().ctypes_data,
+                self._q_list.get_cuda_dat().ctypes_data
+                ]
+
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+        '''Add pointer arguments to launch command'''
+        for dat in self._particle_dat_dict.values():
+            args.append(dat.get_cuda_dat().ctypes_data)
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        method(*args)
 
 
 

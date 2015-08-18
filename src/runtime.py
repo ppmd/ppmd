@@ -111,6 +111,26 @@ DEBUG = Level(0)
 VERBOSE = Level(0)
 TIMER = Level(0)
 
+################################################################################################################
+# Enable class to provide flags to disable/enable major code blocks, eg use cuda y/n
+################################################################################################################
+
+class Enable(object):
+
+    def __init__(self, flag=True):
+        self._f = flag
+
+    @property
+    def flag(self):
+        return self._f
+
+    @flag.setter
+    def flag(self, val=True):
+        self._f = bool(val)
+
+
+CUDA_ENABLED = Enable()
+
 
 ###############################################################################################################
 # MDMPI

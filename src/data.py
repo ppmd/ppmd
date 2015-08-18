@@ -399,6 +399,7 @@ class ScalarArray(object):
         self._A = False
         self._Aarray = None
         self._DatHaloInit = False
+        self._cuda_dat = None
 
     def concatenate(self, size):
         """
@@ -636,6 +637,34 @@ class ScalarArray(object):
         Return status of halo dat.
         """
         return self._DatHaloInit
+
+    def add_cuda_dat(self):
+        """
+        Create a corresponding CudaDeviceDat.
+        """
+        if self._cuda_dat is None:
+            self._cuda_dat = gpucuda.CudaDeviceDat(size=self._max_size, dtype=self._dtype)
+
+    def get_cuda_dat(self):
+        """
+        Returns associated cuda dat, or None if not initialised.
+        """
+        return self._cuda_dat
+
+    def copy_to_cuda_dat(self):
+        """
+        Copy the CPU dat to the cuda device.
+        """
+        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
+        self._cuda_dat.cpy_htd(self.ctypes_data)
+
+    def copy_from_cuda_dat(self):
+        """
+        Copy the device dat into the cuda dat.
+        """
+        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
+        self._cuda_dat.cpy_dth(self.ctypes_data)
+
 
 
 ################################################################################################
