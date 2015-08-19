@@ -28,7 +28,7 @@ NVCC = build.Compiler(['nvcc_system_default'],
                       ['-Xcompiler', '"-fPIC"'],
                       ['-lm'],
                       ['-O3', '-m64', '-Xptxas', '"-v"'],
-                      ['-g'],
+                      ['-g', '-G', '-lineinfo'],
                       ['-c'],
                       ['-shared', '-Xcompiler', '"-fPIC"'],
                       '__restrict__')
@@ -824,6 +824,7 @@ class SimpleCudaPairLoop(_Base):
                                             {1,-1,1}
                                         };
 
+
             unsigned int tmp = _d_cell_array[0]*_d_cell_array[1];
             int Cz = cp/tmp;
             int Cx = cp %% _d_cell_array[0];
@@ -863,24 +864,22 @@ class SimpleCudaPairLoop(_Base):
                     cell_index_offset(PCL[_ix], cpp_i, &cpp, &flag, s);
 
 
-                    // CHECK THIS IS NON NEGATIVE !!!!!!!!!!!!
-                    for(int _iy = cell_list[_d_cell_offset+cpp];
-                     _iy < cell_list[_d_cell_offset+cpp]+CCC[cpp];
-                     _iy++){
+                    if (cell_list[_d_cell_offset+cpp] > -1){
+                        for(int _iy = cell_list[_d_cell_offset+cpp];
+                         _iy < cell_list[_d_cell_offset+cpp]+CCC[cpp];
+                         _iy++){
 
-                        if (_iy != _ix){
+                            if (_iy != _ix){
 
+                            double r1[3];
 
-                        double r1[3];
+                            %(GPU_POINTER_MAPPING)s
 
-                        %(GPU_POINTER_MAPPING)s
+                            %(GPU_KERNEL)s
 
-                        %(GPU_KERNEL)s
-
-
+                            }
 
                         }
-
                     }
 
 
@@ -900,17 +899,19 @@ class SimpleCudaPairLoop(_Base):
                                      int *cell_list,
                                      %(ARGUMENTS)s){
 
+
             //device constant copy.
             checkCudaErrors(cudaMemcpyToSymbol(_d_n, &_h_n, sizeof(_h_n)));
             checkCudaErrors(cudaMemcpyToSymbol(_d_cell_offset, &_h_cell_offset, sizeof(_h_cell_offset)));
-            checkCudaErrors(cudaMemcpyToSymbol(_d_cell_array, &_h_cell_array, sizeof(_h_cell_array)));
-            checkCudaErrors(cudaMemcpyToSymbol(_d_extent, &_h_extent, sizeof(_h_extent)));
-
+            checkCudaErrors(cudaMemcpyToSymbol(_d_cell_array, &_h_cell_array[0], 3*sizeof(_h_cell_array[0])));
+            checkCudaErrors(cudaMemcpyToSymbol(_d_extent, &_h_extent[0], 3*sizeof(_h_extent[0])));
 
             %(DEVICE_CONSTANT_COPY)s
 
             dim3 bs; bs.x = blocksize[0]; bs.y = blocksize[1]; bs.z = blocksize[2];
             dim3 ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
+
+            //printf("%%d, %%d, %%d, %%d, %%d, %%d \\n", bs.x, bs.y, bs.z, ts.x, ts.y, ts.z);
 
             getLastCudaError(" %(KERNEL_NAME)s Execution failed before kernel launch. \\n");
             %(KERNEL_NAME)s_gpukernel<<<bs,ts>>>(CCC,PCL,cell_list,%(KERNEL_ARGUMENTS)s);
@@ -1008,7 +1009,7 @@ class SimpleCudaPairLoop(_Base):
             _threadsize = (ct.c_int * 3)(self._N(), 1, 1)
 
         else:
-            _blocksize = (ct.c_int * 3)(int(self._N() / 1024.), 1, 1)
+            _blocksize = (ct.c_int * 3)(int(math.ceil(self._N()/1024.)), 1, 1)
             _threadsize = (ct.c_int * 3)(1024, 1, 1)
 
         _h_cell_array = (ct.c_int * 3)(self._domain.cell_array[0],

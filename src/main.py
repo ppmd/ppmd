@@ -2,7 +2,7 @@
 
 import runtime
 # debug level
-runtime.DEBUG.level = 1
+runtime.DEBUG.level = 0
 #verbosity level
 runtime.VERBOSE.level = 3
 #timer level
@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
     if test_1000:
         # n=25 reasonable size
-        n = 10
+        n = 15
         N = n**3
         # n=860
         rho = 1.
@@ -211,7 +211,9 @@ if __name__ == '__main__':
     if test_domain.halos is not False:
         test_domain.halos.timer.time("Total time in halo exchange.")
     test_state.timer.time("Total time in forces update.")
-    
+    test_state.cpu_forces_timer.time("Total time cpu forces update.")
+    if gpucuda.INIT_STATUS():
+        test_state.gpu_forces_timer.time("Total time gpu forces update.")
     ###########################################################
     
     

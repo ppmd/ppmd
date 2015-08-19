@@ -108,10 +108,13 @@ class BaseMDStateHalo(object):
 
         if self._cell_setup_attempt is True:
             self._cell_sort_setup()
-            self._cell_sort_local()
-
-
             self._group_by_cell_setup()
+
+            self._cell_sort_local()
+            self._group_by_cell()
+
+
+
 
             if type(self._domain) is domain.BaseDomainHalo:
                 self._looping_method_accel = pairloop.PairLoopRapaportHalo(n=self._N,
@@ -129,6 +132,11 @@ class BaseMDStateHalo(object):
                                                                        cell_list=self._q_list)
 
             if gpucuda.INIT_STATUS():
+
+
+                self.gpu_forces_timer = runtime.Timer(runtime.TIMER, 0)
+
+
                 self._accel_comparison = particle.Dat(self._NT, 3, name='accel_compare')
                 self._looping_method_accel_test = gpucuda.SimpleCudaPairLoop(n=self.n,
                                                                              domain=self._domain,
@@ -148,6 +156,13 @@ class BaseMDStateHalo(object):
                                                                            particle_dat_dict=_potential_dat_dict)
 
         self.timer = runtime.Timer(runtime.TIMER, 0)
+        self.cpu_forces_timer = runtime.Timer(runtime.TIMER, 0)
+
+
+
+
+
+
 
         if runtime.DEBUG.level > 0:
             pio.pprint("DEBUG IS ON")
@@ -386,9 +401,10 @@ class BaseMDStateHalo(object):
             self._U.copy_to_cuda_dat()
             self._accel.copy_to_cuda_dat()
 
-
+        self.cpu_forces_timer.start()
         if self._N > 0:
             self._looping_method_accel.execute()
+        self.cpu_forces_timer.pause()
 
         if gpucuda.INIT_STATUS():
             # copy data to gpu
@@ -398,11 +414,22 @@ class BaseMDStateHalo(object):
             self._particle_cell_lookup.copy_to_cuda_dat()
 
             # execute pair loop
+            self.gpu_forces_timer.start()
             self._looping_method_accel_test.execute()
+            self.gpu_forces_timer.pause()
 
             self._accel.get_cuda_dat().cpy_dth(self._accel_comparison.ctypes_data)
-            print "GPU", self._accel_comparison.dat[0:1]
-            print "CPU", self._accel.dat[0:1]
+            
+            # Compare results from gpu with cpu results
+            _tol=10**-8
+
+            for ix in range(self._N):
+                if (math.fabs(self._accel_comparison.dat[ix,0] - self._accel[ix,0])>_tol) or (math.fabs(self._accel_comparison.dat[ix,1] - self._accel[ix,1])>_tol) or (math.fabs(self._accel_comparison.dat[ix,2] - self._accel[ix,2])>_tol):
+                    print "missmatch", ix, self._accel_comparison.dat[ix,:], self._accel.dat[ix,:], self._time
+
+
+
+
 
 
 
