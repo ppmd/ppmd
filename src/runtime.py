@@ -7,6 +7,7 @@ import pio
 # Timer class
 ######################################################################
 
+
 class Timer(object):
     """
     Automatic timing class.
@@ -128,7 +129,7 @@ class Enable(object):
     def flag(self, val=True):
         self._f = bool(val)
 
-
+# Toogle this instance of a Enable class to turn off/on gpucuda module.
 CUDA_ENABLED = Enable()
 
 
@@ -328,6 +329,8 @@ class MDMPI(object):
 ###############################################################################################################
 # MPI_HANDLE
 ###############################################################################################################
+
+# Main MPI communicatior used by program.
 
 MPI_HANDLE = MDMPI()
 

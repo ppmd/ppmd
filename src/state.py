@@ -50,7 +50,6 @@ class BaseMDStateHalo(object):
         self._vel = particle.Dat(self._NT, 3, name='velocities')
         self._accel = particle.Dat(self._NT, 3, name='accelerations')
 
-
         if gpucuda.INIT_STATUS():
             self._pos.add_cuda_dat()
             self._accel.add_cuda_dat()
@@ -65,7 +64,6 @@ class BaseMDStateHalo(object):
         self._mass = particle.TypedDat(self._NT, 1, 1.0)
 
         self._domain = domain_in
-
 
         # potential_in energy, kenetic energy, total energy.
         self._U = data.ScalarArray(max_size=2, name='potential_energy')
@@ -105,17 +103,15 @@ class BaseMDStateHalo(object):
         # Setup acceleration updating from given potential_in
         _potential_dat_dict = self._potential.datdict(self)
 
-
         if self._cell_setup_attempt is True:
+            # setup cell sort libraries and grouping by cell methods.
             self._cell_sort_setup()
             self._group_by_cell_setup()
 
             self._cell_sort_local()
             self._group_by_cell()
 
-
-
-
+            # If domain has halos
             if type(self._domain) is domain.BaseDomainHalo:
                 self._looping_method_accel = pairloop.PairLoopRapaportHalo(n=self._N,
                                                                            domain=self._domain,
@@ -123,6 +119,7 @@ class BaseMDStateHalo(object):
                                                                            potential=self._potential,
                                                                            dat_dict=_potential_dat_dict,
                                                                            cell_list=self._q_list)
+            # If domain is without halos
             elif type(self._domain) is domain.BaseDomain:
                 self._looping_method_accel = pairloop.PairLoopRapaport(n=self._N,
                                                                        domain=self._domain,

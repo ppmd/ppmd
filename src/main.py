@@ -14,9 +14,7 @@ import state
 import numpy as np
 import method
 import data
-import build
 import gpucuda
-import os
 
 import particle
 
@@ -46,10 +44,8 @@ if __name__ == '__main__':
     # Write XYZ?
     writing = True
 
-    t=0.01
+    t=0.05
     dt=0.0001
-
-
 
     # check gpucuda Module initalised correctly.
 
@@ -86,7 +82,7 @@ if __name__ == '__main__':
         nsig = 5.0
         
         # Initialise basic domain
-        test_domain = domain.BaseDomain(nt=N)
+        test_domain = domain.BaseDomainHalo(nt=N)
 
         # Initialise LJ potential
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
@@ -106,6 +102,7 @@ if __name__ == '__main__':
         
     if test_2_bounce:
         N = 2
+        dt=0.00001
         
         # See above
         test_domain = domain.BaseDomainHalo(nt=N, periods = (True,True,True))
@@ -224,7 +221,8 @@ if __name__ == '__main__':
 
     if runtime.MPI_HANDLE.rank ==0:
         try:
-            #a=input("PRESS ENTER TO CONTINUE.\n")
+
+            # a=input("PRESS ENTER TO CONTINUE.\n")
             pass
         except:
             pass

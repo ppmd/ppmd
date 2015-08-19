@@ -1,6 +1,4 @@
-import data
-import particle
-import gpucuda
+# Possible start of a way to link different data stores. probably will be deleted.
 
 
 ####################################################################################################

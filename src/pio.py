@@ -1,5 +1,5 @@
 ###############################################################################################################
-# Parallel IO
+# Parallel IO helper functions.
 ###############################################################################################################
 
 
@@ -12,7 +12,7 @@ import sys
 
 def pprint(*args):
     """
-    Print a string on stdout using the default MPI handle.
+    Print a string on stdout using the default MPI handle using rank 0.
     :param string:
     :return:
     """
@@ -20,7 +20,7 @@ def pprint(*args):
 
 def rprint(*args):
     """
-    Print a string on stdout from all procs.
+    Print a string on stdout from all procs. preappended with rank id.
     :param string:
     :return:
     """

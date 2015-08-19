@@ -240,6 +240,12 @@ class BaseDomain(object):
 
 
 class BaseDomainHalo(BaseDomain):
+    '''
+    A cell based domain for mpi/private memory. Creates a shell of halos cells around
+    each processes internal cells as halos.
+
+    '''
+
     def __init__(self, nt=1, extent=np.array([1., 1., 1.]), cell_count=1, periods=(1, 1, 1)):
 
         self._NT = nt
@@ -265,10 +271,12 @@ class BaseDomainHalo(BaseDomain):
 
     @property
     def mpi_handle(self):
+        # TODO, remove this, depreciated.
         return self._MPI_handle
 
     @mpi_handle.setter
     def mpi_handle(self, handle):
+        # TODO, remove this, depreciated.
         self._MPI_handle = handle
 
     def set_extent(self, new_extent=np.array([1., 1., 1.])):
