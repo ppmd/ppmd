@@ -162,7 +162,8 @@ class PairLoopRapaport(_Base):
             } else {*flag = 0; }
             
             *cpp = (C2*cell_array[1] + C1)*cell_array[0] + C0;
-            
+            //printf("cp=%%d, cpp_i=%%d, cpp=%%d, flag=%%d, offset[0]=%%f, offset[1]=%%f, offset[2]=%%f \\n ",
+            //cp, cpp_i, *cpp, *flag, offset[0], offset[1], offset[2]);
             
                 
             return;      

@@ -246,7 +246,6 @@ class LennardJones(LennardJonesShifted):
             A[1][2]-=f_tmp*R2;
 
         }
-        
         '''
         constants = (constant.Constant('sigma2', self._sigma ** 2),
                      constant.Constant('rc2', self._rc ** 2),

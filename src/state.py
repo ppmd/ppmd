@@ -250,6 +250,7 @@ class BaseMDStateHalo(object):
         self._internal_index[0] = 0
 
         self._cell_contents_count.zero()
+
         self._cell_sort_loop.execute(start=0,
                                      end=self._N,
                                      dat_dict={'B': self._domain.boundary_outer,
@@ -416,17 +417,21 @@ class BaseMDStateHalo(object):
             self.gpu_forces_timer.pause()
 
             self._accel.get_cuda_dat().cpy_dth(self._accel_comparison.ctypes_data)
-            
+
+            # print self._accel_comparison.dat[0:2:,:]
+
             # Compare results from gpu with cpu results
             _tol=10**-8
 
             for ix in range(self._N):
+
                 if (math.fabs(self._accel_comparison.dat[ix,0] - self._accel[ix,0])>_tol) or (math.fabs(self._accel_comparison.dat[ix,1] - self._accel[ix,1])>_tol) or (math.fabs(self._accel_comparison.dat[ix,2] - self._accel[ix,2])>_tol):
-                    print "missmatch", ix, self._accel_comparison.dat[ix,:], self._accel.dat[ix,:], self._time
-
-
-
-
+                    print "missmatch", ix, self._accel_comparison.dat[ix,:], self._accel.dat[ix,:], self._time, self._particle_cell_lookup[ix], self._domain.cell_array
+                '''
+                if math.fabs(self._accel_comparison.dat[ix,0] - 1.0) < _tol:
+                    print ix, self._accel_comparison.dat[ix,:], self._accel_comparison.dat[ix,2]-self._accel[ix,2], self._particle_cell_lookup[ix], self._pos[ix,:]
+                '''
+                pass
 
 
 

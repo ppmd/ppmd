@@ -856,6 +856,15 @@ class EnergyStore(object):
                 _fh.write("%(T)s %(K)s %(P)s %(Q)s\n" % {'T':_T[ix], 'K':_K[ix], 'P':_U[ix], 'Q':_Q[ix]})
             _fh.close()
 
+        if (runtime.MPI_HANDLE.rank == 0) and not _GRAPHICS:
+            print "last total", _Q[-1]
+            print "last kinetic", _K[-1]
+            print "last potential", _U[-1]
+            print "============================================="
+            print "first total", _Q[0]
+            print "first kinetic", _K[0]
+            print "first potential", _U[0]
+
 
 class PercentagePrinter(object):
     """

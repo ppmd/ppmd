@@ -2,7 +2,7 @@
 
 import runtime
 # debug level
-runtime.DEBUG.level = 0
+runtime.DEBUG.level = 1
 #verbosity level
 runtime.VERBOSE.level = 3
 #timer level
@@ -48,11 +48,11 @@ if __name__ == '__main__':
     # Write XYZ?
     writing = True
 
-    t=0.05
+    t=0.0001
     dt=0.0001
 
     # check gpucuda Module initalised correctly.
-
+    '''
     if gpucuda.INIT_STATUS():
         a_N = 1000
 
@@ -72,13 +72,13 @@ if __name__ == '__main__':
         print a[-1]
     else:
         print runtime.MPI_HANDLE.rank, "gpucuda not init", gpucuda.INIT_STATUS()
-
+    '''
 
 
 
     if test_1000:
         # n=25 reasonable size
-        n = 10
+        n = 8
         N = n**3
         # n=860
         rho = 1.
@@ -109,12 +109,12 @@ if __name__ == '__main__':
         dt=0.00001
         
         # See above
-        test_domain = domain.BaseDomainHalo(nt=N, periods = (True,True,True))
+        test_domain = domain.BaseDomain(nt=N)
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)
 
 
         # Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([6., 6., 6.]), axis = np.array([0,0,1]))
+        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.3, extent = np.array([10., 10., 10.]), axis = np.array([0,1,1]))
 
         # Give first two particles specific velocities
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))

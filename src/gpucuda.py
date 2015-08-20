@@ -29,7 +29,7 @@ NVCC = build.Compiler(['nvcc_system_default'],
                       ['-lm'],
                       ['-O3', '-m64', '-Xptxas', '"-v"'],
                       ['-g', '-G', '-lineinfo'],
-                      ['-c'],
+                      ['-c', '-arch=sm_35'],
                       ['-shared', '-Xcompiler', '"-fPIC"'],
                       '__restrict__')
 
@@ -824,10 +824,12 @@ class SimpleCudaPairLoop(_Base):
         %(DEVICE_CONSTANT_DECELERATION)s
 
 
-        __device__ void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, unsigned int* cpp, unsigned int *flag, double *offset){
+        __device__ void cell_index_offset(int cp, int cpp_i, int* cpp, int *flag, double *offset){
+
+            if (cp==0) { printf("%%d \\n", cpp_i); }
 
 
-            unsigned int tmp = _d_cell_array[0]*_d_cell_array[1];
+            int tmp = _d_cell_array[0]*_d_cell_array[1];
             int Cz = cp/tmp;
             int Cx = cp %% _d_cell_array[0];
             int Cy = (cp - Cz*tmp)/_d_cell_array[0];
@@ -850,6 +852,10 @@ class SimpleCudaPairLoop(_Base):
 
             *cpp = (C2*_d_cell_array[1] + C1)*_d_cell_array[0] + C0;
 
+
+            //printf("cp=%%d, cpp_i=%%d, cpp=%%d, flag=%%d, offset[0]=%%f, offset[1]=%%f, offset[2]=%%f \\n ",
+            //cp, cpp_i, *cpp, *flag, offset[0], offset[1], offset[2]);
+
             return;
         }
 
@@ -857,14 +863,28 @@ class SimpleCudaPairLoop(_Base):
         __global__ void %(KERNEL_NAME)s_gpukernel(int *CCC, int *PCL, int *cell_list, %(KERNEL_ARGUMENTS_DECL)s){
 
             int _ix = threadIdx.x + blockIdx.x*blockDim.x;
-
             if (_ix < _d_n){
-                for(unsigned int cpp_i=0; cpp_i<27; cpp_i++){
+
+                int count = 0;
+
+                // get cell containing particle _ix;
+                int cp = PCL[_ix];
+
+                //create local store for acceleration of particle _ix.
+                double _a[3];
+                _a[0] = 0; _a[1] = 0; _a[2] = 0;
+
+                //ensure positon of particle _ix is only read once.
+                double _p[3] = {%(POS_VECTOR)s[_ix*3],
+                                %(POS_VECTOR)s[_ix*3 + 1],
+                                %(POS_VECTOR)s[_ix*3 + 2]};
+
+
+                for(int cpp_i=0; cpp_i<27; cpp_i++){
                     double s[3];
-                    unsigned int flag, cpp;
+                    int flag, cpp;
 
-                    cell_index_offset(PCL[_ix], cpp_i, &cpp, &flag, s);
-
+                    cell_index_offset(cp, cpp_i, &cpp, &flag, s);
 
                     if (cell_list[_d_cell_offset+cpp] > -1){
                         for(int _iy = cell_list[_d_cell_offset+cpp];
@@ -877,17 +897,27 @@ class SimpleCudaPairLoop(_Base):
 
                             %(GPU_POINTER_MAPPING)s
 
+                            count++;
+
                             %(GPU_KERNEL)s
 
                             }
 
                         }
                     }
-
-
                 }
 
+                //Write acceleration to dat.
+
+                if(count==0){
+                printf("ix=%%d \\n", count);
+                }
+
+                %(ACCEL_VECTOR)s[_ix*3]     = _a[0];
+                %(ACCEL_VECTOR)s[_ix*3 + 1] = _a[1];
+                %(ACCEL_VECTOR)s[_ix*3 + 2] = _a[2];
             }
+            return;
         }
 
         void %(KERNEL_NAME)s_wrapper(const int blocksize[3],
@@ -922,6 +952,40 @@ class SimpleCudaPairLoop(_Base):
         }
         '''
 
+    def _generate_impl_source(self):
+        """Generate the source code the actual implementation.
+        """
+
+        d = {'UNIQUENAME': self._unique_name,
+             'GPU_POINTER_MAPPING': self._kernel_pointer_mapping(),
+             'GPU_KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'KERNEL_ARGUMENTS': self._kernel_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'KERNEL_ARGUMENTS_DECL': self._kernel_argument_declarations(),
+             'DEVICE_CONSTANT_DECELERATION': self._device_const_dec,
+             'DEVICE_CONSTANT_COPY': self._device_const_copy,
+             'ACCEL_VECTOR': self._get_acceleration_array(),
+             'POS_VECTOR': self._get_position_array()
+             }
+        return self._code % d
+
+    def _get_acceleration_array(self):
+        s = '//'
+        for dat in self._particle_dat_dict.items():
+            if type(dat[1]) == particle.Dat:
+                if dat[1].name == 'accelerations':
+                    s = 'd_' + dat[0]
+        return s
+
+    def _get_position_array(self):
+        s = '//'
+        for dat in self._particle_dat_dict.items():
+            if type(dat[1]) == particle.Dat:
+                if dat[1].name == 'positions':
+                    s = 'd_' + dat[0]
+        return s
+
     def _kernel_pointer_mapping(self):
         """
         Create string for thread id and pointer mapping.
@@ -941,19 +1005,19 @@ class SimpleCudaPairLoop(_Base):
                     _s += space + 'if (flag){ \n'
 
                     # s += space+'double r1[3];\n'
-                    _s += space + 'r1[0] =' + argname + '[LINIDX_2D(3,_iy,0)] + s[0]; \n'
-                    _s += space + 'r1[1] =' + argname + '[LINIDX_2D(3,_iy,1)] + s[1]; \n'
-                    _s += space + 'r1[2] =' + argname + '[LINIDX_2D(3,_iy,2)] + s[2]; \n'
+                    _s += space + 'r1[0] =' + argname + '[_iy*3]     + s[0]; \n'
+                    _s += space + 'r1[1] =' + argname + '[_iy*3 + 1] + s[1]; \n'
+                    _s += space + 'r1[2] =' + argname + '[_iy*3 + 2] + s[2]; \n'
                     _s += space + loc_argname + '[1] = r1;\n'
 
                     _s += space + '}else{ \n'
                     _s += space + loc_argname + '[1] = ' + argname + '+3*_iy;\n'
                     _s += space + '} \n'
-                    _s += space + loc_argname + '[0] = ' + argname + '+3*_ix;\n'
+                    _s += space + loc_argname + '[0] = _p;\n'
                 elif dat[1].name == 'accelerations':
                     _s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-                    _s += space + data.ctypes_map[dat[1].dtype] + ' dummy[3];\n'
-                    _s += space + loc_argname + '[0] = ' + argname + '+' + str(dat[1].ncomp) + '*_ix;\n'
+                    _s += space + data.ctypes_map[dat[1].dtype] + ' dummy[3] = {0,0,0};\n'
+                    _s += space + loc_argname + '[0] = _a;\n'
                     _s += space + loc_argname + '[1] = dummy;\n'
 
 
@@ -1003,17 +1067,15 @@ class SimpleCudaPairLoop(_Base):
 
     def execute(self, dat_dict=None, static_args=None):
 
+
+
         """Allow alternative pointers"""
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
-        if self._N() < 512:
-            _blocksize = (ct.c_int * 3)(1, 1, 1)
-            _threadsize = (ct.c_int * 3)(self._N(), 1, 1)
-
-        else:
-            _blocksize = (ct.c_int * 3)(int(math.ceil(self._N()/512.)), 1, 1)
-            _threadsize = (ct.c_int * 3)(512, 1, 1)
+        _tpb = 1024
+        _blocksize = (ct.c_int * 3)(int(math.ceil(self._N() / float(_tpb))), 1, 1)
+        _threadsize = (ct.c_int * 3)(_tpb, 1, 1)
 
         _h_cell_array = (ct.c_int * 3)(self._domain.cell_array[0],
                                        self._domain.cell_array[1],
