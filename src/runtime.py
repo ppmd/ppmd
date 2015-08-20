@@ -1,3 +1,4 @@
+import os
 from mpi4py import MPI
 import sys
 import time
@@ -326,11 +327,46 @@ class MDMPI(object):
 
         return _r[0] + _r[1] * self._dims[0] + _r[2] * self._dims[0] * self._dims[1]
 
-###############################################################################################################
+###########################################################################################################
 # MPI_HANDLE
-###############################################################################################################
+###########################################################################################################
 
 # Main MPI communicatior used by program.
 
 MPI_HANDLE = MDMPI()
+
+##########################################################################################################
+# BUILD DIR
+##########################################################################################################
+
+class Dir(object):
+    """
+    Simple container for a string representing a directory.
+    :arg str directory: directory.
+    """
+
+    def __init__(self, directory):
+        self._dir = directory
+
+    @property
+    def dir(self):
+        return self._dir
+
+    @dir.setter
+    def dir(self, directory):
+        self._dir = directory
+
+try:
+    _BUILD_DIR = str(os.environ['BUILD_DIR'])
+except:
+    _BUILD_DIR = './build/'
+
+
+BUILD_DIR = Dir(_BUILD_DIR)
+LIB_DIR = Dir(os.path.join(os.getcwd(), 'lib/'))
+
+
+
+
+
 

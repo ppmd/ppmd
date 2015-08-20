@@ -81,7 +81,7 @@ class PairLoopRapaport(_Base):
         # End of Rapaport initialisations.
         ##########
 
-        self._temp_dir = './build/'
+        self._temp_dir = runtime.BUILD_DIR.dir
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = self._potential.kernel
@@ -284,7 +284,7 @@ class PairLoopRapaport(_Base):
 
         %(INCLUDED_HEADERS)s
 
-        #include "../generic.h"
+        #include "%(LIB_DIR)s/generic.h"
         
         void %(KERNEL_NAME)s_wrapper(const int n,const int cell_count, int* cells, int* q_list, double* d_extent,%(ARGUMENTS)s);
 
@@ -293,7 +293,8 @@ class PairLoopRapaport(_Base):
         d = {'UNIQUENAME': self._unique_name,
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames()}
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
         return code % d
 
     def execute(self, n=None, dat_dict=None, static_args=None):
@@ -432,7 +433,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         self._compiler_set()
         self._N = n
         self._domain = domain
-        self._temp_dir = './build/'
+        self._temp_dir = runtime.BUILD_DIR.dir
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = kernel
@@ -493,7 +494,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #include "../generic.h"
+        #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
         void %(KERNEL_NAME)s_wrapper(int n,double *extent_ext,%(ARGUMENTS)s);
@@ -504,7 +505,8 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         d = {'UNIQUENAME': self._unique_name,
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames()}
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
         return code % d
 
     def _kernel_argument_declarations(self):
@@ -987,7 +989,7 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
         # End of Rapaport initialisations.
         ##########
 
-        self._temp_dir = './build/'
+        self._temp_dir = runtime.BUILD_DIR.dir
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = self._potential.kernel
@@ -1149,7 +1151,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
 
         %(INCLUDED_HEADERS)s
 
-        #include "../generic.h"
+        #include "%(LIB_DIR)s/generic.h"
         
         void %(KERNEL_NAME)s_wrapper(const int n, int* cell_array, int* q_list,%(ARGUMENTS)s);
 
@@ -1158,7 +1160,8 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         d = {'UNIQUENAME': self._unique_name,
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames()}
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
         return code % d
 
     def _code_init(self):

@@ -40,10 +40,10 @@ NVCC = build.Compiler(['nvcc_system_default'],
 
 def _build_static_libs(lib):
 
-    with open("./lib/" + lib + ".cu", "r") as fh:
+    with open(runtime.LIB_DIR.dir + lib + ".cu", "r") as fh:
         _code = fh.read()
         fh.close()
-    with open("./lib/" + lib + ".h", "r") as fh:
+    with open(runtime.LIB_DIR.dir + lib + ".h", "r") as fh:
         _code += fh.read()
         fh.close()
 
@@ -51,13 +51,13 @@ def _build_static_libs(lib):
     _m.update(_code)
     _m = _m.hexdigest()
 
-    _lib_filename = os.path.join('./build/', lib + '_' +str(_m) +'.so')
+    _lib_filename = os.path.join(runtime.BUILD_DIR.dir, lib + '_' +str(_m) +'.so')
 
     if runtime.MPI_HANDLE.rank == 0:
         if not os.path.exists(_lib_filename):
 
 
-            _lib_src_filename = './lib/' + lib + '.cu'
+            _lib_src_filename = runtime.LIB_DIR.dir + lib + '.cu'
 
             _c_cmd = NVCC.binary + [_lib_src_filename] + ['-o'] + [_lib_filename] + NVCC.c_flags + NVCC.l_flags
             if runtime.DEBUG.level > 0:
@@ -70,8 +70,8 @@ def _build_static_libs(lib):
             if runtime.VERBOSE.level > 2:
                 print "Building", _lib_filename
 
-            stdout_filename = './build/' + lib + '_' +str(_m) + '.log'
-            stderr_filename = './build/' + lib + '_' +str(_m) + '.err'
+            stdout_filename = runtime.BUILD_DIR.dir + lib + '_' +str(_m) + '.log'
+            stderr_filename = runtime.BUILD_DIR.dir + lib + '_' +str(_m) + '.err'
             try:
                 with open(stdout_filename, 'w') as stdout:
                     with open(stderr_filename, 'w') as stderr:
@@ -406,7 +406,7 @@ class _Base(object):
 
         # set compiler
         self._cc = NVCC
-        self._temp_dir = './build/'
+        self._temp_dir = runtime.BUILD_DIR.dir
 
         #start code creation
         self._static_arg_init()
@@ -555,9 +555,9 @@ class _Base(object):
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #include "../generic.h"
+        #include "%(LIB_DIR)s/generic.h"
         #include <cuda.h>
-        #include "../lib/helper_cuda.h"
+        #include "%(LIB_DIR)s/helper_cuda.h"
 
         %(INCLUDED_HEADERS)s
 
@@ -569,7 +569,8 @@ class _Base(object):
         d = {'UNIQUENAME': self._unique_name,
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames()}
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
         return code % d
 
 
@@ -746,7 +747,7 @@ class SimpleCudaPairLoop(_Base):
 
 
         self._cc = NVCC
-        self._temp_dir = './build/'
+        self._temp_dir = runtime.BUILD_DIR.dir
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = self._potential.kernel
@@ -787,42 +788,43 @@ class SimpleCudaPairLoop(_Base):
         __constant__ int _d_cell_offset;
         __constant__ int _d_cell_array[3];
         __constant__ double _d_extent[3];
+
+        __constant__ int cell_map[27][3] = {
+                                        {-1,1,-1},
+                                        {-1,-1,-1},
+                                        {-1,0,-1},
+                                        {0,1,-1},
+                                        {0,-1,-1},
+                                        {0,0,-1},
+                                        {1,0,-1},
+                                        {1,1,-1},
+                                        {1,-1,-1},
+
+                                        {-1,1,0},
+                                        {-1,0,0},
+                                        {-1,-1,0},
+                                        {0,-1,0},
+                                        {0,0,0},
+                                        {0,1,0},
+                                        {1,0,0},
+                                        {1,1,0},
+                                        {1,-1,0},
+
+                                        {-1,0,1},
+                                        {-1,1,1},
+                                        {-1,-1,1},
+                                        {0,0,1},
+                                        {0,1,1},
+                                        {0,-1,1},
+                                        {1,0,1},
+                                        {1,1,1},
+                                        {1,-1,1}
+                                    };
+
         %(DEVICE_CONSTANT_DECELERATION)s
 
 
         __device__ void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, unsigned int* cpp, unsigned int *flag, double *offset){
-
-           const int cell_map[27][3] = {
-                                            {-1,1,-1},
-                                            {-1,-1,-1},
-                                            {-1,0,-1},
-                                            {0,1,-1},
-                                            {0,-1,-1},
-                                            {0,0,-1},
-                                            {1,0,-1},
-                                            {1,1,-1},
-                                            {1,-1,-1},
-
-                                            {-1,1,0},
-                                            {-1,0,0},
-                                            {-1,-1,0},
-                                            {0,-1,0},
-                                            {0,0,0},
-                                            {0,1,0},
-                                            {1,0,0},
-                                            {1,1,0},
-                                            {1,-1,0},
-
-                                            {-1,0,1},
-                                            {-1,1,1},
-                                            {-1,-1,1},
-                                            {0,0,1},
-                                            {0,1,1},
-                                            {0,-1,1},
-                                            {1,0,1},
-                                            {1,1,1},
-                                            {1,-1,1}
-                                        };
 
 
             unsigned int tmp = _d_cell_array[0]*_d_cell_array[1];
@@ -973,9 +975,9 @@ class SimpleCudaPairLoop(_Base):
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #include "../generic.h"
+        #include "%(LIB_DIR)s/generic.h"
         #include <cuda.h>
-        #include "../lib/helper_cuda.h"
+        #include "%(LIB_DIR)s/helper_cuda.h"
 
         %(INCLUDED_HEADERS)s
 
@@ -995,7 +997,8 @@ class SimpleCudaPairLoop(_Base):
         d = {'UNIQUENAME': self._unique_name,
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames()}
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
         return code % d
 
     def execute(self, dat_dict=None, static_args=None):
@@ -1004,13 +1007,13 @@ class SimpleCudaPairLoop(_Base):
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
-        if self._N() < 1025:
+        if self._N() < 512:
             _blocksize = (ct.c_int * 3)(1, 1, 1)
             _threadsize = (ct.c_int * 3)(self._N(), 1, 1)
 
         else:
-            _blocksize = (ct.c_int * 3)(int(math.ceil(self._N()/1024.)), 1, 1)
-            _threadsize = (ct.c_int * 3)(1024, 1, 1)
+            _blocksize = (ct.c_int * 3)(int(math.ceil(self._N()/512.)), 1, 1)
+            _threadsize = (ct.c_int * 3)(512, 1, 1)
 
         _h_cell_array = (ct.c_int * 3)(self._domain.cell_array[0],
                                        self._domain.cell_array[1],

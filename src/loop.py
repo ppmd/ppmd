@@ -23,7 +23,7 @@ class _Base(build.GenericToolChain):
         self._N = n
         self._types_map = types_map
 
-        self._temp_dir = './build/'
+        self._temp_dir = runtime.BUILD_DIR.dir
 
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
@@ -134,7 +134,7 @@ class SingleAllParticleLoop(_Base):
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #include "../generic.h"
+        #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
         void %(KERNEL_NAME)s_wrapper(const int n, int *_TYPE_MAP,%(ARGUMENTS)s);
@@ -145,7 +145,8 @@ class SingleAllParticleLoop(_Base):
         d = {'UNIQUENAME': self._unique_name,
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames()}
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
         return code % d
 
 
@@ -187,7 +188,7 @@ class SingleParticleLoop(_Base):
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #include "../generic.h"
+        #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
         void %(KERNEL_NAME)s_wrapper(const int start_ix, const int end_ix,%(ARGUMENTS)s);
@@ -198,7 +199,8 @@ class SingleParticleLoop(_Base):
         d = {'UNIQUENAME': self._unique_name,
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames()}
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
         return code % d
 
     def execute(self, start=0, end=0, dat_dict=None, static_args=None):
@@ -251,7 +253,7 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
         #include \"%(UNIQUENAME)s.h\"
         #include <omp.h>
 
-        #include "../generic.h"
+        #include "%(LIB_DIR)s/generic.h"
 
         void %(KERNEL_NAME)s_wrapper(const int n,%(ARGUMENTS)s) { 
           int i;
@@ -287,7 +289,8 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
              'KERNEL_NAME': self._kernel.name,
              'OPENMP_INIT': self._ompinitstr,
              'OPENMP_DECLARATION': self._ompdecstr,
-             'OPENMP_FINALISE': self._ompfinalstr
+             'OPENMP_FINALISE': self._ompfinalstr,
+             'LIB_DIR': runtime.LIB_DIR.dir
              }
 
         return self._code % d

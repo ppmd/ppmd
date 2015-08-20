@@ -193,7 +193,7 @@ def load_library_exception(kernel_name='None supplied', unique_name='None suppli
 
     # Try to open error file.
     try:
-        f = open('./build/' + unique_name + '.err', 'r')
+        f = open(runtime.BUILD_DIR.dir + unique_name + '.err', 'r')
         err_msg = f.read()
         f.close()
         err_read = True
@@ -214,7 +214,7 @@ def load_library_exception(kernel_name='None supplied', unique_name='None suppli
             pass
         if err_line > 0:
             try:
-                f = open('./build/' + unique_name + '.c', 'r')
+                f = open(runtime.BUILD_DIR.dir + unique_name + '.c', 'r')
                 code_str = f.read()
                 f.close()
             except:
@@ -330,7 +330,7 @@ class GenericToolChain(object):
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #include "../generic.h"
+        #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
         void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
@@ -341,7 +341,8 @@ class GenericToolChain(object):
         d = {'UNIQUENAME': self._unique_name,
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames()}
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
         return code % d
 
     def _included_headers(self):
@@ -474,7 +475,7 @@ class SharedLib(GenericToolChain):
     def __init__(self, kernel, particle_dat_dict):
 
         self._compiler_set()
-        self._temp_dir = './build/'
+        self._temp_dir = runtime.BUILD_DIR.dir
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = kernel
@@ -541,7 +542,7 @@ class SharedLib(GenericToolChain):
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #include "../generic.h"
+        #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
         void %(KERNEL_NAME)s_wrapper(%(ARGUMENTS)s);
@@ -552,7 +553,8 @@ class SharedLib(GenericToolChain):
         d = {'UNIQUENAME': self._unique_name,
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames()}
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
         return code % d
 
     def execute(self, dat_dict=None, static_args=None):
