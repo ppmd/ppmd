@@ -2,7 +2,11 @@
 #define __GENERIC__
 
 
-#define M_PI 3.14159265358979323846264338327
+#ifndef M_PI
+    #define M_PI 3.14159265358979323846264338327
+#endif
+
+
 #define sign(x) (((x) > 0) - ((x) < 0))      
 #define isign(x) (((x) < 0) - ((x) > 0))
 #define abs_md(x) ((x) < 0 ? -1*(x) : (x))

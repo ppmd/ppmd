@@ -2,7 +2,7 @@
 
 import runtime
 # debug level
-runtime.DEBUG.level = 1
+runtime.DEBUG.level = 0
 #verbosity level
 runtime.VERBOSE.level = 3
 #timer level
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     # Write XYZ?
     writing = True
 
-    t=0.0001
+    t=0.01
     dt=0.0001
 
     # check gpucuda Module initalised correctly.
@@ -78,10 +78,10 @@ if __name__ == '__main__':
 
     if test_1000:
         # n=25 reasonable size
-        n = 8
+        n = 50
         N = n**3
         # n=860
-        rho = 1.
+        rho = 1.5
         mu = 0.0
         nsig = 5.0
         
@@ -97,10 +97,11 @@ if __name__ == '__main__':
         
         # Normally distributed velocities.
         test_vel_init = state.VelInitNormDist(mu,nsig)
+        # test_vel_init = state.VelInitPosBased()
         
         # Initialise masses, in this case sets all to 1.0.
         test_mass_init = state.MassInitIdentical(1.)
-        # test_mass_init = state.MassInitTwoAlternating(200., 1.)
+        # test_mass_init = state.MassInitTwoAlternating(100., 100.)
         
         
         
@@ -114,14 +115,14 @@ if __name__ == '__main__':
 
 
         # Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.3, extent = np.array([10., 10., 10.]), axis = np.array([0,1,1]))
+        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.3, extent = np.array([10., 10., 10.]), axis = np.array([1,1,0]))
 
         # Give first two particles specific velocities
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
 
         # Set alternating masses for particles.
         
-        test_mass_init = state.MassInitTwoAlternating(5., 5.)
+        test_mass_init = state.MassInitTwoAlternating(10., 5.)
         
     if t_1_particle:
         
@@ -201,7 +202,7 @@ if __name__ == '__main__':
                                 ])
 
     # Create an integrator for above state class.
-    test_integrator = method.VelocityVerletAnderson(state = test_state, schedule=schedule)
+    test_integrator = method.VelocityVerlet(state = test_state, schedule=schedule)
     # test_integrator = method.VelocityVerletBox(state = test_state, schedule=schedule)
 
 

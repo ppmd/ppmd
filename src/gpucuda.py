@@ -826,7 +826,7 @@ class SimpleCudaPairLoop(_Base):
 
         __device__ void cell_index_offset(int cp, int cpp_i, int* cpp, int *flag, double *offset){
 
-            if (cp==0) { printf("%%d \\n", cpp_i); }
+            //if (cp==0) { printf("%%d \\n", cpp_i); }
 
 
             int tmp = _d_cell_array[0]*_d_cell_array[1];
@@ -865,8 +865,6 @@ class SimpleCudaPairLoop(_Base):
             int _ix = threadIdx.x + blockIdx.x*blockDim.x;
             if (_ix < _d_n){
 
-                int count = 0;
-
                 // get cell containing particle _ix;
                 int cp = PCL[_ix];
 
@@ -879,12 +877,17 @@ class SimpleCudaPairLoop(_Base):
                                 %(POS_VECTOR)s[_ix*3 + 1],
                                 %(POS_VECTOR)s[_ix*3 + 2]};
 
-
                 for(int cpp_i=0; cpp_i<27; cpp_i++){
                     double s[3];
                     int flag, cpp;
 
                     cell_index_offset(cp, cpp_i, &cpp, &flag, s);
+
+                    /*
+                    if (_ix==25) {
+                        printf("GPU: _ix=%%d, cp=%%d, cpp=%%d, s= %%f %%f %%f, p= %%f %%f %%f \\n", _ix, cp,cpp, s[0], s[1], s[2], _p[0], _p[1], _p[2]);
+                    }*/
+
 
                     if (cell_list[_d_cell_offset+cpp] > -1){
                         for(int _iy = cell_list[_d_cell_offset+cpp];
@@ -897,9 +900,12 @@ class SimpleCudaPairLoop(_Base):
 
                             %(GPU_POINTER_MAPPING)s
 
-                            count++;
-
                             %(GPU_KERNEL)s
+                            /*
+                            if (_ix == 25) {
+                                printf("GPU r2=%%f \\n", r2);
+                            }*/
+
 
                             }
 
@@ -908,14 +914,16 @@ class SimpleCudaPairLoop(_Base):
                 }
 
                 //Write acceleration to dat.
-
-                if(count==0){
-                printf("ix=%%d \\n", count);
-                }
-
                 %(ACCEL_VECTOR)s[_ix*3]     = _a[0];
                 %(ACCEL_VECTOR)s[_ix*3 + 1] = _a[1];
                 %(ACCEL_VECTOR)s[_ix*3 + 2] = _a[2];
+
+                /*
+                if (_ix==25) {
+                    printf("GPU: _ix=%%d, A=%%f %%f %%f \\n", _ix, d_A[25*3], d_A[25*3 + 1], d_A[25*3 + 2]);
+                    printf("GPU: _ix=%%d, Ac=%%f %%f %%f \\n", _ix, _a[0], _a[1], _a[2]);
+                }*/
+
             }
             return;
         }

@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import particle
 import math
 import ctypes
@@ -308,6 +309,8 @@ class BaseMDStateHalo(object):
                 gid_new[index] = gid[i];
                 type_new[index] = type[i];
 
+                PCL[index] = c;
+
                 i = q[i];
                 if (i > -1) { q_new[index] = index+1; } else { q_new[index] = -1; }
 
@@ -333,7 +336,8 @@ class BaseMDStateHalo(object):
             'vel_new': self._vel_new,
             'gid_new': self._global_ids_new,
             'type_new': self._types_new,
-            'q_new': self._q_list_new
+            'q_new': self._q_list_new,
+            'PCL': self._particle_cell_lookup
         }
 
         _headers = ['stdio.h']
@@ -397,8 +401,9 @@ class BaseMDStateHalo(object):
         self.reset_u()
         if gpucuda.INIT_STATUS():
             self._U.copy_to_cuda_dat()
-            self._accel.copy_to_cuda_dat()
+            # self._accel.copy_to_cuda_dat()
 
+        # print "-" * 80, self._particle_cell_lookup[25]
         self.cpu_forces_timer.start()
         if self._N > 0:
             self._looping_method_accel.execute()
@@ -412,25 +417,36 @@ class BaseMDStateHalo(object):
             self._particle_cell_lookup.copy_to_cuda_dat()
 
             # execute pair loop
+            # print "=" * 80, self._particle_cell_lookup[25]
+
+
             self.gpu_forces_timer.start()
             self._looping_method_accel_test.execute()
             self.gpu_forces_timer.pause()
 
             self._accel.get_cuda_dat().cpy_dth(self._accel_comparison.ctypes_data)
+            self._q_list.get_cuda_dat().cpy_dth(self._q_list_new.ctypes_data)
 
-            # print self._accel_comparison.dat[0:2:,:]
 
             # Compare results from gpu with cpu results
             _tol=10**-8
 
             for ix in range(self._N):
+                '''
+                if (math.fabs(self._accel_comparison.dat[ix,0] - self._pos.dat[ix,0])>_tol) or (math.fabs(self._accel_comparison.dat[ix,1] - self._pos.dat[ix,1])>_tol) or (math.fabs(self._accel_comparison.dat[ix,2] - self._pos.dat[ix,2])>_tol):
+                    print "missmatch", ix, self._accel_comparison.dat[ix,:], self._pos.dat[ix,:], self._time, self._particle_cell_lookup[ix], self._domain.cell_array
+                '''
 
-                if (math.fabs(self._accel_comparison.dat[ix,0] - self._accel[ix,0])>_tol) or (math.fabs(self._accel_comparison.dat[ix,1] - self._accel[ix,1])>_tol) or (math.fabs(self._accel_comparison.dat[ix,2] - self._accel[ix,2])>_tol):
-                    print "missmatch", ix, self._accel_comparison.dat[ix,:], self._accel.dat[ix,:], self._time, self._particle_cell_lookup[ix], self._domain.cell_array
-                '''
-                if math.fabs(self._accel_comparison.dat[ix,0] - 1.0) < _tol:
-                    print ix, self._accel_comparison.dat[ix,:], self._accel_comparison.dat[ix,2]-self._accel[ix,2], self._particle_cell_lookup[ix], self._pos[ix,:]
-                '''
+                if (math.fabs(self._accel_comparison.dat[ix,0] - self._accel.dat[ix,0])>_tol) or (math.fabs(self._accel_comparison.dat[ix,1] - self._accel.dat[ix,1])>_tol) or (math.fabs(self._accel_comparison.dat[ix,2] - self._accel.dat[ix,2])>_tol):
+                    print "missmatch", ix, self._accel_comparison.dat[ix,:], self._accel.dat[ix,:], self._time, self._particle_cell_lookup[ix], self._domain.cell_array, self._domain.extent
+                    # quit()
+
+
+                if math.fabs(self._q_list[ix] - self._q_list_new[ix])>_tol:
+                    print "missmatch q", ix, self._q_list[ix], self._q_list_new[ix]
+                    # quit()
+
+
                 pass
 
 
@@ -1001,7 +1017,44 @@ class VelInitTwoParticlesInABox(object):
         else:
             print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
 
+################################################################################################################
+# VelInitPosBased DEFINITIONS
+################################################################################################################
 
+
+class VelInitPosBased(object):
+    """
+    Sets velocities for two particles.
+
+    :arg np.array(3,1) vx: Velocity vector for particle 1.
+    :arg np.array(3,1) vy: Velocity vector for particle 2.
+
+    """
+
+    def __init__(self):
+        pass
+
+    def reset(self, state_input):
+        """
+        Resets the particles in the input state to the required velocities.
+
+        :arg state state_input: input state.
+        """
+
+        if state_input.nt() >= 2:
+            for ix in range(state_input.n()):
+                if state_input.global_ids[ix] == 0:
+                    state_input.velocities[ix,0] = state_input.positions[ix,0] * 10
+                    state_input.velocities[ix,1] = state_input.positions[ix,1] * 10
+                    state_input.velocities[ix,2] = state_input.positions[ix,2] * 10
+                elif state_input.global_ids[ix] == 1:
+                    state_input.velocities[ix,0] = state_input.positions[ix,0] * 10
+                    state_input.velocities[ix,1] = state_input.positions[ix,1] * 10
+                    state_input.velocities[ix,2] = state_input.positions[ix,2] * 10
+
+
+        else:
+            print "ERROR: PosInitTwoParticlesInABox, not enough particles!"
 ################################################################################################################
 # VelInitOneParticleInABox DEFINITIONS
 ################################################################################################################

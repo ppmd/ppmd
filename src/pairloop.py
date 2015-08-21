@@ -186,6 +186,13 @@ class PairLoopRapaport(_Base):
                     double r1[3];
                     
                     i = q_list[n+cp];
+
+                    /*
+                    if (i==25) {
+                        printf("CPU: i=%%d, cp=%%d ,cpp=%%d, s= %%f %%f %%f, p= %%f %%f %%f \\n", i, cp ,cpp, s[0], s[1], s[2], P_ext[25*3], P_ext[25*3+1], P_ext[25*3+2]);
+                    }
+                    */
+
                     while (i > -1){
                         j = q_list[n+cpp];
                         while (j > -1){
@@ -198,6 +205,12 @@ class PairLoopRapaport(_Base):
                                   %(KERNEL)s
                                   
                                   //KERNEL CODE END
+                                    /*
+                                  if (i == 25 || j == 25) {
+                                    printf("CPU r2=%%f \\n", r2);
+                                  } */
+
+
                                 
                                 
                             }
@@ -208,7 +221,7 @@ class PairLoopRapaport(_Base):
                 }
             }
             
-            
+            //printf("CPU: i=%%d, A=%%f %%f %%f \\n", 25, A_ext[25*3], A_ext[25*3 + 1], A_ext[25*3 + 2]);
             return;
         }        
         
@@ -697,6 +710,7 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
                     double r1[3];
                     
                     i = q_list[n+cp];
+
                     while (i > -1){
                         j = q_list[n+cpp];
                         while (j > -1){
