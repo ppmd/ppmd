@@ -401,6 +401,10 @@ class ScalarArray(object):
         self._DatHaloInit = False
         self._cuda_dat = None
 
+        if gpucuda.INIT_STATUS():
+            gpucuda.cuda_host_register(self)
+            pass
+
     def concatenate(self, size):
         """
         Increase length of scalar array object.

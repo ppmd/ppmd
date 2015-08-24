@@ -56,6 +56,9 @@ class Dat(object):
         self._NH = self._halo_start - self._N1
 
         self._cuda_dat = None
+        if gpucuda.INIT_STATUS():
+            #gpucuda.cuda_host_register(self)
+            pass
 
 
     def set_val(self, val):

@@ -2,7 +2,7 @@
 
 import runtime
 # debug level
-runtime.DEBUG.level = 0
+runtime.DEBUG.level = 1
 #verbosity level
 runtime.VERBOSE.level = 3
 #timer level
@@ -40,15 +40,15 @@ if __name__ == '__main__':
     t_1_particle = False
 
     # plot as computing + at end?
-    plotting = True
+    plotting = False
     
     # log energy?
-    logging = True
+    logging = False
 
     # Write XYZ?
     writing = True
 
-    t=0.01
+    t=0.001
     dt=0.0001
 
     # check gpucuda Module initalised correctly.
@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
     if test_1000:
         # n=25 reasonable size
-        n = 50
+        n = 25
         N = n**3
         # n=860
         rho = 1.5
@@ -217,7 +217,7 @@ if __name__ == '__main__':
     if gpucuda.INIT_STATUS():
         test_state.gpu_forces_timer.time("Total time gpu forces update.")
     ###########################################################
-    
+    # test_state.swaptimer.time("state time to swap arrays")
     
 
     #If logging was enabled, plot data.

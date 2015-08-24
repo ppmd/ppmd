@@ -16,3 +16,15 @@ void cudaCpyDeviceToHost(void* dst, const void* src, size_t count){
     checkCudaErrors(cudaDeviceSynchronize());
     return;
 }
+
+void cudaHostRegisterWrapper(void* ptr, size_t size){
+    checkCudaErrors(cudaHostRegister(ptr, size, cudaHostRegisterPortable));
+    checkCudaErrors(cudaDeviceSynchronize());
+    return;
+}
+
+void cudaHostUnregisterWrapper(void* ptr){
+    checkCudaErrors(cudaHostUnregister(ptr));
+    checkCudaErrors(cudaDeviceSynchronize());
+    return;
+}

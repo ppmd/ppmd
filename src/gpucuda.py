@@ -27,8 +27,8 @@ NVCC = build.Compiler(['nvcc_system_default'],
                       ['nvcc'],
                       ['-Xcompiler', '"-fPIC"'],
                       ['-lm'],
-                      ['-O3', '-m64', '-Xptxas', '"-v"'],
-                      ['-g', '-G', '-lineinfo'],
+                      ['-O3', '-m64', '-Xptxas', '"-v"', '-lineinfo'],
+                      ['-G', '-g', '-lineinfo', '--source-in-ptx'],
                       ['-c', '-arch=sm_35'],
                       ['-shared', '-Xcompiler', '"-fPIC"'],
                       '__restrict__')
@@ -183,6 +183,7 @@ def cuda_set_device(device=None):
             pio.rprint("setting device ", _r)
 
         LIBCUDART['cudaSetDevice'](ct.c_int(_r))
+        libcudart('cudaSetDeviceFlags',ct.c_uint(8))
         DEVICE.id = _r
     else:
         pio.rprint("gpucuda warning: No device set")
@@ -235,6 +236,49 @@ def libcudart(*args):
         pio.rprint(args)
 
     cuda_err_check(LIBCUDART[args[0]](*args[1::]))
+
+#####################################################################################
+# cuda_host_register
+#####################################################################################
+
+REGISTERED_PTRS = []
+
+
+def cuda_host_register(dat):
+    """
+    Page lock memory allocated in dat.
+    :param dat: dat containing memory to page lock.
+    :return:
+    """
+    if type(dat) == data.ScalarArray:
+        _s = ct.c_size_t(dat.max_size * ct.sizeof(dat.dtype))
+    elif type(dat) == particle.Dat:
+        _s = ct.c_size_t(dat.max_size * dat.ncomp * ct.sizeof(dat.dtype))
+
+    LIBHELPER['cudaHostRegisterWrapper'](dat.ctypes_data, _s)
+    REGISTERED_PTRS.append(dat.ctypes_data)
+
+
+def cuda_host_unregister(dat):
+    """
+    Page unlock memory allocated in dat.
+    :param dat: dat containing memory to page unlock.
+    :return:
+    """
+    if dat.ctypes_data in REGISTERED_PTRS:
+        LIBHELPER['cudaHostUnregisterWrapper'](dat.ctypes_data)
+        REGISTERED_PTRS.remove(dat.ctypes_data)
+
+def cuda_host_unregister_all():
+    """
+    Page unlock memory allocated in dat.
+    :param dat: dat containing memory to page unlock.
+    :return:
+    """
+    for ctypes_data in REGISTERED_PTRS:
+        LIBHELPER['cudaHostUnregisterWrapper'](ctypes_data)
+        REGISTERED_PTRS.remove(ctypes_data)
+
 
 #####################################################################################
 # cuda_device_reset
@@ -358,7 +402,9 @@ cuda_set_device()
 #####################################################################################
 
 def gpucuda_cleanup():
+    cuda_host_unregister_all()
     cuda_device_reset()
+
 
 atexit.register(gpucuda_cleanup)
 
@@ -558,6 +604,7 @@ class _Base(object):
         #include "%(LIB_DIR)s/generic.h"
         #include <cuda.h>
         #include "%(LIB_DIR)s/helper_cuda.h"
+        #include <cuda_profiler_api.h>
 
         %(INCLUDED_HEADERS)s
 
@@ -826,9 +873,6 @@ class SimpleCudaPairLoop(_Base):
 
         __device__ void cell_index_offset(int cp, int cpp_i, int* cpp, int *flag, double *offset){
 
-            //if (cp==0) { printf("%%d \\n", cpp_i); }
-
-
             int tmp = _d_cell_array[0]*_d_cell_array[1];
             int Cz = cp/tmp;
             int Cx = cp %% _d_cell_array[0];
@@ -851,10 +895,6 @@ class SimpleCudaPairLoop(_Base):
             } else {*flag = 0; }
 
             *cpp = (C2*_d_cell_array[1] + C1)*_d_cell_array[0] + C0;
-
-
-            //printf("cp=%%d, cpp_i=%%d, cpp=%%d, flag=%%d, offset[0]=%%f, offset[1]=%%f, offset[2]=%%f \\n ",
-            //cp, cpp_i, *cpp, *flag, offset[0], offset[1], offset[2]);
 
             return;
         }
@@ -883,12 +923,6 @@ class SimpleCudaPairLoop(_Base):
 
                     cell_index_offset(cp, cpp_i, &cpp, &flag, s);
 
-                    /*
-                    if (_ix==25) {
-                        printf("GPU: _ix=%%d, cp=%%d, cpp=%%d, s= %%f %%f %%f, p= %%f %%f %%f \\n", _ix, cp,cpp, s[0], s[1], s[2], _p[0], _p[1], _p[2]);
-                    }*/
-
-
                     if (cell_list[_d_cell_offset+cpp] > -1){
                         for(int _iy = cell_list[_d_cell_offset+cpp];
                          _iy < cell_list[_d_cell_offset+cpp]+CCC[cpp];
@@ -897,16 +931,8 @@ class SimpleCudaPairLoop(_Base):
                             if (_iy != _ix){
 
                             double r1[3];
-
                             %(GPU_POINTER_MAPPING)s
-
                             %(GPU_KERNEL)s
-                            /*
-                            if (_ix == 25) {
-                                printf("GPU r2=%%f \\n", r2);
-                            }*/
-
-
                             }
 
                         }
@@ -917,12 +943,6 @@ class SimpleCudaPairLoop(_Base):
                 %(ACCEL_VECTOR)s[_ix*3]     = _a[0];
                 %(ACCEL_VECTOR)s[_ix*3 + 1] = _a[1];
                 %(ACCEL_VECTOR)s[_ix*3 + 2] = _a[2];
-
-                /*
-                if (_ix==25) {
-                    printf("GPU: _ix=%%d, A=%%f %%f %%f \\n", _ix, d_A[25*3], d_A[25*3 + 1], d_A[25*3 + 2]);
-                    printf("GPU: _ix=%%d, Ac=%%f %%f %%f \\n", _ix, _a[0], _a[1], _a[2]);
-                }*/
 
             }
             return;
@@ -938,7 +958,7 @@ class SimpleCudaPairLoop(_Base):
                                      int *PCL,
                                      int *cell_list,
                                      %(ARGUMENTS)s){
-
+            //cudaProfilerStart();
 
             //device constant copy.
             checkCudaErrors(cudaMemcpyToSymbol(_d_n, &_h_n, sizeof(_h_n)));
@@ -951,12 +971,12 @@ class SimpleCudaPairLoop(_Base):
             dim3 bs; bs.x = blocksize[0]; bs.y = blocksize[1]; bs.z = blocksize[2];
             dim3 ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
 
-            //printf("%%d, %%d, %%d, %%d, %%d, %%d \\n", bs.x, bs.y, bs.z, ts.x, ts.y, ts.z);
-
             getLastCudaError(" %(KERNEL_NAME)s Execution failed before kernel launch. \\n");
             %(KERNEL_NAME)s_gpukernel<<<bs,ts>>>(CCC,PCL,cell_list,%(KERNEL_ARGUMENTS)s);
             checkCudaErrors(cudaDeviceSynchronize());
             getLastCudaError(" %(KERNEL_NAME)s Execution failed. \\n");
+
+            //cudaProfilerStop();
         }
         '''
 
@@ -1050,6 +1070,7 @@ class SimpleCudaPairLoop(_Base):
         #include "%(LIB_DIR)s/generic.h"
         #include <cuda.h>
         #include "%(LIB_DIR)s/helper_cuda.h"
+        //#include <cuda_profiler_api.h>
 
         %(INCLUDED_HEADERS)s
 
@@ -1081,7 +1102,7 @@ class SimpleCudaPairLoop(_Base):
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
-        _tpb = 1024
+        _tpb = 512
         _blocksize = (ct.c_int * 3)(int(math.ceil(self._N() / float(_tpb))), 1, 1)
         _threadsize = (ct.c_int * 3)(_tpb, 1, 1)
 

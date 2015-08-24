@@ -343,6 +343,7 @@ class BaseMDStateHalo(object):
         _headers = ['stdio.h']
         _kernel = kernel.Kernel('GroupCollect', _code, _constants, _headers, None, _static_args)
         self._group_by_cell_lib = build.SharedLib(_kernel, _args)
+        self.swaptimer = runtime.Timer(runtime.TIMER, 0)
 
     def _group_by_cell(self):
         """
@@ -354,6 +355,9 @@ class BaseMDStateHalo(object):
         self._group_by_cell_lib.execute(static_args={'n':ctypes.c_int(self._q_list[self._q_list.end])})
 
         # swap array pointers
+
+        self.swaptimer.start()
+
         _tmp = self._pos.dat
         self._pos.dat = self._pos_new.dat
         self._pos_new.dat = _tmp
@@ -375,6 +379,8 @@ class BaseMDStateHalo(object):
         self._q_list_new.dat = _tmp
 
         self._q_list.dat[self._q_list.end] = self._q_list.end - self._domain.cell_count
+
+        self.swaptimer.pause()
 
     def reset_u(self):
         """
