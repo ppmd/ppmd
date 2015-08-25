@@ -5,6 +5,7 @@ import os
 import data
 import build
 import runtime
+import access
 
 
 class _Base(build.GenericToolChain):
@@ -73,8 +74,13 @@ class _Base(build.GenericToolChain):
         """
         s = '\n'
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
-
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
             space = ' ' * 14
             argname = dat[0] + '_ext'
             loc_argname = dat[0]
@@ -220,7 +226,11 @@ class SingleParticleLoop(_Base):
                 args.append(dat)
 
         '''Add pointer arguments to launch command'''
-        for dat in self._particle_dat_dict.values():
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat = dat_orig[0]
+            else:
+                dat = dat_orig
             args.append(dat.ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
@@ -312,8 +322,14 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
         """
         s = '\n'
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
 
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
             space = ' ' * 14
             argname = dat[0] + '_ext'
             loc_argname = dat[0]

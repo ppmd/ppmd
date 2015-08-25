@@ -53,13 +53,15 @@ class HaloCartesianSingleProcess(object):
 
         # Will need at least 3 components for positions
         self._nc = 3
-
+        self._cell_contents_count = data.NullIntScalarArray
         self._halo_setup_prepare()
 
         self._create_packing_pointer_array()
         self._create_packing_lib()
 
         self.timer.stop("halo setup time.")
+
+
 
     def set_position_info(self, cell_contents_count, cell_list):
         """
@@ -185,7 +187,7 @@ class HaloCartesianSingleProcess(object):
         '''sort local cells after exchange'''
         if data_in.name == 'positions':
             self._cell_sort_loop.execute(
-                {'q': self._cell_list, 'LCI': self._local_cell_indices_array, 'CRC': self._cell_contents_recv},
+                {'q': self._cell_list, 'LCI': self._local_cell_indices_array, 'CRC': self._cell_contents_recv, 'CCC': self._cell_contents_count},
                 {'CC': ctypes.c_int(self._cell_contents_recv.ncomp), 'shift': ctypes.c_int(data_in.npart),
                  'end': ctypes.c_int(self._cell_list[self._cell_list.end])})
 
@@ -587,7 +589,8 @@ class HaloCartesianSingleProcess(object):
                 
                 //first index in cell region of cell list.
                 q[end+LCI[ix]] = index;
-                
+                CCC[LCI[ix]] = _tmp;
+
                 //start at first particle in halo cell, work forwards
                 for(int iy = 0; iy < _tmp-1; iy++){
                     q[index+iy]=index+iy+1;
@@ -605,7 +608,8 @@ class HaloCartesianSingleProcess(object):
         _cell_sort_dict = {
             'q': data.NullIntScalarArray,
             'LCI': self._local_cell_indices_array,
-            'CRC': self._cell_contents_recv
+            'CRC': self._cell_contents_recv,
+            'CCC': self._cell_contents_count
         }
 
         _cell_sort_kernel = kernel.Kernel('halo_cell_list_method', _cell_sort_code, headers=['stdio.h'],

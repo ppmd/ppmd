@@ -2,6 +2,7 @@ import kernel
 import constant
 import data
 import ctypes
+import access
 
 
 class BasePotential(object):
@@ -167,7 +168,7 @@ class LennardJonesShifted(BasePotential):
         
         :arg state input_state: state with containing variables.
         """
-        return {'P': input_state.positions(), 'A': input_state.forces(), 'u': input_state.u()}
+        return {'P': input_state.positions(access.R), 'A': input_state.forces(access.W), 'u': input_state.u(access.INC)}
 
 
 ################################################################################################################

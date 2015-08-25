@@ -97,9 +97,9 @@ class Dat(object):
     def __str__(self):
         return str(self._Dat)
 
-    def __call__(self, access=access.RW, halo=True):
+    def __call__(self, mode=access.RW, halo=True):
 
-        return self
+        return self, mode
 
     @property
     def ncomp(self):

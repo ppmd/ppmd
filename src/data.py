@@ -402,7 +402,7 @@ class ScalarArray(object):
         self._cuda_dat = None
 
         if gpucuda.INIT_STATUS():
-            gpucuda.cuda_host_register(self)
+            # gpucuda.cuda_host_register(self)
             pass
 
     def concatenate(self, size):

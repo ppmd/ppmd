@@ -15,21 +15,24 @@ import kernel
 import particle
 import data
 import constant
+import access
 
 ERROR_LEVEL = runtime.Level(2)
 
 
 #####################################################################################
 # NVCC Compiler
-#####################################################################################
+##################################################################################### '--maxrregcount=40'
+
+# '--ptxas-options=-v -dlcm=cg'
 
 NVCC = build.Compiler(['nvcc_system_default'],
                       ['nvcc'],
                       ['-Xcompiler', '"-fPIC"'],
                       ['-lm'],
-                      ['-O3', '-m64', '-Xptxas', '"-v"', '-lineinfo'],
-                      ['-G', '-g', '-lineinfo', '--source-in-ptx'],
-                      ['-c', '-arch=sm_35'],
+                      ['-O3', '--ptxas-options=-v','--maxrregcount=16'], # '-O3', '-Xptxas', '"-v"', '-lineinfo'
+                      ['-G', '-g', '--source-in-ptx', '--ptxas-options="-v -dlcm=ca"'],
+                      ['-c', '-arch=sm_35', '-m64', '-lineinfo'],
                       ['-shared', '-Xcompiler', '"-fPIC"'],
                       '__restrict__')
 
@@ -532,7 +535,15 @@ class _Base(object):
                 self._static_arg_order.append(dat[0])
                 self._argtypes.append(dat[1])
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+
             argnames += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' h_' + dat[0] + ','
             self._argtypes.append(dat[1].dtype)
 
@@ -547,6 +558,15 @@ class _Base(object):
         for arg in self._particle_dat_dict.items():
             args += 'h_' + arg[0] + ','
         return args[:-1]
+
+    def _mode_arg_dec_str(self, mode):
+        _s = ' '
+        if mode is access.R:
+            _s = 'const '
+
+        return _s
+
+
 
 
     def _kernel_argument_declarations(self):
@@ -566,13 +586,19 @@ class _Base(object):
         """
         s = ''
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
             loc_argname = dat[0]
 
             if type(dat[1]) == particle.Dat:
-                s += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' d_' + loc_argname + ','
+                s += self._mode_arg_dec_str(_mode) + data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' d_' + loc_argname + ','
             if type(dat[1]) == data.ScalarArray:
-                s += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' d_' + loc_argname + ','
+                s += self._mode_arg_dec_str(_mode) + data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' d_' + loc_argname + ','
         return s[:-1]
 
     def _kernel_pointer_mapping(self):
@@ -583,7 +609,15 @@ class _Base(object):
 
         space = ' ' * 14
 
-        for dat in self._particle_dat_dict.items():
+        for dat_orig in self._particle_dat_dict.items():
+
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+
             argname = 'd_' + dat[0]
             loc_argname = dat[0]
 
@@ -754,7 +788,10 @@ class _Base(object):
 
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
-            args.append(dat.get_cuda_dat().ctypes_data)
+            if type(dat) is tuple:
+                args.append(dat[0].get_cuda_dat().ctypes_data)
+            else:
+                args.append(dat.get_cuda_dat().ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
@@ -874,7 +911,7 @@ class SimpleCudaPairLoop(_Base):
         __device__ void cell_index_offset(int cp, int cpp_i, int* cpp, int *flag, double *offset){
 
             int tmp = _d_cell_array[0]*_d_cell_array[1];
-            int Cz = cp/tmp;
+            int Cz = cp/(_d_cell_array[0]*_d_cell_array[1]);
             int Cx = cp %% _d_cell_array[0];
             int Cy = (cp - Cz*tmp)/_d_cell_array[0];
 
@@ -1000,7 +1037,11 @@ class SimpleCudaPairLoop(_Base):
 
     def _get_acceleration_array(self):
         s = '//'
-        for dat in self._particle_dat_dict.items():
+        for dat_orig in self._particle_dat_dict.items():
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+            else:
+                dat = dat_orig
             if type(dat[1]) == particle.Dat:
                 if dat[1].name == 'accelerations':
                     s = 'd_' + dat[0]
@@ -1008,7 +1049,11 @@ class SimpleCudaPairLoop(_Base):
 
     def _get_position_array(self):
         s = '//'
-        for dat in self._particle_dat_dict.items():
+        for dat_orig in self._particle_dat_dict.items():
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+            else:
+                dat = dat_orig
             if type(dat[1]) == particle.Dat:
                 if dat[1].name == 'positions':
                     s = 'd_' + dat[0]
@@ -1022,13 +1067,19 @@ class SimpleCudaPairLoop(_Base):
 
         space = ' ' * 14
 
-        for dat in self._particle_dat_dict.items():
+        for dat_orig in self._particle_dat_dict.items():
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
             argname = 'd_' + dat[0]
             loc_argname = dat[0]
 
             if type(dat[1]) == particle.Dat:
                 if dat[1].name == 'positions':
-                    _s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    _s += space + '' + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
 
                     _s += space + 'if (flag){ \n'
 
@@ -1102,7 +1153,7 @@ class SimpleCudaPairLoop(_Base):
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
-        _tpb = 512
+        _tpb = 192
         _blocksize = (ct.c_int * 3)(int(math.ceil(self._N() / float(_tpb))), 1, 1)
         _threadsize = (ct.c_int * 3)(_tpb, 1, 1)
 
@@ -1133,7 +1184,10 @@ class SimpleCudaPairLoop(_Base):
 
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
-            args.append(dat.get_cuda_dat().ctypes_data)
+            if type(dat) is tuple:
+                args.append(dat[0].get_cuda_dat().ctypes_data)
+            else:
+                args.append(dat.get_cuda_dat().ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
@@ -1142,4 +1196,277 @@ class SimpleCudaPairLoop(_Base):
 
 
 
+
+class SimpleCudaPairLoopHalo(SimpleCudaPairLoop):
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+
+        //device constant decelerations.
+        __constant__ int _d_n;
+        __constant__ int _d_cell_offset;
+        __constant__ int _d_cell_array[3];
+
+        __constant__ int cell_map[27] = %(CELL_OFFSETS)s
+
+        %(DEVICE_CONSTANT_DECELERATION)s
+
+        //device kernel decelerations.
+        __global__ void %(KERNEL_NAME)s_gpukernel(int *CCC, int *PCL, int *cell_list, %(KERNEL_ARGUMENTS_DECL)s){
+
+            int _ix = threadIdx.x + blockIdx.x*blockDim.x;
+            if (_ix < _d_n){
+
+                //create local store for acceleration of particle _ix.
+                double _a[3];
+                _a[0] = 0; _a[1] = 0; _a[2] = 0;
+
+                //ensure positon of particle _ix is only read once.
+                 const double *P[2];
+                 P[0] =  %(POS_VECTOR)s + _ix*3;
+
+                for(int cpp_i=0; cpp_i<27; cpp_i++){
+                    int cpp = PCL[_ix] + cell_map[cpp_i];
+
+                    /*
+                    if (cell_list[_d_cell_offset+cpp] > -1){
+                        for(int _iy = cell_list[_d_cell_offset+cpp];
+                         _iy < cell_list[_d_cell_offset+cpp]+CCC[cpp];
+                         _iy++){
+                    */
+
+                    int _iy = cell_list[_d_cell_offset+cpp];
+                    while(_iy > -1){
+
+
+                            if (_iy != _ix){
+                            %(GPU_POINTER_MAPPING)s
+                            %(GPU_KERNEL)s
+                            }
+                        _iy = cell_list[_iy];
+                        }
+                    //}
+                }
+
+                //Write acceleration to dat.
+                %(ACCEL_VECTOR)s[_ix*3]     = _a[0];
+                %(ACCEL_VECTOR)s[_ix*3 + 1] = _a[1];
+                %(ACCEL_VECTOR)s[_ix*3 + 2] = _a[2];
+
+            }
+            return;
+        }
+
+        void %(KERNEL_NAME)s_wrapper(const int blocksize[3],
+                                     const int threadsize[3],
+                                     const int _h_n,
+                                     const int _h_cell_offset,
+                                     const int _h_cell_array[3],
+                                     int *CCC,
+                                     int *PCL,
+                                     int *cell_list,
+                                     %(ARGUMENTS)s){
+            //cudaProfilerStart();
+
+            //device constant copy.
+            checkCudaErrors(cudaMemcpyToSymbol(_d_n, &_h_n, sizeof(_h_n)));
+            checkCudaErrors(cudaMemcpyToSymbol(_d_cell_offset, &_h_cell_offset, sizeof(_h_cell_offset)));
+            checkCudaErrors(cudaMemcpyToSymbol(_d_cell_array, &_h_cell_array[0], 3*sizeof(_h_cell_array[0])));
+
+            %(DEVICE_CONSTANT_COPY)s
+
+            dim3 bs; bs.x = blocksize[0]; bs.y = blocksize[1]; bs.z = blocksize[2];
+            dim3 ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
+
+            getLastCudaError(" %(KERNEL_NAME)s Execution failed before kernel launch. \\n");
+            %(KERNEL_NAME)s_gpukernel<<<bs,ts>>>(CCC,PCL,cell_list,%(KERNEL_ARGUMENTS)s);
+            checkCudaErrors(cudaDeviceSynchronize());
+            getLastCudaError(" %(KERNEL_NAME)s Execution failed. \\n");
+
+            //cudaProfilerStop();
+        }
+        '''
+    def _generate_header_source(self):
+        """Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        """
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+        #include "%(LIB_DIR)s/generic.h"
+        #include <cuda.h>
+        #include "%(LIB_DIR)s/helper_cuda.h"
+        //#include <cuda_profiler_api.h>
+
+        %(INCLUDED_HEADERS)s
+
+        extern "C"         void %(KERNEL_NAME)s_wrapper(const int blocksize[3],
+                                     const int threadsize[3],
+                                     const int _h_n,
+                                     const int _h_cell_offset,
+                                     const int _h_cell_array[3],
+                                     int * CCC,
+                                     int * PCL,
+                                     int *cell_list,
+                                     %(ARGUMENTS)s);
+
+        #endif
+        '''
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
+        return code % d
+
+    def _kernel_pointer_mapping(self):
+        """
+        Create string for thread id and pointer mapping.
+        """
+        _s = ''
+
+        space = ' ' * 14
+
+        for dat_orig in self._particle_dat_dict.items():
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+            argname = 'd_' + dat[0]
+            loc_argname = dat[0]
+
+            if type(dat[1]) == particle.Dat:
+                if dat[1].name == 'positions':
+                    _s += space + loc_argname + '[1] = ' + argname + '+3*_iy;\n'
+                elif dat[1].name == 'accelerations':
+                    _s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    _s += space + data.ctypes_map[dat[1].dtype] + ' dummy[3] = {0,0,0};\n'
+                    _s += space + loc_argname + '[0] = _a;\n'
+                    _s += space + loc_argname + '[1] = dummy;\n'
+
+
+                else:
+                    _s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    _s += space + loc_argname + '[0] = ' + argname + '+' + str(dat[1].ncomp) + '*_ix;\n'
+                    _s += space + loc_argname + '[1] = ' + argname + '+' + str(dat[1].ncomp) + '*_iy;\n'
+
+            elif type(dat[1]) == data.ScalarArray:
+                _s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+
+        return _s
+
+    def cell_offset_mapping(self):
+        """
+        Calculate cell offset mappings
+
+        :return:
+        """
+        _map = ((-1,1,-1),
+                (-1,-1,-1),
+                (-1,0,-1),
+                (0,1,-1),
+                (0,-1,-1),
+                (0,0,-1),
+                (1,0,-1),
+                (1,1,-1),
+                (1,-1,-1),
+
+                (-1,1,0),
+                (-1,0,0),
+                (-1,-1,0),
+                (0,-1,0),
+                (0,0,0),
+                (0,1,0),
+                (1,0,0),
+                (1,1,0),
+                (1,-1,0),
+
+                (-1,0,1),
+                (-1,1,1),
+                (-1,-1,1),
+                (0,0,1),
+                (0,1,1),
+                (0,-1,1),
+                (1,0,1),
+                (1,1,1),
+                (1,-1,1))
+
+        _s = '{'
+        for ix in range(27):
+            _s1 = str(_map[ix][0] + _map[ix][1] * self._domain.cell_array[0] + _map[ix][2] * self._domain.cell_array[0]* self._domain.cell_array[1])
+            if ix < 26:
+                _s += _s1 + ','
+            else:
+                _s += _s1 + '}; \n'
+
+        return _s
+
+    def _generate_impl_source(self):
+        """Generate the source code the actual implementation.
+        """
+
+        d = {'UNIQUENAME': self._unique_name,
+             'GPU_POINTER_MAPPING': self._kernel_pointer_mapping(),
+             'GPU_KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'KERNEL_ARGUMENTS': self._kernel_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'KERNEL_ARGUMENTS_DECL': self._kernel_argument_declarations(),
+             'DEVICE_CONSTANT_DECELERATION': self._device_const_dec,
+             'DEVICE_CONSTANT_COPY': self._device_const_copy,
+             'ACCEL_VECTOR': self._get_acceleration_array(),
+             'POS_VECTOR': self._get_position_array(),
+             'CELL_OFFSETS': self.cell_offset_mapping()
+             }
+        return self._code % d
+
+
+    def execute(self, dat_dict=None, static_args=None):
+
+
+
+        """Allow alternative pointers"""
+        if dat_dict is not None:
+            self._particle_dat_dict = dat_dict
+
+        _tpb = 256
+        _blocksize = (ct.c_int * 3)(int(math.ceil(self._N() / float(_tpb))), 1, 1)
+        _threadsize = (ct.c_int * 3)(_tpb, 1, 1)
+
+        _h_cell_array = (ct.c_int * 3)(self._domain.cell_array[0],
+                                       self._domain.cell_array[1],
+                                       self._domain.cell_array[2])
+
+        args = [_blocksize,
+                _threadsize,
+                ct.c_int(self._N()),
+                ct.c_int(self._q_list[self._q_list.end]),
+                _h_cell_array,
+                self._cell_contents_count.get_cuda_dat().ctypes_data,
+                self._particle_cell_lookup.get_cuda_dat().ctypes_data,
+                self._q_list.get_cuda_dat().ctypes_data
+                ]
+
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+        '''Add pointer arguments to launch command'''
+        for dat in self._particle_dat_dict.values():
+            if type(dat) is tuple:
+                args.append(dat[0].get_cuda_dat().ctypes_data)
+            else:
+                args.append(dat.get_cuda_dat().ctypes_data)
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        method(*args)
 

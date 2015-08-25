@@ -136,15 +136,24 @@ class BaseMDStateHalo(object):
 
 
                 self._accel_comparison = particle.Dat(self._NT, 3, name='accel_compare')
-                self._looping_method_accel_test = gpucuda.SimpleCudaPairLoop(n=self.n,
-                                                                             domain=self._domain,
-                                                                             positions=self._pos,
-                                                                             potential=self._potential,
-                                                                             dat_dict=_potential_dat_dict,
-                                                                             cell_list=self._q_list,
-                                                                             cell_contents_count=self._cell_contents_count,
-                                                                             particle_cell_lookup=self._particle_cell_lookup)
-
+                if type(self._domain) is domain.BaseDomain:
+                    self._looping_method_accel_test = gpucuda.SimpleCudaPairLoop(n=self.n,
+                                                                                 domain=self._domain,
+                                                                                 positions=self._pos,
+                                                                                 potential=self._potential,
+                                                                                 dat_dict=_potential_dat_dict,
+                                                                                 cell_list=self._q_list,
+                                                                                 cell_contents_count=self._cell_contents_count,
+                                                                                 particle_cell_lookup=self._particle_cell_lookup)
+                if type(self._domain) is domain.BaseDomainHalo:
+                    self._looping_method_accel_test = gpucuda.SimpleCudaPairLoopHalo(n=self.n,
+                                                                                     domain=self._domain,
+                                                                                     positions=self._pos,
+                                                                                     potential=self._potential,
+                                                                                     dat_dict=_potential_dat_dict,
+                                                                                     cell_list=self._q_list,
+                                                                                     cell_contents_count=self._cell_contents_count,
+                                                                                     particle_cell_lookup=self._particle_cell_lookup)
 
 
         else:

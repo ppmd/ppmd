@@ -282,7 +282,7 @@ class GenericToolChain(object):
         then the result will be ``double** arg_000,double** arg_001`.`
         """
 
-        self._argtypes = []
+        #self._argtypes = []
 
         argnames = ''
         if self._kernel.static_args is not None:
@@ -291,11 +291,14 @@ class GenericToolChain(object):
             for i, dat in enumerate(self._kernel.static_args.items()):
                 argnames += 'const ' + data.ctypes_map[dat[1]] + ' ' + dat[0] + ','
                 self._static_arg_order.append(dat[0])
-                self._argtypes.append(dat[1])
+                #self._argtypes.append(dat[1])
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
-            argnames += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
-            self._argtypes.append(dat[1].dtype)
+            if type(dat[1]) is not tuple:
+                argnames += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
+            else:
+                argnames += data.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
+            #self._argtypes.append(dat[1].dtype)
 
         return argnames[:-1]
 
@@ -450,7 +453,11 @@ class GenericToolChain(object):
                 args.append(dat)
 
         '''Add pointer arguments to launch command'''
-        for dat in self._particle_dat_dict.values():
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat = dat_orig[0]
+            else:
+                dat = dat_orig
             args.append(dat.ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
@@ -577,7 +584,10 @@ class SharedLib(GenericToolChain):
 
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
-            args.append(dat.ctypes_data)
+            if type(dat) is tuple:
+                args.append(dat[0].ctypes_data)
+            else:
+                args.append(dat.ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
@@ -606,7 +616,7 @@ class SharedLib(GenericToolChain):
         then the result will be ``double** arg_000,double** arg_001`.`
         """
 
-        self._argtypes = []
+        #self._argtypes = []
 
         argnames = ''
         if self._kernel.static_args is not None:
@@ -615,10 +625,13 @@ class SharedLib(GenericToolChain):
             for i, dat in enumerate(self._kernel.static_args.items()):
                 argnames += '' + data.ctypes_map[dat[1]] + ' ' + dat[0] + ','
                 self._static_arg_order.append(dat[0])
-                self._argtypes.append(dat[1])
+                #self._argtypes.append(dat[1])
+
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
-            argnames += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
-            self._argtypes.append(dat[1].dtype)
+            if type(dat[1]) is not tuple:
+                argnames += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
+            else:
+                argnames += data.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
 
         return argnames[:-1]

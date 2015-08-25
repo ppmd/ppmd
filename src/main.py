@@ -2,7 +2,7 @@
 
 import runtime
 # debug level
-runtime.DEBUG.level = 1
+runtime.DEBUG.level = 0
 #verbosity level
 runtime.VERBOSE.level = 3
 #timer level
@@ -23,7 +23,6 @@ import gpucuda
 import particle
 
 if __name__ == '__main__':
-
 
     x = 1
     y = 0
@@ -78,15 +77,15 @@ if __name__ == '__main__':
 
     if test_1000:
         # n=25 reasonable size
-        n = 25
+        n = 40
         N = n**3
         # n=860
-        rho = 1.5
+        rho = 5.
         mu = 0.0
         nsig = 5.0
         
         # Initialise basic domain
-        test_domain = domain.BaseDomain(nt=N)
+        test_domain = domain.BaseDomainHalo(nt=N)
 
         # Initialise LJ potential
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
@@ -110,12 +109,12 @@ if __name__ == '__main__':
         dt=0.00001
         
         # See above
-        test_domain = domain.BaseDomain(nt=N)
+        test_domain = domain.BaseDomainHalo(nt=N)
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)
 
 
         # Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.3, extent = np.array([10., 10., 10.]), axis = np.array([1,1,0]))
+        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.3, extent = np.array([8., 8., 8.]), axis = np.array([1,0,0]))
 
         # Give first two particles specific velocities
         test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
