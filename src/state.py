@@ -146,7 +146,7 @@ class BaseMDStateHalo(object):
                                                                                  cell_contents_count=self._cell_contents_count,
                                                                                  particle_cell_lookup=self._particle_cell_lookup)
                 if type(self._domain) is domain.BaseDomainHalo:
-                    self._looping_method_accel_test = gpucuda.SimpleCudaPairLoopHalo(n=self.n,
+                    self._looping_method_accel_test = gpucuda.SimpleCudaPairLoopHalo2D(n=self.n,
                                                                                      domain=self._domain,
                                                                                      positions=self._pos,
                                                                                      potential=self._potential,
@@ -446,11 +446,9 @@ class BaseMDStateHalo(object):
             # Compare results from gpu with cpu results
             _tol=10**-8
 
+
             for ix in range(self._N):
-                '''
-                if (math.fabs(self._accel_comparison.dat[ix,0] - self._pos.dat[ix,0])>_tol) or (math.fabs(self._accel_comparison.dat[ix,1] - self._pos.dat[ix,1])>_tol) or (math.fabs(self._accel_comparison.dat[ix,2] - self._pos.dat[ix,2])>_tol):
-                    print "missmatch", ix, self._accel_comparison.dat[ix,:], self._pos.dat[ix,:], self._time, self._particle_cell_lookup[ix], self._domain.cell_array
-                '''
+
 
                 if (math.fabs(self._accel_comparison.dat[ix,0] - self._accel.dat[ix,0])>_tol) or (math.fabs(self._accel_comparison.dat[ix,1] - self._accel.dat[ix,1])>_tol) or (math.fabs(self._accel_comparison.dat[ix,2] - self._accel.dat[ix,2])>_tol):
                     print "missmatch", ix, self._accel_comparison.dat[ix,:], self._accel.dat[ix,:], self._time, self._particle_cell_lookup[ix], self._domain.cell_array, self._domain.extent
