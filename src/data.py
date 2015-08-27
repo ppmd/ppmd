@@ -19,11 +19,11 @@ import build
 import runtime
 import pio
 import gpucuda
-
+import access
 
 np.set_printoptions(threshold='nan')
 
-import access
+
 
 ctypes_map = {ctypes.c_double: 'double', ctypes.c_int: 'int', 'float64': 'double', 'int32': 'int',
               'doublepointerpointer': 'double **', ctypes.c_longlong: 'long long'}

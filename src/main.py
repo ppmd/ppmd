@@ -54,30 +54,6 @@ if __name__ == '__main__':
     t=0.001
     dt=0.0001
 
-    # check gpucuda Module initalised correctly.
-    '''
-    if gpucuda.INIT_STATUS():
-        a_N = 1000
-
-        b = particle.Dat(initial_value=list(np.linspace(0,10,a_N-1))); b.add_cuda_dat() ;b.copy_to_cuda_dat()
-        c = particle.Dat(initial_value=list(np.linspace(0,10,a_N-1))); c.add_cuda_dat() ;c.copy_to_cuda_dat()
-        a = particle.Dat(initial_value=list(np.linspace(0,10,a_N-1))); a.add_cuda_dat() ;a.copy_to_cuda_dat()
-
-        print a[-1], a.dat[0:10:]
-
-        a.dat[0:a_N:] = 0.0
-        print a[0:10:]
-
-        _aebpc = gpucuda.aebpc(a,b,c).execute()
-
-        a.copy_from_cuda_dat()
-        print a[0:10:]
-        print a[-1]
-    else:
-        print runtime.MPI_HANDLE.rank, "gpucuda not init", gpucuda.INIT_STATUS()
-    '''
-
-
 
     if test_1000:
         # n=25 reasonable size
