@@ -357,7 +357,7 @@ class Dir(object):
         self._dir = directory
 
 try:
-    _BUILD_DIR = str(os.environ['BUILD_DIR'])
+    _BUILD_DIR = str(os.path.join(os.environ['BUILD_DIR'],''))
 except:
     _BUILD_DIR = './build/'
 

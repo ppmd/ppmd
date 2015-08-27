@@ -21,8 +21,12 @@ import data
 import gpucuda
 
 import particle
+import os
+
+
 
 if __name__ == '__main__':
+
 
     x = 1
     y = 0

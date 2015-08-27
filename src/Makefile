@@ -24,7 +24,7 @@ clean:
 ifeq ($(strip $(BUILD_DIR)),)
 	rm -rf *.o *.so $(MAIN) *.pyc ./build/*
 else
-	rm -rf *.o *.so *.pyc $(BUILD_DIR)*
+	rm -rf *.o *.so *.pyc $(BUILD_DIR)/*
 endif
 
 cout:
