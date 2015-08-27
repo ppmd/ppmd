@@ -30,7 +30,7 @@ NVCC = build.Compiler(['nvcc_system_default'],
                       ['nvcc'],
                       ['-Xcompiler', '"-fPIC"'],
                       ['-lm'],
-                      ['-O3', '--ptxas-options=-v -dlcm=ca', '--maxrregcount=30'], # '-O3', '-Xptxas', '"-v"', '-lineinfo'
+                      ['-O3', '--ptxas-options=-v -dlcm=ca', '--maxrregcount=64'], # '-O3', '-Xptxas', '"-v"', '-lineinfo'
                       ['-G', '-g', '--source-in-ptx', '--ptxas-options="-v -dlcm=ca"'],
                       ['-c', '-arch=sm_35', '-m64', '-lineinfo'],
                       ['-shared', '-Xcompiler', '"-fPIC"'],
@@ -1524,14 +1524,13 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
         %(DEVICE_CONSTANT_DECELERATION)s
 
 
-
-
         //device kernel decelerations.
         __global__ void %(KERNEL_NAME)s_gpukernel(const int * __restrict__ CCC, const int * __restrict__ PCL, const int * __restrict__ cell_list, %(KERNEL_ARGUMENTS_DECL)s){
 
             const int _ix = threadIdx.x + blockIdx.x*blockDim.x;
-            if (_ix < _d_n){
+            double u[1]; u[0] = 0.0;
 
+            if (_ix < _d_n){
                 //create local store for acceleration of particle _ix.
 
                 double _a[3];
@@ -1540,7 +1539,6 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
 
                 const double *P[2];
                 P[0] =  %(POS_VECTOR)s + _ix*3;
-
 
                 for(int cpp_i=0; cpp_i<27; cpp_i++){
                     int cpp = PCL[_ix] + cell_map[cpp_i];
@@ -1552,42 +1550,16 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
                             if (_iy != _ix){
                             %(GPU_POINTER_MAPPING)s
 
-                            const double R0 = P[1][0] - P[0][0];
-                            const double R1 = P[1][1] - P[0][1];
-                            const double R2 = P[1][2] - P[0][2];
-
-                            const double r2 = R0*R0 + R1*R1 + R2*R2;
-
-                            if (r2 < 6.25){
-
-                                const double r_m2 = 1.0/r2;
-                                const double r_m4 = r_m2*r_m2;
-                                const double r_m6 = r_m4*r_m2;
-
-                                //u[0]+= 4.0*((r_m6-1.0)*r_m6 + 0.004079222784);
-
-                                const double r_m8 = r_m4*r_m4;
-                                const double f_tmp = -48.0*(r_m6 - 0.5)*r_m8;
-
-                                A[0][0]+=f_tmp*R0;
-                                A[0][1]+=f_tmp*R1;
-                                A[0][2]+=f_tmp*R2;
-
-                                A[1][0]-=f_tmp*R0;
-                                A[1][1]-=f_tmp*R1;
-                                A[1][2]-=f_tmp*R2;
-
-                            }
-
-
-
-                            /*
                             %(GPU_KERNEL)s
-                            */
+
+
+
                             }
                          }
 
                 }
+
+
 
                 //Write acceleration to dat.
 
@@ -1595,9 +1567,18 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
                 %(ACCEL_VECTOR)s[_ix*3 + 1] = _a[1];
                 %(ACCEL_VECTOR)s[_ix*3 + 2] = _a[2];
 
-
-
             }
+
+            u[0] = warpReduceSumDouble(u[0]);
+
+            if (  (int)(threadIdx.x & (warpSize - 1)) == 0)
+            {
+                atomicAddDouble(&d_u[0], u[0]);
+            }
+
+
+
+
             return;
         }
 
@@ -1639,11 +1620,8 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
         code = '''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #include "%(LIB_DIR)s/generic.h"
-        #include <cuda.h>
-        #include "%(LIB_DIR)s/helper_cuda.h"
-        //#include <cuda_profiler_api.h>
-        #include <vector_types.h>
+        #include "%(LIB_DIR)s/cuda_generic.h"
+
         %(INCLUDED_HEADERS)s
 
         extern "C"         void %(KERNEL_NAME)s_wrapper(const int blocksize[3],
@@ -1699,7 +1677,8 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
                     _s += space + loc_argname + '[1] = ' + argname + '+' + str(dat[1].ncomp) + '*_iy;\n'
 
             elif type(dat[1]) == data.ScalarArray:
-                _s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                pass
+                # _s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
         return _s
 

@@ -46,21 +46,21 @@ if __name__ == '__main__':
     plotting = False
     
     # log energy?
-    logging = False
+    logging = True
 
     # Write XYZ?
-    writing = True
+    writing = False
 
-    t=0.001
+    t=0.01
     dt=0.0001
 
 
     if test_1000:
         # n=25 reasonable size
-        n = 40
+        n = 8
         N = n**3
         # n=860
-        rho = 5.
+        rho = 1.
         mu = 0.0
         nsig = 5.0
         

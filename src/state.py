@@ -416,12 +416,11 @@ class BaseMDStateHalo(object):
         self.reset_u()
         if gpucuda.INIT_STATUS():
             self._U.copy_to_cuda_dat()
-            # self._accel.copy_to_cuda_dat()
 
-        # print "-" * 80, self._particle_cell_lookup[25]
         self.cpu_forces_timer.start()
         if self._N > 0:
             self._looping_method_accel.execute()
+            pass
         self.cpu_forces_timer.pause()
 
         if gpucuda.INIT_STATUS():
@@ -431,21 +430,30 @@ class BaseMDStateHalo(object):
             self._cell_contents_count.copy_to_cuda_dat()
             self._particle_cell_lookup.copy_to_cuda_dat()
 
-            # execute pair loop
-            # print "=" * 80, self._particle_cell_lookup[25]
-
 
             self.gpu_forces_timer.start()
             self._looping_method_accel_test.execute()
             self.gpu_forces_timer.pause()
 
-            self._accel.get_cuda_dat().cpy_dth(self._accel_comparison.ctypes_data)
-            self._q_list.get_cuda_dat().cpy_dth(self._q_list_new.ctypes_data)
+            # self._accel.copy_from_cuda_dat()
 
 
             # Compare results from gpu with cpu results
             _tol=10**-8
 
+            _u = self._U.dat[0] + 0.5 * self._U.dat[1]
+            self._U.copy_from_cuda_dat()
+            _ug = (0.5 * self._U.dat[0]) / self._NT
+
+            self._U.dat[0] = _u
+            self._U.dat[1] = 0.
+            _u /= self._NT
+
+            if (math.fabs(_u - _ug)) > (_tol * 10):
+                print "Potential energy difference:", _u, _ug, math.fabs(_u - _ug)
+
+            '''
+            self._accel.get_cuda_dat().cpy_dth(self._accel_comparison.ctypes_data)
 
             for ix in range(self._N):
 
@@ -455,13 +463,8 @@ class BaseMDStateHalo(object):
                     # quit()
 
 
-                if math.fabs(self._q_list[ix] - self._q_list_new[ix])>_tol:
-                    print "missmatch q", ix, self._q_list[ix], self._q_list_new[ix]
-                    # quit()
-
-
                 pass
-
+            '''
 
 
 
