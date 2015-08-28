@@ -25,7 +25,7 @@ class CellList(object):
         # contents count for each cell.
         self._cell_contents_count = None
 
-        # container for reverse lookup. (If needed)
+        # container for reverse lookup. (If needed ?)
         self._cell_reverse_lookup = None
 
         # domain to partition.
@@ -177,6 +177,7 @@ class GroupByCell(object):
         self._group_by_cell_lib = None
         self.swaptimer = None
 
+    # TODO, Make these arguments more dynamic based on what is in the state class.
     def setup(self, positions, velocities, global_ids, types):
         """
         Setup library to group data in positions, global ids and types such that particles in the same cell are sequential.

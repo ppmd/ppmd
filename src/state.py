@@ -1,5 +1,4 @@
 import numpy as np
-import os
 import particle
 import math
 import ctypes
@@ -9,12 +8,11 @@ import data
 import kernel
 import loop
 import runtime
-import build
-import constant
 import pio
 import domain
 import gpucuda
 import cell
+import threading
 
 
 np.set_printoptions(threshold='nan')
@@ -216,18 +214,40 @@ class BaseMDStateHalo(object):
         if gpucuda.INIT_STATUS():
             self._U.copy_to_cuda_dat()
 
+
+
+        if gpucuda.INIT_STATUS():
+            # copy data to gpu
+            t0 = threading.Thread(target=cell.cell_list.cell_list.copy_to_cuda_dat())
+            t0.start()
+
+            t1 = threading.Thread(target=self._pos.copy_to_cuda_dat())
+            t1.start()
+
+            t2 = threading.Thread(target=cell.cell_list.cell_contents_count.copy_to_cuda_dat())
+            t2.start()
+
+            t3 = threading.Thread(target=cell.cell_list.cell_reverse_lookup.copy_to_cuda_dat())
+            t3.start()
+
+
+
+
         self.cpu_forces_timer.start()
         if self._N > 0:
             self._looping_method_accel.execute()
             pass
+
         self.cpu_forces_timer.pause()
 
+
         if gpucuda.INIT_STATUS():
-            # copy data to gpu
-            cell.cell_list.cell_list.copy_to_cuda_dat()
-            self._pos.copy_to_cuda_dat()
-            cell.cell_list.cell_contents_count.copy_to_cuda_dat()
-            cell.cell_list.cell_reverse_lookup.copy_to_cuda_dat()
+
+
+            t0.join()
+            t1.join()
+            t2.join()
+            t3.join()
 
 
             self.gpu_forces_timer.start()
@@ -246,11 +266,13 @@ class BaseMDStateHalo(object):
 
             self._U.dat[0] = _u
             self._U.dat[1] = 0.
+
             _u /= self._NT
 
+            '''
             if (math.fabs(_u - _ug)) > (_tol * 10):
                 print "Potential energy difference:", _u, _ug, math.fabs(_u - _ug)
-
+            '''
             '''
             self._accel.get_cuda_dat().cpy_dth(self._accel_comparison.ctypes_data)
 
