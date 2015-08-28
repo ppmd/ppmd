@@ -1,10 +1,13 @@
 # cell list container
+import runtime
 import data
+import particle
 import ctypes as ct
 import numpy as np
 import gpucuda
 import build
 import kernel
+import constant
 
 
 class CellList(object):
@@ -147,8 +150,157 @@ class CellList(object):
         """
         return self._cell_contents_count
 
-
-
+    @property
+    def domain(self):
+        """
+        :return: The domain used.
+        """
+        return self._domain
 
 # default cell list
 cell_list = CellList()
+
+class GroupByCell(object):
+    """
+    Class to group dats based on the cells particles reside in.
+    """
+    def __init__(self):
+        self._pos = None
+        self._vel = None
+        self._global_ids = None
+        self._types = None
+        self._pos_new = None
+        self._vel_new = None
+        self._global_ids_new = None
+        self._types_new = None
+        self._cell_list_new = None
+        self._group_by_cell_lib = None
+        self.swaptimer = None
+
+    def setup(self, positions, velocities, global_ids, types):
+        """
+        Setup library to group data in positions, global ids and types such that particles in the same cell are sequential.
+        """
+
+        self._pos = positions
+        self._vel = velocities
+        self._global_ids = global_ids
+        self._types = types
+
+        self._pos_new = particle.Dat(self._pos.max_size, 3, name='positions')
+        self._vel_new = particle.Dat(self._vel.max_size, 3, name='velocities')
+        self._global_ids_new = data.ScalarArray(ncomp=self._global_ids.max_size, dtype=ct.c_int)
+        self._types_new = data.ScalarArray(ncomp=self._types.max_size, dtype=ct.c_int)
+
+        self._cell_list_new = data.ScalarArray(ncomp=cell_list.cell_list.max_size, dtype=ct.c_int)
+
+        if cell_list.domain.halos is not False:
+            _triple_loop = 'for(int iz = 1; iz < (CA[2]-1); iz++){' \
+                           'for(int iy = 1; iy < (CA[1]-1); iy++){ ' \
+                           'for(int ix = 1; ix < (CA[0]-1); ix++){'
+        else:
+            _triple_loop = 'for(int iz = 0; iz < CA[2]; iz++){' \
+                           'for(int iy = 0; iy < CA[1]; iy++){' \
+                           'for(int ix = 0; ix < CA[0]; ix++){'
+
+        _code = '''
+
+        int index = 0;
+
+        %(TRIPLE_LOOP)s
+
+            const int c = iz*CA[0]*CA[1] + iy*CA[0] + ix;
+
+
+            int i = q[n + c];
+            if (i > -1) { q_new[n + c] = index; }
+
+            while (i > -1){
+                for(int ni = 0; ni < pos_ncomp; ni++){
+                    pos_new[(index*pos_ncomp)+ni] = pos[(i*pos_ncomp)+ni];
+                }
+
+                for(int ni = 0; ni < vel_ncomp; ni++){
+                    vel_new[(index*vel_ncomp)+ni] = vel[(i*vel_ncomp)+ni];
+                }
+
+                gid_new[index] = gid[i];
+                type_new[index] = type[i];
+
+                PCL[index] = c;
+
+                i = q[i];
+                if (i > -1) { q_new[index] = index+1; } else { q_new[index] = -1; }
+
+                index++;
+            }
+        }}}
+        ''' % {'TRIPLE_LOOP': _triple_loop}
+
+        _constants = (constant.Constant('pos_ncomp', self._pos.ncomp),constant.Constant('vel_ncomp', self._vel.ncomp))
+
+        _static_args = {
+            'n': ct.c_int
+        }
+
+        _args = {
+            'CA': cell_list.domain.cell_array,
+            'q': cell_list.cell_list,
+            'pos': self._pos,
+            'vel': self._vel,
+            'gid': self._global_ids,
+            'type': self._types,
+            'pos_new': self._pos_new,
+            'vel_new': self._vel_new,
+            'gid_new': self._global_ids_new,
+            'type_new': self._types_new,
+            'q_new': self._cell_list_new,
+            'PCL': cell_list.cell_reverse_lookup
+        }
+
+        _headers = ['stdio.h']
+        _kernel = kernel.Kernel('CellGroupCollect', _code, _constants, _headers, None, _static_args)
+        self._group_by_cell_lib = build.SharedLib(_kernel, _args)
+        self.swaptimer = runtime.Timer(runtime.TIMER, 0)
+
+
+    def group_by_cell(self):
+        """
+        Run library to group data by cell.
+        """
+
+        self._cell_list_new.dat[cell_list.cell_list[cell_list.cell_list.end]:cell_list.cell_list.end:] = ct.c_int(-1)
+
+        self._group_by_cell_lib.execute(static_args={'n':ct.c_int(cell_list.cell_list[cell_list.cell_list.end])})
+
+        # swap array pointers
+
+        self.swaptimer.start()
+
+        _tmp = self._pos.dat
+        self._pos.dat = self._pos_new.dat
+        self._pos_new.dat = _tmp
+
+        _tmp = self._vel.dat
+        self._vel.dat = self._vel_new.dat
+        self._vel_new.dat = _tmp
+
+        _tmp = self._global_ids.dat
+        self._global_ids.dat = self._global_ids_new.dat
+        self._global_ids_new.dat = _tmp
+
+        _tmp = self._types.dat
+        self._types.dat = self._types_new.dat
+        self._types_new.dat = _tmp
+
+        _tmp = cell_list.cell_list.dat
+        cell_list.cell_list.dat = self._cell_list_new.dat
+        self._cell_list_new.dat = _tmp
+
+        cell_list.cell_list.dat[cell_list.cell_list.end] = cell_list.cell_list.end - cell_list.domain.cell_count
+
+        self.swaptimer.pause()
+
+
+
+group_by_cell = GroupByCell()

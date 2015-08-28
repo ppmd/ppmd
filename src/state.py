@@ -109,21 +109,10 @@ class BaseMDStateHalo(object):
         _potential_dat_dict = self._potential.datdict(self)
 
         if self._cell_setup_attempt is True:
-            # setup cell sort libraries and grouping by cell methods.
 
-
-            #self._cell_sort_setup()
-
-            self._q_list = cell.cell_list.cell_list
-
-            self._group_by_cell_setup()
-
-            #self._cell_sort_local()
+            cell.group_by_cell.setup(self._pos, self._vel, self._global_ids, self._types)
             cell.cell_list.sort()
-
-
-
-            self._group_by_cell()
+            cell.group_by_cell.group_by_cell()
 
             # If domain has halos
             if type(self._domain) is domain.BaseDomainHalo:
@@ -132,7 +121,7 @@ class BaseMDStateHalo(object):
                                                                            positions=self._pos,
                                                                            potential=self._potential,
                                                                            dat_dict=_potential_dat_dict,
-                                                                           cell_list=self._q_list)
+                                                                           cell_list=cell.cell_list.cell_list)
             # If domain is without halos
             elif type(self._domain) is domain.BaseDomain:
                 self._looping_method_accel = pairloop.PairLoopRapaport(n=self._N,
@@ -140,7 +129,7 @@ class BaseMDStateHalo(object):
                                                                        positions=self._pos,
                                                                        potential=self._potential,
                                                                        dat_dict=_potential_dat_dict,
-                                                                       cell_list=self._q_list)
+                                                                       cell_list=cell.cell_list.cell_list)
 
             if gpucuda.INIT_STATUS():
 
@@ -155,18 +144,18 @@ class BaseMDStateHalo(object):
                                                                                  positions=self._pos,
                                                                                  potential=self._potential,
                                                                                  dat_dict=_potential_dat_dict,
-                                                                                 cell_list=self._q_list,
-                                                                                 cell_contents_count=self._cell_contents_count,
-                                                                                 particle_cell_lookup=self._particle_cell_lookup)
+                                                                                 cell_list=cell.cell_list.cell_list,
+                                                                                 cell_contents_count=cell.cell_list.cell_contents_count,
+                                                                                 particle_cell_lookup=cell.cell_list.cell_reverse_lookup)
                 if type(self._domain) is domain.BaseDomainHalo:
                     self._looping_method_accel_test = gpucuda.SimpleCudaPairLoopHalo2D(n=self.n,
                                                                                      domain=self._domain,
                                                                                      positions=self._pos,
                                                                                      potential=self._potential,
                                                                                      dat_dict=_potential_dat_dict,
-                                                                                     cell_list=self._q_list,
-                                                                                     cell_contents_count=self._cell_contents_count,
-                                                                                     particle_cell_lookup=self._particle_cell_lookup)
+                                                                                     cell_list=cell.cell_list.cell_list,
+                                                                                     cell_contents_count=cell.cell_list.cell_contents_count,
+                                                                                     particle_cell_lookup=cell.cell_list.cell_reverse_lookup)
 
 
         else:
@@ -177,12 +166,6 @@ class BaseMDStateHalo(object):
 
         self.timer = runtime.Timer(runtime.TIMER, 0)
         self.cpu_forces_timer = runtime.Timer(runtime.TIMER, 0)
-
-
-
-
-
-
 
         if runtime.DEBUG.level > 0:
             pio.pprint("DEBUG IS ON")
@@ -204,206 +187,6 @@ class BaseMDStateHalo(object):
         """
         self._time += increment
 
-    def _cell_sort_setup(self):
-        """
-        Creates looping for cell list creation
-        """
-
-        '''Construct initial cell list'''
-        self._q_list = data.ScalarArray(dtype=ctypes.c_int,
-                                        max_size=self._NT * self._domain.cell_count + 2 * self._domain.cell_count)
-
-        '''Keep track of number of particles per cell'''
-        self._cell_contents_count = data.ScalarArray(np.zeros([self._domain.cell_count], dtype=ctypes.c_int, order='C'),
-                                                     dtype=ctypes.c_int)
-
-        # TODO, make this dependent on looping method used.
-        '''Reverse lookup, given a local particle id, get containing cell.'''
-        self._particle_cell_lookup = data.ScalarArray(np.zeros([self._NT], dtype=ctypes.c_int, order='C'),dtype=ctypes.c_int)
-
-        if gpucuda.INIT_STATUS():
-            self._particle_cell_lookup.add_cuda_dat()
-            self._cell_contents_count.add_cuda_dat()
-            self._q_list.add_cuda_dat()
-
-
-        # temporary method for index awareness inside kernel.
-        self._internal_index = data.ScalarArray(dtype=ctypes.c_int)
-        self._internal_N = data.ScalarArray(dtype=ctypes.c_int)
-
-        self._cell_sort_code = '''
-
-        const int C0 = (int)((P[0] - B[0])/CEL[0]);
-        const int C1 = (int)((P[1] - B[2])/CEL[1]);
-        const int C2 = (int)((P[2] - B[4])/CEL[2]);
-        
-        const int val = (C2*CA[1] + C1)*CA[0] + C0;
-        
-        //needed, may improve halo exchange times
-        CCC[val]++;
-        PCL[I[0]] = val;
-
-        q[I[0]] = q[n[0] + val];
-        q[n[0] + val] = I[0];
-        I[0]++;
-        '''
-        self._cell_sort_dict = {'B': self._domain.boundary_outer,
-                                'P': self._pos,
-                                'CEL': self._domain.cell_edge_lengths,
-                                'CA': self._domain.cell_array,
-                                'q': self._q_list,
-                                'CCC': self._cell_contents_count,
-                                'PCL': self._particle_cell_lookup,
-                                'I': self._internal_index,
-                                'n': self._internal_N}
-
-        self._cell_sort_kernel = kernel.Kernel('cell_list_method', self._cell_sort_code, headers=['stdio.h'])
-        self._cell_sort_loop = loop.SingleParticleLoop(None, self.types_map, self._cell_sort_kernel,
-                                                       self._cell_sort_dict)
-
-    def _cell_sort_local(self):
-        """
-        Construct neighbour list, assigning *local* atoms to cells. Using Rapaport algorithm.
-        """
-
-        self._q_list[self._q_list.end] = self._q_list.end - self._domain.cell_count
-
-        self._internal_N[0] = self._q_list[self._q_list.end]
-        self._q_list.dat[self._q_list[self._q_list.end]:self._q_list.end:] = ctypes.c_int(-1)
-        self._internal_index[0] = 0
-
-        self._cell_contents_count.zero()
-
-        self._cell_sort_loop.execute(start=0,
-                                     end=self._N,
-                                     dat_dict={'B': self._domain.boundary_outer,
-                                               'P': self._pos,
-                                               'CEL': self._domain.cell_edge_lengths,
-                                               'CA': self._domain.cell_array,
-                                               'q': self._q_list,
-                                               'CCC': self._cell_contents_count,
-                                               'PCL': self._particle_cell_lookup,
-                                               'I': self._internal_index,
-                                               'n': self._internal_N}
-                                     )
-
-    def _group_by_cell_setup(self):
-        """
-        Setup library to group data in postitions, global ids and types such that particles in the same cell are sequential.
-        """
-
-        self._pos_new = particle.Dat(self._pos.max_size, 3, name='positions')
-        self._vel_new = particle.Dat(self._vel.max_size, 3, name='positions')
-        self._global_ids_new = data.ScalarArray(ncomp=self._global_ids.max_size, dtype=ctypes.c_int)
-        self._types_new = data.ScalarArray(ncomp=self._types.max_size, dtype=ctypes.c_int)
-        self._q_list_new = data.ScalarArray(ncomp=cell.cell_list.cell_list.max_size, dtype=ctypes.c_int)
-
-        if self._domain.halos is not False:
-            _triple_loop = 'for(int iz = 1; iz < (CA[2]-1); iz++){' \
-                           'for(int iy = 1; iy < (CA[1]-1); iy++){ ' \
-                           'for(int ix = 1; ix < (CA[0]-1); ix++){'
-        else:
-            _triple_loop = 'for(int iz = 0; iz < CA[2]; iz++){' \
-                           'for(int iy = 0; iy < CA[1]; iy++){' \
-                           'for(int ix = 0; ix < CA[0]; ix++){'
-
-        _code = '''
-
-        int index = 0;
-
-        %(TRIPLE_LOOP)s
-
-            const int c = iz*CA[0]*CA[1] + iy*CA[0] + ix;
-
-
-            int i = q[n + c];
-            if (i > -1) { q_new[n + c] = index; }
-
-            while (i > -1){
-                for(int ni = 0; ni < pos_ncomp; ni++){
-                    pos_new[(index*pos_ncomp)+ni] = pos[(i*pos_ncomp)+ni];
-                }
-
-                for(int ni = 0; ni < vel_ncomp; ni++){
-                    vel_new[(index*vel_ncomp)+ni] = vel[(i*vel_ncomp)+ni];
-                }
-
-                gid_new[index] = gid[i];
-                type_new[index] = type[i];
-
-                PCL[index] = c;
-
-                i = q[i];
-                if (i > -1) { q_new[index] = index+1; } else { q_new[index] = -1; }
-
-                index++;
-            }
-        }}}
-        ''' % {'TRIPLE_LOOP': _triple_loop}
-
-        _constants = (constant.Constant('pos_ncomp', self._pos.ncomp),constant.Constant('vel_ncomp', self._vel.ncomp))
-
-        _static_args = {
-            'n': ctypes.c_int
-        }
-
-        _args = {
-            'CA': self._domain.cell_array,
-            'q': self._q_list,
-            'pos': self._pos,
-            'vel': self._vel,
-            'gid': self._global_ids,
-            'type': self._types,
-            'pos_new': self._pos_new,
-            'vel_new': self._vel_new,
-            'gid_new': self._global_ids_new,
-            'type_new': self._types_new,
-            'q_new': self._q_list_new,
-            'PCL': cell.cell_list.cell_reverse_lookup
-        }
-
-        _headers = ['stdio.h']
-        _kernel = kernel.Kernel('GroupCollect', _code, _constants, _headers, None, _static_args)
-        self._group_by_cell_lib = build.SharedLib(_kernel, _args)
-        self.swaptimer = runtime.Timer(runtime.TIMER, 0)
-
-    def _group_by_cell(self):
-        """
-        Run library to group data by cell.
-        """
-
-        self._q_list_new.dat[self._q_list[self._q_list.end]:self._q_list.end:] = ctypes.c_int(-1)
-
-        self._group_by_cell_lib.execute(static_args={'n':ctypes.c_int(self._q_list[self._q_list.end])})
-
-        # swap array pointers
-
-        self.swaptimer.start()
-
-        _tmp = self._pos.dat
-        self._pos.dat = self._pos_new.dat
-        self._pos_new.dat = _tmp
-
-        _tmp = self._vel.dat
-        self._vel.dat = self._vel_new.dat
-        self._vel_new.dat = _tmp
-
-        _tmp = self._global_ids.dat
-        self._global_ids.dat = self._global_ids_new.dat
-        self._global_ids_new.dat = _tmp
-
-        _tmp = self._types.dat
-        self._types.dat = self._types_new.dat
-        self._types_new.dat = _tmp
-
-        _tmp = self._q_list.dat
-        self._q_list.dat = self._q_list_new.dat
-        self._q_list_new.dat = _tmp
-
-        self._q_list.dat[self._q_list.end] = self._q_list.end - self._domain.cell_count
-
-        self.swaptimer.pause()
-
     def reset_u(self):
         """
         Reset potential energy to 0.0
@@ -418,13 +201,11 @@ class BaseMDStateHalo(object):
 
         self.timer.start()
 
-        #self._cell_sort_local()
-
         cell.cell_list.sort()
-        self._q_list = cell.cell_list.cell_list
+        cell.group_by_cell.group_by_cell()
 
 
-        self._group_by_cell()
+        #self._group_by_cell()
 
         if (self._cell_setup_attempt is True) and (self._domain.halos is not False):
             self._domain.halos.set_position_info(cell.cell_list.cell_contents_count, cell.cell_list.cell_list)
@@ -443,10 +224,10 @@ class BaseMDStateHalo(object):
 
         if gpucuda.INIT_STATUS():
             # copy data to gpu
-            self._q_list.copy_to_cuda_dat()
+            cell.cell_list.cell_list.copy_to_cuda_dat()
             self._pos.copy_to_cuda_dat()
-            self._cell_contents_count.copy_to_cuda_dat()
-            self._particle_cell_lookup.copy_to_cuda_dat()
+            cell.cell_list.cell_contents_count.copy_to_cuda_dat()
+            cell.cell_list.cell_reverse_lookup.copy_to_cuda_dat()
 
 
             self.gpu_forces_timer.start()
