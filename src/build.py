@@ -7,8 +7,6 @@ import subprocess
 import data
 import re
 import runtime
-import pio
-from mpi4py import MPI
 
 
 ################################################################################################################

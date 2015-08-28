@@ -1559,8 +1559,6 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
 
                 }
 
-
-
                 //Write acceleration to dat.
 
                 %(ACCEL_VECTOR)s[_ix*3]     = _a[0];

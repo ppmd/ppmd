@@ -51,16 +51,16 @@ if __name__ == '__main__':
     # Write XYZ?
     writing = False
 
-    t=0.01
+    t=0.002
     dt=0.0001
 
 
     if test_1000:
         # n=25 reasonable size
-        n = 8
+        n = 40
         N = n**3
         # n=860
-        rho = 1.
+        rho = 5.
         mu = 0.0
         nsig = 5.0
         
