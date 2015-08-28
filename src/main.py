@@ -2,7 +2,7 @@
 
 import runtime
 # debug level
-runtime.DEBUG.level = 0
+runtime.DEBUG.level = 1
 #verbosity level
 runtime.VERBOSE.level = 3
 #timer level
@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
     if test_1000:
         # n=25 reasonable size
-        n = 40
+        n = 10
         N = n**3
         # n=860
         rho = 5.

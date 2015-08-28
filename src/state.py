@@ -14,6 +14,7 @@ import constant
 import pio
 import domain
 import gpucuda
+import cell
 
 
 np.set_printoptions(threshold='nan')
@@ -79,7 +80,10 @@ class BaseMDStateHalo(object):
         particle_pos_init.get_extent(self)
 
         '''Attempt to initialise cell array'''
-        self._cell_setup_attempt = self._domain.set_cell_array_radius(self._potential._rn)
+        #self._cell_setup_attempt = self._domain.set_cell_array_radius(self._potential._rn)
+        cell.cell_list.setup(self.n, self._pos, self._domain, self._potential._rn)
+
+        self._cell_setup_attempt = True
 
         ''' Initialise particle positions'''
         particle_pos_init.reset(self)
@@ -106,10 +110,19 @@ class BaseMDStateHalo(object):
 
         if self._cell_setup_attempt is True:
             # setup cell sort libraries and grouping by cell methods.
-            self._cell_sort_setup()
+
+
+            #self._cell_sort_setup()
+
+            self._q_list = cell.cell_list.cell_list
+
             self._group_by_cell_setup()
 
-            self._cell_sort_local()
+            #self._cell_sort_local()
+            cell.cell_list.sort()
+
+
+
             self._group_by_cell()
 
             # If domain has halos
@@ -283,7 +296,7 @@ class BaseMDStateHalo(object):
         self._vel_new = particle.Dat(self._vel.max_size, 3, name='positions')
         self._global_ids_new = data.ScalarArray(ncomp=self._global_ids.max_size, dtype=ctypes.c_int)
         self._types_new = data.ScalarArray(ncomp=self._types.max_size, dtype=ctypes.c_int)
-        self._q_list_new = data.ScalarArray(ncomp=self._q_list.max_size, dtype=ctypes.c_int)
+        self._q_list_new = data.ScalarArray(ncomp=cell.cell_list.cell_list.max_size, dtype=ctypes.c_int)
 
         if self._domain.halos is not False:
             _triple_loop = 'for(int iz = 1; iz < (CA[2]-1); iz++){' \
@@ -346,7 +359,7 @@ class BaseMDStateHalo(object):
             'gid_new': self._global_ids_new,
             'type_new': self._types_new,
             'q_new': self._q_list_new,
-            'PCL': self._particle_cell_lookup
+            'PCL': cell.cell_list.cell_reverse_lookup
         }
 
         _headers = ['stdio.h']
@@ -405,11 +418,16 @@ class BaseMDStateHalo(object):
 
         self.timer.start()
 
-        self._cell_sort_local()
+        #self._cell_sort_local()
+
+        cell.cell_list.sort()
+        self._q_list = cell.cell_list.cell_list
+
+
         self._group_by_cell()
 
         if (self._cell_setup_attempt is True) and (self._domain.halos is not False):
-            self._domain.halos.set_position_info(self._cell_contents_count, self._q_list)
+            self._domain.halos.set_position_info(cell.cell_list.cell_contents_count, cell.cell_list.cell_list)
             self._domain.halos.exchange(self._pos)
 
         self.set_forces(ctypes.c_double(0.0))
