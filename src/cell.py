@@ -79,7 +79,8 @@ class CellList(object):
             self._cell_reverse_lookup.add_cuda_dat()
             self._cell_contents_count.add_cuda_dat()
             self._cell_list.add_cuda_dat()
-
+        
+        
 
         _cell_sort_code = '''
 

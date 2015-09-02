@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
     # test
 
-    t=0.002
+    t=0.001
     dt=0.0001
 
 
@@ -157,7 +157,7 @@ if __name__ == '__main__':
     # xyz writing handle
     if logging:
         energyhandle = data.EnergyStore(state=test_state)
-        energy_steps = 20
+        energy_steps = 10
         energyfn = energyhandle.update
     else:
         energy_steps = 0

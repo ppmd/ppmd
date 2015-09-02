@@ -7,6 +7,7 @@ import loop
 import build
 import runtime
 import access
+import cell
 
 
 class _Base(build.GenericToolChain):
@@ -77,13 +78,10 @@ class PairLoopRapaport(_Base):
     :arg bool DEBUG: Flag to enable debug flags.
     """
 
-    def __init__(self, n, domain, positions, potential, dat_dict, cell_list):
-        self._N = n
+    def __init__(self, domain, potential, dat_dict):
         self._domain = domain
-        self._P = positions
         self._potential = potential
         self._particle_dat_dict = dat_dict
-        self._q_list = cell_list
         self._compiler_set()
 
         ##########
@@ -335,7 +333,7 @@ class PairLoopRapaport(_Base):
         if n is not None:
             _N = n
         else:
-            _N = self._q_list[self._q_list.end]
+            _N = cell.cell_list.cell_list[cell.cell_list.cell_list.end]
 
         '''Allow alternative pointers'''
         if dat_dict is not None:
@@ -345,7 +343,7 @@ class PairLoopRapaport(_Base):
         args = [ctypes.c_int(_N),
                 ctypes.c_int(self._domain.cell_count),
                 self._domain.cell_array.ctypes_data,
-                self._q_list.ctypes_data,
+                cell.cell_list.cell_list.ctypes_data,
                 self._domain.extent.ctypes_data]
 
         '''Add static arguments to launch command'''
@@ -1045,7 +1043,6 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
 
         self._N = n
         self._domain = domain
-        self._P = positions
         self._potential = potential
         self._particle_dat_dict = dat_dict
 
@@ -1099,7 +1096,7 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
         args = [ctypes.c_int(self._N()),
                 ctypes.c_int(self._domain.cell_count),
                 self._domain.cell_array.ctypes_data,
-                self._q_list.ctypes_data,
+                cell.cell_list.cell_list.ctypes_data,
                 self._domain.extent.ctypes_data]
 
         '''Add static arguments to launch command'''
@@ -1381,11 +1378,11 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         if n is not None:
             _N = n
         else:
-            _N = self._q_list[self._q_list.end]
+            _N = cell.cell_list.cell_list[cell.cell_list.cell_list.end]
 
         args = [ctypes.c_int(_N),
                 self._domain.cell_array.ctypes_data,
-                self._q_list.ctypes_data]
+                cell.cell_list.cell_list.ctypes_data]
 
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:

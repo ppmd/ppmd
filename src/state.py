@@ -78,7 +78,6 @@ class BaseMDStateHalo(object):
         particle_pos_init.get_extent(self)
 
         '''Attempt to initialise cell array'''
-        #self._cell_setup_attempt = self._domain.set_cell_array_radius(self._potential._rn)
         cell.cell_list.setup(self.n, self._pos, self._domain, self._potential._rn)
 
         self._cell_setup_attempt = True
@@ -114,20 +113,14 @@ class BaseMDStateHalo(object):
 
             # If domain has halos
             if type(self._domain) is domain.BaseDomainHalo:
-                self._looping_method_accel = pairloop.PairLoopRapaportHalo(n=self._N,
-                                                                           domain=self._domain,
-                                                                           positions=self._pos,
+                self._looping_method_accel = pairloop.PairLoopRapaportHalo(domain=self._domain,
                                                                            potential=self._potential,
-                                                                           dat_dict=_potential_dat_dict,
-                                                                           cell_list=cell.cell_list.cell_list)
+                                                                           dat_dict=_potential_dat_dict)
             # If domain is without halos
             elif type(self._domain) is domain.BaseDomain:
-                self._looping_method_accel = pairloop.PairLoopRapaport(n=self._N,
-                                                                       domain=self._domain,
-                                                                       positions=self._pos,
+                self._looping_method_accel = pairloop.PairLoopRapaport(domain=self._domain,
                                                                        potential=self._potential,
-                                                                       dat_dict=_potential_dat_dict,
-                                                                       cell_list=cell.cell_list.cell_list)
+                                                                       dat_dict=_potential_dat_dict)
 
             if gpucuda.INIT_STATUS():
 
@@ -139,21 +132,13 @@ class BaseMDStateHalo(object):
                 if type(self._domain) is domain.BaseDomain:
                     self._looping_method_accel_test = gpucuda.SimpleCudaPairLoop(n=self.n,
                                                                                  domain=self._domain,
-                                                                                 positions=self._pos,
                                                                                  potential=self._potential,
-                                                                                 dat_dict=_potential_dat_dict,
-                                                                                 cell_list=cell.cell_list.cell_list,
-                                                                                 cell_contents_count=cell.cell_list.cell_contents_count,
-                                                                                 particle_cell_lookup=cell.cell_list.cell_reverse_lookup)
+                                                                                 dat_dict=_potential_dat_dict)
                 if type(self._domain) is domain.BaseDomainHalo:
                     self._looping_method_accel_test = gpucuda.SimpleCudaPairLoopHalo2D(n=self.n,
-                                                                                     domain=self._domain,
-                                                                                     positions=self._pos,
-                                                                                     potential=self._potential,
-                                                                                     dat_dict=_potential_dat_dict,
-                                                                                     cell_list=cell.cell_list.cell_list,
-                                                                                     cell_contents_count=cell.cell_list.cell_contents_count,
-                                                                                     particle_cell_lookup=cell.cell_list.cell_reverse_lookup)
+                                                                                       domain=self._domain,
+                                                                                       potential=self._potential,
+                                                                                       dat_dict=_potential_dat_dict)
 
 
         else:

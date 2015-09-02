@@ -16,6 +16,7 @@ import particle
 import data
 import constant
 import access
+import cell
 
 ERROR_LEVEL = runtime.Level(2)
 
@@ -816,15 +817,11 @@ class SingleParticleLoop(_Base):
 #####################################################################################
 
 class SimpleCudaPairLoop(_Base):
-    def __init__(self, n, domain, positions, potential, dat_dict, cell_list, cell_contents_count, particle_cell_lookup):
+    def __init__(self, n, domain, potential, dat_dict):
         self._N = n
         self._domain = domain
-        self._P = positions
         self._potential = potential
         self._particle_dat_dict = dat_dict
-        self._q_list = cell_list
-        self._cell_contents_count = cell_contents_count
-        self._particle_cell_lookup = particle_cell_lookup
 
 
         self._cc = NVCC
@@ -1201,12 +1198,12 @@ class SimpleCudaPairLoop(_Base):
         args = [_blocksize,
                 _threadsize,
                 ct.c_int(self._N()),
-                ct.c_int(self._q_list[self._q_list.end]),
+                ct.c_int(cell.cell_list.cell_list[cell.cell_list.cell_list.end]),
                 _h_cell_array,
                 _h_extent,
-                self._cell_contents_count.get_cuda_dat().ctypes_data,
-                self._particle_cell_lookup.get_cuda_dat().ctypes_data,
-                self._q_list.get_cuda_dat().ctypes_data
+                cell.cell_list.cell_contents_count.get_cuda_dat().ctypes_data,
+                cell.cell_list.cell_reverse_lookup.get_cuda_dat().ctypes_data,
+                cell.cell_list.cell_list.get_cuda_dat().ctypes_data
                 ]
 
         '''Add static arguments to launch command'''
@@ -1478,11 +1475,11 @@ class SimpleCudaPairLoopHalo(SimpleCudaPairLoop):
         args = [_blocksize,
                 _threadsize,
                 ct.c_int(self._N()),
-                ct.c_int(self._q_list[self._q_list.end]),
+                ct.c_int(cell.cell_list.cell_list[cell.cell_list.cell_list.end]),
                 _h_cell_array,
-                self._cell_contents_count.get_cuda_dat().ctypes_data,
-                self._particle_cell_lookup.get_cuda_dat().ctypes_data,
-                self._q_list.get_cuda_dat().ctypes_data
+                cell.cell_list.cell_contents_count.get_cuda_dat().ctypes_data,
+                cell.cell_list.cell_reverse_lookup.get_cuda_dat().ctypes_data,
+                cell.cell_list.cell_list.get_cuda_dat().ctypes_data
                 ]
 
         '''Add static arguments to launch command'''
@@ -1763,11 +1760,11 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
         args = [_blocksize,
                 _threadsize,
                 ct.c_int(self._N()),
-                ct.c_int(self._q_list[self._q_list.end]),
+                ct.c_int(cell.cell_list.cell_list[cell.cell_list.cell_list.end]),
                 _h_cell_array,
-                self._cell_contents_count.get_cuda_dat().ctypes_data,
-                self._particle_cell_lookup.get_cuda_dat().ctypes_data,
-                self._q_list.get_cuda_dat().ctypes_data
+                cell.cell_list.cell_contents_count.get_cuda_dat().ctypes_data,
+                cell.cell_list.cell_reverse_lookup.get_cuda_dat().ctypes_data,
+                cell.cell_list.cell_list.get_cuda_dat().ctypes_data
                 ]
 
         '''Add static arguments to launch command'''
