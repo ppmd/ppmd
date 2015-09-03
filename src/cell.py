@@ -55,10 +55,11 @@ class CellList(object):
         self._domain = domain
 
         # partition domain.
-        self._domain.set_cell_array_radius(cell_width)
+        _err = self._domain.set_cell_array_radius(cell_width)
 
         # setup methods to sort into cells.
         self._cell_sort_setup()
+        return _err
 
     def _cell_sort_setup(self):
         """
@@ -166,33 +167,27 @@ class GroupByCell(object):
     Class to group dats based on the cells particles reside in.
     """
     def __init__(self):
-        self._pos = None
-        self._vel = None
-        self._global_ids = None
-        self._types = None
-        self._pos_new = None
-        self._vel_new = None
-        self._global_ids_new = None
-        self._types_new = None
+        self._state = None
+        self._new_particle_dats = None
+        self._sizes = None
         self._cell_list_new = None
         self._group_by_cell_lib = None
         self.swaptimer = None
 
-    # TODO, Make these arguments more dynamic based on what is in the state class.
-    def setup(self, positions, velocities, global_ids, types):
+    def setup(self, state_in):
         """
-        Setup library to group data in positions, global ids and types such that particles in the same cell are sequential.
+        Setup library to group data in the state particle dats such that data for particles in the same cell are sequential.
+        :param state state_in: State containing particle dats.
         """
 
-        self._pos = positions
-        self._vel = velocities
-        self._global_ids = global_ids
-        self._types = types
+        self._state = state_in
+        self._new_particle_dats = []
+        self._sizes = []
 
-        self._pos_new = particle.Dat(self._pos.max_size, 3, name='positions')
-        self._vel_new = particle.Dat(self._vel.max_size, 3, name='velocities')
-        self._global_ids_new = data.ScalarArray(ncomp=self._global_ids.max_size, dtype=ct.c_int)
-        self._types_new = data.ScalarArray(ncomp=self._types.max_size, dtype=ct.c_int)
+        for ix in self._state.particle_dats:
+            _dat = getattr(self._state, ix)
+            self._new_particle_dats.append(particle.Dat(n1=_dat.npart, n2=_dat.ncomp, dtype=_dat.dtype))
+            self._sizes.append(_dat.ncomp)
 
         self._cell_list_new = data.ScalarArray(ncomp=cell_list.cell_list.max_size, dtype=ct.c_int)
 
@@ -205,30 +200,34 @@ class GroupByCell(object):
                            'for(int iy = 0; iy < CA[1]; iy++){' \
                            'for(int ix = 0; ix < CA[0]; ix++){'
 
-        _code = '''
 
+        # Create code for all particle dats.
+        _dynamic_dats = ''
+        _space = ' ' * 16
+        for ix, iy in zip(self._state.particle_dats, self._sizes):
+            if iy > 1:
+                _dynamic_dats += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP':iy}
+                _dynamic_dats += _space + '%(NAME)s_new[(index*%(NCOMP)s)+ni] = %(NAME)s[(i*%(NCOMP)s)+ni]; \n' % {'NCOMP':iy, 'NAME':str(ix)}
+                _dynamic_dats += _space + '} \n'
+            else:
+                _dynamic_dats += _space + '%(NAME)s_new[index] = %(NAME)s[i]; \n' % {'NAME':str(ix)}
+
+        _code = '''
         int index = 0;
 
         %(TRIPLE_LOOP)s
 
             const int c = iz*CA[0]*CA[1] + iy*CA[0] + ix;
 
-
             int i = q[n + c];
             if (i > -1) { q_new[n + c] = index; }
 
             while (i > -1){
-                for(int ni = 0; ni < pos_ncomp; ni++){
-                    pos_new[(index*pos_ncomp)+ni] = pos[(i*pos_ncomp)+ni];
-                }
+                //dynamic dats
 
-                for(int ni = 0; ni < vel_ncomp; ni++){
-                    vel_new[(index*vel_ncomp)+ni] = vel[(i*vel_ncomp)+ni];
-                }
+                \n%(DYNAMIC_DATS)s
 
-                gid_new[index] = gid[i];
-                type_new[index] = type[i];
-
+                // fixed parts, cell lists etc.
                 PCL[index] = c;
 
                 i = q[i];
@@ -237,31 +236,36 @@ class GroupByCell(object):
                 index++;
             }
         }}}
-        ''' % {'TRIPLE_LOOP': _triple_loop}
+        ''' % {'TRIPLE_LOOP': _triple_loop, 'DYNAMIC_DATS':_dynamic_dats}
 
-        _constants = (constant.Constant('pos_ncomp', self._pos.ncomp),constant.Constant('vel_ncomp', self._vel.ncomp))
 
         _static_args = {
             'n': ct.c_int
         }
 
+        # Always needed arguments
         _args = {
             'CA': cell_list.domain.cell_array,
             'q': cell_list.cell_list,
-            'pos': self._pos,
-            'vel': self._vel,
-            'gid': self._global_ids,
-            'type': self._types,
-            'pos_new': self._pos_new,
-            'vel_new': self._vel_new,
-            'gid_new': self._global_ids_new,
-            'type_new': self._types_new,
             'q_new': self._cell_list_new,
             'PCL': cell_list.cell_reverse_lookup
         }
 
+        # Dynamic arguments dependant on how many particle dats there are.
+        for idx, ix in enumerate(self._state.particle_dats):
+            # existing dat in state
+            _args['%(NAME)s' % {'NAME':ix}] = getattr(self._state, ix)
+            # new dat to copy into
+            _args['%(NAME)s_new' % {'NAME':ix}] = self._new_particle_dats[idx]
+
+
         _headers = ['stdio.h']
-        _kernel = kernel.Kernel('CellGroupCollect', _code, _constants, _headers, None, _static_args)
+
+        _name = ''
+        for ix in self._state.particle_dats:
+            _name += '_' + str(ix)
+
+        _kernel = kernel.Kernel('CellGroupCollect' + _name, _code, None, _headers, None, _static_args)
         self._group_by_cell_lib = build.SharedLib(_kernel, _args)
         self.swaptimer = runtime.Timer(runtime.TIMER, 0)
 
@@ -279,26 +283,17 @@ class GroupByCell(object):
 
         self.swaptimer.start()
 
-        _tmp = self._pos.dat
-        self._pos.dat = self._pos_new.dat
-        self._pos_new.dat = _tmp
+        # swap dynamic dats
+        for idx, ix in self._state.particle_dats:
+            _tmp = getattr(self._state, ix).dat
+            getattr(self._state, ix).dat = self._new_particle_dats[idx].dat
+            self._new_particle_dats[idx].dat = _tmp
 
-        _tmp = self._vel.dat
-        self._vel.dat = self._vel_new.dat
-        self._vel_new.dat = _tmp
 
-        _tmp = self._global_ids.dat
-        self._global_ids.dat = self._global_ids_new.dat
-        self._global_ids_new.dat = _tmp
-
-        _tmp = self._types.dat
-        self._types.dat = self._types_new.dat
-        self._types_new.dat = _tmp
-
+        # swap cell list.
         _tmp = cell_list.cell_list.dat
         cell_list.cell_list.dat = self._cell_list_new.dat
         self._cell_list_new.dat = _tmp
-
         cell_list.cell_list.dat[cell_list.cell_list.end] = cell_list.cell_list.end - cell_list.domain.cell_count
 
         self.swaptimer.pause()

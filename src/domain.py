@@ -112,7 +112,7 @@ class BaseDomain(object):
 
         self._BCcodeDict = {'P': self._BC_state.positions, 'E': self._extent}
         self._BCkernel = kernel.Kernel('BCkernel_simple', self._BCcode, headers=['math.h'])
-        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.n, self._BC_state.types_map, self._BCkernel, self._BCcodeDict)
+        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.as_func('n'), self._BC_state.types, self._BCkernel, self._BCcodeDict)
 
     def bc_execute(self):
         # self.boundary_correct(self._positions)
@@ -520,7 +520,7 @@ class BaseDomainHalo(BaseDomain):
         self._BC_state = state
 
         '''Array to store the local id of scaling particles'''
-        self._escaping_ids = data.ScalarArray(ncomp=2 * self._BC_state.nt(), dtype=ctypes.c_int)
+        self._escaping_ids = data.ScalarArray(ncomp=2 * self._BC_state.nt, dtype=ctypes.c_int)
 
         '''Number of escaping particles in each direction'''
         self._escape_count = data.ScalarArray(ncomp=26, dtype=ctypes.c_int)
@@ -625,7 +625,7 @@ class BaseDomainHalo(BaseDomain):
                               }
 
         _escape_guard_kernel = kernel.Kernel('FindEscapingParticles', _escape_guard_code, headers=['math.h'])
-        self._escape_guard_loop = loop.SingleAllParticleLoop(self._BC_state.n, self._BC_state.types_map,
+        self._escape_guard_loop = loop.SingleAllParticleLoop(self._BC_state.as_func('n'), self._BC_state.types,
                                                              _escape_guard_kernel, _escape_guard_dict)
 
         '''Calculate shifts that should be applied when passing though the local domain extents
@@ -685,7 +685,7 @@ class BaseDomainHalo(BaseDomain):
         '''Number of elements to pack'''
         self._ncomp = data.ScalarArray(initial_value=[8], dtype=ctypes.c_int)
 
-        self._escape_send_buffer = data.ScalarArray(ncomp=self._ncomp[0] * self._BC_state.nt(), dtype=ctypes.c_double)
+        self._escape_send_buffer = data.ScalarArray(ncomp=self._ncomp[0] * self._BC_state.nt, dtype=ctypes.c_double)
 
         '''Starting ixdex for packing'''
         self._escape_send_buffer_index = data.ScalarArray(ncomp=26, dtype=ctypes.c_int)
@@ -725,7 +725,7 @@ class BaseDomainHalo(BaseDomain):
         
         '''
         self._escape_count_recv = data.ScalarArray(ncomp=26, dtype=ctypes.c_int)
-        self._escape_recv_buffer = data.ScalarArray(ncomp=self._ncomp[0] * self._BC_state.nt(), dtype=ctypes.c_double)
+        self._escape_recv_buffer = data.ScalarArray(ncomp=self._ncomp[0] * self._BC_state.nt, dtype=ctypes.c_double)
 
         _escape_packing_dict = {'P': self._BC_state.positions,
                                 'V': self._BC_state.velocities,
@@ -949,7 +949,7 @@ class BaseDomainHalo(BaseDomain):
 
         self._BCcodeDict = {'P': self._BC_state.positions, 'E': self._extent}
         self._BCkernel = kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
-        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.n, self._BC_state.types_map, self._BCkernel,
+        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.as_func('n'), self._BC_state.types, self._BCkernel,
                                                   self._BCcodeDict)
 
     def bc_execute(self):
@@ -1014,7 +1014,7 @@ class BaseDomainHalo(BaseDomain):
 
             self._BC_state.positions.halo_start_reset()
             self._BC_state.velocities.halo_start_reset()
-            self._internal_index[0] = self._BC_state.n()
+            self._internal_index[0] = self._BC_state.n
 
             self._unpacking_lib.execute()
 

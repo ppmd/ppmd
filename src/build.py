@@ -440,7 +440,7 @@ class GenericToolChain(object):
         args = [ctypes.c_int(_N)]
 
         if self._types_map is not None:
-            args.append(self._types_map().ctypes_data)
+            args.append(self._types_map.ctypes_data)
 
         '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
 

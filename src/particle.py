@@ -95,7 +95,7 @@ class Dat(object):
         '''
 
     def __str__(self):
-        return str(self._Dat)
+        return str(self._Dat[::])
 
     def __call__(self, mode=access.RW, halo=True):
 

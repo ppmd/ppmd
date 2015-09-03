@@ -22,11 +22,11 @@ import gpucuda
 
 import particle
 import os
+import simulation
 
 
 
 if __name__ == '__main__':
-
 
     x = 1
     y = 0
@@ -74,14 +74,14 @@ if __name__ == '__main__':
         
         # Place n particles in a lattice with given density.
         # test_pos_init = state.PosInitLatticeNRho(n, rho, None)
-        test_pos_init = state.PosInitLatticeNRhoRand(N,rho,0.,None)
+        test_pos_init = simulation.PosInitLatticeNRhoRand(N,rho,0.,None)
         
         # Normally distributed velocities.
-        test_vel_init = state.VelInitNormDist(mu,nsig)
+        test_vel_init = simulation.VelInitNormDist(mu,nsig)
         # test_vel_init = state.VelInitPosBased()
         
         # Initialise masses, in this case sets all to 1.0.
-        test_mass_init = state.MassInitIdentical(1.)
+        test_mass_init = simulation.MassInitIdentical(1.)
         # test_mass_init = state.MassInitTwoAlternating(100., 100.)
         
         
@@ -96,14 +96,14 @@ if __name__ == '__main__':
 
 
         # Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitTwoParticlesInABox(rx = 0.3, extent = np.array([8., 8., 8.]), axis = np.array([1,0,0]))
+        test_pos_init = simulation.PosInitTwoParticlesInABox(rx = 0.3, extent = np.array([8., 8., 8.]), axis = np.array([1,0,0]))
 
         # Give first two particles specific velocities
-        test_vel_init = state.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
+        test_vel_init = simulation.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
 
         # Set alternating masses for particles.
         
-        test_mass_init = state.MassInitTwoAlternating(10., 5.)
+        test_mass_init = simulation.MassInitTwoAlternating(10., 5.)
         
     if t_1_particle:
         
@@ -116,17 +116,31 @@ if __name__ == '__main__':
         print test_potential.rc
 
         # Initialise two particles on an axis a set distance apart.
-        test_pos_init = state.PosInitOneParticleInABox(r = np.array([0., 0., 0.]), extent = np.array([0.2, 0.2, 0.2]))
+        test_pos_init = simulation.PosInitOneParticleInABox(r = np.array([0., 0., 0.]), extent = np.array([0.2, 0.2, 0.2]))
         
         # Give first two particles specific velocities
-        test_vel_init = state.VelInitOneParticleInABox(vx = np.array([5., 0., 0.]))
+        test_vel_init = simulation.VelInitOneParticleInABox(vx = np.array([5., 0., 0.]))
         
         # Set alternating masses for particles.
         
-        test_mass_init = state.MassInitIdentical(5.)    
+        test_mass_init = simulation.MassInitIdentical(5.)
 
 
-    # Create state class from above initialisations.
+    # Create simulation class from above initialisations.
+
+    sim1 = simulation.BaseMDSimulation(domain_in=test_domain,
+                                       potential_in=test_potential,
+                                       particle_pos_init=test_pos_init,
+                                       particle_vel_init=test_vel_init,
+                                       particle_mass_init=test_mass_init,
+                                       n=N
+                                       )
+
+
+
+
+    quit()
+
     test_state = state.BaseMDStateHalo(domain_in=test_domain,
                                        potential_in=test_potential,
                                        particle_pos_init=test_pos_init,
