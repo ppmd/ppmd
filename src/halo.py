@@ -1,13 +1,12 @@
 import ctypes
 import cell
 import data
-from mpi4py import MPI
 import kernel
 import build
 import particle
 import runtime
 import mpi
-
+import host
 
 ################################################################################################################
 # HALO DEFINITIONS
@@ -42,7 +41,7 @@ class HaloCartesianSingleProcess(object):
         self._top = self._MPI_handle.top
         self._dims = self._MPI_handle.dims
 
-        self._MPIstatus = MPI.Status()
+        self._MPIstatus = mpi.Status()
 
         self._ca = cell.cell_list.domain.cell_array
 
@@ -187,7 +186,7 @@ class HaloCartesianSingleProcess(object):
         self.timer.pause()
 
     def _create_packing_pointer_array(self):
-        self._packing_pointers = data.PointerArray(length=26, dtype=ctypes.c_double)
+        self._packing_pointers = host.PointerArray(length=26, dtype=ctypes.c_double)
 
         self._send_buffers = []
 

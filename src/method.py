@@ -238,192 +238,6 @@ class VelocityVerletAnderson(VelocityVerlet):
             if self._schedule is not None:
                 self._schedule.tick()
 
-
-################################################################################################################
-# SOLID BOUNDARY TEST INTEGRATOR
-################################################################################################################
-
-
-class VelocityVerletBox(VelocityVerlet):
-    """
-    Class to apply Velocity-Verlet to a given state using a given looping method.
-    
-    :arg double dt: Time step size, can be specified at integrate call.
-    :arg double T: End time, can be specified at integrate call.
-    :arg bool USE_C: Flag to use C looping and kernel.
-    :arg DrawParticles plot_handle: PLotting class to plot state at certain progress points.
-    :arg BasicEnergyStore energy_handle: Energy storage class to log energy at each iteration.
-    :arg bool writexyz: Flag to indicate writing of xyz at each DT.
-    :arg bool DEBUG: Flag to enable debug flags.
-    """
-    
-    def __init__(self, dt=0.0001, t=0.01, state=None, plot_handle=None, energy_handle=None, writexyz=False, vaf_handle=None, schedule = None):
-    
-        self._dt = dt
-        self._T = t
-
-        self._state = state
-
-        self._schedule = schedule
-        
-        self._domain = self._state.domain
-        self._N = self._state.n
-        self._A = self._state.forces
-        self._V = self._state.velocities
-        self._P = self._state.positions
-        self._M = self._state.mass
-        self._K = self._state.k
-
-        self._plot_handle = plot_handle
-        self._energy_handle = energy_handle
-        self._writexyz = writexyz
-        self._VAF_handle = vaf_handle
-        
-        self._kernel1_code = '''
-        //self._V+=0.5*self._dt*self._A
-        //self._P+=self._dt*self._V
-        const double M_tmp = 1/M[0];
-        V[0] += dht*A[0]*M_tmp;
-        V[1] += dht*A[1]*M_tmp;
-        V[2] += dht*(A[2]-100.0)*M_tmp;
-        P[0] += dt*V[0];
-        P[1] += dt*V[1];
-        P[2] += dt*V[2];
-        
-        if (P[0] > 0.5*E[0]){ P[0] = 0.5*E[0]-0.000001; V[0]=-0.8*V[0]; }
-        if (P[1] > 0.5*E[1]){ P[1] = 0.5*E[1]-0.000001; V[1]=-0.8*V[1]; }
-        if (P[2] > 0.5*E[2]){ P[2] = 0.5*E[2]-0.000001; V[2]=-0.8*V[2]; }
-        
-        if (P[0] < -0.5*E[0]){ P[0] = -0.5*E[0]+0.000001; V[0]=-0.8*V[0]; }
-        if (P[1] < -0.5*E[1]){ P[1] = -0.5*E[1]+0.000001; V[1]=-0.8*V[1]; }
-        if (P[2] < -0.5*E[2]){ P[2] = -0.5*E[2]+0.000001; V[2]=-0.8*V[2]; }        
-        
-        
-        '''
-                
-        self._kernel2_code = '''
-        //self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat
-        const double M_tmp = 1/M[0];
-        V[0] += dht*A[0]*M_tmp;
-        V[1] += dht*A[1]*M_tmp;
-        V[2] += dht*(A[2]-100.0)*M_tmp;
-        '''
-
-    
-    def integrate(self, dt=None, t=None):
-        """
-        Integrate state forward in time.
-        
-        :arg double dt: Time step size.
-        :arg double t: End time.
-        """
-
-        if dt is not None:
-            self._dt = dt
-        if t is not None:
-            self._T = t
-            
-        self._max_it = int(math.ceil(self._T/self._dt))
-
-        self._constants = [constant.Constant('dt', self._dt), constant.Constant('dht', 0.5*self._dt), ]
-
-        self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
-
-        self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-        self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
-
-
-        _t = runtime.Timer(runtime.TIMER, 0, start=True)
-        self._velocity_verlet_integration()
-        _t.stop("VelocityVerletBox")
-
-    def integrate_thermostat(self, dt=None, t=None, temp=273.15, nu=1.0):
-        """
-        Integrate state forward in time.
-        
-        :arg double dt: Time step size.
-        :arg double t: End time.
-        :arg double temp: Temperature of heat bath.
-        """
-        
-        self._Temp = temp
-        self._nu = nu
-        
-        if dt is not None:
-            self._dt = dt
-        if t is not None:
-            self._T = t
-            
-        self._max_it = int(math.ceil(self._T/self._dt))
-
-        self._constants1 = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
-        self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
-        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
-
-        self._kernel2_thermostat_code = '''
-
-        //Anderson thermostat here.
-        //probably horrific random code.
-
-        const double tmp_rand_max = 1.0/RAND_MAX;
-
-        if (rand()*tmp_rand_max < rate) {
-
-            //Box-Muller method.
-
-
-            const double scale = sqrt(temperature/M[0]);
-            const double stmp = scale*sqrt(-2.0*log(rand()*tmp_rand_max));
-
-            const double V0 = 2.0*M_PI*rand()*tmp_rand_max;
-            V[0] = stmp*cos(V0);
-            V[1] = stmp*sin(V0);
-            V[2] = scale*sqrt(-2.0*log(rand()*tmp_rand_max))*cos(2.0*M_PI*rand()*tmp_rand_max);
-
-        }
-        else {
-            const double M_tmp = 1/M[0];
-            V[0] += dht*A[0]*M_tmp;
-            V[1] += dht*A[1]*M_tmp;
-            V[2] += dht*(A[2]-100.0)*M_tmp;
-        }
-
-        '''
-
-        self._constants2_thermostat = [constant.Constant('rate',self._dt*self._nu), constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt), constant.Constant('temperature',self._Temp),]
-
-        self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
-        self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
-
-        _t = runtime.Timer(runtime.TIMER, 0, start=True)
-        self._velocity_verlet_integration_thermostat()
-        _t.stop("VelocityVerletAndersenBox")
-
-    
-    def _velocity_verlet_integration_thermostat(self):
-        """
-        Perform Velocity Verlet integration up to time T.
-        """
-
-        self._domain.bc_execute()
-        self._state.forces_update()
-
-        for i in range(self._max_it):
-              
-            self._p1.execute()
-            
-            # update forces
-            self._domain.bc_execute()
-            self._state.forces_update()
-            
-            self._p2_thermostat.execute()
-
-            self._state.kinetic_energy_update()
-            self._state.add_time(self._dt)
-
-            if self._schedule is not None:
-                self._schedule.tick()
                 
 ################################################################################################################
 # G(R)
@@ -571,135 +385,6 @@ class RadialDistributionPeriodicNVE(object):
 
         f.close()
 
-################################################################################################################
-# VAF basic
-################################################################################################################
-
-
-class VelocityAutoCorrelationBasic(object):
-    """
-    Method to calculate Velocity Autocorrelation Function.
-    
-    :arg state state: Input state containing velocities.
-    :arg int size: Initial length of VAF array (optional).
-    :arg particle.Dat V0: Initial velocity Dat (optional).
-    :arg bool DEBUG: Flag to enable debug flags.
-    """
-
-    def __init__(self, state, size=0, v0=None):
-
-        self._state = state
-        self._N = self._state.n
-        self._V0 = particle.Dat(self._N, 3, name='v0')
-        self._VT = self._V0
-
-        self._VO_SET = False
-        if v0 is not None:
-            self.set_v0(v0)
-        else:
-            self.set_v0(state=self._state)
-
-        self._VAF = data.ScalarArray(ncomp=size)
-        self._VAF_index = 0
-        
-        self._T_store = data.ScalarArray(initial_value = 0.0, ncomp = size, dtype=ctypes.c_double)
-        self._T_base = None
-        
-        _headers = ['stdio.h']
-        _constants = None
-        _kernel_code = '''
-        
-        VAF[I] += (v0[0]*VT[0] + v0[1]*VT[1] + v0[2]*VT[2])*Ni;
-        
-        '''
-        _reduction = (kernel.Reduction('VAF', 'VAF[I]', '+'),)
-        
-        _static_args = {'I': ctypes.c_int, 'Ni': ctypes.c_double}
-        
-        _kernel = kernel.Kernel('VelocityAutocorrelationBasic', _kernel_code, _constants, _headers, _reduction, _static_args)
-
-        self._datdict = {'VAF': self._VAF, 'v0': self._V0, 'VT': self._VT}
-        
-        self._loop = loop.SingleAllParticleLoop(self._N, None, kernel=_kernel, particle_dat_dict=self._datdict)
-
-        self.timer = runtime.Timer(runtime.TIMER, 0)
-
-    def set_v0(self, v0=None, state=None):
-        """
-        Set an initial velocity Dat to use as V_0. Requires either a velocity Dat or a state as an argument. V_0 will be set to either the passed velocities or to the velocities in the passed state.        
-        
-        :arg particle.Dat v0: Velocity Dat.
-        :arg state state: State class containing velocities.
-        """
-        
-        if v0 is not None:
-            self._V0.dat = np.copy(v0.dat)
-            self._V0_SET = True
-        if state is not None:
-            self._V0.dat = np.copy(state.velocities.dat)
-            self._V0_SET = True            
-        assert self._V0_SET is True, "No velocities set, check input data."
-
-    def evaluate(self):
-        """
-        Evaluate VAF using the current velocities held in the state with the velocities in V0.
-        
-        :arg double t: Time within block of integration.
-        """
-
-        self.timer.start()
-
-        _t = self._state.time
-
-        assert int(self._VAF_index) < int(self._VAF.ncomp), "VAF store not large enough"
-        
-        _Ni = 1./self._N()
-        self._datdict['VT'] = self._state.velocities     
-        self._loop.execute(None, self._datdict, {'I': ctypes.c_int(self._VAF_index), 'Ni': ctypes.c_double(_Ni)})
-        
-        if _t is None:
-            self._T_store[self._VAF_index] = 1 + self._T_base
-        else:
-            
-            self._T_store[self._VAF_index] = _t + self._T_base
-        
-        self._VAF_index += 1
-
-        self.timer.pause()
-
-    def append_prepare(self, size):
-        """
-        Function to prepare storage arrays for forthcoming VAF evaluations.
-        
-        :arg int size: Number of upcoming evaluations.
-        """
-        self._VAF.concatenate(size)      
-        
-        if self._T_base is  None:
-            self._T_base = 0.0
-        else:
-            self._T_base = self._T_store[-1]        
-        self._T_store.concatenate(size)
-
-    def plot(self):
-        """
-        Plot array of recorded VAF evaluations.
-        """
-
-        if _GRAPHICS:
-
-            if self._VAF_index > 0:
-                plt.ion()
-                _fig = plt.figure()
-                _ax = _fig.add_subplot(111)
-
-                plt.plot(self._T_store.dat, self._VAF.dat)
-                _ax.set_title('Velocity Autocorrelation Function')
-                _ax.set_xlabel('Time')
-                _ax.set_ylabel('VAF')
-                plt.show()
-            else:
-                print "Warning: run evaluate() at least once before plotting."
 
 ################################################################################################################
 # WriteTrajectoryXYZ
@@ -958,3 +643,325 @@ class VelocityAutoCorrelation(object):
                 plt.show()
             else:
                 print "Warning: run evaluate() at least once before plotting."
+
+
+################################################################################################################
+# DrawParticles
+################################################################################################################
+
+
+class DrawParticles(object):
+    """
+    Class to plot n particles with given positions.
+
+    :arg int n: Number of particles.
+    :arg np.array(n,3) pos: particle positions.
+    :arg np.array(3,1) extent:  domain extents.
+
+    """
+
+    def __init__(self, state=None):
+
+        assert state is not None, "DrawParticles error: no state passed."
+
+        self._state = state
+
+        self._Mh = mpi.MPI_HANDLE
+
+        self._Dat = None
+        self._gids = None
+        self._pos = None
+        self._gid = None
+
+        self._N = None
+        self._NT = None
+        self._extents = None
+
+        if (mpi.MPI_HANDLE.rank == 0) and _GRAPHICS:
+            plt.ion()
+            self._fig = plt.figure()
+            self._ax = self._fig.add_subplot(111, projection='3d')
+            self._key = ['red', 'blue']
+            plt.show(block=False)
+
+    def draw(self):
+        """
+        Update current plot, use for real time plotting.
+        """
+
+        if _GRAPHICS:
+
+            self._N = self._state.n
+            self._NT = self._state.nt
+            self._extents = self._state.domain.extent
+
+            '''Case where all particles are local'''
+            if self._Mh is None:
+                self._pos = self._state.positions
+                self._gid = self._state.global_ids
+
+            else:
+                '''Need an mpi handle if not all particles are local'''
+                assert self._Mh is not None, "Error: Not all particles are local but mpi.MPI_HANDLE = None."
+
+                '''Allocate if needed'''
+                if self._Dat is None:
+                    self._Dat = particle.Dat(self._NT, 3)
+                else:
+                    self._Dat.resize(self._NT)
+
+                if self._gids is None:
+                    self._gids = ScalarArray(ncomp=self._NT, dtype=ctypes.c_int)
+                else:
+                    self._gids.resize(self._NT)
+
+                _MS = mpi.Status()
+
+                if self._Mh.rank == 0:
+
+                    '''Copy the local data.'''
+                    self._Dat.dat[0:self._N:, ::] = self._state.positions.dat[0:self._N:, ::]
+                    self._gids.dat[0:self._N:] = self._state.global_ids.dat[0:self._N:, 0]
+
+                    _i = self._N  # starting point pos
+                    _ig = self._N  # starting point gids
+
+                    for ix in range(1, self._Mh.nproc):
+                        self._Mh.comm.Recv(self._Dat.dat[_i::, ::], ix, ix, _MS)
+                        _i += _MS.Get_count(mpi_map[self._Dat.dtype]) / 3
+
+                        self._Mh.comm.Recv(self._gids.dat[_ig::], ix, ix, _MS)
+                        _ig += _MS.Get_count(mpi_map[self._gids.dtype])
+
+                    self._pos = self._Dat
+                    self._gid = self._gids
+                else:
+
+                    self._Mh.comm.Send(self._state.positions.dat[0:self._N:, ::], 0, self._Mh.rank)
+                    self._Mh.comm.Send(self._state.global_ids.dat[0:self._N:], 0, self._Mh.rank)
+
+            if self._Mh.rank == 0:
+
+                plt.cla()
+                plt.ion()
+                for ix in range(self._pos.npart):
+                    self._ax.scatter(self._pos.dat[ix, 0], self._pos.dat[ix, 1], self._pos.dat[ix, 2],
+                                     color=self._key[self._gid[ix] % 2])
+                self._ax.set_xlim([-0.5 * self._extents[0], 0.5 * self._extents[0]])
+                self._ax.set_ylim([-0.5 * self._extents[1], 0.5 * self._extents[1]])
+                self._ax.set_zlim([-0.5 * self._extents[2], 0.5 * self._extents[2]])
+
+                self._ax.set_xlabel('x')
+                self._ax.set_ylabel('y')
+                self._ax.set_zlabel('z')
+
+                plt.draw()
+                plt.show(block=False)
+
+####################################################################################################
+# Energy Store
+####################################################################################################
+
+
+class EnergyStore(object):
+    """
+    Class to hold energy data more sensibly
+
+    :arg state state: Input state to track energy of.
+    """
+
+    def __init__(self, state=None):
+
+        assert state is not None, "EnergyStore error, no state passed."
+
+        self._state = state
+        self._Mh = mpi.MPI_HANDLE
+
+        self._t = []
+        self._k = []
+        self._u = []
+        self._q = []
+
+
+    def update(self):
+        """
+        Update energy tracking of tracked state.
+        :return:
+        """
+
+        _k = 0.0
+        _u = 0.0
+        _q = 0.0
+        _t = self._state.time
+
+        if self._state.n > 0:
+            _U_tmp = self._state.u.dat[0]/self._state.nt
+            _U_tmp += 0.5*self._state.u.dat[1]/self._state.nt
+
+            _k = self._state.k[0]/self._state.nt
+            _u = _U_tmp
+            _q = _U_tmp+(self._state.k[0])/self._state.nt
+
+        self._k.append(_k)
+        self._u.append(_u)
+        self._q.append(_q)
+        self._t.append(_t)
+
+
+
+
+    def plot(self):
+        """
+        Plot the stored energy data.
+
+        :return:
+        """
+
+        assert len(self._t) > 0, "EnergyStore error, no data to plot"
+
+        self._T_store = ScalarArray(self._t)
+        self._K_store = ScalarArray(self._k)
+        self._U_store = ScalarArray(self._u)
+        self._Q_store = ScalarArray(self._q)
+
+
+        '''REPLACE THIS WITH AN MPI4PY REDUCE CALL'''
+
+        if (self._Mh is not None) and (self._Mh.nproc > 1):
+
+            # data to collect
+            _d = [self._Q_store.dat, self._U_store.dat, self._K_store.dat]
+
+            # make a temporary buffer.
+            if self._Mh.rank == 0:
+                _buff = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+                _T = self._T_store.dat
+                _Q = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+                _U = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+                _K = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+
+                _Q.dat[::] += self._Q_store.dat[::]
+                _U.dat[::] += self._U_store.dat[::]
+                _K.dat[::] += self._K_store.dat[::]
+
+                _dl = [_Q.dat, _U.dat, _K.dat]
+            else:
+                _dl = [None, None, None]
+
+            for _di, _dj in zip(_d, _dl):
+
+                if self._Mh.rank == 0:
+                    _MS = mpi.Status()
+                    for ix in range(1, self._Mh.nproc):
+                        self._Mh.comm.Recv(_buff.dat[::], ix, ix, _MS)
+                        _dj[::] += _buff.dat[::]
+
+                else:
+                    self._Mh.comm.Send(_di[::], 0, self._Mh.rank)
+
+            if self._Mh.rank == 0:
+                _Q = _Q.dat
+                _U = _U.dat
+                _K = _K.dat
+
+        else:
+            _T = self._T_store.dat
+            _Q = self._Q_store.dat
+            _U = self._U_store.dat
+            _K = self._K_store.dat
+
+        if (mpi.MPI_HANDLE.rank == 0) and _GRAPHICS:
+            print "last total", _Q[-1]
+            print "last kinetic", _K[-1]
+            print "last potential", _U[-1]
+            print "============================================="
+            print "first total", _Q[0]
+            print "first kinetic", _K[0]
+            print "first potential", _U[0]
+
+            plt.ion()
+            fig2 = plt.figure()
+            ax2 = fig2.add_subplot(111)
+
+            ax2.plot(_T, _Q, color='r', linewidth=2)
+            ax2.plot(_T, _U, color='g')
+            ax2.plot(_T, _K, color='b')
+
+            ax2.set_title('Red: Total energy, Green: Potential energy, Blue: kinetic energy')
+            ax2.set_xlabel('Time')
+            ax2.set_ylabel('Energy')
+
+            fig2.canvas.draw()
+            plt.show(block=False)
+
+        if mpi.MPI_HANDLE.rank == 0:
+            _fh = open('./output/energy.txt', 'w')
+            _fh.write("Time Kinetic Potential Total\n")
+            for ix in range(len(self._t)):
+                _fh.write("%(T)s %(K)s %(P)s %(Q)s\n" % {'T':_T[ix], 'K':_K[ix], 'P':_U[ix], 'Q':_Q[ix]})
+            _fh.close()
+
+        if (mpi.MPI_HANDLE.rank == 0) and not _GRAPHICS:
+            print "last total", _Q[-1]
+            print "last kinetic", _K[-1]
+            print "last potential", _U[-1]
+            print "============================================="
+            print "first total", _Q[0]
+            print "first kinetic", _K[0]
+            print "first potential", _U[0]
+
+####################################################################################################
+# Percentage Printer
+####################################################################################################
+
+class PercentagePrinter(object):
+    """
+    Class to print percentage completion to console.
+
+    :arg float dt: Time step size.
+    :arg float t: End time.
+    :arg int percent: Percent to print on.
+    """
+    def __init__(self, dt, t, percent):
+        _dt = dt
+        _t = t
+        self._p = percent
+        self._max_it = math.ceil(_t/_dt)
+        self._count = 0
+        self._curr_p = percent
+        self.timer = runtime.Timer(runtime.TIMER, 0, start=False)
+        self._timing = False
+
+    def new_times(self, dt, t):
+        """
+        Change times.
+
+        :arg float dt: Time step size.
+        :arg float t: End time.
+        :arg int percent: Percent to print on.
+        """
+        _dt = dt
+        _t = t
+        self._p = percent
+        self._max_it = math.ceil(_t/_dt)
+        self._count = 0
+        self._curr_p = percent
+
+    def tick(self):
+        """
+        Method to call per iteration.
+        """
+
+        if (self._timing is False) and (runtime.TIMER.level > 0):
+            self.timer.start()
+
+        self._count += 1
+
+        if (float(self._count)/self._max_it)*100 > self._curr_p:
+
+            if runtime.TIMER.level > 0:
+                pio.pprint(self._curr_p, "%", self.timer.reset(), 's')
+            else:
+                pio.pprint(self._curr_p, "%")
+
+            self._curr_p += self._p

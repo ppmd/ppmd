@@ -140,7 +140,7 @@ if __name__ == '__main__':
 
     # plotting handle
     if plotting:
-        plothandle = data.DrawParticles(state=sim1.state)
+        plothandle = method.DrawParticles(state=sim1.state)
         plotsteps = 50
         plotfn = plothandle.draw
     else:
@@ -159,7 +159,7 @@ if __name__ == '__main__':
 
     # xyz writing handle
     if logging:
-        energyhandle = data.EnergyStore(state=sim1.state)
+        energyhandle = method.EnergyStore(state=sim1.state)
         energy_steps = 10
         energyfn = energyhandle.update
     else:
@@ -170,7 +170,7 @@ if __name__ == '__main__':
     test_vaf_method = method.VelocityAutoCorrelation(state = sim1.state)
     test_gr_method = method.RadialDistributionPeriodicNVE(state = sim1.state, rsteps = 200)
 
-    per_printer = data.PercentagePrinter(dt,t,10)
+    per_printer = method.PercentagePrinter(dt,t,10)
 
     schedule = method.Schedule([
                                 plotsteps,

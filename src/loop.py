@@ -7,6 +7,7 @@ import build
 import runtime
 import access
 import mpi
+import host
 
 class _Base(build.GenericToolChain):
     """
@@ -85,17 +86,17 @@ class _Base(build.GenericToolChain):
             argname = dat[0] + '_ext'
             loc_argname = dat[0]
 
-            if (type(dat[1]) == data.ScalarArray) or (type(dat[1]) == data.PointerArray):
-                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+            if (type(dat[1]) == data.ScalarArray) or (type(dat[1]) == host.PointerArray):
+                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
             if type(dat[1]) == particle.Dat:
                 ncomp = dat[1].ncomp
-                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
+                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
                 s += space + loc_argname + ' = ' + argname + '+' + str(ncomp) + '*i;\n'
 
             if type(dat[1]) == particle.TypedDat:
                 ncomp = dat[1].ncomp
-                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
                 s += space + loc_argname + ' = &' + argname + '[LINIDX_2D(' + str(
                     ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
 
@@ -344,7 +345,7 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
                 reduction_argname = dat[0] + '_reduction'
 
                 # Initialise variable
-                self._ompinitstr += build.ctypes_map[dat[1].dtype] + ' ' \
+                self._ompinitstr += host.ctypes_map[dat[1].dtype] + ' ' \
                                     + reduction_argname \
                                     + ' = ' \
                                     + build.omp_operator_init_values[reduction_handle.operator] + ';'
@@ -362,18 +363,18 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
             else:
 
                 if type(dat[1]) == data.ScalarArray:
-                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
                 elif type(dat[1]) == particle.Dat:
 
                     ncomp = dat[1].ncomp
-                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
+                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
                     s += space + loc_argname + ' = ' + argname + '+' + str(ncomp) + '*i;\n'
 
                 elif type(dat[1]) == particle.TypedDat:
 
                     ncomp = dat[1].ncomp
-                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
                     s += space + loc_argname + ' = &' + argname + '[LINIDX_2D(' + str(
                         ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
 

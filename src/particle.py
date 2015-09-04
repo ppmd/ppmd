@@ -133,7 +133,7 @@ class Dat(object):
     @property
     def ctypes_data(self):
         """Return ctypes-pointer to data."""
-        return self._Dat.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+        return self._Dat.ctypes.data_as(ctypes.POINTER(self._dtype))
 
     @property
     def dtype(self):

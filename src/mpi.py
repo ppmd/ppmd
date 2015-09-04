@@ -204,3 +204,4 @@ class MDMPI(object):
 # Main MPI communicatior used by program.
 
 MPI_HANDLE = MDMPI()
+Status = MPI.Status

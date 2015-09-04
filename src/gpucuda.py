@@ -18,6 +18,7 @@ import constant
 import access
 import cell
 import mpi
+import host
 
 ERROR_LEVEL = runtime.Level(2)
 
@@ -512,7 +513,7 @@ class _Base(object):
         if self._kernel.static_args is not None:
 
             for ix in self._kernel.static_args.items():
-                self._device_const_dec += '__constant__ ' + build.ctypes_map[ix[1]] + ' ' + ix[0] + '; \n'
+                self._device_const_dec += '__constant__ ' + host.ctypes_map[ix[1]] + ' ' + ix[0] + '; \n'
                 self._device_const_copy += 'checkCudaErrors(cudaMemcpyToSymbol(' + ix[0] + ', &h_' + ix[0] + ', sizeof(h_' + ix[0] + '))); \n'
 
 
@@ -533,7 +534,7 @@ class _Base(object):
             self._static_arg_order = []
 
             for i, dat in enumerate(self._kernel.static_args.items()):
-                argnames += 'const ' + build.ctypes_map[dat[1]] + ' h_' + dat[0] + ','
+                argnames += 'const ' + host.ctypes_map[dat[1]] + ' h_' + dat[0] + ','
                 self._static_arg_order.append(dat[0])
                 self._argtypes.append(dat[1])
 
@@ -546,7 +547,7 @@ class _Base(object):
                 dat = dat_orig
                 _mode = access.RW
 
-            argnames += self._mode_arg_dec_str(_mode) + build.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' h_' + dat[0] + ','
+            argnames += self._mode_arg_dec_str(_mode) + host.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' h_' + dat[0] + ','
             self._argtypes.append(dat[1].dtype)
 
         return argnames[:-1]
@@ -598,9 +599,9 @@ class _Base(object):
             loc_argname = dat[0]
 
             if type(dat[1]) == particle.Dat:
-                s += self._mode_arg_dec_str(_mode) + build.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' d_' + loc_argname + ','
+                s += self._mode_arg_dec_str(_mode) + host.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' d_' + loc_argname + ','
             if type(dat[1]) == data.ScalarArray:
-                s += self._mode_arg_dec_str(_mode) + build.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' d_' + loc_argname + ','
+                s += self._mode_arg_dec_str(_mode) + host.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' d_' + loc_argname + ','
         return s[:-1]
 
     def _kernel_pointer_mapping(self):
@@ -624,7 +625,7 @@ class _Base(object):
             loc_argname = dat[0]
 
             if type(dat[1]) == particle.Dat:
-                _s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
+                _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
                 _s += space + loc_argname + ' = ' + argname + '+' + str(dat[1].ncomp) + '*_ix;\n'
 
         return _s
@@ -1113,7 +1114,7 @@ class SimpleCudaPairLoop(_Base):
 
             if type(dat[1]) == particle.Dat:
                 if dat[1].name == 'positions':
-                    _s += space + 'const ' + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    _s += space + 'const ' + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
 
                     _s += space + 'if (flag){ \n'
 
@@ -1128,19 +1129,19 @@ class SimpleCudaPairLoop(_Base):
                     _s += space + '} \n'
                     _s += space + loc_argname + '[0] = _p;\n'
                 elif dat[1].name == 'accelerations':
-                    _s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-                    _s += space + build.ctypes_map[dat[1].dtype] + ' dummy[3] = {0,0,0};\n'
+                    _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    _s += space + host.ctypes_map[dat[1].dtype] + ' dummy[3] = {0,0,0};\n'
                     _s += space + loc_argname + '[0] = _a;\n'
                     _s += space + loc_argname + '[1] = dummy;\n'
 
 
                 else:
-                    _s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                     _s += space + loc_argname + '[0] = ' + argname + '+' + str(dat[1].ncomp) + '*_ix;\n'
                     _s += space + loc_argname + '[1] = ' + argname + '+' + str(dat[1].ncomp) + '*_iy;\n'
 
             elif type(dat[1]) == data.ScalarArray:
-                _s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
         return _s
 
@@ -1375,19 +1376,19 @@ class SimpleCudaPairLoopHalo(SimpleCudaPairLoop):
                 if dat[1].name == 'positions':
                     _s += space + loc_argname + '[1] = ' + argname + '+3*_iy;\n'
                 elif dat[1].name == 'accelerations':
-                    _s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-                    _s += space + build.ctypes_map[dat[1].dtype] + ' dummy[3] = {0,0,0};\n'
+                    _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    _s += space + host.ctypes_map[dat[1].dtype] + ' dummy[3] = {0,0,0};\n'
                     _s += space + loc_argname + '[0] = _a;\n'
                     _s += space + loc_argname + '[1] = dummy;\n'
 
 
                 else:
-                    _s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                     _s += space + loc_argname + '[0] = ' + argname + '+' + str(dat[1].ncomp) + '*_ix;\n'
                     _s += space + loc_argname + '[1] = ' + argname + '+' + str(dat[1].ncomp) + '*_iy;\n'
 
             elif type(dat[1]) == data.ScalarArray:
-                _s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
         return _s
 
@@ -1663,18 +1664,18 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
                     _s += space + loc_argname + '[1] = ' + argname + '+3*_iy;\n'
                     # _s += 'memcpy(&_p2[0], &' + argname + '[_iy*3], sizeof(double)*3); \n'
                 elif dat[1].name == 'accelerations':
-                    _s += space + build.ctypes_map[dat[1].dtype] + ' dummy[3] = {0,0,0};\n'
+                    _s += space + host.ctypes_map[dat[1].dtype] + ' dummy[3] = {0,0,0};\n'
                     _s += space + loc_argname + '[1] = dummy;\n'
 
 
                 else:
-                    _s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                     _s += space + loc_argname + '[0] = ' + argname + '+' + str(dat[1].ncomp) + '*_ix;\n'
                     _s += space + loc_argname + '[1] = ' + argname + '+' + str(dat[1].ncomp) + '*_iy;\n'
 
             elif type(dat[1]) == data.ScalarArray:
                 pass
-                # _s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                # _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
         return _s
 

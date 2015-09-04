@@ -1,17 +1,14 @@
 import numpy as np
+import host
 import particle
 import ctypes
 import os
 import hashlib
 import subprocess
-import data
 import re
 import runtime
 import mpi
-
-
-ctypes_map = {ctypes.c_double: 'double', ctypes.c_int: 'int', 'float64': 'double', 'int32': 'int',
-              'doublepointerpointer': 'double **', ctypes.c_longlong: 'long long'}
+import data
 
 
 ################################################################################################################
@@ -292,15 +289,15 @@ class GenericToolChain(object):
             self._static_arg_order = []
 
             for i, dat in enumerate(self._kernel.static_args.items()):
-                argnames += 'const ' + build.ctypes_map[dat[1]] + ' ' + dat[0] + ','
+                argnames += 'const ' + host.ctypes_map[dat[1]] + ' ' + dat[0] + ','
                 self._static_arg_order.append(dat[0])
                 #self._argtypes.append(dat[1])
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
             if type(dat[1]) is not tuple:
-                argnames += build.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
+                argnames += host.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
             else:
-                argnames += build.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
+                argnames += host.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
             #self._argtypes.append(dat[1].dtype)
 
         return argnames[:-1]
@@ -535,11 +532,11 @@ class SharedLib(GenericToolChain):
             loc_argname = argname  # dat[0]
 
             if type(dat[1]) == data.ScalarArray:
-                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
             if type(dat[1]) == particle.Dat:
                 ncomp = dat[1].ncomp
-                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
+                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
                 s += space + loc_argname + ' = ' + argname + '+' + str(ncomp) + '*i;\n'
 
         return s
@@ -627,15 +624,15 @@ class SharedLib(GenericToolChain):
             self._static_arg_order = []
 
             for i, dat in enumerate(self._kernel.static_args.items()):
-                argnames += '' + build.ctypes_map[dat[1]] + ' ' + dat[0] + ','
+                argnames += '' + host.ctypes_map[dat[1]] + ' ' + dat[0] + ','
                 self._static_arg_order.append(dat[0])
                 #self._argtypes.append(dat[1])
 
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
             if type(dat[1]) is not tuple:
-                argnames += build.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
+                argnames += host.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
             else:
-                argnames += build.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
+                argnames += host.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
 
         return argnames[:-1]
