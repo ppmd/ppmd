@@ -4,9 +4,9 @@ import ctypes
 import data
 import kernel
 import loop
-import halo
 import build
 from mpi4py import MPI
+import mpi
 import runtime
 import pio
 
@@ -252,7 +252,7 @@ class BaseDomainHalo(BaseDomain):
 
         self._periods = periods
 
-        self._MPI_handle = runtime.MPI_HANDLE
+        self._MPI_handle = mpi.MPI_HANDLE
         self._MPI_handle.set_periods = self._periods
         self._MPI = MPI.COMM_WORLD
         self._MPIstatus = MPI.Status()
@@ -267,7 +267,11 @@ class BaseDomainHalo(BaseDomain):
         self._cell_edge_lengths = data.ScalarArray(np.array([1., 1., 1.], dtype=ctypes.c_double))
 
         self._BCloop = None
-        self._halos = False
+        self._halos = True
+
+    @property
+    def halos(self):
+        return self._halos
 
     @property
     def mpi_handle(self):
@@ -452,9 +456,6 @@ class BaseDomainHalo(BaseDomain):
         '''Outer extent including halos, used?'''
         self._extent_outer = data.ScalarArray(self._extent.dat + np.array([2, 2, 2]) * self._cell_edge_lengths.dat)
 
-        '''Init halos'''
-        self.halo_init()
-
         return True
 
     @property
@@ -482,16 +483,6 @@ class BaseDomainHalo(BaseDomain):
         """
         # return self._extent_outer
         return self._extent_global
-
-    def halo_init(self):
-        """
-        Method to initialise halos for local domain.
-        """
-        self._halos = halo.HaloCartesianSingleProcess(self._NT, self._MPI_handle, self._cell_array, self._extent_global)
-
-    @property
-    def halos(self):
-        return self._halos
 
     @property
     def extent_internal(self):

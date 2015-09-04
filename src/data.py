@@ -25,12 +25,6 @@ np.set_printoptions(threshold='nan')
 
 
 
-ctypes_map = {ctypes.c_double: 'double', ctypes.c_int: 'int', 'float64': 'double', 'int32': 'int',
-              'doublepointerpointer': 'double **', ctypes.c_longlong: 'long long'}
-mpi_map = {ctypes.c_double: MPI.DOUBLE, ctypes.c_int: MPI.INT}
-
-
-
 
 ###############################################################################################################
 # XYZWrite
@@ -94,7 +88,7 @@ class DrawParticles(object):
 
         self._state = state
 
-        self._Mh = runtime.MPI_HANDLE
+        self._Mh = mpi.MPI_HANDLE
 
         self._Dat = None
         self._gids = None
@@ -105,7 +99,7 @@ class DrawParticles(object):
         self._NT = None
         self._extents = None
 
-        if (runtime.MPI_HANDLE.rank == 0) and _GRAPHICS:
+        if (mpi.MPI_HANDLE.rank == 0) and _GRAPHICS:
             plt.ion()
             self._fig = plt.figure()
             self._ax = self._fig.add_subplot(111, projection='3d')
@@ -119,8 +113,8 @@ class DrawParticles(object):
 
         if _GRAPHICS:
 
-            self._N = self._state.n()
-            self._NT = self._state.nt()
+            self._N = self._state.n
+            self._NT = self._state.nt
             self._extents = self._state.domain.extent
 
             '''Case where all particles are local'''
@@ -130,7 +124,7 @@ class DrawParticles(object):
 
             else:
                 '''Need an mpi handle if not all particles are local'''
-                assert self._Mh is not None, "Error: Not all particles are local but runtime.MPI_HANDLE = None."
+                assert self._Mh is not None, "Error: Not all particles are local but mpi.MPI_HANDLE = None."
 
                 '''Allocate if needed'''
                 if self._Dat is None:
@@ -149,7 +143,7 @@ class DrawParticles(object):
 
                     '''Copy the local data.'''
                     self._Dat.dat[0:self._N:, ::] = self._state.positions.dat[0:self._N:, ::]
-                    self._gids[0:self._N:] = self._state.global_ids[0:self._N:]
+                    self._gids.dat[0:self._N:] = self._state.global_ids.dat[0:self._N:, 0]
 
                     _i = self._N  # starting point pos
                     _ig = self._N  # starting point gids
@@ -215,7 +209,7 @@ class BasicEnergyStore(object):
         self._T_c = 0
         self._T_base = None
 
-        self._Mh = runtime.MPI_HANDLE
+        self._Mh = mpi.MPI_HANDLE
         self._size = None
 
     def append_prepare(self, size):
@@ -734,7 +728,7 @@ class EnergyStore(object):
         assert state is not None, "EnergyStore error, no state passed."
 
         self._state = state
-        self._Mh = runtime.MPI_HANDLE
+        self._Mh = mpi.MPI_HANDLE
 
         self._t = []
         self._k = []
@@ -753,13 +747,13 @@ class EnergyStore(object):
         _q = 0.0
         _t = self._state.time
 
-        if self._state.n() > 0:
-            _U_tmp = self._state.u.dat[0]/self._state.nt()
-            _U_tmp += 0.5*self._state.u.dat[1]/self._state.nt()
+        if self._state.n > 0:
+            _U_tmp = self._state.u.dat[0]/self._state.nt
+            _U_tmp += 0.5*self._state.u.dat[1]/self._state.nt
 
-            _k = self._state.k[0]/self._state.nt()
+            _k = self._state.k[0]/self._state.nt
             _u = _U_tmp
-            _q = _U_tmp+(self._state.k[0])/self._state.nt()
+            _q = _U_tmp+(self._state.k[0])/self._state.nt
 
         self._k.append(_k)
         self._u.append(_u)
@@ -829,7 +823,7 @@ class EnergyStore(object):
             _U = self._U_store.dat
             _K = self._K_store.dat
 
-        if (runtime.MPI_HANDLE.rank == 0) and _GRAPHICS:
+        if (mpi.MPI_HANDLE.rank == 0) and _GRAPHICS:
             print "last total", _Q[-1]
             print "last kinetic", _K[-1]
             print "last potential", _U[-1]
@@ -853,14 +847,14 @@ class EnergyStore(object):
             fig2.canvas.draw()
             plt.show(block=False)
 
-        if runtime.MPI_HANDLE.rank == 0:
+        if mpi.MPI_HANDLE.rank == 0:
             _fh = open('./output/energy.txt', 'w')
             _fh.write("Time Kinetic Potential Total\n")
             for ix in range(len(self._t)):
                 _fh.write("%(T)s %(K)s %(P)s %(Q)s\n" % {'T':_T[ix], 'K':_K[ix], 'P':_U[ix], 'Q':_Q[ix]})
             _fh.close()
 
-        if (runtime.MPI_HANDLE.rank == 0) and not _GRAPHICS:
+        if (mpi.MPI_HANDLE.rank == 0) and not _GRAPHICS:
             print "last total", _Q[-1]
             print "last kinetic", _K[-1]
             print "last potential", _U[-1]

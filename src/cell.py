@@ -4,10 +4,8 @@ import data
 import particle
 import ctypes as ct
 import numpy as np
-import gpucuda
 import build
 import kernel
-import constant
 
 
 class CellList(object):
@@ -59,6 +57,9 @@ class CellList(object):
 
         # setup methods to sort into cells.
         self._cell_sort_setup()
+
+
+
         return _err
 
     def _cell_sort_setup(self):
@@ -74,12 +75,6 @@ class CellList(object):
 
         '''Reverse lookup, given a local particle id, get containing cell.'''
         self._cell_reverse_lookup = data.ScalarArray(dtype=ct.c_int, max_size=self._positions.max_size)
-
-        # add gpu arrays
-        if gpucuda.INIT_STATUS():
-            self._cell_reverse_lookup.add_cuda_dat()
-            self._cell_contents_count.add_cuda_dat()
-            self._cell_list.add_cuda_dat()
         
         
 
@@ -284,7 +279,7 @@ class GroupByCell(object):
         self.swaptimer.start()
 
         # swap dynamic dats
-        for idx, ix in self._state.particle_dats:
+        for idx, ix in enumerate(self._state.particle_dats):
             _tmp = getattr(self._state, ix).dat
             getattr(self._state, ix).dat = self._new_particle_dats[idx].dat
             self._new_particle_dats[idx].dat = _tmp

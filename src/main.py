@@ -12,6 +12,7 @@ runtime.TIMER.level = 3
 runtime.CUDA_ENABLED.flag = True
 
 
+import mpi
 import domain
 import potential
 import state
@@ -23,6 +24,7 @@ import gpucuda
 import particle
 import os
 import simulation
+import halo
 
 
 
@@ -46,20 +48,20 @@ if __name__ == '__main__':
     plotting = False
     
     # log energy?
-    logging = True
+    logging = False
 
     # Write XYZ?
     writing = False
 
     # test
 
-    t=0.001
+    t=0.01
     dt=0.0001
 
 
     if test_1000:
         # n=25 reasonable size
-        n = 40
+        n = 10
         N = n**3
         # n=860
         rho = 5.
@@ -96,14 +98,14 @@ if __name__ == '__main__':
 
 
         # Initialise two particles on an axis a set distance apart.
-        test_pos_init = simulation.PosInitTwoParticlesInABox(rx = 0.3, extent = np.array([8., 8., 8.]), axis = np.array([1,0,0]))
+        test_pos_init = simulation.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([8., 8., 8.]), axis = np.array([1,0,0]))
 
         # Give first two particles specific velocities
         test_vel_init = simulation.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
 
         # Set alternating masses for particles.
         
-        test_mass_init = simulation.MassInitTwoAlternating(10., 5.)
+        test_mass_init = simulation.MassInitTwoAlternating(5., 5.)
         
     if t_1_particle:
         
@@ -136,23 +138,10 @@ if __name__ == '__main__':
                                        n=N
                                        )
 
-
-
-
-    quit()
-
-    test_state = state.BaseMDStateHalo(domain_in=test_domain,
-                                       potential_in=test_potential,
-                                       particle_pos_init=test_pos_init,
-                                       particle_vel_init=test_vel_init,
-                                       particle_mass_init=test_mass_init,
-                                       n=N
-                                       )
-
     # plotting handle
     if plotting:
-        plothandle = data.DrawParticles(state=test_state)
-        plotsteps = 1000
+        plothandle = data.DrawParticles(state=sim1.state)
+        plotsteps = 50
         plotfn = plothandle.draw
     else:
         plothandle = None
@@ -161,7 +150,7 @@ if __name__ == '__main__':
 
     # xyz writing handle
     if writing:
-        test_xyz = method.WriteTrajectoryXYZ(state=test_state)
+        test_xyz = method.WriteTrajectoryXYZ(state=sim1.state)
         test_xyz_steps = 20
         writefn = test_xyz.write
     else:
@@ -170,7 +159,7 @@ if __name__ == '__main__':
 
     # xyz writing handle
     if logging:
-        energyhandle = data.EnergyStore(state=test_state)
+        energyhandle = data.EnergyStore(state=sim1.state)
         energy_steps = 10
         energyfn = energyhandle.update
     else:
@@ -178,8 +167,8 @@ if __name__ == '__main__':
         energyfn = None
     
 
-    test_vaf_method = method.VelocityAutoCorrelation(state = test_state)
-    test_gr_method = method.RadialDistributionPeriodicNVE(state = test_state, rsteps = 200)
+    test_vaf_method = method.VelocityAutoCorrelation(state = sim1.state)
+    test_gr_method = method.RadialDistributionPeriodicNVE(state = sim1.state, rsteps = 200)
 
     per_printer = data.PercentagePrinter(dt,t,10)
 
@@ -197,8 +186,8 @@ if __name__ == '__main__':
                                 ])
 
     # Create an integrator for above state class.
-    test_integrator = method.VelocityVerlet(state = test_state, schedule=schedule)
-    # test_integrator = method.VelocityVerletBox(state = test_state, schedule=schedule)
+    test_integrator = method.VelocityVerlet(simulation = sim1, schedule=schedule)
+    # test_integrator = method.VelocityVerletBox(state = sim1.state, schedule=schedule)
 
 
     ###########################################################
@@ -206,23 +195,23 @@ if __name__ == '__main__':
     test_integrator.integrate(dt=dt, t=t)
 
     if test_domain.halos is not False:
-        test_domain.halos.timer.time("Total time in halo exchange.")
-    test_state.timer.time("Total time in forces update.")
-    test_state.cpu_forces_timer.time("Total time cpu forces update.")
+        halo.HALOS.timer.time("Total time in halo exchange.")
+    sim1.timer.time("Total time in forces update.")
+    sim1.cpu_forces_timer.time("Total time cpu forces update.")
     if gpucuda.INIT_STATUS():
-        test_state.gpu_forces_timer.time("Total time gpu forces update.")
+        sim1.gpu_forces_timer.time("Total time gpu forces update.")
     ###########################################################
-    # test_state.swaptimer.time("state time to swap arrays")
+    # sim1.state.swaptimer.time("state time to swap arrays")
     
 
     #If logging was enabled, plot data.
     if (logging):
         energyhandle.plot()
 
-    if runtime.MPI_HANDLE.rank ==0:
+    if mpi.MPI_HANDLE.rank ==0:
         try:
 
-            # a=input("PRESS ENTER TO CONTINUE.\n")
+            #a=input("PRESS ENTER TO CONTINUE.\n")
             pass
         except:
             pass

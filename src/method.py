@@ -50,19 +50,20 @@ class VelocityVerlet(object):
     :arg bool DEBUG: Flag to enable debug flags.
     """
     
-    def __init__(self, dt=0.0001, t=0.01, state=None, schedule=None):
+    def __init__(self, dt=0.0001, t=0.01, simulation=None, schedule=None):
     
         self._dt = dt
         self._T = t
 
-        self._state = state
+        self._sim = simulation
+        self._state = self._sim.state
         
         self._domain = self._state.domain
         self._N = self._state.n
         self._A = self._state.forces
         self._V = self._state.velocities
         self._P = self._state.positions
-        self._M = self._state.masses
+        self._M = self._state.mass
         self._K = self._state.k
 
         self._schedule = schedule
@@ -106,17 +107,16 @@ class VelocityVerlet(object):
         self._constants = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
 
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
+        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
 
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-        self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
+        self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
 
         _t = runtime.Timer(runtime.TIMER, 0, start=True)
         self._velocity_verlet_integration()
         _t.stop("VelocityVerlet")
 
-        
-        
+
     def _velocity_verlet_integration(self):
         """
         Perform Velocity Verlet integration up to time T.
@@ -124,18 +124,21 @@ class VelocityVerlet(object):
 
         self._domain.bc_execute()
 
-        self._state.forces_update()
+        # TODO: fix this.
+        self._sim.forces_update()
 
         for i in range(self._max_it):
 
-            self._p1.execute(self._state.n())
+            self._p1.execute(self._state.n)
 
             self._domain.bc_execute()
-            self._state.forces_update()
-            self._p2.execute(self._state.n())
 
-            self._state.kinetic_energy_update()
-            self._state.add_time(self._dt)
+            #TODO: fix this.
+            self._sim.forces_update()
+            self._p2.execute(self._state.n)
+
+            self._sim.kinetic_energy_update()
+            self._state.time += self._dt
 
             if self._schedule is not None:
                 self._schedule.tick()
@@ -170,7 +173,7 @@ class VelocityVerletAnderson(VelocityVerlet):
 
         self._constants1 = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
-        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
+        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
 
         self._kernel2_thermostat_code = '''
 
@@ -205,7 +208,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         self._constants2_thermostat = [constant.Constant('rate',self._dt*self._nu), constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt), constant.Constant('temperature',self._Temp),]
 
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
-        self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
+        self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
 
         _t = runtime.Timer(runtime.TIMER, 0, start=True)
         self._velocity_verlet_integration_thermostat()
@@ -268,7 +271,7 @@ class VelocityVerletBox(VelocityVerlet):
         self._A = self._state.forces
         self._V = self._state.velocities
         self._P = self._state.positions
-        self._M = self._state.masses
+        self._M = self._state.mass
         self._K = self._state.k
 
         self._plot_handle = plot_handle
@@ -325,10 +328,10 @@ class VelocityVerletBox(VelocityVerlet):
         self._constants = [constant.Constant('dt', self._dt), constant.Constant('dht', 0.5*self._dt), ]
 
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
+        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
 
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-        self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types_map,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
+        self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
 
 
         _t = runtime.Timer(runtime.TIMER, 0, start=True)
@@ -356,7 +359,7 @@ class VelocityVerletBox(VelocityVerlet):
 
         self._constants1 = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
-        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types_map ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
+        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M, 'E':self._domain.extent})
 
         self._kernel2_thermostat_code = '''
 
@@ -391,7 +394,7 @@ class VelocityVerletBox(VelocityVerlet):
         self._constants2_thermostat = [constant.Constant('rate',self._dt*self._nu), constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt), constant.Constant('temperature',self._Temp),]
 
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
-        self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types_map, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
+        self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
 
         _t = runtime.Timer(runtime.TIMER, 0, start=True)
         self._velocity_verlet_integration_thermostat()
@@ -494,7 +497,7 @@ class RadialDistributionPeriodicNVE(object):
         _grkernel = kernel.Kernel('radial_distro_periodic_static', _kernel, _constants, headers=_headers)
         _datdict = {'P':self._P, 'GR':self._gr}
 
-        self._p = pairloop.DoubleAllParticleLoop(self._N, self._state.types_map, kernel=_grkernel, particle_dat_dict=_datdict)
+        self._p = pairloop.DoubleAllParticleLoop(self._N, self._state.types, kernel=_grkernel, particle_dat_dict=_datdict)
 
         self.timer = runtime.Timer(runtime.TIMER, 0)
 
@@ -730,7 +733,7 @@ class WriteTrajectoryXYZ(object):
         self._dn = dir_name
         self._fh = None
 
-        if runtime.MPI_HANDLE.rank == 0:
+        if mpi.MPI_HANDLE.rank == 0:
             self._fh = open(os.path.join(self._dn, self._fn), 'w')
             self._fh.close()
 
@@ -746,16 +749,16 @@ class WriteTrajectoryXYZ(object):
 
         space = ' '
 
-        if runtime.MPI_HANDLE.rank == 0:
+        if mpi.MPI_HANDLE.rank == 0:
             self._fh = open(os.path.join(self._dn, self._fn), 'a')
             self._fh.write(str(self._s.nt()) + '\n')
             self._fh.write(str(self._title) + '\n')
             self._fh.flush()
-        runtime.MPI_HANDLE.barrier()
+        mpi.MPI_HANDLE.barrier()
 
         if self._ordered is False:
-            for iz in range(runtime.MPI_HANDLE.nproc):
-                if runtime.MPI_HANDLE.rank == iz:
+            for iz in range(mpi.MPI_HANDLE.nproc):
+                if mpi.MPI_HANDLE.rank == iz:
                     self._fh = open(os.path.join(self._dn, self._fn), 'a')
                     for ix in range(self._s.n()):
                         self._fh.write(str(self._symbol).rjust(3))
@@ -766,7 +769,7 @@ class WriteTrajectoryXYZ(object):
                     self._fh.flush()
                     self._fh.close()
 
-                runtime.MPI_HANDLE.barrier()
+                mpi.MPI_HANDLE.barrier()
 
         self.timer.pause()
 
@@ -859,8 +862,7 @@ class VelocityAutoCorrelation(object):
 
     def __init__(self, state, size=0, v0=None):
         self._state = state
-        self._N = self._state.n
-        self._V0 = particle.Dat(self._N(), 3, name='v0')
+        self._V0 = particle.Dat(self._state.n, 3, name='v0')
         self._VT = state.velocities
 
         self._VO_SET = False
@@ -888,7 +890,7 @@ class VelocityAutoCorrelation(object):
 
         self._datdict = {'VAF': self._VAF, 'v0': self._V0, 'VT': self._VT}
 
-        self._loop = loop.SingleAllParticleLoop(self._N, None, kernel=_kernel, particle_dat_dict=self._datdict)
+        self._loop = loop.SingleAllParticleLoop(self._state.as_func('n'), None, kernel=_kernel, particle_dat_dict=self._datdict)
 
     def set_v0(self, v0=None, state=None):
         """
@@ -918,7 +920,7 @@ class VelocityAutoCorrelation(object):
 
         _t = self._state.time
 
-        _Ni = 1./self._N()
+        _Ni = 1./self._state.as_func('n')
 
         self._datdict['VT'] = self._state.velocities
         self._loop.execute(None, self._datdict, {'Ni': ctypes.c_double(_Ni)})
@@ -942,7 +944,7 @@ class VelocityAutoCorrelation(object):
 
             print _Vloc
 
-            runtime.MPI_HANDLE.comm.Reduce(_Vloc, _V, data.MPI.SUM, 0)
+            mpi.MPI_HANDLE.comm.Reduce(_Vloc, _V, data.MPI.SUM, 0)
 
             if len(self._T) > 0:
                 plt.ion()

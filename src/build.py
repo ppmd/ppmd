@@ -7,6 +7,11 @@ import subprocess
 import data
 import re
 import runtime
+import mpi
+
+
+ctypes_map = {ctypes.c_double: 'double', ctypes.c_int: 'int', 'float64': 'double', 'int32': 'int',
+              'doublepointerpointer': 'double **', ctypes.c_longlong: 'long long'}
 
 
 ################################################################################################################
@@ -223,7 +228,7 @@ def load_library_exception(kernel_name='None supplied', unique_name='None suppli
             code_str = [x + "\n" for x in code_str]
 
             err_code = ''.join(code_str)
-    print "Unique name", unique_name, "Rank", runtime.MPI_HANDLE.rank
+    print "Unique name", unique_name, "Rank", mpi.MPI_HANDLE.rank
 
     raise RuntimeError("\n"
                        "###################################################### \n"
@@ -287,15 +292,15 @@ class GenericToolChain(object):
             self._static_arg_order = []
 
             for i, dat in enumerate(self._kernel.static_args.items()):
-                argnames += 'const ' + data.ctypes_map[dat[1]] + ' ' + dat[0] + ','
+                argnames += 'const ' + build.ctypes_map[dat[1]] + ' ' + dat[0] + ','
                 self._static_arg_order.append(dat[0])
                 #self._argtypes.append(dat[1])
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
             if type(dat[1]) is not tuple:
-                argnames += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
+                argnames += build.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
             else:
-                argnames += data.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
+                argnames += build.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
             #self._argtypes.append(dat[1].dtype)
 
         return argnames[:-1]
@@ -495,9 +500,9 @@ class SharedLib(GenericToolChain):
         self._library_filename = self._unique_name + '.so'
 
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if runtime.MPI_HANDLE.rank == 0:
+            if mpi.MPI_HANDLE.rank == 0:
                 self._create_library()
-            runtime.MPI_HANDLE.barrier()
+            mpi.MPI_HANDLE.barrier()
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
@@ -530,11 +535,11 @@ class SharedLib(GenericToolChain):
             loc_argname = argname  # dat[0]
 
             if type(dat[1]) == data.ScalarArray:
-                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
             if type(dat[1]) == particle.Dat:
                 ncomp = dat[1].ncomp
-                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
+                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
                 s += space + loc_argname + ' = ' + argname + '+' + str(ncomp) + '*i;\n'
 
         return s
@@ -581,6 +586,7 @@ class SharedLib(GenericToolChain):
                 args.append(dat)
 
         '''Add pointer arguments to launch command'''
+
         for dat in self._particle_dat_dict.values():
             if type(dat) is tuple:
                 args.append(dat[0].ctypes_data)
@@ -621,15 +627,15 @@ class SharedLib(GenericToolChain):
             self._static_arg_order = []
 
             for i, dat in enumerate(self._kernel.static_args.items()):
-                argnames += '' + data.ctypes_map[dat[1]] + ' ' + dat[0] + ','
+                argnames += '' + build.ctypes_map[dat[1]] + ' ' + dat[0] + ','
                 self._static_arg_order.append(dat[0])
                 #self._argtypes.append(dat[1])
 
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
             if type(dat[1]) is not tuple:
-                argnames += data.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
+                argnames += build.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
             else:
-                argnames += data.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
+                argnames += build.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
 
         return argnames[:-1]

@@ -1,10 +1,12 @@
 import ctypes
+import cell
 import data
 from mpi4py import MPI
 import kernel
 import build
 import particle
 import runtime
+import mpi
 
 
 ################################################################################################################
@@ -26,17 +28,15 @@ class HaloCartesianSingleProcess(object):
     
     """
 
-    def __init__(self, nt=1, mpi_handle=None, cell_array=None, extent=None):
+    def __init__(self, nt=1):
 
         self._NT = nt
 
 
         self.timer = runtime.Timer(runtime.TIMER, 0, start=True)
 
-        assert cell_array is not None, "Error: No cell array passed."
-        assert extent is not None, "Error: No extent passed."
+        self._MPI_handle = mpi.MPI_HANDLE
 
-        self._MPI_handle = mpi_handle
         self._MPI = self._MPI_handle.comm
         self._rank = self._MPI_handle.rank
         self._top = self._MPI_handle.top
@@ -44,31 +44,24 @@ class HaloCartesianSingleProcess(object):
 
         self._MPIstatus = MPI.Status()
 
-        self._ca = cell_array
+        self._ca = cell.cell_list.domain.cell_array
 
         # n.B. this is a global extent.
-        self._extent = extent
+        self._extent = cell.cell_list.domain.extent
 
         self._halos = []
 
         # Will need at least 3 components for positions
         self._nc = 3
-        self._cell_contents_count = data.NullIntScalarArray
+        self._cell_contents_count = cell.cell_list.cell_contents_count
+        self._cell_list = cell.cell_list.cell_list
+
         self._halo_setup_prepare()
 
         self._create_packing_pointer_array()
         self._create_packing_lib()
 
         self.timer.stop("halo setup time.")
-
-
-
-    def set_position_info(self, cell_contents_count, cell_list):
-        """
-        Set the cell list to be used to determine which particles are in the halo
-        """
-        self._cell_contents_count = cell_contents_count
-        self._cell_list = cell_list
 
     def exchange(self, data_in):
         """
@@ -103,11 +96,11 @@ class HaloCartesianSingleProcess(object):
         '''Pack data for each direction'''
         _static_args = {
             'PPA': self._packing_pointers.ctypes_data,
-            'cell_start': ctypes.c_int(self._cell_list[self._cell_list.end]),
+            'cell_start': ctypes.c_int(cell.cell_list.cell_list[cell.cell_list.cell_list.end]),
             'ncomp': ctypes.c_int(data_in.ncomp)
         }
         _args = {
-            'q': self._cell_list,
+            'q': cell.cell_list.cell_list,
             'CCA_I': self._cell_contents_array_index,
             'CIA': self._cell_indices_array,
             'CSA': self._cell_shifts_array,
@@ -164,7 +157,7 @@ class HaloCartesianSingleProcess(object):
                                    self._rank,
                                    self._MPIstatus)
 
-                _shift = self._MPIstatus.Get_count(data.mpi_map[data_in.dtype])
+                _shift = self._MPIstatus.Get_count(mpi.mpi_map[data_in.dtype])
                 data_in.halo_start_shift(_shift / self._nc)
 
             elif self._send_list[i] > -1:
@@ -180,16 +173,16 @@ class HaloCartesianSingleProcess(object):
                                self._rank,
                                self._MPIstatus)
 
-                _shift = self._MPIstatus.Get_count(data.mpi_map[data_in.dtype])
+                _shift = self._MPIstatus.Get_count(mpi.mpi_map[data_in.dtype])
 
                 data_in.halo_start_shift(_shift / self._nc)
 
         '''sort local cells after exchange'''
         if data_in.name == 'positions':
             self._cell_sort_loop.execute(
-                {'q': self._cell_list, 'LCI': self._local_cell_indices_array, 'CRC': self._cell_contents_recv, 'CCC': self._cell_contents_count},
+                {'q': cell.cell_list.cell_list, 'LCI': self._local_cell_indices_array, 'CRC': self._cell_contents_recv, 'CCC': cell.cell_list.cell_contents_count},
                 {'CC': ctypes.c_int(self._cell_contents_recv.ncomp), 'shift': ctypes.c_int(data_in.npart),
-                 'end': ctypes.c_int(self._cell_list[self._cell_list.end])})
+                 'end': ctypes.c_int(cell.cell_list.cell_list[cell.cell_list.cell_list.end])})
 
         self.timer.pause()
 
@@ -242,12 +235,12 @@ class HaloCartesianSingleProcess(object):
 
         _static_args = {
             'PPA': 'doublepointerpointer',  # self._packing_pointers.ctypes_data
-            'cell_start': ctypes.c_int,  # ctypes.c_int(self._cell_list[self._cell_list.end])
+            'cell_start': ctypes.c_int,  # ctypes.c_int(cell.cell_list.cell_list[cell.cell_list.cell_list.end])
             'ncomp': ctypes.c_int  # ctypes.c_int(data.ncomp)
         }
 
         _args = {
-            'q': data.NullIntScalarArray,  # self._cell_list.ctypes_data
+            'q': data.NullIntScalarArray,  # cell.cell_list.cell_list.ctypes_data
             'CCA_I': self._cell_contents_array_index,
             'CIA': self._cell_indices_array,
             'CSA': data.NullDoubleScalarArray,  # self._cell_shifts_array
@@ -265,7 +258,7 @@ class HaloCartesianSingleProcess(object):
         """
 
         _args = {
-            'CCC': self._cell_contents_count,
+            'CCC': cell.cell_list.cell_contents_count,
             'ES': self._exchange_sizes,
             'CI': self._cell_indices_array,
             'CIL': self._cell_indices_len,
@@ -674,3 +667,6 @@ class HaloCartesianSingleProcess(object):
 
         self._cell_shifts_array_pbc = data.ScalarArray(_tmp_list_local, dtype=ctypes.c_double)
         self._cell_shifts_array_zero = data.ScalarArray(_tmp_zero, dtype=ctypes.c_double)
+
+
+HALOS = None

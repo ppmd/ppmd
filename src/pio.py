@@ -3,7 +3,7 @@
 ###############################################################################################################
 
 
-import runtime
+import mpi
 import sys
 
 ###############################################################################################################
@@ -16,7 +16,7 @@ def pprint(*args):
     :param string:
     :return:
     """
-    runtime.MPI_HANDLE.print_str(*args)
+    mpi.MPI_HANDLE.print_str(*args)
 
 def rprint(*args):
     """
@@ -29,9 +29,9 @@ def rprint(*args):
     for ix in args:
         _s += str(ix)
 
-    for ix in range(runtime.MPI_HANDLE.nproc):
-        if runtime.MPI_HANDLE.rank == ix:
-            print "rank",runtime.MPI_HANDLE.rank,":",_s
+    for ix in range(mpi.MPI_HANDLE.nproc):
+        if mpi.MPI_HANDLE.rank == ix:
+            print "rank",mpi.MPI_HANDLE.rank,":",_s
             sys.stdout.flush()
 
-        runtime.MPI_HANDLE.barrier()
+        mpi.MPI_HANDLE.barrier()

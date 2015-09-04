@@ -6,7 +6,7 @@ import re
 import pickle
 import access
 import gpucuda
-
+import halo
 
 
 class Dat(object):
@@ -321,6 +321,9 @@ class Dat(object):
         """
         assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
         self._cuda_dat.cpy_dth(self.ctypes_data)
+
+    def halo_exchange(self):
+        halo.HALOS.exchange(self)
 
 
 

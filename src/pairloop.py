@@ -8,6 +8,7 @@ import build
 import runtime
 import access
 import cell
+import mpi
 
 
 class _Base(build.GenericToolChain):
@@ -42,18 +43,18 @@ class _Base(build.GenericToolChain):
             loc_argname = dat[0]
 
             if type(dat[1]) == data.ScalarArray:
-                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
             elif type(dat[1]) == particle.Dat:
                 ncomp = dat[1].ncomp
-                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                 s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                 s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
             elif type(dat[1]) == particle.TypedDat:
 
                 ncomp = dat[1].ncomp
-                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
                 s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
                     ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
                 s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
@@ -102,12 +103,12 @@ class PairLoopRapaport(_Base):
         self._library_filename = self._unique_name + '.so'
 
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if runtime.MPI_HANDLE is None:
+            if mpi.MPI_HANDLE is None:
                 self._create_library()
             else:
-                if runtime.MPI_HANDLE.rank == 0:
+                if mpi.MPI_HANDLE.rank == 0:
                     self._create_library()
-                runtime.MPI_HANDLE.barrier()
+                mpi.MPI_HANDLE.barrier()
 
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
@@ -265,11 +266,11 @@ class PairLoopRapaport(_Base):
             loc_argname = dat[0]
 
             if type(dat[1]) == data.ScalarArray:
-                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
             elif type(dat[1]) == particle.Dat:
                 if dat[1].name == 'positions':
-                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
 
                     s += space + 'if (flag){ \n'
 
@@ -286,14 +287,14 @@ class PairLoopRapaport(_Base):
 
                 else:
                     ncomp = dat[1].ncomp
-                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                     s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                     s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
             elif type(dat[1]) == particle.TypedDat:
 
                 ncomp = dat[1].ncomp
-                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
                 s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
                     ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
                 s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
@@ -433,18 +434,18 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
             loc_argname = dat[0]
 
             if type(dat[1]) == data.ScalarArray:
-                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
             elif type(dat[1]) == particle.Dat:
                 ncomp = dat[1].ncomp
-                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                 s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                 s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
             elif type(dat[1]) == particle.TypedDat:
 
                 ncomp = dat[1].ncomp
-                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
                 s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
                     ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
                 s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
@@ -487,13 +488,13 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         self._library_filename = self._unique_name + '.so'
 
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if runtime.MPI_HANDLE is None:
+            if mpi.MPI_HANDLE is None:
                 self._create_library()
 
             else:
-                if runtime.MPI_HANDLE.rank == 0:
+                if mpi.MPI_HANDLE.rank == 0:
                     self._create_library()
-                runtime.MPI_HANDLE.barrier()
+                mpi.MPI_HANDLE.barrier()
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
@@ -579,11 +580,11 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
             loc_argname = dat[0]
 
             if type(dat[1]) == data.ScalarArray:
-                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
             elif type(dat[1]) == particle.Dat:
                 if dat[1].name == 'positions':
-                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
 
                     s += space + 'r1[0] =' + argname + '[LINIDX_2D(3,i,0)] -' + argname + '[LINIDX_2D(3,j,0)]; \n'
                     s += space + 'r1[1] =' + argname + '[LINIDX_2D(3,i,1)] -' + argname + '[LINIDX_2D(3,j,1)]; \n'
@@ -604,14 +605,14 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
 
                 else:
                     ncomp = dat[1].ncomp
-                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                     s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                     s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
             elif type(dat[1]) == particle.TypedDat:
 
                 ncomp = dat[1].ncomp
-                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
                 s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
                     ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
                 s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
@@ -837,7 +838,7 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
                 reduction_argname = dat[0] + '_reduction'
 
                 # Initialise variable
-                self._ompinitstr += data.ctypes_map[dat[1].dtype] + ' ' + reduction_argname + ' = ' + \
+                self._ompinitstr += build.ctypes_map[dat[1].dtype] + ' ' + reduction_argname + ' = ' + \
                                     build.omp_operator_init_values[reduction_handle.operator] + ';'
 
                 # Add to omp pragma
@@ -853,11 +854,11 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
 
             else:
                 if type(dat[1]) == data.ScalarArray:
-                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
                 elif type(dat[1]) == particle.Dat:
                     if dat[1].name == 'positions':
-                        s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                        s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
 
                         s += space + 'if (flag){ \n'
 
@@ -874,14 +875,14 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
 
                     else:
                         ncomp = dat[1].ncomp
-                        s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                        s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                         s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                         s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
                 elif type(dat[1]) == particle.TypedDat:
 
                     ncomp = dat[1].ncomp
-                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
                     s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
                         ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
                     s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
@@ -988,7 +989,7 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
                 reduction_argname = dat[0] + '_reduction'
 
                 # Initialise variable
-                self._ompinitstr += data.ctypes_map[dat[1].dtype] + ' ' + reduction_argname + ' = ' + \
+                self._ompinitstr += build.ctypes_map[dat[1].dtype] + ' ' + reduction_argname + ' = ' + \
                                     build.omp_operator_init_values[reduction_handle.operator] + ';'
 
                 # Add to omp pragma
@@ -1004,18 +1005,18 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
 
             else:
                 if type(dat[1]) == data.ScalarArray:
-                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
                 elif type(dat[1]) == particle.Dat:
                     ncomp = dat[1].ncomp
-                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                     s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                     s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
                 elif type(dat[1]) == particle.TypedDat:
 
                     ncomp = dat[1].ncomp
-                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
                     s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
                         ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
                     s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
@@ -1069,13 +1070,13 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
         self._library_filename = self._unique_name + '.so'
 
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if runtime.MPI_HANDLE is None:
+            if mpi.MPI_HANDLE is None:
                 self._create_library()
 
             else:
-                if runtime.MPI_HANDLE.rank == 0:
+                if mpi.MPI_HANDLE.rank == 0:
                     self._create_library()
-                runtime.MPI_HANDLE.barrier()
+                mpi.MPI_HANDLE.barrier()
         try:
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
@@ -1160,7 +1161,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
 
                 if dat[1].name == 'potential_energy':
 
-                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '; \n'
+                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '; \n'
                     s += '\n'
                     s += space + 'if (cp_h_flag + cpp_h_flag >= 1){ \n'
 
@@ -1172,11 +1173,11 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                     s += space + loc_argname + ' = ' + argname + ';\n'
                     s += space + '}\n'
                 else:
-                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
             elif type(dat[1]) == particle.Dat:
                 if dat[1].name == 'accelerations':
-                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
 
                     s += space + 'if (cp_h_flag > 0){ \n'
                     s += space + 'ri = null_array;\n'
@@ -1203,14 +1204,14 @@ class PairLoopRapaportHalo(PairLoopRapaport):
 
                 else:
                     ncomp = dat[1].ncomp
-                    s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
+                    s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                     s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                     s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
             elif type(dat[1]) == particle.TypedDat:
 
                 ncomp = dat[1].ncomp
-                s += space + data.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
+                s += space + build.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
                 s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
                     ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
                 s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
