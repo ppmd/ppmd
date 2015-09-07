@@ -174,6 +174,8 @@ class GroupByCell(object):
         :param state state_in: State containing particle dats.
         """
 
+
+
         self._state = state_in
         self._new_particle_dats = []
         self._sizes = []

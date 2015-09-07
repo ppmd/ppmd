@@ -97,6 +97,8 @@ class BaseMDSimulation(object):
         # short range potential data dict init
         _potential_dat_dict = self.potential.datdict(self.state)
 
+
+
         if self._cell_structure:
             # Need to pass entire state such that all particle dats can be sorted.
             cell.group_by_cell.setup(self.state)
@@ -156,8 +158,9 @@ class BaseMDSimulation(object):
 
         self.timer.start()
 
-        cell.cell_list.sort()
-        cell.group_by_cell.group_by_cell()
+        if self._cell_structure:
+            cell.cell_list.sort()
+            cell.group_by_cell.group_by_cell()
 
         # TODO move domain out of state>?
 

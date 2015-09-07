@@ -62,7 +62,7 @@ if __name__ == '__main__':
         n = 10
         N = n**3
         # n=860
-        rho = 5.
+        rho = 2.
         mu = 0.0
         nsig = 5.0
         

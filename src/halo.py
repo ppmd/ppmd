@@ -454,7 +454,7 @@ class HaloCartesianSingleProcess(object):
 
         '''How many cells are in each halo (internal to pack)'''
         self._cell_indices_len = host.Array(ncomp=26, dtype=ctypes.c_int)
-        print len(self._cell_indices_len.dat)
+
 
         '''How many cells are in each halo (external to recv)'''
         self._cell_indices_recv_len = host.Array(range(26), dtype=ctypes.c_int)

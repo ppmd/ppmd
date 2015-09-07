@@ -3,7 +3,6 @@ import math
 import ctypes
 import data
 import kernel
-import loop
 import build
 from mpi4py import MPI
 import mpi
@@ -71,54 +70,58 @@ class BaseDomain(object):
         """
         self._BC_state = state
         self._BCcode = '''
+
+        for(int _ix = 0; _ix < _n; _ix++){
         
-        if (abs_md(P[0]) > 0.5*E[0]){
-            const double E0_2 = 0.5*E[0];
-            const double x = P[0] + E0_2;
-            
-            if (x < 0){
-                P[0] = (E[0] - fmod(abs_md(x) , E[0])) - E0_2;
+            if (abs_md(P[3*_ix]) > 0.5*E[0]){
+                const double E0_2 = 0.5*E[0];
+                const double x = P[3*_ix] + E0_2;
+
+                if (x < 0){
+                    P[3*_ix] = (E[0] - fmod(abs_md(x) , E[0])) - E0_2;
+                }
+                else{
+                    P[3*_ix] = fmod( x , E[0] ) - E0_2;
+                }
             }
-            else{
-                P[0] = fmod( x , E[0] ) - E0_2;
+
+            if (abs_md(P[3*_ix+1]) > 0.5*E[1]){
+                const double E1_2 = 0.5*E[1];
+                const double x = P[3*_ix+1] + E1_2;
+
+                if (x < 0){
+                    P[3*_ix+1] = (E[1] - fmod(abs_md(x) , E[1])) - E1_2;
+                }
+                else{
+                    P[3*_ix+1] = fmod( x , E[1] ) - E1_2;
+                }
             }
+
+            if (abs_md(P[3*_ix+2]) > 0.5*E[2]){
+                const double E2_2 = 0.5*E[2];
+                const double x = P[3*_ix+2] + E2_2;
+
+                if (x < 0){
+                    P[3*_ix+2] = (E[2] - fmod(abs_md(x) , E[2])) - E2_2;
+                }
+                else{
+                    P[3*_ix+2] = fmod( x , E[2] ) - E2_2;
+                }
+            }
+
         }
-        
-        if (abs_md(P[1]) > 0.5*E[1]){
-            const double E1_2 = 0.5*E[1];
-            const double x = P[1] + E1_2;
-            
-            if (x < 0){
-                P[1] = (E[1] - fmod(abs_md(x) , E[1])) - E1_2;
-            }
-            else{
-                P[1] = fmod( x , E[1] ) - E1_2;
-            }
-        }
-        
-        if (abs_md(P[2]) > 0.5*E[2]){
-            const double E2_2 = 0.5*E[2];
-            const double x = P[2] + E2_2;
-            
-            if (x < 0){
-                P[2] = (E[2] - fmod(abs_md(x) , E[2])) - E2_2;
-            }
-            else{
-                P[2] = fmod( x , E[2] ) - E2_2;
-            }
-        }                
 
         '''
 
-        self._BCcodeDict = {'P': self._BC_state.positions, 'E': self._extent}
-        self._BCkernel = kernel.Kernel('BCkernel_simple', self._BCcode, headers=['math.h'])
-        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.as_func('n'), self._BC_state.types, self._BCkernel, self._BCcodeDict)
+        _BCcodeDict = {'P': self._BC_state.positions, 'E': self._extent}
+        _BCkernel = kernel.Kernel('BCkernel_simple', self._BCcode, headers=['math.h'], static_args={'_n': ctypes.c_int})
+        self._BCloop = build.SharedLib(_BCkernel, _BCcodeDict)
 
     def bc_execute(self):
         # self.boundary_correct(self._positions)
         assert self._BCloop is not None, "Run bc_setup first"
 
-        self._BCloop.execute()
+        self._BCloop.execute(static_args={'_n': self._BC_state.n})
 
     @property
     def extent(self):
@@ -568,41 +571,43 @@ class BaseDomainHalo(BaseDomain):
         '''
 
         _escape_guard_code = '''
-        
-        int b = 0;
-        
-        //Check x direction
-        if (P[0] < B[0]){
-            b ^= 32;
-        }else if (P[0] > B[1]){
-            b ^= 4;
+
+
+        for(int _ix=0; _ix < _n; _ix++){
+
+            int b = 0;
+
+            //Check x direction
+            if (P[3*_ix] < B[0]){
+                b ^= 32;
+            }else if (P[3*_ix] > B[1]){
+                b ^= 4;
+            }
+
+            //check y direction
+            if (P[3*_ix+1] < B[2]){
+                b ^= 16;
+            }else if (P[3*_ix+1] > B[3]){
+                b ^= 2;
+            }
+
+            //check z direction
+            if (P[3*_ix+2] < B[4]){
+                b ^= 1;
+            }else if (P[3*_ix+2] > B[5]){
+                b ^= 8;
+            }
+
+            //If b > 0 then particle has escaped through some boundary
+            if (b>0){
+                EC[BL[b]]++;        //lookup which direction then increment that direction escape count.
+                ECT[0]++;           //Increment total escape count by 1.
+                EI[EII[0]] = _ix;  //In escape ids we have pairs of local index and escape index, here write local index
+                EI[EII[0]+1] = BL[b]; //here write escape direction
+                EII[0]+=2;
+            }
+
         }
-        
-        //check y direction
-        if (P[1] < B[2]){
-            b ^= 16;
-        }else if (P[1] > B[3]){
-            b ^= 2;
-        }        
-        
-        //check z direction
-        if (P[2] < B[4]){
-            b ^= 1;
-        }else if (P[2] > B[5]){
-            b ^= 8;
-        }        
-        
-        //If b > 0 then particle has escaped through some boundary
-        if (b>0){
-            EC[BL[b]]++;        //lookup which direction then increment that direction escape count.
-            ECT[0]++;           //Increment total escape count by 1.
-            EI[EII[0]] = I[0];  //In escape ids we have pairs of local index and escape index, here write local index
-            EI[EII[0]+1] = BL[b]; //here write escape direction
-            EII[0]+=2;
-        }
-        
-        I[0]++;
-        
         '''
 
         _escape_guard_dict = {'P': self._BC_state.positions,
@@ -611,13 +616,11 @@ class BaseDomainHalo(BaseDomain):
                               'BL': self._bin_to_lin,
                               'ECT': self._escape_count_total,
                               'EI': self._escaping_ids,
-                              'EII': self._escape_internal_index,
-                              'I': self._internal_index
+                              'EII': self._escape_internal_index
                               }
 
-        _escape_guard_kernel = kernel.Kernel('FindEscapingParticles', _escape_guard_code, headers=['math.h'])
-        self._escape_guard_loop = loop.SingleAllParticleLoop(self._BC_state.as_func('n'), self._BC_state.types,
-                                                             _escape_guard_kernel, _escape_guard_dict)
+        _escape_guard_kernel = kernel.Kernel('FindEscapingParticles', _escape_guard_code, headers=['math.h'], static_args={'_n': ctypes.c_int})
+        self._escape_guard_loop = build.SharedLib(_escape_guard_kernel, _escape_guard_dict)
 
         '''Calculate shifts that should be applied when passing though the local domain extents
         Xl 0, Xu 1
@@ -854,8 +857,8 @@ class BaseDomainHalo(BaseDomain):
                     V[LINIDX_2D(3,eix,0)] = V[LINIDX_2D(3,ti,0)];
                     V[LINIDX_2D(3,eix,1)] = V[LINIDX_2D(3,ti,1)];
                     V[LINIDX_2D(3,eix,2)] = V[LINIDX_2D(3,ti,2)];
-                    
-                    RGID[eix] = RGID[ti];                  
+
+                    RGID[eix] = RGID[ti];
                     TYPE[eix] = TYPE[ti];
                                         
                     I[0] = ti;
@@ -898,55 +901,58 @@ class BaseDomainHalo(BaseDomain):
         self._unpacking_lib = build.SharedLib(_unpacking_kernel, _unpacking_dict)
 
         self._BCcode = '''
-        
-        if (abs_md(P[0]) > 0.5*E[0]){
-            const double E0_2 = 0.5*E[0];
-            const double x = P[0] + E0_2;
-            
-            if (x < 0){
-                P[0] = (E[0] - fmod(abs_md(x) , E[0])) - E0_2;
+
+
+
+        for(int _ix=0; _ix < _n; _ix++){
+
+            if (abs_md(P[3*_ix]) > 0.5*E[0]){
+                const double E0_2 = 0.5*E[0];
+                const double x = P[3*_ix] + E0_2;
+
+                if (x < 0){
+                    P[3*_ix] = (E[0] - fmod(abs_md(x) , E[0])) - E0_2;
+                }
+                else{
+                    P[3*_ix] = fmod( x , E[0] ) - E0_2;
+                }
             }
-            else{
-                P[0] = fmod( x , E[0] ) - E0_2;
+
+            if (abs_md(P[3*_ix+1]) > 0.5*E[1]){
+                const double E1_2 = 0.5*E[1];
+                const double x = P[3*_ix+1] + E1_2;
+
+                if (x < 0){
+                    P[3*_ix+1] = (E[1] - fmod(abs_md(x) , E[1])) - E1_2;
+                }
+                else{
+                    P[3*_ix+1] = fmod( x , E[1] ) - E1_2;
+                }
+            }
+
+            if (abs_md(P[3*_ix+2]) > 0.5*E[2]){
+                const double E2_2 = 0.5*E[2];
+                const double x = P[3*_ix+2] + E2_2;
+
+                if (x < 0){
+                    P[3*_ix+2] = (E[2] - fmod(abs_md(x) , E[2])) - E2_2;
+                }
+                else{
+                    P[3*_ix+2] = fmod( x , E[2] ) - E2_2;
+                }
             }
         }
-        
-        if (abs_md(P[1]) > 0.5*E[1]){
-            const double E1_2 = 0.5*E[1];
-            const double x = P[1] + E1_2;
-            
-            if (x < 0){
-                P[1] = (E[1] - fmod(abs_md(x) , E[1])) - E1_2;
-            }
-            else{
-                P[1] = fmod( x , E[1] ) - E1_2;
-            }
-        }
-        
-        if (abs_md(P[2]) > 0.5*E[2]){
-            const double E2_2 = 0.5*E[2];
-            const double x = P[2] + E2_2;
-            
-            if (x < 0){
-                P[2] = (E[2] - fmod(abs_md(x) , E[2])) - E2_2;
-            }
-            else{
-                P[2] = fmod( x , E[2] ) - E2_2;
-            }
-        }                
-        
         
         '''
 
-        self._BCcodeDict = {'P': self._BC_state.positions, 'E': self._extent}
-        self._BCkernel = kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'])
-        self._BCloop = loop.SingleAllParticleLoop(self._BC_state.as_func('n'), self._BC_state.types, self._BCkernel,
-                                                  self._BCcodeDict)
+        _BCcodeDict = {'P': self._BC_state.positions, 'E': self._extent}
+        _BCkernel = kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'], static_args={'_n':ctypes.c_int})
+        self._BCloop = build.SharedLib(_BCkernel, _BCcodeDict)
 
     def bc_execute(self):
 
         if self._nproc == 1:
-            self._BCloop.execute()
+            self._BCloop.execute(static_args={'_n':self._BC_state.n})
             # print "normal BCs applied"
         else:
 
@@ -962,7 +968,7 @@ class BaseDomainHalo(BaseDomain):
             self._escape_count.zero()
 
             '''Find escaping particles'''
-            self._escape_guard_loop.execute()
+            self._escape_guard_loop.execute(static_args={'_n': self._BC_state.n})
 
             '''Exchange sizes'''
             for ix in range(26):
