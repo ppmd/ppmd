@@ -1009,7 +1009,7 @@ class BaseDomainHalo(BaseDomain):
 
             self._unpacking_lib.execute()
 
-            self._BC_state.set_n(self._internal_index[0])
+            self._BC_state.n = self._internal_index[0]
 
             # print "setting halos", self._internal_index[0]
 

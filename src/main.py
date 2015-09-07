@@ -48,7 +48,7 @@ if __name__ == '__main__':
     plotting = False
     
     # log energy?
-    logging = False
+    logging = True
 
     # Write XYZ?
     writing = False
@@ -211,7 +211,7 @@ if __name__ == '__main__':
     if mpi.MPI_HANDLE.rank ==0:
         try:
 
-            #a=input("PRESS ENTER TO CONTINUE.\n")
+            a=input("PRESS ENTER TO CONTINUE.\n")
             pass
         except:
             pass

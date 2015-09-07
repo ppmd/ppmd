@@ -1,3 +1,4 @@
+import host
 import ctypes
 import particle
 import numpy as np
@@ -28,7 +29,7 @@ np.set_printoptions(threshold='nan')
 #####################################################################################
 
 
-class ScalarArray(object):
+class ScalarArray(host.Array):
     """
     Base class to hold a single floating point property.
     
@@ -38,38 +39,21 @@ class ScalarArray(object):
     
     """
 
-    def __init__(self, initial_value=None, name=None, ncomp=1, val=None, dtype=ctypes.c_double, max_size=None):
+    def __init__(self, initial_value=None, name=None, ncomp=1, dtype=ctypes.c_double):
         """
         Creates scalar with given initial value.
         """
 
-        if max_size is None:
-            self._max_size = ncomp
-        else:
-            self._max_size = max_size
-
-        self._dtype = dtype
-
-        if name is not None:
-            self._name = name
-        self._N1 = ncomp
+        self.name = name
+        self.idtype = dtype
 
         if initial_value is not None:
-            if type(initial_value) is np.ndarray:
-                self._Dat = np.array(initial_value, dtype=self._dtype, order='C')
-                self._N1 = initial_value.shape[0]
-                self._max_size = self._N1
-            elif type(initial_value) == list:
-                self._Dat = np.array(np.array(initial_value), dtype=self._dtype, order='C')
-                self._N1 = len(initial_value)
-                self._max_size = self._N1
+            if (type(initial_value) is np.ndarray) or type(initial_value) is list:
+                self._create_from_existing(initial_value,dtype)
             else:
-                self._Dat = float(initial_value) * np.ones([self._N1], dtype=self._dtype, order='C')
-
-        elif val is None:
-            self._Dat = np.zeros([self._max_size], dtype=self._dtype, order='C')
-        elif val is not None:
-            self._Dat = np.array([val], dtype=self._dtype, order='C')
+                self._create_from_existing(np.array(list(initial_value)),dtype)
+        else:
+            self._create_zeros(ncomp, dtype)
 
         self._A = False
         self._Aarray = None
@@ -77,186 +61,68 @@ class ScalarArray(object):
         self._cuda_dat = None
 
 
-    @property
-    def dat(self):
-        """
-        Returns stored data as numpy array.
-        """
-        return self._Dat
-
-    @dat.setter
-    def dat(self, val):
-        if type(val) is np.ndarray:
-            self._Dat = val
-        else:
-            self._Dat = np.array([val], dtype=self._dtype)
-
-
     def __getitem__(self, ix):
-        return self._Dat[ix]
+        return self.dat[ix]
+
+    def __call__(self, access=access.RW, halo=True):
+        return self
+
+    def __setitem__(self, ix, val):
+        self.dat[ix] = np.array([val], dtype=self.dtype)
+
+        if self._A is True:
+            self._Aarray[ix] = np.array([val], dtype=self.dtype)
+            self._Alength += 1
+
+    def __str__(self):
+        return str(self.dat)
+
+    def resize(self, new_length):
+        if new_length > self.ncomp:
+            self.realloc(new_length)
+
 
     def scale(self, val):
         """
         Scale data array by value val.
-        
+
         :arg double val: Coefficient to scale all elements by.
         """
-
-        self._Dat = self._Dat * np.array([val], dtype=self._dtype)
-
-    def __call__(self, access=access.RW, halo=True):
-
-        return self
-
-    def zero(self):
-        """
-        Zero all elements in array.
-        """
-
-        self._Dat = np.zeros(self._N1, dtype=self._dtype, order='C')
-
-    def __setitem__(self, ix, val):
-        self._Dat[ix] = np.array([val], dtype=self._dtype)
-
-        if self._A is True:
-            self._Aarray[ix] = np.array([val], dtype=self._dtype)
-            self._Alength += 1
-
-    def __str__(self):
-        return str(self._Dat)
-
-    @property
-    def ctypes_data(self):
-        """Return ctypes-pointer to data."""
-        return self._Dat.ctypes.data_as(ctypes.POINTER(self._dtype))
-
-    @property
-    def dtype(self):
-        """ Return Dat c data ctype"""
-        return self._dtype
+        self.dat = self.dat * np.array([val], dtype=self.dtype)
 
     @property
     def ctypes_value(self):
         """Return first value in correct type."""
-        return self._dtype(self._Dat[0])
-
-    @property
-    def name(self):
-        """
-        Returns name of particle dat.
-        """
-        return self._name
-
-    @property
-    def ncomp(self):
-        """
-        Return number of components.
-        """
-        return self._N1
-
-    @property
-    def max_size(self):
-        """
-        Return actual length of array.
-        """
-        return self._max_size
-
-    @ncomp.setter
-    def ncomp(self, val):
-        assert val <= self._max_size, "ncomp, max_size error"
-        self._N1 = val
+        return self.dtype(self.dat[0])
 
     @property
     def min(self):
         """Return minimum"""
-        return self._Dat.min()
+        return self.dat.min()
 
     @property
     def max(self):
         """Return maximum"""
-        return self._Dat.max()
+        return self.dat.max()
 
     @property
     def mean(self):
         """Return mean"""
-        return self._Dat.mean()
-
-    @property
-    def name(self):
-        return self._name
-
-    def resize(self, n):
-        if n > self._max_size:
-            self._max_size = n + (n - self._max_size) * 10
-            self._Dat = np.resize(self._Dat, self._max_size)
-            # self._N1 = n
+        return self.dat.mean()
 
     @property
     def end(self):
         """
         Returns end index of array.
         """
-        return self._max_size - 1
+        return self.ncomp - 1
 
     @property
     def sum(self):
         """
         Return array sum
         """
-        return self._Dat.sum()
-
-    def dat_write(self, dir_name='./output', filename=None, rename_override=False):
-        """
-        Function to write ScalarArray objects to disk.
-        
-        :arg str dir_name: directory to write to, default ./output.
-        :arg str filename: Filename to write to, default array name or data.SArray if name unset.
-        :arg bool rename_override: Flagging as True will disable autorenaming of output file.
-        """
-
-        if (self._name is not None) and (filename is None):
-            filename = str(self._name) + '.SArray'
-        if filename is None:
-            filename = 'data.SArray'
-
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-
-        if os.path.exists(os.path.join(dir_name, filename)) & (rename_override is not True):
-            filename = re.sub('.SArray', datetime.datetime.now().strftime("_%H%M%S_%d%m%y") + '.SArray', filename)
-            if os.path.exists(os.path.join(dir_name, filename)):
-                filename = re.sub('.SArray', datetime.datetime.now().strftime("_%f") + '.SArray', filename)
-                assert os.path.exists(os.path.join(dir_name, filename)), "DatWrite Error: No unquie name found."
-
-        f = open(os.path.join(dir_name, filename), 'w')
-        pickle.dump(self._Dat, f, pickle.HIGHEST_PROTOCOL)
-        f.close()
-
-    def dat_read(self, dir_name='./output', filename=None):
-        """
-        Function to read Dat objects from disk.
-        
-        :arg str dir_name: directory to read from, default ./output.
-        :arg str filename: filename to read from.
-        """
-
-        assert os.path.exists(dir_name), "Read directory not found"
-        assert filename is not None, "DatRead Error: No filename given."
-
-        f = open(os.path.join(dir_name, filename), 'r')
-        self = pickle.load(f)
-        f.close()
-
-    def average_reset(self):
-        """Reset and initialises averaging."""
-        if self._A is False:
-
-            self._Aarray = np.zeros([self._N1], dtype=self._dtype, order='C')
-            self._Alength = 0.0
-            self._A = True
-        else:
-            self._Aarray.fill(0.)
-            self._Alength = 0.0
+        return self.dat.sum()
 
     @property
     def average(self):
@@ -279,36 +145,19 @@ class ScalarArray(object):
     def average_update(self):
         """Copy values from Dat into averaging array"""
         if self._A is True:
-            self._Aarray += self._Dat
+            self._Aarray += self.dat
             self._Alength += 1
         else:
             self.average_reset()
-            self._Aarray += self._Dat
+            self._Aarray += self.dat
             self._Alength += 1
-
-    def init_halo_dat(self):
-        """
-        Create a secondary dat container.
-        """
-
-        if self._DatHaloInit is False:
-            self._max_size *= 2
-            self._Dat = np.resize(self._Dat, self._max_size)
-            self._DatHaloInit = True
-
-    @property
-    def dat_halo_init(self):
-        """
-        Return status of halo dat.
-        """
-        return self._DatHaloInit
 
     def add_cuda_dat(self):
         """
         Create a corresponding CudaDeviceDat.
         """
         if self._cuda_dat is None:
-            self._cuda_dat = gpucuda.CudaDeviceDat(size=self._max_size, dtype=self._dtype)
+            self._cuda_dat = gpucuda.CudaDeviceDat(size=self.ncomp, dtype=self.dtype)
 
     def get_cuda_dat(self):
         """

@@ -13,8 +13,17 @@ class Array(object):
     """
     Basic dynamic memory array on host, with some methods.
     """
-    def _create(self, length=1, dtype=ctypes.c_double):
+    def _create_zeros(self, length=1, dtype=ctypes.c_double):
+        self._idtype = dtype
         self.dat = np.zeros(length, dtype=dtype, order='C')
+
+    def _create_from_existing(self, ndarray=None, dtype=ctypes.c_double):
+        self._idtype = dtype
+        self.dat = np.array(ndarray, dtype=dtype, order='C')
+
+    @property
+    def ncomp(self):
+        return self.dat.shape[0]
 
     @property
     def size(self):
@@ -22,17 +31,17 @@ class Array(object):
 
     @property
     def ctypes_data(self):
-        return self.dat.ctypes.data_as(ctypes.POINTER(self.dat.dtype))
+        return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def realloc(self, length):
         self.dat.resize(length)
 
     def zero(self):
-        self.dat.fill(self.dat.dtype(0.))
+        self.dat.fill(self.idtype(0))
 
     @property
     def dtype(self):
-        return self.dat.dtype
+        return self.idtype
 
 
 ################################################################################################

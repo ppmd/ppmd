@@ -53,8 +53,7 @@ class BaseMDSimulation(object):
 
         # Add scalar dats.
         # Potential energy.
-        self.state.u = data.ScalarArray(max_size=2, name='potential_energy')
-        self.state.u.init_halo_dat()
+        self.state.u = data.ScalarArray(ncomp=2, name='potential_energy')
 
         # Kinetic energy
         self.state.k = data.ScalarArray()

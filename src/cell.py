@@ -68,13 +68,13 @@ class CellList(object):
         """
 
         '''Construct initial cell list'''
-        self._cell_list = data.ScalarArray(dtype=ct.c_int, max_size=self._positions.max_size + self._domain.cell_count + 1)
+        self._cell_list = data.ScalarArray(dtype=ct.c_int, ncomp=self._positions.max_size + self._domain.cell_count + 1)
 
         '''Keep track of number of particles per cell'''
         self._cell_contents_count = data.ScalarArray(np.zeros([self._domain.cell_count]), dtype=ct.c_int)
 
         '''Reverse lookup, given a local particle id, get containing cell.'''
-        self._cell_reverse_lookup = data.ScalarArray(dtype=ct.c_int, max_size=self._positions.max_size)
+        self._cell_reverse_lookup = data.ScalarArray(dtype=ct.c_int, ncomp=self._positions.max_size)
         
         
 
@@ -184,7 +184,7 @@ class GroupByCell(object):
             self._new_particle_dats.append(particle.Dat(n1=_dat.npart, n2=_dat.ncomp, dtype=_dat.dtype))
             self._sizes.append(_dat.ncomp)
 
-        self._cell_list_new = data.ScalarArray(ncomp=cell_list.cell_list.max_size, dtype=ct.c_int)
+        self._cell_list_new = data.ScalarArray(ncomp=cell_list.cell_list.ncomp, dtype=ct.c_int)
 
         if cell_list.domain.halos is not False:
             _triple_loop = 'for(int iz = 1; iz < (CA[2]-1); iz++){' \

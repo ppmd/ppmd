@@ -26,10 +26,10 @@ import datetime
 import particle
 import inspect
 import build
-
+import data
 import runtime
-
 import pio
+import mpi
 np.set_printoptions(threshold='nan')
 
 
@@ -711,7 +711,7 @@ class DrawParticles(object):
                     self._Dat.resize(self._NT)
 
                 if self._gids is None:
-                    self._gids = ScalarArray(ncomp=self._NT, dtype=ctypes.c_int)
+                    self._gids = data.ScalarArray(ncomp=self._NT, dtype=ctypes.c_int)
                 else:
                     self._gids.resize(self._NT)
 
@@ -819,10 +819,10 @@ class EnergyStore(object):
 
         assert len(self._t) > 0, "EnergyStore error, no data to plot"
 
-        self._T_store = ScalarArray(self._t)
-        self._K_store = ScalarArray(self._k)
-        self._U_store = ScalarArray(self._u)
-        self._Q_store = ScalarArray(self._q)
+        self._T_store = data.ScalarArray(self._t)
+        self._K_store = data.ScalarArray(self._k)
+        self._U_store = data.ScalarArray(self._u)
+        self._Q_store = data.ScalarArray(self._q)
 
 
         '''REPLACE THIS WITH AN MPI4PY REDUCE CALL'''
@@ -834,11 +834,11 @@ class EnergyStore(object):
 
             # make a temporary buffer.
             if self._Mh.rank == 0:
-                _buff = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+                _buff = data.ScalarArray(ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
                 _T = self._T_store.dat
-                _Q = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
-                _U = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
-                _K = ScalarArray(initial_value=0.0, ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+                _Q = data.ScalarArray( ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+                _U = data.ScalarArray(ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
+                _K = data.ScalarArray(ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
 
                 _Q.dat[::] += self._Q_store.dat[::]
                 _U.dat[::] += self._U_store.dat[::]
