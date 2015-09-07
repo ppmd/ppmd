@@ -1,5 +1,4 @@
 import kernel
-import constant
 import data
 import ctypes
 import access
@@ -153,10 +152,10 @@ class LennardJonesShifted(BasePotential):
         }
         
         '''
-        constants = (constant.Constant('sigma2', self._sigma ** 2),
-                     constant.Constant('rc2', self._rc ** 2),
-                     constant.Constant('CF', self._C_F),
-                     constant.Constant('CV', self._C_V))
+        constants = (kernel.Constant('sigma2', self._sigma ** 2),
+                     kernel.Constant('rc2', self._rc ** 2),
+                     kernel.Constant('CF', self._C_F),
+                     kernel.Constant('CV', self._C_V))
 
         reductions = (kernel.Reduction('u', 'u[0]', '+'),)
 
@@ -248,11 +247,11 @@ class LennardJones(LennardJonesShifted):
 
         }
         '''
-        constants = (constant.Constant('sigma2', self._sigma ** 2),
-                     constant.Constant('rc2', self._rc ** 2),
-                     constant.Constant('internalshift', self._shift_internal),
-                     constant.Constant('CF', self._C_F),
-                     constant.Constant('CV', self._C_V))
+        constants = (kernel.Constant('sigma2', self._sigma ** 2),
+                     kernel.Constant('rc2', self._rc ** 2),
+                     kernel.Constant('internalshift', self._shift_internal),
+                     kernel.Constant('CF', self._C_F),
+                     kernel.Constant('CV', self._C_V))
 
         reductions = (kernel.Reduction('u', 'u[0]', '+'),)
 
@@ -293,11 +292,11 @@ class LennardJonesOpenMP(LennardJones):
         }
         
         '''
-        constants = (constant.Constant('sigma2', self._sigma ** 2),
-                     constant.Constant('rc2', self._rc ** 2),
-                     constant.Constant('internalshift', self._shift_internal),
-                     constant.Constant('CF', self._C_F),
-                     constant.Constant('CV', self._C_V))
+        constants = (kernel.Constant('sigma2', self._sigma ** 2),
+                     kernel.Constant('rc2', self._rc ** 2),
+                     kernel.Constant('internalshift', self._shift_internal),
+                     kernel.Constant('CF', self._C_F),
+                     kernel.Constant('CV', self._C_V))
 
         reductions = (kernel.Reduction('u', 'u[0]', '+'),)
 
@@ -440,11 +439,11 @@ class LennardJonesCounter(LennardJones):
         }
         
         '''
-        constants = (constant.Constant('sigma2', self._sigma ** 2),
-                     constant.Constant('rc2', self._rc ** 2),
-                     constant.Constant('internalshift', self._shift_internal),
-                     constant.Constant('CF', self._C_F),
-                     constant.Constant('CV', self._C_V))
+        constants = (kernel.Constant('sigma2', self._sigma ** 2),
+                     kernel.Constant('rc2', self._rc ** 2),
+                     kernel.Constant('internalshift', self._shift_internal),
+                     kernel.Constant('CF', self._C_F),
+                     kernel.Constant('CV', self._C_V))
 
         reductions = (kernel.Reduction('u', 'u[0]', '+'),)
 

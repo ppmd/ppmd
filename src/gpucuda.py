@@ -13,7 +13,6 @@ import runtime
 import pio
 import kernel
 import data
-import constant
 import access
 import cell
 import mpi
@@ -468,7 +467,7 @@ class aebpc(object):
             'c': c
         }
 
-        _consts = (constant.Constant('e', 4),)
+        _consts = (kernel.Constant('e', 4),)
 
         _static_args = {'d': ct.c_int}
 

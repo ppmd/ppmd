@@ -17,7 +17,6 @@ except ImportError:
 
 import collections
 import kernel
-import constant
 import ctypes
 import time
 import os
@@ -103,7 +102,7 @@ class VelocityVerlet(object):
 
         self._max_it = int(math.ceil(self._T/self._dt))
 
-        self._constants = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
+        self._constants = [kernel.Constant('dt',self._dt), kernel.Constant('dht',0.5*self._dt),]
 
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
         self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
@@ -170,7 +169,7 @@ class VelocityVerletAnderson(VelocityVerlet):
             
         self._max_it = int(math.ceil(self._T/self._dt))
 
-        self._constants1 = [constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt),]
+        self._constants1 = [kernel.Constant('dt',self._dt), kernel.Constant('dht',0.5*self._dt),]
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
         self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
 
@@ -204,7 +203,7 @@ class VelocityVerletAnderson(VelocityVerlet):
 
         '''
 
-        self._constants2_thermostat = [constant.Constant('rate',self._dt*self._nu), constant.Constant('dt',self._dt), constant.Constant('dht',0.5*self._dt), constant.Constant('temperature',self._Temp),]
+        self._constants2_thermostat = [kernel.Constant('rate',self._dt*self._nu), kernel.Constant('dt',self._dt), kernel.Constant('dht',0.5*self._dt), kernel.Constant('temperature',self._Temp),]
 
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
         self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
@@ -296,15 +295,15 @@ class RadialDistributionPeriodicNVE(object):
         }
         '''
         
-        _constants=(constant.Constant('rmaxoverrsteps', 0.2*self._rmax/self._rsteps ),
-                    constant.Constant('rstepsoverrmax', self._rsteps/self._rmax ),
-                    constant.Constant('rmax2', self._rmax**2 ),
-                    constant.Constant('extent0', self._extent[0] ),
-                    constant.Constant('extent1', self._extent[1] ),
-                    constant.Constant('extent2', self._extent[2] ),
-                    constant.Constant('exto20', 0.5*self._extent[0] ),
-                    constant.Constant('exto21', 0.5*self._extent[1] ),
-                    constant.Constant('exto22', 0.5*self._extent[2] )
+        _constants=(kernel.Constant('rmaxoverrsteps', 0.2*self._rmax/self._rsteps ),
+                    kernel.Constant('rstepsoverrmax', self._rsteps/self._rmax ),
+                    kernel.Constant('rmax2', self._rmax**2 ),
+                    kernel.Constant('extent0', self._extent[0] ),
+                    kernel.Constant('extent1', self._extent[1] ),
+                    kernel.Constant('extent2', self._extent[2] ),
+                    kernel.Constant('exto20', 0.5*self._extent[0] ),
+                    kernel.Constant('exto21', 0.5*self._extent[1] ),
+                    kernel.Constant('exto22', 0.5*self._extent[2] )
                     )
 
         _grkernel = kernel.Kernel('radial_distro_periodic_static', _kernel, _constants, headers=_headers)
