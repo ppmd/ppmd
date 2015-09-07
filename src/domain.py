@@ -67,7 +67,7 @@ class BaseDomain(object):
         """
         Setup loop to apply periodic boundary conditions to input positions.
         
-        :arg particle.Dat positions: particle.Dat containing particle positions.
+        :arg data.ParticleDat positions: data.ParticleDat containing particle positions.
         """
         self._BC_state = state
         self._BCcode = '''

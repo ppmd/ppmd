@@ -23,7 +23,6 @@ import time
 import os
 import re
 import datetime
-import particle
 import inspect
 import build
 import data
@@ -542,12 +541,12 @@ class VelocityAutoCorrelation(object):
 
     :arg state state: Input state containing velocities.
     :arg int size: Initial length of VAF array (optional).
-    :arg particle.Dat V0: Initial velocity Dat (optional).
+    :arg data.ParticleDat V0: Initial velocity Dat (optional).
     """
 
     def __init__(self, state, size=0, v0=None):
         self._state = state
-        self._V0 = particle.Dat(self._state.n, 3, name='v0')
+        self._V0 = data.ParticleDat(self._state.n, 3, name='v0')
         self._VT = state.velocities
 
         self._VO_SET = False
@@ -581,7 +580,7 @@ class VelocityAutoCorrelation(object):
         """
         Set an initial velocity Dat to use as V_0. Requires either a velocity Dat or a state as an argument. V_0 will be set to either the passed velocities or to the velocities in the passed state.
 
-        :arg particle.Dat v0: Velocity Dat.
+        :arg data.ParticleDat v0: Velocity Dat.
         :arg state state: State class containing velocities.
         """
 
@@ -706,7 +705,7 @@ class DrawParticles(object):
 
                 '''Allocate if needed'''
                 if self._Dat is None:
-                    self._Dat = particle.Dat(self._NT, 3)
+                    self._Dat = data.ParticleDat(self._NT, 3)
                 else:
                     self._Dat.resize(self._NT)
 

@@ -12,7 +12,6 @@ import atexit
 import runtime
 import pio
 import kernel
-import particle
 import data
 import constant
 import access
@@ -258,7 +257,7 @@ def cuda_host_register(dat):
     """
     if type(dat) == data.ScalarArray:
         _s = ct.c_size_t(dat.max_size * ct.sizeof(dat.dtype))
-    elif type(dat) == particle.Dat:
+    elif type(dat) == data.ParticleDat:
         _s = ct.c_size_t(dat.max_size * dat.ncomp * ct.sizeof(dat.dtype))
 
     LIBHELPER['cudaHostRegisterWrapper'](dat.ctypes_data, _s)
@@ -635,7 +634,7 @@ class _Base(object):
                 _mode = access.RW
             loc_argname = dat[0]
 
-            if type(dat[1]) == particle.Dat:
+            if type(dat[1]) == data.ParticleDat:
                 s += self._mode_arg_dec_str(_mode) + host.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' d_' + loc_argname + ','
             if type(dat[1]) == data.ScalarArray:
                 s += self._mode_arg_dec_str(_mode) + host.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' d_' + loc_argname + ','
@@ -661,7 +660,7 @@ class _Base(object):
             argname = 'd_' + dat[0]
             loc_argname = dat[0]
 
-            if type(dat[1]) == particle.Dat:
+            if type(dat[1]) == data.ParticleDat:
                 _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
                 _s += space + loc_argname + ' = ' + argname + '+' + str(dat[1].ncomp) + '*_ix;\n'
 
@@ -1114,7 +1113,7 @@ class SimpleCudaPairLoop(_Base):
                 dat = dat_orig[0], dat_orig[1][0]
             else:
                 dat = dat_orig
-            if type(dat[1]) == particle.Dat:
+            if type(dat[1]) == data.ParticleDat:
                 if dat[1].name == 'accelerations':
                     s = 'd_' + dat[0]
         return s
@@ -1126,7 +1125,7 @@ class SimpleCudaPairLoop(_Base):
                 dat = dat_orig[0], dat_orig[1][0]
             else:
                 dat = dat_orig
-            if type(dat[1]) == particle.Dat:
+            if type(dat[1]) == data.ParticleDat:
                 if dat[1].name == 'positions':
                     s = 'd_' + dat[0]
         return s
@@ -1149,7 +1148,7 @@ class SimpleCudaPairLoop(_Base):
             argname = 'd_' + dat[0]
             loc_argname = dat[0]
 
-            if type(dat[1]) == particle.Dat:
+            if type(dat[1]) == data.ParticleDat:
                 if dat[1].name == 'positions':
                     _s += space + 'const ' + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
 
@@ -1409,7 +1408,7 @@ class SimpleCudaPairLoopHalo(SimpleCudaPairLoop):
             argname = 'd_' + dat[0]
             loc_argname = dat[0]
 
-            if type(dat[1]) == particle.Dat:
+            if type(dat[1]) == data.ParticleDat:
                 if dat[1].name == 'positions':
                     _s += space + loc_argname + '[1] = ' + argname + '+3*_iy;\n'
                 elif dat[1].name == 'accelerations':
@@ -1696,7 +1695,7 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
             argname = 'd_' + dat[0]
             loc_argname = dat[0]
 
-            if type(dat[1]) == particle.Dat:
+            if type(dat[1]) == data.ParticleDat:
                 if dat[1].name == 'positions':
                     _s += space + loc_argname + '[1] = ' + argname + '+3*_iy;\n'
                     # _s += 'memcpy(&_p2[0], &' + argname + '[_iy*3], sizeof(double)*3); \n'

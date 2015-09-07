@@ -4,7 +4,6 @@ import pio
 import runtime
 import state
 import numpy as np
-import particle
 import math
 import random
 import data
@@ -43,14 +42,14 @@ class BaseMDSimulation(object):
 
         # Add particle dats
         _factor = 27
-        self.state.positions = particle.Dat(n, 3, name='positions', max_npart=_factor * n)
-        self.state.velocities = particle.Dat(n, 3, name='velocities', max_npart=_factor * n)
-        self.state.forces = particle.Dat(n, 3, name='forces', max_npart=_factor * n)
-        self.state.global_ids = particle.Dat(n, 1, dtype=ct.c_int, name='global_ids', max_npart=_factor * n)
-        self.state.types = particle.Dat(n, 1, dtype=ct.c_int, name='types', max_npart=_factor * n)
+        self.state.positions = data.ParticleDat(n, 3, name='positions', max_npart=_factor * n)
+        self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
+        self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
+        self.state.global_ids = data.ParticleDat(n, 1, dtype=ct.c_int, name='global_ids', max_npart=_factor * n)
+        self.state.types = data.ParticleDat(n, 1, dtype=ct.c_int, name='types', max_npart=_factor * n)
 
         # Add typed dats.
-        self.state.mass = particle.TypedDat(n, 1, 1.0)
+        self.state.mass = data.TypedDat(n, 1, 1.0)
 
         # Add scalar dats.
         # Potential energy.

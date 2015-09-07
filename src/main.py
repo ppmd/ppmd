@@ -21,7 +21,6 @@ import method
 import data
 import gpucuda
 
-import particle
 import os
 import simulation
 import halo

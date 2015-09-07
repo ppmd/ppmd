@@ -1,5 +1,4 @@
 import numpy as np
-import particle
 import ctypes
 import os
 import data
@@ -46,13 +45,13 @@ class _Base(build.GenericToolChain):
             if type(dat[1]) == data.ScalarArray:
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
-            elif type(dat[1]) == particle.Dat:
+            elif type(dat[1]) == data.ParticleDat:
                 ncomp = dat[1].ncomp
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                 s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                 s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
-            elif type(dat[1]) == particle.TypedDat:
+            elif type(dat[1]) == data.TypedDat:
 
                 ncomp = dat[1].ncomp
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
@@ -269,7 +268,7 @@ class PairLoopRapaport(_Base):
             if type(dat[1]) == data.ScalarArray:
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
-            elif type(dat[1]) == particle.Dat:
+            elif type(dat[1]) == data.ParticleDat:
                 if dat[1].name == 'positions':
                     s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
 
@@ -292,7 +291,7 @@ class PairLoopRapaport(_Base):
                     s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                     s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
-            elif type(dat[1]) == particle.TypedDat:
+            elif type(dat[1]) == data.TypedDat:
 
                 ncomp = dat[1].ncomp
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
@@ -437,13 +436,13 @@ class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
             if type(dat[1]) == data.ScalarArray:
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
-            elif type(dat[1]) == particle.Dat:
+            elif type(dat[1]) == data.ParticleDat:
                 ncomp = dat[1].ncomp
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                 s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                 s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
-            elif type(dat[1]) == particle.TypedDat:
+            elif type(dat[1]) == data.TypedDat:
 
                 ncomp = dat[1].ncomp
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
@@ -583,7 +582,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
             if type(dat[1]) == data.ScalarArray:
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
-            elif type(dat[1]) == particle.Dat:
+            elif type(dat[1]) == data.ParticleDat:
                 if dat[1].name == 'positions':
                     s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
 
@@ -610,7 +609,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
                     s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                     s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
-            elif type(dat[1]) == particle.TypedDat:
+            elif type(dat[1]) == data.TypedDat:
 
                 ncomp = dat[1].ncomp
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
@@ -857,7 +856,7 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
                 if type(dat[1]) == data.ScalarArray:
                     s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
-                elif type(dat[1]) == particle.Dat:
+                elif type(dat[1]) == data.ParticleDat:
                     if dat[1].name == 'positions':
                         s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
 
@@ -880,7 +879,7 @@ class PairLoopRapaportOpenMP(PairLoopRapaport):
                         s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                         s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
-                elif type(dat[1]) == particle.TypedDat:
+                elif type(dat[1]) == data.TypedDat:
 
                     ncomp = dat[1].ncomp
                     s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
@@ -1008,13 +1007,13 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
                 if type(dat[1]) == data.ScalarArray:
                     s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
-                elif type(dat[1]) == particle.Dat:
+                elif type(dat[1]) == data.ParticleDat:
                     ncomp = dat[1].ncomp
                     s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                     s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                     s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
-                elif type(dat[1]) == particle.TypedDat:
+                elif type(dat[1]) == data.TypedDat:
 
                     ncomp = dat[1].ncomp
                     s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
@@ -1176,7 +1175,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                 else:
                     s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
-            elif type(dat[1]) == particle.Dat:
+            elif type(dat[1]) == data.ParticleDat:
                 if dat[1].name == 'accelerations':
                     s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
 
@@ -1209,7 +1208,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                     s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
                     s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
 
-            elif type(dat[1]) == particle.TypedDat:
+            elif type(dat[1]) == data.TypedDat:
 
                 ncomp = dat[1].ncomp
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'

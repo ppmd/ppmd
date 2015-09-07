@@ -1,5 +1,4 @@
 import numpy as np
-import particle
 import ctypes
 import os
 import data
@@ -89,12 +88,12 @@ class _Base(build.GenericToolChain):
             if (type(dat[1]) == data.ScalarArray) or (type(dat[1]) == host.PointerArray):
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
-            if type(dat[1]) == particle.Dat:
+            if type(dat[1]) == data.ParticleDat:
                 ncomp = dat[1].ncomp
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
                 s += space + loc_argname + ' = ' + argname + '+' + str(ncomp) + '*i;\n'
 
-            if type(dat[1]) == particle.TypedDat:
+            if type(dat[1]) == data.TypedDat:
                 ncomp = dat[1].ncol
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
                 s += space + loc_argname + ' = &' + argname + '[LINIDX_2D(' + str(
@@ -365,13 +364,13 @@ class SingleAllParticleLoopOpenMP(SingleAllParticleLoop):
                 if type(dat[1]) == data.ScalarArray:
                     s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
-                elif type(dat[1]) == particle.Dat:
+                elif type(dat[1]) == data.ParticleDat:
 
                     ncomp = dat[1].ncomp
                     s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
                     s += space + loc_argname + ' = ' + argname + '+' + str(ncomp) + '*i;\n'
 
-                elif type(dat[1]) == particle.TypedDat:
+                elif type(dat[1]) == data.TypedDat:
 
                     ncomp = dat[1].ncomp
                     s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'

@@ -1,5 +1,4 @@
-import particle
-
+import data
 
 
 class AsFunc(object):
@@ -40,7 +39,7 @@ class BaseMDState(object):
         """
 
         # Add to instance list of particle dats.
-        if type(value) is particle.Dat:
+        if type(value) is data.ParticleDat:
             object.__setattr__(self, name, value)
             self.particle_dats.append(name)
 
