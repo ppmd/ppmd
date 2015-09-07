@@ -312,7 +312,7 @@ class CudaDeviceDat(object):
     :arg dtype: Data type default ctypes.c_double.
     """
 
-    def __init__(self, size=1, dtype=ct.c_double):
+    def __init__(self, size=8, dtype=ct.c_double):
 
         self._size = size
         self._dtype = dtype
@@ -322,7 +322,7 @@ class CudaDeviceDat(object):
 
         # allocate space.
         libcudart('cudaMalloc', ct.byref(self._d_p),
-                  ct.c_size_t(self._size * ct.sizeof(self._dtype)))
+                  ct.c_size_t(self._size))
 
         # Bool to flag if memory is allocated on device.
         self._alloc = True
@@ -347,7 +347,7 @@ class CudaDeviceDat(object):
 
 
         if size is None:
-            _s = ct.c_size_t(self._size * ct.sizeof(self._dtype))
+            _s = ct.c_size_t(self._size)
         else:
             _s = ct.c_size_t(size)
 
@@ -363,7 +363,7 @@ class CudaDeviceDat(object):
         """
 
         if size is None:
-            _s = ct.c_size_t(self._size * ct.sizeof(self._dtype))
+            _s = ct.c_size_t(self._size)
         else:
             _s = ct.c_size_t(size)
 
@@ -391,9 +391,46 @@ class CudaDeviceDat(object):
         :return:
         """
         _d_tp = ct.POINTER(self._dtype)()
-        libcudart('cudaMalloc', ct.byref(_d_tp), ct.c_size_t(size * ct.sizeof(self._dtype)))
+        libcudart('cudaMalloc', ct.byref(_d_tp), ct.c_size_t(size))
         self.free()
         self._d_p = _d_tp
+
+#####################################################################################
+# Registered Cuda Dats
+#####################################################################################
+
+class _RegisteredDats(object):
+
+    def __init__(self):
+        self._reg_dats = dict()
+
+    def register(self, dat):
+        self._reg_dats[dat] = CudaDeviceDat(dat.size, dat.dtype)
+
+    def get_cuda_dat(self, dat):
+        return self._reg_dats[dat]
+
+    def __getitem__(self, dat):
+        return self._reg_dats[dat]
+
+
+    def get_device_pointer(self, dat):
+        return self._reg_dats[dat].ctypes_data
+
+    def copy_to_device(self, dat, ptr=None):
+        if ptr is None:
+            self._reg_dats[dat].cpy_htd(dat.ctypes_data)
+        else:
+            self._reg_dats[dat].cpy_htd(ptr)
+
+    def copy_from_device(self, dat, ptr=None):
+        if ptr is None:
+            self._reg_dats[dat].cpy_dth(dat.ctypes_data)
+        else:
+            self._reg_dats[dat].cpy_dth(ptr)
+
+
+CUDA_DATS = _RegisteredDats()
 
 
 

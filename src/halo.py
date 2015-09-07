@@ -1,9 +1,7 @@
 import ctypes
 import cell
-import data
 import kernel
 import build
-import particle
 import runtime
 import mpi
 import host
@@ -23,7 +21,7 @@ class HaloCartesianSingleProcess(object):
     :arg tuple top: location of process in cartesian topology
     :arg tuple dims: number of processes in each coordinate direction.
     :arg list cell_array: List of local cell array.
-    :arg data.ScalarArray extent: Global extent of system.
+    :arg host.Array extent: Global extent of system.
     
     """
 
@@ -66,9 +64,9 @@ class HaloCartesianSingleProcess(object):
         """
         Exchange data using halos.
         
-        :arg data.ScalarArray self._cell_contents_count: Number of particles in each local cell.
-        :arg data.ScalarArray self._cell_list: Local particle cell list.
-        :arg particle.Dat data_in: Particle data to be halo exchanged.
+        :arg host.Array self._cell_contents_count: Number of particles in each local cell.
+        :arg host.Array self._cell_list: Local particle cell list.
+        :arg host.Matrix type data_in: Particle data to be halo exchanged.
         
         """
 
@@ -193,7 +191,7 @@ class HaloCartesianSingleProcess(object):
         for ix in range(26):
             # create send buffer when needed
             if self._send_list[ix] > -1:
-                self._send_buffers.append(particle.Dat(self._NT, self._nc, name='send_buffer', dtype=ctypes.c_double))
+                self._send_buffers.append(host.Matrix(self._NT, self._nc, dtype=ctypes.c_double))
                 self._packing_pointers[ix] = self._send_buffers[ix].ctypes_data
             else:
                 self._send_buffers.append(None)
@@ -239,11 +237,11 @@ class HaloCartesianSingleProcess(object):
         }
 
         _args = {
-            'q': data.NullIntScalarArray,  # cell.cell_list.cell_list.ctypes_data
+            'q': host.NullIntArray,  # cell.cell_list.cell_list.ctypes_data
             'CCA_I': self._cell_contents_array_index,
             'CIA': self._cell_indices_array,
-            'CSA': data.NullDoubleScalarArray,  # self._cell_shifts_array
-            'data_buffer': data.NullDoubleScalarArray,  # data
+            'CSA': host.NullDoubleArray,  # self._cell_shifts_array
+            'data_buffer': host.NullDoubleArray,  # data
         }
 
         _headers = ['stdio.h']
@@ -312,7 +310,7 @@ class HaloCartesianSingleProcess(object):
             self._recv_list.append(_tr)
 
         '''Array to store the number of particles to exchange for each halo'''
-        self._exchange_sizes = data.ScalarArray(range(26), dtype=ctypes.c_int)
+        self._exchange_sizes = host.Array(ncomp=26, dtype=ctypes.c_int)
 
 
         # CELL INDICES TO PACK ===========================================================================================
@@ -455,10 +453,11 @@ class HaloCartesianSingleProcess(object):
 
 
         '''How many cells are in each halo (internal to pack)'''
-        self._cell_indices_len = data.ScalarArray(range(26), dtype=ctypes.c_int)
+        self._cell_indices_len = host.Array(ncomp=26, dtype=ctypes.c_int)
+        print len(self._cell_indices_len.dat)
 
         '''How many cells are in each halo (external to recv)'''
-        self._cell_indices_recv_len = data.ScalarArray(range(26), dtype=ctypes.c_int)
+        self._cell_indices_recv_len = host.Array(range(26), dtype=ctypes.c_int)
 
         _tmp_list = []
         _tmp_list_local = []
@@ -478,22 +477,22 @@ class HaloCartesianSingleProcess(object):
                 self._cell_indices_recv_len[ix] = 0
 
         '''Array containing the internal cell indices'''
-        self._cell_indices_array = data.ScalarArray(_tmp_list, dtype=ctypes.c_int)
+        self._cell_indices_array = host.Array(_tmp_list, dtype=ctypes.c_int)
 
         '''Array containing the halo cell indices'''
-        self._local_cell_indices_array = data.ScalarArray(_tmp_list_local, dtype=ctypes.c_int)
+        self._local_cell_indices_array = host.Array(_tmp_list_local, dtype=ctypes.c_int)
 
         '''create cell contents array for each halo that is being sent.'''
-        self._cell_contents_array = data.ScalarArray(ncomp=self._cell_indices_array.ncomp, dtype=ctypes.c_int)
+        self._cell_contents_array = host.Array(ncomp=self._cell_indices_array.ncomp, dtype=ctypes.c_int)
 
         '''create cell contents array for each halo that are being recv'd.'''
-        self._cell_contents_recv = data.ScalarArray(ncomp=self._local_cell_indices_array.ncomp, dtype=ctypes.c_int)
+        self._cell_contents_recv = host.Array(ncomp=self._local_cell_indices_array.ncomp, dtype=ctypes.c_int)
 
         '''SEND: create list to extract start and end points for each halo from above lists.'''
-        self._cell_contents_array_index = data.ScalarArray(ncomp=27, dtype=ctypes.c_int)
+        self._cell_contents_array_index = host.Array(ncomp=27, dtype=ctypes.c_int)
 
         '''RECV: create list to extract start and end points for each halo from above lists.'''
-        self._cell_contents_recv_array_index = data.ScalarArray(ncomp=27, dtype=ctypes.c_int)
+        self._cell_contents_recv_array_index = host.Array(ncomp=27, dtype=ctypes.c_int)
 
         '''Indices for sending'''
         _start_index = 0
@@ -537,12 +536,12 @@ class HaloCartesianSingleProcess(object):
         '''
 
         _args = {
-            'CCC': data.NullIntScalarArray,  # cell countents count, number of particles in each cell.
-            'ES': data.NullIntScalarArray,  # total number of particles to be exchanged for each halo.
-            'CI': data.NullIntScalarArray,  # array containing the local cells to pass over for each halo.
-            'CIL': data.NullIntScalarArray,
+            'CCC': host.NullIntArray,  # cell countents count, number of particles in each cell.
+            'ES': host.NullIntArray,  # total number of particles to be exchanged for each halo.
+            'CI': host.NullIntArray,  # array containing the local cells to pass over for each halo.
+            'CIL': host.NullIntArray,
             # array holding how many cells are in each halo used to pass over the above array
-            'CCA': data.NullIntScalarArray,  # array containing the particle count for each cell in the same order as CI
+            'CCA': host.NullIntArray,  # array containing the particle count for each cell in the same order as CI
         }
 
         _headers = ['stdio.h']
@@ -598,7 +597,7 @@ class HaloCartesianSingleProcess(object):
         _static_args = {'CC': ctypes.c_int, 'shift': ctypes.c_int, 'end': ctypes.c_int}
 
         _cell_sort_dict = {
-            'q': data.NullIntScalarArray,
+            'q': host.NullIntArray,
             'LCI': self._local_cell_indices_array,
             'CRC': self._cell_contents_recv,
             'CCC': self._cell_contents_count
@@ -664,8 +663,8 @@ class HaloCartesianSingleProcess(object):
             _tmp_list_local += _cell_shifts[ix]
             _tmp_zero[ix] = 0
 
-        self._cell_shifts_array_pbc = data.ScalarArray(_tmp_list_local, dtype=ctypes.c_double)
-        self._cell_shifts_array_zero = data.ScalarArray(_tmp_zero, dtype=ctypes.c_double)
+        self._cell_shifts_array_pbc = host.Array(_tmp_list_local, dtype=ctypes.c_double)
+        self._cell_shifts_array_zero = host.Array(_tmp_zero, dtype=ctypes.c_double)
 
 
 HALOS = None

@@ -42,11 +42,12 @@ class BaseMDSimulation(object):
         self.state.nt = n
 
         # Add particle dats
-        self.state.positions = particle.Dat(n, 3, name='positions')
-        self.state.velocities = particle.Dat(n, 3, name='velocities')
-        self.state.forces = particle.Dat(n, 3, name='forces')
-        self.state.global_ids = particle.Dat(n, 1, dtype=ct.c_int, name='global_ids')
-        self.state.types = particle.Dat(n, 1, dtype=ct.c_int, name='types')
+        _factor = 27
+        self.state.positions = particle.Dat(n, 3, name='positions', max_npart=_factor * n)
+        self.state.velocities = particle.Dat(n, 3, name='velocities', max_npart=_factor * n)
+        self.state.forces = particle.Dat(n, 3, name='forces', max_npart=_factor * n)
+        self.state.global_ids = particle.Dat(n, 1, dtype=ct.c_int, name='global_ids', max_npart=_factor * n)
+        self.state.types = particle.Dat(n, 1, dtype=ct.c_int, name='types', max_npart=_factor * n)
 
         # Add typed dats.
         self.state.mass = particle.TypedDat(n, 1, 1.0)
@@ -61,9 +62,10 @@ class BaseMDSimulation(object):
 
         # gpucuda dats
         if gpucuda.INIT_STATUS():
-            self.state.u.add_cuda_dat()
-            self.state.positions.add_cuda_dat()
-            self.state.forces.add_cuda_dat()
+            gpucuda.CUDA_DATS.register(self.state.u)
+            gpucuda.CUDA_DATS.register(self.state.positions)
+            gpucuda.CUDA_DATS.register(self.state.forces)
+
 
         # domain TODO: Maybe move domain to simulation not state.
         self.state.domain = domain_in

@@ -1,23 +1,12 @@
 import host
 import ctypes
-import particle
 import numpy as np
-
-_GRAPHICS = True
-try:
-    import matplotlib.pyplot as plt
-except ImportError:
-    _GRAPHICS = False
-
 import datetime
 import os
 import re
-import pickle
 import sys
 import math
-import runtime
 import pio
-import gpucuda
 import access
 
 np.set_printoptions(threshold='nan')
@@ -49,20 +38,14 @@ class ScalarArray(host.Array):
 
         if initial_value is not None:
             if (type(initial_value) is np.ndarray) or type(initial_value) is list:
-                self._create_from_existing(initial_value,dtype)
+                self._create_from_existing(initial_value, dtype)
             else:
-                self._create_from_existing(np.array(list(initial_value)),dtype)
+                self._create_from_existing(np.array([initial_value]), dtype)
         else:
             self._create_zeros(ncomp, dtype)
 
         self._A = False
         self._Aarray = None
-        self._DatHaloInit = False
-        self._cuda_dat = None
-
-
-    def __getitem__(self, ix):
-        return self.dat[ix]
 
     def __call__(self, access=access.RW, halo=True):
         return self
@@ -111,13 +94,6 @@ class ScalarArray(host.Array):
         return self.dat.mean()
 
     @property
-    def end(self):
-        """
-        Returns end index of array.
-        """
-        return self.ncomp - 1
-
-    @property
     def sum(self):
         """
         Return array sum
@@ -151,33 +127,6 @@ class ScalarArray(host.Array):
             self.average_reset()
             self._Aarray += self.dat
             self._Alength += 1
-
-    def add_cuda_dat(self):
-        """
-        Create a corresponding CudaDeviceDat.
-        """
-        if self._cuda_dat is None:
-            self._cuda_dat = gpucuda.CudaDeviceDat(size=self.ncomp, dtype=self.dtype)
-
-    def get_cuda_dat(self):
-        """
-        Returns associated cuda dat, or None if not initialised.
-        """
-        return self._cuda_dat
-
-    def copy_to_cuda_dat(self):
-        """
-        Copy the CPU dat to the cuda device.
-        """
-        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
-        self._cuda_dat.cpy_htd(self.ctypes_data)
-
-    def copy_from_cuda_dat(self):
-        """
-        Copy the device dat into the cuda dat.
-        """
-        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
-        self._cuda_dat.cpy_dth(self.ctypes_data)
 
 
 

@@ -1,6 +1,5 @@
 import numpy as np
 import host
-import particle
 import ctypes
 import os
 import hashlib
@@ -8,7 +7,6 @@ import subprocess
 import re
 import runtime
 import mpi
-import data
 
 
 ################################################################################################################
@@ -531,11 +529,11 @@ class SharedLib(GenericToolChain):
             argname = dat[0]  # +'_ext'
             loc_argname = argname  # dat[0]
 
-            if type(dat[1]) == data.ScalarArray:
+            if issubclass(type(dat[1]), host.Array):
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
 
-            if type(dat[1]) == particle.Dat:
-                ncomp = dat[1].ncomp
+            if issubclass(type(dat[1]), host.Matrix):
+                ncomp = dat[1].ncol
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
                 s += space + loc_argname + ' = ' + argname + '+' + str(ncomp) + '*i;\n'
 

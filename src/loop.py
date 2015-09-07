@@ -95,7 +95,7 @@ class _Base(build.GenericToolChain):
                 s += space + loc_argname + ' = ' + argname + '+' + str(ncomp) + '*i;\n'
 
             if type(dat[1]) == particle.TypedDat:
-                ncomp = dat[1].ncomp
+                ncomp = dat[1].ncol
                 s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
                 s += space + loc_argname + ' = &' + argname + '[LINIDX_2D(' + str(
                     ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
