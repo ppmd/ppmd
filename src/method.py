@@ -262,7 +262,7 @@ class RadialDistributionPeriodicNVE(object):
         self._rmax = rmax
         
         if self._rmax is None:
-            self._rmax = 0.5*self._extent.min
+            self._rmax = 0.5*np.min(self._extent.dat)
         
         
         self._rsteps = rsteps

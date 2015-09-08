@@ -2,7 +2,6 @@ import numpy as np
 import ctypes
 import os
 import data
-import loop
 import build
 import runtime
 import access
@@ -12,6 +11,43 @@ import host
 
 
 class _Base(build.GenericToolChain):
+
+    def __init__(self, n, types_map, kernel, particle_dat_dict):
+
+        self._compiler_set()
+        self._N = n
+        self._types_map = types_map
+
+        self._temp_dir = runtime.BUILD_DIR.dir
+
+        if not os.path.exists(self._temp_dir):
+            os.mkdir(self._temp_dir)
+        self._kernel = kernel
+
+        self._particle_dat_dict = particle_dat_dict
+        self._nargs = len(self._particle_dat_dict)
+
+        self._code_init()
+
+        self._unique_name = self._unique_name_calc()
+
+        self._library_filename = self._unique_name + '.so'
+
+        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
+
+            if mpi.MPI_HANDLE is None:
+                self._create_library()
+
+            else:
+                if mpi.MPI_HANDLE.rank == 0:
+                    self._create_library()
+                mpi.MPI_HANDLE.barrier()
+
+        try:
+            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        except:
+            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
+
     def _kernel_argument_declarations(self):
         """Define and declare the kernel arguments.
 
@@ -61,6 +97,29 @@ class _Base(build.GenericToolChain):
                     ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
 
         return s
+
+    def _generate_header_source(self):
+        """Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        """
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+        #include "%(LIB_DIR)s/generic.h"
+        %(INCLUDED_HEADERS)s
+
+        void %(KERNEL_NAME)s_wrapper(int n, int *_TYPE_MAP,%(ARGUMENTS)s);
+
+        #endif
+        '''
+
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
+        return code % d
 
 ################################################################################################################
 # RAPAPORT LOOP SERIAL
@@ -372,7 +431,8 @@ class PairLoopRapaport(_Base):
 ################################################################################################################
 
 
-class DoubleAllParticleLoop(loop.SingleAllParticleLoop):
+
+class DoubleAllParticleLoop(_Base):
     """
     Class to loop over all particle pairs once.
     

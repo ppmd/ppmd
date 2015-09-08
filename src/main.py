@@ -9,7 +9,7 @@ runtime.VERBOSE.level = 3
 runtime.TIMER.level = 3
 
 #cuda on/off
-runtime.CUDA_ENABLED.flag = True
+runtime.CUDA_ENABLED.flag = False
 
 
 import mpi

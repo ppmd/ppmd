@@ -32,3 +32,6 @@ cout:
 
 chart:
 	pyreverse -a1 -s1 -f ALL -my -o png *.py
+
+chartnogpu:
+	pyreverse -a1 -s1 -f ALL -my -o png --ignore=gpucuda.py *.py
