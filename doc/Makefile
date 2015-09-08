@@ -77,17 +77,17 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/src.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/ppmd.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/src.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/ppmd.qhc"
 
 devhelp:
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILDDIR)/devhelp
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/src"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/src"
+	@echo "# mkdir -p $$HOME/.local/share/devhelp/ppmd"
+	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/ppmd"
 	@echo "# devhelp"
 
 epub:
@@ -151,6 +151,3 @@ doctest:
 	$(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(BUILDDIR)/doctest
 	@echo "Testing of doctests in the sources finished, look at the " \
 	      "results in $(BUILDDIR)/doctest/output.txt."
-
-bathpage:
-	cp -Rf ./_build/html/* ~/public_html/md/ ; chmod o+rx ~/public_html/md

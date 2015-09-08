@@ -1,7 +1,7 @@
-particle Module
-===============
+loop Module
+===========
 
-.. automodule:: particle
+.. automodule:: loop
     :members:
     :undoc-members:
     :show-inheritance:

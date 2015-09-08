@@ -1,7 +1,7 @@
-domain Module
-=============
+mpi Module
+==========
 
-.. automodule:: domain
+.. automodule:: mpi
     :members:
     :undoc-members:
     :show-inheritance:

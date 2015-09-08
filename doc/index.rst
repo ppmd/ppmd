@@ -1,25 +1,35 @@
-.. src documentation master file, created by
-   sphinx-quickstart on Wed Mar 18 12:10:48 2015.
+.. ppmd documentation master file, created by
+   sphinx-quickstart on Tue Sep  8 10:16:56 2015.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Code documentation for md_test
-===============================
+Welcome to ppmd's documentation!
+================================
 
 Contents:
 
 .. toctree::
-   :maxdepth: 4
-
-   constant
-   data
-   domain
-   kernel
-   main
-   method
-   pairloop
-   particle
-   potential
+   :maxdepth: 2
+   
+   access  
+   cell  
+   domain   
+   halo  
+   kernel  
+   main    
+   move  
+   pairloop  
+   potential  
+   simulation
+   build   
+   data  
+   gpucuda  
+   host  
+   loop    
+   method  
+   mpi   
+   pio       
+   runtime    
    state
 
 

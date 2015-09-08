@@ -1,7 +1,7 @@
-data Module
+host Module
 ===========
 
-.. automodule:: data
+.. automodule:: host
     :members:
     :undoc-members:
     :show-inheritance:

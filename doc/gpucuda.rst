@@ -1,7 +1,7 @@
-kernel Module
-=============
+gpucuda Module
+==============
 
-.. automodule:: kernel
+.. automodule:: gpucuda
     :members:
     :undoc-members:
     :show-inheritance:

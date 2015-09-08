@@ -1,7 +1,7 @@
-constant Module
-===============
+cell Module
+===========
 
-.. automodule:: constant
+.. automodule:: cell
     :members:
     :undoc-members:
     :show-inheritance:

@@ -1,7 +1,7 @@
-constant Module
-===============
+runtime Module
+==============
 
-.. automodule:: constant
+.. automodule:: runtime
     :members:
     :undoc-members:
     :show-inheritance:

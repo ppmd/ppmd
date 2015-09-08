@@ -1,7 +1,7 @@
-particle Module
-===============
+pio Module
+==========
 
-.. automodule:: particle
+.. automodule:: pio
     :members:
     :undoc-members:
     :show-inheritance:

@@ -1,7 +1,7 @@
-pairloop Module
-===============
+build Module
+============
 
-.. automodule:: pairloop
+.. automodule:: build
     :members:
     :undoc-members:
     :show-inheritance:

@@ -1,7 +1,7 @@
-state Module
-============
+access Module
+=============
 
-.. automodule:: state
+.. automodule:: access
     :members:
     :undoc-members:
     :show-inheritance:

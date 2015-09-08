@@ -1,7 +1,7 @@
-main Module
+halo Module
 ===========
 
-.. automodule:: main
+.. automodule:: halo
     :members:
     :undoc-members:
     :show-inheritance:

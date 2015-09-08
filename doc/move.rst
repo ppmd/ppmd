@@ -1,7 +1,7 @@
-method Module
-=============
+move Module
+===========
 
-.. automodule:: method
+.. automodule:: move
     :members:
     :undoc-members:
     :show-inheritance:
