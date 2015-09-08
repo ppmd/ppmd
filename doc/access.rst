@@ -1,8 +1,10 @@
+
+
 access Module
 =============
 
 .. automodule:: access
-    
+
 Access Type Class
 ~~~~~~~~~~~~~~~~~
 
@@ -10,7 +12,7 @@ Access Type Class
    :show-inheritance:
    :undoc-members:
    :members:
-   
+
 Predefined Access Modes
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -18,6 +20,4 @@ Predefined Access Modes
 .. autodata:: R
 .. autodata:: W
 .. autodata:: INC
-
-    
 

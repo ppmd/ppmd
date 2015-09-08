@@ -1,15 +1,41 @@
 """
 This module contains the access descriptor class and the pre-defined access descriptors to use when passing
 instances of ParticleDat and ScalarArray to the build system.
-
 """
 
+"""
+rst_doc{
+
+access Module
+=============
+
+.. automodule:: access
+
+Access Type Class
+~~~~~~~~~~~~~~~~~
+
+.. autoclass:: access.AccessType
+   :show-inheritance:
+   :undoc-members:
+   :members:
+
+Predefined Access Modes
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autodata:: RW
+.. autodata:: R
+.. autodata:: W
+.. autodata:: INC
+
+}rst_doc
+"""
 
 _lookup = {'R': 'Read only',
            'W': 'Write only',
            'RW': 'Read and write',
            'INC': 'Incremental'
            }
+
 
 class AccessType(object):
     """
@@ -35,14 +61,6 @@ class AccessType(object):
         :return: The held access mode.
         """
         return self._mode
-
-"""
-=================
-This is a heading
-=================
-
-asdasf
-"""
 
 
 R = AccessType("R")
