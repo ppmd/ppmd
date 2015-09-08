@@ -42,6 +42,7 @@ clean:
 	-rm -rf $(BUILDDIR)/*
 
 html:
+	python py2rst.py -I ../src -O .
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."

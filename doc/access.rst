@@ -16,6 +16,10 @@ Access Type Class
 Predefined Access Modes
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+These should be used when passing instances of :class:`~data.ParticleDat` or
+:class:`~data.ScalarArray` to the build system to declare the access mode required
+by the associated kernel.
+
 .. autodata:: RW
 .. autodata:: R
 .. autodata:: W

@@ -22,6 +22,10 @@ Access Type Class
 Predefined Access Modes
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+These should be used when passing instances of :class:`~data.ParticleDat` or
+:class:`~data.ScalarArray` to the build system to declare the access mode required
+by the associated kernel.
+
 .. autodata:: RW
 .. autodata:: R
 .. autodata:: W
@@ -41,7 +45,7 @@ class AccessType(object):
     """
     Class to hold an access descriptor for data. In a pyop2 style manner. (WIP)
 
-    :arg str mode: Access mode must be from: ``"R", "W", "RW", "INC"``
+    :arg str mode: Access mode, must be from: ``"R", "W", "RW", "INC"``
     """
     _modes = ["R", "W", "RW", "INC"]
 
@@ -73,7 +77,7 @@ RW = AccessType("RW")
 """Descriptor for data that has accessed for both read and write. """
 
 INC = AccessType("INC")
-"""Access descriptor for data that is inremented. """
+"""Access descriptor for data that is incremented. """
 
 
 
