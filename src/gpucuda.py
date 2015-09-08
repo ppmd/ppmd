@@ -104,11 +104,11 @@ def _build_static_libs(lib):
 #####################################################################################
 
 try:
-    CUDA_INC_PATH = os.environ['CUDA_INC_PATH']
+    CUDA_INC_PATH = os.environ['CUDA_INSTALL_PATH']
 except KeyError:
     if ERROR_LEVEL.level > 2:
         raise RuntimeError('gpucuda error: cuda toolkit environment path not '
-                           'found, expecting CUDA_INC_PATH')
+                           'found, expecting CUDA_INSTALL_PATH')
     CUDA_INC_PATH = None
 
 try:

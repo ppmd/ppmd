@@ -151,3 +151,8 @@ doctest:
 	$(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(BUILDDIR)/doctest
 	@echo "Testing of doctests in the sources finished, look at the " \
 	      "results in $(BUILDDIR)/doctest/output.txt."
+
+public:
+	rm -rf ~/public_html/PPMD/*
+	cp -r $(BUILDDIR)/html/* ~/public_html/PPMD
+	chmod -R o+rx ~/public_html/PPMD

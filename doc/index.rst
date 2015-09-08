@@ -3,34 +3,17 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to ppmd's documentation!
+Welcome to PPMD's documentation!
 ================================
 
 Contents:
 
 .. toctree::
-   :maxdepth: 2
-   
-   access  
-   cell  
-   domain   
-   halo  
-   kernel  
-   main    
-   move  
-   pairloop  
-   potential  
-   simulation
-   build   
-   data  
-   gpucuda  
-   host  
-   loop    
-   method  
-   mpi   
-   pio       
-   runtime    
-   state
+    :maxdepth: 2
+    
+    concept
+    installation
+    modules
 
 
 Indices and tables

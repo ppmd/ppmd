@@ -19,6 +19,18 @@ import kernel
 
 
 class BaseMDSimulation(object):
+    """
+    Class to setup and contain simulation. Provdies methods to update the kinetic energy and forces of the
+    simulation state.
+
+
+    :arg domain_in: Instance of a domain class to use for the simulation.
+    :arg potential_in: Short range potential between particles in simulation.
+    :arg particle_pos_init: Method to initialise particle positions with, see PosInit* classes.
+    :arg particle_vel_init: Method to initialise particle velocities with, see VelInit* classes.
+    :arg particle_mass_init: Method to initialise particle masses with, see MassInit* classes.
+    :arg int n: Total number of particles in simulation.
+    """
 
     def __init__(self,
                  domain_in,
@@ -30,15 +42,16 @@ class BaseMDSimulation(object):
 
 
         self.potential = potential_in
-
-
+        """Short range potential between particles."""
 
         # Create a state
         self.state = state.BaseMDState()
+        """Simulation state, of type state.* """
 
-        # Add integer attributes
+        # Add integer attributes to state
         self.state.n = n
         self.state.nt = n
+
 
         # Add particle dats
         _factor = 27
@@ -153,7 +166,7 @@ class BaseMDSimulation(object):
 
     def forces_update(self):
         """
-        Updates forces dats using given looping method.
+        Updates the forces in the simulation state using the short range potential.
         """
 
         self.timer.start()
@@ -201,8 +214,8 @@ class BaseMDSimulation(object):
 
     def kinetic_energy_update(self):
         """
-        Method to update the recorded kinetic energy of the state.
-        :return: New kinetic energy.
+        Update the kinetic energy of the simulation state.
+        :return: Kinetic energy of the state.
         """
 
         if self._kinetic_energy_lib is None:

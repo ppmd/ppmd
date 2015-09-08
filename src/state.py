@@ -1,10 +1,13 @@
 import data
 
 
-class AsFunc(object):
+class _AsFunc(object):
     """
     Instances of this class provide a callable to return the value of an attribute within an
     instance of another class.
+
+    :arg instance: Instance of a class that has attributes.
+    :arg str name: Name of attribute as string.
     """
 
     def __init__(self, instance, name):
@@ -33,6 +36,7 @@ class BaseMDState(object):
         """
         Works the same as the default __setattr__ except that particle dats are registered upon being
         added. Added particle dats are registered in self.particle_dats.
+
         :param name: Name of parameter.
         :param value: Value of parameter.
         :return:
@@ -50,16 +54,16 @@ class BaseMDState(object):
     def as_func(self, name):
         """
         Returns a function handle to evaluate the required attribute.
-        :param string name: Name of attribute.
-        :return: Function handle (of type class: AsFunc)
+
+        :arg str name: Name of attribute.
+        :return: Callable that returns the value of attribute at the time of calling.)
         """
-        return AsFunc(self, name)
+        return _AsFunc(self, name)
 
     @property
     def n(self):
         """
-        Return local number of particles.
-        :return:
+        :return: Local number of particles
         """
         return self._n
 
@@ -67,8 +71,8 @@ class BaseMDState(object):
     def n(self, value):
         """
         Set local number of particles.
-        :param value: New number of local particles.
-        :return:
+
+        :arg value: New number of local particles.
         """
         self._n = int(value)
         for ix in self.particle_dats:
