@@ -6,6 +6,8 @@ instances of ParticleDat and ScalarArray to the build system.
 """
 rst_doc{
 
+.. contents:
+
 access Module
 =============
 
