@@ -42,6 +42,7 @@ class HaloCartesianSingleProcess(object):
         self._MPIstatus = mpi.Status()
 
         self._ca = cell.cell_list.domain.cell_array
+        self._ca_copy = [None, None, None]
 
         # n.B. this is a global extent.
         self._extent = cell.cell_list.domain.extent
@@ -69,6 +70,7 @@ class HaloCartesianSingleProcess(object):
         :arg host.Matrix type data_in: Particle data to be halo exchanged.
         
         """
+
 
         if self._nc < data_in.ncomp:
             self._nc = data_in.ncomp
@@ -253,6 +255,7 @@ class HaloCartesianSingleProcess(object):
         for i,x in enumerate(self._cell_indices):
             self._exchange_sizes[i]=sum([y[1] for y in enumerate(self._cell_contents_count) if y[0] in x])
         """
+
 
         _args = {
             'CCC': cell.cell_list.cell_contents_count,
@@ -494,6 +497,9 @@ class HaloCartesianSingleProcess(object):
         '''RECV: create list to extract start and end points for each halo from above lists.'''
         self._cell_contents_recv_array_index = host.Array(ncomp=27, dtype=ctypes.c_int)
 
+
+
+
         '''Indices for sending'''
         _start_index = 0
         self._cell_contents_array_index[0] = 0
@@ -665,6 +671,54 @@ class HaloCartesianSingleProcess(object):
 
         self._cell_shifts_array_pbc = host.Array(_tmp_list_local, dtype=ctypes.c_double)
         self._cell_shifts_array_zero = host.Array(_tmp_zero, dtype=ctypes.c_double)
+
+        self._ca_copy = [cell.cell_list.domain.cell_array[0],
+                         cell.cell_list.domain.cell_array[1],
+                         cell.cell_list.domain.cell_array[2]]
+
+    def _check_valid(self):
+        """
+        Check if current values are still correct.
+        :return: bool
+        """
+        if cell.cell_list.domain.cell_array[0] != self._ca_copy[0] or cell.cell_list.domain.cell_array[1] != self._ca_copy[1] or cell.cell_list.domain.cell_array[2] != self._ca_copy[2]:
+            return False
+        else:
+            return True
+
+
+    @property
+    def local_boundary_cells_for_halos(self):
+        """
+        Get the local boundary cells to pack for each halo. Formatted as an data.Array. Cells for halo
+        0 first followed by cells for halo 1 etc. Also returns an data.Array of 27 elements with the
+        starting positions of each halo within the previous array.
+
+        :return: Tuple, array of local cell indices to pack, array of starting points within the first
+        array.
+        """
+
+        if not self._check_valid():
+            self._halo_setup_prepare()
+        return self._cell_indices_array, self._cell_contents_array_index
+
+
+    @property
+    def local_halo_cells(self):
+        """
+        Get the local halo cells to unpack into for each halo. Formatted as an data.Array. Cells for halo
+        0 first followed by cells for halo 1 etc. Also returns an data.Array of 27 elements with the
+        starting positions of each halo within the previous array.
+
+        :return: Tuple, array of local halo cell indices to unpack into, array of starting points within the first
+        array.
+        """
+
+        if not self._check_valid():
+            self._halo_setup_prepare()
+        return self._local_cell_indices_array, self._cell_contents_recv_array_index
+
+
 
 
 HALOS = None

@@ -178,6 +178,8 @@ class MDMPI(object):
     def shift(self, offset=(0, 0, 0)):
         """
         Returns rank of process found at a given offset, will return -1 if no process exists.
+
+        :arg tuple offset: 3-tuple offset from current process.
         """
 
         self._check_comm()

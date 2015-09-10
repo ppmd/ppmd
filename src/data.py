@@ -324,7 +324,16 @@ class ParticleDat(host.Matrix):
         """
         Perform a halo exchange for the particle dat. WIP currently only functional for positions.
         """
+
+
+
         halo.HALOS.exchange(self)
+
+        '''
+        testlib = ctypes.cdll.LoadLibrary("/u/m/wrs20/git/md_test/src/lib/helloworld.so")
+        testlib.argtypes = [ctypes.c_void_p]
+        testlib['sayhello'](ctypes.c_void_p(mpi.MPI_HANDLE.comm.py2f()))
+        '''
 
 ###################################################################################################
 # ParticleDat.
