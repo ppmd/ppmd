@@ -37,6 +37,7 @@ class CellList(object):
         # static args init.
         self._static_args = None
         self._cell_sort_lib = None
+        self._halo_cell_sort_loop = None
 
     def setup(self, n, positions, domain, cell_width):
         """
@@ -152,6 +153,69 @@ class CellList(object):
         :return: The domain used.
         """
         return self._domain
+
+    def _setup_halo_sorting_lib(self):
+        """
+        Setup the library to sort particles after halo transfer.
+        """
+        _cell_sort_code = '''
+
+        int index = shift;
+        for(int ix = 0; ix < CC; ix++){
+
+            //get number of particles
+            const int _tmp = CRC[ix];
+
+            if (_tmp>0){
+
+                //first index in cell region of cell list.
+                q[end+LCI[ix]] = index;
+                CCC[LCI[ix]] = _tmp;
+
+                //start at first particle in halo cell, work forwards
+                for(int iy = 0; iy < _tmp-1; iy++){
+                    q[index+iy]=index+iy+1;
+                }
+                q[index+_tmp-1] = -1;
+            }
+
+
+            index += CRC[ix];
+        }
+        '''
+
+        _static_args = {'CC': ct.c_int, 'shift': ct.c_int, 'end': ct.c_int}
+
+        _cell_sort_dict = {
+            'q': host.NullIntArray,
+            'LCI': host.NullIntArray,
+            'CRC': host.NullIntArray,
+            'CCC': host.NullIntArray
+        }
+
+        _cell_sort_kernel = kernel.Kernel('halo_cell_list_method', _cell_sort_code, headers=['stdio.h'],
+                                          static_args=_static_args)
+        self._halo_cell_sort_loop = build.SharedLib(_cell_sort_kernel, _cell_sort_dict)
+
+    def sort_halo_cells(self,local_cell_indices_array, cell_contents_recv, npart):
+
+        if self._halo_cell_sort_loop is None:
+            self._setup_halo_sorting_lib()
+
+        _cell_sort_dict = {
+            'q': self._cell_list,
+            'LCI': local_cell_indices_array,
+            'CRC': cell_contents_recv,
+            'CCC': self._cell_contents_count
+        }
+
+        _cell_sort_static_args = {'CC': ct.c_int(cell_contents_recv.ncomp),
+                                  'shift': ct.c_int(npart),
+                                  'end': ct.c_int(self._cell_list[self._cell_list.end])}
+
+        self._halo_cell_sort_loop.execute(static_args=_cell_sort_static_args,
+                                          dat_dict=_cell_sort_dict)
+
 
 # default cell list
 cell_list = CellList()

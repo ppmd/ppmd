@@ -253,6 +253,7 @@ class ParticleDat(host.Matrix):
 
         self._halo_packing_lib = None
         self._halo_packing_buffer = None
+        self._cell_contents_recv = None
 
         self.halo_start = self.npart
         """:return: The starting index of the halo region of the particle dat. """
@@ -333,14 +334,16 @@ class ParticleDat(host.Matrix):
         """
 
         self.halo_pack()
+        self._transfer_unpack()
 
-        halo.HALOS.exchange(self)
+        # halo.HALOS.exchange(self)
 
         '''
         testlib = ctypes.cdll.LoadLibrary("/u/m/wrs20/git/md_test/src/lib/helloworld.so")
         testlib.argtypes = [ctypes.c_void_p]
         testlib['sayhello'](ctypes.c_void_p(mpi.MPI_HANDLE.comm.py2f()))
         '''
+
 
     def _setup_halo_packing(self):
         """
@@ -442,6 +445,8 @@ class ParticleDat(host.Matrix):
             }
         }
 
+
+
         ''' % {'NCOMP': self.ncomp, 'SHIFT_CODE': _shift_code}
 
         _static_args = {
@@ -457,8 +462,6 @@ class ParticleDat(host.Matrix):
 
         _headers = ['stdio.h']
         _kernel = kernel.Kernel('ParticleDatHaloPackingCode', _packing_code, None, _headers, None, _static_args)
-
-        print _args
 
         self._halo_packing_lib = build.SharedLib(_kernel, _args)
         self._halo_packing_buffer = host.Matrix(nrow=26*self.npart, ncol=self.ncomp)
@@ -481,9 +484,9 @@ class ParticleDat(host.Matrix):
                          }
 
 
-        _tmp = halo.HALOS.local_boundary_cells_for_halos
-        _dynamic_args['CIA'] = _tmp[0]
-        _dynamic_args['CCA_I'] = _tmp[1]
+        _tmp, self._cell_contents_array_index = halo.HALOS.local_boundary_cells_for_halos
+        _dynamic_args['CIA'] = _tmp
+        _dynamic_args['CCA_I'] = self._cell_contents_array_index
 
 
 
@@ -492,6 +495,93 @@ class ParticleDat(host.Matrix):
 
 
         self._halo_packing_lib.execute(static_args=_static_args, dat_dict=_dynamic_args)
+
+    def _transfer_unpack(self):
+        """
+        Transfer the packed data. Will use the particle dat as the recv buffer.
+        """
+
+        _local_halo_cell_indices, _local_halo_cell_indices_index = halo.HALOS.local_halo_cells
+
+        # reset halo starting position in dat.
+        self.halo_start_reset()
+
+        # Array
+        if self._cell_contents_recv is None or halo.HALOS.check_valid is False:
+            self._cell_contents_recv = host.Array(ncomp=_local_halo_cell_indices.ncomp, dtype=ctypes.c_int)
+
+        # zero incoming sizes array
+        self._cell_contents_recv.zero()
+
+        _cell_contents_array, _exchange_sizes = halo.HALOS.local_boundary_cell_contents_count
+
+        _status = mpi.Status()
+
+        # SEND START -------------------------------------------------------------------------------------------
+        for i in range(26):
+            # Exchange sizes --------------------------------------------------------------------------
+            if halo.HALOS.send_ranks[i] > -1 and halo.HALOS.recv_ranks[i] > -1:
+                mpi.MPI_HANDLE.comm.Sendrecv(_cell_contents_array[
+                                             self._cell_contents_array_index[i]:self._cell_contents_array_index[i + 1]:],
+                                             halo.HALOS.send_ranks[i],
+                                             halo.HALOS.send_ranks[i],
+                                             self._cell_contents_recv[
+                                             _local_halo_cell_indices_index[i]:_local_halo_cell_indices_index[i + 1]:],
+                                             halo.HALOS.recv_ranks[i],
+                                             mpi.MPI_HANDLE.rank,
+                                             _status)
+
+            elif halo.HALOS.send_ranks[i] > -1:
+                mpi.MPI_HANDLE.comm.Send(_cell_contents_array[
+                                         self._cell_contents_array_index[i]:self._cell_contents_array_index[i + 1]:],
+                                         halo.HALOS.send_ranks[i],
+                                         halo.HALOS.send_ranks[i])
+
+            elif halo.HALOS.recv_ranks[i] > -1:
+                mpi.MPI_HANDLE.comm.Recv(self._cell_contents_recv[
+                                         _local_halo_cell_indices_index[i]:_local_halo_cell_indices_index[i + 1]:],
+                                         halo.HALOS.recv_ranks[i],
+                                         mpi.MPI_HANDLE.rank,
+                                         _status)
+            # Exchange data --------------------------------------------------------------------------
+            if halo.HALOS.send_ranks[i] > -1 and halo.HALOS.recv_ranks[i] > -1:
+                mpi.MPI_HANDLE.comm.Sendrecv(self._halo_packing_buffer.dat[
+                                             self._cell_contents_array_index[i]:self._cell_contents_array_index[i + 1]:,
+                                             ::],
+                                             halo.HALOS.send_ranks[i],
+                                             halo.HALOS.send_ranks[i],
+                                             self.dat[self.halo_start::, ::],
+                                             halo.HALOS.recv_ranks[i],
+                                             mpi.MPI_HANDLE.rank,
+                                             _status)
+
+                _shift = _status.Get_count(mpi.mpi_map[self.dtype])
+                self.halo_start_shift(_shift / self.ncomp)
+
+            elif halo.HALOS.send_ranks[i] > -1:
+                mpi.MPI_HANDLE.comm.Send(self._halo_packing_buffer.dat[
+                                         self._cell_contents_array_index[i]:self._cell_contents_array_index[i + 1]:,
+                                         ::],
+                                         halo.HALOS.send_ranks[i],
+                                         halo.HALOS.send_ranks[i])
+
+            elif halo.HALOS.recv_ranks[i] > -1:
+
+                mpi.MPI_HANDLE.comm.Recv(self.dat[data_in.halo_start::, ::],
+                                         halo.HALOS.recv_ranks[i],
+                                         mpi.MPI_HANDLE.rank,
+                                         _status)
+
+                _shift = _status.Get_count(mpi.mpi_map[self.dtype])
+
+                self.halo_start_shift(_shift / self.ncomp)
+
+        # SEND END -------------------------------------------------------------------------------------------
+        if self.name == 'positions':
+            cell.cell_list.sort_halo_cells(_local_halo_cell_indices, self._cell_contents_recv, self.npart)
+
+
+
 
 
 

@@ -558,21 +558,6 @@ class HaloCartesianSingleProcess(object):
 
         '''Code to sort incoming halo particles into cell list '''
         # ==========================================================================================================================
-        '''
-        
-        
-        self._cell_sort_loop.execute({'q':self._cell_list,
-                                      'LCI':self._local_cell_indices_array,
-                                      'CRC':self._cell_contents_recv},
-                                      
-                                      {
-                                      
-                                      'CC':ctypes.c_int(self._cell_contents_recv.ncomp),
-                                      'shift':ctypes.c_int(data_in.npart),
-                                      'end':ctypes.c_int(self._cell_list[self._cell_list.end])
-                                      
-                                      })
-        '''
 
         _cell_sort_code = '''
 
@@ -597,6 +582,7 @@ class HaloCartesianSingleProcess(object):
             
             
             index += CRC[ix];
+
         }
         '''
 
@@ -676,7 +662,7 @@ class HaloCartesianSingleProcess(object):
                          cell.cell_list.domain.cell_array[1],
                          cell.cell_list.domain.cell_array[2]]
 
-    def _check_valid(self):
+    def check_valid(self):
         """
         Check if current values are still correct.
         :return: bool
@@ -698,7 +684,7 @@ class HaloCartesianSingleProcess(object):
         array.
         """
 
-        if not self._check_valid():
+        if not self.check_valid():
             self._halo_setup_prepare()
         return self._cell_indices_array, self._cell_contents_array_index
 
@@ -714,7 +700,7 @@ class HaloCartesianSingleProcess(object):
         array.
         """
 
-        if not self._check_valid():
+        if not self.check_valid():
             self._halo_setup_prepare()
         return self._local_cell_indices_array, self._cell_contents_recv_array_index
 
@@ -730,6 +716,28 @@ class HaloCartesianSingleProcess(object):
         self._exchange_size_calc()
 
         return self._cell_contents_array, self._exchange_sizes
+
+    @property
+    def send_ranks(self):
+        """
+        Get the list of process ranks to send data to.
+        :return: list of process ranks
+        """
+        if not self.check_valid():
+            self._halo_setup_prepare()
+        return self._send_list
+
+    @property
+    def recv_ranks(self):
+        """
+        Get list of process rands to expect to recv from.
+        :return: list of process ranks.
+        """
+        if not self.check_valid():
+            self._halo_setup_prepare()
+        return self._recv_list
+
+
 
 
 
