@@ -718,6 +718,18 @@ class HaloCartesianSingleProcess(object):
             self._halo_setup_prepare()
         return self._local_cell_indices_array, self._cell_contents_recv_array_index
 
+    @property
+    def local_boundary_cell_contents_count(self):
+        """
+        Get the number of particles in the corresponding cells for each halo. These are needed such that
+        the cell list can be created without inspecting the positions of recvd particles.
+        :return: Tuple: Cell contents count for each cell in same order as local boundary cell list.,
+        Exchange sizes for each halo.
+        """
+
+        self._exchange_size_calc()
+
+        return self._cell_contents_array, self._exchange_sizes
 
 
 

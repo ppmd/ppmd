@@ -2,8 +2,12 @@ import ctypes
 import numpy as np
 
 ctypes_map = {ctypes.c_double: 'double', ctypes.c_int: 'int', 'float64': 'double', 'int32': 'int',
-              'doublepointerpointer': 'double **', ctypes.c_longlong: 'long long'}
+              'doublepointerpointer': 'double **', ctypes.c_longlong: 'long long',
+              'doublepointer': 'double *',
+              'intpointer': 'int *'}
 
+pointer_lookup = {ctypes.c_int: 'intpointer',
+                  ctypes.c_double: 'doublepointer'}
 
 ################################################################################################
 # Array.
@@ -132,11 +136,27 @@ class Matrix(object):
         return self.idtype
 
 ###################################################################################################
-# Blank arrays.
+# Blank arrays/matrices
 ###################################################################################################
 
 NullIntArray = Array(dtype=ctypes.c_int)
 NullDoubleArray = Array(dtype=ctypes.c_double)
+NullIntMatrix = Matrix(dtype=ctypes.c_int)
+NullDoubleMatrix = Matrix(dtype=ctypes.c_double)
+
+def null_matrix(dtype):
+    """
+    Return a Null*Matrix based on passed type.
+    :param dtype: Data type of Null matrix.
+    :return: Null Matrix.
+    """
+
+    if dtype is ctypes.c_double:
+        return NullDoubleMatrix
+    elif dtype is ctypes.c_int:
+        return NullIntMatrix
+
+
 
 ################################################################################################
 # Pointer array.

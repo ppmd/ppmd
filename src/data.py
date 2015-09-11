@@ -2,12 +2,16 @@
 This module contains high level arrays and matrices.
 """
 
-
 import host
 import ctypes
 import numpy as np
 import access
 import halo
+import mpi
+import cell
+import kernel
+import build
+
 np.set_printoptions(threshold=1000)
 
 
@@ -247,6 +251,9 @@ class ParticleDat(host.Matrix):
             self.npart = self.nrow
             self.ncomp = self.ncol
 
+        self._halo_packing_lib = None
+        self._halo_packing_buffer = None
+
         self.halo_start = self.npart
         """:return: The starting index of the halo region of the particle dat. """
 
@@ -268,7 +275,7 @@ class ParticleDat(host.Matrix):
         self.dat[ix] = val
 
     def __str__(self):
-        return str(self._Dat[::])
+        return str(self.dat[::])
 
     def __repr__(self):
         self.__str__()
@@ -325,7 +332,7 @@ class ParticleDat(host.Matrix):
         Perform a halo exchange for the particle dat. WIP currently only functional for positions.
         """
 
-
+        self.halo_pack()
 
         halo.HALOS.exchange(self)
 
@@ -335,8 +342,172 @@ class ParticleDat(host.Matrix):
         testlib['sayhello'](ctypes.c_void_p(mpi.MPI_HANDLE.comm.py2f()))
         '''
 
+    def _setup_halo_packing(self):
+        """
+        Setup the halo packing shared library and buffer space
+        """
+        if self.name == 'positions':
+            _shift_code = '+ CSA[LINIDX_2D(%(NCOMP)s,ix,cx)]' % {'NCOMP': self.ncomp}
+            _args = {'CSA': host.NullDoubleArray}
+
+            '''Calculate flag to determine if a boundary between processes is also a boundary in domain.'''
+            _bc_flag = [0, 0, 0, 0, 0, 0]
+            for ix in range(3):
+                if mpi.MPI_HANDLE.top[ix] == 0:
+                    _bc_flag[2 * ix] = 1
+                if mpi.MPI_HANDLE.top[ix] == mpi.MPI_HANDLE.dims[ix] - 1:
+                    _bc_flag[2 * ix + 1] = 1
+
+            _extent = cell.cell_list.domain.extent
+
+            '''Shifts to apply to positions when exchanging over boundaries.'''
+            _cell_shifts = [
+                [-1 * _extent[0] * _bc_flag[1], -1 * _extent[1] * _bc_flag[3],
+                 -1 * _extent[2] * _bc_flag[5]],
+                [0., -1 * _extent[1] * _bc_flag[3], -1 * _extent[2] * _bc_flag[5]],
+                [_extent[0] * _bc_flag[0], -1 * _extent[1] * _bc_flag[3], -1 * _extent[2] * _bc_flag[5]],
+                [-1 * _extent[0] * _bc_flag[1], 0., -1 * _extent[2] * _bc_flag[5]],
+                [0., 0., -1 * _extent[2] * _bc_flag[5]],
+                [_extent[0] * _bc_flag[0], 0., -1 * _extent[2] * _bc_flag[5]],
+                [-1 * _extent[0] * _bc_flag[1], _extent[1] * _bc_flag[2], -1 * _extent[2] * _bc_flag[5]],
+                [0., _extent[1] * _bc_flag[2], -1 * _extent[2] * _bc_flag[5]],
+                [_extent[0] * _bc_flag[0], _extent[1] * _bc_flag[2], -1 * _extent[2] * _bc_flag[5]],
+
+                [-1 * _extent[0] * _bc_flag[1], -1 * _extent[1] * _bc_flag[3], 0.],
+                [0., -1 * _extent[1] * _bc_flag[3], 0.],
+                [_extent[0] * _bc_flag[0], -1 * _extent[1] * _bc_flag[3], 0.],
+                [-1 * _extent[0] * _bc_flag[1], 0., 0.],
+                [_extent[0] * _bc_flag[0], 0., 0.],
+                [-1 * _extent[0] * _bc_flag[1], _extent[1] * _bc_flag[2], 0.],
+                [0., _extent[1] * _bc_flag[2], 0.],
+                [_extent[0] * _bc_flag[0], _extent[1] * _bc_flag[2], 0.],
+
+                [-1 * _extent[0] * _bc_flag[1], -1 * _extent[1] * _bc_flag[3], _extent[2] * _bc_flag[4]],
+                [0., -1 * _extent[1] * _bc_flag[3], _extent[2] * _bc_flag[4]],
+                [_extent[0] * _bc_flag[0], -1 * _extent[1] * _bc_flag[3], _extent[2] * _bc_flag[4]],
+                [-1 * _extent[0] * _bc_flag[1], 0., _extent[2] * _bc_flag[4]],
+                [0., 0., _extent[2] * _bc_flag[4]],
+                [_extent[0] * _bc_flag[0], 0., _extent[2] * _bc_flag[4]],
+                [-1 * _extent[0] * _bc_flag[1], _extent[1] * _bc_flag[2], _extent[2] * _bc_flag[4]],
+                [0., _extent[1] * _bc_flag[2], _extent[2] * _bc_flag[4]],
+                [_extent[0] * _bc_flag[0], _extent[1] * _bc_flag[2], _extent[2] * _bc_flag[4]]
+            ]
+
+            '''make scalar array object from above shifts'''
+            _tmp_list_local = []
+            '''zero scalar array for data that is not position dependent'''
+            _tmp_zero = range(26)
+            for ix in range(26):
+                _tmp_list_local += _cell_shifts[ix]
+                _tmp_zero[ix] = 0
+
+            self._cell_shifts_array_pbc = host.Array(_tmp_list_local, dtype=ctypes.c_double)
+
+
+
+        else:
+            _shift_code = ''
+            _args = {}
+
+
+        _packing_code = '''
+        int index = 0;
+
+        //Loop over directions
+        for(int ix = 0; ix<26; ix++ ){
+
+            //get the start and end indices in the array containing cell indices
+            const int start = CCA_I[ix];
+            const int end = CCA_I[ix+1];
+
+
+            //loop over cells
+            for(int iy = start; iy < end; iy++){
+
+                // current cell
+                int c_i = CIA[iy];
+
+                // first particle
+                int iz = q[cell_start+c_i];
+
+                while(iz > -1){
+
+                    // loop over the number of components for particle dat.
+                    for(int cx = 0; cx<%(NCOMP)s;cx++){
+                        SEND_BUFFER[LINIDX_2D(%(NCOMP)s,index,cx)] = data_buffer[LINIDX_2D(%(NCOMP)s,iz,cx)] %(SHIFT_CODE)s;
+                    }
+                    index++;
+                    iz = q[iz];
+                }
+            }
+        }
+
+        ''' % {'NCOMP': self.ncomp, 'SHIFT_CODE': _shift_code}
+
+        _static_args = {
+            'cell_start': ctypes.c_int,  # ctypes.c_int(cell.cell_list.cell_list[cell.cell_list.cell_list.end])
+            'data_buffer': host.pointer_lookup[self.dtype]
+        }
+
+        _args['q'] = host.NullIntArray  # cell.cell_list.cell_list.ctypes_data
+        _args['CCA_I'] = host.NullIntArray
+        _args['CIA'] = host.NullIntArray
+        _args['CSA'] = host.NullDoubleArray # self._cell_shifts_array
+        _args['SEND_BUFFER'] = host.null_matrix(self.dtype) # packing to send buffer
+
+        _headers = ['stdio.h']
+        _kernel = kernel.Kernel('ParticleDatHaloPackingCode', _packing_code, None, _headers, None, _static_args)
+
+        print _args
+
+        self._halo_packing_lib = build.SharedLib(_kernel, _args)
+        self._halo_packing_buffer = host.Matrix(nrow=26*self.npart, ncol=self.ncomp)
+
+    def halo_pack(self):
+        """
+        Pack data to prepare for halo exchange.
+        """
+        if self._halo_packing_lib is None:
+            self._setup_halo_packing()
+
+        _static_args = {
+            'cell_start': ctypes.c_int(cell.cell_list.cell_list[cell.cell_list.cell_list.end]),
+            'data_buffer': self.ctypes_data
+        }
+
+        _dynamic_args = {
+                         'q': cell.cell_list.cell_list,
+                         'SEND_BUFFER': self._halo_packing_buffer
+                         }
+
+
+        _tmp = halo.HALOS.local_boundary_cells_for_halos
+        _dynamic_args['CIA'] = _tmp[0]
+        _dynamic_args['CCA_I'] = _tmp[1]
+
+
+
+        if self.name == 'positions':
+            _dynamic_args['CSA'] = self._cell_shifts_array_pbc
+
+
+        self._halo_packing_lib.execute(static_args=_static_args, dat_dict=_dynamic_args)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###################################################################################################
-# ParticleDat.
+# TypedDat.
 ###################################################################################################
 
 
