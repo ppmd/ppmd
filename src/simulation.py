@@ -123,7 +123,7 @@ class BaseMDSimulation(object):
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
 
-                halo.HALOS = halo.HaloCartesianSingleProcess(nt=self.state.nt)
+                halo.HALOS = halo.CartesianHalo()
 
                 self._forces_update_lib = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
                                                                         potential=self.potential,

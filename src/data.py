@@ -483,7 +483,7 @@ class ParticleDat(host.Matrix):
         if self._halo_packing_lib is None:
             self._setup_halo_packing()
 
-        _cell_contents_array, _exchange_sizes = halo.HALOS.local_boundary_cell_contents_count
+        _boundary_groups_contents_array, _exchange_sizes = halo.HALOS.get_boundary_cell_contents_count
 
         if _exchange_sizes.dat.sum() > self._halo_packing_buffer.nrow:
             if runtime.VERBOSE.level > 1:
@@ -501,9 +501,9 @@ class ParticleDat(host.Matrix):
                          }
 
 
-        _tmp, self._cell_contents_array_index = halo.HALOS.local_boundary_cells_for_halos
+        _tmp, self._boundary_groups_start_end_indices = halo.HALOS.get_boundary_cell_groups
         _dynamic_args['CIA'] = _tmp
-        _dynamic_args['CCA_I'] = self._cell_contents_array_index
+        _dynamic_args['CCA_I'] = self._boundary_groups_start_end_indices
 
 
         _dynamic_args['CES'] = self._cumulative_exchange_sizes
@@ -519,19 +519,19 @@ class ParticleDat(host.Matrix):
         Transfer the packed data. Will use the particle dat as the recv buffer.
         """
 
-        _local_halo_cell_indices, _local_halo_cell_indices_index = halo.HALOS.local_halo_cells
+        _halo_cell_groups, _halo_groups_start_end_indices = halo.HALOS.get_halo_cell_groups
 
         # reset halo starting position in dat.
         self.halo_start_reset()
 
         # Array
         if self._cell_contents_recv is None or halo.HALOS.check_valid is False:
-            self._cell_contents_recv = host.Array(ncomp=_local_halo_cell_indices.ncomp, dtype=ctypes.c_int)
+            self._cell_contents_recv = host.Array(ncomp=_halo_cell_groups.ncomp, dtype=ctypes.c_int)
 
         # zero incoming sizes array
         self._cell_contents_recv.zero()
 
-        _cell_contents_array, _exchange_sizes = halo.HALOS.local_boundary_cell_contents_count
+        _boundary_groups_contents_array, _exchange_sizes = halo.HALOS.get_boundary_cell_contents_count
 
         _status = mpi.Status()
 
@@ -539,25 +539,25 @@ class ParticleDat(host.Matrix):
         for i in range(26):
             # Exchange sizes --------------------------------------------------------------------------
             if halo.HALOS.send_ranks[i] > -1 and halo.HALOS.recv_ranks[i] > -1:
-                mpi.MPI_HANDLE.comm.Sendrecv(_cell_contents_array[
-                                             self._cell_contents_array_index[i]:self._cell_contents_array_index[i + 1]:],
+                mpi.MPI_HANDLE.comm.Sendrecv(_boundary_groups_contents_array[
+                                             self._boundary_groups_start_end_indices[i]:self._boundary_groups_start_end_indices[i + 1]:],
                                              halo.HALOS.send_ranks[i],
                                              halo.HALOS.send_ranks[i],
                                              self._cell_contents_recv[
-                                             _local_halo_cell_indices_index[i]:_local_halo_cell_indices_index[i + 1]:],
+                                             _halo_groups_start_end_indices[i]:_halo_groups_start_end_indices[i + 1]:],
                                              halo.HALOS.recv_ranks[i],
                                              mpi.MPI_HANDLE.rank,
                                              _status)
 
             elif halo.HALOS.send_ranks[i] > -1:
-                mpi.MPI_HANDLE.comm.Send(_cell_contents_array[
-                                         self._cell_contents_array_index[i]:self._cell_contents_array_index[i + 1]:],
+                mpi.MPI_HANDLE.comm.Send(_boundary_groups_contents_array[
+                                         self._boundary_groups_start_end_indices[i]:self._boundary_groups_start_end_indices[i + 1]:],
                                          halo.HALOS.send_ranks[i],
                                          halo.HALOS.send_ranks[i])
 
             elif halo.HALOS.recv_ranks[i] > -1:
                 mpi.MPI_HANDLE.comm.Recv(self._cell_contents_recv[
-                                         _local_halo_cell_indices_index[i]:_local_halo_cell_indices_index[i + 1]:],
+                                         _halo_groups_start_end_indices[i]:_halo_groups_start_end_indices[i + 1]:],
                                          halo.HALOS.recv_ranks[i],
                                          mpi.MPI_HANDLE.rank,
                                          _status)
@@ -600,7 +600,7 @@ class ParticleDat(host.Matrix):
 
         # SEND END -------------------------------------------------------------------------------------------
         if self.name == 'positions':
-            cell.cell_list.sort_halo_cells(_local_halo_cell_indices, self._cell_contents_recv, self.npart)
+            cell.cell_list.sort_halo_cells(_halo_cell_groups, self._cell_contents_recv, self.npart)
 
 
 
