@@ -111,7 +111,7 @@ class HaloCartesianSingleProcess(object):
 
         self._cell_contents_recv.zero()
 
-        # print self._rank, self._send_list
+        print self._rank, "-"*80
 
         for i in range(26):
 
@@ -146,6 +146,9 @@ class HaloCartesianSingleProcess(object):
                                self._MPIstatus)
             # DATA ------------------------------------------------------------------------------------------
 
+            #print self._cell_contents_recv.dat
+
+
             if self._send_list[i] > -1 and self._recv_list[i] > -1:
 
                 self._MPI.Sendrecv(self._send_buffers[i].dat[0:self._exchange_sizes[i]:1, ::],
@@ -175,6 +178,10 @@ class HaloCartesianSingleProcess(object):
                 _shift = self._MPIstatus.Get_count(mpi.mpi_map[data_in.dtype])
 
                 data_in.halo_start_shift(_shift / self._nc)
+
+            print self._recv_list[i], sum(self._cell_contents_recv[self._cell_contents_recv_array_index[i]:self._cell_contents_recv_array_index[i + 1]:]), _shift / self._nc
+            print self._send_list[i], self._send_buffers[i].dat[0:self._exchange_sizes[i]:1, ::]
+
 
         '''sort local cells after exchange'''
         if data_in.name == 'positions':

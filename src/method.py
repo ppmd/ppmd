@@ -726,10 +726,10 @@ class DrawParticles(object):
 
                     for ix in range(1, self._Mh.nproc):
                         self._Mh.comm.Recv(self._Dat.dat[_i::, ::], ix, ix, _MS)
-                        _i += _MS.Get_count(mpi_map[self._Dat.dtype]) / 3
+                        _i += _MS.Get_count(mpi.mpi_map[self._Dat.dtype]) / 3
 
                         self._Mh.comm.Recv(self._gids.dat[_ig::], ix, ix, _MS)
-                        _ig += _MS.Get_count(mpi_map[self._gids.dtype])
+                        _ig += _MS.Get_count(mpi.mpi_map[self._gids.dtype])
 
                     self._pos = self._Dat
                     self._gid = self._gids

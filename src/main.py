@@ -38,7 +38,7 @@ if __name__ == '__main__':
     test_1000 = True
     
     # 2 particles bouncing agasint each other.
-    test_2_bounce = True
+    test_2_bounce = False
     
     # 1 1 particle
     t_1_particle = False
@@ -53,16 +53,16 @@ if __name__ == '__main__':
     writing = False
 
 
-    t=0.01
+    t=0.02
     dt=0.0001
 
 
     if test_1000:
         # n=25 reasonable size
-        n = 10
+        n = 25
         N = n**3
         # n=860
-        rho = 2.
+        rho = 1.
         mu = 0.0
         nsig = 5.0
         
@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
 
         # Initialise two particles on an axis a set distance apart.
-        test_pos_init = simulation.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([8., 8., 8.]), axis = np.array([1,0,0]))
+        test_pos_init = simulation.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([8., 8., 8.]), axis = np.array([0,1,1]))
 
         # Give first two particles specific velocities
         test_vel_init = simulation.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
@@ -209,7 +209,7 @@ if __name__ == '__main__':
     if mpi.MPI_HANDLE.rank ==0:
         try:
 
-            a=input("PRESS ENTER TO CONTINUE.\n")
+            #a=input("PRESS ENTER TO CONTINUE.\n")
             pass
         except:
             pass

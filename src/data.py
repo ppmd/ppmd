@@ -11,6 +11,8 @@ import mpi
 import cell
 import kernel
 import build
+import runtime
+
 
 np.set_printoptions(threshold=1000)
 
@@ -336,7 +338,7 @@ class ParticleDat(host.Matrix):
         self.halo_pack()
         self._transfer_unpack()
 
-        # halo.HALOS.exchange(self)
+        #halo.HALOS.exchange(self)
 
         '''
         testlib = ctypes.cdll.LoadLibrary("/u/m/wrs20/git/md_test/src/lib/helloworld.so")
@@ -416,8 +418,11 @@ class ParticleDat(host.Matrix):
         _packing_code = '''
         int index = 0;
 
+
         //Loop over directions
         for(int ix = 0; ix<26; ix++ ){
+
+            CES[ix] = index;
 
             //get the start and end indices in the array containing cell indices
             const int start = CCA_I[ix];
@@ -443,6 +448,7 @@ class ParticleDat(host.Matrix):
                     iz = q[iz];
                 }
             }
+
         }
 
 
@@ -460,11 +466,15 @@ class ParticleDat(host.Matrix):
         _args['CSA'] = host.NullDoubleArray # self._cell_shifts_array
         _args['SEND_BUFFER'] = host.null_matrix(self.dtype) # packing to send buffer
 
+        self._cumulative_exchange_sizes = host.Array(ncomp=26,dtype=ctypes.c_int)
+
+        _args['CES'] = host.NullIntArray
+
         _headers = ['stdio.h']
         _kernel = kernel.Kernel('ParticleDatHaloPackingCode', _packing_code, None, _headers, None, _static_args)
 
         self._halo_packing_lib = build.SharedLib(_kernel, _args)
-        self._halo_packing_buffer = host.Matrix(nrow=26*self.npart, ncol=self.ncomp)
+        self._halo_packing_buffer = host.Matrix(nrow=self.npart, ncol=self.ncomp)
 
     def halo_pack(self):
         """
@@ -472,6 +482,13 @@ class ParticleDat(host.Matrix):
         """
         if self._halo_packing_lib is None:
             self._setup_halo_packing()
+
+        _cell_contents_array, _exchange_sizes = halo.HALOS.local_boundary_cell_contents_count
+
+        if _exchange_sizes.dat.sum() > self._halo_packing_buffer.nrow:
+            if runtime.VERBOSE.level > 1:
+                print "rank:", mpi.MPI_HANDLE.rank, "halo send buffer resized"
+            self._halo_packing_buffer.realloc(nrow=_exchange_sizes.dat.sum(), ncol=self.ncomp)
 
         _static_args = {
             'cell_start': ctypes.c_int(cell.cell_list.cell_list[cell.cell_list.cell_list.end]),
@@ -489,6 +506,7 @@ class ParticleDat(host.Matrix):
         _dynamic_args['CCA_I'] = self._cell_contents_array_index
 
 
+        _dynamic_args['CES'] = self._cumulative_exchange_sizes
 
         if self.name == 'positions':
             _dynamic_args['CSA'] = self._cell_shifts_array_pbc
@@ -543,10 +561,14 @@ class ParticleDat(host.Matrix):
                                          halo.HALOS.recv_ranks[i],
                                          mpi.MPI_HANDLE.rank,
                                          _status)
+
+
+
+
             # Exchange data --------------------------------------------------------------------------
             if halo.HALOS.send_ranks[i] > -1 and halo.HALOS.recv_ranks[i] > -1:
                 mpi.MPI_HANDLE.comm.Sendrecv(self._halo_packing_buffer.dat[
-                                             self._cell_contents_array_index[i]:self._cell_contents_array_index[i + 1]:,
+                                             self._cumulative_exchange_sizes[i]:self._cumulative_exchange_sizes[i] + _exchange_sizes[i]:,
                                              ::],
                                              halo.HALOS.send_ranks[i],
                                              halo.HALOS.send_ranks[i],
@@ -560,14 +582,14 @@ class ParticleDat(host.Matrix):
 
             elif halo.HALOS.send_ranks[i] > -1:
                 mpi.MPI_HANDLE.comm.Send(self._halo_packing_buffer.dat[
-                                         self._cell_contents_array_index[i]:self._cell_contents_array_index[i + 1]:,
+                                         self._cumulative_exchange_sizes[i]:self._cumulative_exchange_sizes[i] + _exchange_sizes[i],
                                          ::],
                                          halo.HALOS.send_ranks[i],
                                          halo.HALOS.send_ranks[i])
 
             elif halo.HALOS.recv_ranks[i] > -1:
 
-                mpi.MPI_HANDLE.comm.Recv(self.dat[data_in.halo_start::, ::],
+                mpi.MPI_HANDLE.comm.Recv(self.dat[self.halo_start::, ::],
                                          halo.HALOS.recv_ranks[i],
                                          mpi.MPI_HANDLE.rank,
                                          _status)
