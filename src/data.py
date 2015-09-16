@@ -275,6 +275,7 @@ class ParticleDat(host.Matrix):
         return self.dat[ix]
 
     def __setitem__(self, ix, val):
+
         self.dat[ix] = val
 
     def __str__(self):

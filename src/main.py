@@ -53,7 +53,7 @@ if __name__ == '__main__':
     writing = False
 
 
-    t=0.02
+    t=0.0005
     dt=0.0001
 
 
@@ -204,7 +204,10 @@ if __name__ == '__main__':
 
     #If logging was enabled, plot data.
     if (logging):
-        energyhandle.plot()
+        try:
+            energyhandle.plot()
+        except:
+            pass
 
     if mpi.MPI_HANDLE.rank ==0:
         try:

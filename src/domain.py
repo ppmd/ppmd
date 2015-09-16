@@ -892,8 +892,6 @@ class BaseDomainHalo(BaseDomain):
 
         self._BCcode = '''
 
-
-
         for(int _ix=0; _ix < _n; _ix++){
 
             if (abs_md(P[3*_ix]) > 0.5*E[0]){

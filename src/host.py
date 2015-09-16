@@ -1,3 +1,4 @@
+import sys
 import ctypes
 import numpy as np
 
@@ -8,6 +9,26 @@ ctypes_map = {ctypes.c_double: 'double', ctypes.c_int: 'int', 'float64': 'double
 
 pointer_lookup = {ctypes.c_int: 'intpointer',
                   ctypes.c_double: 'doublepointer'}
+
+################################################################################################
+# Get available memory.
+################################################################################################
+def available_free_memory():
+    """
+    Get available free memory in bytes.
+    :return: Free memory in bytes.
+    """
+    try:
+        with open('/proc/meminfo', 'r') as mem_info:
+            mem_read = mem_info.readlines()
+
+            _free = int(mem_read[1].split()[1])
+            _buff = int(mem_read[2].split()[1])
+            _cached = int(mem_read[3].split()[1])
+
+            return (_free + _buff + _cached) * 1024
+    except:
+        return (2 ** 64) - 1
 
 ################################################################################################
 # Array.
@@ -33,10 +54,14 @@ class Array(object):
 
 
     def _create_zeros(self, length=1, dtype=ctypes.c_double):
+        assert ctypes.sizeof(dtype) * length < available_free_memory(), "host.Array _create_zeros error: Not enough free memory."
+
         self.idtype = dtype
         self.dat = np.zeros(length, dtype=dtype, order='C')
 
     def _create_from_existing(self, ndarray=None, dtype=ctypes.c_double):
+        assert sys.getsizeof(ndarray) < available_free_memory(), "host.Array _create_from_existing error: Not enough free memory."
+
         self.idtype = dtype
         self.dat = np.array(ndarray, dtype=dtype, order='C')
 
@@ -53,6 +78,8 @@ class Array(object):
         return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def realloc(self, length):
+        assert ctypes.sizeof(self.dtype) * length < available_free_memory(), "host.Array realloc error: Not enough free memory."
+
         self.dat.resize(length)
 
     def zero(self):
@@ -100,10 +127,14 @@ class Matrix(object):
 
 
     def _create_zeros(self, nrow=1, ncol=1, dtype=ctypes.c_double):
+        assert ctypes.sizeof(dtype) * nrow * ncol < available_free_memory(), "host.Matrix _create_zeros error: Not enough free memory."
+
         self.idtype = dtype
         self.dat = np.zeros([nrow, ncol], dtype=dtype, order='C')
 
     def _create_from_existing(self, ndarray=None, dtype=ctypes.c_double):
+        assert sys.getsizeof(ndarray) < available_free_memory(), "host.Matrix _create_from_existing error: Not enough free memory."
+
         self.idtype = dtype
         self.dat = np.array(ndarray, dtype=dtype, order='C')
         if len(self.dat.shape) == 1:
@@ -126,6 +157,8 @@ class Matrix(object):
         return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def realloc(self, nrow, ncol):
+        assert ctypes.sizeof(self.dtype) * nrow * ncol < available_free_memory(), "host.Matrix realloc error: Not enough free memory."
+
         self.dat.resize(nrow, ncol)
 
     def zero(self):
