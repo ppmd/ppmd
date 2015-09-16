@@ -331,6 +331,7 @@ class CartesianHalo(object):
     def check_valid(self):
         """
         Check if current values are still correct.
+
         :return: bool
         """
         if cell.cell_list.domain.cell_array[0] != self._ca_copy[0] or cell.cell_list.domain.cell_array[1] != self._ca_copy[1] or cell.cell_list.domain.cell_array[2] != self._ca_copy[2]:
@@ -375,6 +376,7 @@ class CartesianHalo(object):
         """
         Get the number of particles in the corresponding cells for each halo. These are needed such that
         the cell list can be created without inspecting the positions of recvd particles.
+
         :return: Tuple: Cell contents count for each cell in same order as local boundary cell list.,
         Exchange sizes for each halo.
         """
@@ -389,6 +391,7 @@ class CartesianHalo(object):
     def send_ranks(self):
         """
         Get the list of process ranks to send data to.
+
         :return: list of process ranks
         """
         if not self.check_valid():
@@ -399,6 +402,7 @@ class CartesianHalo(object):
     def recv_ranks(self):
         """
         Get list of process rands to expect to recv from.
+
         :return: list of process ranks.
         """
         if not self.check_valid():

@@ -14,7 +14,7 @@ import domain
 import pairloop
 import threading
 import kernel
-import host
+
 
 
 class BaseMDSimulation(object):
@@ -233,6 +233,22 @@ class BaseMDSimulation(object):
         self._kinetic_energy_lib.execute()
 
         return self.state.k.dat
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
