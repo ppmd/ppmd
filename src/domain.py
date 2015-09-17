@@ -939,6 +939,14 @@ class BaseDomainHalo(BaseDomain):
 
     def bc_execute(self):
 
+        self._BC_state.move_to_neighbour([0,1,2],(1,0,0))
+
+
+
+
+
+
+
         if self._nproc == 1:
             self._BCloop.execute(static_args={'_n':self._BC_state.n})
             # print "normal BCs applied"

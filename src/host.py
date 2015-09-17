@@ -102,6 +102,9 @@ class Array(object):
     def __setitem__(self, ix, val):
         self.dat[ix] = val
 
+    def __len__(self):
+        return self.ncomp
+
 
 
 

@@ -2,7 +2,7 @@ from mpi4py import MPI
 import sys
 import ctypes as ct
 
-mpi_map = {ct.c_double: MPI.DOUBLE, ct.c_int: MPI.INT}
+mpi_map = {ct.c_double: MPI.DOUBLE, ct.c_int: MPI.INT, int: MPI.INT}
 
 ###############################################################################################################
 # MDMPI
@@ -175,7 +175,7 @@ class MDMPI(object):
                 _sf[2 * ix + 1] = 1
         return _sf
 
-    def shift(self, offset=(0, 0, 0)):
+    def shift(self, offset=(0, 0, 0), ignore_periods = False):
         """
         Returns rank of process found at a given offset, will return -1 if no process exists.
 
@@ -190,12 +190,14 @@ class MDMPI(object):
 
         _r = [_x % self._dims[0], _y % self._dims[1], _z % self._dims[2]]
 
-        if (_r[0] != _x) and self._per[0] == 0:
-            return -1
-        if (_r[1] != _y) and self._per[1] == 0:
-            return -1
-        if (_r[2] != _z) and self._per[2] == 0:
-            return -1
+        if not ignore_periods:
+
+            if (_r[0] != _x) and self._per[0] == 0:
+                return -1
+            if (_r[1] != _y) and self._per[1] == 0:
+                return -1
+            if (_r[2] != _z) and self._per[2] == 0:
+                return -1
 
         return _r[0] + _r[1] * self._dims[0] + _r[2] * self._dims[0] * self._dims[1]
 

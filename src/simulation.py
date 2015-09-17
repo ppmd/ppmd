@@ -52,7 +52,7 @@ class BaseMDSimulation(object):
 
 
         # Add particle dats
-        _factor = 1.3
+        _factor = 27
         self.state.positions = data.ParticleDat(n, 3, name='positions', max_npart=_factor * n)
         self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
         self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
