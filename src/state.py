@@ -45,6 +45,8 @@ class BaseMDState(object):
         self.compressed = True
         """ Bool to determine if the held :class:`~data.ParticleDat` members have gaps in them. """
 
+        self.uncompressed_end = None
+
 
         # move vars.
         self._move_ncomp = []
@@ -52,6 +54,13 @@ class BaseMDState(object):
         self._move_packing_lib = None
         self._move_send_buffer = None
         self._move_recv_buffer = None
+
+        self._move_unpacking_lib = None
+        self._move_empty_slots = None
+        self._move_used_free_slot_count = None
+
+        # compressing vars
+        self._compressing_lib = None
 
     def __setattr__(self, name, value):
         """
@@ -185,7 +194,6 @@ class BaseMDState(object):
             for (int _ix = 0; _ix < end; _ix++){
                 \n%(DYNAMIC_DATS)s
             }
-
             ''' % {'DYNAMIC_DATS': _dynamic_dats}
 
             _packing_headers = ['stdio.h']
@@ -208,30 +216,163 @@ class BaseMDState(object):
             # make packing library
             self._move_packing_lib = build.SharedLib(_packing_kernel, _packing_args)
 
-        # Execute library.
+        # Execute packing library.
         self._move_packing_lib.execute(static_args={'end': ctypes.c_int(len(ids))})
 
 
 
+        # Create a recv buffer.
+        if self._move_recv_buffer is None:
+            self._move_recv_buffer = host.Array(ncomp=_send_count * self._move_total_ncomp)
+
+
+        elif _recv_count * self._move_total_ncomp > self._move_recv_buffer.ncomp:
+            if runtime.VERBOSE.level > 2:
+                print "rank", mpi.MPI_HANDLE.rank, ": move recv buffer resized."
+
+            self._move_recv_buffer.realloc(_recv_count * self._move_total_ncomp)
+
+
+        # sending of particles.
+        if _send_count > 0 and _recv_count > 0:
+            mpi.MPI_HANDLE.comm.Sendrecv(self._move_send_buffer[0:_send_count * self._move_total_ncomp:],
+                                         _send_rank,
+                                         _send_rank,
+                                         self._move_recv_buffer[0:_recv_count * self._move_total_ncomp:],
+                                         _recv_rank,
+                                         mpi.MPI_HANDLE.rank,
+                                         _status)
+        elif _send_count > 0:
+                mpi.MPI_HANDLE.comm.Send(self._move_send_buffer[0:_send_count * self._move_total_ncomp:],
+                                         _send_rank,
+                                         _send_rank)
+        elif _recv_count > 0:
+                mpi.MPI_HANDLE.comm.Recv(self._move_recv_buffer[0:_recv_count * self._move_total_ncomp:],
+                                         _recv_rank,
+                                         mpi.MPI_HANDLE.rank,
+                                         _status)
+
+        # check that ParticleDats are large enough for the incoming particles.
+        for ix in self.particle_dats:
+            _dat = getattr(self, ix)
+            if _dat.max_npart < _dat.npart + _recv_count - _send_count:
+                _dat.resize(_dat.npart + _recv_count - _send_count)
+                if runtime.VERBOSE.level > 2:
+                    print "rank", mpi.MPI_HANDLE.rank, ix, ": particle dat resized."
+
+        self._move_empty_slots = []
+        # free slots as array.
+        for ix in range(_send_count):
+            self._move_empty_slots.append(ids)
+
+        _free_slots = host.Array([self._move_empty_slots])
+        _num_free_slots = _free_slots.ncomp
 
 
 
+        if self._move_unpacking_lib is None:
+            _dyn_dat_case = ''
+            _space = ' ' * 16
+
+            _cumulative_ncomp = 0
+
+            for ixi, ix in enumerate(self.particle_dats):
+                _dat = getattr(self, ix)
+                if _dat.ncomp > 1:
+                    _dyn_dat_case += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP': _dat.ncomp}
+                    _dyn_dat_case += _space + '%(NAME)s[(pos*%(NCOMP)s)+ni] = _RECV_BUFFER[(ix*%(NCOMP_TOTAL)s)+%(NCOMP_START)s+ni]; \n' % {'NCOMP':_dat.ncomp, 'NAME':str(ix), 'NCOMP_TOTAL': self._move_total_ncomp, 'NCOMP_START': _cumulative_ncomp}
+                    _dyn_dat_case += _space + '} \n'
+                else:
+                    _dyn_dat_case += _space + '%(NAME)s[pos] = _RECV_BUFFER[(ix*%(NCOMP_TOTAL)s)+%(NCOMP_START)s]; \n' % {'NAME':str(ix), 'NCOMP_TOTAL': self._move_total_ncomp, 'NCOMP_START': _cumulative_ncomp}
+
+                _cumulative_ncomp += self._move_ncomp[ixi]
 
 
+            _unpacking_code = '''
 
+            for(int ix = 0; ix < _recv_count; ix++){
 
+                int pos;
+                // prioritise filling spaces in dat.
+                if (ix < _num_free_slots) {
+                    pos = _free_slots[ix];
+                } else {
+                    pos = _prev_num_particles + ix - _num_free_slots;
+                }
 
+                \n%(DYN_DAT_CODE)s
+            }
+            ''' % {'DYN_DAT_CODE': _dyn_dat_case}
 
+            _unpacking_static_args = {
+                '_recv_count': ctypes.c_int,
+                '_num_free_slots': ctypes.c_int,
+                '_prev_num_particles': ctypes.c_int
+            }
 
+            _unpacking_dynamic_args = {
+                '_free_slots': _free_slots,
+                '_RECV_BUFFER': self._move_recv_buffer
+            }
 
+            for ix in self.particle_dats:
+                # existing dat in state
+                _unpacking_dynamic_args['%(NAME)s' % {'NAME':ix}] = getattr(self, ix)
 
+            _unpacking_headers = ['stdio.h']
 
+            # create a unique but searchable name.
+            _name = ''
+            for ix in self.particle_dats:
+                _name += '_' + str(ix)
 
+            # make kernel
+            _unpacking_kernel = kernel.Kernel('state_move_unpacking' + _name, _unpacking_code, None, _unpacking_headers, None, _unpacking_static_args)
+            self._move_unpacking_lib = build.SharedLib(_unpacking_kernel, _unpacking_dynamic_args)
 
+        self._move_unpacking_lib.execute(static_args={'_recv_count': ctypes.c_int(_recv_count),
+                                                      '_num_free_slots': ctypes.c_int(_num_free_slots),
+                                                      '_prev_num_particles': ctypes.c_int(self.n)})
 
+        if _recv_count < _num_free_slots:
+            self.compressed = False
+            self._move_empty_slots = self._move_empty_slots[_recv_count::]
+        else:
+            self.compressed = True
+            self._move_empty_slots = []
 
+        if _recv_count > _send_count:
+            self.uncompressed_end = self.n - _send_count + _recv_count
+        else:
+            self.uncompressed_end = self.n
 
         return True
+
+
+    def compress_particle_dats(self):
+        """
+        Compress the particle dats held in the state. Compressing removes empty rows.
+        """
+
+        if self.compressed:
+            self.n = self.uncompressed_end
+            return
+        else:
+            if self._compressing_lib is None:
+
+                _compressing_code = '''
+
+                '''
+
+
+
+
+
+
+
+
+
+
 
 
 
