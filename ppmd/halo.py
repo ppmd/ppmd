@@ -347,8 +347,7 @@ class CartesianHalo(object):
         0 first followed by cells for halo 1 etc. Also returns an data.Array of 27 elements with the
         starting positions of each halo within the previous array.
 
-        :return: Tuple, array of local cell indices to pack, array of starting points within the first
-        array.
+        :return: Tuple, array of local cell indices to pack, array of starting points within the first array.
         """
 
         if not self.check_valid():
@@ -363,8 +362,7 @@ class CartesianHalo(object):
         0 first followed by cells for halo 1 etc. Also returns an data.Array of 27 elements with the
         starting positions of each halo within the previous array.
 
-        :return: Tuple, array of local halo cell indices to unpack into, array of starting points within the first
-        array.
+        :return: Tuple, array of local halo cell indices to unpack into, array of starting points within the first array.
         """
 
         if not self.check_valid():
@@ -377,8 +375,7 @@ class CartesianHalo(object):
         Get the number of particles in the corresponding cells for each halo. These are needed such that
         the cell list can be created without inspecting the positions of recvd particles.
 
-        :return: Tuple: Cell contents count for each cell in same order as local boundary cell list.,
-        Exchange sizes for each halo.
+        :return: Tuple: Cell contents count for each cell in same order as local boundary cell list, Exchange sizes for each halo.
         """
         if not self.check_valid():
             self._halo_setup_prepare()

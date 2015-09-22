@@ -138,7 +138,7 @@ class PairLoopRapaport(_Base):
     :arg bool DEBUG: Flag to enable debug flags.
     """
 
-    def __init__(self, domain, potential, dat_dict):
+    def __init__(self, domain, potential=None, dat_dict=None, kernel=None):
         self._domain = domain
         self._potential = potential
         self._particle_dat_dict = dat_dict
@@ -151,7 +151,14 @@ class PairLoopRapaport(_Base):
         self._temp_dir = runtime.BUILD_DIR.dir
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
-        self._kernel = self._potential.kernel
+
+        if potential is not None:
+            self._kernel = self._potential.kernel
+        elif kernel is not None:
+            self._kernel = kernel
+        else:
+            print "pairloop error, no kernel passed."
+
 
         self._nargs = len(self._particle_dat_dict)
 

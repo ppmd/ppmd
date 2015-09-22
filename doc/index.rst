@@ -13,6 +13,7 @@ Contents:
     
     concept
     installation
+    examples
     modules
 
 

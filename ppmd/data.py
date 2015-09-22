@@ -650,7 +650,9 @@ class TypedDat(host.Matrix):
             self._create_zeros(nrow, ncol, dtype)
 
 
+    def __call__(self, mode=access.RW, halo=True):
 
+        return self, mode
 
 
 

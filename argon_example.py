@@ -1,10 +1,8 @@
 #!/usr/bin/python
-
-
 from ppmd import *
 
 # choose a domain.
-periodic_nve_domain = domain.BaseDomainHalo()
+periodic_domain = domain.BaseDomainHalo()
 
 # set potential between particles.
 ar_potential = potential.LennardJones(sigma=3.405, epsilon=0.9661, rc=8.5)
@@ -23,7 +21,7 @@ velocity_init = simulation.VelInitNormDist(mu=0., sig=5.)
 mass_init = simulation.MassInitIdentical(m=39.948)
 
 # Combine the existing intialisations into a simulation.
-sim = simulation.BaseMDSimulation(domain_in=periodic_nve_domain,
+sim = simulation.BaseMDSimulation(domain_in=periodic_domain,
                                   potential_in=ar_potential,
                                   particle_pos_init=position_init,
                                   particle_vel_init=velocity_init,
@@ -36,10 +34,8 @@ xyz_writer = method.WriteTrajectoryXYZ(state=sim.state,
                                        dir_name='./', 
                                        file_name='out.xyz')
 
-# Write xyz trajectory every 50 timesteps.
+# Write xyz trajectory every 5 timesteps.
 schedule = method.Schedule([5], [xyz_writer.write])
-
-
 
 # create an integrator instance.
 integrator = method.VelocityVerlet(simulation = sim, schedule=schedule)

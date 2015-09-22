@@ -29,15 +29,17 @@ class BaseMDSimulation(object):
     :arg particle_vel_init: Method to initialise particle velocities with, see VelInit* classes.
     :arg particle_mass_init: Method to initialise particle masses with, see MassInit* classes.
     :arg int n: Total number of particles in simulation.
+    :arg float cutoff: Cutoff to perform cell decomposition with if a potential is not passed.
     """
 
     def __init__(self,
                  domain_in,
-                 potential_in,
+                 potential_in=None,
                  particle_pos_init=None,
                  particle_vel_init=None,
                  particle_mass_init=None,
-                 n=0):
+                 n=0,
+                 cutoff=None):
 
         self.potential = potential_in
         """Short range potential between particles."""
@@ -49,6 +51,11 @@ class BaseMDSimulation(object):
         # Add integer attributes to state
         self.state.n = n
         self.state.nt = n
+
+        if potential_in is not None:
+            self._cutoff = self.potential.rc
+        else:
+            self._cutoff = cutoff
 
 
         # Add particle dats
@@ -85,7 +92,9 @@ class BaseMDSimulation(object):
         # Initialise domain extent
         particle_pos_init.get_extent(self.state)
         # Initialise cell list
-        self._cell_structure = cell.cell_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self.potential._rn)
+        self._cell_structure = cell.cell_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cutoff)
+        if type(self.state.domain) is domain.BaseDomainHalo:
+            halo.HALOS = halo.CartesianHalo()
 
         # add gpu arrays
         if gpucuda.INIT_STATUS():
@@ -108,11 +117,12 @@ class BaseMDSimulation(object):
         self.state.domain.bc_execute()
 
         # short range potential data dict init
-        _potential_dat_dict = self.potential.datdict(self.state)
+        if self.potential is not None:
+            _potential_dat_dict = self.potential.datdict(self.state)
 
 
 
-        if self._cell_structure:
+        if self._cell_structure and self.potential is not None:
             # Need to pass entire state such that all particle dats can be sorted.
             cell.group_by_cell.setup(self.state)
 
@@ -122,8 +132,6 @@ class BaseMDSimulation(object):
 
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
-
-                halo.HALOS = halo.CartesianHalo()
 
                 self._forces_update_lib = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
                                                                         potential=self.potential,
@@ -149,7 +157,7 @@ class BaseMDSimulation(object):
                                                                                        dat_dict=_potential_dat_dict)
 
         # If no cell structure was created
-        else:
+        elif self.potential is not None:
             self._forces_update_lib = pairloop.DoubleAllParticleLoopPBC(n=self.state.as_func('n'),
                                                                         domain=self.state.domain,
                                                                         kernel=self.potential.kernel,
