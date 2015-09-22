@@ -67,7 +67,7 @@ if __name__ == '__main__':
         nsig = 5.0
         
         # Initialise basic domain
-        test_domain = domain.BaseDomainHalo(nt=N)
+        test_domain = domain.BaseDomainHalo()
 
         # Initialise LJ potential
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
@@ -91,7 +91,7 @@ if __name__ == '__main__':
         dt=0.00001
         
         # See above
-        test_domain = domain.BaseDomainHalo(nt=N)
+        test_domain = domain.BaseDomainHalo()
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)
 
 
@@ -110,7 +110,7 @@ if __name__ == '__main__':
         N = 1
         
         # See above
-        test_domain = domain.BaseDomainHalo(nt=N)
+        test_domain = domain.BaseDomainHalo()
         test_potential = potential.NULL(rc = 0.01)
         
         print test_potential.rc

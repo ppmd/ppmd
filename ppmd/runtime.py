@@ -162,7 +162,7 @@ except:
 
 
 BUILD_DIR = Dir(_BUILD_DIR)
-LIB_DIR = Dir(os.path.join(os.getcwd(), 'lib/'))
+LIB_DIR = Dir(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib/'))
 
 
 

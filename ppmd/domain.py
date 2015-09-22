@@ -34,9 +34,8 @@ class BaseDomain(object):
 
     """
 
-    def __init__(self, nt=1, extent=np.array([1., 1., 1.]), cell_count=1):
+    def __init__(self, extent=np.array([1., 1., 1.]), cell_count=1):
 
-        self._NT = nt
 
         self._COMM = None
 
@@ -249,9 +248,7 @@ class BaseDomainHalo(BaseDomain):
 
     """
 
-    def __init__(self, nt=1, extent=np.array([1., 1., 1.]), cell_count=1, periods=(1, 1, 1)):
-
-        self._NT = nt
+    def __init__(self, extent=np.array([1., 1., 1.]), cell_count=1, periods=(1, 1, 1)):
 
         self._periods = periods
 
@@ -939,7 +936,7 @@ class BaseDomainHalo(BaseDomain):
 
     def bc_execute(self):
 
-        self._BC_state.move_to_neighbour([0,1,2],(1,0,0))
+        #self._BC_state.move_to_neighbour([0,1,2],(1,0,0))
 
 
 

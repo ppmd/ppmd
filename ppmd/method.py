@@ -434,7 +434,7 @@ class WriteTrajectoryXYZ(object):
 
         if mpi.MPI_HANDLE.rank == 0:
             self._fh = open(os.path.join(self._dn, self._fn), 'a')
-            self._fh.write(str(self._s.nt()) + '\n')
+            self._fh.write(str(self._s.nt) + '\n')
             self._fh.write(str(self._title) + '\n')
             self._fh.flush()
         mpi.MPI_HANDLE.barrier()
@@ -443,7 +443,7 @@ class WriteTrajectoryXYZ(object):
             for iz in range(mpi.MPI_HANDLE.nproc):
                 if mpi.MPI_HANDLE.rank == iz:
                     self._fh = open(os.path.join(self._dn, self._fn), 'a')
-                    for ix in range(self._s.n()):
+                    for ix in range(self._s.n):
                         self._fh.write(str(self._symbol).rjust(3))
                         for iy in range(3):
                             self._fh.write(space + str('%.5f' % self._s.positions[ix, iy]))
