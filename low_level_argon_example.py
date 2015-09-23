@@ -19,7 +19,8 @@ velocity_init = simulation.VelInitNormDist(mu=0., sig=5.)
 mass_init = simulation.MassInitIdentical(m=39.948)
 
 
-# Combine the existing intialisations into a simulation. We do not pass a potential ths sets up a cell structure using the passed cutoff.
+# Combine the existing intialisations into a simulation. We do not pass a potential, 
+# the cell structure is setup with a passed cutoff.
 
 sim = simulation.BaseMDSimulation(domain_in=periodic_domain,
                                   particle_pos_init=position_init,
@@ -33,7 +34,6 @@ sim = simulation.BaseMDSimulation(domain_in=periodic_domain,
 # create a custom potential using pairlooping.
 
 kernel_code = '''
-
 const double R0 = P[1][0] - P[0][0];
 const double R1 = P[1][1] - P[0][1];
 const double R2 = P[1][2] - P[0][2];
@@ -61,7 +61,6 @@ if (r2 < rc2){
     A[1][2]-=f_tmp*R2;
 
 }
-
 '''
 
 # setup kernel constants
@@ -87,18 +86,11 @@ force_update_pairloop = pairloop.PairLoopRapaportHalo(domain=periodic_domain,
                                                       kernel=LJ_kernel,
                                                       dat_dict=kernel_dat_dict)
 
-# In future, access descriptors should avoid this being called by the user.
-cell.cell_list.sort()
-
-# update forces and potential energy.
-force_update_pairloop.execute()
-
-
 
 
 # create a verlocity verlet integrator.
 
-dt = 0.0001
+
 
 vv_kernel1_code = '''
 const double M_tmp = 1/M[0];
@@ -116,6 +108,8 @@ V[0] += dht*A[0]*M_tmp;
 V[1] += dht*A[1]*M_tmp;
 V[2] += dht*A[2]*M_tmp;
 '''
+
+dt = 0.0001
 vv_constants = (kernel.Constant('dt', dt), 
                 kernel.Constant('dht',0.5 * dt))
                 
