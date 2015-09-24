@@ -61,6 +61,7 @@ class BaseMDState(object):
 
         # compressing vars
         self._compressing_lib = None
+        self._compressing_n_new = None
 
     def __setattr__(self, name, value):
         """
@@ -358,13 +359,100 @@ class BaseMDState(object):
             self.n = self.uncompressed_end
             return
         else:
+            self._move_empty_slots.sort()
+            _slots = host.Array(self._move_empty_slots)
+
+            if self._compressing_n_new is None:
+                self._compressing_n_new = host.Array([0], dtype=ctypes.c_int)
+            else:
+                self._compressing_n_new.zero()
+
+
+
             if self._compressing_lib is None:
 
+                _dyn_dat_case = ''
+                _space = ' ' * 16
+
+                _cumulative_ncomp = 0
+
+                for ixi, ix in enumerate(self.particle_dats):
+                    _dat = getattr(self, ix)
+                    if _dat.ncomp > 1:
+                        _dyn_dat_case += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP': _dat.ncomp}
+                        _dyn_dat_case += _space + '%(NAME)s[(slots[slot_to_fill]*%(NCOMP)s)+ni] = %(NAME)s[found_index*%(NCOMP)s+ni]; \n' % {'NCOMP':_dat.ncomp, 'NAME':str(ix)}
+                        _dyn_dat_case += _space + '} \n'
+                    else:
+                        _dyn_dat_case += _space + '%(NAME)s[slots[slot_to_fill]] = %(NAME)s[found_index]; \n' % {'NAME':str(ix)}
+
+                    _cumulative_ncomp += self._move_ncomp[ixi]
+
+
+                _static_args = {
+                    'slots_to_fill_in': ctypes.c_int,
+                    'n_new_in': ctypes.c_int
+                }
+
+                _dyn_args = {
+                    'slots': _slots,
+                    'n_new_out': self._compressing_n_new
+                }
+
                 _compressing_code = '''
+                int slots_to_fill = slots_to_fill_in;
+                int n_new = n_new_in;
 
-                '''
+                int last_slot;
+                int last_slot_lookup_index = slots_to_fill - 1;
+
+                int slot_to_fill_index = 0;
+
+                int slot_to_fill = -1;
+
+                // Whilst there are slots to fill and the current slot is not past the end of the array.
+
+                while ( (slot_to_fill_index <= last_slot_lookup_index) && (slots[slot_to_fill_index] < n_new) ){
+
+                    // get last slot in particle dats.
+                    slot_to_fill = slots[slot_to_fill_index];
+
+                    int found_index = -1;
+
+                    //loop from end to empty slot
+                    for (int iy = n_new - 1; iy > slot_to_fill; iy--){
+
+                        if (iy == slots[last_slot_lookup_index]){
+                            n_new = iy;
+                            last_slot_lookup_index--;
+                        } else {
+                            found_index = iy;
+                            break;
+                        }
+
+                    }
+
+                    if (found_index > 0){
+
+                        \n%(DYN_DAT_CODE)s
+
+                        n_new = found_index;
 
 
+                    } else {
+                        n_new = last_slot;
+                        break;
+                    }
+
+
+                    slot_to_fill_index++;
+                }
+
+                n_new_out[0] = n_new;
+
+
+                ''' % {'DYN_DAT_CODE': _dyn_dat_case}
+
+            self._compressing_lib.execute()
 
 
 
