@@ -18,13 +18,11 @@ A domain is the physical space in which a simulation takes place. An instance of
 Position, Velocity and Mass
 ...........................
 
-Init, mass pos, vel: ::
+Various methods are available to set the initial properties of the particles. DLPOLY config files may also be used to set the inital configuration. ::
 
     position_init = simulation.PosInitLatticeNRhoRand(N, rho=0.2, dev=0.)
     velocity_init = simulation.VelInitNormDist(mu=0., sig=5.)
     mass_init = simulation.MassInitIdentical(m=39.948)
-
-
 
 Potential
 .........
@@ -37,7 +35,7 @@ An interaction between particles is an example of a pairwise operation. The foll
 Combining into a simulation
 ...........................
 
-Combining the above into a simulation. ::
+A simulation can then be constructed using the above initalisation methods. If a potential is specified an instance of a simulation provides a method to update the forces particle dat.  ::
 
     sim = simulation.BaseMDSimulation(domain_in=periodic_nve_domain,
                                       potential_in=ar_potential,
@@ -50,30 +48,30 @@ Combining the above into a simulation. ::
 xyz Writer
 ..........
 
-Init method to write xyz trajectories using a specified state. ::
+The :class:`~method.WriteTrajectoryXYZ` is an example of a method class. Method classes perform operations on state classes. This particluar method writes the current state to a xyz file using the current positions, velocities and forces when the :class:`~method.WriteTrajectoryXYZ.write` method is called. ::
 
     xyz_writer = method.WriteTrajectoryXYZ(state=sim.state, 
                                            dir_name='./', 
                                            file_name='out.xyz')
 
 
+.. _high-level-schedule:
 
 schedule
 ........
 
-How to schedule events within an integration. ::
+A schedule is list of pairs. Each pair consists of an argument free function and an integer number of steps. When passed to one of the integrator methods the function is called every defined number of steps. ::
 
     schedule = method.Schedule([5], [xyz_writer.write])
 
 
 Create and run an integrator
 ............................
-
-Create ::
+In this example we wish to integrate our inital state forward in time. This can be achieved with an integrator method. Here we use a velocity verlet integration scheme. The schedule instance as in :ref:`high-level-schedule` allows user interaction with the state between integration steps. ::
 
     integrator = method.VelocityVerlet(simulation = sim, schedule=schedule)
 
-run::
+Calling integrate with a time step and a final time. ::
 
     integrator.integrate(dt=0.0001, t=0.1)
 
