@@ -45,19 +45,19 @@ class BaseMDState(object):
         self.compressed = True
         """ Bool to determine if the held :class:`~data.ParticleDat` members have gaps in them. """
 
-        self.uncompressed_end = None
-
+        self.uncompressed_n = False
 
         # move vars.
-        self._move_ncomp = []
-        self._move_total_ncomp = 0
         self._move_packing_lib = None
         self._move_send_buffer = None
         self._move_recv_buffer = None
 
         self._move_unpacking_lib = None
-        self._move_empty_slots = None
+        self._move_empty_slots = []
         self._move_used_free_slot_count = None
+        
+        self._move_ncomp = None
+        self._move_total_ncomp = None
 
         # compressing vars
         self._compressing_lib = None
@@ -261,12 +261,14 @@ class BaseMDState(object):
                 if runtime.VERBOSE.level > 2:
                     print "rank", mpi.MPI_HANDLE.rank, ix, ": particle dat resized."
 
-        self._move_empty_slots = []
+
         # free slots as array.
         for ix in range(_send_count):
-            self._move_empty_slots.append(ids)
+            self._move_empty_slots.append(ids[ix])
 
-        _free_slots = host.Array([self._move_empty_slots])
+        self._move_empty_slots.sort()
+
+        _free_slots = host.Array([self._move_empty_slots], dtype=ctypes.c_int)
         _num_free_slots = _free_slots.ncomp
 
 
@@ -276,6 +278,12 @@ class BaseMDState(object):
             _space = ' ' * 16
 
             _cumulative_ncomp = 0
+            self._move_total_ncomp = 0
+
+            for ixi, ix in enumerate(self.particle_dats):
+                _dat = getattr(self, ix)
+                self._move_total_ncomp += _dat.ncomp
+
 
             for ixi, ix in enumerate(self.particle_dats):
                 _dat = getattr(self, ix)
@@ -286,7 +294,7 @@ class BaseMDState(object):
                 else:
                     _dyn_dat_case += _space + '%(NAME)s[pos] = _RECV_BUFFER[(ix*%(NCOMP_TOTAL)s)+%(NCOMP_START)s]; \n' % {'NAME':str(ix), 'NCOMP_TOTAL': self._move_total_ncomp, 'NCOMP_START': _cumulative_ncomp}
 
-                _cumulative_ncomp += self._move_ncomp[ixi]
+                _cumulative_ncomp += _dat.ncomp
 
 
             _unpacking_code = '''
@@ -337,15 +345,14 @@ class BaseMDState(object):
 
         if _recv_count < _num_free_slots:
             self.compressed = False
+            self.uncompressed_n = self._n
             self._move_empty_slots = self._move_empty_slots[_recv_count::]
         else:
             self.compressed = True
+            self.uncompressed_n = False
+            self.n = self.n + _recv_count - _num_free_slots
             self._move_empty_slots = []
 
-        if _recv_count > _send_count:
-            self.uncompressed_end = self.n - _send_count + _recv_count
-        else:
-            self.uncompressed_end = self.n
 
         return True
 
@@ -355,26 +362,21 @@ class BaseMDState(object):
         Compress the particle dats held in the state. Compressing removes empty rows.
         """
 
-        if self.compressed:
-            self.n = self.uncompressed_end
+        if self.compressed and self.uncompressed_n is not False:
+            self.n = self.uncompressed_n
             return
         else:
-            self._move_empty_slots.sort()
-            _slots = host.Array(self._move_empty_slots)
+            _slots = host.Array(self._move_empty_slots, dtype=ctypes.c_int)
 
             if self._compressing_n_new is None:
                 self._compressing_n_new = host.Array([0], dtype=ctypes.c_int)
             else:
                 self._compressing_n_new.zero()
 
-
-
             if self._compressing_lib is None:
 
                 _dyn_dat_case = ''
                 _space = ' ' * 16
-
-                _cumulative_ncomp = 0
 
                 for ixi, ix in enumerate(self.particle_dats):
                     _dat = getattr(self, ix)
@@ -384,8 +386,6 @@ class BaseMDState(object):
                         _dyn_dat_case += _space + '} \n'
                     else:
                         _dyn_dat_case += _space + '%(NAME)s[slots[slot_to_fill]] = %(NAME)s[found_index]; \n' % {'NAME':str(ix)}
-
-                    _cumulative_ncomp += self._move_ncomp[ixi]
 
 
                 _static_args = {
@@ -413,7 +413,7 @@ class BaseMDState(object):
 
                 while ( (slot_to_fill_index <= last_slot_lookup_index) && (slots[slot_to_fill_index] < n_new) ){
 
-                    // get last slot in particle dats.
+                    // get first empty slot in particle dats.
                     slot_to_fill = slots[slot_to_fill_index];
 
                     int found_index = -1;
@@ -452,8 +452,16 @@ class BaseMDState(object):
 
                 ''' % {'DYN_DAT_CODE': _dyn_dat_case}
 
-            self._compressing_lib.execute()
+                # Add ParticleDats to pointer arguments.
+                for idx, ix in enumerate(self.particle_dats):
+                    _dyn_args['%(NAME)s' % {'NAME':ix}] = getattr(self, ix)
 
+
+                _compressing_kernel = kernel.Kernel('ParticleDat_compressing_lib', _compressing_code, headers=['stdio.h'], static_args=_static_args)
+
+                self._compressing_lib = build.SharedLib(_compressing_kernel, _dyn_args)
+
+            self._compressing_lib.execute(static_args={'slots_to_fill_in': ctypes.c_int(_slots.ncomp), 'n_new_in': ctypes.c_int(self.uncompressed_n)})
 
 
 
