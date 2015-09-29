@@ -127,9 +127,14 @@ class VelocityVerlet(object):
 
         for i in range(self._max_it):
 
+            print i
+
             self._p1.execute(self._state.n)
 
-            self._domain.bc_execute()
+            # self._domain.bc_execute()
+
+            self._sim.execute_boundary_conditions()
+
 
             #TODO: fix this.
             self._sim.forces_update()

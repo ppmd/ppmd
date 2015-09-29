@@ -134,6 +134,15 @@ class CellList(object):
         return self._cell_list
 
     @property
+    def offset(self):
+        """
+        Get the offset required to find the starting position of the cells in the cell list.
+
+        :return: int start of cells in cell list.
+        """
+        return ct.c_int(self._cell_list.end - self._domain.cell_count)
+
+    @property
     def cell_reverse_lookup(self):
         """
         :return: The Reverse lookup map.

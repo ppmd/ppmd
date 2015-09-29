@@ -41,7 +41,7 @@ if __name__ == '__main__':
     test_2_bounce = False
     
     # 1 1 particle
-    t_1_particle = False
+    t_1_particle = True
 
     # plot as computing + at end?
     plotting = False
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     writing = False
 
 
-    t=0.0005
+    t=0.5
     dt=0.0001
 
 
@@ -96,14 +96,14 @@ if __name__ == '__main__':
 
 
         # Initialise two particles on an axis a set distance apart.
-        test_pos_init = simulation.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([8., 8., 8.]), axis = np.array([0,1,1]))
+        test_pos_init = simulation.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([8., 8., 8.]), axis = np.array([1,0,0]))
 
         # Give first two particles specific velocities
         test_vel_init = simulation.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
 
         # Set alternating masses for particles.
         
-        test_mass_init = simulation.MassInitTwoAlternating(5., 5.)
+        test_mass_init = simulation.MassInitTwoAlternating(100., 5.)
         
     if t_1_particle:
         
@@ -111,12 +111,12 @@ if __name__ == '__main__':
         
         # See above
         test_domain = domain.BaseDomainHalo()
-        test_potential = potential.NULL(rc = 0.01)
+        test_potential = potential.NULL(rc = 0.05)
         
         print test_potential.rc
 
         # Initialise two particles on an axis a set distance apart.
-        test_pos_init = simulation.PosInitOneParticleInABox(r = np.array([0., 0., 0.]), extent = np.array([0.2, 0.2, 0.2]))
+        test_pos_init = simulation.PosInitOneParticleInABox(r = np.array([0.14, 0., 0.]), extent = np.array([0.3, 0.3, 0.3]))
         
         # Give first two particles specific velocities
         test_vel_init = simulation.VelInitOneParticleInABox(vx = np.array([5., 0., 0.]))
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     # plotting handle
     if plotting:
         plothandle = method.DrawParticles(state=sim1.state)
-        plotsteps = 50
+        plotsteps = 1
         plotfn = plothandle.draw
     else:
         plothandle = None

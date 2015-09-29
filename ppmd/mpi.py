@@ -4,6 +4,44 @@ import ctypes as ct
 
 mpi_map = {ct.c_double: MPI.DOUBLE, ct.c_int: MPI.INT, int: MPI.INT}
 
+recv_modifiers = [
+    [-1, -1, -1],  # 0
+    [0, -1, -1],  # 1
+    [1, -1, -1],  # 2
+    [-1, 0, -1],  # 3
+    [0, 0, -1],  # 4
+    [1, 0, -1],  # 5
+    [-1, 1, -1],  # 6
+    [0, 1, -1],  # 7
+    [1, 1, -1],  # 8
+
+    [-1, -1, 0],  # 9
+    [0, -1, 0],  # 10
+    [1, -1, 0],  # 11
+    [-1, 0, 0],  # 12
+    [1, 0, 0],  # 13
+    [-1, 1, 0],  # 14
+    [0, 1, 0],  # 15
+    [1, 1, 0],  # 16
+
+    [-1, -1, 1],  # 17
+    [0, -1, 1],  # 18
+    [1, -1, 1],  # 19
+    [-1, 0, 1],  # 20
+    [0, 0, 1],  # 21
+    [1, 0, 1],  # 22
+    [-1, 1, 1],  # 23
+    [0, 1, 1],  # 24
+    [1, 1, 1],  # 25
+]
+
+tuple_to_direction = {}
+for idx, dir in enumerate(recv_modifiers):
+    tuple_to_direction[str(dir)] = idx
+
+
+
+
 ###############################################################################################################
 # MDMPI
 ###############################################################################################################
@@ -181,6 +219,13 @@ class MDMPI(object):
 
         :arg tuple offset: 3-tuple offset from current process.
         """
+
+        if type(offset) is int:
+            offset = (-1 * recv_modifiers[offset][0],
+                      -1 * recv_modifiers[offset][1],
+                      -1 * recv_modifiers[offset][2])
+
+
 
         self._check_comm()
 

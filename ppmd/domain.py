@@ -269,10 +269,6 @@ class BaseDomainHalo(BaseDomain):
         self._BCloop = None
         self._halos = True
 
-
-
-        self.new_escape_guard_lib = None
-
     @property
     def halos(self):
         return self._halos
@@ -561,6 +557,7 @@ class BaseDomainHalo(BaseDomain):
         xu yu zu xl yl zl
         '''
 
+
         _escape_guard_code = '''
 
 
@@ -593,7 +590,7 @@ class BaseDomainHalo(BaseDomain):
             if (b>0){
                 EC[BL[b]]++;        //lookup which direction then increment that direction escape count.
                 ECT[0]++;           //Increment total escape count by 1.
-                EI[EII[0]] = _ix;  //In escape ids we have pairs of local index and escape index, here write local index
+                EI[EII[0]] = _ix;   //In escape ids we have pairs of local index and escape index, here write local index
                 EI[EII[0]+1] = BL[b]; //here write escape direction
                 EII[0]+=2;
             }
@@ -938,18 +935,6 @@ class BaseDomainHalo(BaseDomain):
         _BCkernel = kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'], static_args={'_n':ctypes.c_int})
         self._BCloop = build.SharedLib(_BCkernel, _BCcodeDict)
 
-        if self.new_escape_guard_lib is None:
-            # Loop over outer cells to find escapees
-
-
-            pass
-
-
-
-
-
-
-
 
 
     def bc_execute(self):
@@ -1027,3 +1012,53 @@ class BaseDomainHalo(BaseDomain):
             self._BC_state.positions.halo_start_set(self._internal_index[0])
             self._BC_state.velocities.halo_start_set(self._internal_index[0])
             self._BC_state.forces.halo_start_set(self._internal_index[0])
+
+    def get_shift(self, direction):
+
+        if type(direction) is tuple:
+            direction = mpi.tuple_to_direction[str(direction)]
+
+
+        _sf = range(6)
+        for ix in range(3):
+            if self._top[ix] == 0:
+                _sf[2 * ix] = self._extent_global[ix]
+            else:
+                _sf[2 * ix] = 0.
+            if self._top[ix] == self._dims[ix] - 1:
+                _sf[2 * ix + 1] = -1. * self._extent_global[ix]
+            else:
+                _sf[2 * ix + 1] = 0.
+
+        _sfd = [
+               [_sf[1], _sf[3], _sf[4]],  # 0
+               [0., _sf[3], _sf[4]],  # 1
+               [_sf[0], _sf[3], _sf[4]],  # 2
+               [_sf[1], 0., _sf[4]],  # 3
+               [0., 0., _sf[4]],  # 4
+               [_sf[0], 0., _sf[4]],  # 5
+               [_sf[1], _sf[2], _sf[4]],  # 6
+               [0., _sf[2], _sf[4]],  # 7
+               [_sf[0], _sf[2], _sf[4]],  # 8
+
+               [_sf[1], _sf[3], 0.],  # 9
+               [0., _sf[3], 0.],  # 10
+               [_sf[0], _sf[3], 0.],  # 11
+               [_sf[1], 0., 0.],  # 12
+               [_sf[0], 0., 0.],  # 13
+               [_sf[1], _sf[2], 0.],  # 14
+               [0., _sf[2], 0.],  # 15
+               [_sf[0], _sf[2], 0.],  # 16
+
+               [_sf[1], _sf[3], _sf[5]],  # 17
+               [0., _sf[3], _sf[5]],  # 18
+               [_sf[0], _sf[3], _sf[5]],  # 19
+               [_sf[1], 0., _sf[5]],  # 20
+               [0., 0., _sf[5]],  # 21
+               [_sf[0], 0., _sf[5]],  # 22
+               [_sf[1], _sf[2], _sf[5]],  # 23
+               [0., _sf[2], _sf[5]],  # 24
+               [_sf[0], _sf[2], _sf[5]]  # 25
+               ]
+
+        return _sfd[direction]
