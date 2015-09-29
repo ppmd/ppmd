@@ -428,7 +428,7 @@ class BaseMDSimulation(object):
 
             self._escape_guard_lib.execute(static_args={'_end':self.state.n})
 
-            print "rank", mpi.MPI_HANDLE.rank, "state n", self.state.n, "dat n",self.state.positions.npart, "dat n halo",self.state.positions.npart_halo, "pos",self.state.positions
+            print "rank", mpi.MPI_HANDLE.rank, "dat n",self.state.positions.npart, "dat n halo",self.state.positions.npart_halo, "pos",self.state.positions
 
 
 

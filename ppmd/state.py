@@ -66,6 +66,7 @@ class BaseMDState(object):
         # compressing vars
         self._compressing_lib = None
         self._compressing_n_new = None
+        self._compressing_dyn_args = None
 
     def __setattr__(self, name, value):
         """
@@ -436,7 +437,7 @@ class BaseMDState(object):
 
         print self.compressed
 
-        if self.compressed and self.uncompressed_n is not False:
+        if self.compressed is True and self.uncompressed_n is not False:
             self.n = self.uncompressed_n
             return
         else:
@@ -467,7 +468,7 @@ class BaseMDState(object):
                     'n_new_in': ctypes.c_int
                 }
 
-                _dyn_args = {
+                self._compressing_dyn_args = {
                     'slots': _slots,
                     'n_new_out': self._compressing_n_new
                 }
@@ -493,7 +494,7 @@ class BaseMDState(object):
                     int found_index = -1;
 
                     //loop from end to empty slot
-                    for (int iy = n_new - 1; iy > slot_to_fill; iy--){
+                    for (int iy = n_new - 1; iy >= slot_to_fill; iy--){
 
                         if (iy == slots[last_slot_lookup_index]){
                             n_new = iy;
@@ -528,14 +529,18 @@ class BaseMDState(object):
 
                 # Add ParticleDats to pointer arguments.
                 for idx, ix in enumerate(self.particle_dats):
-                    _dyn_args['%(NAME)s' % {'NAME':ix}] = getattr(self, ix)
+                    self._compressing_dyn_args['%(NAME)s' % {'NAME':ix}] = getattr(self, ix)
 
 
                 _compressing_kernel = kernel.Kernel('ParticleDat_compressing_lib', _compressing_code, headers=['stdio.h'], static_args=_static_args)
 
-                self._compressing_lib = build.SharedLib(_compressing_kernel, _dyn_args)
+                self._compressing_lib = build.SharedLib(_compressing_kernel, self._compressing_dyn_args)
 
-            self._compressing_lib.execute(static_args={'slots_to_fill_in': ctypes.c_int(_slots.ncomp), 'n_new_in': ctypes.c_int(self.uncompressed_n)})
+
+            self._compressing_dyn_args['slots'] = _slots
+
+            self._compressing_lib.execute(static_args={'slots_to_fill_in': ctypes.c_int(_slots.ncomp), 'n_new_in': ctypes.c_int(self.uncompressed_n)},
+                                          dat_dict=self._compressing_dyn_args)
 
 
 

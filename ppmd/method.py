@@ -127,8 +127,6 @@ class VelocityVerlet(object):
 
         for i in range(self._max_it):
 
-            print i
-
             self._p1.execute(self._state.n)
 
             # self._domain.bc_execute()

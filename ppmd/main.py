@@ -53,7 +53,7 @@ if __name__ == '__main__':
     writing = False
 
 
-    t=0.5
+    t=0.0001*21
     dt=0.0001
 
 
