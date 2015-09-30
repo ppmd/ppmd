@@ -369,6 +369,8 @@ class BaseMDSimulation(object):
                         b ^= 4;
                     }
 
+                    printf("P[0]=%f, b=%d, B[0]=%f, B[1]=%f \\n", P[3*_ix], b, B[0], B[1]);
+
                     //check y direction
                     if (P[3*_ix+1] < B[2]){
                         b ^= 16;
@@ -428,7 +430,9 @@ class BaseMDSimulation(object):
 
             self._escape_guard_lib.execute(static_args={'_end':self.state.n})
 
-            print "rank", mpi.MPI_HANDLE.rank, "dat n",self.state.positions.npart, "dat n halo",self.state.positions.npart_halo, "pos",self.state.positions
+            print "BEFORE, rank", mpi.MPI_HANDLE.rank, ", state n",self.state.n, "dat n",self.state.positions.npart, "dat n halo",self.state.positions.npart_halo, "pos",self.state.positions
+
+            #print "BEFORE, rank", mpi.MPI_HANDLE.rank, "vel,", self.state.velocities
 
 
 
@@ -456,8 +460,13 @@ class BaseMDSimulation(object):
 
             self.state.compress_particle_dats()
 
-            print '=' * 14
+            print "AFTER, rank", mpi.MPI_HANDLE.rank, ", state n",self.state.n, ", dat n",self.state.positions.npart, ", dat n halo",self.state.positions.npart_halo, "pos, ",self.state.positions
 
+            #print "AFTER, rank", mpi.MPI_HANDLE.rank, "vel,", self.state.velocities
+
+            print '=' * 14
+            if mpi.MPI_HANDLE.rank ==1 and self.state.positions[0,0] >= 0.15:
+                quit()
 
 
 

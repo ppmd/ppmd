@@ -44,7 +44,7 @@ if __name__ == '__main__':
     t_1_particle = True
 
     # plot as computing + at end?
-    plotting = False
+    plotting = True
     
     # log energy?
     logging = True
@@ -53,7 +53,8 @@ if __name__ == '__main__':
     writing = False
 
 
-    t=0.0001*21
+    t=0.0001*5
+    t=0.05
     dt=0.0001
 
 
@@ -116,7 +117,7 @@ if __name__ == '__main__':
         print test_potential.rc
 
         # Initialise two particles on an axis a set distance apart.
-        test_pos_init = simulation.PosInitOneParticleInABox(r = np.array([0.14, 0., 0.]), extent = np.array([0.3, 0.3, 0.3]))
+        test_pos_init = simulation.PosInitOneParticleInABox(r = np.array([0.0290, 0., 0.]), extent = np.array([0.3, 0.3, 0.3]))
         
         # Give first two particles specific velocities
         test_vel_init = simulation.VelInitOneParticleInABox(vx = np.array([5., 0., 0.]))
@@ -139,7 +140,7 @@ if __name__ == '__main__':
     # plotting handle
     if plotting:
         plothandle = method.DrawParticles(state=sim1.state)
-        plotsteps = 1
+        plotsteps = 20
         plotfn = plothandle.draw
     else:
         plothandle = None
@@ -212,7 +213,7 @@ if __name__ == '__main__':
     if mpi.MPI_HANDLE.rank ==0:
         try:
 
-            #a=input("PRESS ENTER TO CONTINUE.\n")
+            a=input("PRESS ENTER TO CONTINUE.\n")
             pass
         except:
             pass

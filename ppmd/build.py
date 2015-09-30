@@ -494,6 +494,8 @@ class SharedLib(GenericToolChain):
 
         self._library_filename = self._unique_name + '.so'
 
+
+
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
             if mpi.MPI_HANDLE.rank == 0:
                 self._create_library()
