@@ -48,10 +48,12 @@ class BaseMDState(object):
         self.uncompressed_n = False
 
         # move vars.
-        self._move_packing_lib = None
+
+        self._move_dir_recv_totals = None
+        self._move_dir_send_totals = None
 
         self._move_packing_shift_lib = None
-        self._move_shift_array = None
+        self._move_shift_array = host.NullDoubleArray
 
         self._move_send_buffer = None
         self._move_recv_buffer = None
@@ -61,10 +63,12 @@ class BaseMDState(object):
         self._move_used_free_slot_count = None
         
         self._move_ncomp = None
-        self._move_total_ncomp = None
+        self._total_ncomp = None
 
         self.move_timer = runtime.Timer(runtime.TIMER, 0)
         self.move_timer2 = runtime.Timer(runtime.TIMER, 0)
+
+        self._status = mpi.Status()
 
         # compressing vars
         self._compressing_lib = None
@@ -93,6 +97,14 @@ class BaseMDState(object):
             self._move_packing_lib = None
             self._move_send_buffer = None
             self._move_recv_buffer = None
+
+            self._total_ncomp = 0
+            self._move_ncomp = []
+            for ixi, ix in enumerate(self.particle_dats):
+                _dat = getattr(self, ix)
+                self._move_ncomp.append(_dat.ncomp)
+                self._total_ncomp += _dat.ncomp
+
 
         # Any other attribute.
         else:
@@ -172,26 +184,17 @@ class BaseMDState(object):
 
         _recv_count = int(_recv_count[0])
 
-        # Get number of components that will need to be packed/unpacked.
-        if self._move_send_buffer is None or self._move_recv_buffer is None:
-            self._move_ncomp = []
-            self._move_total_ncomp = 0
-            for ix in self.particle_dats:
-                _dat = getattr(self, ix)
-                self._move_ncomp.append(_dat.ncomp)
-                self._move_total_ncomp += _dat.ncomp
-
 
         # Create a send buffer.
         if self._move_send_buffer is None:
-            self._move_send_buffer = host.Array(ncomp=_send_count * self._move_total_ncomp)
+            self._move_send_buffer = host.Array(ncomp=_send_count * self._total_ncomp)
 
 
-        elif _send_count * self._move_total_ncomp > self._move_send_buffer.ncomp:
+        elif _send_count * self._total_ncomp > self._move_send_buffer.ncomp:
             if runtime.VERBOSE.level > 2:
                 print "rank", mpi.MPI_HANDLE.rank, ": move send buffer resized."
 
-            self._move_send_buffer.realloc(_send_count * self._move_total_ncomp)
+            self._move_send_buffer.realloc(_send_count * self._total_ncomp)
 
 
         if self._move_packing_lib is None or self._move_packing_shift_lib is None:
@@ -291,31 +294,31 @@ class BaseMDState(object):
 
         # Create a recv buffer.
         if self._move_recv_buffer is None:
-            self._move_recv_buffer = host.Array(ncomp=_send_count * self._move_total_ncomp)
+            self._move_recv_buffer = host.Array(ncomp=_send_count * self._total_ncomp)
 
 
-        elif _recv_count * self._move_total_ncomp > self._move_recv_buffer.ncomp:
+        elif _recv_count * self._total_ncomp > self._move_recv_buffer.ncomp:
             if runtime.VERBOSE.level > 2:
                 print "rank", mpi.MPI_HANDLE.rank, ": move recv buffer resized."
 
-            self._move_recv_buffer.realloc(_recv_count * self._move_total_ncomp)
+            self._move_recv_buffer.realloc(_recv_count * self._total_ncomp)
 
 
         # sending of particles.
         if _send_count > 0 and _recv_count > 0:
-            mpi.MPI_HANDLE.comm.Sendrecv(self._move_send_buffer[0:_send_count * self._move_total_ncomp:],
+            mpi.MPI_HANDLE.comm.Sendrecv(self._move_send_buffer[0:_send_count * self._total_ncomp:],
                                          _send_rank,
                                          _send_rank,
-                                         self._move_recv_buffer[0:_recv_count * self._move_total_ncomp:],
+                                         self._move_recv_buffer[0:_recv_count * self._total_ncomp:],
                                          _recv_rank,
                                          mpi.MPI_HANDLE.rank,
                                          _status)
         elif _send_count > 0:
-                mpi.MPI_HANDLE.comm.Send(self._move_send_buffer[0:_send_count * self._move_total_ncomp:],
+                mpi.MPI_HANDLE.comm.Send(self._move_send_buffer[0:_send_count * self._total_ncomp:],
                                          _send_rank,
                                          _send_rank)
         elif _recv_count > 0:
-                mpi.MPI_HANDLE.comm.Recv(self._move_recv_buffer[0:_recv_count * self._move_total_ncomp:],
+                mpi.MPI_HANDLE.comm.Recv(self._move_recv_buffer[0:_recv_count * self._total_ncomp:],
                                          _recv_rank,
                                          mpi.MPI_HANDLE.rank,
                                          _status)
@@ -352,21 +355,15 @@ class BaseMDState(object):
             _space = ' ' * 16
 
             _cumulative_ncomp = 0
-            self._move_total_ncomp = 0
-
-            for ixi, ix in enumerate(self.particle_dats):
-                _dat = getattr(self, ix)
-                self._move_total_ncomp += _dat.ncomp
-
 
             for ixi, ix in enumerate(self.particle_dats):
                 _dat = getattr(self, ix)
                 if _dat.ncomp > 1:
                     _dyn_dat_case += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP': _dat.ncomp}
-                    _dyn_dat_case += _space + '%(NAME)s[(pos*%(NCOMP)s)+ni] = _RECV_BUFFER[(ix*%(NCOMP_TOTAL)s)+%(NCOMP_START)s+ni]; \n' % {'NCOMP':_dat.ncomp, 'NAME':str(ix), 'NCOMP_TOTAL': self._move_total_ncomp, 'NCOMP_START': _cumulative_ncomp}
+                    _dyn_dat_case += _space + '%(NAME)s[(pos*%(NCOMP)s)+ni] = _RECV_BUFFER[(ix*%(NCOMP_TOTAL)s)+%(NCOMP_START)s+ni]; \n' % {'NCOMP':_dat.ncomp, 'NAME':str(ix), 'NCOMP_TOTAL': self._total_ncomp, 'NCOMP_START': _cumulative_ncomp}
                     _dyn_dat_case += _space + '} \n'
                 else:
-                    _dyn_dat_case += _space + '%(NAME)s[pos] = _RECV_BUFFER[(ix*%(NCOMP_TOTAL)s)+%(NCOMP_START)s]; \n' % {'NAME':str(ix), 'NCOMP_TOTAL': self._move_total_ncomp, 'NCOMP_START': _cumulative_ncomp}
+                    _dyn_dat_case += _space + '%(NAME)s[pos] = _RECV_BUFFER[(ix*%(NCOMP_TOTAL)s)+%(NCOMP_START)s]; \n' % {'NAME':str(ix), 'NCOMP_TOTAL': self._total_ncomp, 'NCOMP_START': _cumulative_ncomp}
 
                 _cumulative_ncomp += _dat.ncomp
 
@@ -440,7 +437,206 @@ class BaseMDState(object):
 
         self.move_timer.pause()
 
+
+
+
+
+    def move_to_neighbour_tmp(self, ids_directions_list=None, dir_send_totals=None, shifts=None):
+        """
+        Move particles using the linked list.
+
+        :arg host.Array ids_directions_list(int): Linked list of ids from directions.
+        :arg host.Array dir_send_totals(int): 26 Element array of number of particles traveling in each direction.
+        :arg host.Array shifts(double): 73 element array of the shifts to apply when moving particles for the 26 directions.
+        """
+
+        if self._move_packing_lib is None:
+            self._move_build_packing_lib()
+
+        # Make/resize send buffer.
+        if self._move_send_buffer is None:
+            self._move_send_buffer = host.Array(ncomp=self._total_ncomp * dir_send_totals.dat.sum(), dtype=ctypes.c_double)
+        elif self._move_send_buffer.ncomp < self._total_ncomp * dir_send_totals.dat.sum():
+            self._move_send_buffer.realloc(self._total_ncomp * dir_send_totals.dat.sum())
+
+        #Make recv sizes array.
+        if self._move_dir_recv_totals is None:
+            self._move_dir_recv_totals = host.Array(ncomp=26, dtype=ctypes.c_int)
+
+        #exchange number of particles about to be sent.
+        self._move_dir_send_totals = dir_send_totals
+        self._move_exchange_send_recv_sizes()
+
+        #resize recv buffer.
+        _total = self._move_dir_recv_totals.dat.sum()
+        if self._move_recv_buffer is None:
+            self._move_recv_buffer = host.Array(ncomp=self._total_ncomp * _total, dtype=ctypes.c_double)
+        elif self._move_recv_buffer.ncomp < self._total_ncomp * _total:
+            self._move_recv_buffer.realloc(self._total_ncomp * _total)
+
+        #pack particles to send.
+        self._move_packing_shift_lib.execute(dat_dict={'SEND_BUFFER': self._move_send_buffer,
+                                                       'SHIFT': shifts,
+                                                       'direction_id_list': ids_directions_list})
+
+        #exchange particle data.
+        self._exchange_move_send_recv_buffers()
+
+
+
+
+
         return True
+
+    def _exchange_move_send_recv_buffers(self):
+        for ix in range(26):
+            direction = mpi.recv_modifiers[ix]
+
+            _send_rank = mpi.MPI_HANDLE.shift(direction, ignore_periods=True)
+            _recv_rank = mpi.MPI_HANDLE.shift((-1 * direction[0],
+                                               -1 * direction[1],
+                                               -1 * direction[2]), ignore_periods=True)
+
+            #TODO: empty slot list, starting points in send buffer for each direction.
+
+
+            # sending of particles.
+            if self._move_dir_send_totals[ix] > 0 and self._move_dir_recv_totals[ix] > 0:
+                mpi.MPI_HANDLE.comm.Sendrecv(self._move_send_buffer[0:_send_count * self._total_ncomp:],
+                                             _send_rank,
+                                             _send_rank,
+                                             self._move_recv_buffer[0:_recv_count * self._total_ncomp:],
+                                             _recv_rank,
+                                             mpi.MPI_HANDLE.rank,
+                                             self._status)
+            elif self._move_dir_send_totals[ix] > 0:
+                    mpi.MPI_HANDLE.comm.Send(self._move_send_buffer[0:_send_count * self._total_ncomp:],
+                                             _send_rank,
+                                             _send_rank)
+            elif self._move_dir_recv_totals[ix] > 0:
+                    mpi.MPI_HANDLE.comm.Recv(self._move_recv_buffer[0:_recv_count * self._total_ncomp:],
+                                             _recv_rank,
+                                             mpi.MPI_HANDLE.rank,
+                                             self._status)
+
+
+
+
+
+
+
+
+    def _move_exchange_send_recv_sizes(self):
+        """
+        Exhange the sizes expected in the next particle move.
+        """
+        for ix in range(26):
+            direction = mpi.recv_modifiers[ix]
+
+            _send_rank = mpi.MPI_HANDLE.shift(direction, ignore_periods=True)
+            _recv_rank = mpi.MPI_HANDLE.shift((-1 * direction[0],
+                                               -1 * direction[1],
+                                               -1 * direction[2]), ignore_periods=True)
+
+            mpi.MPI_HANDLE.comm.Sendrecv(self._move_dir_send_totals[ix],
+                                         _send_rank,
+                                         _send_rank,
+                                         self._move_dir_send_totals[ix],
+                                         _recv_rank,
+                                         mpi.MPI_HANDLE.rank,
+                                         self._status)
+
+    def _move_build_packing_lib(self):
+        """
+        Build the library to packing particles to send.
+        """
+
+        _dynamic_dats_shift = ''
+        _space = ' ' * 16
+
+        for ix, iy in zip(self.particle_dats, self._move_ncomp):
+
+            # make case where ParticleDat has more than one component.
+            if iy > 1:
+
+                if ix == 'positions':
+                    _dynamic_dats_shift += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP':iy}
+                    _dynamic_dats_shift += _space + 'SEND_BUFFER[index+ni] = %(NAME)s[(_ix*%(NCOMP)s)+ni] + SHIFT[(_dir*3)+ni]; \n' % {'NCOMP':iy, 'NAME':str(ix)}
+                    _dynamic_dats_shift += _space + '} \n'
+                    _dynamic_dats_shift += _space + 'index += %(NCOMP)s; \n' % {'NCOMP':iy}
+                else:
+                    _dynamic_dats_shift += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP':iy}
+                    _dynamic_dats_shift += _space + 'SEND_BUFFER[index+ni] = %(NAME)s[(_ix*%(NCOMP)s)+ni]; \n' % {'NCOMP':iy, 'NAME':str(ix)}
+                    _dynamic_dats_shift += _space + '} \n'
+                    _dynamic_dats_shift += _space + 'index += %(NCOMP)s; \n' % {'NCOMP':iy}
+
+            else:
+                _dynamic_dats_shift += _space + 'SEND_BUFFER[index] = %(NAME)s[_ix]; \n' % {'NAME':str(ix)}
+                _dynamic_dats_shift += _space + 'index += 1; \n'
+
+
+        _packing_code_shift = '''
+        // Next free space in send buffer.
+        int index = 0;
+
+        //loop over the send directions.
+        for(int _dir = 0; _dir < 26; _dir++){
+
+            //traverse linked list.
+            int _ix = direction_id_list[_dir];
+
+            while(_ix > -1){
+
+                //Generate code based on ParticleDats
+
+                \n%(DYNAMIC_DATS)s
+
+                _ix = direction_id_list[_ix + 1];
+            }
+        }
+        ''' % {'DYNAMIC_DATS': _dynamic_dats_shift}
+
+        self._packing_args_shift = {'SEND_BUFFER':host.NullDoubleArray,
+                                    'SHIFT': host.NullDoubleArray,
+                                    'direction_id_list': host.NullIntArray}
+
+
+        # Dynamic arguments dependant on how many particle dats there are.
+        for idx, ix in enumerate(self.particle_dats):
+            # existing dat in state
+            self._packing_args_shift['%(NAME)s' % {'NAME':ix}] = getattr(self, ix)
+
+        # create a unique but searchable name.
+        _name = ''
+        for ix in self.particle_dats:
+            _name += '_' + str(ix)
+
+        # make kernel
+        _packing_kernel_shift = kernel.Kernel('state_move_packing_shift' + _name, _packing_code_shift, None, ['stdio.h'], None, None)
+
+        # make packing library
+        self._move_packing_shift_lib = build.SharedLib(_packing_kernel_shift, self._packing_args_shift)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     def compress_particle_dats(self):
