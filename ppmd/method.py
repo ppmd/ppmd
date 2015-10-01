@@ -125,14 +125,17 @@ class VelocityVerlet(object):
         # TODO: fix this.
         self._sim.forces_update()
 
+        _t = runtime.Timer(runtime.TIMER, 0)
+
         for i in range(self._max_it):
 
             self._p1.execute(self._state.n)
 
-            # self._domain.bc_execute()
+            _t.start()
+            #self._domain.bc_execute()
 
             self._sim.execute_boundary_conditions()
-
+            _t.pause()
 
             #TODO: fix this.
             self._sim.forces_update()
@@ -144,6 +147,7 @@ class VelocityVerlet(object):
             if self._schedule is not None:
                 self._schedule.tick()
 
+        _t.stop("boundary condition timer")
                 
 
 ################################################################################################################

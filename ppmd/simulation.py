@@ -256,7 +256,7 @@ class BaseMDSimulation(object):
         """
         Enforce the simulation boundary conditions.
         """
-        if mpi.MPI_HANDLE.nproc == 5:
+        if mpi.MPI_HANDLE.nproc == 1:
             """
             BC code for one proc. porbably removable when restricting to large parallel systems.
             """
@@ -311,7 +311,7 @@ class BaseMDSimulation(object):
                                                                                    'E': self.state.domain.extent})
             self._one_process_pbc_lib.execute(static_args={'_end': ct.c_int(self.state.n)})
         else:
-            print '-' * 14
+            #print '-' * 14
 
             # Create lib to find escaping particles.
 
@@ -369,7 +369,7 @@ class BaseMDSimulation(object):
                         b ^= 4;
                     }
 
-                    printf("P[0]=%f, b=%d, B[0]=%f, B[1]=%f \\n", P[3*_ix], b, B[0], B[1]);
+                    //printf("P[0]=%f, b=%d, B[0]=%f, B[1]=%f \\n", P[3*_ix], b, B[0], B[1]);
 
                     //check y direction
                     if (P[3*_ix+1] < B[2]){
@@ -430,7 +430,7 @@ class BaseMDSimulation(object):
 
             self._escape_guard_lib.execute(static_args={'_end':self.state.n})
 
-            print "BEFORE, rank", mpi.MPI_HANDLE.rank, ", state n",self.state.n, "dat n",self.state.positions.npart, "dat n halo",self.state.positions.npart_halo, "pos",self.state.positions
+            #print "BEFORE, rank", mpi.MPI_HANDLE.rank, ", state n",self.state.n, "dat n",self.state.positions.npart, "dat n halo",self.state.positions.npart_halo, "pos",self.state.positions
 
             #print "BEFORE, rank", mpi.MPI_HANDLE.rank, "vel,", self.state.velocities
 
@@ -453,21 +453,22 @@ class BaseMDSimulation(object):
 
                 _shift = self.state.domain.get_shift(ix)
 
-                if self._escape_count[ix] > 0:
-                    print _tmp.dat, ix, _shift
+                #if self._escape_count[ix] > 0:
+                #    print _tmp.dat, ix, _shift
 
                 self.state.move_to_neighbour(_tmp, direction=ix, shift=_shift)
 
             self.state.compress_particle_dats()
 
-            print "AFTER, rank", mpi.MPI_HANDLE.rank, ", state n",self.state.n, ", dat n",self.state.positions.npart, ", dat n halo",self.state.positions.npart_halo, "pos, ",self.state.positions
+            #print "AFTER, rank", mpi.MPI_HANDLE.rank, ", state n",self.state.n, ", dat n",self.state.positions.npart, ", dat n halo",self.state.positions.npart_halo, "pos, ",self.state.positions
 
             #print "AFTER, rank", mpi.MPI_HANDLE.rank, "vel,", self.state.velocities
 
-            print '=' * 14
+            #print '=' * 14
+            '''
             if mpi.MPI_HANDLE.rank ==1 and self.state.positions[0,0] >= 0.15:
                 quit()
-
+            '''
 
 
 

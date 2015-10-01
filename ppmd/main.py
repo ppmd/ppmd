@@ -41,10 +41,10 @@ if __name__ == '__main__':
     test_2_bounce = False
     
     # 1 1 particle
-    t_1_particle = True
+    t_1_particle = False
 
     # plot as computing + at end?
-    plotting = True
+    plotting = False
     
     # log energy?
     logging = True
@@ -54,7 +54,9 @@ if __name__ == '__main__':
 
 
     t=0.0001*5
-    t=0.05
+    t=0.0024
+    t=0.0174
+    t=0.03
     dt=0.0001
 
 

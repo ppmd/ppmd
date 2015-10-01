@@ -118,9 +118,9 @@ class BaseMDState(object):
         self._n = int(value)
         for ix in self.particle_dats:
             _dat = getattr(self,ix)
-            #_dat.npart = int(value)
-            #_dat.halo_start_reset()
-            _dat.halo_start_set(int(value))
+            _dat.npart = int(value)
+            _dat.halo_start_reset()
+            #_dat.halo_start_set(int(value))
 
     def move_to_neighbour(self, ids=None, direction=None, shift=None):
         """
@@ -419,7 +419,7 @@ class BaseMDState(object):
                                          dat_dict=_unpacking_dynamic_args)
 
 
-        print "after move", self.n, _recv_count, _num_free_slots, _send_count
+        #print "after move", self.n, _recv_count, _num_free_slots, _send_count
 
         if _recv_count < _num_free_slots:
             self.compressed = False
@@ -427,7 +427,7 @@ class BaseMDState(object):
         else:
             self.n = self.n + _recv_count - _num_free_slots
             self._move_empty_slots = []
-        print "after if", self.n, _recv_count, _num_free_slots, _send_count
+        #print "after if", self.n, _recv_count, _num_free_slots, _send_count
 
         return True
 
@@ -437,7 +437,7 @@ class BaseMDState(object):
         Compress the particle dats held in the state. Compressing removes empty rows.
         """
 
-        print self.compressed
+        #print self.compressed
 
         self._compressing_n_new = host.Array([0], dtype=ctypes.c_int)
         self._compressing_slots = host.Array(self._move_empty_slots, dtype=ctypes.c_int)
@@ -451,10 +451,10 @@ class BaseMDState(object):
                 _dat = getattr(self, ix)
                 if _dat.ncomp > 1:
                     _dyn_dat_case += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP': _dat.ncomp}
-                    _dyn_dat_case += _space + '%(NAME)s[(slots[slot_to_fill]*%(NCOMP)s)+ni] = %(NAME)s[found_index*%(NCOMP)s+ni]; \n' % {'NCOMP':_dat.ncomp, 'NAME':str(ix)}
+                    _dyn_dat_case += _space + '%(NAME)s[(slot_to_fill*%(NCOMP)s)+ni] = %(NAME)s[found_index*%(NCOMP)s+ni]; \n' % {'NCOMP':_dat.ncomp, 'NAME':str(ix)}
                     _dyn_dat_case += _space + '} \n'
                 else:
-                    _dyn_dat_case += _space + '%(NAME)s[slots[slot_to_fill]] = %(NAME)s[found_index]; \n' % {'NAME':str(ix)}
+                    _dyn_dat_case += _space + '%(NAME)s[slot_to_fill] = %(NAME)s[found_index]; \n' % {'NAME':str(ix)}
 
 
             _static_args = {
@@ -468,7 +468,7 @@ class BaseMDState(object):
             }
 
             _compressing_code = '''
-            printf("-------- compress start ------------ \\n");
+            //printf("-------- compress start ------------ \\n");
 
 
             int slots_to_fill = slots_to_fill_in;
@@ -481,7 +481,7 @@ class BaseMDState(object):
 
             int slot_to_fill = -1;
 
-            printf("n_new=%%d, slots_to_fill=%%d, last_slot_lookup_index=%%d \\n", n_new, slots_to_fill, last_slot_lookup_index);
+            //printf("n_new=%%d, slots_to_fill=%%d, last_slot_lookup_index=%%d \\n", n_new, slots_to_fill, last_slot_lookup_index);
 
 
             // Whilst there are slots to fill and the current slot is not past the end of the array.
@@ -494,9 +494,9 @@ class BaseMDState(object):
                     int found_index = -1;
 
                     //loop from end to empty slot
-                    for (int iy = n_new - 1; iy >= slot_to_fill; iy--){
+                    for (int iy = n_new - 1; iy > slot_to_fill; iy--){
 
-                        printf("iy=%%d, slots[last_slot_lookup_index]=%%d \\n", iy, slots[last_slot_lookup_index]);
+                        //printf("iy=%%d, slots[last_slot_lookup_index]=%%d \\n", iy, slots[last_slot_lookup_index]);
 
                         if (iy == slots[last_slot_lookup_index]){
                             n_new = iy;
@@ -517,7 +517,7 @@ class BaseMDState(object):
 
 
                     } else {
-                        printf("last slot = %%d \\n", slots[last_slot_lookup_index]);
+                        //printf("last slot = %%d \\n", slots[last_slot_lookup_index]);
 
                         n_new = slots[last_slot_lookup_index];
                         break;
@@ -527,10 +527,10 @@ class BaseMDState(object):
                     slot_to_fill_index++;
                 }
             }
-            printf("n_new_out=%%d \\n", n_new);
+            //printf("n_new_out=%%d \\n", n_new);
             n_new_out[0] = n_new;
 
-            printf("-------- compress end ------------ \\n");
+            //printf("-------- compress end ------------ \\n");
             ''' % {'DYN_DAT_CODE': _dyn_dat_case}
 
             # Add ParticleDats to pointer arguments.
@@ -547,18 +547,19 @@ class BaseMDState(object):
         else:
 
             self._compressing_dyn_args['slots'] = self._compressing_slots
+            self._compressing_dyn_args['n_new_out'] = self._compressing_n_new
 
-            print self.n
+            #print self.n, self._compressing_n_new[0], "compressing slots=", self._compressing_slots.dat
 
             self._compressing_lib.execute(static_args={'slots_to_fill_in': ctypes.c_int(self._compressing_slots.ncomp), 'n_new_in': ctypes.c_int(self.n)},
                                           dat_dict=self._compressing_dyn_args)
 
 
-            print self._compressing_n_new[0]
+            #print self.n, self._compressing_n_new[0]
 
             self.n = self._compressing_n_new[0]
             self.compressed = True
-
+            self._move_empty_slots = []
 
 
 
