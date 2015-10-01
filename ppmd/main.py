@@ -195,6 +195,11 @@ if __name__ == '__main__':
 
     test_integrator.integrate(dt=dt, t=t)
 
+    sim1.state.move_timer.stop("move total time")
+    sim1.state.move_timer2.stop("move timer 2")
+    sim1.state.compress_timer.stop("compress time")
+
+
     if test_domain.halos is not False:
         halo.HALOS.timer.time("Total time in halo exchange.")
     sim1.timer.time("Total time in forces update.")
@@ -215,7 +220,7 @@ if __name__ == '__main__':
     if mpi.MPI_HANDLE.rank ==0:
         try:
 
-            a=input("PRESS ENTER TO CONTINUE.\n")
+            #a=input("PRESS ENTER TO CONTINUE.\n")
             pass
         except:
             pass

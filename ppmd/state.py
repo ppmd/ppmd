@@ -63,10 +63,16 @@ class BaseMDState(object):
         self._move_ncomp = None
         self._move_total_ncomp = None
 
+        self.move_timer = runtime.Timer(runtime.TIMER, 0)
+        self.move_timer2 = runtime.Timer(runtime.TIMER, 0)
+
         # compressing vars
         self._compressing_lib = None
         self._compressing_n_new = None
         self._compressing_dyn_args = None
+
+        self.compress_timer = runtime.Timer(runtime.TIMER, 0)
+
 
     def __setattr__(self, name, value):
         """
@@ -127,6 +133,8 @@ class BaseMDState(object):
         Move particles to a neighbouring process.
         :return: bool as to whether move was successful.
         """
+
+        self.move_timer.start()
 
         assert direction is not None, "move_to_neighbour error: No direction passed."
         # assert type(direction) is tuple, "move_to_neighbour error: passed direction should be a tuple."
@@ -266,6 +274,7 @@ class BaseMDState(object):
             self._move_packing_lib = build.SharedLib(_packing_kernel, self._packing_args)
             self._move_packing_shift_lib = build.SharedLib(_packing_kernel_shift, self._packing_args_shift)
 
+        self.move_timer2.start()
         # Execute packing library.
         if shift is None:
             self._packing_args['_send_ids'] = host.Array(ids, dtype=ctypes.c_int)
@@ -278,7 +287,7 @@ class BaseMDState(object):
 
 
             self._move_packing_shift_lib.execute(static_args={'end': ctypes.c_int(len(ids))}, dat_dict=self._packing_args_shift)
-
+        self.move_timer2.pause()
 
         # Create a recv buffer.
         if self._move_recv_buffer is None:
@@ -429,6 +438,8 @@ class BaseMDState(object):
             self._move_empty_slots = []
         #print "after if", self.n, _recv_count, _num_free_slots, _send_count
 
+        self.move_timer.pause()
+
         return True
 
 
@@ -438,6 +449,7 @@ class BaseMDState(object):
         """
 
         #print self.compressed
+
 
         self._compressing_n_new = host.Array([0], dtype=ctypes.c_int)
         self._compressing_slots = host.Array(self._move_empty_slots, dtype=ctypes.c_int)
@@ -550,7 +562,7 @@ class BaseMDState(object):
             self._compressing_dyn_args['n_new_out'] = self._compressing_n_new
 
             #print self.n, self._compressing_n_new[0], "compressing slots=", self._compressing_slots.dat
-
+            self.compress_timer.start()
             self._compressing_lib.execute(static_args={'slots_to_fill_in': ctypes.c_int(self._compressing_slots.ncomp), 'n_new_in': ctypes.c_int(self.n)},
                                           dat_dict=self._compressing_dyn_args)
 
@@ -560,6 +572,7 @@ class BaseMDState(object):
             self.n = self._compressing_n_new[0]
             self.compressed = True
             self._move_empty_slots = []
+            self.compress_timer.pause()
 
 
 

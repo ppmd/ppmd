@@ -1062,3 +1062,38 @@ class BaseDomainHalo(BaseDomain):
                ]
 
         return _sfd[direction]
+
+class BoundaryTypePeriodic(object):
+    """
+    Class to hold and perform periodic boundary conditions.
+
+    :arg state_in: State on which to apply periodic boundaries to.
+    """
+
+    def __init__(self, state_in):
+        self._state = state_in
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
