@@ -2,6 +2,7 @@ import numpy as np
 import math
 import ctypes
 import data
+import host
 import kernel
 import build
 from mpi4py import MPI
@@ -1013,7 +1014,7 @@ class BaseDomainHalo(BaseDomain):
             self._BC_state.velocities.halo_start_set(self._internal_index[0])
             self._BC_state.forces.halo_start_set(self._internal_index[0])
 
-    def get_shift(self, direction):
+    def get_shift(self, direction=None):
 
         if type(direction) is tuple:
             direction = mpi.tuple_to_direction[str(direction)]
@@ -1030,38 +1031,76 @@ class BaseDomainHalo(BaseDomain):
             else:
                 _sf[2 * ix + 1] = 0.
 
-        _sfd = [
-               [_sf[1], _sf[3], _sf[4]],  # 0
-               [0., _sf[3], _sf[4]],  # 1
-               [_sf[0], _sf[3], _sf[4]],  # 2
-               [_sf[1], 0., _sf[4]],  # 3
-               [0., 0., _sf[4]],  # 4
-               [_sf[0], 0., _sf[4]],  # 5
-               [_sf[1], _sf[2], _sf[4]],  # 6
-               [0., _sf[2], _sf[4]],  # 7
-               [_sf[0], _sf[2], _sf[4]],  # 8
+        if direction is not None:
+            _sfd = [
+                   [_sf[1], _sf[3], _sf[4]],  # 0
+                   [0., _sf[3], _sf[4]],  # 1
+                   [_sf[0], _sf[3], _sf[4]],  # 2
+                   [_sf[1], 0., _sf[4]],  # 3
+                   [0., 0., _sf[4]],  # 4
+                   [_sf[0], 0., _sf[4]],  # 5
+                   [_sf[1], _sf[2], _sf[4]],  # 6
+                   [0., _sf[2], _sf[4]],  # 7
+                   [_sf[0], _sf[2], _sf[4]],  # 8
 
-               [_sf[1], _sf[3], 0.],  # 9
-               [0., _sf[3], 0.],  # 10
-               [_sf[0], _sf[3], 0.],  # 11
-               [_sf[1], 0., 0.],  # 12
-               [_sf[0], 0., 0.],  # 13
-               [_sf[1], _sf[2], 0.],  # 14
-               [0., _sf[2], 0.],  # 15
-               [_sf[0], _sf[2], 0.],  # 16
+                   [_sf[1], _sf[3], 0.],  # 9
+                   [0., _sf[3], 0.],  # 10
+                   [_sf[0], _sf[3], 0.],  # 11
+                   [_sf[1], 0., 0.],  # 12
+                   [_sf[0], 0., 0.],  # 13
+                   [_sf[1], _sf[2], 0.],  # 14
+                   [0., _sf[2], 0.],  # 15
+                   [_sf[0], _sf[2], 0.],  # 16
 
-               [_sf[1], _sf[3], _sf[5]],  # 17
-               [0., _sf[3], _sf[5]],  # 18
-               [_sf[0], _sf[3], _sf[5]],  # 19
-               [_sf[1], 0., _sf[5]],  # 20
-               [0., 0., _sf[5]],  # 21
-               [_sf[0], 0., _sf[5]],  # 22
-               [_sf[1], _sf[2], _sf[5]],  # 23
-               [0., _sf[2], _sf[5]],  # 24
-               [_sf[0], _sf[2], _sf[5]]  # 25
-               ]
+                   [_sf[1], _sf[3], _sf[5]],  # 17
+                   [0., _sf[3], _sf[5]],  # 18
+                   [_sf[0], _sf[3], _sf[5]],  # 19
+                   [_sf[1], 0., _sf[5]],  # 20
+                   [0., 0., _sf[5]],  # 21
+                   [_sf[0], 0., _sf[5]],  # 22
+                   [_sf[1], _sf[2], _sf[5]],  # 23
+                   [0., _sf[2], _sf[5]],  # 24
+                   [_sf[0], _sf[2], _sf[5]]  # 25
+                   ]
+        else:
+            _sfd = [
+                   _sf[1], _sf[3], _sf[4],  # 0
+                   0., _sf[3], _sf[4],  # 1
+                   _sf[0], _sf[3], _sf[4],  # 2
+                   _sf[1], 0., _sf[4],  # 3
+                   0., 0., _sf[4],  # 4
+                   _sf[0], 0., _sf[4],  # 5
+                   _sf[1], _sf[2], _sf[4],  # 6
+                   0., _sf[2], _sf[4],  # 7
+                   _sf[0], _sf[2], _sf[4],  # 8
 
-        return _sfd[direction]
+                   _sf[1], _sf[3], 0.,  # 9
+                   0., _sf[3], 0.,  # 10
+                   _sf[0], _sf[3], 0.,  # 11
+                   _sf[1], 0., 0.,  # 12
+                   _sf[0], 0., 0.,  # 13
+                   _sf[1], _sf[2], 0.,  # 14
+                   0., _sf[2], 0.,  # 15
+                   _sf[0], _sf[2], 0.,  # 16
+
+                   _sf[1], _sf[3], _sf[5],  # 17
+                   0., _sf[3], _sf[5],  # 18
+                   _sf[0], _sf[3], _sf[5],  # 19
+                   _sf[1], 0., _sf[5],  # 20
+                   0., 0., _sf[5],  # 21
+                   _sf[0], 0., _sf[5],  # 22
+                   _sf[1], _sf[2], _sf[5],  # 23
+                   0., _sf[2], _sf[5],  # 24
+                   _sf[0], _sf[2], _sf[5]  # 25
+                   ]
+
+        if direction is not None:
+            return _sfd[direction]
+
+        else:
+            return host.Array(_sfd, dtype=ctypes.c_double)
+
+
 
 class BoundaryTypePeriodic(object):
     """

@@ -434,8 +434,12 @@ class BaseMDSimulation(object):
 
             #print "BEFORE, rank", mpi.MPI_HANDLE.rank, "vel,", self.state.velocities
 
+            self.state.move_to_neighbour_tmp(self._escape_linked_list,
+                                             self._escape_count,
+                                             self.state.domain.get_shift())
 
 
+            '''
             for ix in range(26):
                 _tmp = host.Array(ncomp=self._escape_count[ix], dtype=ct.c_int)
 
@@ -458,14 +462,14 @@ class BaseMDSimulation(object):
 
                 self.state.move_to_neighbour(_tmp, direction=ix, shift=_shift)
 
-            self.state.compress_particle_dats()
+            self.state._compress_particle_dats()
 
             #print "AFTER, rank", mpi.MPI_HANDLE.rank, ", state n",self.state.n, ", dat n",self.state.positions.npart, ", dat n halo",self.state.positions.npart_halo, "pos, ",self.state.positions
 
             #print "AFTER, rank", mpi.MPI_HANDLE.rank, "vel,", self.state.velocities
 
             #print '=' * 14
-            '''
+
             if mpi.MPI_HANDLE.rank ==1 and self.state.positions[0,0] >= 0.15:
                 quit()
             '''
