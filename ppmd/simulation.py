@@ -354,7 +354,6 @@ class BaseMDSimulation(object):
                 for ix in range(26):
                     self._bin_to_lin[_lin_to_bin[ix]] = ix
 
-
                 _escape_guard_code = '''
 
                 int ELL_index = 26;
@@ -421,18 +420,17 @@ class BaseMDSimulation(object):
                 self._escape_guard_lib = build.SharedLib(_escape_kernel, _escape_dat_dict)
 
 
-
             # after creation if level
 
             # reset linked list
             self._escape_linked_list[0:26:] = -1
-            self._escape_count[0:26:] = 0
+            self._escape_count[::] = 0
 
             self._escape_guard_lib.execute(static_args={'_end':self.state.n})
 
-            #print "BEFORE, rank", mpi.MPI_HANDLE.rank, ", state n",self.state.n, "dat n",self.state.positions.npart, "dat n halo",self.state.positions.npart_halo, "pos",self.state.positions
+            # print "BEFORE, rank", mpi.MPI_HANDLE.rank, ", state n",self.state.n, "dat n",self.state.positions.npart, "dat n halo",self.state.positions.npart_halo, "pos",self.state.positions
 
-            #print "BEFORE, rank", mpi.MPI_HANDLE.rank, "vel,", self.state.velocities
+            # print "BEFORE, rank", mpi.MPI_HANDLE.rank, "vel,", self.state.velocities
 
             self.state.move_to_neighbour_tmp(self._escape_linked_list,
                                              self._escape_count,

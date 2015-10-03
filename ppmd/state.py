@@ -26,7 +26,6 @@ class _AsFunc(object):
         return getattr(self._i, self._n)
 
 
-
 class BaseMDState(object):
     """
     Create an empty state to which particle properties such as position, velocities are added as
@@ -613,12 +612,10 @@ class BaseMDState(object):
 
             direction = mpi.recv_modifiers[ix]
 
-            _send_rank = mpi.MPI_HANDLE.shift(direction, ignore_periods=True)
-            _recv_rank = mpi.MPI_HANDLE.shift((-1 * direction[0],
+            _recv_rank = mpi.MPI_HANDLE.shift(direction, ignore_periods=True)
+            _send_rank = mpi.MPI_HANDLE.shift((-1 * direction[0],
                                                -1 * direction[1],
                                                -1 * direction[2]), ignore_periods=True)
-
-            #TODO: empty slot list.
 
 
             # sending of particles.
@@ -655,8 +652,8 @@ class BaseMDState(object):
 
             direction = mpi.recv_modifiers[ix]
 
-            _send_rank = mpi.MPI_HANDLE.shift(direction, ignore_periods=True)
-            _recv_rank = mpi.MPI_HANDLE.shift((-1 * direction[0],
+            _recv_rank = mpi.MPI_HANDLE.shift(direction, ignore_periods=True)
+            _send_rank = mpi.MPI_HANDLE.shift((-1 * direction[0],
                                                -1 * direction[1],
                                                -1 * direction[2]), ignore_periods=True)
 
@@ -670,7 +667,7 @@ class BaseMDState(object):
 
     def _move_build_packing_lib(self):
         """
-        Build the library to packing particles to send.
+        Build the library to pack particles to send.
         """
 
         _dynamic_dats_shift = ''

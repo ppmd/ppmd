@@ -83,7 +83,7 @@ class Array(object):
         self.dat.resize(length)
 
     def zero(self):
-        self.dat.fill(self.idtype(0))
+        self.dat.fill(0)
 
     @property
     def dtype(self):
