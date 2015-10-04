@@ -62,11 +62,11 @@ if __name__ == '__main__':
 
     if test_1000:
         # n=25 reasonable size
-        n = 10
+        n = 8
         N = n**3
         # n=860
         rho = 1.
-        mu = 0.0
+        mu = 1.0
         nsig = 5.0
         
         # Initialise basic domain

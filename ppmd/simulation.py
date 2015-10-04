@@ -432,9 +432,9 @@ class BaseMDSimulation(object):
 
             # print "BEFORE, rank", mpi.MPI_HANDLE.rank, "vel,", self.state.velocities
 
-            self.state.move_to_neighbour_tmp(self._escape_linked_list,
-                                             self._escape_count,
-                                             self.state.domain.get_shift())
+            self.state.move_to_neighbour(self._escape_linked_list,
+                                         self._escape_count,
+                                         self.state.domain.get_shift())
 
 
             '''

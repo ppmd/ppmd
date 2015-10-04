@@ -139,308 +139,7 @@ class BaseMDState(object):
             _dat.halo_start_reset()
             #_dat.halo_start_set(int(value))
 
-    def move_to_neighbour(self, ids=None, direction=None, shift=None):
-        """
-        Move particles to a neighbouring process.
-        :return: bool as to whether move was successful.
-        """
-
-        self.move_timer.start()
-
-        assert direction is not None, "move_to_neighbour error: No direction passed."
-        # assert type(direction) is tuple, "move_to_neighbour error: passed direction should be a tuple."
-
-        if type(direction) is not tuple:
-            direction = mpi.recv_modifiers[direction]
-
-        _send_rank = mpi.MPI_HANDLE.shift(direction, ignore_periods=True)
-        _recv_rank = mpi.MPI_HANDLE.shift((-1 * direction[0],
-                                          -1 * direction[1],
-                                          -1 * direction[2]),
-                                          ignore_periods=True)
-
-
-        # Number of particles to send.
-        if ids is None:
-            _send_count = 0
-        else:
-            _send_count = len(ids)
-
-
-        # Number of particles to expect to recv.
-        _recv_count = np.array([-1], dtype=ctypes.c_int)
-
-        _status = mpi.Status()
-
-        # Exchange send sizes
-        mpi.MPI_HANDLE.comm.Sendrecv(np.array([_send_count], dtype=ctypes.c_int),
-                                     _send_rank,
-                                     _send_rank,
-                                     _recv_count,
-                                     _recv_rank,
-                                     mpi.MPI_HANDLE.rank,
-                                     _status)
-
-        _recv_count = int(_recv_count[0])
-
-
-        # Create a send buffer.
-        if self._move_send_buffer is None:
-            self._move_send_buffer = host.Array(ncomp=_send_count * self._total_ncomp)
-
-
-        elif _send_count * self._total_ncomp > self._move_send_buffer.ncomp:
-            if runtime.VERBOSE.level > 2:
-                print "rank", mpi.MPI_HANDLE.rank, ": move send buffer resized."
-
-            self._move_send_buffer.realloc(_send_count * self._total_ncomp)
-
-
-        if self._move_packing_lib is None or self._move_packing_shift_lib is None:
-
-            _dynamic_dats = ''
-            _dynamic_dats_shift = ''
-            _space = ' ' * 16
-
-            for ix, iy in zip(self.particle_dats, self._move_ncomp):
-
-                # make case where ParticleDat has more than one component.
-                if iy > 1:
-                    _dynamic_dats += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP':iy}
-                    _dynamic_dats += _space + 'SEND_BUFFER[index+ni] = %(NAME)s[(_ix*%(NCOMP)s)+ni]; \n' % {'NCOMP':iy, 'NAME':str(ix)}
-                    _dynamic_dats += _space + '} \n'
-                    _dynamic_dats += _space + 'index += %(NCOMP)s; \n' % {'NCOMP':iy}
-
-
-                    if ix == 'positions':
-                        _dynamic_dats_shift += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP':iy}
-                        _dynamic_dats_shift += _space + 'SEND_BUFFER[index+ni] = %(NAME)s[(_ix*%(NCOMP)s)+ni] + SHIFT[ni]; \n' % {'NCOMP':iy, 'NAME':str(ix)}
-                        _dynamic_dats_shift += _space + '} \n'
-                        _dynamic_dats_shift += _space + 'index += %(NCOMP)s; \n' % {'NCOMP':iy}
-                    else:
-                        _dynamic_dats_shift += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP':iy}
-                        _dynamic_dats_shift += _space + 'SEND_BUFFER[index+ni] = %(NAME)s[(_ix*%(NCOMP)s)+ni]; \n' % {'NCOMP':iy, 'NAME':str(ix)}
-                        _dynamic_dats_shift += _space + '} \n'
-                        _dynamic_dats_shift += _space + 'index += %(NCOMP)s; \n' % {'NCOMP':iy}
-
-                else:
-                    _dynamic_dats += _space + 'SEND_BUFFER[index] = %(NAME)s[_ix]; \n' % {'NAME':str(ix)}
-                    _dynamic_dats += _space + 'index += 1; \n'
-
-                    _dynamic_dats_shift += _space + 'SEND_BUFFER[index] = %(NAME)s[_ix]; \n' % {'NAME':str(ix)}
-                    _dynamic_dats_shift += _space + 'index += 1; \n'
-
-
-            _packing_code = '''
-            int index = 0;
-            for (int _idx = 0; _idx < end; _idx++){
-                int _ix = _send_ids[_idx];
-                \n%(DYNAMIC_DATS)s
-            }
-            ''' % {'DYNAMIC_DATS': _dynamic_dats}
-
-            _packing_code_shift = '''
-            int index = 0;
-            for (int _idx = 0; _idx < end; _idx++){
-                int _ix = _send_ids[_idx];
-                \n%(DYNAMIC_DATS)s
-            }
-            ''' % {'DYNAMIC_DATS': _dynamic_dats_shift}
-
-
-            _packing_headers = ['stdio.h']
-            _packing_static_args = {'end':ctypes.c_int}
-            self._packing_args = {'SEND_BUFFER':self._move_send_buffer, '_send_ids': host.NullIntArray}
-
-            self._move_shift_array = host.Array(np.zeros(3), dtype=ctypes.c_double)
-
-            self._packing_args_shift = {'SEND_BUFFER':self._move_send_buffer, '_send_ids': host.NullIntArray, 'SHIFT': self._move_shift_array}
-
-
-            # Dynamic arguments dependant on how many particle dats there are.
-            for idx, ix in enumerate(self.particle_dats):
-                # existing dat in state
-                self._packing_args['%(NAME)s' % {'NAME':ix}] = getattr(self, ix)
-                self._packing_args_shift['%(NAME)s' % {'NAME':ix}] = getattr(self, ix)
-
-            # create a unique but searchable name.
-            _name = ''
-            for ix in self.particle_dats:
-                _name += '_' + str(ix)
-
-            # make kernel
-            _packing_kernel = kernel.Kernel('state_move_packing' + _name, _packing_code, None, _packing_headers, None, _packing_static_args)
-            _packing_kernel_shift = kernel.Kernel('state_move_packing_shift' + _name, _packing_code_shift, None, _packing_headers, None, _packing_static_args)
-
-            # make packing library
-            self._move_packing_lib = build.SharedLib(_packing_kernel, self._packing_args)
-            self._move_packing_shift_lib = build.SharedLib(_packing_kernel_shift, self._packing_args_shift)
-
-        self.move_timer2.start()
-        # Execute packing library.
-        if shift is None:
-            self._packing_args['_send_ids'] = host.Array(ids, dtype=ctypes.c_int)
-            self._move_packing_lib.execute(static_args={'end': ctypes.c_int(len(ids))}, dat_dict=self._packing_args)
-        else:
-            self._packing_args_shift['_send_ids'] = host.Array(ids, dtype=ctypes.c_int)
-            self._move_shift_array[0] = shift[0]
-            self._move_shift_array[1] = shift[1]
-            self._move_shift_array[2] = shift[2]
-
-
-            self._move_packing_shift_lib.execute(static_args={'end': ctypes.c_int(len(ids))}, dat_dict=self._packing_args_shift)
-        self.move_timer2.pause()
-
-        # Create a recv buffer.
-        if self._move_recv_buffer is None:
-            self._move_recv_buffer = host.Array(ncomp=_send_count * self._total_ncomp)
-
-
-        elif _recv_count * self._total_ncomp > self._move_recv_buffer.ncomp:
-            if runtime.VERBOSE.level > 2:
-                print "rank", mpi.MPI_HANDLE.rank, ": move recv buffer resized."
-
-            self._move_recv_buffer.realloc(_recv_count * self._total_ncomp)
-
-
-        # sending of particles.
-        if _send_count > 0 and _recv_count > 0:
-            mpi.MPI_HANDLE.comm.Sendrecv(self._move_send_buffer[0:_send_count * self._total_ncomp:],
-                                         _send_rank,
-                                         _send_rank,
-                                         self._move_recv_buffer[0:_recv_count * self._total_ncomp:],
-                                         _recv_rank,
-                                         mpi.MPI_HANDLE.rank,
-                                         _status)
-        elif _send_count > 0:
-                mpi.MPI_HANDLE.comm.Send(self._move_send_buffer[0:_send_count * self._total_ncomp:],
-                                         _send_rank,
-                                         _send_rank)
-        elif _recv_count > 0:
-                mpi.MPI_HANDLE.comm.Recv(self._move_recv_buffer[0:_recv_count * self._total_ncomp:],
-                                         _recv_rank,
-                                         mpi.MPI_HANDLE.rank,
-                                         _status)
-        '''
-        print "=" * 50
-        print self._move_send_buffer.dat
-        print "-" * 50
-        print self._move_recv_buffer.dat
-        print "*" * 50
-        '''
-
-
-        # check that ParticleDats are large enough for the incoming particles.
-        for ix in self.particle_dats:
-            _dat = getattr(self, ix)
-            if _dat.max_npart < _dat.npart + _recv_count - _send_count:
-                _dat.resize(_dat.npart + _recv_count - _send_count)
-                if runtime.VERBOSE.level > 2:
-                    print "rank", mpi.MPI_HANDLE.rank, ix, ": particle dat resized."
-
-
-        # free slots as array.
-        for ix in range(_send_count):
-            self._move_empty_slots.append(ids[ix])
-
-        self._move_empty_slots.sort()
-
-        _free_slots = host.Array(self._move_empty_slots, dtype=ctypes.c_int)
-        _num_free_slots = _free_slots.ncomp
-
-
-        if self._move_unpacking_lib is None:
-            _dyn_dat_case = ''
-            _space = ' ' * 16
-
-            _cumulative_ncomp = 0
-
-            for ixi, ix in enumerate(self.particle_dats):
-                _dat = getattr(self, ix)
-                if _dat.ncomp > 1:
-                    _dyn_dat_case += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP': _dat.ncomp}
-                    _dyn_dat_case += _space + '%(NAME)s[(pos*%(NCOMP)s)+ni] = _RECV_BUFFER[(ix*%(NCOMP_TOTAL)s)+%(NCOMP_START)s+ni]; \n' % {'NCOMP':_dat.ncomp, 'NAME':str(ix), 'NCOMP_TOTAL': self._total_ncomp, 'NCOMP_START': _cumulative_ncomp}
-                    _dyn_dat_case += _space + '} \n'
-                else:
-                    _dyn_dat_case += _space + '%(NAME)s[pos] = _RECV_BUFFER[(ix*%(NCOMP_TOTAL)s)+%(NCOMP_START)s]; \n' % {'NAME':str(ix), 'NCOMP_TOTAL': self._total_ncomp, 'NCOMP_START': _cumulative_ncomp}
-
-                _cumulative_ncomp += _dat.ncomp
-
-
-            _unpacking_code = '''
-
-            for(int ix = 0; ix < _recv_count; ix++){
-
-                int pos;
-                // prioritise filling spaces in dat.
-                if (ix < _num_free_slots) {
-                    pos = _free_slots[ix];
-                } else {
-                    pos = _prev_num_particles + ix - _num_free_slots;
-                }
-
-                \n%(DYN_DAT_CODE)s
-            }
-            ''' % {'DYN_DAT_CODE': _dyn_dat_case}
-
-            _unpacking_static_args = {
-                '_recv_count': ctypes.c_int,
-                '_num_free_slots': ctypes.c_int,
-                '_prev_num_particles': ctypes.c_int
-            }
-
-            _unpacking_dynamic_args = {
-                '_free_slots': _free_slots,
-                '_RECV_BUFFER': self._move_recv_buffer
-            }
-
-            for ix in self.particle_dats:
-                # existing dat in state
-                _unpacking_dynamic_args['%(NAME)s' % {'NAME':ix}] = getattr(self, ix)
-
-            _unpacking_headers = ['stdio.h']
-
-            # create a unique but searchable name.
-            _name = ''
-            for ix in self.particle_dats:
-                _name += '_' + str(ix)
-
-            # make kernel
-            _unpacking_kernel = kernel.Kernel('state_move_unpacking' + _name, _unpacking_code, None, _unpacking_headers, None, _unpacking_static_args)
-            self._move_unpacking_lib = build.SharedLib(_unpacking_kernel, _unpacking_dynamic_args)
-
-
-
-
-        _unpacking_dynamic_args = {'_free_slots': _free_slots, '_RECV_BUFFER': self._move_recv_buffer}
-
-        for ix in self.particle_dats:
-            # existing dat in state
-            _unpacking_dynamic_args['%(NAME)s' % {'NAME':ix}] = getattr(self, ix)
-
-        self._move_unpacking_lib.execute(static_args={'_recv_count': ctypes.c_int(_recv_count),
-                                                      '_num_free_slots': ctypes.c_int(_num_free_slots),
-                                                      '_prev_num_particles': ctypes.c_int(self.n)},
-                                         dat_dict=_unpacking_dynamic_args)
-
-
-        #print "after move", self.n, _recv_count, _num_free_slots, _send_count
-
-        if _recv_count < _num_free_slots:
-            self.compressed = False
-            self._move_empty_slots = self._move_empty_slots[_recv_count::]
-        else:
-            self.n = self.n + _recv_count - _num_free_slots
-            #self._move_empty_slots = []
-        #print "after if", self.n, _recv_count, _num_free_slots, _send_count
-
-        self.move_timer.pause()
-
-
-
-
-
-    def move_to_neighbour_tmp(self, ids_directions_list=None, dir_send_totals=None, shifts=None):
+    def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None, shifts=None):
         """
         Move particles using the linked list.
 
@@ -493,6 +192,9 @@ class BaseMDState(object):
 
         self._move_packing_shift_lib.execute(dat_dict=self._packing_args_shift)
 
+        #sort empty slots.
+        self._move_empty_slots.dat[0:_send_total:].sort()
+
         #exchange particle data.
         self._exchange_move_send_recv_buffers()
 
@@ -512,8 +214,7 @@ class BaseMDState(object):
 
         if _recv_total < _send_total:
             self.compressed = False
-            self._move_empty_slots.dat[::] = self._move_empty_slots.dat[_recv_total::]
-
+            self._move_empty_slots.dat[0:_send_total-_recv_total:] = self._move_empty_slots.dat[_recv_total:_send_total:]
 
 
         else:
@@ -522,7 +223,7 @@ class BaseMDState(object):
 
 
         # Compress particle dats.
-        self._move_empty_slots.dat.sort()
+
 
         #print "BEFORE compression, rank", mpi.MPI_HANDLE.rank, "sn", self.n, "pn", self.positions.npart, "hn", self.positions.npart_halo,"positions", self.positions[0:6:]
         self._compress_particle_dats(_send_total - _recv_total)
