@@ -62,66 +62,6 @@ class BaseDomain(object):
     def comm(self):
         return self._COMM
 
-    def bc_setup(self, state):
-        """
-        Setup loop to apply periodic boundary conditions to input positions.
-        
-        :arg data.ParticleDat positions: data.ParticleDat containing particle positions.
-        """
-        self._BC_state = state
-        self._BCcode = '''
-
-        for(int _ix = 0; _ix < _n; _ix++){
-        
-            if (abs_md(P[3*_ix]) > 0.5*E[0]){
-                const double E0_2 = 0.5*E[0];
-                const double x = P[3*_ix] + E0_2;
-
-                if (x < 0){
-                    P[3*_ix] = (E[0] - fmod(abs_md(x) , E[0])) - E0_2;
-                }
-                else{
-                    P[3*_ix] = fmod( x , E[0] ) - E0_2;
-                }
-            }
-
-            if (abs_md(P[3*_ix+1]) > 0.5*E[1]){
-                const double E1_2 = 0.5*E[1];
-                const double x = P[3*_ix+1] + E1_2;
-
-                if (x < 0){
-                    P[3*_ix+1] = (E[1] - fmod(abs_md(x) , E[1])) - E1_2;
-                }
-                else{
-                    P[3*_ix+1] = fmod( x , E[1] ) - E1_2;
-                }
-            }
-
-            if (abs_md(P[3*_ix+2]) > 0.5*E[2]){
-                const double E2_2 = 0.5*E[2];
-                const double x = P[3*_ix+2] + E2_2;
-
-                if (x < 0){
-                    P[3*_ix+2] = (E[2] - fmod(abs_md(x) , E[2])) - E2_2;
-                }
-                else{
-                    P[3*_ix+2] = fmod( x , E[2] ) - E2_2;
-                }
-            }
-
-        }
-
-        '''
-
-        _BCcodeDict = {'P': self._BC_state.positions, 'E': self._extent}
-        _BCkernel = kernel.Kernel('BCkernel_simple', self._BCcode, headers=['math.h'], static_args={'_n': ctypes.c_int})
-        self._BCloop = build.SharedLib(_BCkernel, _BCcodeDict)
-
-    def bc_execute(self):
-        # self.boundary_correct(self._positions)
-        assert self._BCloop is not None, "Run bc_setup first"
-
-        self._BCloop.execute(static_args={'_n': self._BC_state.n})
 
     @property
     def extent(self):
@@ -497,522 +437,8 @@ class BaseDomainHalo(BaseDomain):
     def barrier(self):
         self._MPI.Barrier()
 
-    def bc_setup(self, state):
 
-        self._BC_state = state
 
-        '''Array to store the local id of scaling particles'''
-        self._escaping_ids = data.ScalarArray(ncomp=2 * self._BC_state.nt, dtype=ctypes.c_int)
-
-        '''Number of escaping particles in each direction'''
-        self._escape_count = data.ScalarArray(ncomp=26, dtype=ctypes.c_int)
-
-        '''Total number of escapees'''
-        self._escape_count_total = data.ScalarArray(ncomp=1, dtype=ctypes.c_int)
-
-        '''Temporary indices for library'''
-        self._escape_internal_index = data.ScalarArray(ncomp=1, dtype=ctypes.c_int)
-        self._internal_index = data.ScalarArray(ncomp=1, dtype=ctypes.c_int)
-
-        '''Create a lookup table between xor map and linear index for direction'''
-        self._bin_to_lin = data.ScalarArray(ncomp=57, dtype=ctypes.c_int)
-        self._lin_to_bin = data.ScalarArray(ncomp=26, dtype=ctypes.c_int)
-
-        '''linear to xor map'''
-        self._lin_to_bin[0] = 1 ^ 2 ^ 4
-        self._lin_to_bin[1] = 2 ^ 1
-        self._lin_to_bin[2] = 32 ^ 2 ^ 1
-        self._lin_to_bin[3] = 4 ^ 1
-        self._lin_to_bin[4] = 1
-        self._lin_to_bin[5] = 32 ^ 1
-        self._lin_to_bin[6] = 4 ^ 1 ^ 16
-        self._lin_to_bin[7] = 1 ^ 16
-        self._lin_to_bin[8] = 32 ^ 16 ^ 1
-
-        self._lin_to_bin[9] = 2 ^ 4
-        self._lin_to_bin[10] = 2
-        self._lin_to_bin[11] = 32 ^ 2
-        self._lin_to_bin[12] = 4
-        self._lin_to_bin[13] = 32
-        self._lin_to_bin[14] = 4 ^ 16
-        self._lin_to_bin[15] = 16
-        self._lin_to_bin[16] = 32 ^ 16
-
-        self._lin_to_bin[17] = 8 ^ 2 ^ 4
-        self._lin_to_bin[18] = 2 ^ 8
-        self._lin_to_bin[19] = 32 ^ 2 ^ 8
-        self._lin_to_bin[20] = 4 ^ 8
-        self._lin_to_bin[21] = 8
-        self._lin_to_bin[22] = 32 ^ 8
-        self._lin_to_bin[23] = 4 ^ 8 ^ 16
-        self._lin_to_bin[24] = 8 ^ 16
-        self._lin_to_bin[25] = 32 ^ 16 ^ 8
-
-        '''inverse map, probably not ideal'''
-        for ix in range(26):
-            self._bin_to_lin[self._lin_to_bin[ix]] = ix
-
-        '''
-        Below code uses the following map between directions and a 6 bit integer.
-        
-        xu yu zu xl yl zl
-        '''
-
-
-        _escape_guard_code = '''
-
-
-        for(int _ix=0; _ix < _n; _ix++){
-
-            int b = 0;
-
-            //Check x direction
-            if (P[3*_ix] < B[0]){
-                b ^= 32;
-            }else if (P[3*_ix] > B[1]){
-                b ^= 4;
-            }
-
-            //check y direction
-            if (P[3*_ix+1] < B[2]){
-                b ^= 16;
-            }else if (P[3*_ix+1] > B[3]){
-                b ^= 2;
-            }
-
-            //check z direction
-            if (P[3*_ix+2] < B[4]){
-                b ^= 1;
-            }else if (P[3*_ix+2] > B[5]){
-                b ^= 8;
-            }
-
-            //If b > 0 then particle has escaped through some boundary
-            if (b>0){
-                EC[BL[b]]++;        //lookup which direction then increment that direction escape count.
-                ECT[0]++;           //Increment total escape count by 1.
-                EI[EII[0]] = _ix;   //In escape ids we have pairs of local index and escape index, here write local index
-                EI[EII[0]+1] = BL[b]; //here write escape direction
-                EII[0]+=2;
-            }
-
-        }
-        '''
-
-        _escape_guard_dict = {'P': self._BC_state.positions,
-                              'B': self._boundary,
-                              'EC': self._escape_count,
-                              'BL': self._bin_to_lin,
-                              'ECT': self._escape_count_total,
-                              'EI': self._escaping_ids,
-                              'EII': self._escape_internal_index
-                              }
-
-        _escape_guard_kernel = kernel.Kernel('FindEscapingParticles', _escape_guard_code, headers=['math.h'], static_args={'_n': ctypes.c_int})
-        self._escape_guard_loop = build.SharedLib(_escape_guard_kernel, _escape_guard_dict)
-
-        '''Calculate shifts that should be applied when passing though the local domain extents
-        Xl 0, Xu 1
-        Yl 2, Yu 3
-        Zl 4, Zu 5
-        '''
-
-        _sf = range(6)
-        for ix in range(3):
-            if self._top[ix] == 0:
-                _sf[2 * ix] = self._extent_global[ix]
-            else:
-                _sf[2 * ix] = 0.
-            if self._top[ix] == self._dims[ix] - 1:
-                _sf[2 * ix + 1] = -1. * self._extent_global[ix]
-            else:
-                _sf[2 * ix + 1] = 0.
-
-        _sfd = [
-            _sf[1], _sf[3], _sf[4],  # 0
-            0., _sf[3], _sf[4],  # 1
-            _sf[0], _sf[3], _sf[4],  # 2
-            _sf[1], 0., _sf[4],  # 3
-            0., 0., _sf[4],  # 4
-            _sf[0], 0., _sf[4],  # 5
-            _sf[1], _sf[2], _sf[4],  # 6
-            0., _sf[2], _sf[4],  # 7
-            _sf[0], _sf[2], _sf[4],  # 8
-
-            _sf[1], _sf[3], 0.,  # 9
-            0., _sf[3], 0.,  # 10
-            _sf[0], _sf[3], 0.,  # 11
-            _sf[1], 0., 0.,  # 12
-            _sf[0], 0., 0.,  # 13
-            _sf[1], _sf[2], 0.,  # 14
-            0., _sf[2], 0.,  # 15
-            _sf[0], _sf[2], 0.,  # 16
-
-            _sf[1], _sf[3], _sf[5],  # 17
-            0., _sf[3], _sf[5],  # 18
-            _sf[0], _sf[3], _sf[5],  # 19
-            _sf[1], 0., _sf[5],  # 20
-            0., 0., _sf[5],  # 21
-            _sf[0], 0., _sf[5],  # 22
-            _sf[1], _sf[2], _sf[5],  # 23
-            0., _sf[2], _sf[5],  # 24
-            _sf[0], _sf[2], _sf[5]  # 25
-
-        ]
-
-        # print self._rank, "LOCAL SHIFTS", _sf
-
-
-        self._sfd = data.ScalarArray(initial_value=_sfd)
-
-        '''Number of elements to pack'''
-        self._ncomp = data.ScalarArray(initial_value=[8], dtype=ctypes.c_int)
-
-        self._escape_send_buffer = data.ScalarArray(ncomp=self._ncomp[0] * self._BC_state.nt, dtype=ctypes.c_double)
-
-        '''Starting ixdex for packing'''
-        self._escape_send_buffer_index = data.ScalarArray(ncomp=26, dtype=ctypes.c_int)
-
-        '''Packing code, needs to become generated based on types that are dynamic and need sending'''
-
-        _escape_packing_code = '''
-        
-        
-        
-        ESBi[0] = 0;
-        for (int d = 1; d < 26; d++){
-            int ei = 0;
-            for (int j = 0; j < d; j++){
-                ei+= NCOMP[0]*EC[j];
-            }
-            ESBi[d]=ei;
-        }
-        
-        for (int ix = 0; ix < ECT[0]; ix++){
-            
-            int id = EI[(2*ix)];
-            int d = EI[(2*ix)+1];
-            int index = ESBi[d];
-            ESBi[d]+= NCOMP[0];
-            
-            ESB[index]   = P[LINIDX_2D(3,id,0)] + SFD[3*d];
-            ESB[index+1] = P[LINIDX_2D(3,id,1)] + SFD[3*d+1];
-            ESB[index+2] = P[LINIDX_2D(3,id,2)] + SFD[3*d+2];
-            ESB[index+3] = V[LINIDX_2D(3,id,0)];
-            ESB[index+4] = V[LINIDX_2D(3,id,1)];
-            ESB[index+5] = V[LINIDX_2D(3,id,2)];
-            ESB[index+6] = (double) EGID[id];
-            ESB[index+7] = (double) TYPE[id];
-            
-        }
-        
-        '''
-        self._escape_count_recv = data.ScalarArray(ncomp=26, dtype=ctypes.c_int)
-        self._escape_recv_buffer = data.ScalarArray(ncomp=self._ncomp[0] * self._BC_state.nt, dtype=ctypes.c_double)
-
-        _escape_packing_dict = {'P': self._BC_state.positions,
-                                'V': self._BC_state.velocities,
-                                'EGID': self._BC_state.global_ids,
-                                'TYPE': self._BC_state.types,
-                                'EC': self._escape_count,
-                                'EI': self._escaping_ids,
-                                'ESB': self._escape_send_buffer,
-                                'ESBi': self._escape_send_buffer_index,
-                                'ECT': self._escape_count_total,
-                                'SFD': self._sfd,
-                                'NCOMP': self._ncomp
-                                }
-
-        _pack_escapees_kernel = kernel.Kernel('PackEscapingParticles', _escape_packing_code, headers=['stdio.h'])
-        self._escape_packing_lib = build.SharedLib(_pack_escapees_kernel, _escape_packing_dict)
-
-        _recv_modifiers = [
-            [-1, -1, -1],  # 0
-            [0, -1, -1],  # 1
-            [1, -1, -1],  # 2
-            [-1, 0, -1],  # 3
-            [0, 0, -1],  # 4
-            [1, 0, -1],  # 5
-            [-1, 1, -1],  # 6
-            [0, 1, -1],  # 7
-            [1, 1, -1],  # 8
-
-            [-1, -1, 0],  # 9
-            [0, -1, 0],  # 10
-            [1, -1, 0],  # 11
-            [-1, 0, 0],  # 12
-            [1, 0, 0],  # 13
-            [-1, 1, 0],  # 14
-            [0, 1, 0],  # 15
-            [1, 1, 0],  # 16
-
-            [-1, -1, 1],  # 17
-            [0, -1, 1],  # 18
-            [1, -1, 1],  # 19
-            [-1, 0, 1],  # 20
-            [0, 0, 1],  # 21
-            [1, 0, 1],  # 22
-            [-1, 1, 1],  # 23
-            [0, 1, 1],  # 24
-            [1, 1, 1],  # 25
-        ]
-
-        self._send_list = [
-            ((self._top[0] - ix[0]) % self._dims[0]) + ((self._top[1] - ix[1]) % self._dims[1]) * self._dims[0] + (
-                (self._top[2] - ix[2]) % self._dims[2]) * self._dims[0] * self._dims[1] for ix in _recv_modifiers]
-        self._recv_list = [
-            ((self._top[0] + ix[0]) % self._dims[0]) + ((self._top[1] + ix[1]) % self._dims[1]) * self._dims[0] + (
-                (self._top[2] + ix[2]) % self._dims[2]) * self._dims[0] * self._dims[1] for ix in _recv_modifiers]
-
-        self._tmp_index = data.ScalarArray(ncomp=1, dtype=ctypes.c_int)
-
-        _unpacking_code = '''
-        
-        //printf("before I[0] = %d, ECT = %d, TI[0] = %d |", I[0], ECT[0], TI[0]);
-        for (int ix = 0; ix < TI[0]; ix++){
-            
-            //printf("ix = %d |", ix);
-            
-            int IX;
-            //fill in spaces
-            if (ix < ECT[0]) {
-                IX = EI[2*ix];
-            }
-            else {
-                //put at end if spaces full
-                IX = I[0] + ix - ECT[0];
-            }
-            
-            
-            P[LINIDX_2D(3,IX,0)] = ERB[NCOMP[0]*ix];
-            P[LINIDX_2D(3,IX,1)] = ERB[NCOMP[0]*ix+1];
-            P[LINIDX_2D(3,IX,2)] = ERB[NCOMP[0]*ix+2];
-            
-            V[LINIDX_2D(3,IX,0)] = ERB[NCOMP[0]*ix+3];
-            V[LINIDX_2D(3,IX,1)] = ERB[NCOMP[0]*ix+4];
-            V[LINIDX_2D(3,IX,2)] = ERB[NCOMP[0]*ix+5];
-            
-            RGID[IX] = (int) ERB[NCOMP[0]*ix+6];
-            TYPE[IX] = (int) ERB[NCOMP[0]*ix+7];
-            
-        }
-        
-        
-        //if more were sent than recv'd then we have holes.
-        if (TI[0] < ECT[0]){
-            
-            int ect = ECT[0] - 1;
-            
-            //int ect_ti = ECT[0] - TI[0] - 2;
-            int ect_ti = TI[0];
-            
-            int eix = -1;
-            
-            
-            while ( (ect_ti < ECT[0]) && (EI[2*ect_ti] < I[0]) ){
-                
-                eix = EI[2*ect_ti];
-
-                //printf("ect_ti = %d, eix = %d|", ect_ti, eix);
-                
-                int ti = -1;
-
-                //loop from end to empty slot
-                for (int iy = I[0] - 1; iy > eix; iy--){
-                    
-                    
-                    //printf("EI[2*ect] = %d |", EI[2*ect]);
-                    
-                    if (iy == EI[2*ect]){
-                        I[0] = iy;
-                        ect--;
-                    } else {
-                        ti = iy;
-                        break;
-                    }
-                    
-                }
-                
-                //printf("ti = %d |", ti);
-                
-                
-                if (ti > 0){
-                    //copy code here from index ti to index eix
-                    
-                    P[LINIDX_2D(3,eix,0)] = P[LINIDX_2D(3,ti,0)];
-                    P[LINIDX_2D(3,eix,1)] = P[LINIDX_2D(3,ti,1)];
-                    P[LINIDX_2D(3,eix,2)] = P[LINIDX_2D(3,ti,2)];
-                    
-                    V[LINIDX_2D(3,eix,0)] = V[LINIDX_2D(3,ti,0)];
-                    V[LINIDX_2D(3,eix,1)] = V[LINIDX_2D(3,ti,1)];
-                    V[LINIDX_2D(3,eix,2)] = V[LINIDX_2D(3,ti,2)];
-
-                    RGID[eix] = RGID[ti];
-                    TYPE[eix] = TYPE[ti];
-                                        
-                    I[0] = ti;
-                    
-                    
-                } else {
-                    I[0] = eix;
-                    break;  
-                }
-            
-                
-                ect_ti++;
-                //printf("I[0] = %d |", I[0]);   
-            }
-            
-             
-        } else {
-        
-        I[0] += TI[0] - ECT[0];
-        
-        }
-        
-        //printf("after I[0] = %d |", I[0]);
-        
-        '''
-
-        _unpacking_dict = {'P': self._BC_state.positions,
-                           'V': self._BC_state.velocities,
-                           'RGID': self._BC_state.global_ids,
-                           'ERB': self._escape_recv_buffer,
-                           'ECT': self._escape_count_total,
-                           'I': self._internal_index,
-                           'TI': self._tmp_index,
-                           'EI': self._escaping_ids,
-                           'NCOMP': self._ncomp,
-                           'TYPE': self._BC_state.types
-                           }
-
-        _unpacking_kernel = kernel.Kernel('unpackingParticles', _unpacking_code, headers=['stdio.h'])
-        self._unpacking_lib = build.SharedLib(_unpacking_kernel, _unpacking_dict)
-
-        self._BCcode = '''
-
-        for(int _ix=0; _ix < _n; _ix++){
-
-            if (abs_md(P[3*_ix]) > 0.5*E[0]){
-                const double E0_2 = 0.5*E[0];
-                const double x = P[3*_ix] + E0_2;
-
-                if (x < 0){
-                    P[3*_ix] = (E[0] - fmod(abs_md(x) , E[0])) - E0_2;
-                }
-                else{
-                    P[3*_ix] = fmod( x , E[0] ) - E0_2;
-                }
-            }
-
-            if (abs_md(P[3*_ix+1]) > 0.5*E[1]){
-                const double E1_2 = 0.5*E[1];
-                const double x = P[3*_ix+1] + E1_2;
-
-                if (x < 0){
-                    P[3*_ix+1] = (E[1] - fmod(abs_md(x) , E[1])) - E1_2;
-                }
-                else{
-                    P[3*_ix+1] = fmod( x , E[1] ) - E1_2;
-                }
-            }
-
-            if (abs_md(P[3*_ix+2]) > 0.5*E[2]){
-                const double E2_2 = 0.5*E[2];
-                const double x = P[3*_ix+2] + E2_2;
-
-                if (x < 0){
-                    P[3*_ix+2] = (E[2] - fmod(abs_md(x) , E[2])) - E2_2;
-                }
-                else{
-                    P[3*_ix+2] = fmod( x , E[2] ) - E2_2;
-                }
-            }
-        }
-        
-        '''
-
-        _BCcodeDict = {'P': self._BC_state.positions, 'E': self._extent}
-        _BCkernel = kernel.Kernel('BCkernel', self._BCcode, headers=['math.h'], static_args={'_n':ctypes.c_int})
-        self._BCloop = build.SharedLib(_BCkernel, _BCcodeDict)
-
-
-
-    def bc_execute(self):
-
-        if self._nproc == 1:
-            self._BCloop.execute(static_args={'_n':self._BC_state.n})
-            # print "normal BCs applied"
-
-
-        else:
-
-            '''Potentially all could escape'''
-            # self._escaping_ids.resize(2*self._BC_state.n())
-            # self._escaping_ids.zero()
-
-            '''Zero counts/indices'''
-            self._escape_internal_index.zero()
-            self._internal_index.zero()
-
-            self._escape_count_total.zero()
-            self._escape_count.zero()
-
-            '''Find escaping particles'''
-            self._escape_guard_loop.execute(static_args={'_n': self._BC_state.n})
-
-            '''Exchange sizes'''
-            for ix in range(26):
-                # print "R", self._rank, "Sending", self._escape_count.Dat[ix:ix+1:], "ix", ix
-
-                self._COMM.Sendrecv(self._escape_count.dat[ix:ix + 1:],
-                                    self._send_list[ix],
-                                    self._send_list[ix],
-                                    self._escape_count_recv.dat[ix:ix + 1:],
-                                    self._recv_list[ix],
-                                    self._rank,
-                                    self._MPIstatus)
-
-                # print "R", self._rank, "RECVD" ,self._escape_count_recv.Dat[ix:ix+1:], "ix", ix
-
-            '''Check packing buffer is large enough then pack'''
-            self._escape_send_buffer.resize(self._ncomp[0] * self._escape_count_total[0])
-            self._escape_packing_lib.execute()
-
-            '''Exchange packed particle buffers'''
-            _sum_send = 0
-            _sum_recv = 0
-
-            for ix in range(26):
-                self._COMM.Sendrecv(
-                    self._escape_send_buffer.dat[_sum_send:_sum_send + self._ncomp[0] * self._escape_count[ix]:],
-                    self._send_list[ix],
-                    self._send_list[ix],
-                    self._escape_recv_buffer.dat[_sum_recv:_sum_recv + self._ncomp[0] * self._escape_count_recv[ix]:],
-                    self._recv_list[ix],
-                    self._rank,
-                    self._MPIstatus)
-
-                _sum_send += self._ncomp[0] * self._escape_count[ix]
-                _sum_recv += self._ncomp[0] * self._escape_count_recv[ix]
-
-            self._tmp_index[0] = _sum_recv / self._ncomp[0]
-
-            '''Unpack new particles and compress particle dats'''
-
-            self._BC_state.positions.halo_start_reset()
-            self._BC_state.velocities.halo_start_reset()
-            self._internal_index[0] = self._BC_state.n
-
-            self._unpacking_lib.execute()
-
-            self._BC_state.n = self._internal_index[0]
-
-            # print "setting halos", self._internal_index[0]
-
-            self._BC_state.positions.halo_start_set(self._internal_index[0])
-            self._BC_state.velocities.halo_start_set(self._internal_index[0])
-            self._BC_state.forces.halo_start_set(self._internal_index[0])
 
     def get_shift(self, direction=None):
 
@@ -1109,8 +535,196 @@ class BoundaryTypePeriodic(object):
     :arg state_in: State on which to apply periodic boundaries to.
     """
 
-    def __init__(self, state_in):
-        self._state = state_in
+    def __init__(self, state_in=None):
+        self.state = state_in
+
+        # One proc PBC lib
+        self._one_process_pbc_lib = None
+        # Escape guard lib
+        self._escape_guard_lib = None
+        self._escape_count = None
+        self._escape_linked_list = None
+
+    def set_state(self, state_in=None):
+        assert state_in is not None, "BoundaryTypePeriodic error: No state passed."
+        self.state = state_in
+
+    def apply(self):
+        """
+        Enforce the boundary conditions on the held state.
+        """
+        if mpi.MPI_HANDLE.nproc == 1:
+            """
+            BC code for one proc. porbably removable when restricting to large parallel systems.
+            """
+            if self._one_process_pbc_lib is None:
+
+                _one_proc_pbc_code = '''
+
+                for(int _ix = 0; _ix < _end; _ix++){
+
+                    if (abs_md(P[3*_ix]) > 0.5*E[0]){
+                        const double E0_2 = 0.5*E[0];
+                        const double x = P[3*_ix] + E0_2;
+
+                        if (x < 0){
+                            P[3*_ix] = (E[0] - fmod(abs_md(x) , E[0])) - E0_2;
+                        }
+                        else{
+                            P[3*_ix] = fmod( x , E[0] ) - E0_2;
+                        }
+                    }
+
+                    if (abs_md(P[3*_ix+1]) > 0.5*E[1]){
+                        const double E1_2 = 0.5*E[1];
+                        const double x = P[3*_ix+1] + E1_2;
+
+                        if (x < 0){
+                            P[3*_ix+1] = (E[1] - fmod(abs_md(x) , E[1])) - E1_2;
+                        }
+                        else{
+                            P[3*_ix+1] = fmod( x , E[1] ) - E1_2;
+                        }
+                    }
+
+                    if (abs_md(P[3*_ix+2]) > 0.5*E[2]){
+                        const double E2_2 = 0.5*E[2];
+                        const double x = P[3*_ix+2] + E2_2;
+
+                        if (x < 0){
+                            P[3*_ix+2] = (E[2] - fmod(abs_md(x) , E[2])) - E2_2;
+                        }
+                        else{
+                            P[3*_ix+2] = fmod( x , E[2] ) - E2_2;
+                        }
+                    }
+
+                }
+
+                '''
+
+                _one_proc_pbc_kernel = kernel.Kernel('_one_proc_pbc_kernel', _one_proc_pbc_code, None,['math.h', 'stdio.h'], static_args={'_end':ctypes.c_int})
+                self._one_process_pbc_lib = build.SharedLib(_one_proc_pbc_kernel, {'P': self.state.positions,
+                                                                                   'E': self.state.domain.extent})
+            self._one_process_pbc_lib.execute(static_args={'_end': ctypes.c_int(self.state.n)})
+        else:
+            #print '-' * 14
+
+            # Create lib to find escaping particles.
+
+            if self._escape_guard_lib is None:
+                '''Create a lookup table between xor map and linear index for direction'''
+                self._bin_to_lin = data.ScalarArray(ncomp=57, dtype=ctypes.c_int)
+                _lin_to_bin = data.ScalarArray(ncomp=26, dtype=ctypes.c_int)
+
+                '''linear to xor map'''
+                _lin_to_bin[0] = 1 ^ 2 ^ 4
+                _lin_to_bin[1] = 2 ^ 1
+                _lin_to_bin[2] = 32 ^ 2 ^ 1
+                _lin_to_bin[3] = 4 ^ 1
+                _lin_to_bin[4] = 1
+                _lin_to_bin[5] = 32 ^ 1
+                _lin_to_bin[6] = 4 ^ 1 ^ 16
+                _lin_to_bin[7] = 1 ^ 16
+                _lin_to_bin[8] = 32 ^ 16 ^ 1
+
+                _lin_to_bin[9] = 2 ^ 4
+                _lin_to_bin[10] = 2
+                _lin_to_bin[11] = 32 ^ 2
+                _lin_to_bin[12] = 4
+                _lin_to_bin[13] = 32
+                _lin_to_bin[14] = 4 ^ 16
+                _lin_to_bin[15] = 16
+                _lin_to_bin[16] = 32 ^ 16
+
+                _lin_to_bin[17] = 8 ^ 2 ^ 4
+                _lin_to_bin[18] = 2 ^ 8
+                _lin_to_bin[19] = 32 ^ 2 ^ 8
+                _lin_to_bin[20] = 4 ^ 8
+                _lin_to_bin[21] = 8
+                _lin_to_bin[22] = 32 ^ 8
+                _lin_to_bin[23] = 4 ^ 8 ^ 16
+                _lin_to_bin[24] = 8 ^ 16
+                _lin_to_bin[25] = 32 ^ 16 ^ 8
+
+                '''inverse map, probably not ideal'''
+                for ix in range(26):
+                    self._bin_to_lin[_lin_to_bin[ix]] = ix
+
+                _escape_guard_code = '''
+
+                int ELL_index = 26;
+
+                for(int _ix = 0; _ix < _end; _ix++){
+                    int b = 0;
+
+                    //Check x direction
+                    if (P[3*_ix] < B[0]){
+                        b ^= 32;
+                    }else if (P[3*_ix] > B[1]){
+                        b ^= 4;
+                    }
+
+                    //printf("P[0]=%f, b=%d, B[0]=%f, B[1]=%f \\n", P[3*_ix], b, B[0], B[1]);
+
+                    //check y direction
+                    if (P[3*_ix+1] < B[2]){
+                        b ^= 16;
+                    }else if (P[3*_ix+1] > B[3]){
+                        b ^= 2;
+                    }
+
+                    //check z direction
+                    if (P[3*_ix+2] < B[4]){
+                        b ^= 1;
+                    }else if (P[3*_ix+2] > B[5]){
+                        b ^= 8;
+                    }
+
+                    //If b > 0 then particle has escaped through some boundary
+                    if (b>0){
+
+                        EC[BL[b]]++;        //lookup which direction then increment that direction escape count.
+
+                        ELL[ELL_index] = _ix;            //Add current local id to linked list.
+                        ELL[ELL_index+1] = ELL[BL[b]];   //Set previous index to be next element.
+                        ELL[BL[b]] = ELL_index;          //Set current index in ELL to be the last index.
+
+                        ELL_index += 2;
+                    }
+
+                }
+
+                '''
+
+                '''Number of escaping particles in each direction'''
+                self._escape_count = host.Array(np.zeros(26), dtype=ctypes.c_int)
+
+                '''Linked list to store the ids of escaping particles in a similar way to the cell list.
+
+                | [0-25 escape directions, index of first in direction] [26-end current id and index of next id, (id, next_index) ]|
+
+                '''
+                self._escape_linked_list = host.Array(-1 * np.ones(26 + 2 * self.state.nt), dtype=ctypes.c_int)
+
+                _escape_dat_dict = {'EC': self._escape_count,
+                                    'BL': self._bin_to_lin,
+                                    'ELL': self._escape_linked_list,
+                                    'B': self.state.domain.boundary,
+                                    'P': self.state.positions}
+
+                _escape_kernel = kernel.Kernel('find_escaping_particles', _escape_guard_code, None, ['stdio.h'], static_args={'_end':ctypes.c_int})
+                self._escape_guard_lib = build.SharedLib(_escape_kernel, _escape_dat_dict)
+
+            # reset linked list
+            self._escape_linked_list[0:26:] = -1
+            self._escape_count[::] = 0
+
+            self._escape_guard_lib.execute(static_args={'_end':self.state.n})
+
+            self.state.move_to_neighbour(self._escape_linked_list,
+                                         self._escape_count,
+                                         self.state.domain.get_shift())
 
 
 

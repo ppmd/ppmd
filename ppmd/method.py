@@ -120,9 +120,8 @@ class VelocityVerlet(object):
         Perform Velocity Verlet integration up to time T.
         """
 
-        self._domain.bc_execute()
+        self._sim.execute_boundary_conditions()
 
-        # TODO: fix this.
         self._sim.forces_update()
 
         _t = runtime.Timer(runtime.TIMER, 0)
@@ -132,7 +131,6 @@ class VelocityVerlet(object):
             self._p1.execute(self._state.n)
 
             _t.start()
-            #self._domain.bc_execute()
 
             self._sim.execute_boundary_conditions()
             _t.pause()
