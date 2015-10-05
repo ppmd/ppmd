@@ -56,13 +56,13 @@ if __name__ == '__main__':
     t=0.0001*24
     #t=0.0024
     #t=0.0174
-    t=0.1
+    t=2.0
     dt=0.0001
 
 
     if test_1000:
         # n=25 reasonable size
-        n = 8
+        n = 10
         N = n**3
         # n=860
         rho = 1.
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     # plotting handle
     if plotting:
         plothandle = method.DrawParticles(state=sim1.state)
-        plotsteps = 20
+        plotsteps = 200
         plotfn = plothandle.draw
     else:
         plothandle = None

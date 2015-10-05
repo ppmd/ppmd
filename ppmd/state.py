@@ -202,15 +202,12 @@ class BaseMDState(object):
         if self._move_unpacking_lib is None:
             self._move_build_unpacking_lib()
 
-        #print "_free_slots", self._move_empty_slots.dat
 
         # unpack recv buffer.
         self._move_unpacking_lib.execute(static_args={'_recv_count': ctypes.c_int(_recv_total),
                                                       '_num_free_slots': ctypes.c_int(_send_total),
                                                       '_prev_num_particles': ctypes.c_int(self._n)})
 
-
-        #print "_recv_total", _recv_total, "_send_total", _send_total, "Boundary", self.domain.boundary
 
         if _recv_total < _send_total:
             self.compressed = False
@@ -219,15 +216,10 @@ class BaseMDState(object):
 
         else:
             self.n = self.n + _recv_total - _send_total
-            #self._move_empty_slots = []
-
 
         # Compress particle dats.
-
-
-        #print "BEFORE compression, rank", mpi.MPI_HANDLE.rank, "sn", self.n, "pn", self.positions.npart, "hn", self.positions.npart_halo,"positions", self.positions[0:6:]
         self._compress_particle_dats(_send_total - _recv_total)
-        #print "AFTER compression, rank", mpi.MPI_HANDLE.rank, "sn", self.n, "pn", self.positions.npart, "hn", self.positions.npart_halo, "positions", self.positions[0:6:]
+
 
 
 
@@ -481,8 +473,6 @@ class BaseMDState(object):
             }
 
             _compressing_code = '''
-            //printf("-------- compress start ------------ \\n");
-
 
             int slots_to_fill = slots_to_fill_in;
             int n_new = n_new_in;
@@ -493,9 +483,6 @@ class BaseMDState(object):
             int slot_to_fill_index = 0;
 
             int slot_to_fill = -1;
-
-            //printf("n_new=%%d, slots_to_fill=%%d, last_slot_lookup_index=%%d \\n", n_new, slots_to_fill, last_slot_lookup_index);
-
 
             // Whilst there are slots to fill and the current slot is not past the end of the array.
             if (n_new > 0) {
@@ -509,7 +496,6 @@ class BaseMDState(object):
                     //loop from end to empty slot
                     for (int iy = n_new - 1; iy > slot_to_fill; iy--){
 
-                        //printf("iy=%%d, slots[last_slot_lookup_index]=%%d \\n", iy, slots[last_slot_lookup_index]);
 
                         if (iy == slots[last_slot_lookup_index]){
                             n_new = iy;
@@ -530,7 +516,6 @@ class BaseMDState(object):
 
 
                     } else {
-                        //printf("last slot = %%d \\n", slots[last_slot_lookup_index]);
 
                         n_new = slots[last_slot_lookup_index];
                         break;
@@ -540,10 +525,9 @@ class BaseMDState(object):
                     slot_to_fill_index++;
                 }
             }
-            //printf("n_new_out=%%d \\n", n_new);
+
             n_new_out[0] = n_new;
 
-            //printf("-------- compress end ------------ \\n");
             ''' % {'DYN_DAT_CODE': _dyn_dat_case}
 
             # Add ParticleDats to pointer arguments.
