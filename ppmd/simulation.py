@@ -189,9 +189,11 @@ class BaseMDSimulation(object):
 
         # TODO move domain out of state>?
 
+        '''
         #TODO: make part of access descriptors.
         if (self._cell_structure is True) and (self.state.domain.halos is not False):
             self.state.positions.halo_exchange()
+        '''
 
         # reset forces
         self.state.forces.set_val(0.)

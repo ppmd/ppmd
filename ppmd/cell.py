@@ -39,6 +39,8 @@ class CellList(object):
         self._cell_sort_lib = None
         self._halo_cell_sort_loop = None
 
+        self.halos_exist = False
+
     def setup(self, n, positions, domain, cell_width):
         """
         Setup the cell list with a set of positions and a domain.
@@ -58,7 +60,8 @@ class CellList(object):
         # setup methods to sort into cells.
         self._cell_sort_setup()
 
-
+        if (_err is True) and (self._domain.halos is not False):
+            self.halos_exist = True
 
         return _err
 

@@ -1,6 +1,7 @@
 import sys
 import ctypes
 import numpy as np
+import access
 
 ctypes_map = {ctypes.c_double: 'double', ctypes.c_int: 'int', 'float64': 'double', 'int32': 'int',
               'doublepointerpointer': 'double **', ctypes.c_longlong: 'long long',
@@ -76,6 +77,12 @@ class Array(object):
     @property
     def ctypes_data(self):
         return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+
+    def ctypes_data_access(self, mode=access.RW):
+        return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+
+    def ctypes_data_post(self, mode=access.RW):
+        pass
 
     def realloc(self, length):
         assert ctypes.sizeof(self.dtype) * length < available_free_memory(), "host.Array realloc error: Not enough free memory."
@@ -158,6 +165,16 @@ class Matrix(object):
     @property
     def ctypes_data(self):
         return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+
+    def ctypes_data_access(self, mode=access.RW):
+        """
+        :arg access mode: Access type required by the calling method.
+        :return: The pointer to the data.
+        """
+        return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+
+    def ctypes_data_post(self, mode=access.RW):
+        pass
 
     def realloc(self, nrow, ncol):
         assert ctypes.sizeof(self.dtype) * nrow * ncol < available_free_memory(), "host.Matrix realloc error: Not enough free memory."

@@ -263,6 +263,10 @@ class ParticleDat(host.Matrix):
         self.npart_halo = 0
         """:return: The number of particles currently stored within the halo region of the particle dat."""
 
+        # version ids. Internal then halo.
+        self._vid_int = 0
+        self._vid_halo = -1
+
     def set_val(self, val):
         """
         Set all the entries in the particle dat to the same specified value.
@@ -287,6 +291,29 @@ class ParticleDat(host.Matrix):
     def __call__(self, mode=access.RW, halo=True):
 
         return self, mode
+
+    def ctypes_data_access(self, mode=access.RW):
+        """
+        :arg access mode: Access type required by the calling method.
+        :return: The pointer to the data.
+        """
+        if mode.read:
+            if (self._vid_int > self._vid_halo) and cell.cell_list.halos_exist is True:
+                self.halo_exchange()
+
+                #self._vid_halo = self._vid_int
+
+        return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+
+    def ctypes_data_post(self, mode=access.RW):
+        """
+        Call after excuting a method on the data.
+        :arg access mode: Access type required by the calling method.
+        """
+
+        if mode.write:
+
+            self._vid_int += 1
 
     def halo_start_shift(self, shift):
         """

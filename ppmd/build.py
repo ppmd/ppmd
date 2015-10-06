@@ -289,14 +289,14 @@ class GenericToolChain(object):
             for i, dat in enumerate(self._kernel.static_args.items()):
                 argnames += 'const ' + host.ctypes_map[dat[1]] + ' ' + dat[0] + ','
                 self._static_arg_order.append(dat[0])
-                #self._argtypes.append(dat[1])
+
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
             if type(dat[1]) is not tuple:
                 argnames += host.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
             else:
                 argnames += host.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
-            #self._argtypes.append(dat[1].dtype)
+
 
         return argnames[:-1]
 
@@ -305,6 +305,7 @@ class GenericToolChain(object):
         """
         argnames = ''
         for i, dat in enumerate(self._particle_dat_dict.items()):
+            # dat[0] is always the name, even with access descriptiors.
             argnames += dat[0] + ','
         return argnames[:-1]
 
@@ -453,14 +454,18 @@ class GenericToolChain(object):
         '''Add pointer arguments to launch command'''
         for dat_orig in self._particle_dat_dict.values():
             if type(dat_orig) is tuple:
-                dat = dat_orig[0]
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
             else:
-                dat = dat_orig
-            args.append(dat.ctypes_data)
+                args.append(dat_orig.ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
         method(*args)
+
+        '''after wards access descriptors'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data_post(dat_orig[1]))
 
 
 ################################################################################################################
@@ -584,17 +589,23 @@ class SharedLib(GenericToolChain):
                 args.append(dat)
 
         '''Add pointer arguments to launch command'''
-
-        for dat in self._particle_dat_dict.values():
-            if type(dat) is tuple:
-                args.append(dat[0].ctypes_data)
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
             else:
-                args.append(dat.ctypes_data)
+                args.append(dat_orig.ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
 
         method(*args)
+
+        '''after wards access descriptors'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data_post(dat_orig[1]))
+
+
 
     def _code_init(self):
         self._kernel_code = self._kernel.code
