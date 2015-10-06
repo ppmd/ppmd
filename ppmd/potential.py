@@ -16,22 +16,6 @@ class BasePotential(object):
     def __init__(self):
         pass
 
-    def evaluate(self, r):
-        """Evaluate potential :math:`V(r)`
-
-        :arg r: Inter-atom distance :math:`r=|r_i-r_j|`
-        """
-
-    def evaluate_force(self, rx, ry):
-        """Evaluate force.
-
-        Calculate the interatomic force :math:`\\vec{F}(r) = -\\nabla V(r)` for
-        atomic distance :\\vec{r}=(r_x,r_y)=\\vec{r}_i - \\vec{r}_j:
-
-        :arg rx: x-component of distance :math:`r_x`
-        :arg ry: y-component of distance :math:`r_y`
-        """
-
 
 ################################################################################################################
 # LJ 2**(1/6) sigma
@@ -60,60 +44,9 @@ class LennardJonesShifted(BasePotential):
         self._sigma2 = self._sigma ** 2
 
     @property
-    def epsilon(self):
-        """Value of parameter :math:`\epsilon`"""
-        return self._epsilon
-
-    @property
-    def sigma(self):
-        """Value of parameter :math:`\sigma`"""
-        return self._sigma
-
-    @property
     def rc(self):
         """Value of cufoff distance :math:`r_c`"""
         return self._rc
-
-    def evaluate(self, r):
-        """Evaluate potential.
-
-        :arg r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
-        """
-        if r < self._rc:
-            r_m6 = (r / self._sigma) ** (-6)
-            return self._C_V * ((r_m6 - 1.0) * r_m6 + 0.25)
-        else:
-            return 0.0
-
-    """
-    def evaluate_force(self,rx,ry):
-        '''Evaluate force.
-
-        :arg rx: x-component of distance :math:`r_x`
-        :arg ry: y-component of distance :math:`r_y`
-        '''
-        r2 = rx**2+ry**2
-        if (r2 < self._rc2):
-            r_m2 = self._sigma2/r2
-            tmp = self._C_F*(r_m2**7 - 0.5*r_m2**4)
-            return (tmp*rx,tmp*ry)
-        else:
-            return (0.0,0.0)
-    """
-
-    def evaluate_force(self, r2):
-        """Evaluate force.
-
-        :arg rx: x-component of distance :math:`r_x`
-        :arg ry: y-component of distance :math:`r_y`
-        """
-
-        if r2 < self._rc2:
-            r_m2 = self._sigma2 / r2
-            return self._C_F * (r_m2 ** 7 - 0.5 * r_m2 ** 4)
-
-        else:
-            return 0.0
 
     @property
     def kernel(self):
@@ -200,17 +133,6 @@ class LennardJones(LennardJonesShifted):
         self._rc2 = self._rc ** 2
         self._sigma2 = self._sigma ** 2
         self._shift_internal = (self._sigma / self._rc) ** 6 - (self._sigma / self._rc) ** 12
-
-    def evaluate(self, r):
-        """Evaluate potential.
-
-        :arg r: Inter-atomic distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
-        """
-        if r < self._rc:
-            r_m6 = (r / self._sigma) ** (-6)
-            return self._C_V * ((r_m6 - 1.0) * r_m6 + self._shift_internal)
-        else:
-            return 0.0
 
     @property
     def kernel(self):
@@ -359,7 +281,7 @@ class NULL(object):
         
         :arg state input_state: state with containing variables.
         """
-        return {'P': input_state.positions, 'A': input_state.forces, 'u': input_state.u}
+        return {'P': input_state.positions(access.R), 'A': input_state.forces(access.INC), 'u': input_state.u(access.INC)}
 
 
 class LennardJonesCounter(LennardJones):
@@ -455,5 +377,5 @@ class LennardJonesCounter(LennardJones):
         
         :arg state input_state: state with containing variables.
         """
-        return {'P': input_state.positions, 'A': input_state.forces, 'u': input_state.u, 'COUNT': self._counter,
-                'OUTCOUNT': self._counter_outer}
+        return {'P': input_state.positions(access.R), 'A': input_state.forces(access.INC), 'u': input_state.u(access.INC), 'COUNT': self._counter(access.INC),
+                'OUTCOUNT': self._counter_outer(access.INC)}

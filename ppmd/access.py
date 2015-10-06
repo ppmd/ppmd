@@ -39,7 +39,8 @@ by the associated kernel.
 _lookup = {'R': 'Read only',
            'W': 'Write only',
            'RW': 'Read and write',
-           'INC': 'Incremental'
+           'INC': 'Incremental',
+           'NULL': 'NULL'
            }
 
 
@@ -49,7 +50,7 @@ class AccessType(object):
 
     :arg str mode: Access mode, must be from: ``"R", "W", "RW", "INC"``
     """
-    _modes = ["R", "W", "RW", "INC"]
+    _modes = ["R", "W", "RW", "INC", "NULL"]
 
     def __init__(self, mode):
         self._mode = mode
@@ -68,6 +69,21 @@ class AccessType(object):
         """
         return self._mode
 
+    @property
+    def read(self):
+        """
+        Does this access type read the data, True/False.
+        :return: Bool.
+        """
+        return self._mode in ["R", "RW", "INC"]
+
+    @property
+    def write(self):
+        """
+        Does this access type write data, True/False.
+        :return: Bool.
+        """
+        return self._mode in ["W", "RW", "INC"]
 
 R = AccessType("R")
 """Access descriptor for read only data. """
@@ -81,5 +97,6 @@ RW = AccessType("RW")
 INC = AccessType("INC")
 """Access descriptor for data that is incremented. """
 
-
+NULL = AccessType("NULL")
+"""NULL access descriptor for data. """
 
