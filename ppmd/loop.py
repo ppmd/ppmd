@@ -228,14 +228,21 @@ class SingleParticleLoop(_Base):
         '''Add pointer arguments to launch command'''
         for dat_orig in self._particle_dat_dict.values():
             if type(dat_orig) is tuple:
-                dat = dat_orig[0]
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
             else:
-                dat = dat_orig
-            args.append(dat.ctypes_data)
+                args.append(dat_orig.ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
+
         method(*args)
+
+        '''afterwards access descriptors'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()
 
     ################################################################################################################
 

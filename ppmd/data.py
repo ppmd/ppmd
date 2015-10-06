@@ -310,9 +310,7 @@ class ParticleDat(host.Matrix):
         Call after excuting a method on the data.
         :arg access mode: Access type required by the calling method.
         """
-
         if mode.write:
-
             self._vid_int += 1
 
     def halo_start_shift(self, shift):

@@ -465,7 +465,7 @@ class GenericToolChain(object):
         '''after wards access descriptors'''
         for dat_orig in self._particle_dat_dict.values():
             if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data_post(dat_orig[1]))
+                dat_orig[0].ctypes_data_post(dat_orig[1])
 
 
 ################################################################################################################
@@ -573,7 +573,6 @@ class SharedLib(GenericToolChain):
 
         """Allow alternative pointers"""
         if dat_dict is not None:
-            # self._particle_dat_dict = dat_dict
 
             for key in self._particle_dat_dict:
                 self._particle_dat_dict[key] = dat_dict[key]
@@ -600,10 +599,13 @@ class SharedLib(GenericToolChain):
 
         method(*args)
 
-        '''after wards access descriptors'''
+        '''afterwards access descriptors'''
         for dat_orig in self._particle_dat_dict.values():
             if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data_post(dat_orig[1]))
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()
+
 
 
 
