@@ -444,7 +444,6 @@ class PairLoopRapaport(_Base):
 ################################################################################################################
 
 
-
 class DoubleAllParticleLoop(_Base):
     """
     Class to loop over all particle pairs once.

@@ -140,15 +140,23 @@ class Matrix(object):
         assert ctypes.sizeof(dtype) * nrow * ncol < available_free_memory(), "host.Matrix _create_zeros error: Not enough free memory."
 
         self.idtype = dtype
-        self.dat = np.zeros([nrow, ncol], dtype=dtype, order='C')
+        self._dat = np.zeros([nrow, ncol], dtype=dtype, order='C')
 
     def _create_from_existing(self, ndarray=None, dtype=ctypes.c_double):
         assert sys.getsizeof(ndarray) < available_free_memory(), "host.Matrix _create_from_existing error: Not enough free memory."
 
         self.idtype = dtype
-        self.dat = np.array(ndarray, dtype=dtype, order='C')
+        self._dat = np.array(ndarray, dtype=dtype, order='C')
         if len(self.dat.shape) == 1:
             self.dat.shape = (self.dat.shape[0], 1)
+
+    @property
+    def dat(self):
+        return self._dat
+
+    @dat.setter
+    def dat(self, value):
+        self._dat = value
 
     @property
     def nrow(self):

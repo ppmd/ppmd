@@ -44,7 +44,7 @@ if __name__ == '__main__':
     t_1_particle = False
 
     # plot as computing + at end?
-    plotting = True
+    plotting = False
     
     # log energy?
     logging = True

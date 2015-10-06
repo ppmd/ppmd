@@ -224,6 +224,9 @@ class ParticleDat(host.Matrix):
     """
 
     def __init__(self, npart=1, ncomp=1, initial_value=None, name=None, dtype=ctypes.c_double, max_npart=None):
+        # version ids. Internal then halo.
+        self._vid_int = 0
+        self._vid_halo = -1
 
         self.name = name
         """:return: The name of the ParticleDat instance."""
@@ -263,9 +266,17 @@ class ParticleDat(host.Matrix):
         self.npart_halo = 0
         """:return: The number of particles currently stored within the halo region of the particle dat."""
 
-        # version ids. Internal then halo.
-        self._vid_int = 0
-        self._vid_halo = -1
+
+
+    @property
+    def dat(self):
+        self._vid_int += 1
+        return self._dat
+
+    @dat.setter
+    def dat(self, value):
+        self._vid_int += 1
+        self._dat = value
 
     def set_val(self, val):
         """
@@ -279,7 +290,7 @@ class ParticleDat(host.Matrix):
         return self.dat[ix]
 
     def __setitem__(self, ix, val):
-
+        self._vid_int += 1
         self.dat[ix] = val
 
     def __str__(self):
@@ -512,7 +523,7 @@ class ParticleDat(host.Matrix):
         _boundary_groups_contents_array, _exchange_sizes = halo.HALOS.get_boundary_cell_contents_count
 
         if _exchange_sizes.dat.sum() > self._halo_packing_buffer.nrow:
-            if runtime.VERBOSE.level > 1:
+            if runtime.VERBOSE.level > 3:
                 print "rank:", mpi.MPI_HANDLE.rank, "halo send buffer resized"
             self._halo_packing_buffer.realloc(nrow=_exchange_sizes.dat.sum(), ncol=self.ncomp)
 

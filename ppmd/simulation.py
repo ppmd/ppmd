@@ -442,6 +442,8 @@ class PosInitLatticeNRhoRand(object):
                 _gid[_n] = ix
                 _n += 1
 
+
+
         state_input.n = _n
         _p.halo_start_reset()
 
