@@ -312,7 +312,7 @@ class ParticleDat(host.Matrix):
             if (self._vid_int > self._vid_halo) and cell.cell_list.halos_exist is True:
                 self.halo_exchange()
 
-                #self._vid_halo = self._vid_int
+                self._vid_halo = self._vid_int
 
         return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
 
@@ -374,14 +374,6 @@ class ParticleDat(host.Matrix):
 
         self.halo_pack()
         self._transfer_unpack()
-
-        #halo.HALOS.exchange(self)
-
-        '''
-        testlib = ctypes.cdll.LoadLibrary("/u/m/wrs20/git/md_test/src/lib/helloworld.so")
-        testlib.argtypes = [ctypes.c_void_p]
-        testlib['sayhello'](ctypes.c_void_p(mpi.MPI_HANDLE.comm.py2f()))
-        '''
 
 
     def _setup_halo_packing(self):
