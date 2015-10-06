@@ -873,6 +873,8 @@ class EnergyStore(object):
             _U = self._U_store.dat
             _K = self._K_store.dat
 
+
+
         if (mpi.MPI_HANDLE.rank == 0) and _GRAPHICS:
             print "last total", _Q[-1]
             print "last kinetic", _K[-1]
@@ -898,6 +900,10 @@ class EnergyStore(object):
             plt.show(block=False)
 
         if mpi.MPI_HANDLE.rank == 0:
+            if not os.path.exists(os.path.join(os.getcwd(),'./output')):
+                os.system('mkdir ./output')
+
+
             _fh = open('./output/energy.txt', 'w')
             _fh.write("Time Kinetic Potential Total\n")
             for ix in range(len(self._t)):
