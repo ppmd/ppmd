@@ -568,7 +568,7 @@ class SharedLib(GenericToolChain):
              'ARGUMENTS': self._argnames(),
              'LIB_DIR': runtime.LIB_DIR.dir}
         return code % d
-
+    
     def execute(self, dat_dict=None, static_args=None):
 
         """Allow alternative pointers"""
