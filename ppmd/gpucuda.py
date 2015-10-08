@@ -1698,7 +1698,7 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
                 if dat[1].name == 'positions':
                     _s += space + loc_argname + '[1] = ' + argname + '+3*_iy;\n'
                     # _s += 'memcpy(&_p2[0], &' + argname + '[_iy*3], sizeof(double)*3); \n'
-                elif dat[1].name == 'accelerations':
+                elif dat[1].name == 'forces':
                     _s += space + host.ctypes_map[dat[1].dtype] + ' dummy[3] = {0,0,0};\n'
                     _s += space + loc_argname + '[1] = dummy;\n'
 
