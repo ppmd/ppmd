@@ -1504,6 +1504,9 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
 
         :return:
         """
+
+        _map_array = host.Array(ncomp=27, dtype=ctypes.c_int)
+
         _map = ((-1,1,-1),
                 (-1,-1,-1),
                 (-1,0,-1),
@@ -1534,16 +1537,13 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
                 (1,1,1),
                 (1,-1,1))
 
-        _s = '{'
+
         for ix in range(27):
 
-            _s1 = str(_map[ix][0] + _map[ix][1] * self._domain.cell_array[0] + _map[ix][2] * self._domain.cell_array[0]* self._domain.cell_array[1])
-            if ix < 26:
-                _s += _s1 + ','
-            else:
-                _s += _s1 + '}; \n'
+            _map_array[ix] = _map[ix][0] + _map[ix][1] * self._domain.cell_array[0] + _map[ix][2] * self._domain.cell_array[0]* self._domain.cell_array[1]
 
-        return _s
+
+        return _map_array
 
     def _generate_header_source(self):
         """Generate the source code of the header file.
@@ -1560,9 +1560,7 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
         #include <stdio.h>
         #include "%(LIB_DIR)s/generic.h"
 
-        const int cell_map[27] = %(CELL_OFFSETS)s
-
-        void %(KERNEL_NAME)s_wrapper(const int n, int* cell_array, int* q_list,%(ARGUMENTS)s);
+        void %(KERNEL_NAME)s_wrapper(const int* cell_map, const int n, int* cell_array, int* q_list,%(ARGUMENTS)s);
 
         #endif
         '''
@@ -1570,8 +1568,7 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir,
-             'CELL_OFFSETS': self.cell_offset_mapping()}
+             'LIB_DIR': runtime.LIB_DIR.dir}
         return code % d
 
     def _code_init(self):
@@ -1580,7 +1577,7 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
 
-        void %(KERNEL_NAME)s_wrapper(const int n, int* cell_array, int* q_list,%(ARGUMENTS)s) {
+        void %(KERNEL_NAME)s_wrapper(const int* cell_map, const int n, int* cell_array, int* q_list,%(ARGUMENTS)s) {
 
             for(int cax = 1; cax < cell_array[0]-1; cax++){
             for(int cay = 1; cay < cell_array[1]-1; cay++){
@@ -1671,7 +1668,6 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
                     s += space + loc_argname + '[1] = null_array;\n'
 
 
-
                 else:
                     ncomp = dat[1].ncomp
                     s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
@@ -1688,3 +1684,52 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
                     ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
 
         return s
+
+    def execute(self, n=None, dat_dict=None, static_args=None):
+        """
+        C version of the pair_locate: Loop over all cells update forces and potential engery.
+        """
+
+        '''Allow alternative pointers'''
+        if dat_dict is not None:
+            self._particle_dat_dict = dat_dict
+
+        '''Create arg list'''
+
+        if n is not None:
+            _N = n
+        else:
+            _N = cell.cell_list.cell_list[cell.cell_list.cell_list.end]
+
+        _map_array = self.cell_offset_mapping()
+
+
+        args = [_map_array.ctypes_data,
+                ctypes.c_int(_N),
+                self._domain.cell_array.ctypes_data,
+                cell.cell_list.cell_list.ctypes_data]
+
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+        '''Add pointer arguments to launch command'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
+            else:
+                args.append(dat_orig.ctypes_data)
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        method(*args)
+
+        '''afterwards access descriptors'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()

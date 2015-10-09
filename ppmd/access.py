@@ -100,3 +100,43 @@ INC = AccessType("INC")
 NULL = AccessType("NULL")
 """NULL access descriptor for data. """
 
+def generate_reduction_init_stage(symbol_external, symbol_internal, dat, access_type):
+    """
+    Create the code to initialise the code for an INC, INC0 access descriptor for x86.
+    :arg string symbol_external: variable name for shared library
+    :arg string symbol_internal: variable name for kernel.
+    :arg data dat: :class:`~data.ParticleDat` or :class:`~data.ScalarArray` data object in question.
+    :arg access access_type: Access being used.
+
+    :return: string for initialisation code.
+    """
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

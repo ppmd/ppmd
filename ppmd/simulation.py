@@ -121,8 +121,6 @@ class BaseMDSimulation(object):
         if self.potential is not None:
             _potential_dat_dict = self.potential.datdict(self.state)
 
-        print "HERE", self.state.domain.cell_array[0], self.state.domain.cell_array[1], self.state.domain.cell_array[2]
-
 
         if self._cell_structure and self.potential is not None:
             # Need to pass entire state such that all particle dats can be sorted.
@@ -138,11 +136,11 @@ class BaseMDSimulation(object):
                 self._forces_update_lib = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
                                                                         potential=self.potential,
                                                                         dat_dict=_potential_dat_dict)
-
-                self._forces_update_lib = pairloop.PairLoopRapaportHaloOpenMP(domain=self.state.domain,
+                '''
+                self._forces_update_lib2 = pairloop.PairLoopRapaportHaloOpenMP(domain=self.state.domain,
                                                                                potential=self.potential,
                                                                                dat_dict=_potential_dat_dict)
-
+                '''
 
             # If domain is without halos
             elif type(self.state.domain) is domain.BaseDomain:
