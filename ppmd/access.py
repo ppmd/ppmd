@@ -140,3 +140,13 @@ def generate_reduction_init_stage(symbol_external, symbol_internal, dat, access_
 
 
 
+
+
+
+
+
+
+
+
+
+
