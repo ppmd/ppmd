@@ -106,8 +106,8 @@ class ScalarArray(host.Array):
         self._A = False
         self._Aarray = None
 
-    def __call__(self, access=access.RW, halo=True):
-        return self
+    def __call__(self, mode=access.RW, halo=True):
+        return self, mode
 
     def __setitem__(self, ix, val):
         self.dat[ix] = np.array([val], dtype=self.dtype)
@@ -681,8 +681,6 @@ class TypedDat(host.Matrix):
     def __call__(self, mode=access.RW, halo=True):
 
         return self, mode
-
-
 
 
 

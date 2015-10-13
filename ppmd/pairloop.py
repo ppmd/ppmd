@@ -8,6 +8,7 @@ import access
 import cell
 import mpi
 import host
+import cpu_openmp
 
 
 class _Base(build.GenericToolChain):
@@ -1498,6 +1499,9 @@ class PairLoopRapaportHalo(PairLoopRapaport):
 
 
 class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
+    def _compiler_set(self):
+        self._cc = build.TMPCC_OpenMP
+
     def cell_offset_mapping(self):
         """
         Calculate cell offset mappings
@@ -1579,69 +1583,68 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
 
         void %(KERNEL_NAME)s_wrapper(const int* cell_map, const int n, int* cell_array, int* q_list,%(ARGUMENTS)s) {
 
-            for(int cax = 1; cax < cell_array[0]-1; cax++){
-            for(int cay = 1; cay < cell_array[1]-1; cay++){
-            for(int caz = 1; caz < cell_array[2]-1; caz++){
-
-                int cp  = (caz*cell_array[1] + cay)*cell_array[0] + cax;
-
-                for(int cpp_i=0; cpp_i<27; cpp_i++){
-                    int cpp = cp + cell_map[cpp_i];
-
-                    int i,j;
-
-                    i = q_list[n+cp];
-                    while (i > -1){
-                        j = q_list[n+cpp];
-                        while (j > -1){
-                            if (i != j){
-
-                                double *ri, *rj;
-
-                                double null_array[3] = {0,0,0};
-                                //printf("i=%%d, j=%%d |",i,j);
 
 
-                                %(KERNEL_ARGUMENT_DECL)s
+            #pragma omp parallel
+            { // parallel start
 
-                                  //KERNEL CODE START
-
-                                  %(KERNEL)s
-
-                                  //KERNEL CODE END
+                %(LOOPING_ARGUMENT_DECL)s
 
 
+                #pragma omp for
+                for(int cax = 1; cax < cell_array[0]-1; cax++){
+                for(int cay = 1; cay < cell_array[1]-1; cay++){
+                for(int caz = 1; caz < cell_array[2]-1; caz++){
+
+                    int cp  = (caz*cell_array[1] + cay)*cell_array[0] + cax;
+
+                    for(int cpp_i=0; cpp_i<27; cpp_i++){
+                        int cpp = cp + cell_map[cpp_i];
+
+                        int _i,_j;
+
+                        _i = q_list[n+cp];
+                        while (_i > -1){
+                            _j = q_list[n+cpp];
+                            while (_j > -1){
+                                if (_i != _j){
+
+                                    %(KERNEL_ARGUMENT_DECL)s
+
+                                      //KERNEL CODE START
+
+                                      %(KERNEL)s
+
+                                      //KERNEL CODE END
+
+
+                                }
+                                _j = q_list[_j];
                             }
-                            j = q_list[j];
+                            _i=q_list[_i];
                         }
-                        i=q_list[i];
+
                     }
 
-                }
+
+                }}} //triple loop end.
 
 
-            }}} //triple loop end.
+
+
+
+            %(OPENMP_LOOPING_FINALISE)s
+
+
+
+
+            } //parallel end
 
             return;
         }
-
-
         '''
+
     def _kernel_argument_declarations(self):
-        """Define and declare the kernel arguments.
-
-        For each argument the kernel gets passed a pointer of type
-        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
-        pointer to the data which contains the properties of particle i.
-        These properties are stored consecutively in memory, so for a
-        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
-        property the vector entry j of particle i is accessed as
-        ``loc_argXXX[i][j]``.
-
-        This method generates the definitions of the ``loc_argXXX`` variables
-        and populates the data to ensure that ``loc_argXXX[i]`` points to
-        the correct address in the particle_dats.
-        """
         s = '\n'
         for i, dat_orig in enumerate(self._particle_dat_dict.items()):
 
@@ -1652,38 +1655,75 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
                 dat = dat_orig
                 _mode = access.RW
 
-            space = ' ' * 14
-            argname = dat[0] + '_ext'
-            loc_argname = dat[0]
+            if dat[1].name == 'forces':
+                _dd = [dat[1]]
+            else:
+                _dd = []
 
 
-            if type(dat[1]) == data.ScalarArray:
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
-
-            elif type(dat[1]) == data.ParticleDat:
-                if dat[1].name == 'forces':
-                    ncomp = dat[1].ncomp
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-                    s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
-                    s += space + loc_argname + '[1] = null_array;\n'
-
-
-                else:
-                    ncomp = dat[1].ncomp
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-                    s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
-                    s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
-
-            elif type(dat[1]) == data.TypedDat:
-
-                ncomp = dat[1].ncomp
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
-                s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
-                    ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
-                s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
-                    ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
+            s += cpu_openmp.generate_map(pair=True,
+                                         symbol_external=dat[0] + '_ext',
+                                         symbol_internal=dat[0],
+                                         dat=dat[1],
+                                         access_type=_mode,
+                                         n3_disable_dats=_dd)
 
         return s
+
+
+    def _looping_argument_declarations(self):
+        s = '\n'
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+
+            s += cpu_openmp.generate_reduction_init_stage(symbol_external=dat[0] + '_ext',
+                                                          symbol_internal=dat[0],
+                                                          dat=dat[1],
+                                                          access_type=_mode)
+
+        return s
+
+    def _looping_argument_finalise(self):
+        s = '\n'
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+
+            s += cpu_openmp.generate_reduction_final_stage(symbol_external=dat[0] + '_ext',
+                                                           symbol_internal=dat[0],
+                                                           dat=dat[1],
+                                                           access_type=_mode)
+
+        return s
+
+
+
+    def _generate_impl_source(self):
+        """Generate the source code the actual implementation.
+        """
+
+        d = {'UNIQUENAME': self._unique_name,
+             'KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'LOC_ARGUMENTS': self._loc_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'KERNEL_ARGUMENT_DECL': self._kernel_argument_declarations(),
+             'LOOPING_ARGUMENT_DECL': self._looping_argument_declarations(),
+             'OPENMP_LOOPING_FINALISE': self._looping_argument_finalise() }
+
+        return self._code % d
+
 
     def execute(self, n=None, dat_dict=None, static_args=None):
         """

@@ -132,15 +132,15 @@ class BaseMDSimulation(object):
 
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
-
+                '''
                 self._forces_update_lib = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
                                                                         potential=self.potential,
                                                                         dat_dict=_potential_dat_dict)
                 '''
-                self._forces_update_lib2 = pairloop.PairLoopRapaportHaloOpenMP(domain=self.state.domain,
+                self._forces_update_lib = pairloop.PairLoopRapaportHaloOpenMP(domain=self.state.domain,
                                                                                potential=self.potential,
                                                                                dat_dict=_potential_dat_dict)
-                '''
+
 
             # If domain is without halos
             elif type(self.state.domain) is domain.BaseDomain:
