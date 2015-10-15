@@ -1,6 +1,7 @@
 import numpy as np
 import ctypes
 import os
+import cpu_generate_generic
 import data
 import build
 import runtime
@@ -8,7 +9,7 @@ import access
 import cell
 import mpi
 import host
-import cpu_openmp
+import cpu_generate_openmp
 
 
 class _Base(build.GenericToolChain):
@@ -1208,6 +1209,8 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
 
 
 class PairLoopRapaportHalo(PairLoopRapaport):
+
+
     def _kernel_argument_declarations(self):
         """Define and declare the kernel arguments.
 
@@ -1302,6 +1305,34 @@ class PairLoopRapaportHalo(PairLoopRapaport):
 
         return s
 
+    def _kernel_argument_declarations(self):
+        s = '\n'
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+
+            if dat[1].name == 'forces':
+                _dd = [dat[1]]
+            else:
+                _dd = []
+
+
+            s += cpu_generate_generic.generate_map(pair=True,
+                                                   symbol_external=dat[0] + '_ext',
+                                                   symbol_internal=dat[0],
+                                                   dat=dat[1],
+                                                   access_type=_mode)
+
+        return s
+
+
+
+
     def _generate_header_source(self):
         """Generate the source code of the header file.
 
@@ -1394,23 +1425,23 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                     //printf("cp=%%d, cpp_i=%%d |",cp,cpp_i);
                     
                     
-                    unsigned int cpp, cp_h_flag, cpp_h_flag; 
-                    int i,j;
+                    unsigned int cpp, _cp_halo_flag, _cpp_halo_flag;
+                    int _i,_j;
                     
                     
-                    cell_index_offset(cp, cpp_i, cell_array, &cpp, &cp_h_flag, &cpp_h_flag);
+                    cell_index_offset(cp, cpp_i, cell_array, &cpp, &_cp_halo_flag, &_cpp_halo_flag);
                     
                     //Check that both cells are not halo cells.
                     
                     //printf("cpp=%%d, flagi=%%d, flagj=%%d |",cpp, cp_h_flag,cpp_h_flag);
                     
-                    if ((cp_h_flag+cpp_h_flag) < 2){
+                    if ((_cp_halo_flag+_cpp_halo_flag) < 2){
                         
-                        i = q_list[n+cp];
-                        while (i > -1){
-                            j = q_list[n+cpp];
-                            while (j > -1){
-                                if (cp != cpp || i < j){
+                        _i = q_list[n+cp];
+                        while (_i > -1){
+                            _j = q_list[n+cpp];
+                            while (_j > -1){
+                                if (cp != cpp || _i < _j){
                                     
                                     double *ri, *rj;
                                     
@@ -1428,15 +1459,11 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                                     
                                     
                                 }
-                                j = q_list[j];  
+                                _j = q_list[_j];
                             }
-                            i=q_list[i];
+                            _i=q_list[_i];
                         }
-                    
-                    
-                    
-                    
-                    
+
                     }
                 }
             }
@@ -1498,7 +1525,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
 ################################################################################################################
 
 
-class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
+class PairLoopRapaportHaloOpenMP(PairLoopRapaport):
     def _compiler_set(self):
         self._cc = build.TMPCC_OpenMP
 
@@ -1560,9 +1587,9 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
 
         %(INCLUDED_HEADERS)s
 
-        #include <omp.h>
         #include <stdio.h>
         #include "%(LIB_DIR)s/generic.h"
+        #include <omp.h>
 
         void %(KERNEL_NAME)s_wrapper(const int* cell_map, const int n, int* cell_array, int* q_list,%(ARGUMENTS)s);
 
@@ -1584,7 +1611,7 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
         void %(KERNEL_NAME)s_wrapper(const int* cell_map, const int n, int* cell_array, int* q_list,%(ARGUMENTS)s) {
 
 
-
+            //omp_set_num_threads(4);
             #pragma omp parallel
             { // parallel start
 
@@ -1595,6 +1622,8 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
                 for(int cax = 1; cax < cell_array[0]-1; cax++){
                 for(int cay = 1; cay < cell_array[1]-1; cay++){
                 for(int caz = 1; caz < cell_array[2]-1; caz++){
+
+                    //printf("%%d %%d \\n", omp_get_thread_num(), omp_get_num_threads());
 
                     int cp  = (caz*cell_array[1] + cay)*cell_array[0] + cax;
 
@@ -1630,9 +1659,6 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
                 }}} //triple loop end.
 
 
-
-
-
             %(OPENMP_LOOPING_FINALISE)s
 
 
@@ -1661,7 +1687,7 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
                 _dd = []
 
 
-            s += cpu_openmp.generate_map(pair=True,
+            s += cpu_generate_openmp.generate_map(pair=True,
                                          symbol_external=dat[0] + '_ext',
                                          symbol_internal=dat[0],
                                          dat=dat[1],
@@ -1669,7 +1695,6 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
                                          n3_disable_dats=_dd)
 
         return s
-
 
     def _looping_argument_declarations(self):
         s = '\n'
@@ -1682,7 +1707,7 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
                 dat = dat_orig
                 _mode = access.RW
 
-            s += cpu_openmp.generate_reduction_init_stage(symbol_external=dat[0] + '_ext',
+            s += cpu_generate_openmp.generate_reduction_init_stage(symbol_external=dat[0] + '_ext',
                                                           symbol_internal=dat[0],
                                                           dat=dat[1],
                                                           access_type=_mode)
@@ -1700,14 +1725,12 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
                 dat = dat_orig
                 _mode = access.RW
 
-            s += cpu_openmp.generate_reduction_final_stage(symbol_external=dat[0] + '_ext',
+            s += cpu_generate_openmp.generate_reduction_final_stage(symbol_external=dat[0] + '_ext',
                                                            symbol_internal=dat[0],
                                                            dat=dat[1],
                                                            access_type=_mode)
 
         return s
-
-
 
     def _generate_impl_source(self):
         """Generate the source code the actual implementation.
@@ -1723,7 +1746,6 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
              'OPENMP_LOOPING_FINALISE': self._looping_argument_finalise() }
 
         return self._code % d
-
 
     def execute(self, n=None, dat_dict=None, static_args=None):
         """
@@ -1773,3 +1795,5 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
                 dat_orig.ctypes_data_post()
+
+

@@ -90,6 +90,12 @@ class ScalarArray(host.Array):
         Creates scalar with given initial value.
         """
 
+        self.halo_aware = False
+        """How to handle writes to this dat in a reduction sense. """ \
+        """In general for a reduction in a pair loop a write will occur once per pair """ \
+        """In the case where one of the pair is in a halo, the write will occur if the ith""" \
+        """particle is not in the halo?"""
+
         self.name = name
         """Name of ScalarArray instance."""
 

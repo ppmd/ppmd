@@ -89,7 +89,7 @@ class Compiler(object):
 
 GCC = Compiler(['GCC'],
                ['gcc'],
-               ['-fpic', '-std=c99'],
+               ['-fPIC', '-std=c99'],
                ['-lm'],
                ['-O3', '-march=native', '-m64'],
                ['-g'],
@@ -100,11 +100,11 @@ GCC = Compiler(['GCC'],
 # Define system gcc version as OpenMP Compiler.
 GCC_OpenMP = Compiler(['GCC'],
                       ['gcc'],
-                      ['-fpic', '-fopenmp', '-std=c99'],
-                      ['-fopenmp', '-lgomp', '-lpthread', '-lc', '-lrt'],
+                      ['-fopenmp', '-fPIC', '-std=c99'],
+                      ['-lgomp', '-lrt', '-Wall'],
                       ['-O3', '-march=native', '-m64'],
                       ['-g'],
-                      ['-c'],
+                      ['-c', '-Wall'],
                       ['-shared'],
                       '__restrict__')
 
@@ -126,7 +126,7 @@ ICC_OpenMP = Compiler(['ICC'],
                       ['-fpic', '-openmp', '-std=c99'],
                       ['-openmp', '-lgomp', '-lpthread', '-lc', '-lrt'],
                       ['-O3', '-xHost', '-restrict', '-m64'],
-                      ['-g'],
+                      ['-g', '-O3', '-xHost', '-restrict', '-m64'],
                       ['-c'],
                       ['-shared'],
                       'restrict')

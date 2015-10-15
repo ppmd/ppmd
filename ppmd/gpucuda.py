@@ -1567,8 +1567,8 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
             if (_ix < _d_n){
                 //create local store for acceleration of particle _ix.
 
-                double _a[3];
-                _a[0] = 0; _a[1] = 0; _a[2] = 0;
+                double _a[3] = {0};
+                //_a[0] = 0; _a[1] = 0; _a[2] = 0;
                 double *A[2]; A[0] = _a;
 
                 const double *P[2];

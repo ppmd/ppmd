@@ -9,7 +9,7 @@ runtime.VERBOSE.level = 3
 runtime.TIMER.level = 3
 
 #cuda on/off
-runtime.CUDA_ENABLED.flag = False
+runtime.CUDA_ENABLED.flag = True
 
 
 import mpi
@@ -62,7 +62,7 @@ if __name__ == '__main__':
 
     if test_1000:
         # n=25 reasonable size
-        n = 10
+        n = 20
         N = n**3
         # n=860
         rho = 1.
