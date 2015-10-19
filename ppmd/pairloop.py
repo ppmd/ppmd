@@ -1212,100 +1212,6 @@ class PairLoopRapaportHalo(PairLoopRapaport):
 
 
     def _kernel_argument_declarations(self):
-        """Define and declare the kernel arguments.
-
-        For each argument the kernel gets passed a pointer of type
-        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
-        pointer to the data which contains the properties of particle i.
-        These properties are stored consecutively in memory, so for a
-        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
-        property the vector entry j of particle i is accessed as
-        ``loc_argXXX[i][j]``.
-
-        This method generates the definitions of the ``loc_argXXX`` variables
-        and populates the data to ensure that ``loc_argXXX[i]`` points to
-        the correct address in the particle_dats.
-        """
-        s = '\n'
-        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
-
-            if type(dat_orig[1]) is tuple:
-                dat = dat_orig[0], dat_orig[1][0]
-                _mode = dat_orig[1][1]
-            else:
-                dat = dat_orig
-                _mode = access.RW
-
-            space = ' ' * 14
-            argname = dat[0] + '_ext'
-            loc_argname = dat[0]
-
-
-
-
-            if type(dat[1]) == data.ScalarArray:
-
-                if dat[1].name == 'potential_energy':
-
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '; \n'
-                    s += '\n'
-                    s += space + 'if (cp_h_flag + cpp_h_flag >= 1){ \n'
-
-                    # s+= space+'printf("cp = %d, cpp = %d ,cpf = %d, cppf = %d|", cp,cpp, cp_h_flag, cpp_h_flag);\n'
-
-                    s += space + loc_argname + ' = &' + argname + '[1];\n'
-
-                    s += space + '}else{ \n'
-                    s += space + loc_argname + ' = ' + argname + ';\n'
-                    s += space + '}\n'
-                else:
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
-
-            elif type(dat[1]) == data.ParticleDat:
-                if dat[1].name == 'forces':
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-
-                    s += space + 'if (cp_h_flag > 0){ \n'
-                    s += space + 'ri = null_array;\n'
-                    s += space + '}else{ \n'
-                    # if not in halo
-                    s += space + 'ri = ' + argname + '+3*i;}\n'
-
-                    s += '\n'
-
-                    s += space + 'if (cpp_h_flag > 0){ \n'
-                    s += space + 'rj = null_array;\n'
-                    s += space + '}else{ \n'
-                    # if not in halo
-                    s += space + 'rj = ' + argname + '+3*j;}\n'
-
-                    s += '\n'
-
-                    s += space + loc_argname + '[1] = rj;\n'
-                    s += space + loc_argname + '[0] = ri;\n'
-
-                    s += '\n'
-
-
-
-                else:
-                    ncomp = dat[1].ncomp
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-                    s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
-                    s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
-
-            elif type(dat[1]) == data.TypedDat:
-
-                ncomp = dat[1].ncomp
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
-                s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
-                    ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
-                s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
-                    ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
-
-        return s
-
-    def _kernel_argument_declarations(self):
         s = '\n'
         for i, dat_orig in enumerate(self._particle_dat_dict.items()):
 
@@ -1670,8 +1576,13 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaport):
         }
         '''
 
-    def _kernel_argument_declarations(self):
-        s = '\n'
+    def _generate_impl_source(self):
+        """Generate the source code the actual implementation.
+        """
+        _kernel_argument_declarations = '\n'
+        _looping_argument_declarations = '\n'
+        _looping_argument_finalise = '\n'
+
         for i, dat_orig in enumerate(self._particle_dat_dict.items()):
 
             if type(dat_orig[1]) is tuple:
@@ -1686,64 +1597,29 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaport):
             else:
                 _dd = []
 
-
-            s += cpu_generate_openmp.generate_map(pair=True,
-                                         symbol_external=dat[0] + '_ext',
-                                         symbol_internal=dat[0],
-                                         dat=dat[1],
-                                         access_type=_mode,
-                                         n3_disable_dats=_dd)
-
-        return s
-
-    def _looping_argument_declarations(self):
-        s = '\n'
-        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
-
-            if type(dat_orig[1]) is tuple:
-                dat = dat_orig[0], dat_orig[1][0]
-                _mode = dat_orig[1][1]
-            else:
-                dat = dat_orig
-                _mode = access.RW
-
-            s += cpu_generate_openmp.generate_reduction_init_stage(symbol_external=dat[0] + '_ext',
-                                                          symbol_internal=dat[0],
-                                                          dat=dat[1],
-                                                          access_type=_mode)
-
-        return s
-
-    def _looping_argument_finalise(self):
-        s = '\n'
-        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
-
-            if type(dat_orig[1]) is tuple:
-                dat = dat_orig[0], dat_orig[1][0]
-                _mode = dat_orig[1][1]
-            else:
-                dat = dat_orig
-                _mode = access.RW
-
-            s += cpu_generate_openmp.generate_reduction_final_stage(symbol_external=dat[0] + '_ext',
-                                                           symbol_internal=dat[0],
-                                                           dat=dat[1],
-                                                           access_type=_mode)
-
-        return s
-
-    def _generate_impl_source(self):
-        """Generate the source code the actual implementation.
-        """
+            _kernel_argument_declarations += cpu_generate_openmp.generate_map(pair=True,
+                                                                              symbol_external=dat[0] + '_ext',
+                                                                              symbol_internal=dat[0],
+                                                                              dat=dat[1],
+                                                                              access_type=_mode,
+                                                                              n3_disable_dats=_dd)
+            _looping_argument_declarations += cpu_generate_openmp.generate_reduction_init_stage(symbol_external=dat[0] + '_ext',
+                                                                                                symbol_internal=dat[0],
+                                                                                                dat=dat[1],
+                                                                                                access_type=_mode)
+            _looping_argument_finalise += cpu_generate_openmp.generate_reduction_final_stage(symbol_external=dat[0] + '_ext',
+                                                                                             symbol_internal=dat[0],
+                                                                                             dat=dat[1],
+                                                                                             access_type=_mode)
 
         d = {'UNIQUENAME': self._unique_name,
              'KERNEL': self._kernel_code,
              'ARGUMENTS': self._argnames(),
              'LOC_ARGUMENTS': self._loc_argnames(),
              'KERNEL_NAME': self._kernel.name,
-             'KERNEL_ARGUMENT_DECL': self._kernel_argument_declarations(),
-             'LOOPING_ARGUMENT_DECL': self._looping_argument_declarations(),
-             'OPENMP_LOOPING_FINALISE': self._looping_argument_finalise() }
+             'KERNEL_ARGUMENT_DECL': _kernel_argument_declarations,
+             'LOOPING_ARGUMENT_DECL': _looping_argument_declarations,
+             'OPENMP_LOOPING_FINALISE': _looping_argument_finalise}
 
         return self._code % d
 
