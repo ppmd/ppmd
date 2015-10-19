@@ -12,6 +12,7 @@ import cell
 import kernel
 import build
 import runtime
+import gpucuda
 
 
 np.set_printoptions(threshold=1000)
@@ -111,6 +112,7 @@ class ScalarArray(host.Array):
 
         self._A = False
         self._Aarray = None
+        self._cuda_dat = None
 
     def __call__(self, mode=access.RW, halo=True):
         return self, mode
@@ -200,6 +202,8 @@ class ScalarArray(host.Array):
             self._Alength += 1
 
 
+
+
 ###################################################################################################
 # Blank arrays.
 ###################################################################################################
@@ -272,7 +276,7 @@ class ParticleDat(host.Matrix):
         self.npart_halo = 0
         """:return: The number of particles currently stored within the halo region of the particle dat."""
 
-
+        self._cuda_dat = None
 
     @property
     def dat(self):
@@ -636,6 +640,7 @@ class ParticleDat(host.Matrix):
         # SEND END -------------------------------------------------------------------------------------------
         if self.name == 'positions':
             cell.cell_list.sort_halo_cells(_halo_cell_groups, self._cell_contents_recv, self.npart)
+
 
 
 

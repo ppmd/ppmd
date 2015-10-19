@@ -1113,7 +1113,7 @@ class SimpleCudaPairLoop(_Base):
             else:
                 dat = dat_orig
             if type(dat[1]) == data.ParticleDat:
-                if dat[1].name == 'accelerations':
+                if dat[1].name == 'forces':
                     s = 'd_' + dat[0]
         return s
 
@@ -1163,7 +1163,7 @@ class SimpleCudaPairLoop(_Base):
                     _s += space + loc_argname + '[1] = ' + argname + '+3*_iy;\n'
                     _s += space + '} \n'
                     _s += space + loc_argname + '[0] = _p;\n'
-                elif dat[1].name == 'accelerations':
+                elif dat[1].name == 'forces':
                     _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                     _s += space + host.ctypes_map[dat[1].dtype] + ' dummy[3] = {0,0,0};\n'
                     _s += space + loc_argname + '[0] = _a;\n'
@@ -1410,7 +1410,7 @@ class SimpleCudaPairLoopHalo(SimpleCudaPairLoop):
             if type(dat[1]) == data.ParticleDat:
                 if dat[1].name == 'positions':
                     _s += space + loc_argname + '[1] = ' + argname + '+3*_iy;\n'
-                elif dat[1].name == 'accelerations':
+                elif dat[1].name == 'forces':
                     _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
                     _s += space + host.ctypes_map[dat[1].dtype] + ' dummy[3] = {0,0,0};\n'
                     _s += space + loc_argname + '[0] = _a;\n'

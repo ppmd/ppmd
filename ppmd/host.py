@@ -2,6 +2,7 @@ import sys
 import ctypes
 import numpy as np
 import access
+import gpucuda
 
 ctypes_map = {ctypes.c_double: 'double', ctypes.c_int: 'int', 'float64': 'double', 'int32': 'int',
               'doublepointerpointer': 'double **', ctypes.c_longlong: 'long long',
@@ -52,6 +53,8 @@ class Array(object):
                 self._create_from_existing(np.array([initial_value]), dtype)
         else:
             self._create_zeros(ncomp, dtype)
+
+        self._cuda_dat = None
 
 
     def _create_zeros(self, length=1, dtype=ctypes.c_double):
@@ -112,6 +115,32 @@ class Array(object):
     def __len__(self):
         return self.ncomp
 
+    def add_cuda_dat(self):
+        """
+        Create a corresponding CudaDeviceDat.
+        """
+        if self._cuda_dat is None:
+            self._cuda_dat = gpucuda.CudaDeviceDat(size=self.ncomp, dtype=self.idtype)
+
+    def get_cuda_dat(self):
+        """
+        Returns associated cuda dat, or None if not initialised.
+        """
+        return self._cuda_dat
+
+    def copy_to_cuda_dat(self):
+        """
+        Copy the CPU dat to the cuda device.
+        """
+        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
+        self._cuda_dat.cpy_htd(self.ctypes_data)
+
+    def copy_from_cuda_dat(self):
+        """
+        Copy the device dat into the cuda dat.
+        """
+        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
+        self._cuda_dat.cpy_dth(self.ctypes_data)
 
 
 
@@ -135,6 +164,7 @@ class Matrix(object):
         else:
             self._create_zeros(nrow, ncol, dtype)
 
+        self._cuda_dat = None
 
     def _create_zeros(self, nrow=1, ncol=1, dtype=ctypes.c_double):
         assert ctypes.sizeof(dtype) * nrow * ncol < available_free_memory(), "host.Matrix _create_zeros error: Not enough free memory."
@@ -195,6 +225,38 @@ class Matrix(object):
     @property
     def dtype(self):
         return self.idtype
+
+    # Temporary workarounds
+
+    def add_cuda_dat(self):
+        """
+        Create a corresponding CudaDeviceDat.
+        """
+        if self._cuda_dat is None:
+            self._cuda_dat = gpucuda.CudaDeviceDat(size=self.dat.shape[0] * self.dat.shape[1], dtype=self.idtype)
+
+    def get_cuda_dat(self):
+        """
+        Returns associated cuda dat, or None if not initialised.
+        """
+        return self._cuda_dat
+
+    def copy_to_cuda_dat(self):
+        """
+        Copy the CPU dat to the cuda device.
+        """
+        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
+        self._cuda_dat.cpy_htd(self.ctypes_data)
+
+    def copy_from_cuda_dat(self):
+        """
+        Copy the device dat into the cuda dat.
+        """
+        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
+        self._cuda_dat.cpy_dth(self.ctypes_data)
+
+
+
 
 ###################################################################################################
 # Blank arrays/matrices

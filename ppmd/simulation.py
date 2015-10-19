@@ -73,7 +73,6 @@ class BaseMDSimulation(object):
         self.state.types = data.ParticleDat(n, 1, dtype=ct.c_int, name='types', max_npart=_factor * n)
 
 
-
         # Add typed dats.
         self.state.mass = data.TypedDat(n, 1, 1.0)
 
@@ -84,6 +83,11 @@ class BaseMDSimulation(object):
 
         # Kinetic energy
         self.state.k = data.ScalarArray()
+
+        if gpucuda.INIT_STATUS():
+            self.state.positions.add_cuda_dat()
+            self.state.forces.add_cuda_dat()
+            self.state.u.add_cuda_dat()
 
         # gpucuda dats
         if gpucuda.INIT_STATUS():
