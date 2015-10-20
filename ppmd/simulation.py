@@ -220,7 +220,7 @@ class BaseMDSimulation(object):
 
         self.cpu_forces_timer.start()
         if self.state.n > 0:
-            # self._forces_update_lib.execute()
+            self._forces_update_lib.execute()
             pass
 
         self.cpu_forces_timer.pause()

@@ -56,16 +56,16 @@ if __name__ == '__main__':
     t=0.0001*24
     #t=0.0024
     #t=0.0174
-    t=0.2
+    t=0.001
     dt=0.0001
 
 
     if test_1000:
         # n=25 reasonable size
-        n = 30
+        n = 10
         N = n**3
         # n=860
-        rho = 1.
+        rho = .2
         mu = 1.0
         nsig = 5.0
         
