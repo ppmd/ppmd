@@ -1278,7 +1278,7 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
         __constant__ int _d_cell_offset;
         __constant__ int _d_cell_array[3];
 
-        __constant__ int cell_map[27] = %(CELL_OFFSETS)s
+        __constant__ int cell_map[27];
 
         %(DEVICE_CONSTANT_DECELERATION)s
 
@@ -1339,6 +1339,37 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
             return;
         }
 
+        int _h_map[27][3]= {{-1,1,-1},
+                            {-1,-1,-1},
+                            {-1,0,-1},
+                            {0,1,-1},
+                            {0,-1,-1},
+                            {0,0,-1},
+                            {1,0,-1},
+                            {1,1,-1},
+                            {1,-1,-1},
+
+                            {-1,1,0},
+                            {-1,0,0},
+                            {-1,-1,0},
+                            {0,-1,0},
+                            {0,0,0},
+                            {0,1,0},
+                            {1,0,0},
+                            {1,1,0},
+                            {1,-1,0},
+
+                            {-1,0,1},
+                            {-1,1,1},
+                            {-1,-1,1},
+                            {0,0,1},
+                            {0,1,1},
+                            {0,-1,1},
+                            {1,0,1},
+                            {1,1,1},
+                            {1,-1,1}};
+
+
         void %(KERNEL_NAME)s_wrapper(const int blocksize[3],
                                      const int threadsize[3],
                                      const int _h_n,
@@ -1348,6 +1379,14 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
                                      const int * __restrict__ PCL,
                                      const int * __restrict__ cell_list,
                                      %(ARGUMENTS)s){
+
+            int tmp_offset[27];
+            for(int ix=0; ix<27; ix++){
+                tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * _h_cell_array[0] + _h_map[ix][2] * _h_cell_array[0]* _h_cell_array[1];
+            }
+            checkCudaErrors(cudaMemcpyToSymbol(cell_map, &tmp_offset, 27*sizeof(int)));
+
+
             //cudaProfilerStart();
 
             //device constant copy.
@@ -1439,51 +1478,6 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
 
         return _s
 
-    def cell_offset_mapping(self):
-        """
-        Calculate cell offset mappings
-
-        :return:
-        """
-        _map = ((-1,1,-1),
-                (-1,-1,-1),
-                (-1,0,-1),
-                (0,1,-1),
-                (0,-1,-1),
-                (0,0,-1),
-                (1,0,-1),
-                (1,1,-1),
-                (1,-1,-1),
-
-                (-1,1,0),
-                (-1,0,0),
-                (-1,-1,0),
-                (0,-1,0),
-                (0,0,0),
-                (0,1,0),
-                (1,0,0),
-                (1,1,0),
-                (1,-1,0),
-
-                (-1,0,1),
-                (-1,1,1),
-                (-1,-1,1),
-                (0,0,1),
-                (0,1,1),
-                (0,-1,1),
-                (1,0,1),
-                (1,1,1),
-                (1,-1,1))
-
-        _s = '{'
-        for ix in range(27):
-            _s1 = str(_map[ix][0] + _map[ix][1] * self._domain.cell_array[0] + _map[ix][2] * self._domain.cell_array[0]* self._domain.cell_array[1])
-            if ix < 26:
-                _s += _s1 + ','
-            else:
-                _s += _s1 + '}; \n'
-
-        return _s
 
     def _generate_impl_source(self):
         """Generate the source code the actual implementation.
@@ -1499,8 +1493,7 @@ class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
              'DEVICE_CONSTANT_DECELERATION': self._device_const_dec,
              'DEVICE_CONSTANT_COPY': self._device_const_copy,
              'ACCEL_VECTOR': self._get_acceleration_array(),
-             'POS_VECTOR': self._get_position_array(),
-             'CELL_OFFSETS': self.cell_offset_mapping()
+             'POS_VECTOR': self._get_position_array()
              }
         return self._code % d
 

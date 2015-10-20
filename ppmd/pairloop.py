@@ -1479,7 +1479,6 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaport):
 
             _map_array[ix] = _map[ix][0] + _map[ix][1] * self._domain.cell_array[0] + _map[ix][2] * self._domain.cell_array[0]* self._domain.cell_array[1]
 
-
         return _map_array
 
     def _generate_header_source(self):
