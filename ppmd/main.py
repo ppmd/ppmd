@@ -62,7 +62,7 @@ if __name__ == '__main__':
 
     if test_1000:
         # n=25 reasonable size
-        n = 20
+        n = 30
         N = n**3
         # n=860
         rho = 1.

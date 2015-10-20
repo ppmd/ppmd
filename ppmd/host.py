@@ -120,7 +120,7 @@ class Array(object):
         Create a corresponding CudaDeviceDat.
         """
         if self._cuda_dat is None:
-            self._cuda_dat = gpucuda.CudaDeviceDat(size=self.ncomp, dtype=self.idtype)
+            self._cuda_dat = gpucuda.CudaDeviceDat(size=self.ncomp* ctypes.sizeof(self.idtype), dtype=self.idtype)
 
     def get_cuda_dat(self):
         """
@@ -233,7 +233,7 @@ class Matrix(object):
         Create a corresponding CudaDeviceDat.
         """
         if self._cuda_dat is None:
-            self._cuda_dat = gpucuda.CudaDeviceDat(size=self.dat.shape[0] * self.dat.shape[1], dtype=self.idtype)
+            self._cuda_dat = gpucuda.CudaDeviceDat(size=(self.dat.shape[0] * self.dat.shape[1]) * ctypes.sizeof(self.idtype), dtype=self.idtype)
 
     def get_cuda_dat(self):
         """
@@ -246,6 +246,8 @@ class Matrix(object):
         Copy the CPU dat to the cuda device.
         """
         assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
+
+
         self._cuda_dat.cpy_htd(self.ctypes_data)
 
     def copy_from_cuda_dat(self):

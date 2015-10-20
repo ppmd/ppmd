@@ -89,12 +89,13 @@ class BaseMDSimulation(object):
             self.state.forces.add_cuda_dat()
             self.state.u.add_cuda_dat()
 
+        '''
         # gpucuda dats
         if gpucuda.INIT_STATUS():
             gpucuda.CUDA_DATS.register(self.state.u)
             gpucuda.CUDA_DATS.register(self.state.positions)
             gpucuda.CUDA_DATS.register(self.state.forces)
-
+        '''
 
         # domain TODO: Maybe move domain to simulation not state.
         self.state.domain = domain_in
@@ -199,11 +200,11 @@ class BaseMDSimulation(object):
 
         # TODO move domain out of state>?
 
-        '''
+
         #TODO: make part of access descriptors.
         if (self._cell_structure is True) and (self.state.domain.halos is not False):
             self.state.positions.halo_exchange()
-        '''
+
 
         # reset forces
         self.state.forces.set_val(0.)
@@ -219,7 +220,7 @@ class BaseMDSimulation(object):
 
         self.cpu_forces_timer.start()
         if self.state.n > 0:
-            self._forces_update_lib.execute()
+            # self._forces_update_lib.execute()
             pass
 
         self.cpu_forces_timer.pause()
@@ -233,6 +234,11 @@ class BaseMDSimulation(object):
             self.gpu_forces_timer.start()
             self._forces_update_lib_gpucuda.execute()
             self.gpu_forces_timer.pause()
+
+        if gpucuda.INIT_STATUS():
+            self.state.forces.copy_from_cuda_dat()
+
+
 
         self.timer.pause()
 

@@ -443,6 +443,7 @@ cuda_set_device()
 #####################################################################################
 
 def gpucuda_cleanup():
+    print "GPU CLEANUP"
     cuda_host_unregister_all()
     cuda_device_reset()
 
