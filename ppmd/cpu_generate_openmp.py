@@ -103,7 +103,7 @@ def generate_reduction_init_stage(symbol_external, symbol_internal, dat, access_
                 _s += _space + 'memcpy( &'+ symbol_internal + '[0],' + '&'+ symbol_external + '[0],' + str(dat.ncomp) + ' * sizeof(' + host.ctypes_map[dat.dtype] + ')) ;\n'
 
             elif access_type is access.INC0:
-                _s = _space + host.ctypes_map[dat.dtype] + symbol_internal + '[' + str(dat.ncomp) + '] = { 0 };\n'
+                _s = _space + host.ctypes_map[dat.dtype] + ' ' + symbol_internal + '[' + str(dat.ncomp) + '] = { 0 };\n'
 
             else:
 

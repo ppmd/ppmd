@@ -148,6 +148,7 @@ class BaseMDSimulation(object):
                                                                                dat_dict=_potential_dat_dict)
                 '''
 
+
             # If domain is without halos
             elif type(self.state.domain) is domain.BaseDomain:
                 self._forces_update_lib = pairloop.PairLoopRapaport(domain=self.state.domain,
