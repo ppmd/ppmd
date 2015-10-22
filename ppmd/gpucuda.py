@@ -17,6 +17,7 @@ import access
 import cell
 import mpi
 import host
+import gpu_generate_cuda
 
 ERROR_LEVEL = runtime.Level(2)
 
@@ -1263,284 +1264,6 @@ class SimpleCudaPairLoop(_Base):
         method(*args)
         
         
-class SimpleCudaPairLoopHalo2D(SimpleCudaPairLoop):
-
-
-
-    def _code_init(self):
-        self._kernel_code = self._kernel.code
-
-        self._code = '''
-        #include \"%(UNIQUENAME)s.h\"
-
-        //device constant decelerations.
-        __constant__ int _d_n;
-        __constant__ int _d_cell_offset;
-        __constant__ int _d_cell_array[3];
-
-        __constant__ int cell_map[27];
-
-        %(DEVICE_CONSTANT_DECELERATION)s
-
-
-        //device kernel decelerations.
-        __global__ void %(KERNEL_NAME)s_gpukernel(const int * __restrict__ CCC, const int * __restrict__ PCL, const int * __restrict__ cell_list, %(KERNEL_ARGUMENTS_DECL)s){
-
-            const int _ix = threadIdx.x + blockIdx.x*blockDim.x;
-            double u[1]; u[0] = 0.0;
-
-            if (_ix < _d_n){
-                //create local store for acceleration of particle _ix.
-
-                double _a[3] = {0};
-                //_a[0] = 0; _a[1] = 0; _a[2] = 0;
-                double *A[2]; A[0] = _a;
-
-                const double *P[2];
-                P[0] =  %(POS_VECTOR)s + _ix*3;
-
-                for(int cpp_i=0; cpp_i<27; cpp_i++){
-                    int cpp = PCL[_ix] + cell_map[cpp_i];
-
-                        for(unsigned int _iy = cell_list[_d_cell_offset+cpp];
-                         _iy < cell_list[_d_cell_offset+cpp]+CCC[cpp];
-                         _iy++){
-
-                            if (_iy != _ix){
-                            %(GPU_POINTER_MAPPING)s
-
-                            %(GPU_KERNEL)s
-
-
-
-                            }
-                         }
-
-                }
-
-                //Write acceleration to dat.
-
-                %(ACCEL_VECTOR)s[_ix*3]     = _a[0];
-                %(ACCEL_VECTOR)s[_ix*3 + 1] = _a[1];
-                %(ACCEL_VECTOR)s[_ix*3 + 2] = _a[2];
-
-            }
-
-            u[0] = warpReduceSumDouble(u[0]);
-
-            if (  (int)(threadIdx.x & (warpSize - 1)) == 0)
-            {
-                atomicAddDouble(&d_u[0], u[0]);
-            }
-
-
-
-
-            return;
-        }
-
-        int _h_map[27][3]= {{-1,1,-1},
-                            {-1,-1,-1},
-                            {-1,0,-1},
-                            {0,1,-1},
-                            {0,-1,-1},
-                            {0,0,-1},
-                            {1,0,-1},
-                            {1,1,-1},
-                            {1,-1,-1},
-
-                            {-1,1,0},
-                            {-1,0,0},
-                            {-1,-1,0},
-                            {0,-1,0},
-                            {0,0,0},
-                            {0,1,0},
-                            {1,0,0},
-                            {1,1,0},
-                            {1,-1,0},
-
-                            {-1,0,1},
-                            {-1,1,1},
-                            {-1,-1,1},
-                            {0,0,1},
-                            {0,1,1},
-                            {0,-1,1},
-                            {1,0,1},
-                            {1,1,1},
-                            {1,-1,1}};
-
-
-        void %(KERNEL_NAME)s_wrapper(const int blocksize[3],
-                                     const int threadsize[3],
-                                     const int _h_n,
-                                     const int _h_cell_offset,
-                                     const int _h_cell_array[3],
-                                     const int * __restrict__ CCC,
-                                     const int * __restrict__ PCL,
-                                     const int * __restrict__ cell_list,
-                                     %(ARGUMENTS)s){
-
-            int tmp_offset[27];
-            for(int ix=0; ix<27; ix++){
-                tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * _h_cell_array[0] + _h_map[ix][2] * _h_cell_array[0]* _h_cell_array[1];
-            }
-            checkCudaErrors(cudaMemcpyToSymbol(cell_map, &tmp_offset, 27*sizeof(int)));
-
-
-            //cudaProfilerStart();
-
-            //device constant copy.
-            checkCudaErrors(cudaMemcpyToSymbol(_d_n, &_h_n, sizeof(_h_n)));
-            checkCudaErrors(cudaMemcpyToSymbol(_d_cell_offset, &_h_cell_offset, sizeof(_h_cell_offset)));
-            checkCudaErrors(cudaMemcpyToSymbol(_d_cell_array, &_h_cell_array[0], 3*sizeof(_h_cell_array[0])));
-
-            %(DEVICE_CONSTANT_COPY)s
-
-            dim3 bs; bs.x = blocksize[0]; bs.y = blocksize[1]; bs.z = blocksize[2];
-            dim3 ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
-
-            getLastCudaError(" %(KERNEL_NAME)s Execution failed before kernel launch. \\n");
-            %(KERNEL_NAME)s_gpukernel<<<bs,ts>>>(CCC,PCL,cell_list,%(KERNEL_ARGUMENTS)s);
-            checkCudaErrors(cudaDeviceSynchronize());
-            getLastCudaError(" %(KERNEL_NAME)s Execution failed. \\n");
-
-            //cudaProfilerStop();
-        }
-        '''
-
-    def _generate_header_source(self):
-        """Generate the source code of the header file.
-
-        Returns the source code for the header file.
-        """
-        code = '''
-        #ifndef %(UNIQUENAME)s_H
-        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #include "%(LIB_DIR)s/cuda_generic.h"
-
-        %(INCLUDED_HEADERS)s
-
-        extern "C"         void %(KERNEL_NAME)s_wrapper(const int blocksize[3],
-                                     const int threadsize[3],
-                                     const int _h_n,
-                                     const int _h_cell_offset,
-                                     const int _h_cell_array[3],
-                                     const int * __restrict__ CCC,
-                                     const int * __restrict__ PCL,
-                                     const int * __restrict__ cell_list,
-                                     %(ARGUMENTS)s);
-
-        #endif
-        '''
-        d = {'UNIQUENAME': self._unique_name,
-             'INCLUDED_HEADERS': self._included_headers(),
-             'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
-        return code % d
-
-
-    def _kernel_pointer_mapping(self):
-        """
-        Create string for thread id and pointer mapping.
-        """
-        _s = ''
-
-        space = ' ' * 14
-
-        for dat_orig in self._particle_dat_dict.items():
-            if type(dat_orig[1]) is tuple:
-                dat = dat_orig[0], dat_orig[1][0]
-                _mode = dat_orig[1][1]
-            else:
-                dat = dat_orig
-                _mode = access.RW
-            argname = 'd_' + dat[0]
-            loc_argname = dat[0]
-
-            if type(dat[1]) == data.ParticleDat:
-                if dat[1].name == 'positions':
-                    _s += space + loc_argname + '[1] = ' + argname + '+3*_iy;\n'
-                    # _s += 'memcpy(&_p2[0], &' + argname + '[_iy*3], sizeof(double)*3); \n'
-                elif dat[1].name == 'forces':
-                    _s += space + host.ctypes_map[dat[1].dtype] + ' dummy[3] = {0,0,0};\n'
-                    _s += space + loc_argname + '[1] = dummy;\n'
-
-
-                else:
-                    _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-                    _s += space + loc_argname + '[0] = ' + argname + '+' + str(dat[1].ncomp) + '*_ix;\n'
-                    _s += space + loc_argname + '[1] = ' + argname + '+' + str(dat[1].ncomp) + '*_iy;\n'
-
-            elif type(dat[1]) == data.ScalarArray:
-                pass
-                # _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
-
-        return _s
-
-
-    def _generate_impl_source(self):
-        """Generate the source code the actual implementation.
-        """
-
-        d = {'UNIQUENAME': self._unique_name,
-             'GPU_POINTER_MAPPING': self._kernel_pointer_mapping(),
-             'GPU_KERNEL': self._kernel_code,
-             'ARGUMENTS': self._argnames(),
-             'KERNEL_ARGUMENTS': self._kernel_argnames(),
-             'KERNEL_NAME': self._kernel.name,
-             'KERNEL_ARGUMENTS_DECL': self._kernel_argument_declarations(),
-             'DEVICE_CONSTANT_DECELERATION': self._device_const_dec,
-             'DEVICE_CONSTANT_COPY': self._device_const_copy,
-             'ACCEL_VECTOR': self._get_acceleration_array(),
-             'POS_VECTOR': self._get_position_array()
-             }
-        return self._code % d
-
-
-    def execute(self, dat_dict=None, static_args=None):
-
-        """Allow alternative pointers"""
-        if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
-
-        _tpb = 128
-        _blocksize = (ct.c_int * 3)(int(math.ceil(self._N() / float(_tpb))), 1, 1)
-        _threadsize = (ct.c_int * 3)(_tpb, 1, 1)
-
-        _h_cell_array = (ct.c_int * 3)(self._domain.cell_array[0],
-                                       self._domain.cell_array[1],
-                                       self._domain.cell_array[2])
-
-        args = [_blocksize,
-                _threadsize,
-                ct.c_int(self._N()),
-                ct.c_int(cell.cell_list.cell_list[cell.cell_list.cell_list.end]),
-                _h_cell_array,
-                cell.cell_list.cell_contents_count.get_cuda_dat().ctypes_data,
-                cell.cell_list.cell_reverse_lookup.get_cuda_dat().ctypes_data,
-                cell.cell_list.cell_list.get_cuda_dat().ctypes_data
-                ]
-
-
-        '''Add static arguments to launch command'''
-        if self._kernel.static_args is not None:
-            assert static_args is not None, "Error: static arguments not passed to loop."
-            for dat in static_args.values():
-                args.append(dat)
-
-        '''Add pointer arguments to launch command'''
-        for dat in self._particle_dat_dict.values():
-            if type(dat) is tuple:
-                args.append(dat[0].get_cuda_dat().ctypes_data)
-            else:
-                args.append(dat.get_cuda_dat().ctypes_data)
-
-        '''Execute the kernel over all particle pairs.'''
-        method = self._lib[self._kernel.name + '_wrapper']
-
-        method(*args)
-
 
 class SimpleCudaPairLoopHalo3D(SimpleCudaPairLoop):
 
@@ -1563,17 +1286,12 @@ class SimpleCudaPairLoopHalo3D(SimpleCudaPairLoop):
         __global__ void %(KERNEL_NAME)s_gpukernel(const int * __restrict__ CCC, const int * __restrict__ PCL, const int * __restrict__ cell_list, %(KERNEL_ARGUMENTS_DECL)s){
 
             const int _ix = threadIdx.x + blockIdx.x*blockDim.x;
-            double u[1]; u[0] = 0.0;
+
+            %(PRE_IF_MAP)s
 
             if (_ix < _d_n){
 
-                //create local store for acceleration of particle _ix.
-                double _a[3] = {0};
-                //_a[0] = 0; _a[1] = 0; _a[2] = 0;
-                double *A[2]; A[0] = _a;
-
-                const double *P[2];
-                P[0] =  %(POS_VECTOR)s + _ix*3;
+                %(PRE_LOOP_MAP)s
 
                 for(int cpp_i=0; cpp_i<27; cpp_i++){
                     int cpp = PCL[_ix] + cell_map[cpp_i];
@@ -1588,29 +1306,16 @@ class SimpleCudaPairLoopHalo3D(SimpleCudaPairLoop):
                             %(GPU_KERNEL)s
 
 
-
                             }
                          }
 
                 }
 
-                //Write acceleration to dat.
-
-                %(ACCEL_VECTOR)s[_ix*3]     = _a[0];
-                %(ACCEL_VECTOR)s[_ix*3 + 1] = _a[1];
-                %(ACCEL_VECTOR)s[_ix*3 + 2] = _a[2];
+                %(POST_LOOP_MAP)s
 
             }
 
-            u[0] = warpReduceSumDouble(u[0]);
-
-            if (  (int)(threadIdx.x & (warpSize - 1)) == 0)
-            {
-                atomicAddDouble(&d_u[0], u[0]);
-            }
-
-
-
+            %(REDUCTION_FINAL_STAGE)s
 
             return;
         }
@@ -1716,51 +1421,58 @@ class SimpleCudaPairLoopHalo3D(SimpleCudaPairLoop):
         return code % d
 
 
-    def _kernel_pointer_mapping(self):
+    def _generate_impl_source(self):
+        """Generate the source code the actual implementation.
         """
-        Create string for thread id and pointer mapping.
-        """
-        _s = ''
 
-        space = ' ' * 14
+        _pre_if_map = ''
+        _pre_loop_map = ''
+        _reduction_final_stage = ''
+        _post_loop_map = ''
+        _kernel_pointer_mapping = ''
 
-        for dat_orig in self._particle_dat_dict.items():
+
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+
             if type(dat_orig[1]) is tuple:
                 dat = dat_orig[0], dat_orig[1][0]
                 _mode = dat_orig[1][1]
             else:
                 dat = dat_orig
                 _mode = access.RW
-            argname = 'd_' + dat[0]
-            loc_argname = dat[0]
 
-            if type(dat[1]) == data.ParticleDat:
-                if dat[1].name == 'positions':
-                    _s += space + loc_argname + '[1] = ' + argname + '+3*_iy;\n'
-                    # _s += 'memcpy(&_p2[0], &' + argname + '[_iy*3], sizeof(double)*3); \n'
-                elif dat[1].name == 'forces':
-                    _s += space + host.ctypes_map[dat[1].dtype] + ' dummy[3] = {0,0,0};\n'
-                    _s += space + loc_argname + '[1] = dummy;\n'
+            if dat[1].name == 'forces':
+                _dd = [dat[1]]
+            else:
+                _dd = []
 
-
-                else:
-                    _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-                    _s += space + loc_argname + '[0] = ' + argname + '+' + str(dat[1].ncomp) + '*_ix;\n'
-                    _s += space + loc_argname + '[1] = ' + argname + '+' + str(dat[1].ncomp) + '*_iy;\n'
-
-            elif type(dat[1]) == data.ScalarArray:
-                pass
-                # _s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
-
-        return _s
-
-
-    def _generate_impl_source(self):
-        """Generate the source code the actual implementation.
-        """
+            _pre_if_map += gpu_generate_cuda.create_local_reduction_vars_arrays(symbol_external='d_' + dat[0],
+                                                                                symbol_internal=dat[0],
+                                                                                dat=dat[1],
+                                                                                access_type=_mode)
+            _pre_loop_map += gpu_generate_cuda.create_pre_loop_map_matrices(pair=True,
+                                                                            symbol_external='d_' + dat[0],
+                                                                            symbol_internal=dat[0],
+                                                                            dat=dat[1],
+                                                                            access_type=_mode)
+            _kernel_pointer_mapping += gpu_generate_cuda.generate_map(pair=True,
+                                                                      symbol_external='d_' + dat[0],
+                                                                      symbol_internal=dat[0],
+                                                                      dat=dat[1],
+                                                                      access_type=_mode,
+                                                                      n3_disable_dats=_dd)
+            _post_loop_map += gpu_generate_cuda.create_post_loop_map_matrices(pair=True,
+                                                                              symbol_external='d_' + dat[0],
+                                                                              symbol_internal=dat[0],
+                                                                              dat=dat[1],
+                                                                              access_type=_mode)
+            _reduction_final_stage += gpu_generate_cuda.generate_reduction_final_stage(symbol_external='d_' + dat[0],
+                                                                                       symbol_internal=dat[0],
+                                                                                       dat=dat[1],
+                                                                                       access_type=_mode)
 
         d = {'UNIQUENAME': self._unique_name,
-             'GPU_POINTER_MAPPING': self._kernel_pointer_mapping(),
+             'GPU_POINTER_MAPPING': _kernel_pointer_mapping,
              'GPU_KERNEL': self._kernel_code,
              'ARGUMENTS': self._argnames(),
              'KERNEL_ARGUMENTS': self._kernel_argnames(),
@@ -1768,8 +1480,10 @@ class SimpleCudaPairLoopHalo3D(SimpleCudaPairLoop):
              'KERNEL_ARGUMENTS_DECL': self._kernel_argument_declarations(),
              'DEVICE_CONSTANT_DECELERATION': self._device_const_dec,
              'DEVICE_CONSTANT_COPY': self._device_const_copy,
-             'ACCEL_VECTOR': self._get_acceleration_array(),
-             'POS_VECTOR': self._get_position_array()
+             'PRE_IF_MAP': _pre_if_map,
+             'PRE_LOOP_MAP': _pre_loop_map,
+             'REDUCTION_FINAL_STAGE': _reduction_final_stage,
+             'POST_LOOP_MAP': _post_loop_map
              }
         return self._code % d
 

@@ -65,7 +65,7 @@ class BaseMDSimulation(object):
         self._boundary_method.set_state(self.state)
 
         # Add particle dats
-        _factor = 27
+        _factor = 10
         self.state.positions = data.ParticleDat(n, 3, name='positions', max_npart=_factor * n)
         self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
         self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
@@ -164,7 +164,7 @@ class BaseMDSimulation(object):
                                                                                   potential=self.potential,
                                                                                   dat_dict=_potential_dat_dict)
                 if type(self.state.domain) is domain.BaseDomainHalo:
-                    self._forces_update_lib_gpucuda = gpucuda.SimpleCudaPairLoopHalo2D(n=self.state.as_func('n'),
+                    self._forces_update_lib_gpucuda = gpucuda.SimpleCudaPairLoopHalo3D(n=self.state.as_func('n'),
                                                                                        domain=self.state.domain,
                                                                                        potential=self.potential,
                                                                                        dat_dict=_potential_dat_dict)
@@ -218,10 +218,9 @@ class BaseMDSimulation(object):
             t2 = threading.Thread(target=cell.cell_list.cell_contents_count.copy_to_cuda_dat()); t2.start()
             t3 = threading.Thread(target=cell.cell_list.cell_reverse_lookup.copy_to_cuda_dat()); t3.start()
 
-
         self.cpu_forces_timer.start()
         if self.state.n > 0:
-            #self._forces_update_lib.execute()
+            self._forces_update_lib.execute()
             pass
 
         self.cpu_forces_timer.pause()

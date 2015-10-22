@@ -101,7 +101,7 @@ class LennardJonesShifted(BasePotential):
         :arg state input_state: state with containing variables.
         """
 
-        return {'P': input_state.positions(access.R), 'A': input_state.forces(access.W), 'u': input_state.u(access.INC)}
+        return {'P': input_state.positions(access.R), 'A': input_state.forces(access.INC0), 'u': input_state.u(access.INC)}
 
 
 ################################################################################################################
