@@ -427,7 +427,7 @@ class NeighbourList(object):
 
         # vars for the neighbour list
         self.list = host.Array(ncomp=self.max_len[0], dtype=ct.c_int)
-        self.neighbour_starting_points = host.Array(ncomp=n, dtype=ct.c_int)
+        self.neighbour_starting_points = host.Array(ncomp=n(), dtype=ct.c_int)
 
         _code = '''
 

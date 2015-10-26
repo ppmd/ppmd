@@ -104,6 +104,11 @@ class BaseMDSimulation(object):
         particle_pos_init.get_extent(self.state)
         # Initialise cell list
         self._cell_structure = cell.cell_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cutoff)
+        
+        cell.neighbour_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cutoff)
+ 
+
+
         if type(self.state.domain) is domain.BaseDomainHalo:
             halo.HALOS = halo.CartesianHalo()
 
