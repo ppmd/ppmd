@@ -41,6 +41,10 @@ class CellList(object):
 
         self.halos_exist = False
 
+        self.version_id = 0
+        """version id, incremented when the list is updated."""
+
+
     def setup(self, n, positions, domain, cell_width):
         """
         Setup the cell list with a set of positions and a domain.
@@ -128,6 +132,9 @@ class CellList(object):
         self._cell_contents_count.zero()
 
         self._cell_sort_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
+
+        self.version_id += 1
+
 
     @property
     def cell_list(self):
@@ -231,6 +238,12 @@ class CellList(object):
 
 # default cell list
 cell_list = CellList()
+
+
+################################################################################################################
+# GroupByCell definition
+################################################################################################################
+
 
 class GroupByCell(object):
     """
@@ -370,6 +383,171 @@ class GroupByCell(object):
 
         self.swaptimer.pause()
 
-
-
 group_by_cell = GroupByCell()
+
+
+################################################################################################################
+# NeighbourList definition
+################################################################################################################
+
+
+class NeighbourList(object):
+
+    def __init__(self, list=cell_list):
+        self.cell_list = cell_list
+        self.max_len = None
+        self.list = None
+        self.lib = None
+
+        self.version_id = 0
+        """Update tracking of neighbour list. """
+
+        self.cell_width = None
+        """Cutoff used by the cell list and the neighbor list. Should be larger than the interaction cutoff."""
+
+        self._positions = None
+        self._domain = None
+        self.neighbour_starting_points = None
+        self.cell_width_squared = None
+
+
+    def setup(self, n, positions, domain, cell_width):
+
+        # setup the cell list if not done already (also handles domain decomp)
+        if self.cell_list.cell_list is None:
+            self.cell_list.setup(n, positions, domain, cell_width)
+
+        self.cell_width_squared = host.Array(initial_value=cell_width ** 2, dtype=ct.c_double)
+        self._domain = domain
+        self._positions = positions
+
+        assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
+
+        self.max_len = host.Array(initial_value=cell_list.cell_list.end, dtype=ct.c_int)
+
+        # vars for the neighbour list
+        self.list = host.Array(ncomp=self.max_len[0], dtype=ct.c_int)
+        self.neighbour_starting_points = host.Array(ncomp=n, dtype=ct.c_int)
+
+        _code = '''
+
+        const cutoff = CUTOFF[0];
+
+        const int _h_map[14][3] = {{0,0,0},
+                                   {1,0,0},
+                                   {0,1,0},
+                                   {1,1,0},
+                                   {1,-1,0},
+                                   {-1,1,1},
+                                   {0,1,1},
+                                   {1,1,1},
+                                   {-1,0,1},
+                                   {0,0,1},
+                                   {1,0,1},
+                                   {-1,-1,1},
+                                   {0,-1,1},
+                                   {1,-1,1}};
+
+        int tmp_offset[14];
+        for(int ix=0; ix<14; ix++){
+            tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * CA[0] + _h_map[ix][2] * CA[0]* CA[1];
+        }
+
+        int ix;
+        // loop over particles
+
+        int m = -1;
+        for (ix=0; ix<end_ix; ix++) {
+
+            const int C0 = (int)((P[ix*3]     - B[0])/CEL[0]);
+            const int C1 = (int)((P[ix*3 + 1] - B[2])/CEL[1]);
+            const int C2 = (int)((P[ix*3 + 2] - B[4])/CEL[2]);
+
+            const int val = (C2*CA[1] + C1)*CA[0] + C0;
+
+            NEIGHBOUR_STARTS[ix] = m + 1;
+
+            for(int k = 0; k < 14; k++){
+
+                iy = q[n + val + k];
+                while (iy < -1) {
+
+                    const double rj0 = P[iy*3] - P[ix*3];
+                    const double rj1 = P[iy*3+1] - P[ix*3 + 1];
+                    const double rj2 = P[iy*3+2] - P[ix*3 + 2];
+
+                    if ((rj0*rj0 + rj1*rj1 + rj2*rj2) < cutoff) {
+                        m++;
+                        NEIGHBOUR_LIST[m] = iy;
+
+                    }
+                    iy = q[iy];
+                }
+
+            }
+        }
+        NEIGHBOUR_STARTS[end_ix] = m + 1;
+        '''
+        _dat_dict = {'B': self._domain.boundary_outer,        # Outer boundary on local domain (inc halo cells)
+                     'P': self._positions,                    # positions
+                     'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
+                     'CA': self._domain.cell_array,           # local domain cell array
+                     'q': self.cell_list.cell_list,           # cell list
+                     'CUTOFF': self.cell_width_squared,
+                     'NEIGHBOUR_STARTS': self.neighbour_starting_points,
+                     'NEIGHBOUR_LIST': self.list}
+
+        _static_args = {'end_ix': ct.c_int,  # Number of particles.
+                        'n': ct.c_int}       # start of cell point in list.
+
+
+        _cell_sort_kernel = kernel.Kernel('cell_class_cell_list_method', _code, headers=['stdio.h'], static_args=_static_args)
+        self._cell_sort_lib = build.SharedLib(_cell_sort_kernel, _dat_dict)
+
+
+
+    def update(self):
+
+        if self.max_len is None or self.list is None or self.lib is None:
+            self.setup()
+
+        if self.version_id >= cell_list.version_id:
+            cell_list.sort()
+
+
+        '''
+        if self.lib.execute() < 0:
+            # put resize code here
+            # self.update() ??
+            pass
+        '''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+neighbour_list = NeighbourList()
+
+
+
+
+
+
+
+
+
+
+
