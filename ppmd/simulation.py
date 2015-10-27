@@ -61,6 +61,9 @@ class BaseMDSimulation(object):
         else:
             self._cutoff = cutoff
 
+        self._cell_width = 1.1 * self._cutoff
+
+
         self._boundary_method = domain_boundary_condition
         self._boundary_method.set_state(self.state)
 
@@ -103,9 +106,7 @@ class BaseMDSimulation(object):
         # Initialise domain extent
         particle_pos_init.get_extent(self.state)
         # Initialise cell list
-        self._cell_structure = cell.cell_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cutoff)
-        
-
+        self._cell_structure = cell.cell_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cell_width)
 
 
         if type(self.state.domain) is domain.BaseDomainHalo:
@@ -123,7 +124,7 @@ class BaseMDSimulation(object):
 
 
         # TODO: initialise elsewhere
-        cell.neighbour_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cutoff)
+        cell.neighbour_list.setup(self.state.as_func('n'), self.state.positions, self.state.velocities, self.state.domain, self._cell_width, self._cutoff, self.state.as_func('time'))
 
 
 
@@ -146,6 +147,7 @@ class BaseMDSimulation(object):
             # TODO remove these two lines when creating access descriptors.
             cell.cell_list.sort()
             cell.group_by_cell.group_by_cell()
+            cell.neighbour_list.update()
 
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
@@ -159,7 +161,7 @@ class BaseMDSimulation(object):
                                                                                dat_dict=_potential_dat_dict)
                 '''
 
-                self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
+                self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
 
 
@@ -209,8 +211,9 @@ class BaseMDSimulation(object):
         self.timer.start()
 
         if self._cell_structure:
-            cell.cell_list.sort()
+            # cell.cell_list.sort()
             # cell.group_by_cell.group_by_cell()
+            pass
 
 
         #TODO: make part of access descriptors.

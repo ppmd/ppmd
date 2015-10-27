@@ -405,9 +405,14 @@ class NeighbourList(object):
         """Update tracking of neighbour list. """
 
         self.cell_width = None
-        """Cutoff used by the cell list and the neighbor list. Should be larger than the interaction cutoff."""
+        self.interaction_cutoff = None
+        self.max_traveled_distance = 0
+        self.time = 0
+        self._time_func = None
+
 
         self._positions = None
+        self._velocities = None
         self._domain = None
         self.neighbour_starting_points = None
         self.cell_width_squared = None
@@ -415,29 +420,37 @@ class NeighbourList(object):
         self._n = None
 
         self.n_local = None
-        self.n_total = None
+        self.n_total = None#
+
+        self._last_n = -1
+
         """Return the number of particle that have neighbours listed"""
 
         self._return_code = None
 
-    def setup(self, n, positions, domain, cell_width):
+
+
+    def setup(self, n, positions, velocities, domain, cell_width, interaction_cutoff, time_func):
 
         # setup the cell list if not done already (also handles domain decomp)
         if self.cell_list.cell_list is None:
             self.cell_list.setup(n, positions, domain, cell_width)
 
+        self.cell_width = cell_width
+        self.interaction_cutoff = interaction_cutoff
+        self._time_func = time_func
+
         self.cell_width_squared = host.Array(initial_value=cell_width ** 2, dtype=ct.c_double)
         self._domain = domain
         self._positions = positions
+        self._velocities = velocities
         self._n = n
 
         assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
 
         self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_int)
 
-        _initial_factor = math.ceil(15. * n() ** 2 / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
-
-
+        _initial_factor = math.ceil(15. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
 
 
         self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_int)
@@ -560,33 +573,49 @@ class NeighbourList(object):
 
         assert self.max_len is not None and self.list is not None and self._neighbour_lib is not None, "Neighbourlist setup not ran, or failed."
 
-        # cell_list.sort()
 
         if self.neighbour_starting_points.ncomp < self._n() + 1:
             self.neighbour_starting_points.realloc(self._n() + 1)
 
+        _max_vel = self._velocities.dat[0:self._n():].max()
+        _time_step = self._time_func() - self.time
 
-        _n = cell_list.cell_list.end - self._domain.cell_count
-        self._neighbour_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
+        self.max_traveled_distance += _time_step * _max_vel
 
-        self.n_total = self._positions.npart_total
-        self.n_local = self._n()
+        self.time = self._time_func()
 
+        # print self.max_traveled_distance, self.cell_width - self.interaction_cutoff
 
-        if self._return_code[0] < 0:
+        if (self.max_traveled_distance >= (self.cell_width - self.interaction_cutoff)) or (self._last_n != self._n()):
+
+            cell_list.sort()
+
             if runtime.VERBOSE.level > 2:
-                print "rank:", mpi.MPI_HANDLE.rank, "neighbour list resizing", "old", self.max_len[0], "new", 2*self.max_len[0]
-            self.max_len[0] *= 2
-            self.list.realloc(self.max_len[0])
-
-            assert _attempt < 20, "Tried to create neighbour list too many times."
-
-            self.update(_attempt + 1)
-
-        else:
-            self.version_id += 1
+                print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
 
 
+            _n = cell_list.cell_list.end - self._domain.cell_count
+            self._neighbour_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
+
+            self.n_total = self._positions.npart_total
+            self.n_local = self._n()
+            self._last_n = self._n()
+
+
+            if self._return_code[0] < 0:
+                if runtime.VERBOSE.level > 2:
+                    print "rank:", mpi.MPI_HANDLE.rank, "neighbour list resizing", "old", self.max_len[0], "new", 2*self.max_len[0]
+                self.max_len[0] *= 2
+                self.list.realloc(self.max_len[0])
+
+                assert _attempt < 20, "Tried to create neighbour list too many times."
+
+                self.update(_attempt + 1)
+
+            else:
+                self.version_id += 1
+
+            self.max_traveled_distance = 0
 
 
 neighbour_list = NeighbourList()
