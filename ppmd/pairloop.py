@@ -1102,106 +1102,7 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
 
         return s
 
-################################################################################################################
-# RAPAPORT LOOP SERIAL PARTICLE LIST
-################################################################################################################
 
-class PairLoopRapaportParticleList(PairLoopRapaport):
-    """
-    Applies the Rapapport particle list method
-    
-    :arg int n: Number of elements to loop over.
-    :arg domain domain: Domain containing the particles.
-    :arg dat positions: Postitions of particles.
-    :arg potential potential: Potential between particles.
-    :arg dict dat_dict: Dictonary mapping between state vars and kernel vars.
-    :arg bool DEBUG: Flag to enable debug flags.
-    """
-
-    def __init__(self, n, domain, positions, potential, dat_dict):
-
-        self._N = n
-        self._domain = domain
-        self._potential = potential
-        self._particle_dat_dict = dat_dict
-
-        self._compiler_set()
-
-
-        ##########
-        # End of Rapaport initialisations.
-        ##########
-
-        self._temp_dir = runtime.BUILD_DIR.dir
-        if not os.path.exists(self._temp_dir):
-            os.mkdir(self._temp_dir)
-        self._kernel = self._potential.kernel
-
-        self._nargs = len(self._particle_dat_dict)
-
-        self._code_init()
-        self._cell_sort_setup()
-        self._neighbour_list_setup()
-
-        self._unique_name = self._unique_name_calc()
-
-        self._library_filename = self._unique_name + '.so'
-
-        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if mpi.MPI_HANDLE is None:
-                self._create_library()
-
-            else:
-                if mpi.MPI_HANDLE.rank == 0:
-                    self._create_library()
-                mpi.MPI_HANDLE.barrier()
-        try:
-            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
-        except:
-            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
-
-    def execute(self, dat_dict=None, static_args=None):
-        """
-        C version of the pair_locate: Loop over all cells update forces and potential engery.
-        """
-
-        self._cell_sort_all()
-
-        '''Allow alternative pointers'''
-        if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
-
-        '''Create arg list'''
-        args = [ctypes.c_int(self._N()),
-                ctypes.c_int(self._domain.cell_count),
-                self._domain.cell_array.ctypes_data,
-                cell.cell_list.cell_list.ctypes_data,
-                self._domain.extent.ctypes_data]
-
-        '''Add static arguments to launch command'''
-        if self._kernel.static_args is not None:
-            assert static_args is not None, "Error: static arguments not passed to loop."
-            for dat in static_args.values():
-                args.append(dat)
-
-        '''Add pointer arguments to launch command'''
-        for dat_orig in self._particle_dat_dict.values():
-            if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
-            else:
-                args.append(dat_orig.ctypes_data)
-
-        '''Execute the kernel over all particle pairs.'''
-        method = self._lib[self._kernel.name + '_wrapper']
-
-        method(*args)
-
-        '''afterwards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_post(dat_orig[1])
-            else:
-                dat_orig.ctypes_data_post()
 
 ################################################################################################################
 # RAPAPORT LOOP SERIAL FOR HALO DOMAINS
@@ -1670,5 +1571,206 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaport):
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
                 dat_orig.ctypes_data_post()
+
+
+
+
+
+
+################################################################################################################
+# Neighbour list looping using NIII
+################################################################################################################
+
+class PairLoopNeighbourList(_Base):
+    def __init__(self, potential=None, dat_dict=None, kernel=None):
+
+        self._potential = potential
+        self._particle_dat_dict = dat_dict
+        self._compiler_set()
+
+        ##########
+        # End of Rapaport initialisations.
+        ##########
+
+        self._temp_dir = runtime.BUILD_DIR.dir
+        if not os.path.exists(self._temp_dir):
+            os.mkdir(self._temp_dir)
+
+        if potential is not None:
+            self._kernel = self._potential.kernel
+        elif kernel is not None:
+            self._kernel = kernel
+        else:
+            print "pairloop error, no kernel passed."
+
+
+        self._nargs = len(self._particle_dat_dict)
+
+        # Init code
+        self._kernel_code = self._kernel.code
+        self._code_init()
+
+        self._unique_name = self._unique_name_calc()
+
+        self._library_filename = self._unique_name + '.so'
+
+        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
+            if mpi.MPI_HANDLE is None:
+                self._create_library()
+            else:
+                if mpi.MPI_HANDLE.rank == 0:
+                    self._create_library()
+                mpi.MPI_HANDLE.barrier()
+
+        try:
+            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        except OSError as e:
+            raise OSError(e)
+        except:
+            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
+
+
+    def _compiler_set(self):
+        self._cc = build.TMPCC
+
+    def _generate_header_source(self):
+        """Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        """
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+
+        %(INCLUDED_HEADERS)s
+
+        #include "%(LIB_DIR)s/generic.h"
+
+        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* START_POINTS, const int* NLIST, %(ARGUMENTS)s);
+
+        #endif
+        '''
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
+        return code % d
+
+    def _kernel_argument_declarations(self):
+        s = '\n'
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+
+            if dat[1].name == 'forces':
+                _dd = [dat[1]]
+            else:
+                _dd = []
+
+
+            s += cpu_generate_generic.generate_map(pair=True,
+                                                   symbol_external=dat[0] + '_ext',
+                                                   symbol_internal=dat[0],
+                                                   dat=dat[1],
+                                                   access_type=_mode)
+
+        return s
+
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+        #include <stdio.h>
+
+        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* START_POINTS, const int* NLIST, %(ARGUMENTS)s) {
+
+            for(int _i = 0; _i < N_LOCAL; _i++){
+                for(int _k = START_POINTS[_i]; _k < START_POINTS[_i+1]; _k++){
+                    int _j = NLIST[_k];
+                    int _cpp_halo_flag;
+                    int _cp_halo_flag;
+
+                    // set halo flag, TODO move all halo flags to be an if condition on particle index?
+                    if (_i >= N_LOCAL) { _cp_halo_flag = 1; } else { _cp_halo_flag = 0; }
+                    if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
+
+                     %(KERNEL_ARGUMENT_DECL)s
+
+                     //KERNEL CODE START
+
+                     %(KERNEL)s
+
+                     //KERNEL CODE END
+
+                }
+            }
+
+            return;
+        }
+
+
+        '''
+
+    def execute(self, n=None, dat_dict=None, static_args=None):
+        """
+        C version of the pair_locate: Loop over all cells update forces and potential engery.
+        """
+
+        '''Allow alternative pointers'''
+        if dat_dict is not None:
+            self._particle_dat_dict = dat_dict
+
+        '''Create arg list'''
+
+        _N_TOTAL = ctypes.c_int(cell.neighbour_list.n_total)
+        _N_LOCAL = ctypes.c_int(cell.neighbour_list.n_local)
+        _STARTS = cell.neighbour_list.neighbour_starting_points.ctypes_data
+        _LIST = cell.neighbour_list.list.ctypes_data
+
+        args = [_N_TOTAL,
+                _N_LOCAL,
+                _STARTS,
+                _LIST]
+
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+        '''Add pointer arguments to launch command'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
+            else:
+                args.append(dat_orig.ctypes_data)
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        method(*args)
+
+        '''afterwards access descriptors'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()
+
+
+
+
+
+
+
+
+
+
 
 

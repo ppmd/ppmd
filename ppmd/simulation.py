@@ -105,8 +105,7 @@ class BaseMDSimulation(object):
         # Initialise cell list
         self._cell_structure = cell.cell_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cutoff)
         
-        cell.neighbour_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cutoff)
- 
+
 
 
         if type(self.state.domain) is domain.BaseDomainHalo:
@@ -120,6 +119,13 @@ class BaseMDSimulation(object):
 
         # Initialise positions
         particle_pos_init.reset(self.state)
+
+
+
+        # TODO: initialise elsewhere
+        cell.neighbour_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cutoff)
+
+
 
         # Initialise velocities
         if particle_vel_init is not None:
@@ -152,6 +158,9 @@ class BaseMDSimulation(object):
                                                                                potential=self.potential,
                                                                                dat_dict=_potential_dat_dict)
                 '''
+
+                self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
+                                                                         dat_dict=_potential_dat_dict)
 
 
             # If domain is without halos
@@ -197,20 +206,17 @@ class BaseMDSimulation(object):
         Updates the forces in the simulation state using the short range potential.
         """
 
-
         self.timer.start()
 
         if self._cell_structure:
             cell.cell_list.sort()
-            cell.group_by_cell.group_by_cell()
-
-        # TODO move domain out of state>?
+            # cell.group_by_cell.group_by_cell()
 
 
         #TODO: make part of access descriptors.
         if (self._cell_structure is True) and (self.state.domain.halos is not False):
             self.state.positions.halo_exchange()
-
+            cell.neighbour_list.update()
 
         # reset forces
         self.state.forces.set_val(0.)

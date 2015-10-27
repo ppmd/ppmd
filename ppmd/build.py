@@ -115,7 +115,7 @@ ICC = Compiler(['ICC'],
                ['-fpic', '-std=c99'],
                ['-lm'],
                ['-O3', '-xHost', '-restrict', '-m64'],
-               ['-g', '-xHost', '-restrict', '-m64'],
+               ['-g'],
                ['-c'],
                ['-shared'],
                'restrict')
@@ -597,7 +597,7 @@ class SharedLib(GenericToolChain):
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
 
-        method(*args)
+        return_code = method(*args)
 
         '''afterwards access descriptors'''
         for dat_orig in self._particle_dat_dict.values():
@@ -605,6 +605,8 @@ class SharedLib(GenericToolChain):
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
                 dat_orig.ctypes_data_post()
+
+        return return_code
 
 
 

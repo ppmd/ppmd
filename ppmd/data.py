@@ -296,6 +296,16 @@ class ParticleDat(host.Matrix):
         """
         self.dat[..., ...] = val
 
+    @property
+    def npart_total(self):#
+        """
+        Get the total number of particles in the dat including halo particles.
+
+        :return:
+        """
+        return self.npart + self.npart_halo
+
+
     def __getitem__(self, ix):
         return self.dat[ix]
 
