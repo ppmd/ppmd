@@ -575,8 +575,8 @@ class NeighbourList(object):
         if self.neighbour_starting_points.ncomp < self._n() + 1:
             self.neighbour_starting_points.realloc(self._n() + 1)
 
-
         if self.update_required is True:
+
 
             if runtime.VERBOSE.level > 2:
                 print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"

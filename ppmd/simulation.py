@@ -61,14 +61,14 @@ class BaseMDSimulation(object):
         else:
             self._cutoff = cutoff
 
-        self._cell_width = 1.1 * self._cutoff
+        self._cell_width = 1.2 * self._cutoff
 
 
         self._boundary_method = domain_boundary_condition
         self._boundary_method.set_state(self.state)
 
         # Add particle dats
-        _factor = 10
+        _factor = 27
         self.state.positions = data.ParticleDat(n, 3, name='positions', max_npart=_factor * n)
         self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
         self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
@@ -133,6 +133,8 @@ class BaseMDSimulation(object):
 
         # Set state time to 0
         self.state.time = 0.0
+        self._prev_time = 0.0
+        self._moved_distance= 0.0
 
         # short range potential data dict init
         if self.potential is not None:
@@ -147,6 +149,7 @@ class BaseMDSimulation(object):
             cell.cell_list.sort()
             cell.group_by_cell.group_by_cell()
             # cell.neighbour_list.update()
+            cell.neighbour_list.update_required = True
 
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
@@ -199,7 +202,38 @@ class BaseMDSimulation(object):
 
         self._kinetic_energy_lib = None
 
+    def _get_max_moved_distance(self):
+        """
+        Get the maxium distance moved by a particle. First call will always be incorrect
+        :return:
+        """
 
+        _dt = self.state.time - self._prev_time
+
+        self._prev_time = self.state.time
+
+        if self.state.n > 0:
+            return _dt * self.state.velocities.dat[0:self.state.n:].max()
+        else:
+            return 0.0
+
+    def _determine_update_status(self):
+        """
+        Return true if update of cell list and neighbour list is needed.
+        :return:
+        """
+        self._moved_distance += self._get_max_moved_distance()
+
+        if self._moved_distance >= (self._cell_width - self._cutoff):
+            # print "True", self._moved_distance, (self._cell_width - self._cutoff)
+            cell.neighbour_list.update_required = True
+            return True
+        else:
+            # print "False", self._moved_distance, (self._cell_width - self._cutoff)
+            return False
+
+    def _reset_moved_distance(self):
+        self._moved_distance = 0.0
 
 
     def forces_update(self):
@@ -207,19 +241,22 @@ class BaseMDSimulation(object):
         Updates the forces in the simulation state using the short range potential.
         """
 
+
+
         self.timer.start()
 
         if self._cell_structure:
-            cell.cell_list.sort()
-            # cell.group_by_cell.group_by_cell()
-            pass
+            if self._determine_update_status() or cell.neighbour_list.update_required:
+                cell.cell_list.sort()
 
 
         #TODO: make part of access descriptors.
         if (self._cell_structure is True) and (self.state.domain.halos is not False):
             self.state.positions.halo_exchange()
-            cell.neighbour_list.update_required = True
-            cell.neighbour_list.update()
+
+            if self._determine_update_status() or cell.neighbour_list.update_required:
+                cell.neighbour_list.update()
+                self._reset_moved_distance()
 
         # reset forces
         self.state.forces.set_val(0.)

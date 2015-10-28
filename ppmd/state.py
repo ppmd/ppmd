@@ -5,7 +5,7 @@ import host
 import kernel
 import mpi
 import runtime
-
+import cell
 
 class _AsFunc(object):
     """
@@ -218,7 +218,7 @@ class BaseMDState(object):
         # Compress particle dats.
         self._compress_particle_dats(_send_total - _recv_total)
 
-
+        cell.neighbour_list.update_required = True
 
 
         return True
