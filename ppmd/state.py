@@ -1,11 +1,9 @@
 import ctypes
-import numpy as np
 import build
 import data
 import host
 import kernel
 import mpi
-import pio
 import runtime
 
 

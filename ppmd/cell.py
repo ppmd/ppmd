@@ -405,7 +405,6 @@ class NeighbourList(object):
         """Update tracking of neighbour list. """
 
         self.cell_width = None
-        self.interaction_cutoff = None
         self.max_traveled_distance = 0
         self.time = 0
         self._time_func = None
@@ -420,7 +419,7 @@ class NeighbourList(object):
         self._n = None
 
         self.n_local = None
-        self.n_total = None#
+        self.n_total = None
 
         self._last_n = -1
 
@@ -428,17 +427,16 @@ class NeighbourList(object):
 
         self._return_code = None
 
+        self.update_required = False
 
 
-    def setup(self, n, positions, velocities, domain, cell_width, interaction_cutoff, time_func):
+    def setup(self, n, positions, velocities, domain, cell_width):
 
         # setup the cell list if not done already (also handles domain decomp)
         if self.cell_list.cell_list is None:
             self.cell_list.setup(n, positions, domain, cell_width)
 
         self.cell_width = cell_width
-        self.interaction_cutoff = interaction_cutoff
-        self._time_func = time_func
 
         self.cell_width_squared = host.Array(initial_value=cell_width ** 2, dtype=ct.c_double)
         self._domain = domain
@@ -577,18 +575,8 @@ class NeighbourList(object):
         if self.neighbour_starting_points.ncomp < self._n() + 1:
             self.neighbour_starting_points.realloc(self._n() + 1)
 
-        _max_vel = self._velocities.dat[0:self._n():].max()
-        _time_step = self._time_func() - self.time
 
-        self.max_traveled_distance += _time_step * _max_vel
-
-        self.time = self._time_func()
-
-        # print self.max_traveled_distance, self.cell_width - self.interaction_cutoff
-
-        if (self.max_traveled_distance >= (self.cell_width - self.interaction_cutoff)) or (self._last_n != self._n()):
-
-            cell_list.sort()
+        if self.update_required is True:
 
             if runtime.VERBOSE.level > 2:
                 print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
@@ -612,9 +600,8 @@ class NeighbourList(object):
 
                 self.update(_attempt + 1)
 
-            else:
-                self.version_id += 1
-
+            self.version_id += 1
+            self.update_required = False
             self.max_traveled_distance = 0
 
 

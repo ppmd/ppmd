@@ -124,8 +124,7 @@ class BaseMDSimulation(object):
 
 
         # TODO: initialise elsewhere
-        cell.neighbour_list.setup(self.state.as_func('n'), self.state.positions, self.state.velocities, self.state.domain, self._cell_width, self._cutoff, self.state.as_func('time'))
-
+        cell.neighbour_list.setup(self.state.as_func('n'), self.state.positions, self.state.velocities, self.state.domain, self._cell_width)
 
 
         # Initialise velocities
@@ -147,7 +146,7 @@ class BaseMDSimulation(object):
             # TODO remove these two lines when creating access descriptors.
             cell.cell_list.sort()
             cell.group_by_cell.group_by_cell()
-            cell.neighbour_list.update()
+            # cell.neighbour_list.update()
 
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
@@ -211,7 +210,7 @@ class BaseMDSimulation(object):
         self.timer.start()
 
         if self._cell_structure:
-            # cell.cell_list.sort()
+            cell.cell_list.sort()
             # cell.group_by_cell.group_by_cell()
             pass
 
@@ -219,6 +218,7 @@ class BaseMDSimulation(object):
         #TODO: make part of access descriptors.
         if (self._cell_structure is True) and (self.state.domain.halos is not False):
             self.state.positions.halo_exchange()
+            cell.neighbour_list.update_required = True
             cell.neighbour_list.update()
 
         # reset forces

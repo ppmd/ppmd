@@ -1698,7 +1698,7 @@ class PairLoopNeighbourList(_Base):
 
                     // set halo flag, TODO move all halo flags to be an if condition on particle index?
                     if (_i >= N_LOCAL) { _cp_halo_flag = 1; } else { _cp_halo_flag = 0; }
-                    //if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
+                    if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
 
                      %(KERNEL_ARGUMENT_DECL)s
 

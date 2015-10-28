@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     # 1000 particles in a box
     test_1000 = True
-    
+
     # 2 particles bouncing agasint each other.
     test_2_bounce = False
     
