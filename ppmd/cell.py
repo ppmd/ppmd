@@ -427,8 +427,7 @@ class NeighbourList(object):
 
         self._return_code = None
 
-        self.update_required = False
-
+        self.update_required = True
 
     def setup(self, n, positions, velocities, domain, cell_width):
 
@@ -444,7 +443,7 @@ class NeighbourList(object):
         self._velocities = velocities
         self._n = n
 
-        assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
+        # assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
 
         self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_int)
 
@@ -501,9 +500,7 @@ class NeighbourList(object):
             tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * CA[0] + _h_map[ix][2] * CA[0]* CA[1];
         }
 
-
         // loop over particles
-
         int m = -1;
         for (int ix=0; ix<end_ix; ix++) {
 
@@ -525,7 +522,7 @@ class NeighbourList(object):
                         const double rj1 = P[iy*3+1] - P[ix*3 + 1];
                         const double rj2 = P[iy*3+2] - P[ix*3 + 2];
 
-                        if ( (rj0*rj0 + rj1*rj1 + rj2*rj2) < cutoff ) {
+                        if ( (rj0*rj0 + rj1*rj1 + rj2*rj2) <= cutoff ) {
                             m++;
                             if (m < max_len){
                                 NEIGHBOUR_LIST[m] = iy;
@@ -565,19 +562,18 @@ class NeighbourList(object):
         _kernel = kernel.Kernel('cell_neighbour_list_method', _code, headers=['stdio.h'], static_args=_static_args)
         self._neighbour_lib = build.SharedLib(_kernel, _dat_dict)
 
-
+    def trigger_update_required(self):
+        self.update_required = True
 
     def update(self, _attempt=1):
 
         assert self.max_len is not None and self.list is not None and self._neighbour_lib is not None, "Neighbourlist setup not ran, or failed."
 
 
-        if self.neighbour_starting_points.ncomp < self._n() + 1:
-            self.neighbour_starting_points.realloc(self._n() + 1)
 
         if self.update_required is True:
-
-
+            if self.neighbour_starting_points.ncomp < self._n() + 1:
+                self.neighbour_starting_points.realloc(self._n() + 1)
             if runtime.VERBOSE.level > 2:
                 print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
 

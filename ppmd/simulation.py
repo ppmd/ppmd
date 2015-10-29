@@ -77,7 +77,8 @@ class BaseMDSimulation(object):
 
 
         # Add typed dats.
-        self.state.mass = data.TypedDat(n, 1, 1.0)
+        self.state.mass = data.TypedDat(1, n)
+
 
         # Add scalar dats.
         # Potential energy.
@@ -131,6 +132,11 @@ class BaseMDSimulation(object):
         if particle_vel_init is not None:
             particle_vel_init.reset(self.state)
 
+        # Init masses
+        if particle_mass_init is not None:
+            particle_mass_init.reset(self.state)
+
+
         # Set state time to 0
         self.state.time = 0.0
         self._prev_time = 0.0
@@ -149,7 +155,7 @@ class BaseMDSimulation(object):
             cell.cell_list.sort()
             cell.group_by_cell.group_by_cell()
             # cell.neighbour_list.update()
-            cell.neighbour_list.update_required = True
+            cell.neighbour_list.trigger_update_required()
 
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
@@ -163,7 +169,7 @@ class BaseMDSimulation(object):
                                                                                dat_dict=_potential_dat_dict)
                 '''
 
-                self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
+                self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
 
 
@@ -224,9 +230,9 @@ class BaseMDSimulation(object):
         """
         self._moved_distance += self._get_max_moved_distance()
 
-        if self._moved_distance >= (self._cell_width - self._cutoff):
+        if self._moved_distance >= 0.5 * (self._cell_width - self._cutoff):
             # print "True", self._moved_distance, (self._cell_width - self._cutoff)
-            cell.neighbour_list.update_required = True
+            cell.neighbour_list.trigger_update_required()
             return True
         else:
             # print "False", self._moved_distance, (self._cell_width - self._cutoff)
@@ -240,22 +246,26 @@ class BaseMDSimulation(object):
         """
         Updates the forces in the simulation state using the short range potential.
         """
-
-
-
         self.timer.start()
 
-        if self._cell_structure:
-            if self._determine_update_status() or cell.neighbour_list.update_required:
-                cell.cell_list.sort()
+        # cell.neighbour_list.trigger_update_required()
+        self._determine_update_status()
 
+        if self._cell_structure:
+            print cell.neighbour_list.update_required
+            if cell.neighbour_list.update_required:
+                cell.cell_list.sort()
+                cell.neighbour_list.update_required = False
+                self._reset_moved_distance()
 
         #TODO: make part of access descriptors.
         if (self._cell_structure is True) and (self.state.domain.halos is not False):
             self.state.positions.halo_exchange()
 
-            if self._determine_update_status() or cell.neighbour_list.update_required:
-                cell.neighbour_list.update()
+            # cell.neighbour_list.update_required = True
+
+            if cell.neighbour_list.update_required:
+                #cell.neighbour_list.update()
                 self._reset_moved_distance()
 
         # reset forces
@@ -943,8 +953,9 @@ class MassInitTwoAlternating(object):
         for ix in range(state.n):
             mass_input[ix] = self._m[(state.global_ids[ix] % 2)]
         '''
-        state.masses[0] = self._m[0]
-        state.masses[1] = self._m[1]
+
+        state.mass[0,0] = self._m[0]
+        state.mass[0,1] = self._m[1]
 
         for ix in range(state.n):
             state.types[ix] = state.global_ids[ix] % 2
@@ -971,7 +982,7 @@ class MassInitIdentical(object):
 
         :arg Dat mass_input: Dat container with masses.
         """
-        state.masses[0] = self._m
+        state.mass[0] = self._m
 
         for ix in range(state.n):
             state.types[ix] = 0

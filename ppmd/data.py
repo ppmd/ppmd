@@ -703,7 +703,11 @@ class TypedDat(host.Matrix):
 
         return self, mode
 
+    def __getitem__(self, ix):
+        return self.dat[ix]
 
+    def __setitem__(self, ix, val):
+        self.dat[ix] = val
 
 
 

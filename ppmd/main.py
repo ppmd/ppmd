@@ -70,7 +70,7 @@ if __name__ == '__main__':
         nsig = 5.0
         
         # Initialise basic domain
-        test_domain = domain.BaseDomainHalo()
+        test_domain = domain.BaseDomain()
 
         # Initialise LJ potential
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
         # Set alternating masses for particles.
         
-        test_mass_init = simulation.MassInitTwoAlternating(100., 5.)
+        test_mass_init = simulation.MassInitTwoAlternating(1., 2.)
         
     if t_1_particle:
         

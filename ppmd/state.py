@@ -136,6 +136,7 @@ class BaseMDState(object):
             _dat.npart = int(value)
             _dat.halo_start_reset()
             #_dat.halo_start_set(int(value))
+            cell.neighbour_list.trigger_update_required()
 
     def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None, shifts=None):
         """
@@ -156,6 +157,7 @@ class BaseMDState(object):
             self._move_send_buffer = host.Array(ncomp=self._total_ncomp * _send_total, dtype=ctypes.c_double)
         elif self._move_send_buffer.ncomp < self._total_ncomp * _send_total:
             self._move_send_buffer.realloc(self._total_ncomp * _send_total)
+
 
         #Make recv sizes array.
         if self._move_dir_recv_totals is None:
@@ -178,8 +180,6 @@ class BaseMDState(object):
             self._move_empty_slots = host.Array(ncomp=_send_total, dtype=ctypes.c_int)
         elif self._move_empty_slots.ncomp < _send_total:
             self._move_empty_slots.realloc(_send_total)
-
-
 
         #pack particles to send.
 
@@ -218,7 +218,8 @@ class BaseMDState(object):
         # Compress particle dats.
         self._compress_particle_dats(_send_total - _recv_total)
 
-        cell.neighbour_list.update_required = True
+        if _send_total > 0 or _recv_total > 0:
+            cell.neighbour_list.trigger_update_required()
 
 
         return True
