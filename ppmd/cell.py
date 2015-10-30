@@ -569,8 +569,6 @@ class NeighbourList(object):
 
         assert self.max_len is not None and self.list is not None and self._neighbour_lib is not None, "Neighbourlist setup not ran, or failed."
 
-
-
         if self.update_required is True:
             if self.neighbour_starting_points.ncomp < self._n() + 1:
                 self.neighbour_starting_points.realloc(self._n() + 1)

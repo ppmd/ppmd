@@ -648,7 +648,7 @@ class ParticleDat(host.Matrix):
                 self.halo_start_shift(_shift / self.ncomp)
 
         # SEND END -------------------------------------------------------------------------------------------
-        if self.name == 'positions':
+        if (self.name == 'positions') and cell.neighbour_list.update_required:
             cell.cell_list.sort_halo_cells(_halo_cell_groups, self._cell_contents_recv, self.npart)
 
 

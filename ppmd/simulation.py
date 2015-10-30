@@ -61,14 +61,14 @@ class BaseMDSimulation(object):
         else:
             self._cutoff = cutoff
 
-        self._cell_width = 1.2 * self._cutoff
+        self._cell_width = 1.1 * self._cutoff
 
 
         self._boundary_method = domain_boundary_condition
         self._boundary_method.set_state(self.state)
 
         # Add particle dats
-        _factor = 27
+        _factor = 1.5
         self.state.positions = data.ParticleDat(n, 3, name='positions', max_npart=_factor * n)
         self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
         self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
@@ -139,8 +139,11 @@ class BaseMDSimulation(object):
 
         # Set state time to 0
         self.state.time = 0.0
+        """Time of the state."""
+
         self._prev_time = 0.0
-        self._moved_distance= 0.0
+        self._moved_distance = 0.0
+        self._update_step_counter = -1
 
         # short range potential data dict init
         if self.potential is not None:
@@ -169,7 +172,7 @@ class BaseMDSimulation(object):
                                                                                dat_dict=_potential_dat_dict)
                 '''
 
-                self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
+                self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
 
 
@@ -218,6 +221,8 @@ class BaseMDSimulation(object):
 
         self._prev_time = self.state.time
 
+        self._update_step_counter += 1
+
         if self.state.n > 0:
             return _dt * self.state.velocities.dat[0:self.state.n:].max()
         else:
@@ -230,7 +235,7 @@ class BaseMDSimulation(object):
         """
         self._moved_distance += self._get_max_moved_distance()
 
-        if self._moved_distance >= 0.5 * (self._cell_width - self._cutoff):
+        if (self._moved_distance >= 0.5 * (self._cell_width - self._cutoff)) or (self._update_step_counter >= 10):
             # print "True", self._moved_distance, (self._cell_width - self._cutoff)
             cell.neighbour_list.trigger_update_required()
             return True
@@ -240,6 +245,7 @@ class BaseMDSimulation(object):
 
     def _reset_moved_distance(self):
         self._moved_distance = 0.0
+        self._update_step_counter = 0
 
 
     def forces_update(self):
@@ -252,10 +258,10 @@ class BaseMDSimulation(object):
         self._determine_update_status()
 
         if self._cell_structure:
-            print cell.neighbour_list.update_required
+            # print cell.neighbour_list.update_required
             if cell.neighbour_list.update_required:
                 cell.cell_list.sort()
-                cell.neighbour_list.update_required = False
+                cell.neighbour_list.update_required = True
                 self._reset_moved_distance()
 
         #TODO: make part of access descriptors.
@@ -265,7 +271,7 @@ class BaseMDSimulation(object):
             # cell.neighbour_list.update_required = True
 
             if cell.neighbour_list.update_required:
-                #cell.neighbour_list.update()
+                cell.neighbour_list.update()
                 self._reset_moved_distance()
 
         # reset forces
