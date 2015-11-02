@@ -43,9 +43,13 @@ class CellList(object):
 
         self.halos_exist = False
 
-        self.version_id = 0
-        """version id, incremented when the list is updated."""
+        self.update_required = True
 
+        self.version_id = 0
+        """Version id, incremented when the list is updated."""
+
+        self.halo_version_id = 0
+        """halo version id incremented when halo cell list is updated."""
 
     def setup(self, n, positions, domain, cell_width):
         """
@@ -122,6 +126,13 @@ class CellList(object):
         _cell_sort_kernel = kernel.Kernel('cell_class_cell_list_method', _cell_sort_code, headers=['stdio.h'], static_args=_static_args)
         self._cell_sort_lib = build.SharedLib(_cell_sort_kernel, _dat_dict)
 
+    def trigger_update(self):
+        """
+        Trigger an update of the cell list.
+        """
+        self.update_required = True
+
+
     def sort(self):
         """
         Sort local particles into cell list.
@@ -136,7 +147,7 @@ class CellList(object):
         self._cell_sort_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
 
         self.version_id += 1
-
+        self.update_required = False
 
     @property
     def cell_list(self):
@@ -237,6 +248,7 @@ class CellList(object):
         self._halo_cell_sort_loop.execute(static_args=_cell_sort_static_args,
                                           dat_dict=_cell_sort_dict)
 
+        self.halo_version_id += 1
 
 # default cell list
 cell_list = CellList()
@@ -405,7 +417,6 @@ class NeighbourList(object):
         """Update tracking of neighbour list. """
 
         self.cell_width = None
-        self.max_traveled_distance = 0
         self.time = 0
         self._time_func = None
 
@@ -427,7 +438,6 @@ class NeighbourList(object):
 
         self._return_code = None
 
-        self.update_required = True
 
     def setup(self, n, positions, velocities, domain, cell_width):
 
@@ -562,41 +572,36 @@ class NeighbourList(object):
         _kernel = kernel.Kernel('cell_neighbour_list_method', _code, headers=['stdio.h'], static_args=_static_args)
         self._neighbour_lib = build.SharedLib(_kernel, _dat_dict)
 
-    def trigger_update_required(self):
-        self.update_required = True
 
     def update(self, _attempt=1):
 
         assert self.max_len is not None and self.list is not None and self._neighbour_lib is not None, "Neighbourlist setup not ran, or failed."
 
-        if self.update_required is True:
-            if self.neighbour_starting_points.ncomp < self._n() + 1:
-                self.neighbour_starting_points.realloc(self._n() + 1)
+        if self.neighbour_starting_points.ncomp < self._n() + 1:
+            self.neighbour_starting_points.realloc(self._n() + 1)
+        if runtime.VERBOSE.level > 2:
+            print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
+
+
+        _n = cell_list.cell_list.end - self._domain.cell_count
+        self._neighbour_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
+
+        self.n_total = self._positions.npart_total
+        self.n_local = self._n()
+        self._last_n = self._n()
+
+
+        if self._return_code[0] < 0:
             if runtime.VERBOSE.level > 2:
-                print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
+                print "rank:", mpi.MPI_HANDLE.rank, "neighbour list resizing", "old", self.max_len[0], "new", 2*self.max_len[0]
+            self.max_len[0] *= 2
+            self.list.realloc(self.max_len[0])
 
+            assert _attempt < 20, "Tried to create neighbour list too many times."
 
-            _n = cell_list.cell_list.end - self._domain.cell_count
-            self._neighbour_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
+            self.update(_attempt + 1)
 
-            self.n_total = self._positions.npart_total
-            self.n_local = self._n()
-            self._last_n = self._n()
-
-
-            if self._return_code[0] < 0:
-                if runtime.VERBOSE.level > 2:
-                    print "rank:", mpi.MPI_HANDLE.rank, "neighbour list resizing", "old", self.max_len[0], "new", 2*self.max_len[0]
-                self.max_len[0] *= 2
-                self.list.realloc(self.max_len[0])
-
-                assert _attempt < 20, "Tried to create neighbour list too many times."
-
-                self.update(_attempt + 1)
-
-            self.version_id += 1
-            self.update_required = False
-            self.max_traveled_distance = 0
+        self.version_id += 1
 
 
 neighbour_list = NeighbourList()

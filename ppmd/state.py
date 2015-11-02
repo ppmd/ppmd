@@ -5,7 +5,6 @@ import host
 import kernel
 import mpi
 import runtime
-import cell
 
 class _AsFunc(object):
     """
@@ -45,6 +44,9 @@ class BaseMDState(object):
         self.uncompressed_n = False
 
         # move vars.
+
+        self.invalidate_lists = False
+        """If true, all cell lists/ neighbour lists should be rebuilt."""
 
         self._move_dir_recv_totals = None
         self._move_dir_send_totals = None
@@ -136,7 +138,7 @@ class BaseMDState(object):
             _dat.npart = int(value)
             _dat.halo_start_reset()
             #_dat.halo_start_set(int(value))
-            cell.neighbour_list.trigger_update_required()
+            self.invalidate_lists = True
 
     def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None, shifts=None):
         """
@@ -219,7 +221,7 @@ class BaseMDState(object):
         self._compress_particle_dats(_send_total - _recv_total)
 
         if _send_total > 0 or _recv_total > 0:
-            cell.neighbour_list.trigger_update_required()
+            self.invalidate_lists = True
 
 
         return True

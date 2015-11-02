@@ -157,8 +157,7 @@ class BaseMDSimulation(object):
             # TODO remove these two lines when creating access descriptors.
             cell.cell_list.sort()
             cell.group_by_cell.group_by_cell()
-            # cell.neighbour_list.update()
-            cell.neighbour_list.trigger_update_required()
+            cell.cell_list.trigger_update()
 
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
@@ -235,9 +234,10 @@ class BaseMDSimulation(object):
         """
         self._moved_distance += self._get_max_moved_distance()
 
-        if (self._moved_distance >= 0.5 * (self._cell_width - self._cutoff)) or (self._update_step_counter >= 10):
-            # print "True", self._moved_distance, (self._cell_width - self._cutoff)
-            cell.neighbour_list.trigger_update_required()
+        if (self._moved_distance >= 0.5 * (self._cell_width - self._cutoff)) or \
+                (self._update_step_counter >= 10) or \
+                cell.cell_list.update_required or \
+                self.state.invalidate_lists:
             return True
         else:
             # print "False", self._moved_distance, (self._cell_width - self._cutoff)
@@ -246,7 +246,7 @@ class BaseMDSimulation(object):
     def _reset_moved_distance(self):
         self._moved_distance = 0.0
         self._update_step_counter = 0
-
+        self.state.invalidate_lists = False
 
     def forces_update(self):
         """
@@ -254,14 +254,10 @@ class BaseMDSimulation(object):
         """
         self.timer.start()
 
-        # cell.neighbour_list.trigger_update_required()
-        self._determine_update_status()
 
         if self._cell_structure:
-            # print cell.neighbour_list.update_required
-            if cell.neighbour_list.update_required:
+            if self._determine_update_status():
                 cell.cell_list.sort()
-                cell.neighbour_list.update_required = True
                 self._reset_moved_distance()
 
         #TODO: make part of access descriptors.
@@ -270,9 +266,8 @@ class BaseMDSimulation(object):
 
             # cell.neighbour_list.update_required = True
 
-            if cell.neighbour_list.update_required:
+            if cell.cell_list.version_id > cell.neighbour_list.version_id:
                 cell.neighbour_list.update()
-                self._reset_moved_distance()
 
         # reset forces
         self.state.forces.set_val(0.)
