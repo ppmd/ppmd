@@ -391,9 +391,9 @@ class ParticleDat(host.Matrix):
         """
         Perform a halo exchange for the particle dat. WIP currently only functional for positions.
         """
-
-        self.halo_pack()
-        self._transfer_unpack()
+        if cell.cell_list.halos_exist is True:
+            self.halo_pack()
+            self._transfer_unpack()
 
 
     def _setup_halo_packing(self):

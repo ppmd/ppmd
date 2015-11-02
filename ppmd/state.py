@@ -43,6 +43,11 @@ class BaseMDState(object):
 
         self.uncompressed_n = False
 
+
+        # State time
+        self._time = 0.0
+        self.version_id = 0
+
         # move vars.
 
         self.invalidate_lists = False
@@ -139,6 +144,21 @@ class BaseMDState(object):
             _dat.halo_start_reset()
             #_dat.halo_start_set(int(value))
             self.invalidate_lists = True
+
+    @property
+    def time(self):
+        """
+        Get the state time.
+        """
+        return self._time
+
+    @time.setter
+    def time(self, val):
+        """
+        Set the state time.
+        """
+        self._time = val
+        self.version_id += 1
 
     def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None, shifts=None):
         """

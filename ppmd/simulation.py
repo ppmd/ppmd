@@ -108,6 +108,9 @@ class BaseMDSimulation(object):
         particle_pos_init.get_extent(self.state)
         # Initialise cell list
         self._cell_structure = cell.cell_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cell_width)
+        # Setup callbacks
+        cell.cell_list.setup_update_tracking(self._determine_update_status)
+        cell.cell_list.setup_callback_on_update(self._reset_moved_distance)
 
 
         if type(self.state.domain) is domain.BaseDomainHalo:
@@ -143,7 +146,6 @@ class BaseMDSimulation(object):
 
         self._prev_time = 0.0
         self._moved_distance = 0.0
-        self._update_step_counter = -1
 
         # short range potential data dict init
         if self.potential is not None:
@@ -220,8 +222,6 @@ class BaseMDSimulation(object):
 
         self._prev_time = self.state.time
 
-        self._update_step_counter += 1
-
         if self.state.n > 0:
             return _dt * self.state.velocities.dat[0:self.state.n:].max()
         else:
@@ -235,8 +235,7 @@ class BaseMDSimulation(object):
         self._moved_distance += self._get_max_moved_distance()
 
         if (self._moved_distance >= 0.5 * (self._cell_width - self._cutoff)) or \
-                (self._update_step_counter >= 10) or \
-                cell.cell_list.update_required or \
+                (self._update_step_counter % 10 == 0) or \
                 self.state.invalidate_lists:
             return True
         else:
@@ -254,20 +253,14 @@ class BaseMDSimulation(object):
         """
         self.timer.start()
 
+        # Remove after halo exchange is in access descriptors.
+        cell.cell_list.check()
 
-        if self._cell_structure:
-            if self._determine_update_status():
-                cell.cell_list.sort()
-                self._reset_moved_distance()
 
         #TODO: make part of access descriptors.
-        if (self._cell_structure is True) and (self.state.domain.halos is not False):
-            self.state.positions.halo_exchange()
+        self.state.positions.halo_exchange()
 
-            # cell.neighbour_list.update_required = True
 
-            if cell.cell_list.version_id > cell.neighbour_list.version_id:
-                cell.neighbour_list.update()
 
         # reset forces
         self.state.forces.set_val(0.)

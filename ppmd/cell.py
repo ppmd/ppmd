@@ -51,6 +51,11 @@ class CellList(object):
         self.halo_version_id = 0
         """halo version id incremented when halo cell list is updated."""
 
+        # vars for automatic updating based on a counter
+        self._update_set = False
+        self._update_func = None
+        self._update_func_post = None
+
     def setup(self, n, positions, domain, cell_width):
         """
         Setup the cell list with a set of positions and a domain.
@@ -74,6 +79,43 @@ class CellList(object):
             self.halos_exist = True
 
         return _err
+
+    def setup_update_tracking(self, func):
+        """
+        Setup an automatic cell update.
+        :param func:
+        """
+        self._update_func = func
+        self._update_set = True
+
+    def setup_callback_on_update(self, func):
+        """
+        Setup a function to be ran after the cell list if updated.
+        :param func: Function to run.
+        :return:
+        """
+        self._update_func_post = func
+
+    def _update_tracking(self):
+
+        if self._update_set and self._update_func():
+            return True
+        else:
+            return False
+
+    def check(self):
+        """
+        Check if the cell_list needs updating and update if required.
+        :return:
+        """
+        if (self.update_required is True) or self._update_tracking():
+            self.sort()
+            if self._update_func_post is not None:
+                self._update_func_post()
+
+            return True
+        else:
+            return False
 
     def _cell_sort_setup(self):
         """

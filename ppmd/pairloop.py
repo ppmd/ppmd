@@ -398,7 +398,7 @@ class PairLoopRapaport(_Base):
         """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
-
+        cell.cell_list.check()
         if n is not None:
             _N = n
         else:
@@ -1286,7 +1286,7 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
-
+        cell.cell_list.check()
         '''Allow alternative pointers'''
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
@@ -1527,7 +1527,7 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaport):
         """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
-
+        cell.cell_list.check()
         '''Allow alternative pointers'''
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
@@ -1721,6 +1721,13 @@ class PairLoopNeighbourList(_Base):
         """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
+
+
+        # TODO remeber to uncomment this after moving halo exchange.
+        # cell.cell_list.check()
+        if cell.cell_list.version_id > cell.neighbour_list.version_id:
+                cell.neighbour_list.update()
+
 
         '''Allow alternative pointers'''
         if dat_dict is not None:
