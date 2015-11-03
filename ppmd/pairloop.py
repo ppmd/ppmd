@@ -1532,6 +1532,9 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaport):
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
+        '''Halo exchange'''
+        _halo_exchange_particle_dat(self._particle_dat_dict)
+
         '''Create arg list'''
 
         if n is not None:
@@ -1722,19 +1725,20 @@ class PairLoopNeighbourList(_Base):
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
 
-
-        # TODO remeber to uncomment this after moving halo exchange.
-        # cell.cell_list.check()
-        if cell.cell_list.version_id > cell.neighbour_list.version_id:
-                cell.neighbour_list.update()
-
+        cell.cell_list.check()
 
         '''Allow alternative pointers'''
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
-        '''Create arg list'''
+        '''Halo exchange'''
+        _halo_exchange_particle_dat(self._particle_dat_dict)
 
+        '''Rebuild neighbour list potentially'''
+        if cell.cell_list.version_id > cell.neighbour_list.version_id:
+            cell.neighbour_list.update()
+
+        '''Create arg list'''
         _N_TOTAL = ctypes.c_int(cell.neighbour_list.n_total)
         _N_LOCAL = ctypes.c_int(cell.neighbour_list.n_local)
         _STARTS = cell.neighbour_list.neighbour_starting_points.ctypes_data
@@ -1758,6 +1762,7 @@ class PairLoopNeighbourList(_Base):
             else:
                 args.append(dat_orig.ctypes_data)
 
+
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
 
@@ -1772,6 +1777,24 @@ class PairLoopNeighbourList(_Base):
 
 
 
+def _halo_exchange_particle_dat(dats_in):
+    # loop through passed dats
+    for ix in dats_in.values():
+
+        # dats with existing access descriptors
+        if type(ix) is tuple:
+
+            # check is particle dat
+            if type(ix[0]) is data.ParticleDat:
+
+                # halo exchange if required
+                if (len(ix) == 2) and (ix[1].read is True):
+                    ix[0].halo_exchange()
+                elif (len(ix) > 2) and (ix[1].read is True) and (ix[2] is True):
+                    ix[0].halo_exchange()
+
+        elif type(ix) is data.ParticleDat:
+            ix.halo_exchange()
 
 
 

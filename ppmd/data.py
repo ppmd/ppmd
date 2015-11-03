@@ -321,7 +321,7 @@ class ParticleDat(host.Matrix):
 
     def __call__(self, mode=access.RW, halo=True):
 
-        return self, mode
+        return self, mode, halo
 
     def ctypes_data_access(self, mode=access.RW):
         """

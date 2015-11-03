@@ -173,7 +173,7 @@ class BaseMDSimulation(object):
                                                                                dat_dict=_potential_dat_dict)
                 '''
 
-                self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
+                self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
 
 
@@ -252,15 +252,6 @@ class BaseMDSimulation(object):
         Updates the forces in the simulation state using the short range potential.
         """
         self.timer.start()
-
-        # Remove after halo exchange is in access descriptors.
-        cell.cell_list.check()
-
-
-        #TODO: make part of access descriptors.
-        self.state.positions.halo_exchange()
-
-
 
         # reset forces
         self.state.forces.set_val(0.)
