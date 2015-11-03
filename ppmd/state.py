@@ -98,6 +98,8 @@ class BaseMDState(object):
             object.__setattr__(self, name, value)
             self.particle_dats.append(name)
 
+
+
             # Reset these to ensure that move libs are rebuilt.
             self._move_packing_lib = None
             self._move_send_buffer = None
@@ -198,7 +200,13 @@ class BaseMDState(object):
         elif self._move_recv_buffer.ncomp < self._total_ncomp * _recv_total:
             self._move_recv_buffer.realloc(self._total_ncomp * _recv_total)
 
-        #Empty slots store.
+        for ix in self.particle_dats:
+            _d = getattr(self,ix)
+            if _recv_total + self._n > _d.max_npart:
+                _d.resize(_recv_total + self._n)
+
+
+        # Empty slots store.
         if self._move_empty_slots is None:
             self._move_empty_slots = host.Array(ncomp=_send_total, dtype=ctypes.c_int)
         elif self._move_empty_slots.ncomp < _send_total:

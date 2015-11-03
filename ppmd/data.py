@@ -330,6 +330,7 @@ class ParticleDat(host.Matrix):
         """
         if mode.read:
             if (self._vid_int > self._vid_halo) and cell.cell_list.halos_exist is True:
+                # print "halo exchangeing", self.name
                 self.halo_exchange()
 
                 self._vid_halo = self._vid_int
@@ -611,8 +612,10 @@ class ParticleDat(host.Matrix):
                                          mpi.MPI_HANDLE.rank,
                                          _status)
 
-
-
+            _t_size = self.halo_start + self._cell_contents_recv[_halo_groups_start_end_indices[i]:_halo_groups_start_end_indices[i + 1]:].sum()
+            if _t_size > self.max_npart:
+                # print self.max_npart
+                self.resize(_t_size)
 
             # Exchange data --------------------------------------------------------------------------
             if halo.HALOS.send_ranks[i] > -1 and halo.HALOS.recv_ranks[i] > -1:

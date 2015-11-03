@@ -1541,11 +1541,8 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaport):
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
-        '''Halo exchange'''
-        _halo_exchange_particle_dat(self._particle_dat_dict)
 
         '''Create arg list'''
-
         if n is not None:
             _N = n
         else:
@@ -1741,24 +1738,9 @@ class PairLoopNeighbourList(_Base):
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
-        '''Halo exchange'''
-        _halo_exchange_particle_dat(self._particle_dat_dict)
 
-        '''Rebuild neighbour list potentially'''
-        if cell.cell_list.version_id > cell.neighbour_list.version_id:
-            cell.neighbour_list.update()
 
-        '''Create arg list'''
-        _N_TOTAL = ctypes.c_int(cell.neighbour_list.n_total)
-        _N_LOCAL = ctypes.c_int(cell.neighbour_list.n_local)
-        _STARTS = cell.neighbour_list.neighbour_starting_points.ctypes_data
-        _LIST = cell.neighbour_list.list.ctypes_data
-
-        args = [_N_TOTAL,
-                _N_LOCAL,
-                _STARTS,
-                _LIST]
-
+        args = []
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not passed to loop."
@@ -1772,6 +1754,22 @@ class PairLoopNeighbourList(_Base):
             else:
                 args.append(dat_orig.ctypes_data)
 
+        '''Rebuild neighbour list potentially'''
+        if cell.cell_list.version_id > cell.neighbour_list.version_id:
+            cell.neighbour_list.update()
+
+        '''Create arg list'''
+        _N_TOTAL = ctypes.c_int(cell.neighbour_list.n_total)
+        _N_LOCAL = ctypes.c_int(cell.neighbour_list.n_local)
+        _STARTS = cell.neighbour_list.neighbour_starting_points.ctypes_data
+        _LIST = cell.neighbour_list.list.ctypes_data
+
+        args2 = [_N_TOTAL,
+                 _N_LOCAL,
+                 _STARTS,
+                 _LIST]
+
+        args = args2 + args
 
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
@@ -1786,7 +1784,7 @@ class PairLoopNeighbourList(_Base):
                 dat_orig.ctypes_data_post()
 
 
-
+# Unnecsary workaround
 def _halo_exchange_particle_dat(dats_in):
     # loop through passed dats
     for ix in dats_in.values():
@@ -2017,26 +2015,8 @@ class PairLoopNeighbourListOpenMP(PairLoopNeighbourList):
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
-        '''Halo exchange'''
-        _halo_exchange_particle_dat(self._particle_dat_dict)
 
-        '''Rebuild neighbour list potentially'''
-        if cell.cell_list.version_id > cell.neighbour_list_non_n3.version_id:
-            # print "REBUILDING"
-            cell.neighbour_list_non_n3.update()
-        else:
-            pass
-
-        '''Create arg list'''
-        _N_TOTAL = ctypes.c_int(cell.neighbour_list_non_n3.n_total)
-        _N_LOCAL = ctypes.c_int(cell.neighbour_list_non_n3.n_local)
-        _STARTS = cell.neighbour_list_non_n3.neighbour_starting_points.ctypes_data
-        _LIST = cell.neighbour_list_non_n3.list.ctypes_data
-
-        args = [_N_TOTAL,
-                _N_LOCAL,
-                _STARTS,
-                _LIST]
+        args = []
 
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:
@@ -2050,6 +2030,27 @@ class PairLoopNeighbourListOpenMP(PairLoopNeighbourList):
                 args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
             else:
                 args.append(dat_orig.ctypes_data)
+
+        '''Rebuild neighbour list potentially'''
+        if cell.cell_list.version_id > cell.neighbour_list_non_n3.version_id:
+            # print "REBUILDING"
+            cell.neighbour_list_non_n3.update()
+        else:
+            pass
+
+
+        '''Create arg list'''
+        _N_TOTAL = ctypes.c_int(cell.neighbour_list_non_n3.n_total)
+        _N_LOCAL = ctypes.c_int(cell.neighbour_list_non_n3.n_local)
+        _STARTS = cell.neighbour_list_non_n3.neighbour_starting_points.ctypes_data
+        _LIST = cell.neighbour_list_non_n3.list.ctypes_data
+
+        args2 = [_N_TOTAL,
+                 _N_LOCAL,
+                 _STARTS,
+                 _LIST]
+
+        args = args2 + args
 
 
         '''Execute the kernel over all particle pairs.'''

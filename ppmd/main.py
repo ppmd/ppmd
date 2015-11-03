@@ -2,7 +2,7 @@
 
 import runtime
 # debug level
-runtime.DEBUG.level = 0
+runtime.DEBUG.level = 1
 #verbosity level
 runtime.VERBOSE.level = 3
 #timer level
