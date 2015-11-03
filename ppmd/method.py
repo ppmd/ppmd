@@ -798,12 +798,15 @@ class EnergyStore(object):
         _t = self._state.time
 
         if self._state.n > 0:
+            # print self._state.u[0], self._state.u[1]
+
             _U_tmp = self._state.u.dat[0]/self._state.nt
             _U_tmp += 0.5*self._state.u.dat[1]/self._state.nt
+            _u = _U_tmp
 
             _k = self._state.k[0]/self._state.nt
-            _u = _U_tmp
             _q = _U_tmp+(self._state.k[0])/self._state.nt
+
 
         self._k.append(_k)
         self._u.append(_u)

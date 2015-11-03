@@ -48,6 +48,7 @@ class BaseMDState(object):
         self._time = 0.0
         self.version_id = 0
 
+
         # move vars.
 
         self.invalidate_lists = False

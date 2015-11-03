@@ -2,9 +2,9 @@
 
 import runtime
 # debug level
-runtime.DEBUG.level = 1
+runtime.DEBUG.level = 0
 #verbosity level
-runtime.VERBOSE.level = 2
+runtime.VERBOSE.level = 3
 #timer level
 runtime.TIMER.level = 3
 
@@ -220,7 +220,7 @@ if __name__ == '__main__':
     if mpi.MPI_HANDLE.rank ==0:
         try:
 
-            a=input("PRESS ENTER TO CONTINUE.\n")
+            #a=input("PRESS ENTER TO CONTINUE.\n")
             pass
         except:
             pass

@@ -68,7 +68,7 @@ class BaseMDSimulation(object):
         self._boundary_method.set_state(self.state)
 
         # Add particle dats
-        _factor = 1.5
+        _factor = 20
         self.state.positions = data.ParticleDat(n, 3, name='positions', max_npart=_factor * n)
         self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
         self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
@@ -128,8 +128,8 @@ class BaseMDSimulation(object):
 
 
         # TODO: initialise elsewhere
-        cell.neighbour_list.setup(self.state.as_func('n'), self.state.positions, self.state.velocities, self.state.domain, self._cell_width)
-
+        cell.neighbour_list_non_n3.setup(self.state.as_func('n'), self.state.positions, self.state.velocities, self.state.domain, self._cell_width)
+        # cell.neighbour_list.setup(self.state.as_func('n'), self.state.positions, self.state.velocities, self.state.domain, self._cell_width)
 
         # Initialise velocities
         if particle_vel_init is not None:
@@ -167,13 +167,13 @@ class BaseMDSimulation(object):
                 self._forces_update_lib = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
                                                                         potential=self.potential,
                                                                         dat_dict=_potential_dat_dict)
-                '''
-                self._forces_update_lib = pairloop.PairLoopRapaportHaloOpenMP(domain=self.state.domain,
+
+                self._forces_update_lib2 = pairloop.PairLoopRapaportHaloOpenMP(domain=self.state.domain,
                                                                                potential=self.potential,
                                                                                dat_dict=_potential_dat_dict)
-                '''
 
-                self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
+
+                self._forces_update_lib = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
 
 
@@ -234,8 +234,11 @@ class BaseMDSimulation(object):
         """
         self._moved_distance += self._get_max_moved_distance()
 
+        if self._moved_distance >= 0.5 * (self._cell_width - self._cutoff):
+            print "WARNING PARTICLE MOVED TOO FAR, rank:", mpi.MPI_HANDLE.rank
+
         if (self._moved_distance >= 0.5 * (self._cell_width - self._cutoff)) or \
-                (self._update_step_counter % 10 == 0) or \
+                (self.state.version_id % 10 == 0) or \
                 self.state.invalidate_lists:
             return True
         else:
@@ -244,7 +247,6 @@ class BaseMDSimulation(object):
 
     def _reset_moved_distance(self):
         self._moved_distance = 0.0
-        self._update_step_counter = 0
         self.state.invalidate_lists = False
 
     def forces_update(self):

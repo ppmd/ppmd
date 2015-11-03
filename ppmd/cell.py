@@ -108,11 +108,11 @@ class CellList(object):
         Check if the cell_list needs updating and update if required.
         :return:
         """
+
         if (self.update_required is True) or self._update_tracking():
             self.sort()
             if self._update_func_post is not None:
                 self._update_func_post()
-
             return True
         else:
             return False
@@ -292,6 +292,13 @@ class CellList(object):
 
         self.halo_version_id += 1
 
+    @property
+    def num_particles(self):
+        """
+        Get the number of particles in the cell list
+        """
+        return self._n()
+
 # default cell list
 cell_list = CellList()
 
@@ -443,7 +450,7 @@ group_by_cell = GroupByCell()
 
 
 ################################################################################################################
-# NeighbourList definition
+# NeighbourList definition 14 cell version
 ################################################################################################################
 
 
@@ -621,7 +628,7 @@ class NeighbourList(object):
 
         if self.neighbour_starting_points.ncomp < self._n() + 1:
             self.neighbour_starting_points.realloc(self._n() + 1)
-        if runtime.VERBOSE.level > 2:
+        if runtime.VERBOSE.level > 3:
             print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
 
 
@@ -647,11 +654,182 @@ class NeighbourList(object):
 
 
 neighbour_list = NeighbourList()
-"""Defaul/test neighbour list"""
+"""Default/test neighbour list"""
+
+################################################################################################################
+# NeighbourList definition 27 cell version
+################################################################################################################
+
+class NeighbourListNonN3(NeighbourList):
 
 
+    def setup(self, n, positions, velocities, domain, cell_width):
+
+        # setup the cell list if not done already (also handles domain decomp)
+        if self.cell_list.cell_list is None:
+            self.cell_list.setup(n, positions, domain, cell_width)
+
+        self.cell_width = cell_width
+
+        self.cell_width_squared = host.Array(initial_value=cell_width ** 2, dtype=ct.c_double)
+        self._domain = domain
+        self._positions = positions
+        self._velocities = velocities
+        self._n = n
+
+        # assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
+
+        self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_int)
+
+        _initial_factor = math.ceil(27. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
 
 
+        self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_int)
+
+        self.list = host.Array(ncomp=_initial_factor, dtype=ct.c_int)
+
+
+        self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
+        self._return_code.dat[0] = -1
+
+        _code = '''
+
+        const double cutoff = CUTOFF[0];
+        const int max_len = MAX_LEN[0];
+
+        const int _h_map[27][3] = {
+                                            {-1,1,-1},
+                                            {-1,-1,-1},
+                                            {-1,0,-1},
+                                            {0,1,-1},
+                                            {0,-1,-1},
+                                            {0,0,-1},
+                                            {1,0,-1},
+                                            {1,1,-1},
+                                            {1,-1,-1},
+
+                                            {-1,1,0},
+                                            {-1,0,0},
+                                            {-1,-1,0},
+                                            {0,-1,0},
+                                            {0,0,0},
+                                            {0,1,0},
+                                            {1,0,0},
+                                            {1,1,0},
+                                            {1,-1,0},
+
+                                            {-1,0,1},
+                                            {-1,1,1},
+                                            {-1,-1,1},
+                                            {0,0,1},
+                                            {0,1,1},
+                                            {0,-1,1},
+                                            {1,0,1},
+                                            {1,1,1},
+                                            {1,-1,1}
+                                        };
+
+        int tmp_offset[27];
+        for(int ix=0; ix<27; ix++){
+            tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * CA[0] + _h_map[ix][2] * CA[0]* CA[1];
+        }
+
+        // loop over particles
+        int m = -1;
+        for (int ix=0; ix<end_ix; ix++) {
+
+            const int C0 = (int)((P[ix*3]     - B[0])/CEL[0]);
+            const int C1 = (int)((P[ix*3 + 1] - B[2])/CEL[1]);
+            const int C2 = (int)((P[ix*3 + 2] - B[4])/CEL[2]);
+
+            const int val = (C2*CA[1] + C1)*CA[0] + C0;
+
+            NEIGHBOUR_STARTS[ix] = m + 1;
+
+            for(int k = 0; k < 27; k++){
+
+                int iy = q[n + val + tmp_offset[k]];
+                while (iy > -1) {
+                    if (ix != iy){
+
+                        const double rj0 = P[iy*3] - P[ix*3];
+                        const double rj1 = P[iy*3+1] - P[ix*3 + 1];
+                        const double rj2 = P[iy*3+2] - P[ix*3 + 2];
+
+                        if ( (rj0*rj0 + rj1*rj1 + rj2*rj2) <= cutoff ) {
+                            m++;
+                            if (m < max_len){
+                                NEIGHBOUR_LIST[m] = iy;
+                            } else {
+                                RC[0] = -1;
+                                return;
+                            }
+                        }
+
+                    }
+
+                    iy = q[iy];
+                }
+
+            }
+        }
+        NEIGHBOUR_STARTS[end_ix] = m + 1;
+
+        RC[0] = 0;
+        return;
+        '''
+        _dat_dict = {'B': self._domain.boundary_outer,        # Outer boundary on local domain (inc halo cells)
+                     'P': self._positions,                    # positions
+                     'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
+                     'CA': self._domain.cell_array,           # local domain cell array
+                     'q': self.cell_list.cell_list,           # cell list
+                     'CUTOFF': self.cell_width_squared,
+                     'NEIGHBOUR_STARTS': self.neighbour_starting_points,
+                     'NEIGHBOUR_LIST': self.list,
+                     'MAX_LEN': self.max_len,
+                     'RC': self._return_code}
+
+        _static_args = {'end_ix': ct.c_int,  # Number of particles.
+                        'n': ct.c_int}       # start of cell point in list.
+
+
+        _kernel = kernel.Kernel('cell_neighbour_list_method', _code, headers=['stdio.h'], static_args=_static_args)
+        self._neighbour_lib = build.SharedLib(_kernel, _dat_dict)
+
+
+    def update(self, _attempt=1):
+
+        assert self.max_len is not None and self.list is not None and self._neighbour_lib is not None, "Neighbourlist setup not ran, or failed."
+
+        if self.neighbour_starting_points.ncomp < self._n() + 1:
+            self.neighbour_starting_points.realloc(self._n() + 1)
+        if runtime.VERBOSE.level > 3:
+            print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
+
+
+        _n = cell_list.cell_list.end - self._domain.cell_count
+        self._neighbour_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
+
+        self.n_total = self._positions.npart_total
+        self.n_local = self._n()
+        self._last_n = self._n()
+
+
+        if self._return_code[0] < 0:
+            if runtime.VERBOSE.level > 2:
+                print "rank:", mpi.MPI_HANDLE.rank, "neighbour list resizing", "old", self.max_len[0], "new", 2*self.max_len[0]
+            self.max_len[0] *= 2
+            self.list.realloc(self.max_len[0])
+
+            assert _attempt < 20, "Tried to create neighbour list too many times."
+
+            self.update(_attempt + 1)
+
+        self.version_id += 1
+
+
+neighbour_list_non_n3 = NeighbourListNonN3()
+"""Default/test neighbour list"""
 
 
 
