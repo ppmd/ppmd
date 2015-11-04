@@ -70,8 +70,9 @@ class BaseMDState(object):
         self._move_ncomp = None
         self._total_ncomp = None
 
+        # Timers
         self.move_timer = runtime.Timer(runtime.TIMER, 0)
-        self.move_timer2 = runtime.Timer(runtime.TIMER, 0)
+        self.compress_timer = runtime.Timer(runtime.TIMER, 0)
 
         self._status = mpi.Status()
 
@@ -80,7 +81,7 @@ class BaseMDState(object):
         self._compressing_n_new = None
         self._compressing_dyn_args = None
 
-        self.compress_timer = runtime.Timer(runtime.TIMER, 0)
+
 
 
     def __setattr__(self, name, value):
@@ -97,7 +98,6 @@ class BaseMDState(object):
         if type(value) is data.ParticleDat:
             object.__setattr__(self, name, value)
             self.particle_dats.append(name)
-
 
 
             # Reset these to ensure that move libs are rebuilt.
@@ -171,6 +171,8 @@ class BaseMDState(object):
         :arg host.Array dir_send_totals(int): 26 Element array of number of particles traveling in each direction.
         :arg host.Array shifts(double): 73 element array of the shifts to apply when moving particles for the 26 directions.
         """
+
+        self.move_timer.start()
 
         if self._move_packing_lib is None:
             self._move_build_packing_lib()
@@ -251,6 +253,8 @@ class BaseMDState(object):
 
         if _send_total > 0 or _recv_total > 0:
             self.invalidate_lists = True
+
+        self.move_timer.pause()
 
 
         return True
@@ -465,14 +469,13 @@ class BaseMDState(object):
 
         # make packing library
         self._move_packing_shift_lib = build.SharedLib(_packing_kernel_shift, self._packing_args_shift)
-
+        self._move_packing_lib = True
 
 
     def _compress_particle_dats(self, num_slots_to_fill):
         """
         Compress the particle dats held in the state. Compressing removes empty rows.
         """
-
 
         self._compressing_n_new = host.Array([0], dtype=ctypes.c_int)
         #self._compressing_slots = host.Array(self._move_empty_slots, dtype=ctypes.c_int)
@@ -588,7 +591,6 @@ class BaseMDState(object):
             self.compressed = True
             # self._move_empty_slots = []
             self.compress_timer.pause()
-
 
 
 

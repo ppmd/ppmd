@@ -1,6 +1,27 @@
 import hashlib
 import re
 
+def analyse(kernel_in=None, dat_dict=None):
+    """
+    :arg kernel kernel_in: Kernel to analyse.
+    :arg list dat_dict: List of variables which should be assumed are in global memory.
+    :returns: Dict of operations and their estimated number of occurences.
+    """
+    assert kernel_in is not None, "kernel.analyse error: No kernel passed"
+    assert dat_dict is not None, "kernel.analsyse error: No symbols passed to use for global memory"
+    
+    _code = kernel_in.code
+
+    print _code
+    
+    _ops_lookup = ['+', '-', '*', '/']
+    _ops_obs = dict((op, 0) for op in _ops_lookup)
+    
+    for c in _code:
+        if c in _ops_lookup:
+            _ops_obs[c] += 1
+
+    return _ops_obs
 
 class Kernel(object):
     """Computational kernel, i.e. C-code + numerical constants.

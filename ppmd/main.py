@@ -7,9 +7,15 @@ runtime.DEBUG.level = 1
 runtime.VERBOSE.level = 3
 #timer level
 runtime.TIMER.level = 3
+#build timer level
+runtime.BUILD_TIMER.level = 3
+
+
+
 
 #cuda on/off
 runtime.CUDA_ENABLED.flag = True
+
 
 
 import mpi
@@ -24,7 +30,7 @@ import gpucuda
 import os
 import simulation
 import halo
-
+import kernel
 
 
 if __name__ == '__main__':
@@ -75,6 +81,9 @@ if __name__ == '__main__':
         # Initialise LJ potential
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
         
+        # print kernel.analyse(test_potential.kernel, [])
+
+
         # Place n particles in a lattice with given density.
         # test_pos_init = state.PosInitLatticeNRho(n, rho, None)
         test_pos_init = simulation.PosInitLatticeNRhoRand(N,rho,0.,None)
@@ -196,12 +205,9 @@ if __name__ == '__main__':
     test_integrator.integrate(dt=dt, t=t)
 
     sim1.state.move_timer.stop("move total time")
-    sim1.state.move_timer2.stop("move timer 2")
     sim1.state.compress_timer.stop("compress time")
 
 
-    if test_domain.halos is not False:
-        halo.HALOS.timer.time("Total time in halo exchange.")
     sim1.timer.time("Total time in forces update.")
     sim1.cpu_forces_timer.time("Total time cpu forces update.")
     if gpucuda.INIT_STATUS():

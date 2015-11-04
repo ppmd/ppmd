@@ -484,6 +484,16 @@ class SharedLib(GenericToolChain):
 
     def __init__(self, kernel, particle_dat_dict):
 
+        # Timers
+        self.creation_timer = runtime.Timer(runtime.BUILD_TIMER, 2, start=True)
+        """Timer that times the creation of the shared library if runtime.BUILD_TIMER.level > 2"""
+
+        self.execute_timer = runtime.Timer(runtime.BUILD_TIMER, 2, start=False)
+        """Timer that times the execution time of the shared library if runtime.BUILD_TIMER.level > 2"""
+
+        self.execute_overhead_timer = runtime.Timer(runtime.BUILD_TIMER, 2, start=False)
+        """Times the overhead required before the shared library is ran if runtime.BUILD_TIMER.level > 2. """
+
         self._compiler_set()
         self._temp_dir = runtime.BUILD_DIR.dir
         if not os.path.exists(self._temp_dir):
@@ -509,6 +519,8 @@ class SharedLib(GenericToolChain):
             self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
         except:
             load_library_exception(self._kernel.name, self._unique_name, type(self))
+
+        self.creation_timer.stop("SharedLib creation timer " + str(self._kernel.name))
 
     def _compiler_set(self):
         self._cc = TMPCC
@@ -570,6 +582,9 @@ class SharedLib(GenericToolChain):
         return code % d
 
     def execute(self, dat_dict=None, static_args=None):
+        # Timing block 1
+        self.execute_overhead_timer.start()
+
 
         """Allow alternative pointers"""
         if dat_dict is not None:
@@ -597,7 +612,15 @@ class SharedLib(GenericToolChain):
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
 
+        # Timing block 2
+        self.execute_overhead_timer.pause()
+        self.execute_timer.start()
+
         return_code = method(*args)
+
+        # Timing block 3
+        self.execute_timer.pause()
+        self.execute_overhead_timer.start()
 
         '''afterwards access descriptors'''
         for dat_orig in self._particle_dat_dict.values():
@@ -605,6 +628,9 @@ class SharedLib(GenericToolChain):
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
                 dat_orig.ctypes_data_post()
+
+        # Timing block 4
+        self.execute_overhead_timer.pause()
 
         return return_code
 
