@@ -482,7 +482,7 @@ class SharedLib(GenericToolChain):
     :arg bool runtime.DEBUG: Flag to enable runtime.DEBUG flags.
     """
 
-    def __init__(self, kernel, particle_dat_dict):
+    def __init__(self, kernel, particle_dat_dict, openmp=False):
 
         # Timers
         self.creation_timer = runtime.Timer(runtime.BUILD_TIMER, 2, start=True)
@@ -493,6 +493,8 @@ class SharedLib(GenericToolChain):
 
         self.execute_overhead_timer = runtime.Timer(runtime.BUILD_TIMER, 2, start=False)
         """Times the overhead required before the shared library is ran if runtime.BUILD_TIMER.level > 2. """
+
+        self._omp = openmp
 
         self._compiler_set()
         self._temp_dir = runtime.BUILD_DIR.dir
@@ -523,7 +525,10 @@ class SharedLib(GenericToolChain):
         self.creation_timer.stop("SharedLib creation timer " + str(self._kernel.name))
 
     def _compiler_set(self):
-        self._cc = TMPCC
+        if self._omp is False:
+            self._cc = TMPCC
+        else:
+            self._cc = TMPCC_OpenMP
 
     def _kernel_argument_declarations(self):
         """Define and declare the kernel arguments.
@@ -602,6 +607,7 @@ class SharedLib(GenericToolChain):
             for dat in static_args.values():
                 args.append(dat)
 
+
         '''Add pointer arguments to launch command'''
         for dat_orig in self._particle_dat_dict.values():
             if type(dat_orig) is tuple:
@@ -609,12 +615,14 @@ class SharedLib(GenericToolChain):
             else:
                 args.append(dat_orig.ctypes_data)
 
+
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
 
         # Timing block 2
         self.execute_overhead_timer.pause()
         self.execute_timer.start()
+
 
         return_code = method(*args)
 
@@ -628,9 +636,9 @@ class SharedLib(GenericToolChain):
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
                 dat_orig.ctypes_data_post()
-
         # Timing block 4
         self.execute_overhead_timer.pause()
+
 
         return return_code
 

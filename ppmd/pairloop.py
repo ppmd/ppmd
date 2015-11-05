@@ -2075,4 +2075,74 @@ class PairLoopNeighbourListOpenMP(PairLoopNeighbourList):
 
 
 
+################################################################################################################
+# Layer based 1
+################################################################################################################
 
+class PairLoopNeighbourListLayersHybrid(_Base):
+
+    def _compiler_set(self):
+        if self._omp is True:
+            self._cc = build.TMPCC_OpenMP
+        else:
+            self._cc = build.TMPCC
+
+    def __init__(self, potential=None, dat_dict=None, kernel=None, openmp=False):
+
+        self._potential = potential
+        self._particle_dat_dict = dat_dict
+
+        self._omp = openmp
+        self._compiler_set()
+
+        ##########
+        # End of Rapaport initialisations.
+        ##########
+
+        self._temp_dir = runtime.BUILD_DIR.dir
+        if not os.path.exists(self._temp_dir):
+            os.mkdir(self._temp_dir)
+
+        if potential is not None:
+            self._kernel = self._potential.kernel
+        elif kernel is not None:
+            self._kernel = kernel
+        else:
+            print "pairloop error, no kernel passed."
+
+
+        self._nargs = len(self._particle_dat_dict)
+
+        # Init code
+        self._kernel_code = self._kernel.code
+
+        '''
+        self._code_init()
+
+        self._unique_name = self._unique_name_calc()
+
+        self._library_filename = self._unique_name + '.so'
+
+        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
+            if mpi.MPI_HANDLE is None:
+                self._create_library()
+            else:
+                if mpi.MPI_HANDLE.rank == 0:
+                    self._create_library()
+                mpi.MPI_HANDLE.barrier()
+
+        try:
+            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        except OSError as e:
+            raise OSError(e)
+        except:
+            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
+
+        '''
+
+        self.layer_method = cell.CellLayerSort()
+        self.layer_method.setup(cell.cell_list, self._omp)
+
+        _ttimer = runtime.Timer(runtime.DEBUG,0,start=True)
+        self.layer_method.update()
+        _ttimer.stop("layer time ")

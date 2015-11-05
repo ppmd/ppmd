@@ -312,6 +312,13 @@ class CellList(object):
         """
         return self._n()
 
+    @property
+    def num_cells(self):
+        """
+        Get the number of cells.
+        """
+        return self._domain.cell_count
+
 # default cell list
 cell_list = CellList()
 
@@ -825,7 +832,7 @@ class NeighbourListNonN3(NeighbourList):
 
         if self._return_code[0] < 0:
             if runtime.VERBOSE.level > 2:
-                print "rank:", mpi.MPI_HANDLE.rank, "neighbour list resizing", "old", self.max_len[0], "new", 2*self.max_len[0]
+                print "rank:", mpi.MPI_HANDLE.rank, "neighbour list resizing", "old", self.max_len[0], "new", 2 * self.max_len[0]
             self.max_len[0] *= 2
             self.list.realloc(self.max_len[0])
 
@@ -836,9 +843,147 @@ class NeighbourListNonN3(NeighbourList):
         self.version_id += 1
 
 
+################################################################################################################
+# CPU CelllayerSort
+################################################################################################################
+
+
+class CellLayerSort(object):
+    def __init__(self):
+        self._cell_list = None
+        self._lib = None
+        self._lib2 = None
+        self.cell_occupancy_matrix = None
+
+        self.particle_layers = None
+        """Get the particle layer index."""
+
+    def cell_occupancy_counter(self):
+        """Array containing the number of atoms per cell"""
+        assert self._cell_list is not None, "CellLayerSort error: run setup first."
+
+    def setup(self, list_in=None, openmp=False):
+        assert list_in is not None, "CellLayerSort setup error: no CellList passed."
+        self._cell_list = list_in
+        self.particle_layers = host.Array(ncomp=self._cell_list.num_particles, dtype=ct.c_int)
+        self.cell_occupancy_matrix = host.Array(ncomp=self._cell_list.num_cells, dtype=ct.c_int)
+
+        _code = '''
+
+            printf("started \\n");
+
+            #ifdef _OPENMP
+            #pragma omp for
+            #endif
+            for(int cx = 0; cx < Nc; cx++){
+                int l = 0;
+                int ix = CELL_LIST[CL_start + cx];
+                while(ix > -1){
+                    L[ix] = l;
+                    l++;
+                    ix = CELL_LIST[ix];
+                }
+            }
+
+            printf("ended \\n");
+        '''
+
+        _statics = {
+            'Nc': ct.c_int,  # Num_cells
+            'CL_start': ct.c_int  # starting point of cells in array
+        }
+
+        _dynamics = {
+            'CELL_LIST': self._cell_list.cell_list,
+            'L': self.particle_layers
+        }
+
+        _kernel = kernel.Kernel('layers_sort_method', _code, headers=['stdio.h'], static_args=_statics)
+
+        self._lib = build.SharedLib(_kernel, _dynamics, openmp)
+
+        _code2 = '''
+
+            for(int cx = 0; cx < Nc; cx++){
+                H[cx * Lm] = COC[cx];
+            }
+
+            #ifdef _OPENMP
+            #pragma omp for
+            #endif
+            for(int ix = 0; ix < Na; ix++){
+
+                H[ CRL[ix]*Lm + L[ix] + 1 ] = ix;
+
+            }
+        '''
+
+        _statics2 = {
+            'Na': ct.c_int,  # Number of atoms
+            'Nc': ct.c_int,  # Number of cells
+            'Lm': ct.c_int  # Max number of layers
+        }
+
+        _dynamics2 = {
+            'CRL': self._cell_list.cell_reverse_lookup,
+            'L': self.particle_layers,
+            'H': self.cell_occupancy_matrix,
+            'COC': self._cell_list.cell_contents_count
+        }
+
+        _kernel2 = kernel.Kernel('cell__layer_occupancy', _code2, headers=['stdio.h'], static_args=_statics2)
+        self._lib2 = build.SharedLib(_kernel2, _dynamics2, openmp)
+
+    def update(self):
+        assert self._lib is not None, "CellLayerSort error: setup not ran or failed."
+
+        _Nc = self._cell_list.num_cells
+        _CL_start = ct.c_int(self._cell_list.cell_list.end - _Nc)
+        _Nc = ct.c_int(_Nc)
+
+
+        if self.particle_layers.ncomp < self._cell_list.num_particles:
+            self.particle_layers.realloc(self._cell_list.num_particles)
+
+        self._lib.execute(static_args={'Nc': _Nc, 'CL_start': _CL_start})
+
+        _Lm = self._cell_list.cell_contents_count.dat[0:self._cell_list.num_cells:].max()
+        _Na = ct.c_int(self._cell_list.num_particles)
+
+        if self.cell_occupancy_matrix.ncomp < _Lm * _Nc:
+            self.cell_occupancy_matrix.realloc(_Lm * _Nc)
+        _Lm = ct.c_int(_Lm)
+
+        _statics2 = {'Na': _Na, 'Nc': _Nc, 'Lm': _Lm}
+        self._lib2.execute(static_args=_statics2)
 
 
 
+
+
+
+
+
+
+################################################################################################################
+# CPU NeighbourListLayerBased
+################################################################################################################
+
+
+class NeighbourListLayerBased(object):
+    def __init__(self):
+        self.list = None
+        self._lmi = None
+        self._cli = None
+
+
+    def setup(self, layer_method_instance, cell_list_instance):
+        self._lmi = layer_method_instance
+        self._cli = cell_list_instance
+
+
+    def update(self):
+        pass
 
 
 

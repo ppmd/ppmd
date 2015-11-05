@@ -68,7 +68,7 @@ class BaseMDSimulation(object):
         self._boundary_method.set_state(self.state)
 
         # Add particle dats
-        _factor = 10.
+        _factor = 10
         self.state.positions = data.ParticleDat(n, 3, name='positions', max_npart=_factor * n)
         self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
         self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
@@ -167,11 +167,16 @@ class BaseMDSimulation(object):
                                                                                dat_dict=_potential_dat_dict)
 
 
-                self._forces_update_lib = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
+                self._forces_update_lib2 = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
 
                 self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
+
+                self._forces_update_lib_test = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
+                                                                                     dat_dict=_potential_dat_dict,
+                                                                                     openmp=True)
+
 
             # If domain is without halos
             elif type(self.state.domain) is domain.BaseDomain:
@@ -250,6 +255,7 @@ class BaseMDSimulation(object):
         Updates the forces in the simulation state using the short range potential.
         """
         self.timer.start()
+
 
         # reset forces
         self.state.forces.set_val(0.)
