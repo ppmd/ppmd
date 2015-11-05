@@ -1639,6 +1639,9 @@ class PairLoopNeighbourList(_Base):
         except:
             build.load_library_exception(self._kernel.name, self._unique_name, type(self))
 
+        self.neighbour_list = cell.NeighbourList()
+        self.neighbour_list.setup(*cell.cell_list.get_setup_parameters())
+
 
     def _compiler_set(self):
         self._cc = build.TMPCC
@@ -1755,14 +1758,14 @@ class PairLoopNeighbourList(_Base):
                 args.append(dat_orig.ctypes_data)
 
         '''Rebuild neighbour list potentially'''
-        if cell.cell_list.version_id > cell.neighbour_list.version_id:
-            cell.neighbour_list.update()
+        if cell.cell_list.version_id > self.neighbour_list.version_id:
+            self.neighbour_list.update()
 
         '''Create arg list'''
-        _N_TOTAL = ctypes.c_int(cell.neighbour_list.n_total)
-        _N_LOCAL = ctypes.c_int(cell.neighbour_list.n_local)
-        _STARTS = cell.neighbour_list.neighbour_starting_points.ctypes_data
-        _LIST = cell.neighbour_list.list.ctypes_data
+        _N_TOTAL = ctypes.c_int(self.neighbour_list.n_total)
+        _N_LOCAL = ctypes.c_int(self.neighbour_list.n_local)
+        _STARTS = self.neighbour_list.neighbour_starting_points.ctypes_data
+        _LIST = self.neighbour_list.list.ctypes_data
 
         args2 = [_N_TOTAL,
                  _N_LOCAL,
@@ -1863,6 +1866,9 @@ class PairLoopNeighbourListOpenMP(PairLoopNeighbourList):
         except:
             build.load_library_exception(self._kernel.name, self._unique_name, type(self))
 
+        # Create an instance of a non N3 neighbour list.
+        self.neighbour_list_non_n3 = cell.NeighbourListNonN3()
+        self.neighbour_list_non_n3.setup(*cell.cell_list.get_setup_parameters())
 
     def _generate_header_source(self):
         """Generate the source code of the header file.
@@ -2032,18 +2038,17 @@ class PairLoopNeighbourListOpenMP(PairLoopNeighbourList):
                 args.append(dat_orig.ctypes_data)
 
         '''Rebuild neighbour list potentially'''
-        if cell.cell_list.version_id > cell.neighbour_list_non_n3.version_id:
+        if cell.cell_list.version_id > self.neighbour_list_non_n3.version_id:
             # print "REBUILDING"
-            cell.neighbour_list_non_n3.update()
+            self.neighbour_list_non_n3.update()
         else:
             pass
 
-
         '''Create arg list'''
-        _N_TOTAL = ctypes.c_int(cell.neighbour_list_non_n3.n_total)
-        _N_LOCAL = ctypes.c_int(cell.neighbour_list_non_n3.n_local)
-        _STARTS = cell.neighbour_list_non_n3.neighbour_starting_points.ctypes_data
-        _LIST = cell.neighbour_list_non_n3.list.ctypes_data
+        _N_TOTAL = ctypes.c_int(self.neighbour_list_non_n3.n_total)
+        _N_LOCAL = ctypes.c_int(self.neighbour_list_non_n3.n_local)
+        _STARTS = self.neighbour_list_non_n3.neighbour_starting_points.ctypes_data
+        _LIST = self.neighbour_list_non_n3.list.ctypes_data
 
         args2 = [_N_TOTAL,
                  _N_LOCAL,

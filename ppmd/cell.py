@@ -33,6 +33,8 @@ class CellList(object):
         # positions init
         self._positions = None
 
+        self._cell_width = None
+
         #function handle to get number of local particles from state
         self._n = None
 
@@ -56,6 +58,16 @@ class CellList(object):
         self._update_func = None
         self._update_func_post = None
 
+    def get_setup_parameters(self):
+        """
+        Get the values/function handles used to setup the cell list.
+        :return:
+        """
+
+        assert (None in (self._n, self._positions, self._domain, self._cell_width)) is False, "get_setup_parameters Error: cell list not setup."
+        return self._n, self._positions, self._domain, self._cell_width
+
+
     def setup(self, n, positions, domain, cell_width):
         """
         Setup the cell list with a set of positions and a domain.
@@ -68,6 +80,7 @@ class CellList(object):
         self._n = n
         self._positions = positions
         self._domain = domain
+        self._cell_width = cell_width
 
         # partition domain.
         _err = self._domain.set_cell_array_radius(cell_width)
@@ -471,7 +484,6 @@ class NeighbourList(object):
 
 
         self._positions = None
-        self._velocities = None
         self._domain = None
         self.neighbour_starting_points = None
         self.cell_width_squared = None
@@ -488,7 +500,7 @@ class NeighbourList(object):
         self._return_code = None
 
 
-    def setup(self, n, positions, velocities, domain, cell_width):
+    def setup(self, n, positions, domain, cell_width):
 
         # setup the cell list if not done already (also handles domain decomp)
         if self.cell_list.cell_list is None:
@@ -499,7 +511,6 @@ class NeighbourList(object):
         self.cell_width_squared = host.Array(initial_value=cell_width ** 2, dtype=ct.c_double)
         self._domain = domain
         self._positions = positions
-        self._velocities = velocities
         self._n = n
 
         # assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
@@ -653,8 +664,6 @@ class NeighbourList(object):
         self.version_id += 1
 
 
-neighbour_list = NeighbourList()
-"""Default/test neighbour list"""
 
 ################################################################################################################
 # NeighbourList definition 27 cell version
@@ -663,7 +672,7 @@ neighbour_list = NeighbourList()
 class NeighbourListNonN3(NeighbourList):
 
 
-    def setup(self, n, positions, velocities, domain, cell_width):
+    def setup(self, n, positions, domain, cell_width):
 
         # setup the cell list if not done already (also handles domain decomp)
         if self.cell_list.cell_list is None:
@@ -674,7 +683,6 @@ class NeighbourListNonN3(NeighbourList):
         self.cell_width_squared = host.Array(initial_value=cell_width ** 2, dtype=ct.c_double)
         self._domain = domain
         self._positions = positions
-        self._velocities = velocities
         self._n = n
 
         # assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
@@ -828,8 +836,6 @@ class NeighbourListNonN3(NeighbourList):
         self.version_id += 1
 
 
-neighbour_list_non_n3 = NeighbourListNonN3()
-"""Default/test neighbour list"""
 
 
 
