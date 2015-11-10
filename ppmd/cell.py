@@ -1,4 +1,5 @@
 # cell list container
+import sys
 import host
 import mpi
 import runtime
@@ -318,6 +319,7 @@ class CellList(object):
         Get the number of cells.
         """
         return self._domain.cell_count
+
 
 # default cell list
 cell_list = CellList()
@@ -854,13 +856,18 @@ class CellLayerSort(object):
         self._lib = None
         self._lib2 = None
         self.cell_occupancy_matrix = None
+        """Get the cell occupancy matrix."""
 
         self.particle_layers = None
         """Get the particle layer index."""
 
+        self.num_layers = None
+        """Maximum number of layers in use."""
+
     def cell_occupancy_counter(self):
         """Array containing the number of atoms per cell"""
         assert self._cell_list is not None, "CellLayerSort error: run setup first."
+        return self._cell_list.cell_contents_count
 
     def setup(self, list_in=None, openmp=False):
         assert list_in is not None, "CellLayerSort setup error: no CellList passed."
@@ -868,18 +875,26 @@ class CellLayerSort(object):
         self.particle_layers = host.Array(ncomp=self._cell_list.num_particles, dtype=ct.c_int)
         self.cell_occupancy_matrix = host.Array(ncomp=self._cell_list.num_cells, dtype=ct.c_int)
 
+
         _code = '''
 
-            printf("started \\n");
+            printf("started Nc=%d \\n", CL_start);
 
             #ifdef _OPENMP
             #pragma omp for
             #endif
             for(int cx = 0; cx < Nc; cx++){
+
                 int l = 0;
                 int ix = CELL_LIST[CL_start + cx];
                 while(ix > -1){
-                    L[ix] = l;
+
+
+                    //L[ix] = l; //this be the problem
+
+
+
+
                     l++;
                     ix = CELL_LIST[ix];
                 }
@@ -904,8 +919,10 @@ class CellLayerSort(object):
 
         _code2 = '''
 
+            printf("started 2 \\n");
+
             for(int cx = 0; cx < Nc; cx++){
-                H[cx * Lm] = COC[cx];
+                H[cx * (Lm+1)] = COC[cx];
             }
 
             #ifdef _OPENMP
@@ -913,9 +930,11 @@ class CellLayerSort(object):
             #endif
             for(int ix = 0; ix < Na; ix++){
 
-                H[ CRL[ix]*Lm + L[ix] + 1 ] = ix;
+                H[ CRL[ix]*(Lm+1) + L[ix] + 1 ] = ix;
 
             }
+
+            printf("ended 2 \\n");
         '''
 
         _statics2 = {
@@ -936,28 +955,54 @@ class CellLayerSort(object):
 
     def update(self):
         assert self._lib is not None, "CellLayerSort error: setup not ran or failed."
+        assert self._lib2 is not None, "CellLayerSort error: setup not ran or failed."
 
         _Nc = self._cell_list.num_cells
-        _CL_start = ct.c_int(self._cell_list.cell_list.end - _Nc)
+        _CL_start = ct.c_int(self._cell_list.cell_list[self._cell_list.cell_list.end])
+
         _Nc = ct.c_int(_Nc)
 
 
         if self.particle_layers.ncomp < self._cell_list.num_particles:
             self.particle_layers.realloc(self._cell_list.num_particles)
 
+
+
+        # Problem is in this library.
         self._lib.execute(static_args={'Nc': _Nc, 'CL_start': _CL_start})
 
+        sys.stdout.flush()
+        print "after _lib"
+
+
+
+
+        '''
+        print "getting max"
+        sys.stdout.flush()
         _Lm = self._cell_list.cell_contents_count.dat[0:self._cell_list.num_cells:].max()
+        sys.stdout.flush()
+        print "got max"
+
+
+        self.num_layers = _Lm
+
         _Na = ct.c_int(self._cell_list.num_particles)
 
-        if self.cell_occupancy_matrix.ncomp < _Lm * _Nc:
-            self.cell_occupancy_matrix.realloc(_Lm * _Nc)
+        if self.cell_occupancy_matrix.ncomp < (_Lm + 1) * self._cell_list.num_cells:
+            print "REALLOCING"
+            self.cell_occupancy_matrix.realloc((_Lm + 1) * self._cell_list.num_cells)
         _Lm = ct.c_int(_Lm)
 
         _statics2 = {'Na': _Na, 'Nc': _Nc, 'Lm': _Lm}
+        sys.stdout.flush()
+        print "before 2"
+        sys.stdout.flush()
         self._lib2.execute(static_args=_statics2)
-
-
+        sys.stdout.flush()
+        print "after 2"
+        mpi.MPI_HANDLE.barrier()
+        '''
 
 
 
@@ -975,15 +1020,120 @@ class NeighbourListLayerBased(object):
         self.list = None
         self._lmi = None
         self._cli = None
+        self._lib = None
+        self._cutoff_squared = None
 
+        self.neighbour_matrix = None
+        """Neighbour matrix (host.Array)"""
 
-    def setup(self, layer_method_instance, cell_list_instance):
+    def setup(self, layer_method_instance, cell_list_instance, openmp=False):
         self._lmi = layer_method_instance
         self._cli = cell_list_instance
 
+        self.neighbour_matrix = host.Array(ncomp=self._cli.num_particles * 2, dtype=ct.c_int)
+        self._cutoff_squared = host.Array(ncomp=1, dtype=ct.c_double)
+        self._cutoff_squared[0] = self._lmi.cell_width ** 2
+
+        _code = '''
+        const double cutoff = CUTOFF[0];
+        const int _h_map[27][3] = {
+                                    {-1,1,-1},
+                                    {-1,-1,-1},
+                                    {-1,0,-1},
+                                    {0,1,-1},
+                                    {0,-1,-1},
+                                    {0,0,-1},
+                                    {1,0,-1},
+                                    {1,1,-1},
+                                    {1,-1,-1},
+
+                                    {-1,1,0},
+                                    {-1,0,0},
+                                    {-1,-1,0},
+                                    {0,-1,0},
+                                    {0,0,0},
+                                    {0,1,0},
+                                    {1,0,0},
+                                    {1,1,0},
+                                    {1,-1,0},
+
+                                    {-1,0,1},
+                                    {-1,1,1},
+                                    {-1,-1,1},
+                                    {0,0,1},
+                                    {0,1,1},
+                                    {0,-1,1},
+                                    {1,0,1},
+                                    {1,1,1},
+                                    {1,-1,1}
+                                  };
+
+        int tmp_offset[27];
+        for(int ix=0; ix<27; ix++){
+            tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * CA[0] + _h_map[ix][2] * CA[0]* CA[1];
+        }
+
+        for(int ix = 0; ix < Na; ix++){ // Loop over particles.
+
+            const double r00 = P[ix*3];
+            const double r01 = P[ix*3+1];
+            const double r02 = P[ix*3+2];
+
+
+            int m = 1; // index of next neighbour. Use 0 for the number of neighbours.
+            const int cp = CRL[ix]; //cell index containing this particle.
+
+            for (int k = 0; k < 27; k++) { // Loop over cell directions.
+                const int cpp = tmp_offset[k];
+
+                for(int _iy = 1; _iy < H[cpp*Lm]; _iy++){ //traverse layers in cell cpp.
+
+                    int iy = H[cpp*Lm + _iy];
+
+                    if (ix != iy ){
+                        const double r10 = P[iy*3]   - r00;
+                        const double r11 = P[iy*3+1] - r01;
+                        const double r12 = P[iy*3+2] - r02;
+
+                        if ( (r10*r10 + r11*r11 + r12*r12) < cutoff ){
+
+                            W
+
+                            m++;
+                        }
+
+
+
+                    }
+
+                }
+            }
+        }
+
+        '''
+
+        _statics = {
+            'Na': ct.c_int,  # Na number of atoms.
+            'Lm': ct.c_int  # Nl: Number of layers to use for indexing for cell occupancy matrix.
+        }
+
+        _dynamics = {
+            'CRL': self._cli.cell_reverse_lookup,
+            'CA': self._cli.cell_array,
+            'W': self.neighbour_matrix,
+            'H': self._lmi.cell_occupancy_matrix,
+            'CUTOFF': self._cutoff_squared,
+            'P': self._cli.get_setup_parameters()[1]
+        }
+
+        _kernel = kernel.Kernel('neighbour_matrix_creation', _code, headers=['stdio.h'], static_args=_statics)
+        self._lib = build.SharedLib(_kernel, _dynamics, openmp)
+
+
+
 
     def update(self):
-        pass
+        assert self._lib is not None, "NeighbourListLayerBased error: library not created."
 
 
 

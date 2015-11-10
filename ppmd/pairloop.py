@@ -2075,9 +2075,9 @@ class PairLoopNeighbourListOpenMP(PairLoopNeighbourList):
 
 
 
-################################################################################################################
+#############################################################################################
 # Layer based 1
-################################################################################################################
+#############################################################################################
 
 class PairLoopNeighbourListLayersHybrid(_Base):
 
@@ -2094,10 +2094,6 @@ class PairLoopNeighbourListLayersHybrid(_Base):
 
         self._omp = openmp
         self._compiler_set()
-
-        ##########
-        # End of Rapaport initialisations.
-        ##########
 
         self._temp_dir = runtime.BUILD_DIR.dir
         if not os.path.exists(self._temp_dir):
@@ -2144,5 +2140,3 @@ class PairLoopNeighbourListLayersHybrid(_Base):
         self.layer_method.setup(cell.cell_list, self._omp)
 
         _ttimer = runtime.Timer(runtime.DEBUG,0,start=True)
-        self.layer_method.update()
-        _ttimer.stop("layer time ")

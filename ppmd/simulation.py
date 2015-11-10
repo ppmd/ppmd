@@ -175,7 +175,7 @@ class BaseMDSimulation(object):
 
                 self._forces_update_lib_test = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
                                                                                      dat_dict=_potential_dat_dict,
-                                                                                     openmp=True)
+                                                                                     openmp=False)
 
 
             # If domain is without halos
@@ -271,6 +271,7 @@ class BaseMDSimulation(object):
         self.cpu_forces_timer.start()
         if self.state.n > 0:
             self._forces_update_lib.execute()
+            self._forces_update_lib_test.layer_method.update()
             pass
 
         self.cpu_forces_timer.pause()
