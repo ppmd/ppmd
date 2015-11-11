@@ -314,6 +314,13 @@ class CellList(object):
         return self._n()
 
     @property
+    def total_num_particles(self):
+        """
+        Number of local particles + halo particles.
+        """
+        return self._positions.npart_total
+
+    @property
     def num_cells(self):
         """
         Get the number of cells.
@@ -878,8 +885,6 @@ class CellLayerSort(object):
 
         _code = '''
 
-            printf("started Nc=%d \\n", CL_start);
-
             #ifdef _OPENMP
             #pragma omp for
             #endif
@@ -888,19 +893,12 @@ class CellLayerSort(object):
                 int l = 0;
                 int ix = CELL_LIST[CL_start + cx];
                 while(ix > -1){
-
-
-                    //L[ix] = l; //this be the problem
-
-
-
-
+                    L[ix] = l;
                     l++;
                     ix = CELL_LIST[ix];
                 }
             }
 
-            printf("ended \\n");
         '''
 
         _statics = {
@@ -919,7 +917,6 @@ class CellLayerSort(object):
 
         _code2 = '''
 
-            printf("started 2 \\n");
 
             for(int cx = 0; cx < Nc; cx++){
                 H[cx * (Lm+1)] = COC[cx];
@@ -934,7 +931,6 @@ class CellLayerSort(object):
 
             }
 
-            printf("ended 2 \\n");
         '''
 
         _statics2 = {
@@ -963,47 +959,24 @@ class CellLayerSort(object):
         _Nc = ct.c_int(_Nc)
 
 
-        if self.particle_layers.ncomp < self._cell_list.num_particles:
-            self.particle_layers.realloc(self._cell_list.num_particles)
+        if self.particle_layers.ncomp < self._cell_list.total_num_particles:
+            self.particle_layers.realloc(self._cell_list.total_num_particles)
 
 
-
-        # Problem is in this library.
         self._lib.execute(static_args={'Nc': _Nc, 'CL_start': _CL_start})
 
-        sys.stdout.flush()
-        print "after _lib"
-
-
-
-
-        '''
-        print "getting max"
-        sys.stdout.flush()
         _Lm = self._cell_list.cell_contents_count.dat[0:self._cell_list.num_cells:].max()
-        sys.stdout.flush()
-        print "got max"
-
 
         self.num_layers = _Lm
 
-        _Na = ct.c_int(self._cell_list.num_particles)
+        _Na = ct.c_int(self._cell_list.total_num_particles)
 
         if self.cell_occupancy_matrix.ncomp < (_Lm + 1) * self._cell_list.num_cells:
-            print "REALLOCING"
             self.cell_occupancy_matrix.realloc((_Lm + 1) * self._cell_list.num_cells)
         _Lm = ct.c_int(_Lm)
 
         _statics2 = {'Na': _Na, 'Nc': _Nc, 'Lm': _Lm}
-        sys.stdout.flush()
-        print "before 2"
-        sys.stdout.flush()
         self._lib2.execute(static_args=_statics2)
-        sys.stdout.flush()
-        print "after 2"
-        mpi.MPI_HANDLE.barrier()
-        '''
-
 
 
 
