@@ -126,7 +126,7 @@ ICC_OpenMP = Compiler(['ICC'],
                       ['-fpic', '-openmp', '-std=c99'],
                       ['-openmp', '-lgomp', '-lpthread', '-lc', '-lrt'],
                       ['-O3', '-xHost', '-restrict', '-m64'],
-                      ['-g', '-xHost', '-restrict', '-m64'],
+                      ['-g'],
                       ['-c'],
                       ['-shared'],
                       'restrict')

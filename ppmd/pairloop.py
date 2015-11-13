@@ -2139,4 +2139,5 @@ class PairLoopNeighbourListLayersHybrid(_Base):
         self.layer_method = cell.CellLayerSort()
         self.layer_method.setup(cell.cell_list, self._omp)
 
-        _ttimer = runtime.Timer(runtime.DEBUG,0,start=True)
+        self.neighbour_method = cell.NeighbourListLayerBased()
+        self.neighbour_method.setup(self.layer_method, cell.cell_list, self._omp)

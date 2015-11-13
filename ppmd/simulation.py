@@ -162,7 +162,7 @@ class BaseMDSimulation(object):
                                                                         potential=self.potential,
                                                                         dat_dict=_potential_dat_dict)
 
-                self._forces_update_lib2 = pairloop.PairLoopRapaportHaloOpenMP(domain=self.state.domain,
+                self._forces_update_lib = pairloop.PairLoopRapaportHaloOpenMP(domain=self.state.domain,
                                                                                potential=self.potential,
                                                                                dat_dict=_potential_dat_dict)
 
@@ -175,7 +175,7 @@ class BaseMDSimulation(object):
 
                 self._forces_update_lib_test = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
                                                                                      dat_dict=_potential_dat_dict,
-                                                                                     openmp=False)
+                                                                                     openmp=True)
 
 
             # If domain is without halos
@@ -272,6 +272,7 @@ class BaseMDSimulation(object):
         if self.state.n > 0:
             self._forces_update_lib.execute()
             self._forces_update_lib_test.layer_method.update()
+            self._forces_update_lib_test.neighbour_method.update()
             pass
 
         self.cpu_forces_timer.pause()

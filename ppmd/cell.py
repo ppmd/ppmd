@@ -327,6 +327,12 @@ class CellList(object):
         """
         return self._domain.cell_count
 
+    @property
+    def cell_width(self):
+        """
+        Return the cell width used to setup the cell structure. N.B. cells may be larger than this.
+        """
+        return self._cell_width
 
 # default cell list
 cell_list = CellList()
@@ -1005,7 +1011,7 @@ class NeighbourListLayerBased(object):
 
         self.neighbour_matrix = host.Array(ncomp=self._cli.num_particles * 2, dtype=ct.c_int)
         self._cutoff_squared = host.Array(ncomp=1, dtype=ct.c_double)
-        self._cutoff_squared[0] = self._lmi.cell_width ** 2
+        self._cutoff_squared[0] = self._cli.cell_width ** 2
 
         _code = '''
         const double cutoff = CUTOFF[0];
@@ -1046,22 +1052,24 @@ class NeighbourListLayerBased(object):
             tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * CA[0] + _h_map[ix][2] * CA[0]* CA[1];
         }
 
+        #ifdef _OPENMP
+        #pragma omp for schedule(dynamic)
+        #endif
         for(int ix = 0; ix < Na; ix++){ // Loop over particles.
 
             const double r00 = P[ix*3];
             const double r01 = P[ix*3+1];
             const double r02 = P[ix*3+2];
 
-
-            int m = 1; // index of next neighbour. Use 0 for the number of neighbours.
+            int m = 0; // index of next neighbour. Use 0 for the number of neighbours.
             const int cp = CRL[ix]; //cell index containing this particle.
 
             for (int k = 0; k < 27; k++) { // Loop over cell directions.
                 const int cpp = tmp_offset[k];
 
-                for(int _iy = 1; _iy < H[cpp*Lm]; _iy++){ //traverse layers in cell cpp.
+                for(int _iy = 1; _iy < H[cpp*(Lm+1)]; _iy++){ //traverse layers in cell cpp.
 
-                    int iy = H[cpp*Lm + _iy];
+                    int iy = H[cpp*(Lm+1) + _iy];
 
                     if (ix != iy ){
                         const double r10 = P[iy*3]   - r00;
@@ -1070,29 +1078,35 @@ class NeighbourListLayerBased(object):
 
                         if ( (r10*r10 + r11*r11 + r12*r12) < cutoff ){
 
-                            W
-
                             m++;
+                            if(m >= Nn) {printf("Error Maximum number of neighbours reached(%d) \\n", Nn);}
+
+                            W[(ix*Nn) + m] = iy; //Putting neighbours of the same atom contiguous in
+                                                 //memory, the opposite to the gpu approach. This
+                                                 //should be checked.
+
                         }
-
-
 
                     }
 
                 }
             }
+
+            W[ix*Nn] = m; // Records the number of neighbours.
+
         }
 
         '''
 
         _statics = {
             'Na': ct.c_int,  # Na number of atoms.
-            'Lm': ct.c_int  # Nl: Number of layers to use for indexing for cell occupancy matrix.
+            'Lm': ct.c_int,  # Lm: Number of layers to use for indexing for cell occupancy matrix.
+            'Nn': ct.c_int   # Nn: Maximum number of neighbours per atom accounting for the +1.
         }
 
         _dynamics = {
             'CRL': self._cli.cell_reverse_lookup,
-            'CA': self._cli.cell_array,
+            'CA': self._cli.domain.cell_array,
             'W': self.neighbour_matrix,
             'H': self._lmi.cell_occupancy_matrix,
             'CUTOFF': self._cutoff_squared,
@@ -1103,10 +1117,39 @@ class NeighbourListLayerBased(object):
         self._lib = build.SharedLib(_kernel, _dynamics, openmp)
 
 
-
-
     def update(self):
         assert self._lib is not None, "NeighbourListLayerBased error: library not created."
+
+        _Nn = self._lmi.num_layers * 27
+
+        if self.neighbour_matrix.ncomp < _Nn * self._cli.total_num_particles:
+                self.neighbour_matrix.realloc(_Nn * self._cli.total_num_particles)
+
+        _Na = ct.c_int(self._cli.total_num_particles)
+        _Lm = ct.c_int(self._lmi.num_layers)
+        _Nn = ct.c_int(_Nn)
+        _statics = {'Na': _Na, 'Lm': _Lm, 'Nn':_Nn}
+
+        self._lib.execute(static_args=_statics)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
