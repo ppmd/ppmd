@@ -175,7 +175,7 @@ class BaseMDSimulation(object):
 
                 self._forces_update_lib_test = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
                                                                                      dat_dict=_potential_dat_dict,
-                                                                                     openmp=True)
+                                                                                     openmp=False)
 
 
             # If domain is without halos

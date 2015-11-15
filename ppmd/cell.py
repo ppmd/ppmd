@@ -1065,7 +1065,7 @@ class NeighbourListLayerBased(object):
             const int cp = CRL[ix]; //cell index containing this particle.
 
             for (int k = 0; k < 27; k++) { // Loop over cell directions.
-                const int cpp = tmp_offset[k];
+                const int cpp = cp + tmp_offset[k];
 
                 for(int _iy = 1; _iy < H[cpp*(Lm+1)]; _iy++){ //traverse layers in cell cpp.
 
@@ -1125,7 +1125,7 @@ class NeighbourListLayerBased(object):
         if self.neighbour_matrix.ncomp < _Nn * self._cli.total_num_particles:
                 self.neighbour_matrix.realloc(_Nn * self._cli.total_num_particles)
 
-        _Na = ct.c_int(self._cli.total_num_particles)
+        _Na = ct.c_int(self._cli.num_particles)
         _Lm = ct.c_int(self._lmi.num_layers)
         _Nn = ct.c_int(_Nn)
         _statics = {'Na': _Na, 'Lm': _Lm, 'Nn':_Nn}

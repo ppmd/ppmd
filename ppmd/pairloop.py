@@ -2112,7 +2112,7 @@ class PairLoopNeighbourListLayersHybrid(_Base):
         # Init code
         self._kernel_code = self._kernel.code
 
-        '''
+        
         self._code_init()
 
         self._unique_name = self._unique_name_calc()
@@ -2134,10 +2134,19 @@ class PairLoopNeighbourListLayersHybrid(_Base):
         except:
             build.load_library_exception(self._kernel.name, self._unique_name, type(self))
 
-        '''
+        
 
         self.layer_method = cell.CellLayerSort()
         self.layer_method.setup(cell.cell_list, self._omp)
 
         self.neighbour_method = cell.NeighbourListLayerBased()
         self.neighbour_method.setup(self.layer_method, cell.cell_list, self._omp)
+
+    def self._code_init(self):
+        return '''
+            //neighbour looping code here.
+        '''
+
+
+
+
