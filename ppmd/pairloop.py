@@ -2082,10 +2082,7 @@ class PairLoopNeighbourListOpenMP(PairLoopNeighbourList):
 class PairLoopNeighbourListLayersHybrid(_Base):
 
     def _compiler_set(self):
-        if self._omp is True:
-            self._cc = build.TMPCC_OpenMP
-        else:
-            self._cc = build.TMPCC
+        self._cc = build.TMPCC_OpenMP
 
     def __init__(self, potential=None, dat_dict=None, kernel=None, openmp=False):
 
@@ -2142,11 +2139,123 @@ class PairLoopNeighbourListLayersHybrid(_Base):
         self.neighbour_method = cell.NeighbourListLayerBased()
         self.neighbour_method.setup(self.layer_method, cell.cell_list, self._omp)
 
-    def self._code_init(self):
-        return '''
-            //neighbour looping code here.
+    def _generate_header_source(self):
+        """Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        """
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+
+        %(INCLUDED_HEADERS)s
+
+        #include "%(LIB_DIR)s/generic.h"
+        #include <omp.h>
+
+        void %(KERNEL_NAME)s_wrapper(const int N_LOCAL, const int Nn, const int* NMATRIX, %(ARGUMENTS)s);
+
+        #endif
+        '''
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
+        return code % d
+
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+        #include <stdio.h>
+
+        void %(KERNEL_NAME)s_wrapper(const int N_LOCAL, const int Nn, const int* NMATRIX, %(ARGUMENTS)s) {
+
+            #pragma omp parallel
+            {
+            %(LOOPING_ARGUMENT_DECL)s
+            
+                #pragma omp for schedule(dynamic)
+                for(int _i = 0; _i < N_LOCAL; _i++){
+                for(int _k = _i*(Nn+1)+1; _k < (_i*Nn+1)+1 + NMATRIX[_i*(Nn+1)]; _k++){
+
+                    int _j = NMATRIX[_k];
+                    int _cpp_halo_flag;
+                    int _cp_halo_flag;
+
+                    // set halo flag, TODO move all halo flags to be an if condition on particle index?
+                    if (_i >= N_LOCAL) { _cp_halo_flag = 1; } else { _cp_halo_flag = 0; }
+                    if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
+
+                     %(KERNEL_ARGUMENT_DECL)s
+
+                     //KERNEL CODE START
+
+                     %(KERNEL)s
+
+                     //KERNEL CODE END
+
+                }
+            }
+           
+
+            %(OPENMP_LOOPING_FINALISE)s
+
+
+            } //omp parallel end
+            return;
+        }
+
+
         '''
 
 
 
+    def _generate_impl_source(self):
+        """Generate the source code the actual implementation.
+        """
+        _kernel_argument_declarations = '\n'
+        _looping_argument_declarations = '\n'
+        _looping_argument_finalise = '\n'
+
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+
+            if dat[1].name == 'forces':
+                _dd = [dat[1]]
+            else:
+                _dd = []
+
+            _kernel_argument_declarations += cpu_generate_openmp.generate_map(pair=True,
+                                                                              symbol_external=dat[0] + '_ext',
+                                                                              symbol_internal=dat[0],
+                                                                              dat=dat[1],
+                                                                              access_type=_mode,
+                                                                              n3_disable_dats=_dd)
+            _looping_argument_declarations += cpu_generate_openmp.generate_reduction_init_stage(symbol_external=dat[0] + '_ext',
+                                                                                                symbol_internal=dat[0],
+                                                                                                dat=dat[1],
+                                                                                                access_type=_mode)
+            _looping_argument_finalise += cpu_generate_openmp.generate_reduction_final_stage(symbol_external=dat[0] + '_ext',
+                                                                                             symbol_internal=dat[0],
+                                                                                             dat=dat[1],
+                                                                                             access_type=_mode)
+
+        d = {'UNIQUENAME': self._unique_name,
+             'KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'LOC_ARGUMENTS': self._loc_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'KERNEL_ARGUMENT_DECL': _kernel_argument_declarations,
+             'LOOPING_ARGUMENT_DECL': _looping_argument_declarations,
+             'OPENMP_LOOPING_FINALISE': _looping_argument_finalise}
+
+        return self._code % d
 

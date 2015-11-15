@@ -1079,9 +1079,9 @@ class NeighbourListLayerBased(object):
                         if ( (r10*r10 + r11*r11 + r12*r12) < cutoff ){
 
                             m++;
-                            if(m >= Nn) {printf("Error Maximum number of neighbours reached(%d) \\n", Nn);}
+                            if(m >= Nn+1) {printf("Error Maximum number of neighbours reached(%d) \\n", Nn+1);}
 
-                            W[(ix*Nn) + m] = iy; //Putting neighbours of the same atom contiguous in
+                            W[(ix*(Nn+1)) + m] = iy; //Putting neighbours of the same atom contiguous in
                                                  //memory, the opposite to the gpu approach. This
                                                  //should be checked.
 
@@ -1092,7 +1092,7 @@ class NeighbourListLayerBased(object):
                 }
             }
 
-            W[ix*Nn] = m; // Records the number of neighbours.
+            W[ix*(Nn+1)] = m; // Records the number of neighbours.
 
         }
 
@@ -1120,14 +1120,14 @@ class NeighbourListLayerBased(object):
     def update(self):
         assert self._lib is not None, "NeighbourListLayerBased error: library not created."
 
-        _Nn = self._lmi.num_layers * 27
+        _Nn = 1 + self._lmi.num_layers * 27
 
         if self.neighbour_matrix.ncomp < _Nn * self._cli.total_num_particles:
                 self.neighbour_matrix.realloc(_Nn * self._cli.total_num_particles)
 
         _Na = ct.c_int(self._cli.num_particles)
         _Lm = ct.c_int(self._lmi.num_layers)
-        _Nn = ct.c_int(_Nn)
+        _Nn = ct.c_int(_Nn-1)
         _statics = {'Na': _Na, 'Lm': _Lm, 'Nn':_Nn}
 
         self._lib.execute(static_args=_statics)
