@@ -392,6 +392,7 @@ class ParticleDat(host.Matrix):
         """
         Perform a halo exchange for the particle dat. WIP currently only functional for positions.
         """
+
         if cell.cell_list.halos_exist is True:
             self.halo_pack()
             self._transfer_unpack()
@@ -412,6 +413,7 @@ class ParticleDat(host.Matrix):
                     _bc_flag[2 * ix] = 1
                 if mpi.MPI_HANDLE.top[ix] == mpi.MPI_HANDLE.dims[ix] - 1:
                     _bc_flag[2 * ix + 1] = 1
+
 
             _extent = cell.cell_list.domain.extent
 
@@ -447,6 +449,7 @@ class ParticleDat(host.Matrix):
                 [0., _extent[1] * _bc_flag[2], _extent[2] * _bc_flag[4]],
                 [_extent[0] * _bc_flag[0], _extent[1] * _bc_flag[2], _extent[2] * _bc_flag[4]]
             ]
+
 
             '''make scalar array object from above shifts'''
             _tmp_list_local = []
@@ -523,7 +526,9 @@ class ParticleDat(host.Matrix):
         _headers = ['stdio.h']
         _kernel = kernel.Kernel('ParticleDatHaloPackingCode', _packing_code, None, _headers, None, _static_args)
 
+
         self._halo_packing_lib = build.SharedLib(_kernel, _args)
+
         self._halo_packing_buffer = host.Matrix(nrow=self.npart, ncol=self.ncomp)
 
     def halo_pack(self):
@@ -532,6 +537,7 @@ class ParticleDat(host.Matrix):
         """
         if self._halo_packing_lib is None:
             self._setup_halo_packing()
+
 
         _boundary_groups_contents_array, _exchange_sizes = halo.HALOS.get_boundary_cell_contents_count
 
@@ -560,7 +566,6 @@ class ParticleDat(host.Matrix):
 
         if self.name == 'positions':
             _dynamic_args['CSA'] = self._cell_shifts_array_pbc
-
 
         self._halo_packing_lib.execute(static_args=_static_args, dat_dict=_dynamic_args)
 
@@ -651,6 +656,7 @@ class ParticleDat(host.Matrix):
                 self.halo_start_shift(_shift / self.ncomp)
 
         # SEND END -------------------------------------------------------------------------------------------
+
         if (self.name == 'positions') and cell.cell_list.version_id > cell.cell_list.halo_version_id:
             cell.cell_list.sort_halo_cells(_halo_cell_groups, self._cell_contents_recv, self.npart)
 

@@ -263,8 +263,10 @@ class CellList(object):
                 //start at first particle in halo cell, work forwards
                 for(int iy = 0; iy < _tmp-1; iy++){
                     q[index+iy]=index+iy+1;
+                    CRL[index+iy]=LCI[ix];
                 }
                 q[index+_tmp-1] = -1;
+                CRL[index+_tmp-1] = LCI[ix];
             }
 
 
@@ -278,7 +280,8 @@ class CellList(object):
             'q': host.NullIntArray,
             'LCI': host.NullIntArray,
             'CRC': host.NullIntArray,
-            'CCC': host.NullIntArray
+            'CCC': host.NullIntArray,
+            'CRL': self.cell_reverse_lookup
         }
 
         _cell_sort_kernel = kernel.Kernel('halo_cell_list_method', _cell_sort_code, headers=['stdio.h'],
@@ -294,7 +297,8 @@ class CellList(object):
             'q': self._cell_list,
             'LCI': local_cell_indices_array,
             'CRC': cell_contents_recv,
-            'CCC': self._cell_contents_count
+            'CCC': self._cell_contents_count,
+            'CRL': self.cell_reverse_lookup
         }
 
         _cell_sort_static_args = {'CC': ct.c_int(cell_contents_recv.ncomp),
@@ -877,6 +881,9 @@ class CellLayerSort(object):
         self.num_layers = None
         """Maximum number of layers in use."""
 
+        self.version_id = 0
+        """version id for cell layer"""
+
     def cell_occupancy_counter(self):
         """Array containing the number of atoms per cell"""
         assert self._cell_list is not None, "CellLayerSort error: run setup first."
@@ -926,6 +933,7 @@ class CellLayerSort(object):
 
             for(int cx = 0; cx < Nc; cx++){
                 H[cx * (Lm+1)] = COC[cx];
+                //printf("COC[cx]=%d \\n", COC[cx]);
             }
 
             #ifdef _OPENMP
@@ -983,7 +991,10 @@ class CellLayerSort(object):
 
         _statics2 = {'Na': _Na, 'Nc': _Nc, 'Lm': _Lm}
         self._lib2.execute(static_args=_statics2)
+        self.version_id += 1
 
+        #print "occupancy matrix", _Lm, self.cell_occupancy_matrix.dat
+        #print "particle layers", self.particle_layers.dat
 
 
 
@@ -1002,8 +1013,14 @@ class NeighbourListLayerBased(object):
         self._lib = None
         self._cutoff_squared = None
 
+        self.version_id = 0
+        """version id for neighbour matrix"""
+
         self.neighbour_matrix = None
         """Neighbour matrix (host.Array)"""
+
+        self.num_neighbours_per_atom = 0
+        """maxmium_number of neighbours per atom"""
 
     def setup(self, layer_method_instance, cell_list_instance, openmp=False):
         self._lmi = layer_method_instance
@@ -1064,12 +1081,17 @@ class NeighbourListLayerBased(object):
             int m = 0; // index of next neighbour. Use 0 for the number of neighbours.
             const int cp = CRL[ix]; //cell index containing this particle.
 
+            //printf("ix=%d, cp=%d \\n", ix, cp);
+
             for (int k = 0; k < 27; k++) { // Loop over cell directions.
                 const int cpp = cp + tmp_offset[k];
 
-                for(int _iy = 1; _iy < H[cpp*(Lm+1)]; _iy++){ //traverse layers in cell cpp.
+                for(int _iy = 1; _iy < H[cpp*(Lm+1)]+1; _iy++){ //traverse layers in cell cpp.
 
                     int iy = H[cpp*(Lm+1) + _iy];
+
+                    //printf("ix=%d iy=%d \\n", ix, iy);
+
 
                     if (ix != iy ){
                         const double r10 = P[iy*3]   - r00;
@@ -1093,7 +1115,7 @@ class NeighbourListLayerBased(object):
             }
 
             W[ix*(Nn+1)] = m; // Records the number of neighbours.
-
+            //printf("NSTAGE i=%d, m=%d \\n", ix, m);
         }
 
         '''
@@ -1122,16 +1144,22 @@ class NeighbourListLayerBased(object):
 
         _Nn = 1 + self._lmi.num_layers * 27
 
+
         if self.neighbour_matrix.ncomp < _Nn * self._cli.total_num_particles:
                 self.neighbour_matrix.realloc(_Nn * self._cli.total_num_particles)
 
         _Na = ct.c_int(self._cli.num_particles)
         _Lm = ct.c_int(self._lmi.num_layers)
-        _Nn = ct.c_int(_Nn-1)
+
+        self.num_neighbours_per_atom = _Nn - 1
+        _Nn = ct.c_int(_Nn - 1)
         _statics = {'Na': _Na, 'Lm': _Lm, 'Nn':_Nn}
 
         self._lib.execute(static_args=_statics)
-
+        self.version_id += 1
+        #print "Nn", _Nn
+        #print "0", self.neighbour_matrix.dat[0:_tnn:]
+        #print "1", self.neighbour_matrix.dat[_tnn:2*_tnn:]
 
 
 

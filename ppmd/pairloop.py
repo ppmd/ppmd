@@ -2178,9 +2178,14 @@ class PairLoopNeighbourListLayersHybrid(_Base):
             
                 #pragma omp for schedule(dynamic)
                 for(int _i = 0; _i < N_LOCAL; _i++){
-                for(int _k = _i*(Nn+1)+1; _k < (_i*Nn+1)+1 + NMATRIX[_i*(Nn+1)]; _k++){
+                //printf("_i=%%d, nn=%%d \\n", _i,Nn);
+
+                for(int _k = _i*(Nn+1)+1; _k < _i*(Nn+1)+1 + NMATRIX[_i*(Nn+1)]; _k++){
 
                     int _j = NMATRIX[_k];
+
+                    //printf("i=%%d, j=%%d, k=%%d \\n", _i,_j, _k);
+
                     int _cpp_halo_flag;
                     int _cp_halo_flag;
 
@@ -2259,3 +2264,61 @@ class PairLoopNeighbourListLayersHybrid(_Base):
 
         return self._code % d
 
+    def execute(self, n=None, dat_dict=None, static_args=None):
+        """
+        C version of the pair_locate: Loop over all cells update forces and potential engery.
+        """
+
+        cell.cell_list.check()
+
+        '''Allow alternative pointers'''
+        if dat_dict is not None:
+            self._particle_dat_dict = dat_dict
+
+
+        args = []
+
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+        '''Add pointer arguments to launch command'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
+            else:
+                args.append(dat_orig.ctypes_data)
+
+
+        '''Rebuild neighbour list potentially'''
+        if cell.cell_list.version_id > self.neighbour_method.version_id:
+            self.layer_method.update()
+            self.neighbour_method.update()
+        else:
+            pass
+
+        '''Create arg list'''
+        _N_LOCAL = ctypes.c_int(cell.cell_list.num_particles)
+        _Nn = ctypes.c_int(self.neighbour_method.num_neighbours_per_atom)
+        _NMATRIX = self.neighbour_method.neighbour_matrix.ctypes_data
+
+        args2 = [_N_LOCAL,
+                 _Nn,
+                 _NMATRIX]
+
+        args = args2 + args
+
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        method(*args)
+
+        '''afterwards access descriptors'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()

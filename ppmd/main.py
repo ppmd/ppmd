@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     # 2 particles bouncing agasint each other.
     test_2_bounce = False
-    
+
     # 1 1 particle
     t_1_particle = False
 
@@ -108,14 +108,14 @@ if __name__ == '__main__':
 
 
         # Initialise two particles on an axis a set distance apart.
-        test_pos_init = simulation.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([12., 12., 12.]), axis = np.array([0,1,0]))
+        test_pos_init = simulation.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([30., 30., 30.]), axis = np.array([0,0,1]))
 
         # Give first two particles specific velocities
         test_vel_init = simulation.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
 
         # Set alternating masses for particles.
         
-        test_mass_init = simulation.MassInitTwoAlternating(1., 2.)
+        test_mass_init = simulation.MassInitTwoAlternating(1., 1.)
         
     if t_1_particle:
         
@@ -147,6 +147,7 @@ if __name__ == '__main__':
                                        particle_mass_init=test_mass_init,
                                        n=N
                                        )
+
 
     # plotting handle
     if plotting:
@@ -226,7 +227,7 @@ if __name__ == '__main__':
     if mpi.MPI_HANDLE.rank ==0:
         try:
 
-            #a=input("PRESS ENTER TO CONTINUE.\n")
+            a=input("PRESS ENTER TO CONTINUE.\n")
             pass
         except:
             pass

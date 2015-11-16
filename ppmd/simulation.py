@@ -162,18 +162,18 @@ class BaseMDSimulation(object):
                                                                         potential=self.potential,
                                                                         dat_dict=_potential_dat_dict)
 
-                self._forces_update_lib = pairloop.PairLoopRapaportHaloOpenMP(domain=self.state.domain,
+                self._forces_update_lib2 = pairloop.PairLoopRapaportHaloOpenMP(domain=self.state.domain,
                                                                                potential=self.potential,
                                                                                dat_dict=_potential_dat_dict)
 
 
-                self._forces_update_lib2 = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
+                self._forces_update_lib = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
 
                 self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
 
-                self._forces_update_lib_test = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
+                self._forces_update_lib2 = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
                                                                                      dat_dict=_potential_dat_dict,
                                                                                      openmp=False)
 
@@ -254,6 +254,7 @@ class BaseMDSimulation(object):
         """
         Updates the forces in the simulation state using the short range potential.
         """
+
         self.timer.start()
 
 
@@ -269,11 +270,10 @@ class BaseMDSimulation(object):
             t3 = threading.Thread(target=cell.cell_list.cell_reverse_lookup.copy_to_cuda_dat()); t3.start()
 
         self.cpu_forces_timer.start()
-        if self.state.n > 0:
-            self._forces_update_lib.execute()
-            self._forces_update_lib_test.layer_method.update()
-            self._forces_update_lib_test.neighbour_method.update()
-            pass
+        #if self.state.n > 0:
+        #self._forces_update_lib.execute()
+        self._forces_update_lib.execute()
+
 
         self.cpu_forces_timer.pause()
 
