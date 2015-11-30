@@ -2,7 +2,7 @@ import sys
 import ctypes
 import numpy as np
 import access
-import gpucuda
+
 
 ctypes_map = {ctypes.c_double: 'double', ctypes.c_int: 'int', 'float64': 'double', 'int32': 'int',
               'doublepointerpointer': 'double **', ctypes.c_longlong: 'long long',
@@ -115,6 +115,7 @@ class Array(object):
     def __len__(self):
         return self.ncomp
 
+    '''
     def add_cuda_dat(self):
         """
         Create a corresponding CudaDeviceDat.
@@ -141,7 +142,7 @@ class Array(object):
         """
         assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
         self._cuda_dat.cpy_dth(self.ctypes_data)
-
+    '''
 
 
 ################################################################################################
@@ -226,6 +227,7 @@ class Matrix(object):
     def dtype(self):
         return self.idtype
 
+    '''
     # Temporary workarounds
 
     def add_cuda_dat(self):
@@ -256,7 +258,7 @@ class Matrix(object):
         """
         assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
         self._cuda_dat.cpy_dth(self.ctypes_data)
-
+    '''
 
 
 

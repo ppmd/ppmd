@@ -13,7 +13,6 @@ __all__ = [ 'access',
             'loop',
             'main',
             'method',
-            'move',
             'mpi',
             'pairloop',
             'pio',
@@ -26,7 +25,7 @@ __all__ = [ 'access',
 
 
 
-
+import host
 import access
 import build
 import cell
@@ -34,12 +33,10 @@ import data
 import domain
 import gpucuda
 import halo
-import host
 import kernel
 import loop
 import main
 import method
-import move
 import mpi
 import pairloop
 import pio
