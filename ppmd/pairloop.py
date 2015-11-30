@@ -1,6 +1,7 @@
 import numpy as np
 import ctypes
 import os
+import cpu_generate_generic
 import data
 import build
 import runtime
@@ -8,6 +9,7 @@ import access
 import cell
 import mpi
 import host
+import cpu_generate_openmp
 
 
 class _Base(build.GenericToolChain):
@@ -396,7 +398,7 @@ class PairLoopRapaport(_Base):
         """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
-
+        cell.cell_list.check()
         if n is not None:
             _N = n
         else:
@@ -1100,106 +1102,7 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
 
         return s
 
-################################################################################################################
-# RAPAPORT LOOP SERIAL PARTICLE LIST
-################################################################################################################
 
-class PairLoopRapaportParticleList(PairLoopRapaport):
-    """
-    Applies the Rapapport particle list method
-    
-    :arg int n: Number of elements to loop over.
-    :arg domain domain: Domain containing the particles.
-    :arg dat positions: Postitions of particles.
-    :arg potential potential: Potential between particles.
-    :arg dict dat_dict: Dictonary mapping between state vars and kernel vars.
-    :arg bool DEBUG: Flag to enable debug flags.
-    """
-
-    def __init__(self, n, domain, positions, potential, dat_dict):
-
-        self._N = n
-        self._domain = domain
-        self._potential = potential
-        self._particle_dat_dict = dat_dict
-
-        self._compiler_set()
-
-
-        ##########
-        # End of Rapaport initialisations.
-        ##########
-
-        self._temp_dir = runtime.BUILD_DIR.dir
-        if not os.path.exists(self._temp_dir):
-            os.mkdir(self._temp_dir)
-        self._kernel = self._potential.kernel
-
-        self._nargs = len(self._particle_dat_dict)
-
-        self._code_init()
-        self._cell_sort_setup()
-        self._neighbour_list_setup()
-
-        self._unique_name = self._unique_name_calc()
-
-        self._library_filename = self._unique_name + '.so'
-
-        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if mpi.MPI_HANDLE is None:
-                self._create_library()
-
-            else:
-                if mpi.MPI_HANDLE.rank == 0:
-                    self._create_library()
-                mpi.MPI_HANDLE.barrier()
-        try:
-            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
-        except:
-            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
-
-    def execute(self, dat_dict=None, static_args=None):
-        """
-        C version of the pair_locate: Loop over all cells update forces and potential engery.
-        """
-
-        self._cell_sort_all()
-
-        '''Allow alternative pointers'''
-        if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
-
-        '''Create arg list'''
-        args = [ctypes.c_int(self._N()),
-                ctypes.c_int(self._domain.cell_count),
-                self._domain.cell_array.ctypes_data,
-                cell.cell_list.cell_list.ctypes_data,
-                self._domain.extent.ctypes_data]
-
-        '''Add static arguments to launch command'''
-        if self._kernel.static_args is not None:
-            assert static_args is not None, "Error: static arguments not passed to loop."
-            for dat in static_args.values():
-                args.append(dat)
-
-        '''Add pointer arguments to launch command'''
-        for dat_orig in self._particle_dat_dict.values():
-            if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
-            else:
-                args.append(dat_orig.ctypes_data)
-
-        '''Execute the kernel over all particle pairs.'''
-        method = self._lib[self._kernel.name + '_wrapper']
-
-        method(*args)
-
-        '''afterwards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_post(dat_orig[1])
-            else:
-                dat_orig.ctypes_data_post()
 
 ################################################################################################################
 # RAPAPORT LOOP SERIAL FOR HALO DOMAINS
@@ -1207,21 +1110,9 @@ class PairLoopRapaportParticleList(PairLoopRapaport):
 
 
 class PairLoopRapaportHalo(PairLoopRapaport):
+
+
     def _kernel_argument_declarations(self):
-        """Define and declare the kernel arguments.
-
-        For each argument the kernel gets passed a pointer of type
-        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
-        pointer to the data which contains the properties of particle i.
-        These properties are stored consecutively in memory, so for a
-        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
-        property the vector entry j of particle i is accessed as
-        ``loc_argXXX[i][j]``.
-
-        This method generates the definitions of the ``loc_argXXX`` variables
-        and populates the data to ensure that ``loc_argXXX[i]`` points to
-        the correct address in the particle_dats.
-        """
         s = '\n'
         for i, dat_orig in enumerate(self._particle_dat_dict.items()):
 
@@ -1232,74 +1123,22 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                 dat = dat_orig
                 _mode = access.RW
 
-            space = ' ' * 14
-            argname = dat[0] + '_ext'
-            loc_argname = dat[0]
+            if dat[1].name == 'forces':
+                _dd = [dat[1]]
+            else:
+                _dd = []
 
 
-
-
-            if type(dat[1]) == data.ScalarArray:
-
-                if dat[1].name == 'potential_energy':
-
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '; \n'
-                    s += '\n'
-                    s += space + 'if (cp_h_flag + cpp_h_flag >= 1){ \n'
-
-                    # s+= space+'printf("cp = %d, cpp = %d ,cpf = %d, cppf = %d|", cp,cpp, cp_h_flag, cpp_h_flag);\n'
-
-                    s += space + loc_argname + ' = &' + argname + '[1];\n'
-
-                    s += space + '}else{ \n'
-                    s += space + loc_argname + ' = ' + argname + ';\n'
-                    s += space + '}\n'
-                else:
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
-
-            elif type(dat[1]) == data.ParticleDat:
-                if dat[1].name == 'forces':
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-
-                    s += space + 'if (cp_h_flag > 0){ \n'
-                    s += space + 'ri = null_array;\n'
-                    s += space + '}else{ \n'
-                    # if not in halo
-                    s += space + 'ri = ' + argname + '+3*i;}\n'
-
-                    s += '\n'
-
-                    s += space + 'if (cpp_h_flag > 0){ \n'
-                    s += space + 'rj = null_array;\n'
-                    s += space + '}else{ \n'
-                    # if not in halo
-                    s += space + 'rj = ' + argname + '+3*j;}\n'
-
-                    s += '\n'
-
-                    s += space + loc_argname + '[1] = rj;\n'
-                    s += space + loc_argname + '[0] = ri;\n'
-
-                    s += '\n'
-
-
-
-                else:
-                    ncomp = dat[1].ncomp
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-                    s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
-                    s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
-
-            elif type(dat[1]) == data.TypedDat:
-
-                ncomp = dat[1].ncomp
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
-                s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
-                    ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
-                s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
-                    ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
+            s += cpu_generate_generic.generate_map(pair=True,
+                                                   symbol_external=dat[0] + '_ext',
+                                                   symbol_internal=dat[0],
+                                                   dat=dat[1],
+                                                   access_type=_mode)
 
         return s
+
+
+
 
     def _generate_header_source(self):
         """Generate the source code of the header file.
@@ -1393,23 +1232,23 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                     //printf("cp=%%d, cpp_i=%%d |",cp,cpp_i);
                     
                     
-                    unsigned int cpp, cp_h_flag, cpp_h_flag; 
-                    int i,j;
+                    unsigned int cpp, _cp_halo_flag, _cpp_halo_flag;
+                    int _i,_j;
                     
                     
-                    cell_index_offset(cp, cpp_i, cell_array, &cpp, &cp_h_flag, &cpp_h_flag);
+                    cell_index_offset(cp, cpp_i, cell_array, &cpp, &_cp_halo_flag, &_cpp_halo_flag);
                     
                     //Check that both cells are not halo cells.
                     
                     //printf("cpp=%%d, flagi=%%d, flagj=%%d |",cpp, cp_h_flag,cpp_h_flag);
                     
-                    if ((cp_h_flag+cpp_h_flag) < 2){
+                    if ((_cp_halo_flag+_cpp_halo_flag) < 2){
                         
-                        i = q_list[n+cp];
-                        while (i > -1){
-                            j = q_list[n+cpp];
-                            while (j > -1){
-                                if (cp != cpp || i < j){
+                        _i = q_list[n+cp];
+                        while (_i > -1){
+                            _j = q_list[n+cpp];
+                            while (_j > -1){
+                                if (cp != cpp || _i < _j){
                                     
                                     double *ri, *rj;
                                     
@@ -1427,15 +1266,11 @@ class PairLoopRapaportHalo(PairLoopRapaport):
                                     
                                     
                                 }
-                                j = q_list[j];  
+                                _j = q_list[_j];
                             }
-                            i=q_list[i];
+                            _i=q_list[_i];
                         }
-                    
-                    
-                    
-                    
-                    
+
                     }
                 }
             }
@@ -1451,12 +1286,15 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
-
+        cell.cell_list.check()
         '''Allow alternative pointers'''
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
         '''Create arg list'''
+
+        '''Halo exchange'''
+        _halo_exchange_particle_dat(self._particle_dat_dict)
 
         if n is not None:
             _N = n
@@ -1497,7 +1335,10 @@ class PairLoopRapaportHalo(PairLoopRapaport):
 ################################################################################################################
 
 
-class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
+class PairLoopRapaportHaloOpenMP(PairLoopRapaport):
+    def _compiler_set(self):
+        self._cc = build.TMPCC_OpenMP
+
     def cell_offset_mapping(self):
         """
         Calculate cell offset mappings
@@ -1542,7 +1383,6 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
 
             _map_array[ix] = _map[ix][0] + _map[ix][1] * self._domain.cell_array[0] + _map[ix][2] * self._domain.cell_array[0]* self._domain.cell_array[1]
 
-
         return _map_array
 
     def _generate_header_source(self):
@@ -1556,11 +1396,11 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
 
         %(INCLUDED_HEADERS)s
 
-        #include <omp.h>
         #include <stdio.h>
         #include "%(LIB_DIR)s/generic.h"
+        #include <omp.h>
 
-        void %(KERNEL_NAME)s_wrapper(const int* cell_map, const int n, int* cell_array, int* q_list,%(ARGUMENTS)s);
+        void %(KERNEL_NAME)s_wrapper(const int N_LOCAL, const int* cell_map, const int n, int* cell_array, int* q_list,%(ARGUMENTS)s);
 
         #endif
         '''
@@ -1577,72 +1417,81 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
         self._code = '''
         #include \"%(UNIQUENAME)s.h\"
 
-        void %(KERNEL_NAME)s_wrapper(const int* cell_map, const int n, int* cell_array, int* q_list,%(ARGUMENTS)s) {
-
-            for(int cax = 1; cax < cell_array[0]-1; cax++){
-            for(int cay = 1; cay < cell_array[1]-1; cay++){
-            for(int caz = 1; caz < cell_array[2]-1; caz++){
-
-                int cp  = (caz*cell_array[1] + cay)*cell_array[0] + cax;
-
-                for(int cpp_i=0; cpp_i<27; cpp_i++){
-                    int cpp = cp + cell_map[cpp_i];
-
-                    int i,j;
-
-                    i = q_list[n+cp];
-                    while (i > -1){
-                        j = q_list[n+cpp];
-                        while (j > -1){
-                            if (i != j){
-
-                                double *ri, *rj;
-
-                                double null_array[3] = {0,0,0};
-                                //printf("i=%%d, j=%%d |",i,j);
+        void %(KERNEL_NAME)s_wrapper(const int N_LOCAL, const int* cell_map, const int n, int* cell_array, int* q_list,%(ARGUMENTS)s) {
 
 
-                                %(KERNEL_ARGUMENT_DECL)s
+            //omp_set_num_threads(4);
+            #pragma omp parallel
+            { // parallel start
 
-                                  //KERNEL CODE START
-
-                                  %(KERNEL)s
-
-                                  //KERNEL CODE END
+                %(LOOPING_ARGUMENT_DECL)s
 
 
+                #pragma omp for
+                for(int cax = 1; cax < cell_array[0]-1; cax++){
+                for(int cay = 1; cay < cell_array[1]-1; cay++){
+                for(int caz = 1; caz < cell_array[2]-1; caz++){
+
+                    //printf("%%d %%d \\n", omp_get_thread_num(), omp_get_num_threads());
+
+                    int cp  = (caz*cell_array[1] + cay)*cell_array[0] + cax;
+
+                    for(int cpp_i=0; cpp_i<27; cpp_i++){
+                        int cpp = cp + cell_map[cpp_i];
+
+                        int _i,_j;
+
+                        _i = q_list[n+cp];
+                        while (_i > -1){
+                            _j = q_list[n+cpp];
+                            while (_j > -1){
+                                if (_i != _j){
+                                    int _cpp_halo_flag;
+                                    int _cp_halo_flag;
+
+                                    // set halo flag, TODO move all halo flags to be an if condition on particle index?
+                                    if (_i >= N_LOCAL) { _cp_halo_flag = 1; } else { _cp_halo_flag = 0; }
+                                    if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
+
+                                    %(KERNEL_ARGUMENT_DECL)s
+
+                                      //KERNEL CODE START
+
+                                      %(KERNEL)s
+
+                                      //KERNEL CODE END
+
+
+                                }
+                                _j = q_list[_j];
                             }
-                            j = q_list[j];
+                            _i=q_list[_i];
                         }
-                        i=q_list[i];
+
                     }
 
-                }
+
+                }}} //triple loop end.
 
 
-            }}} //triple loop end.
+            %(OPENMP_LOOPING_FINALISE)s
+
+
+
+
+            } //parallel end
 
             return;
         }
-
-
         '''
-    def _kernel_argument_declarations(self):
-        """Define and declare the kernel arguments.
 
-        For each argument the kernel gets passed a pointer of type
-        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
-        pointer to the data which contains the properties of particle i.
-        These properties are stored consecutively in memory, so for a
-        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
-        property the vector entry j of particle i is accessed as
-        ``loc_argXXX[i][j]``.
-
-        This method generates the definitions of the ``loc_argXXX`` variables
-        and populates the data to ensure that ``loc_argXXX[i]`` points to
-        the correct address in the particle_dats.
+    def _generate_impl_source(self):
+        """Generate the source code the actual implementation.
         """
-        s = '\n'
+        _kernel_argument_declarations = '\n'
+        _looping_argument_declarations = '\n'
+        _looping_argument_finalise = '\n'
+
         for i, dat_orig in enumerate(self._particle_dat_dict.items()):
 
             if type(dat_orig[1]) is tuple:
@@ -1652,50 +1501,48 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
                 dat = dat_orig
                 _mode = access.RW
 
-            space = ' ' * 14
-            argname = dat[0] + '_ext'
-            loc_argname = dat[0]
+            if dat[1].name == 'forces':
+                _dd = [dat[1]]
+            else:
+                _dd = []
 
+            _kernel_argument_declarations += cpu_generate_openmp.generate_map(pair=True,
+                                                                              symbol_external=dat[0] + '_ext',
+                                                                              symbol_internal=dat[0],
+                                                                              dat=dat[1],
+                                                                              access_type=_mode,
+                                                                              n3_disable_dats=_dd)
+            _looping_argument_declarations += cpu_generate_openmp.generate_reduction_init_stage(symbol_external=dat[0] + '_ext',
+                                                                                                symbol_internal=dat[0],
+                                                                                                dat=dat[1],
+                                                                                                access_type=_mode)
+            _looping_argument_finalise += cpu_generate_openmp.generate_reduction_final_stage(symbol_external=dat[0] + '_ext',
+                                                                                             symbol_internal=dat[0],
+                                                                                             dat=dat[1],
+                                                                                             access_type=_mode)
 
-            if type(dat[1]) == data.ScalarArray:
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+        d = {'UNIQUENAME': self._unique_name,
+             'KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'LOC_ARGUMENTS': self._loc_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'KERNEL_ARGUMENT_DECL': _kernel_argument_declarations,
+             'LOOPING_ARGUMENT_DECL': _looping_argument_declarations,
+             'OPENMP_LOOPING_FINALISE': _looping_argument_finalise}
 
-            elif type(dat[1]) == data.ParticleDat:
-                if dat[1].name == 'forces':
-                    ncomp = dat[1].ncomp
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-                    s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
-                    s += space + loc_argname + '[1] = null_array;\n'
-
-
-                else:
-                    ncomp = dat[1].ncomp
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-                    s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
-                    s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
-
-            elif type(dat[1]) == data.TypedDat:
-
-                ncomp = dat[1].ncomp
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
-                s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
-                    ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
-                s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
-                    ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
-
-        return s
+        return self._code % d
 
     def execute(self, n=None, dat_dict=None, static_args=None):
         """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
-
+        cell.cell_list.check()
         '''Allow alternative pointers'''
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
-        '''Create arg list'''
 
+        '''Create arg list'''
         if n is not None:
             _N = n
         else:
@@ -1704,7 +1551,8 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
         _map_array = self.cell_offset_mapping()
 
 
-        args = [_map_array.ctypes_data,
+        args = [ctypes.c_int(cell.cell_list.num_particles),
+                _map_array.ctypes_data,
                 ctypes.c_int(_N),
                 self._domain.cell_array.ctypes_data,
                 cell.cell_list.cell_list.ctypes_data]
@@ -1721,6 +1569,747 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaportHalo):
                 args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
             else:
                 args.append(dat_orig.ctypes_data)
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        method(*args)
+
+        '''afterwards access descriptors'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()
+
+
+
+
+
+
+################################################################################################################
+# Neighbour list looping using NIII
+################################################################################################################
+
+class PairLoopNeighbourList(_Base):
+    def __init__(self, potential=None, dat_dict=None, kernel=None):
+
+        self._potential = potential
+        self._particle_dat_dict = dat_dict
+        self._compiler_set()
+
+        ##########
+        # End of Rapaport initialisations.
+        ##########
+
+        self._temp_dir = runtime.BUILD_DIR.dir
+        if not os.path.exists(self._temp_dir):
+            os.mkdir(self._temp_dir)
+
+        if potential is not None:
+            self._kernel = self._potential.kernel
+        elif kernel is not None:
+            self._kernel = kernel
+        else:
+            print "pairloop error, no kernel passed."
+
+
+        self._nargs = len(self._particle_dat_dict)
+
+        # Init code
+        self._kernel_code = self._kernel.code
+        self._code_init()
+
+        self._unique_name = self._unique_name_calc()
+
+        self._library_filename = self._unique_name + '.so'
+
+        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
+            if mpi.MPI_HANDLE is None:
+                self._create_library()
+            else:
+                if mpi.MPI_HANDLE.rank == 0:
+                    self._create_library()
+                mpi.MPI_HANDLE.barrier()
+
+        try:
+            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        except OSError as e:
+            raise OSError(e)
+        except:
+            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
+
+        self.neighbour_list = cell.NeighbourList()
+        self.neighbour_list.setup(*cell.cell_list.get_setup_parameters())
+
+
+    def _compiler_set(self):
+        self._cc = build.TMPCC
+
+    def _generate_header_source(self):
+        """Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        """
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+
+        %(INCLUDED_HEADERS)s
+
+        #include "%(LIB_DIR)s/generic.h"
+
+        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* START_POINTS, const int* NLIST, %(ARGUMENTS)s);
+
+        #endif
+        '''
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
+        return code % d
+
+    def _kernel_argument_declarations(self):
+        s = '\n'
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+
+            if dat[1].name == 'forces':
+                _dd = [dat[1]]
+            else:
+                _dd = []
+
+
+            s += cpu_generate_generic.generate_map(pair=True,
+                                                   symbol_external=dat[0] + '_ext',
+                                                   symbol_internal=dat[0],
+                                                   dat=dat[1],
+                                                   access_type=_mode)
+
+        return s
+
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+        #include <stdio.h>
+
+        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* START_POINTS, const int* NLIST, %(ARGUMENTS)s) {
+
+            for(int _i = 0; _i < N_LOCAL; _i++){
+                for(int _k = START_POINTS[_i]; _k < START_POINTS[_i+1]; _k++){
+                    int _j = NLIST[_k];
+                    int _cpp_halo_flag;
+                    int _cp_halo_flag;
+
+                    // set halo flag, TODO move all halo flags to be an if condition on particle index?
+                    if (_i >= N_LOCAL) { _cp_halo_flag = 1; } else { _cp_halo_flag = 0; }
+                    if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
+
+                     %(KERNEL_ARGUMENT_DECL)s
+
+                     //KERNEL CODE START
+
+                     %(KERNEL)s
+
+                     //KERNEL CODE END
+
+                }
+            }
+
+            return;
+        }
+
+
+        '''
+
+    def execute(self, n=None, dat_dict=None, static_args=None):
+        """
+        C version of the pair_locate: Loop over all cells update forces and potential engery.
+        """
+
+        cell.cell_list.check()
+
+        '''Allow alternative pointers'''
+        if dat_dict is not None:
+            self._particle_dat_dict = dat_dict
+
+
+
+        args = []
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+        '''Add pointer arguments to launch command'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
+            else:
+                args.append(dat_orig.ctypes_data)
+
+        '''Rebuild neighbour list potentially'''
+        if cell.cell_list.version_id > self.neighbour_list.version_id:
+            self.neighbour_list.update()
+
+        '''Create arg list'''
+        _N_TOTAL = ctypes.c_int(self.neighbour_list.n_total)
+        _N_LOCAL = ctypes.c_int(self.neighbour_list.n_local)
+        _STARTS = self.neighbour_list.neighbour_starting_points.ctypes_data
+        _LIST = self.neighbour_list.list.ctypes_data
+
+        args2 = [_N_TOTAL,
+                 _N_LOCAL,
+                 _STARTS,
+                 _LIST]
+
+        args = args2 + args
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        method(*args)
+
+        '''afterwards access descriptors'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()
+
+
+# Unnecsary workaround
+def _halo_exchange_particle_dat(dats_in):
+    # loop through passed dats
+    for ix in dats_in.values():
+
+        # dats with existing access descriptors
+        if type(ix) is tuple:
+
+            # check is particle dat
+            if type(ix[0]) is data.ParticleDat:
+
+                # halo exchange if required
+                if (len(ix) == 2) and (ix[1].read is True):
+                    ix[0].halo_exchange()
+                elif (len(ix) > 2) and (ix[1].read is True) and (ix[2] is True):
+                    ix[0].halo_exchange()
+
+        elif type(ix) is data.ParticleDat:
+            ix.halo_exchange()
+
+
+
+
+
+################################################################################################################
+# Neighbour list looping using NIII
+################################################################################################################
+
+class PairLoopNeighbourListOpenMP(PairLoopNeighbourList):
+    def _compiler_set(self):
+        self._cc = build.TMPCC_OpenMP
+
+    def __init__(self, potential=None, dat_dict=None, kernel=None):
+
+        self._potential = potential
+        self._particle_dat_dict = dat_dict
+        self._compiler_set()
+
+        ##########
+        # End of Rapaport initialisations.
+        ##########
+
+        self._temp_dir = runtime.BUILD_DIR.dir
+        if not os.path.exists(self._temp_dir):
+            os.mkdir(self._temp_dir)
+
+        if potential is not None:
+            self._kernel = self._potential.kernel
+        elif kernel is not None:
+            self._kernel = kernel
+        else:
+            print "pairloop error, no kernel passed."
+
+
+        self._nargs = len(self._particle_dat_dict)
+
+        # Init code
+        self._kernel_code = self._kernel.code
+        self._code_init()
+
+        self._unique_name = self._unique_name_calc()
+
+        self._library_filename = self._unique_name + '.so'
+
+        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
+            if mpi.MPI_HANDLE is None:
+                self._create_library()
+            else:
+                if mpi.MPI_HANDLE.rank == 0:
+                    self._create_library()
+                mpi.MPI_HANDLE.barrier()
+
+        try:
+            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        except OSError as e:
+            raise OSError(e)
+        except:
+            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
+
+        # Create an instance of a non N3 neighbour list.
+        self.neighbour_list_non_n3 = cell.NeighbourListNonN3()
+        self.neighbour_list_non_n3.setup(*cell.cell_list.get_setup_parameters())
+
+    def _generate_header_source(self):
+        """Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        """
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+
+        %(INCLUDED_HEADERS)s
+
+        #include "%(LIB_DIR)s/generic.h"
+        #include <omp.h>
+
+        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* START_POINTS, const int* NLIST, %(ARGUMENTS)s);
+
+        #endif
+        '''
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
+        return code % d
+
+    def _kernel_argument_declarations(self):
+        s = '\n'
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+
+            if dat[1].name == 'forces':
+                _dd = [dat[1]]
+            else:
+                _dd = []
+
+
+            s += cpu_generate_generic.generate_map(pair=True,
+                                                   symbol_external=dat[0] + '_ext',
+                                                   symbol_internal=dat[0],
+                                                   dat=dat[1],
+                                                   access_type=_mode)
+
+        return s
+
+    def _generate_impl_source(self):
+        """Generate the source code the actual implementation.
+        """
+        _kernel_argument_declarations = '\n'
+        _looping_argument_declarations = '\n'
+        _looping_argument_finalise = '\n'
+
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+
+            if dat[1].name == 'forces':
+                _dd = [dat[1]]
+            else:
+                _dd = []
+
+            _kernel_argument_declarations += cpu_generate_openmp.generate_map(pair=True,
+                                                                              symbol_external=dat[0] + '_ext',
+                                                                              symbol_internal=dat[0],
+                                                                              dat=dat[1],
+                                                                              access_type=_mode,
+                                                                              n3_disable_dats=_dd)
+            _looping_argument_declarations += cpu_generate_openmp.generate_reduction_init_stage(symbol_external=dat[0] + '_ext',
+                                                                                                symbol_internal=dat[0],
+                                                                                                dat=dat[1],
+                                                                                                access_type=_mode)
+            _looping_argument_finalise += cpu_generate_openmp.generate_reduction_final_stage(symbol_external=dat[0] + '_ext',
+                                                                                             symbol_internal=dat[0],
+                                                                                             dat=dat[1],
+                                                                                             access_type=_mode)
+
+        d = {'UNIQUENAME': self._unique_name,
+             'KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'LOC_ARGUMENTS': self._loc_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'KERNEL_ARGUMENT_DECL': _kernel_argument_declarations,
+             'LOOPING_ARGUMENT_DECL': _looping_argument_declarations,
+             'OPENMP_LOOPING_FINALISE': _looping_argument_finalise}
+
+        return self._code % d
+
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+        #include <stdio.h>
+
+        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* START_POINTS, const int* NLIST, %(ARGUMENTS)s) {
+
+            #pragma omp parallel
+            {
+
+                %(LOOPING_ARGUMENT_DECL)s
+
+                #pragma omp for schedule(static, 8)
+                for(int _i = 0; _i < N_LOCAL; _i++){
+                    for(int _k = START_POINTS[_i]; _k < START_POINTS[_i+1]; _k++){
+                        int _j = NLIST[_k];
+                        int _cpp_halo_flag;
+                        int _cp_halo_flag;
+
+                        // set halo flag, TODO move all halo flags to be an if condition on particle index?
+                        if (_i >= N_LOCAL) { _cp_halo_flag = 1; } else { _cp_halo_flag = 0; }
+                        if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
+
+                         %(KERNEL_ARGUMENT_DECL)s
+
+                             //KERNEL CODE START
+
+                             %(KERNEL)s
+
+                             //KERNEL CODE END
+
+                    }
+                }
+
+            %(OPENMP_LOOPING_FINALISE)s
+
+            } // parallel end
+
+            return;
+            }
+        '''
+
+    def execute(self, n=None, dat_dict=None, static_args=None):
+        """
+        C version of the pair_locate: Loop over all cells update forces and potential engery.
+        """
+
+        cell.cell_list.check()
+
+        '''Allow alternative pointers'''
+        if dat_dict is not None:
+            self._particle_dat_dict = dat_dict
+
+
+        args = []
+
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+        '''Add pointer arguments to launch command'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
+            else:
+                args.append(dat_orig.ctypes_data)
+
+        '''Rebuild neighbour list potentially'''
+        if cell.cell_list.version_id > self.neighbour_list_non_n3.version_id:
+            # print "REBUILDING"
+            self.neighbour_list_non_n3.update()
+        else:
+            pass
+
+        '''Create arg list'''
+        _N_TOTAL = ctypes.c_int(self.neighbour_list_non_n3.n_total)
+        _N_LOCAL = ctypes.c_int(self.neighbour_list_non_n3.n_local)
+        _STARTS = self.neighbour_list_non_n3.neighbour_starting_points.ctypes_data
+        _LIST = self.neighbour_list_non_n3.list.ctypes_data
+
+        args2 = [_N_TOTAL,
+                 _N_LOCAL,
+                 _STARTS,
+                 _LIST]
+
+        args = args2 + args
+
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        method(*args)
+
+        '''afterwards access descriptors'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()
+
+
+
+
+
+
+#############################################################################################
+# Layer based 1
+#############################################################################################
+
+class PairLoopNeighbourListLayersHybrid(_Base):
+
+    def _compiler_set(self):
+        self._cc = build.TMPCC_OpenMP
+
+    def __init__(self, potential=None, dat_dict=None, kernel=None, openmp=False):
+
+        self._potential = potential
+        self._particle_dat_dict = dat_dict
+
+        self._omp = openmp
+        self._compiler_set()
+
+        self._temp_dir = runtime.BUILD_DIR.dir
+        if not os.path.exists(self._temp_dir):
+            os.mkdir(self._temp_dir)
+
+        if potential is not None:
+            self._kernel = self._potential.kernel
+        elif kernel is not None:
+            self._kernel = kernel
+        else:
+            print "pairloop error, no kernel passed."
+
+
+        self._nargs = len(self._particle_dat_dict)
+
+        # Init code
+        self._kernel_code = self._kernel.code
+
+        
+        self._code_init()
+
+        self._unique_name = self._unique_name_calc()
+
+        self._library_filename = self._unique_name + '.so'
+
+        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
+            if mpi.MPI_HANDLE is None:
+                self._create_library()
+            else:
+                if mpi.MPI_HANDLE.rank == 0:
+                    self._create_library()
+                mpi.MPI_HANDLE.barrier()
+
+        try:
+            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
+        except OSError as e:
+            raise OSError(e)
+        except:
+            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
+
+        
+
+        self.layer_method = cell.CellLayerSort()
+        self.layer_method.setup(cell.cell_list, self._omp)
+
+        self.neighbour_method = cell.NeighbourListLayerBased()
+        self.neighbour_method.setup(self.layer_method, cell.cell_list, self._omp)
+
+    def _generate_header_source(self):
+        """Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        """
+        code = '''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+
+        %(INCLUDED_HEADERS)s
+
+        #include "%(LIB_DIR)s/generic.h"
+        #include <omp.h>
+
+        void %(KERNEL_NAME)s_wrapper(const int N_LOCAL, const int Nn, const int* NMATRIX, %(ARGUMENTS)s);
+
+        #endif
+        '''
+        d = {'UNIQUENAME': self._unique_name,
+             'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
+        return code % d
+
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+        self._code = '''
+        #include \"%(UNIQUENAME)s.h\"
+        #include <stdio.h>
+
+        void %(KERNEL_NAME)s_wrapper(const int N_LOCAL, const int Nn, const int* NMATRIX, %(ARGUMENTS)s) {
+
+            #pragma omp parallel
+            {
+            %(LOOPING_ARGUMENT_DECL)s
+            
+                #pragma omp for schedule(dynamic)
+                for(int _i = 0; _i < N_LOCAL; _i++){
+                //printf("_i=%%d, nn=%%d \\n", _i,Nn);
+
+                for(int _k = _i*(Nn+1)+1; _k < _i*(Nn+1)+1 + NMATRIX[_i*(Nn+1)]; _k++){
+
+                    int _j = NMATRIX[_k];
+
+                    //printf("i=%%d, j=%%d, k=%%d \\n", _i,_j, _k);
+
+                    int _cpp_halo_flag;
+                    int _cp_halo_flag;
+
+                    // set halo flag, TODO move all halo flags to be an if condition on particle index?
+                    if (_i >= N_LOCAL) { _cp_halo_flag = 1; } else { _cp_halo_flag = 0; }
+                    if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
+
+                     %(KERNEL_ARGUMENT_DECL)s
+
+                     //KERNEL CODE START
+
+                     %(KERNEL)s
+
+                     //KERNEL CODE END
+
+                }
+            }
+           
+
+            %(OPENMP_LOOPING_FINALISE)s
+
+
+            } //omp parallel end
+            return;
+        }
+
+
+        '''
+
+
+
+    def _generate_impl_source(self):
+        """Generate the source code the actual implementation.
+        """
+        _kernel_argument_declarations = '\n'
+        _looping_argument_declarations = '\n'
+        _looping_argument_finalise = '\n'
+
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+
+            if dat[1].name == 'forces':
+                _dd = [dat[1]]
+            else:
+                _dd = []
+
+            _kernel_argument_declarations += cpu_generate_openmp.generate_map(pair=True,
+                                                                              symbol_external=dat[0] + '_ext',
+                                                                              symbol_internal=dat[0],
+                                                                              dat=dat[1],
+                                                                              access_type=_mode,
+                                                                              n3_disable_dats=_dd)
+            _looping_argument_declarations += cpu_generate_openmp.generate_reduction_init_stage(symbol_external=dat[0] + '_ext',
+                                                                                                symbol_internal=dat[0],
+                                                                                                dat=dat[1],
+                                                                                                access_type=_mode)
+            _looping_argument_finalise += cpu_generate_openmp.generate_reduction_final_stage(symbol_external=dat[0] + '_ext',
+                                                                                             symbol_internal=dat[0],
+                                                                                             dat=dat[1],
+                                                                                             access_type=_mode)
+
+        d = {'UNIQUENAME': self._unique_name,
+             'KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'LOC_ARGUMENTS': self._loc_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'KERNEL_ARGUMENT_DECL': _kernel_argument_declarations,
+             'LOOPING_ARGUMENT_DECL': _looping_argument_declarations,
+             'OPENMP_LOOPING_FINALISE': _looping_argument_finalise}
+
+        return self._code % d
+
+    def execute(self, n=None, dat_dict=None, static_args=None):
+        """
+        C version of the pair_locate: Loop over all cells update forces and potential engery.
+        """
+
+        cell.cell_list.check()
+
+        '''Allow alternative pointers'''
+        if dat_dict is not None:
+            self._particle_dat_dict = dat_dict
+
+
+        args = []
+
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+        '''Add pointer arguments to launch command'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
+            else:
+                args.append(dat_orig.ctypes_data)
+
+
+        '''Rebuild neighbour list potentially'''
+        if cell.cell_list.version_id > self.neighbour_method.version_id:
+            self.layer_method.update()
+            self.neighbour_method.update()
+        else:
+            pass
+
+        '''Create arg list'''
+        _N_LOCAL = ctypes.c_int(cell.cell_list.num_particles)
+        _Nn = ctypes.c_int(self.neighbour_method.num_neighbours_per_atom)
+        _NMATRIX = self.neighbour_method.neighbour_matrix.ctypes_data
+
+        args2 = [_N_LOCAL,
+                 _Nn,
+                 _NMATRIX]
+
+        args = args2 + args
+
 
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']

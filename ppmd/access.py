@@ -40,6 +40,7 @@ _lookup = {'R': 'Read only',
            'W': 'Write only',
            'RW': 'Read and write',
            'INC': 'Incremental',
+           'INC0': 'Incremental from zero',
            'NULL': 'NULL'
            }
 
@@ -50,7 +51,7 @@ class AccessType(object):
 
     :arg str mode: Access mode, must be from: ``"R", "W", "RW", "INC"``
     """
-    _modes = ["R", "W", "RW", "INC", "NULL"]
+    _modes = ["R", "W", "RW", "INC", "NULL","INC0"]
 
     def __init__(self, mode):
         self._mode = mode
@@ -83,7 +84,16 @@ class AccessType(object):
         Does this access type write data, True/False.
         :return: Bool.
         """
-        return self._mode in ["W", "RW", "INC"]
+        return self._mode in ["W", "RW", "INC", "INC0"]
+
+    @property
+    def incremented(self):
+        """
+        Does this access perform reductions, True/False.
+        :return: Bool
+        """
+        return self._mode in ["INC", "INC0"]
+
 
 R = AccessType("R")
 """Access descriptor for read only data. """
@@ -97,19 +107,12 @@ RW = AccessType("RW")
 INC = AccessType("INC")
 """Access descriptor for data that is incremented. """
 
+INC0 = AccessType("INC0")
+"""Access descriptor for data that is incremented from zero. """
+
 NULL = AccessType("NULL")
 """NULL access descriptor for data. """
 
-def generate_reduction_init_stage(symbol_external, symbol_internal, dat, access_type):
-    """
-    Create the code to initialise the code for an INC, INC0 access descriptor for x86.
-    :arg string symbol_external: variable name for shared library
-    :arg string symbol_internal: variable name for kernel.
-    :arg data dat: :class:`~data.ParticleDat` or :class:`~data.ScalarArray` data object in question.
-    :arg access access_type: Access being used.
-
-    :return: string for initialisation code.
-    """
 
 
 

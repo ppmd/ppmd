@@ -12,6 +12,7 @@ import cell
 import kernel
 import build
 import runtime
+import gpucuda
 
 
 np.set_printoptions(threshold=1000)
@@ -90,6 +91,12 @@ class ScalarArray(host.Array):
         Creates scalar with given initial value.
         """
 
+        self.halo_aware = False
+        """How to handle writes to this dat in a reduction sense. """ \
+        """In general for a reduction in a pair loop a write will occur once per pair """ \
+        """In the case where one of the pair is in a halo, the write will occur if the ith""" \
+        """particle is not in the halo?"""
+
         self.name = name
         """Name of ScalarArray instance."""
 
@@ -105,9 +112,10 @@ class ScalarArray(host.Array):
 
         self._A = False
         self._Aarray = None
+        self._cuda_dat = None
 
-    def __call__(self, access=access.RW, halo=True):
-        return self
+    def __call__(self, mode=access.RW, halo=True):
+        return self, mode
 
     def __setitem__(self, ix, val):
         self.dat[ix] = np.array([val], dtype=self.dtype)
@@ -194,6 +202,8 @@ class ScalarArray(host.Array):
             self._Alength += 1
 
 
+
+
 ###################################################################################################
 # Blank arrays.
 ###################################################################################################
@@ -266,7 +276,7 @@ class ParticleDat(host.Matrix):
         self.npart_halo = 0
         """:return: The number of particles currently stored within the halo region of the particle dat."""
 
-
+        self._cuda_dat = None
 
     @property
     def dat(self):
@@ -286,6 +296,16 @@ class ParticleDat(host.Matrix):
         """
         self.dat[..., ...] = val
 
+    @property
+    def npart_total(self):#
+        """
+        Get the total number of particles in the dat including halo particles.
+
+        :return:
+        """
+        return self.npart + self.npart_halo
+
+
     def __getitem__(self, ix):
         return self.dat[ix]
 
@@ -301,7 +321,7 @@ class ParticleDat(host.Matrix):
 
     def __call__(self, mode=access.RW, halo=True):
 
-        return self, mode
+        return self, mode, halo
 
     def ctypes_data_access(self, mode=access.RW):
         """
@@ -310,6 +330,7 @@ class ParticleDat(host.Matrix):
         """
         if mode.read:
             if (self._vid_int > self._vid_halo) and cell.cell_list.halos_exist is True:
+                # print "halo exchangeing", self.name
                 self.halo_exchange()
 
                 self._vid_halo = self._vid_int
@@ -372,8 +393,9 @@ class ParticleDat(host.Matrix):
         Perform a halo exchange for the particle dat. WIP currently only functional for positions.
         """
 
-        self.halo_pack()
-        self._transfer_unpack()
+        if cell.cell_list.halos_exist is True:
+            self.halo_pack()
+            self._transfer_unpack()
 
 
     def _setup_halo_packing(self):
@@ -391,6 +413,7 @@ class ParticleDat(host.Matrix):
                     _bc_flag[2 * ix] = 1
                 if mpi.MPI_HANDLE.top[ix] == mpi.MPI_HANDLE.dims[ix] - 1:
                     _bc_flag[2 * ix + 1] = 1
+
 
             _extent = cell.cell_list.domain.extent
 
@@ -426,6 +449,7 @@ class ParticleDat(host.Matrix):
                 [0., _extent[1] * _bc_flag[2], _extent[2] * _bc_flag[4]],
                 [_extent[0] * _bc_flag[0], _extent[1] * _bc_flag[2], _extent[2] * _bc_flag[4]]
             ]
+
 
             '''make scalar array object from above shifts'''
             _tmp_list_local = []
@@ -502,7 +526,9 @@ class ParticleDat(host.Matrix):
         _headers = ['stdio.h']
         _kernel = kernel.Kernel('ParticleDatHaloPackingCode', _packing_code, None, _headers, None, _static_args)
 
+
         self._halo_packing_lib = build.SharedLib(_kernel, _args)
+
         self._halo_packing_buffer = host.Matrix(nrow=self.npart, ncol=self.ncomp)
 
     def halo_pack(self):
@@ -511,6 +537,7 @@ class ParticleDat(host.Matrix):
         """
         if self._halo_packing_lib is None:
             self._setup_halo_packing()
+
 
         _boundary_groups_contents_array, _exchange_sizes = halo.HALOS.get_boundary_cell_contents_count
 
@@ -539,7 +566,6 @@ class ParticleDat(host.Matrix):
 
         if self.name == 'positions':
             _dynamic_args['CSA'] = self._cell_shifts_array_pbc
-
 
         self._halo_packing_lib.execute(static_args=_static_args, dat_dict=_dynamic_args)
 
@@ -591,8 +617,10 @@ class ParticleDat(host.Matrix):
                                          mpi.MPI_HANDLE.rank,
                                          _status)
 
-
-
+            _t_size = self.halo_start + self._cell_contents_recv[_halo_groups_start_end_indices[i]:_halo_groups_start_end_indices[i + 1]:].sum()
+            if _t_size > self.max_npart:
+                # print self.max_npart
+                self.resize(_t_size)
 
             # Exchange data --------------------------------------------------------------------------
             if halo.HALOS.send_ranks[i] > -1 and halo.HALOS.recv_ranks[i] > -1:
@@ -628,8 +656,10 @@ class ParticleDat(host.Matrix):
                 self.halo_start_shift(_shift / self.ncomp)
 
         # SEND END -------------------------------------------------------------------------------------------
-        if self.name == 'positions':
+
+        if (self.name == 'positions') and cell.cell_list.version_id > cell.cell_list.halo_version_id:
             cell.cell_list.sort_halo_cells(_halo_cell_groups, self._cell_contents_recv, self.npart)
+
 
 
 
@@ -682,9 +712,11 @@ class TypedDat(host.Matrix):
 
         return self, mode
 
+    def __getitem__(self, ix):
+        return self.dat[ix]
 
-
-
+    def __setitem__(self, ix, val):
+        self.dat[ix] = val
 
 
 

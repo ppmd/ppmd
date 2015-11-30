@@ -2,14 +2,20 @@
 
 import runtime
 # debug level
-runtime.DEBUG.level = 1
+runtime.DEBUG.level = 0
 #verbosity level
 runtime.VERBOSE.level = 3
 #timer level
 runtime.TIMER.level = 3
+#build timer level
+runtime.BUILD_TIMER.level = 3
+
+
+
 
 #cuda on/off
-runtime.CUDA_ENABLED.flag = False
+runtime.CUDA_ENABLED.flag = True
+
 
 
 import mpi
@@ -24,7 +30,7 @@ import gpucuda
 import os
 import simulation
 import halo
-
+import kernel
 
 
 if __name__ == '__main__':
@@ -36,10 +42,10 @@ if __name__ == '__main__':
 
     # 1000 particles in a box
     test_1000 = True
-    
+
     # 2 particles bouncing agasint each other.
     test_2_bounce = False
-    
+
     # 1 1 particle
     t_1_particle = False
 
@@ -56,7 +62,7 @@ if __name__ == '__main__':
     t=0.0001*24
     #t=0.0024
     #t=0.0174
-    t=0.2
+    t=.1
     dt=0.0001
 
 
@@ -75,6 +81,9 @@ if __name__ == '__main__':
         # Initialise LJ potential
         test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
         
+        # print kernel.analyse(test_potential.kernel, [])
+
+
         # Place n particles in a lattice with given density.
         # test_pos_init = state.PosInitLatticeNRho(n, rho, None)
         test_pos_init = simulation.PosInitLatticeNRhoRand(N,rho,0.,None)
@@ -99,14 +108,14 @@ if __name__ == '__main__':
 
 
         # Initialise two particles on an axis a set distance apart.
-        test_pos_init = simulation.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([8., 8., 8.]), axis = np.array([1,0,0]))
+        test_pos_init = simulation.PosInitTwoParticlesInABox(rx = 0.4, extent = np.array([30., 30., 30.]), axis = np.array([0,0,1]))
 
         # Give first two particles specific velocities
         test_vel_init = simulation.VelInitTwoParticlesInABox(vx = np.array([0., 0., 0.]), vy = np.array([0., 0., 0.]))
 
         # Set alternating masses for particles.
         
-        test_mass_init = simulation.MassInitTwoAlternating(100., 5.)
+        test_mass_init = simulation.MassInitTwoAlternating(1., 1.)
         
     if t_1_particle:
         
@@ -139,10 +148,11 @@ if __name__ == '__main__':
                                        n=N
                                        )
 
+
     # plotting handle
     if plotting:
         plothandle = method.DrawParticles(state=sim1.state)
-        plotsteps = 200
+        plotsteps = 100
         plotfn = plothandle.draw
     else:
         plothandle = None
@@ -196,12 +206,9 @@ if __name__ == '__main__':
     test_integrator.integrate(dt=dt, t=t)
 
     sim1.state.move_timer.stop("move total time")
-    sim1.state.move_timer2.stop("move timer 2")
     sim1.state.compress_timer.stop("compress time")
 
 
-    if test_domain.halos is not False:
-        halo.HALOS.timer.time("Total time in halo exchange.")
     sim1.timer.time("Total time in forces update.")
     sim1.cpu_forces_timer.time("Total time cpu forces update.")
     if gpucuda.INIT_STATUS():

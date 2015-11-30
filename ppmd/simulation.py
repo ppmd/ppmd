@@ -61,11 +61,14 @@ class BaseMDSimulation(object):
         else:
             self._cutoff = cutoff
 
+        self._cell_width = 1.1 * self._cutoff
+
+
         self._boundary_method = domain_boundary_condition
         self._boundary_method.set_state(self.state)
 
         # Add particle dats
-        _factor = 27
+        _factor = 5
         self.state.positions = data.ParticleDat(n, 3, name='positions', max_npart=_factor * n)
         self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
         self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
@@ -73,23 +76,30 @@ class BaseMDSimulation(object):
         self.state.types = data.ParticleDat(n, 1, dtype=ct.c_int, name='types', max_npart=_factor * n)
 
 
-
         # Add typed dats.
-        self.state.mass = data.TypedDat(n, 1, 1.0)
+        self.state.mass = data.TypedDat(1, n)
+
 
         # Add scalar dats.
         # Potential energy.
         self.state.u = data.ScalarArray(ncomp=2, name='potential_energy')
+        self.state.u.halo_aware = True
 
         # Kinetic energy
         self.state.k = data.ScalarArray()
 
+        if gpucuda.INIT_STATUS():
+            self.state.positions.add_cuda_dat()
+            self.state.forces.add_cuda_dat()
+            self.state.u.add_cuda_dat()
+
+        '''
         # gpucuda dats
         if gpucuda.INIT_STATUS():
             gpucuda.CUDA_DATS.register(self.state.u)
             gpucuda.CUDA_DATS.register(self.state.positions)
             gpucuda.CUDA_DATS.register(self.state.forces)
-
+        '''
 
         # domain TODO: Maybe move domain to simulation not state.
         self.state.domain = domain_in
@@ -97,7 +107,12 @@ class BaseMDSimulation(object):
         # Initialise domain extent
         particle_pos_init.get_extent(self.state)
         # Initialise cell list
-        self._cell_structure = cell.cell_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cutoff)
+        self._cell_structure = cell.cell_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cell_width)
+        # Setup callbacks
+        cell.cell_list.setup_update_tracking(self._determine_update_status)
+        cell.cell_list.setup_callback_on_update(self._reset_moved_distance)
+
+
         if type(self.state.domain) is domain.BaseDomainHalo:
             halo.HALOS = halo.CartesianHalo()
 
@@ -114,8 +129,17 @@ class BaseMDSimulation(object):
         if particle_vel_init is not None:
             particle_vel_init.reset(self.state)
 
+        # Init masses
+        if particle_mass_init is not None:
+            particle_mass_init.reset(self.state)
+
+
         # Set state time to 0
         self.state.time = 0.0
+        """Time of the state."""
+
+        self._prev_time = 0.0
+        self._moved_distance = 0.0
 
         # short range potential data dict init
         if self.potential is not None:
@@ -129,6 +153,7 @@ class BaseMDSimulation(object):
             # TODO remove these two lines when creating access descriptors.
             cell.cell_list.sort()
             cell.group_by_cell.group_by_cell()
+            cell.cell_list.trigger_update()
 
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
@@ -140,7 +165,19 @@ class BaseMDSimulation(object):
                 self._forces_update_lib2 = pairloop.PairLoopRapaportHaloOpenMP(domain=self.state.domain,
                                                                                potential=self.potential,
                                                                                dat_dict=_potential_dat_dict)
+
+
+                self._forces_update_lib = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
+                                                                         dat_dict=_potential_dat_dict)
+
+                self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
+                                                                         dat_dict=_potential_dat_dict)
+
+                self._forces_update_lib2 = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
+                                                                                     dat_dict=_potential_dat_dict,
+                                                                                     openmp=False)
                 '''
+
 
             # If domain is without halos
             elif type(self.state.domain) is domain.BaseDomain:
@@ -157,7 +194,7 @@ class BaseMDSimulation(object):
                                                                                   potential=self.potential,
                                                                                   dat_dict=_potential_dat_dict)
                 if type(self.state.domain) is domain.BaseDomainHalo:
-                    self._forces_update_lib_gpucuda = gpucuda.SimpleCudaPairLoopHalo2D(n=self.state.as_func('n'),
+                    self._forces_update_lib_gpucuda = gpucuda.SimpleCudaPairLoopHalo3D(n=self.state.as_func('n'),
                                                                                        domain=self.state.domain,
                                                                                        potential=self.potential,
                                                                                        dat_dict=_potential_dat_dict)
@@ -177,28 +214,50 @@ class BaseMDSimulation(object):
 
         self._kinetic_energy_lib = None
 
+    def _get_max_moved_distance(self):
+        """
+        Get the maxium distance moved by a particle. First call will always be incorrect
+        :return:
+        """
 
+        _dt = self.state.time - self._prev_time
 
+        self._prev_time = self.state.time
+
+        if self.state.n > 0:
+            return _dt * self.state.velocities.dat[0:self.state.n:].max()
+        else:
+            return 0.0
+
+    def _determine_update_status(self):
+        """
+        Return true if update of cell list and neighbour list is needed.
+        :return:
+        """
+        self._moved_distance += self._get_max_moved_distance()
+
+        if self._moved_distance >= 0.5 * (self._cell_width - self._cutoff):
+            print "WARNING PARTICLE MOVED TOO FAR, rank:", mpi.MPI_HANDLE.rank
+
+        if (self._moved_distance >= 0.5 * (self._cell_width - self._cutoff)) or \
+                (self.state.version_id % 10 == 0) or \
+                self.state.invalidate_lists:
+            return True
+        else:
+            # print "False", self._moved_distance, (self._cell_width - self._cutoff)
+            return False
+
+    def _reset_moved_distance(self):
+        self._moved_distance = 0.0
+        self.state.invalidate_lists = False
 
     def forces_update(self):
         """
         Updates the forces in the simulation state using the short range potential.
         """
 
-
         self.timer.start()
 
-        if self._cell_structure:
-            cell.cell_list.sort()
-            cell.group_by_cell.group_by_cell()
-
-        # TODO move domain out of state>?
-
-        '''
-        #TODO: make part of access descriptors.
-        if (self._cell_structure is True) and (self.state.domain.halos is not False):
-            self.state.positions.halo_exchange()
-        '''
 
         # reset forces
         self.state.forces.set_val(0.)
@@ -211,11 +270,11 @@ class BaseMDSimulation(object):
             t2 = threading.Thread(target=cell.cell_list.cell_contents_count.copy_to_cuda_dat()); t2.start()
             t3 = threading.Thread(target=cell.cell_list.cell_reverse_lookup.copy_to_cuda_dat()); t3.start()
 
-
         self.cpu_forces_timer.start()
-        if self.state.n > 0:
-            self._forces_update_lib.execute()
-            pass
+        #if self.state.n > 0:
+        #self._forces_update_lib.execute()
+        self._forces_update_lib.execute()
+
 
         self.cpu_forces_timer.pause()
 
@@ -228,6 +287,11 @@ class BaseMDSimulation(object):
             self.gpu_forces_timer.start()
             self._forces_update_lib_gpucuda.execute()
             self.gpu_forces_timer.pause()
+
+        if gpucuda.INIT_STATUS():
+            self.state.forces.copy_from_cuda_dat()
+
+
 
         self.timer.pause()
 
@@ -881,8 +945,9 @@ class MassInitTwoAlternating(object):
         for ix in range(state.n):
             mass_input[ix] = self._m[(state.global_ids[ix] % 2)]
         '''
-        state.masses[0] = self._m[0]
-        state.masses[1] = self._m[1]
+
+        state.mass[0,0] = self._m[0]
+        state.mass[0,1] = self._m[1]
 
         for ix in range(state.n):
             state.types[ix] = state.global_ids[ix] % 2
@@ -909,7 +974,7 @@ class MassInitIdentical(object):
 
         :arg Dat mass_input: Dat container with masses.
         """
-        state.masses[0] = self._m
+        state.mass[0] = self._m
 
         for ix in range(state.n):
             state.types[ix] = 0

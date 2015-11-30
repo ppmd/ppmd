@@ -1,13 +1,10 @@
 import ctypes
-import numpy as np
 import build
 import data
 import host
 import kernel
 import mpi
-import pio
 import runtime
-
 
 class _AsFunc(object):
     """
@@ -46,7 +43,16 @@ class BaseMDState(object):
 
         self.uncompressed_n = False
 
+
+        # State time
+        self._time = 0.0
+        self.version_id = 0
+
+
         # move vars.
+
+        self.invalidate_lists = False
+        """If true, all cell lists/ neighbour lists should be rebuilt."""
 
         self._move_dir_recv_totals = None
         self._move_dir_send_totals = None
@@ -64,8 +70,9 @@ class BaseMDState(object):
         self._move_ncomp = None
         self._total_ncomp = None
 
+        # Timers
         self.move_timer = runtime.Timer(runtime.TIMER, 0)
-        self.move_timer2 = runtime.Timer(runtime.TIMER, 0)
+        self.compress_timer = runtime.Timer(runtime.TIMER, 0)
 
         self._status = mpi.Status()
 
@@ -74,7 +81,7 @@ class BaseMDState(object):
         self._compressing_n_new = None
         self._compressing_dyn_args = None
 
-        self.compress_timer = runtime.Timer(runtime.TIMER, 0)
+
 
 
     def __setattr__(self, name, value):
@@ -91,6 +98,7 @@ class BaseMDState(object):
         if type(value) is data.ParticleDat:
             object.__setattr__(self, name, value)
             self.particle_dats.append(name)
+
 
             # Reset these to ensure that move libs are rebuilt.
             self._move_packing_lib = None
@@ -138,6 +146,22 @@ class BaseMDState(object):
             _dat.npart = int(value)
             _dat.halo_start_reset()
             #_dat.halo_start_set(int(value))
+            self.invalidate_lists = True
+
+    @property
+    def time(self):
+        """
+        Get the state time.
+        """
+        return self._time
+
+    @time.setter
+    def time(self, val):
+        """
+        Set the state time.
+        """
+        self._time = val
+        self.version_id += 1
 
     def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None, shifts=None):
         """
@@ -147,6 +171,8 @@ class BaseMDState(object):
         :arg host.Array dir_send_totals(int): 26 Element array of number of particles traveling in each direction.
         :arg host.Array shifts(double): 73 element array of the shifts to apply when moving particles for the 26 directions.
         """
+
+        self.move_timer.start()
 
         if self._move_packing_lib is None:
             self._move_build_packing_lib()
@@ -158,6 +184,7 @@ class BaseMDState(object):
             self._move_send_buffer = host.Array(ncomp=self._total_ncomp * _send_total, dtype=ctypes.c_double)
         elif self._move_send_buffer.ncomp < self._total_ncomp * _send_total:
             self._move_send_buffer.realloc(self._total_ncomp * _send_total)
+
 
         #Make recv sizes array.
         if self._move_dir_recv_totals is None:
@@ -175,13 +202,17 @@ class BaseMDState(object):
         elif self._move_recv_buffer.ncomp < self._total_ncomp * _recv_total:
             self._move_recv_buffer.realloc(self._total_ncomp * _recv_total)
 
-        #Empty slots store.
+        for ix in self.particle_dats:
+            _d = getattr(self,ix)
+            if _recv_total + self._n > _d.max_npart:
+                _d.resize(_recv_total + self._n)
+
+
+        # Empty slots store.
         if self._move_empty_slots is None:
             self._move_empty_slots = host.Array(ncomp=_send_total, dtype=ctypes.c_int)
         elif self._move_empty_slots.ncomp < _send_total:
             self._move_empty_slots.realloc(_send_total)
-
-
 
         #pack particles to send.
 
@@ -220,7 +251,10 @@ class BaseMDState(object):
         # Compress particle dats.
         self._compress_particle_dats(_send_total - _recv_total)
 
+        if _send_total > 0 or _recv_total > 0:
+            self.invalidate_lists = True
 
+        self.move_timer.pause()
 
 
         return True
@@ -435,14 +469,13 @@ class BaseMDState(object):
 
         # make packing library
         self._move_packing_shift_lib = build.SharedLib(_packing_kernel_shift, self._packing_args_shift)
-
+        self._move_packing_lib = True
 
 
     def _compress_particle_dats(self, num_slots_to_fill):
         """
         Compress the particle dats held in the state. Compressing removes empty rows.
         """
-
 
         self._compressing_n_new = host.Array([0], dtype=ctypes.c_int)
         #self._compressing_slots = host.Array(self._move_empty_slots, dtype=ctypes.c_int)
@@ -558,7 +591,6 @@ class BaseMDState(object):
             self.compressed = True
             # self._move_empty_slots = []
             self.compress_timer.pause()
-
 
 
 
