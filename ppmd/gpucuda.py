@@ -224,6 +224,8 @@ def cuda_err_check(err_code):
     :param err_code:
     :return:
     """
+
+
     if LIBHELPER is not None:
         LIBHELPER['cudaErrorCheck'](err_code)
 

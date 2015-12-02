@@ -54,6 +54,8 @@ class AccessType(object):
     _modes = ["R", "W", "RW", "INC", "NULL","INC0"]
 
     def __init__(self, mode):
+
+
         self._mode = mode
 
     def __str__(self):

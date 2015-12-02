@@ -19,7 +19,8 @@ __all__ = [ 'access',
             'potential',
             'runtime',
             'simulation',
-            'state']
+            'state',
+            'cuda']
 
 
 
@@ -43,4 +44,5 @@ import pio
 import runtime
 import simulation
 import state
+import cuda
 
