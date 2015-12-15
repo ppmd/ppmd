@@ -652,6 +652,8 @@ class PosInitDLPOLYConfig(object):
             else:
                 pass
 
+        print extent
+
         fh.close()
 
         assert extent.sum() > 0., "PosInit Error: Bad extent read"
@@ -673,7 +675,10 @@ class PosInitDLPOLYConfig(object):
 
         _d = state_input.domain.boundary
 
+        print "boundary", _d, "extent", state_input.domain.extent
+
         for i, line in enumerate(fh):
+
 
             if (i > (shift - 2)) and ((i - shift + 1) % offset == 0) and count < state_input.nt:
                 _tx = float(line.strip().split()[0])
@@ -685,6 +690,8 @@ class PosInitDLPOLYConfig(object):
                     state_input.positions[_n, 0] = _tx
                     state_input.positions[_n, 1] = _ty
                     state_input.positions[_n, 2] = _tz
+
+                    print state_input.positions[_n,::]
 
                     state_input.global_ids[_n] = count
                     _n += 1
