@@ -10,6 +10,7 @@ import numpy as np
 
 
 #cuda
+import cuda_base
 
 class CellOccupancyMatrix(object):
     """
@@ -22,6 +23,9 @@ class CellOccupancyMatrix(object):
         self.cell_contents_count = None
         """Number of particles per cell, determines number of layers per cell."""
 
+        self.cell_reverse_lookup = None
+        """Map between particle index and containing cell."""
+
         self.particle_layers = None
         """Stores which layer each particle is contained in."""
 
@@ -30,6 +34,9 @@ class CellOccupancyMatrix(object):
 
         # build vars
         self._lib = None
+        self._boundary = None
+        self._cell_edge_lengths = None
+        self._cell_array = None
 
         # setup vars
         self._n_func = None
@@ -52,6 +59,17 @@ class CellOccupancyMatrix(object):
         self._domain = domain_in
         self._positions = positions_in
 
+        self.particle_layers = cuda_base.Array(ncomp=self._n_func(), dtype=ctypes.c_int)
+        self.cell_reverse_lookup = cuda_base.Array(ncomp=self._n_func(), dtype=ctypes.c_int)
+        self.cell_contents_count = cuda_base.Array(ncomp=self._domain.cell_count, dtype=ctypes.c_int)
+        self.matrix = cuda_base.Matrix(nrow=self._domain.cell_count,
+                                       ncol=self._n_func()/self._domain.cell_count,
+                                       dtype=ctypes.c_int)
+
+        self._boundary = cuda_base.Array(initial_value=self._domain.boundary_outer)
+        self._cell_edge_lengths = cuda_base.Array(initial_value=self._domain.cell_edge_lengths)
+        self._cell_array = cuda_base.Array(initial_value=self._domain.cell_array, dtype=ctypes.c_int)
+
         self._setup = True
         self._build()
 
@@ -61,6 +79,10 @@ class CellOccupancyMatrix(object):
         :return:
         """
         assert self._setup is not False, "Run CellOccupancyMatrix.setup() first."
+
+        self._p1_code = '''
+
+        '''
 
 
 

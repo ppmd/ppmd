@@ -56,14 +56,17 @@ class Array(object):
 
     def _create_from_existing(self, ndarray=None, dtype=ctypes.c_double):
 
+        if dtype != ndarray.dtype:
+            print "cuda_base:Array._create_from_existing() data type miss matched."
+
         self.idtype = dtype
         if dtype != self.dtype:
             self.idtype = dtype
 
-        self.realloc(ndarray.shape[0])
+        self.realloc(ndarray.size)
         cuda_runtime.cuda_mem_cpy(self._ptr,
                                   ndarray.ctypes.data_as(ctypes.POINTER(dtype)),
-                                  ctypes.c_size_t(ndarray.shape[0] * ctypes.sizeof(dtype)),
+                                  ctypes.c_size_t(ndarray.size * ctypes.sizeof(dtype)),
                                   'cudaMemcpyHostToDevice')
 
 
