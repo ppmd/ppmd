@@ -22,9 +22,9 @@ $(MAIN): $(addsuffix .so,$(addprefix lib,$(LIBS)))
 .phony:
 clean:
 ifeq ($(strip $(BUILD_DIR)),)
-	rm -rf *.o *.so $(MAIN) *.pyc ./build/*
+	rm -rf *.o *.so $(MAIN) *.pyc ./build/* ./cuda/*.pyc
 else
-	rm -rf *.o *.so *.pyc $(BUILD_DIR)/*
+	rm -rf *.o *.so *.pyc $(BUILD_DIR)/* ./cuda/*.pyc
 endif
 
 cout:

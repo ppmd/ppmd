@@ -11,6 +11,7 @@ import ppmd.access
 # cuda imports
 import cuda_base
 
+
 class ScalarArray(cuda_base.Array):
 
     def __init__(self, initial_value=None , name=None, ncomp=0, dtype=ctypes.c_double):
@@ -48,6 +49,22 @@ declared."""
 NullDoubleScalarArray = ScalarArray(dtype=ctypes.c_double)
 """Empty double :class:`~data.ScalarArray` for specifying a kernel argument that may not yet be
 declared."""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
