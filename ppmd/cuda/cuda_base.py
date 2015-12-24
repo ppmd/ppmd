@@ -38,7 +38,6 @@ class Array(object):
         self._ncomp = 0
         self._ptr = ctypes.POINTER(self.idtype)()
 
-
         if initial_value is not None:
             if type(initial_value) is np.ndarray:
                 self._create_from_existing(initial_value, dtype)
@@ -47,14 +46,13 @@ class Array(object):
         else:
             self._create_zeros(ncomp, dtype)
 
-
-
     def _create_zeros(self, length=1, dtype=ctypes.c_double):
         if dtype != self.dtype:
             self.idtype = dtype
 
-        self.realloc(length)
-        self.zero()
+        if length > 0:
+            self.realloc(length)
+            self.zero()
 
     def _create_from_existing(self, ndarray=None, dtype=ctypes.c_double):
 

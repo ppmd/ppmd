@@ -13,7 +13,7 @@ NVCC = build.Compiler(['nvcc_system_default'],
                       ['-Xcompiler', '"-fPIC"'],
                       ['-lm'],
                       ['-O3', '--ptxas-options=-v -dlcm=ca', '--maxrregcount=64'],  # '-O3', '-Xptxas', '"-v"', '-lineinfo'
-                      ['-G', '-g', '--source-in-ptx', '--ptxas-options="-v -dlcm=ca"'],
+                      ['-G', '-g', '--source-in-ptx', '--ptxas-options=-v'],
                       ['-c', '-arch=sm_35', '-m64', '-lineinfo'],
                       ['-shared', '-Xcompiler', '"-fPIC"'],
                       '__restrict__')
@@ -44,7 +44,7 @@ def build_static_libs(lib):
 
             _lib_src_filename = cuda_runtime.LIB_DIR.dir + lib + '.cu'
 
-            _c_cmd = NVCC.binary + [_lib_src_filename] + ['-o'] + [_lib_filename] + NVCC.c_flags + NVCC.l_flags
+            _c_cmd = NVCC.binary + [_lib_src_filename] + ['-o'] + [_lib_filename] + NVCC.c_flags + NVCC.l_flags + ['-I ' + str(cuda_runtime.LIB_DIR.dir)]
             if cuda_runtime.DEBUG.level > 0:
                 _c_cmd += NVCC.dbg_flags
             else:

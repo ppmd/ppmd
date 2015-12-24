@@ -12,7 +12,6 @@ import cell
 import kernel
 import build
 import runtime
-import gpucuda
 
 
 np.set_printoptions(threshold=1000)

@@ -25,7 +25,6 @@ import state
 import numpy as np
 import method
 import data
-import gpucuda
 
 import os
 import simulation
@@ -211,8 +210,6 @@ if __name__ == '__main__':
 
     sim1.timer.time("Total time in forces update.")
     sim1.cpu_forces_timer.time("Total time cpu forces update.")
-    if gpucuda.INIT_STATUS():
-        sim1.gpu_forces_timer.time("Total time gpu forces update.")
     ###########################################################
     # sim1.state.swaptimer.time("state time to swap arrays")
     

@@ -6,7 +6,6 @@ __all__ = [ 'access',
             'cell',
             'data',
             'domain',
-            'gpucuda',
             'halo',
             'host',
             'kernel',
@@ -32,7 +31,6 @@ import build
 import cell
 import data
 import domain
-import gpucuda
 import halo
 import kernel
 import loop

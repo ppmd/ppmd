@@ -14,9 +14,9 @@ import os
 import sys
 
 
-ERROR_LEVEL = runtime.Level(2)
-DEBUG = runtime.Level(2)
-VERBOSE = runtime.Level(2)
+ERROR_LEVEL = runtime.Level(3)
+DEBUG = runtime.Level(3)
+VERBOSE = runtime.Level(3)
 BUILD_TIMER = runtime.Level(0)
 
 BUILD_DIR = runtime.BUILD_DIR
@@ -32,8 +32,7 @@ try:
     CUDA_INC_PATH = os.environ['CUDA_INSTALL_PATH']
 except KeyError:
     if ERROR_LEVEL.level > 2:
-        raise RuntimeError('cuda_runtime error: cuda toolkit environment path not '
-                           'found, expecting CUDA_INSTALL_PATH')
+        raise RuntimeError('cuda_runtime error: cuda toolkit environment path not found, expecting CUDA_INSTALL_PATH')
     CUDA_INC_PATH = None
 
 try:
@@ -41,8 +40,7 @@ try:
 
 except:
     if ERROR_LEVEL.level > 2:
-        raise RuntimeError('cuda_runtime error: Module is not initialised correctly,'
-                           ' CUDA runtime not loaded')
+        raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA runtime not loaded')
     LIBCUDART = None
 
 # wrapper library for functions involving types.
@@ -50,8 +48,7 @@ except:
 try:
     LIBHELPER = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaHelperLib'))
 except:
-    raise RuntimeError('cuda_runtime error: Module is not initialised correctly,'
-                       ' CUDA helper lib not loaded')
+    raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA helper lib not loaded')
     LIBHELPER = None
 
 #####################################################################################

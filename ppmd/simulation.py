@@ -1,6 +1,4 @@
-import build
 import halo
-import host
 import loop
 import mpi
 import pio
@@ -11,11 +9,9 @@ import math
 import random
 import data
 import ctypes as ct
-import gpucuda
 import cell
 import domain
 import pairloop
-import threading
 import kernel
 
 
@@ -88,10 +84,6 @@ class BaseMDSimulation(object):
         # Kinetic energy
         self.state.k = data.ScalarArray()
 
-        if gpucuda.INIT_STATUS():
-            self.state.positions.add_cuda_dat()
-            self.state.forces.add_cuda_dat()
-            self.state.u.add_cuda_dat()
 
         '''
         # gpucuda dats
@@ -116,11 +108,7 @@ class BaseMDSimulation(object):
         if type(self.state.domain) is domain.BaseDomainHalo:
             halo.HALOS = halo.CartesianHalo()
 
-        # add gpu arrays
-        if gpucuda.INIT_STATUS():
-            cell.cell_list.cell_reverse_lookup.add_cuda_dat()
-            cell.cell_list.cell_contents_count.add_cuda_dat()
-            cell.cell_list.cell_list.add_cuda_dat()
+
 
         # Initialise positions
         particle_pos_init.reset(self.state)
@@ -186,6 +174,7 @@ class BaseMDSimulation(object):
                                                                     dat_dict=_potential_dat_dict)
 
             # create gpu looping method if gpucuda module is initialised
+            '''
             if gpucuda.INIT_STATUS():
                 self.gpu_forces_timer = runtime.Timer(runtime.TIMER, 0)
                 if type(self.state.domain) is domain.BaseDomain:
@@ -198,6 +187,7 @@ class BaseMDSimulation(object):
                                                                                        domain=self.state.domain,
                                                                                        potential=self.potential,
                                                                                        dat_dict=_potential_dat_dict)
+            '''
 
         # If no cell structure was created
         elif self.potential is not None:
@@ -263,12 +253,14 @@ class BaseMDSimulation(object):
         self.state.forces.set_val(0.)
         self.state.u.scale(0.)
 
+        '''
         if gpucuda.INIT_STATUS():
             # copy data to gpu
             t0 = threading.Thread(target=cell.cell_list.cell_list.copy_to_cuda_dat()); t0.start()
             t1 = threading.Thread(target=self.state.positions.copy_to_cuda_dat()); t1.start()
             t2 = threading.Thread(target=cell.cell_list.cell_contents_count.copy_to_cuda_dat()); t2.start()
             t3 = threading.Thread(target=cell.cell_list.cell_reverse_lookup.copy_to_cuda_dat()); t3.start()
+        '''
 
         self.cpu_forces_timer.start()
         #if self.state.n > 0:
@@ -278,6 +270,7 @@ class BaseMDSimulation(object):
 
         self.cpu_forces_timer.pause()
 
+        '''
         if gpucuda.INIT_STATUS():
             t0.join()
             t1.join()
@@ -290,7 +283,7 @@ class BaseMDSimulation(object):
 
         if gpucuda.INIT_STATUS():
             self.state.forces.copy_from_cuda_dat()
-
+        '''
 
 
         self.timer.pause()
