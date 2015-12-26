@@ -11,6 +11,7 @@ import numpy as np
 
 #cuda
 import cuda_base
+import cuda_build
 
 class CellOccupancyMatrix(object):
     """
@@ -80,14 +81,25 @@ class CellOccupancyMatrix(object):
         """
         assert self._setup is not False, "Run CellOccupancyMatrix.setup() first."
 
-        self._p1_code = '''
+        _p1_header_code = '''
+        //Header
+
+
 
         '''
 
+        _p1_code = '''
+        //source
 
 
 
 
+        '''
+
+        _p1_src = cuda_build.source_write(_p1_header_code, _p1_code, 'CellOccupancyMatrix')
+
+
+        cuda_build.cuda_build_lib(_p1_src[0], hash=False)
 
 
 

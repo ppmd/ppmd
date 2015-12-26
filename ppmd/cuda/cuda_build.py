@@ -21,16 +21,46 @@ NVCC = build.Compiler(['nvcc_system_default'],
                       ['-shared', '-Xcompiler', '"-fPIC"'],
                       '__restrict__')
 
+#####################################################################################
+# File writer helper function.
+#####################################################################################
+
+
+def md5(string):
+    """Create unique hex digest"""
+    m = hashlib.md5()
+    m.update(string)
+    return m.hexdigest()
+
+
+def source_write(header_code, src_code, name, extensions=('.h', '.cu'), dst_dir=cuda_runtime.BUILD_DIR.dir):
+    _filename = 'CUDA_' + str(name)
+    _filename += '_' + md5(_filename + str(header_code) + str(src_code) + str(name))
+
+    _fh = open(os.path.join(dst_dir, _filename + extensions[0]), 'w')
+    _fh.write(str(header_code))
+    _fh.close()
+
+    _fh = open(os.path.join(dst_dir, _filename + extensions[1]), 'w')
+    _fh.write('#include <' + _filename + extensions[0] + '>')
+    _fh.write(str(src_code))
+    _fh.close()
+
+    return _filename, dst_dir
 
 #####################################################################################
 # build static libs
 #####################################################################################
 
 def build_static_libs(lib):
-    return cuda_build_lib(cuda_runtime.LIB_DIR.dir, lib)
+    return cuda_build_lib(lib, cuda_runtime.LIB_DIR.dir)
 
 
-def cuda_build_lib(source_dir, lib, CC=NVCC, dst_dir=cuda_runtime.BUILD_DIR.dir):
+#####################################################################################
+# build libs
+#####################################################################################
+
+def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR.dir, CC=NVCC, dst_dir=cuda_runtime.BUILD_DIR.dir, hash=True):
 
     with open(source_dir + lib + ".cu", "r") as fh:
         _code = fh.read()
@@ -39,11 +69,14 @@ def cuda_build_lib(source_dir, lib, CC=NVCC, dst_dir=cuda_runtime.BUILD_DIR.dir)
         _code += fh.read()
         fh.close()
 
-    _m = hashlib.md5()
-    _m.update(_code)
-    _m = _m.hexdigest()
+    if hash:
+        _m = hashlib.md5()
+        _m.update(_code)
+        _m = '_' + _m.hexdigest()
+    else:
+        _m = ''
 
-    _lib_filename = os.path.join(dst_dir, lib + '_' +str(_m) +'.so')
+    _lib_filename = os.path.join(dst_dir, lib + str(_m) + '.so')
 
     if mpi.MPI_HANDLE.rank == 0:
         if not os.path.exists(_lib_filename):
@@ -62,8 +95,8 @@ def cuda_build_lib(source_dir, lib, CC=NVCC, dst_dir=cuda_runtime.BUILD_DIR.dir)
             if cuda_runtime.VERBOSE.level > 2:
                 print "Building", _lib_filename
 
-            stdout_filename = dst_dir + lib + '_' +str(_m) + '.log'
-            stderr_filename = dst_dir + lib + '_' +str(_m) + '.err'
+            stdout_filename = dst_dir + lib + str(_m) + '.log'
+            stderr_filename = dst_dir + lib + str(_m) + '.err'
             try:
                 with open(stdout_filename, 'w') as stdout:
                     with open(stderr_filename, 'w') as stderr:
