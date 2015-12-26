@@ -48,6 +48,11 @@ def source_write(header_code, src_code, name, extensions=('.h', '.cu'), dst_dir=
 
     return _filename, dst_dir
 
+
+def load(filename):
+    return ctypes.cdll.LoadLibrary(str(filename))
+
+
 #####################################################################################
 # build static libs
 #####################################################################################

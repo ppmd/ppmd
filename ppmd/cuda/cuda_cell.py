@@ -84,6 +84,7 @@ class CellOccupancyMatrix(object):
         _p1_header_code = '''
         //Header
 
+        extern "C" int LayerSort();
 
 
         '''
@@ -91,15 +92,19 @@ class CellOccupancyMatrix(object):
         _p1_code = '''
         //source
 
+        int LayerSort(){
+            int err = 2;
 
 
-
+            return err;
+        }
         '''
 
         _p1_src = cuda_build.source_write(_p1_header_code, _p1_code, 'CellOccupancyMatrix')
+        _p1_lib_f = cuda_build.cuda_build_lib(_p1_src[0], hash=False)
+        _p1_lib = cuda_build.load(_p1_lib_f)
 
-
-        cuda_build.cuda_build_lib(_p1_src[0], hash=False)
+        print _p1_lib['LayerSort']()
 
 
 
