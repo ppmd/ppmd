@@ -55,7 +55,7 @@ if __name__ == '__main__':
     logging = True
 
     # Write XYZ?
-    writing = False
+    writing = True
 
 
     t=0.0001*24

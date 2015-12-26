@@ -1,8 +1,11 @@
 import hashlib
 import os
 import subprocess
+import ctypes
+import math
+
 import cuda_runtime
-from ppmd import build, mpi
+from ppmd import build, mpi, runtime, host, access, pio
 
 #####################################################################################
 # NVCC Compiler
@@ -24,11 +27,15 @@ NVCC = build.Compiler(['nvcc_system_default'],
 #####################################################################################
 
 def build_static_libs(lib):
+    return cuda_build_lib(cuda_runtime.LIB_DIR.dir, lib)
 
-    with open(cuda_runtime.LIB_DIR.dir + lib + ".cu", "r") as fh:
+
+def cuda_build_lib(source_dir, lib, CC=NVCC, dst_dir=cuda_runtime.BUILD_DIR.dir):
+
+    with open(source_dir + lib + ".cu", "r") as fh:
         _code = fh.read()
         fh.close()
-    with open(cuda_runtime.LIB_DIR.dir + lib + ".h", "r") as fh:
+    with open(source_dir + lib + ".h", "r") as fh:
         _code += fh.read()
         fh.close()
 
@@ -36,27 +43,27 @@ def build_static_libs(lib):
     _m.update(_code)
     _m = _m.hexdigest()
 
-    _lib_filename = os.path.join(cuda_runtime.BUILD_DIR.dir, lib + '_' +str(_m) +'.so')
+    _lib_filename = os.path.join(dst_dir, lib + '_' +str(_m) +'.so')
 
     if mpi.MPI_HANDLE.rank == 0:
         if not os.path.exists(_lib_filename):
 
+            _lib_src_filename = source_dir + lib + '.cu'
 
-            _lib_src_filename = cuda_runtime.LIB_DIR.dir + lib + '.cu'
-
-            _c_cmd = NVCC.binary + [_lib_src_filename] + ['-o'] + [_lib_filename] + NVCC.c_flags + NVCC.l_flags + ['-I ' + str(cuda_runtime.LIB_DIR.dir)]
+            _c_cmd = CC.binary + [_lib_src_filename] + ['-o'] + [_lib_filename] + CC.c_flags \
+                     + CC.l_flags + ['-I ' + str(cuda_runtime.LIB_DIR.dir)] + ['-I ' + str(source_dir)]
             if cuda_runtime.DEBUG.level > 0:
-                _c_cmd += NVCC.dbg_flags
+                _c_cmd += CC.dbg_flags
             else:
-                _c_cmd += NVCC.opt_flags
+                _c_cmd += CC.opt_flags
 
-            _c_cmd += NVCC.shared_lib_flag
+            _c_cmd += CC.shared_lib_flag
 
             if cuda_runtime.VERBOSE.level > 2:
                 print "Building", _lib_filename
 
-            stdout_filename = cuda_runtime.BUILD_DIR.dir + lib + '_' +str(_m) + '.log'
-            stderr_filename = cuda_runtime.BUILD_DIR.dir + lib + '_' +str(_m) + '.err'
+            stdout_filename = dst_dir + lib + '_' +str(_m) + '.log'
+            stderr_filename = dst_dir + lib + '_' +str(_m) + '.err'
             try:
                 with open(stdout_filename, 'w') as stdout:
                     with open(stderr_filename, 'w') as stderr:
@@ -73,9 +80,29 @@ def build_static_libs(lib):
                 elif cuda_runtime.VERBOSE.level > 2:
                     print "gpucuda warning: Shared library not built:", lib
 
-
-
     mpi.MPI_HANDLE.barrier()
+    if not os.path.exists(_lib_filename):
+        pio.pprint("Critical CUDA Error: Library not build, rank:", mpi.MPI_HANDLE.rank)
+        quit()
 
     return _lib_filename
+
+#####################################################################################
+# build _base
+#####################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

@@ -1,17 +1,12 @@
 """
 Module to handle the cuda runtime environment.
 """
-
-#package level imports
-from ppmd import runtime, pio, mpi
-
-#cuda level imports
-import cuda_build
-
 #system level imports
 import ctypes
 import os
-import sys
+
+#package level imports
+from ppmd import runtime, pio, mpi
 
 
 ERROR_LEVEL = runtime.Level(3)
@@ -20,7 +15,13 @@ VERBOSE = runtime.Level(3)
 BUILD_TIMER = runtime.Level(0)
 
 BUILD_DIR = runtime.BUILD_DIR
-LIB_DIR = runtime.LIB_DIR
+
+LIB_DIR = runtime.Dir(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib/'))
+
+
+#cuda level imports
+import cuda_build
+
 
 
 
@@ -51,6 +52,7 @@ except:
     raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA helper lib not loaded')
     LIBHELPER = None
 
+LIBHELPER['cudaErrorCheck'](ctypes.c_int(0))
 #####################################################################################
 # Device id of currently used device. Assuming model of one mpi process per gpu.
 #####################################################################################

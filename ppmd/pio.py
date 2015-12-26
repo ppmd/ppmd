@@ -18,6 +18,7 @@ def pprint(*args):
     """
     mpi.MPI_HANDLE.print_str(*args)
 
+
 def rprint(*args):
     """
     Print a string on stdout from all procs. preappended with rank id.
@@ -31,7 +32,7 @@ def rprint(*args):
 
     for ix in range(mpi.MPI_HANDLE.nproc):
         if mpi.MPI_HANDLE.rank == ix:
-            print "rank",mpi.MPI_HANDLE.rank,":",_s
+            print "rank", mpi.MPI_HANDLE.rank, ":", _s
             sys.stdout.flush()
 
         mpi.MPI_HANDLE.barrier()
