@@ -51,10 +51,16 @@ NullDoubleScalarArray = ScalarArray(dtype=ctypes.c_double)
 declared."""
 
 
+###################################################################################################
+# cuda ParticleDat
+###################################################################################################
 
 
-
-
+class ParticleDat(cuda_base.Matrix):
+    """
+    Cuda particle dat
+    """
+    pass
 
 
 

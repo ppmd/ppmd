@@ -3,6 +3,7 @@
 
     #include "generic.h"
     #include <cuda.h>
+    #include <cuda_runtime.h>
     #include "helper_cuda.h"
     #include <vector_types.h>
     #include <cuda_profiler_api.h>

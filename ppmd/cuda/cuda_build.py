@@ -13,7 +13,7 @@ from ppmd import build, mpi, runtime, host, access, pio
 
 NVCC = build.Compiler(['nvcc_system_default'],
                       ['nvcc'],
-                      ['-Xcompiler', '"-fPIC"'],
+                      ['-Xcompiler', '"-fPIC"', '-arch=sm_35', '-m64', '-lineinfo'],
                       ['-lm'],
                       ['-O3', '--ptxas-options=-v -dlcm=ca', '--maxrregcount=64'],  # '-O3', '-Xptxas', '"-v"', '-lineinfo'
                       ['-G', '-g', '--source-in-ptx', '--ptxas-options=-v'],

@@ -35,8 +35,17 @@ sim1 = simulation.BaseMDSimulation(domain_in=test_domain,
                                    )
 
 COM = cuda_cell.CellOccupancyMatrix()
-COM.setup(sim1.state.as_func('n'), sim1.state.positions, sim1.state.domain)
 
+# Create a particle dat with the positions in from the sim1.state
+sim1.state.d_positions = cuda_data.ParticleDat(initial_value=sim1.state.positions.dat)
+
+
+COM.setup(sim1.state.as_func('n'), sim1.state.d_positions, sim1.state.domain)
+
+
+
+
+COM.sort()
 
 
 
