@@ -128,7 +128,8 @@ class CellOccupancyMatrix(object):
             const int val = (C2*d_ca[1] + C1)*d_ca[0] + C0;
 
             d_crl[_ix] = val;
-
+            //old=atomicAdd(address, new);
+            d_pl[_ix] = atomicAdd(&d_ccc[val], (int)1);
 
 
         }
@@ -164,7 +165,7 @@ class CellOccupancyMatrix(object):
 
         self.cell_contents_count.zero()
 
-        _tpb = 128
+        _tpb = 512
         _blocksize = (ctypes.c_int * 3)(int(math.ceil(self._n_func() / float(_tpb))), 1, 1)
         _threadsize = (ctypes.c_int * 3)(_tpb, 1, 1)
 
