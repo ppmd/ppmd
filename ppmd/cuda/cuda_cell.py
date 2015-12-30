@@ -98,7 +98,7 @@ class CellOccupancyMatrix(object):
                      int* __restrict__ d_pl,
                      int* __restrict__ d_crl,
                      int* __restrict__ d_ccc,
-                     int* __restrict__ d_M,
+                     int** __restrict__ d_M,
                      const int* __restrict__ d_ca,
                      const double* __restrict__ d_b,
                      const double* __restrict__ d_cel,
@@ -134,10 +134,11 @@ class CellOccupancyMatrix(object):
         if (_ix < d_n){
 
             const int C0 = (int)(( d_p[_ix*3]    - d_b[0] ) / d_cel[0]);
-            const int C1 = (int)(( d_p[_ix*3]+1  - d_b[2] ) / d_cel[1]);
-            const int C2 = (int)(( d_p[_ix*3]+2  - d_b[4] ) / d_cel[2]);
+            const int C1 = (int)(( d_p[_ix*3 +1]  - d_b[2] ) / d_cel[1]);
+            const int C2 = (int)(( d_p[_ix*3 +2]  - d_b[4] ) / d_cel[2]);
 
             const int val = (C2*d_ca[1] + C1)*d_ca[0] + C0;
+
 
             d_crl[_ix] = val;
             //old=atomicAdd(address, new);
@@ -180,7 +181,6 @@ class CellOccupancyMatrix(object):
         if (_ix < d_n){
             
             d_M[ d_crl[_ix]*d_nl + d_pl[_ix]  ] = _ix;
-
         }
         return;
         }
@@ -216,13 +216,13 @@ class CellOccupancyMatrix(object):
 
             if ((*nl)*(*n_cells)>old_nl*(*n_cells)){
             //need to resize.
-                cudaFree(d_M);
-                cudaMalloc((void**)&d_M, (*nl)*(*n_cells)*sizeof(int));
+                cudaFree(*d_M);
+                cudaMalloc((void**)d_M, (*nl)*(*n_cells)*sizeof(int));
             }
 
             //checkCudaErrors(cudaMemcpyToSymbol(d_nl, nl, sizeof(*nl)));
 
-            d_PopulateMatrix<<<bs,ts>>>(*nl, d_pl, d_crl, d_M);
+            d_PopulateMatrix<<<bs,ts>>>(*nl, d_pl, d_crl, *d_M);
             checkCudaErrors(cudaDeviceSynchronize());
 
             return err;
@@ -268,7 +268,7 @@ class CellOccupancyMatrix(object):
                 self.particle_layers.ctypes_data,
                 self.cell_reverse_lookup.ctypes_data,
                 self.cell_contents_count.ctypes_data,
-                self.matrix.ctypes_data,
+                ctypes.byref(self.matrix.ctypes_data),
                 self._cell_array.ctypes_data,
                 self._boundary.ctypes_data,
                 self._cell_edge_lengths.ctypes_data,
@@ -280,10 +280,11 @@ class CellOccupancyMatrix(object):
         self._n_layers = _nl.value
         self.matrix.ncol = self._n_layers
 
-        print _nl.value
+        print "layers", _nl.value
 
 
-
+    def layers_per_cell(self):
+        return self._n_layers
 
 
 

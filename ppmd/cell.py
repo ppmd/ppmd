@@ -161,6 +161,7 @@ class CellList(object):
         //needed, may improve halo exchange times
         CCC[val]++;
         CRL[ix] = val;
+        
 
         q[ix] = q[n + val];
         q[n + val] = ix;
