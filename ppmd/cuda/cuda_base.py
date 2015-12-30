@@ -109,7 +109,7 @@ class Array(object):
         assert self._ptr is not None, "cuda_base:zero error: pointer type unknown."
         #assert self._ncomp != 0, "cuda_base:zero error: length unknown."
 
-        cuda_runtime.libcudart('cudaMemset', self._ptr, ctypes.c_int(0), ctypes.c_size_t(self._ncomp))
+        cuda_runtime.libcudart('cudaMemset', self._ptr, ctypes.c_int(0), ctypes.c_size_t(self._ncomp*ctypes.sizeof(self.idtype)))
 
     @property
     def dtype(self):
@@ -194,10 +194,22 @@ class Matrix(object):
     @property
     def nrow(self):
         return self._nrow
+    
+    @nrow.setter
+    def nrow(self, val):
+        self._nrow = val
+        if cuda_runtime.VERBOSE > 2:
+            print "cuda_base.Matrix warning: nrow externally changed."
 
     @property
     def ncol(self):
         return self._ncol
+
+    @ncol.setter
+    def ncol(self, val):
+        self._ncol = val
+        if cuda_runtime.VERBOSE > 2:
+            print "cuda_base.Matrix warning: ncol externally changed."
 
     @property
     def size(self):
@@ -224,7 +236,7 @@ class Matrix(object):
         assert self._ptr is not None, "cuda_base.Matrix: zero error: pointer type unknown."
         #assert self._ncomp != 0, "cuda_base:zero error: length unknown."
 
-        cuda_runtime.libcudart('cudaMemset', self._ptr, ctypes.c_int(0), ctypes.c_size_t(self._ncol * self._nrow))
+        cuda_runtime.libcudart('cudaMemset', self._ptr, ctypes.c_int(0), ctypes.c_size_t(self._ncol * self._nrow*ctypes.sizeof(self.idtype)))
 
     @property
     def dtype(self):
