@@ -515,7 +515,6 @@ class SharedLib(GenericToolChain):
 
         if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
             if mpi.MPI_HANDLE.rank == 0:
-                print "d"
                 self._create_library()
             mpi.MPI_HANDLE.barrier()
         try:
