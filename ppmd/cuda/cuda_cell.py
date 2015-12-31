@@ -108,6 +108,8 @@ class CellOccupancyMatrix(object):
         _p1_header_code = '''
         //Header
         #include <cuda_generic.h>
+        #include <device_functions.h>
+
         extern "C" int LayerSort(%(ARGS)s);
 
 
@@ -161,7 +163,9 @@ class CellOccupancyMatrix(object):
         for (int offset = warpSize/2; offset > 0; offset /=2){
             //val = fmaxf(val, __shfl_down(val,offset));
             int tmp = __shfl_down(val,offset);
-            val = (val > tmp) ? val : tmp;
+            //val = (val > tmp) ? val : tmp;
+            //asm("max.s32 %%0, %%1, %%2;" : "=r"(val) : "r"(val), "r"(tmp));
+            val = max(val,tmp);
         }
         
         if ((int)(threadIdx.x & (warpSize - 1)) == 0){
