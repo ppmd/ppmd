@@ -50,7 +50,26 @@ def source_write(header_code, src_code, name, extensions=('.h', '.cu'), dst_dir=
 
 
 def load(filename):
-    return ctypes.cdll.LoadLibrary(str(filename))
+    try:
+        return ctypes.cdll.LoadLibrary(str(filename))
+    except:
+        print "cuda_build:load error. Could not load following library,", str(filename)
+        quit()
+
+def check_file_existance(abs_path=None):
+    assert abs_path is not None, "cuda_build:check_file_existance error. No absolute path passed."
+    return os.path.exists(abs_path)
+
+def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cu'), dst_dir=cuda_runtime.BUILD_DIR.dir):
+    _filename = 'CUDA_' + str(name)
+    _filename += '_' + md5(_filename + str(header_code) + str(src_code) + str(name))
+    _lib_filename = os.path.join(dst_dir, _filename + '.so')
+
+    if not check_file_existance(_lib_filename):
+        source_write(header_code, src_code, name, extensions=('.h', '.cu'), dst_dir=cuda_runtime.BUILD_DIR.dir)
+        cuda_build_lib(_filename, hash=False)
+
+    return load(_lib_filename)
 
 
 #####################################################################################

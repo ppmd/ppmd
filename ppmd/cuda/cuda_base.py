@@ -46,6 +46,16 @@ class Array(object):
         else:
             self._create_zeros(ncomp, dtype)
 
+        self._version = 0
+
+    @property
+    def version(self):
+        """
+        Get the version of this array.
+        :return int version:
+        """
+        return self._version
+
     def _create_zeros(self, length=1, dtype=ctypes.c_double):
         if dtype != self.dtype:
             self.idtype = dtype
@@ -127,6 +137,23 @@ class Array(object):
             cuda_runtime.cuda_free(self._ptr)
 
 
+    def sync_from_version(self, array=None):
+        """
+        Keep this array in sync with another array based on version.
+        """
+        assert array is not None, "cuda_base:Array.sync_from_version error. No array passed."
+
+        if self.version < array.version:
+
+            self._create_from_existing(array.dat, array.dtype)
+
+
+
+
+
+
+
+
 
 
 ################################################################################################
@@ -154,7 +181,15 @@ class Matrix(object):
         else:
             self._create_zeros(nrow, ncol, dtype)
 
-        self._cuda_dat = None
+        self._version = 0
+
+    @property
+    def version(self):
+        """
+        Get the version of this array.
+        :return int version:
+        """
+        return self._version
 
     def _create_zeros(self, nrow=1, ncol=1, dtype=ctypes.c_double):
         if dtype != self.dtype:
@@ -247,7 +282,15 @@ class Matrix(object):
             cuda_runtime.cuda_free(self._ptr)
 
 
+    def sync_from_version(self, matrix=None):
+        """
+        Keep this array in sync with another array based on version.
+        """
+        assert matrix is not None, "cuda_base:Array.sync_from_version error. No array passed."
 
+        if self.version < matrix.version:
+
+            self._create_from_existing(matrix.dat, matrix.dtype)
 
 
 

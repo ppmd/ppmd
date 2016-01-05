@@ -111,7 +111,11 @@ class ScalarArray(host.Array):
 
         self._A = False
         self._Aarray = None
+
+        # TODO: remove
         self._cuda_dat = None
+
+        self._version = 0
 
     def __call__(self, mode=access.RW, halo=True):
         return self, mode
@@ -275,7 +279,10 @@ class ParticleDat(host.Matrix):
         self.npart_halo = 0
         """:return: The number of particles currently stored within the halo region of the particle dat."""
 
+        # TODO: remove
         self._cuda_dat = None
+
+        self._version = 0
 
     @property
     def dat(self):

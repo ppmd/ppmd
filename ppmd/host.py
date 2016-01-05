@@ -54,7 +54,11 @@ class Array(object):
         else:
             self._create_zeros(ncomp, dtype)
 
+        # TODO: remove this when new cuda version is working.
         self._cuda_dat = None
+
+        self._version = 0
+
 
 
     def _create_zeros(self, length=1, dtype=ctypes.c_double):
@@ -105,6 +109,14 @@ class Array(object):
         Returns end index of array.
         """
         return self.ncomp - 1
+
+    @property
+    def version(self):
+        """
+        Get the version of this array.
+        :return int version:
+        """
+        return self._version
 
     def __getitem__(self, ix):
         return self.dat[ix]
@@ -165,7 +177,10 @@ class Matrix(object):
         else:
             self._create_zeros(nrow, ncol, dtype)
 
+        # TODO: remove later
         self._cuda_dat = None
+
+        self._version = 0
 
     def _create_zeros(self, nrow=1, ncol=1, dtype=ctypes.c_double):
         assert ctypes.sizeof(dtype) * nrow * ncol < available_free_memory(), "host.Matrix _create_zeros error: Not enough free memory."
@@ -180,6 +195,14 @@ class Matrix(object):
         self._dat = np.array(ndarray, dtype=dtype, order='C')
         if len(self.dat.shape) == 1:
             self.dat.shape = (self.dat.shape[0], 1)
+
+    @property
+    def version(self):
+        """
+        Get the version of this array.
+        :return int version:
+        """
+        return self._version
 
     @property
     def dat(self):

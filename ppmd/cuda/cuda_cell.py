@@ -233,16 +233,25 @@ class CellOccupancyMatrix(object):
         }
         ''' % {'ARGS':p1_args}
 
-        _p1_src = cuda_build.source_write(_p1_header_code, _p1_code, 'CellOccupancyMatrix')
-        _p1_lib_f = cuda_build.cuda_build_lib(_p1_src[0], hash=False)
-        self._p1_lib = cuda_build.load(_p1_lib_f)
-
-
-
+        self._p1_lib = cuda_build.simple_lib_creator(_p1_header_code, _p1_code, 'CellOccupancyMatrix')
 
         self._init = True
 
     def sort(self):
+
+        # Things that need to vary in size.
+        if self.particle_layers.ncomp < self._n_func():
+            self.particle_layers.realloc(self._n_func())
+            self.cell_reverse_lookup.realloc(ncomp=self._n_func())
+
+        if self.cell_contents_count.ncomp < self._domain.cell_count:
+            self.cell_contents_count.realloc(self._domain.cell_count)
+            self.matrix = cuda_base.Matrix(nrow=self._domain.cell_count, ncol=self.matrix.ncol)
+
+        # Things that need to hold correct values.
+        self._boundary.sync_from_version(self._domain.boundary_outer)
+        self._cell_edge_lengths.sync_from_version(self._domain.cell_edge_lengths)
+        self._cell_array.sync_from_version(self._domain.cell_array)
 
         self.cell_contents_count.zero()
 
@@ -283,9 +292,6 @@ class CellOccupancyMatrix(object):
         
         self._n_layers = _nl.value
         self.matrix.ncol = self._n_layers
-
-        print "layers", _nl.value
-
 
     def layers_per_cell(self):
         return self._n_layers
