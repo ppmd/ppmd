@@ -118,6 +118,13 @@ class Array(object):
         """
         return self._version
 
+    def inc_version(self, inc=1):
+        """
+        Increment the version by the specified amount
+        :param int inc: amount to increment version by.
+        """
+        self._version += int(inc)
+
     def __getitem__(self, ix):
         return self.dat[ix]
 
@@ -203,6 +210,13 @@ class Matrix(object):
         :return int version:
         """
         return self._version
+
+    def inc_version(self, inc=1):
+        """
+        Increment the version by the specified amount
+        :param int inc: amount to increment version by.
+        """
+        self._version += int(inc)
 
     @property
     def dat(self):

@@ -56,6 +56,13 @@ class Array(object):
         """
         return self._version
 
+    def inc_version(self, inc=1):
+        """
+        Increment the version by the specified amount
+        :param int inc: amount to increment version by.
+        """
+        self._version += int(inc)
+
     def _create_zeros(self, length=1, dtype=ctypes.c_double):
         if dtype != self.dtype:
             self.idtype = dtype
@@ -190,6 +197,13 @@ class Matrix(object):
         :return int version:
         """
         return self._version
+
+    def inc_version(self, inc=1):
+        """
+        Increment the version by the specified amount
+        :param int inc: amount to increment version by.
+        """
+        self._version += int(inc)
 
     def _create_zeros(self, nrow=1, ncol=1, dtype=ctypes.c_double):
         if dtype != self.dtype:
