@@ -16,8 +16,11 @@ import cuda_cell
 import cuda_base
 
 class CartesianHalo(object):
-    def __init__(self, host_halo=halo.HALOS):
+
+    def __init__(self, host_halo=halo.HALOS, occ_matrix=cuda_cell.OCCUPANCY_MATRIX):
         self._host_halo_handle = host_halo
+        self._occ_matrix = occ_matrix
+        self._init = False
 
         # vars init
         self._boundary_cell_groups = cuda_base.Array(dtype=ctypes.c_int)
@@ -34,6 +37,28 @@ class CartesianHalo(object):
         self._halo_groups_start_end_indices.inc_version(-1)
         self._boundary_groups_contents_array.inc_version(-1)
         self._exchange_sizes.inc_version(-1)
+
+        self._setup()
+
+    def _setup(self):
+        """
+        Internally setup the libraries for the calculation of exchange sizes.
+        """
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        self._init = True
 
 
     @property
@@ -73,7 +98,24 @@ class CartesianHalo(object):
 
         return self._halo_cell_groups, self._halo_groups_start_end_indices
 
+    @property
+    def get_boundary_cell_contents_count(self):
+        """
+        Get the number of particles in the corresponding cells for each halo. These are needed such that
+        the cell list can be created without inspecting the positions of recvd particles.
 
+        :return: Tuple: Cell contents count for each cell in same order as local boundary cell list, Exchange sizes for each halo.
+        """
+        if not self._init:
+            print "cuda_halo.CartesianHalo error. Library not initalised, this error means the internal" \
+                  "setup failed."
+            quit()
+
+        # TODO: run sizes calculation here
+        self._exchange_sizes.zero()
+
+
+        return self._boundary_groups_contents_array, self._exchange_sizes
 
 
 

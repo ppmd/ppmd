@@ -300,6 +300,11 @@ class CellOccupancyMatrix(object):
 
 
 
+# Default
+OCCUPANCY_MATRIX = None
+
+
+
 
 
 

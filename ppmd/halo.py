@@ -26,17 +26,7 @@ class CartesianHalo(object):
 
         self.timer.stop("halo setup time.")
 
-    def _exchange_size_calc(self):
 
-        _args = {
-            'CCC': cell.cell_list.cell_contents_count,
-            'ES': self._exchange_sizes,
-            'CI': self._boundary_cell_groups,
-            'CIL': self._boundary_cell_grouping_lengths,
-            'CCA': self._boundary_groups_contents_array,
-        }
-
-        self._exchange_sizes_lib.execute(dat_dict=_args)
 
     def _halo_setup_prepare(self):
 
@@ -327,6 +317,18 @@ class CartesianHalo(object):
         self._ca_copy = [cell.cell_list.domain.cell_array[0],
                          cell.cell_list.domain.cell_array[1],
                          cell.cell_list.domain.cell_array[2]]
+
+    def _exchange_size_calc(self):
+
+        _args = {
+            'CCC': cell.cell_list.cell_contents_count,
+            'ES': self._exchange_sizes,
+            'CI': self._boundary_cell_groups,
+            'CIL': self._boundary_cell_grouping_lengths,
+            'CCA': self._boundary_groups_contents_array,
+        }
+
+        self._exchange_sizes_lib.execute(dat_dict=_args)
 
     def check_valid(self):
         """
