@@ -19,7 +19,7 @@ class ScalarArray(cuda_base.Array):
         self.name = name
 
         self.idtype = dtype
-        self._ncomp = 0
+        self._ncomp = ctypes.c_int(0)
         self._ptr = ctypes.POINTER(self.idtype)()
 
         if initial_value is not None:
@@ -31,6 +31,13 @@ class ScalarArray(cuda_base.Array):
             self._create_zeros(ncomp, dtype)
 
         self._version = 0
+        self._struct = type('ScalarArrayT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)), ('ncomp', ctypes.POINTER(ctypes.c_int)))))()
+
+    @property
+    def struct(self):
+        self._struct.ptr = self._ptr
+        self._struct.ncomp = ctypes.pointer(self._ncomp)
+        return self._struct
 
     @property
     def version(self):
@@ -75,8 +82,8 @@ class ParticleDat(cuda_base.Matrix):
         self.name = name
 
         self.idtype = dtype
-        self._ncol = 0
-        self._nrow = 0
+        self._ncol = ctypes.c_int(0)
+        self._nrow = ctypes.c_int(0)
 
         self._ptr = ctypes.POINTER(self.idtype)()
 
@@ -86,28 +93,44 @@ class ParticleDat(cuda_base.Matrix):
             else:
                 self._create_from_existing(np.array([initial_value]),dtype)
 
-            self.max_npart = self._nrow
-            self.npart = self._nrow
+            self._max_npart = ctypes.c_int(self._nrow.value)
+            self._npart = ctypes.c_int(self._nrow.value)
 
         else:
             if max_npart is not None:
-                self.max_npart = max_npart
+                self.max_npart = ctypes.c_int(max_npart)
             else:
-                self.max_npart = npart
+                self.max_npart = ctypes.c_int(npart)
 
             self._create_zeros(self.max_npart, ncomp, dtype)
-            self.npart = npart
+            self._npart = ctypes.c_int(npart)
 
-        self.ncomp = self._ncol
+        self._ncomp = ctypes.c_int(self._ncol.value)
+
 
         self._version = 0
 
-        self.halo_start = self.npart
-        self.npart_halo = 0
+        self._halo_start = self._npart.value
+        self._npart_halo = 0
+
+        self._struct = type('ParticleDatT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)),
+                                                                                ('nrow', ctypes.POINTER(ctypes.c_int)),
+                                                                                ('ncol', ctypes.POINTER(ctypes.c_int)),
+                                                                                ('npart', ctypes.POINTER(ctypes.c_int)),
+                                                                                ('ncomp', ctypes.POINTER(ctypes.c_int)))))()
+
+    @property
+    def struct(self):
+        self._struct.ptr = self._ptr
+        self._struct.nrow = ctypes.pointer(self.max_npart)
+        self._struct.ncol = ctypes.pointer(self._ncol)
+        self._struct.npart = ctypes.pointer(self._npart)
+        self._struct.ncomp = ctypes.pointer(self._ncomp)
+        return self._struct
 
     @property
     def npart_total(self):
-        return self.npart + self.npart_halo
+        return self._npart.value + self.npart_halo
 
 
     def resize(self, n):

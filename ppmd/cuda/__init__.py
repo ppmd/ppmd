@@ -6,7 +6,8 @@ __all__ = [
     'cuda_runtime',
     'cuda_base',
     'cuda_data',
-    'cuda_cell'
+    'cuda_cell',
+    'cuda_halo'
 ]
 
 
@@ -15,7 +16,7 @@ import cuda_build
 import cuda_base
 import cuda_data
 import cuda_cell
-
+import cuda_halo
 
 
 

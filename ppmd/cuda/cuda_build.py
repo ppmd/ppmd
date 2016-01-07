@@ -139,7 +139,8 @@ def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR.dir, CC=NVCC, dst_dir=
 
     mpi.MPI_HANDLE.barrier()
     if not os.path.exists(_lib_filename):
-        pio.pprint("Critical CUDA Error: Library not build, rank:", mpi.MPI_HANDLE.rank)
+        pio.pprint("Critical CUDA Error: Library not built, " + str(lib) + ", rank:", mpi.MPI_HANDLE.rank)
+
         quit()
 
     return _lib_filename

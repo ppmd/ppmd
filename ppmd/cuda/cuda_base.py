@@ -23,6 +23,10 @@ def available_free_memory():
 
     return cuda_runtime.cuda_mem_get_info()[1]
 
+
+class Struct(ctypes.Structure):
+    _fields_ = (('ptr', ctypes.c_void_p), ('ncomp', ctypes.c_void_p))
+
 ################################################################################################
 # Array.
 ################################################################################################
@@ -35,7 +39,8 @@ class Array(object):
         Creates scalar with given initial value.
         """
         self.idtype = dtype
-        self._ncomp = 0
+        self._ncomp = ctypes.c_int(0)
+
         self._ptr = ctypes.POINTER(self.idtype)()
 
         if initial_value is not None:
@@ -46,7 +51,17 @@ class Array(object):
         else:
             self._create_zeros(ncomp, dtype)
 
+        self._struct = type('ArrayT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)), ('ncomp', ctypes.POINTER(ctypes.c_int)))))()
+
+
         self._version = 0
+
+    @property
+    def struct(self):
+        self._struct.ptr = self._ptr
+        self._struct.ncomp = ctypes.pointer(self._ncomp)
+        return self._struct
+
 
     @property
     def version(self):
@@ -89,11 +104,11 @@ class Array(object):
 
     @property
     def ncomp(self):
-        return self._ncomp
+        return self._ncomp.value
 
     @property
     def size(self):
-        return self._ncomp * ctypes.sizeof(self.idtype)
+        return self._ncomp.value * ctypes.sizeof(self.idtype)
 
     @property
     def ctypes_data(self):
@@ -111,13 +126,13 @@ class Array(object):
         """
         assert self._ptr is not None, "cuda_base.Array: realloc error: pointer type unknown."
 
-        if (self._ncomp != 0) and (self._ptr is not None):
+        if (self._ncomp.value != 0) and (self._ptr is not None):
             cuda_runtime.cuda_free(self._ptr)
 
-        if length != self._ncomp:
+        if length != self._ncomp.value:
             cuda_runtime.cuda_malloc(self._ptr, length, self.idtype)
 
-        self._ncomp = length
+        self._ncomp.value = length
 
     def zero(self):
         """
@@ -126,7 +141,7 @@ class Array(object):
         assert self._ptr is not None, "cuda_base:zero error: pointer type unknown."
         #assert self._ncomp != 0, "cuda_base:zero error: length unknown."
 
-        cuda_runtime.libcudart('cudaMemset', self._ptr, ctypes.c_int(0), ctypes.c_size_t(self._ncomp*ctypes.sizeof(self.idtype)))
+        cuda_runtime.libcudart('cudaMemset', self._ptr, ctypes.c_int(0), ctypes.c_size_t(self._ncomp.value * ctypes.sizeof(self.idtype)))
 
     @property
     def dtype(self):
@@ -140,7 +155,7 @@ class Array(object):
         return self.ncomp - 1
 
     def free(self):
-        if (self._ncomp != 0) and (self._ptr is not None):
+        if (self._ncomp.value != 0) and (self._ptr is not None):
             cuda_runtime.cuda_free(self._ptr)
 
 
@@ -174,8 +189,10 @@ class Matrix(object):
     def __init__(self, nrow=0, ncol=0, initial_value=None, dtype=ctypes.c_double):
 
         self.idtype = dtype
-        self._ncol = 0
-        self._nrow = 0
+
+
+        self._ncol = ctypes.c_int(0)
+        self._nrow = ctypes.c_int(0)
 
         self._ptr = ctypes.POINTER(self.idtype)()
 
@@ -189,6 +206,18 @@ class Matrix(object):
             self._create_zeros(nrow, ncol, dtype)
 
         self._version = 0
+
+        self._struct = type('MatrixT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)),
+                                                                          ('nrow', ctypes.POINTER(ctypes.c_int)),
+                                                                          ('ncol', ctypes.POINTER(ctypes.c_int)))))()
+
+
+    @property
+    def struct(self):
+        self._struct.ptr = self._ptr
+        self._struct.nrow = ctypes.pointer(self._nrow)
+        self._struct.ncol = ctypes.pointer(self._ncol)
+        return self._struct
 
     @property
     def version(self):
@@ -230,39 +259,39 @@ class Matrix(object):
         """
         assert self._ptr is not None, "cuda_base.Matrix: realloc error: pointer type unknown."
 
-        if (self._ncol != 0) and (self._nrow != 0) and (self._ptr is not None):
+        if (self._ncol.value != 0) and (self._nrow.value != 0) and (self._ptr is not None):
             cuda_runtime.cuda_free(self._ptr)
 
 
-        if (nrow != self._nrow) and (ncol != self._ncol):
+        if (nrow != self._nrow.value) and (ncol != self._ncol.value):
             cuda_runtime.cuda_malloc(self._ptr, nrow * ncol, self.idtype)
 
-        self._ncol = ncol
-        self._nrow = nrow
+        self._ncol.value = ncol
+        self._nrow.value = nrow
 
     @property
     def nrow(self):
-        return self._nrow
+        return self._nrow.value
     
     @nrow.setter
     def nrow(self, val):
-        self._nrow = val
+        self._nrow.value = val
         if cuda_runtime.VERBOSE > 2:
             print "cuda_base.Matrix warning: nrow externally changed."
 
     @property
     def ncol(self):
-        return self._ncol
+        return self._ncol.value
 
     @ncol.setter
     def ncol(self, val):
-        self._ncol = val
+        self._ncol.value = val
         if cuda_runtime.VERBOSE > 2:
             print "cuda_base.Matrix warning: ncol externally changed."
 
     @property
     def size(self):
-        return self._nrow * self._ncol * ctypes.sizeof(self.dtype)
+        return self._nrow.value * self._ncol.value * ctypes.sizeof(self.dtype)
 
     @property
     def ctypes_data(self):
@@ -285,14 +314,14 @@ class Matrix(object):
         assert self._ptr is not None, "cuda_base.Matrix: zero error: pointer type unknown."
         #assert self._ncomp != 0, "cuda_base:zero error: length unknown."
 
-        cuda_runtime.libcudart('cudaMemset', self._ptr, ctypes.c_int(0), ctypes.c_size_t(self._ncol * self._nrow*ctypes.sizeof(self.idtype)))
+        cuda_runtime.libcudart('cudaMemset', self._ptr, ctypes.c_int(0), ctypes.c_size_t(self._ncol.value * self._nrow.value * ctypes.sizeof(self.idtype)))
 
     @property
     def dtype(self):
         return self.idtype
 
     def free(self):
-        if (self._ncol != 0) and (self._nrow != 0) and (self._ptr is not None):
+        if (self._ncol.value != 0) and (self._nrow.value != 0) and (self._ptr is not None):
             cuda_runtime.cuda_free(self._ptr)
 
 

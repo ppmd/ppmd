@@ -7,7 +7,7 @@
     #include "helper_cuda.h"
     #include <vector_types.h>
     #include <cuda_profiler_api.h>
-
+    #include <device_functions.h>
 
     /*
     // double shuffle down edited from nvidia example
@@ -91,6 +91,20 @@
 
         return old;
     }
+
+
+template <typename T>
+struct cuda_Array {
+    T* ptr;
+    int *ncomp;
+};
+
+template <typename T>
+struct cuda_Matrix {
+    T* ptr;
+    int *nrow;
+    int *ncol;
+};
 
 
 

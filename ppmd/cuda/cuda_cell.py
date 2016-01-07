@@ -108,7 +108,6 @@ class CellOccupancyMatrix(object):
         _p1_header_code = '''
         //Header
         #include <cuda_generic.h>
-        #include <device_functions.h>
 
         extern "C" int LayerSort(%(ARGS)s);
 
@@ -293,6 +292,7 @@ class CellOccupancyMatrix(object):
         self._n_layers = _nl.value
         self.matrix.ncol = self._n_layers
 
+    @property
     def layers_per_cell(self):
         return self._n_layers
 
