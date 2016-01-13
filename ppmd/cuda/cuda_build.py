@@ -38,7 +38,17 @@ def source_write(header_code, src_code, name, extensions=('.h', '.cu'), dst_dir=
     _filename += '_' + md5(_filename + str(header_code) + str(src_code) + str(name))
 
     _fh = open(os.path.join(dst_dir, _filename + extensions[0]), 'w')
+    _fh.write('''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+        ''' % {'UNIQUENAME':_filename})
+
     _fh.write(str(header_code))
+
+    _fh.write('''
+        #endif
+        ''' % {'UNIQUENAME':_filename})
+
     _fh.close()
 
     _fh = open(os.path.join(dst_dir, _filename + extensions[1]), 'w')
@@ -145,16 +155,30 @@ def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR.dir, CC=NVCC, dst_dir=
 
     return _lib_filename
 
+
 #####################################################################################
-# build _base
+# block of code class. experimental
 #####################################################################################
 
+class Code(object):
+    def __init__(self, init=''):
+        self._c = str(init)
 
+    @property
+    def string(self):
+        return self._c
 
+    def add_line(self, line=''):
+        self._c += '\n' + str(line)
 
+    def add(self, code=''):
+        self._c += str(code)
 
+    def __iadd__(self, other):
+        self.add(other)
 
-
+    def __str__(self):
+        return self._c
 
 
 

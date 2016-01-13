@@ -7,7 +7,9 @@ __all__ = [
     'cuda_base',
     'cuda_data',
     'cuda_cell',
-    'cuda_halo'
+    'cuda_halo',
+    'cuda_loop',
+    'cuda_pairloop'
 ]
 
 
@@ -17,7 +19,8 @@ import cuda_base
 import cuda_data
 import cuda_cell
 import cuda_halo
-
+import cuda_loop
+import cuda_pairloop
 
 
 

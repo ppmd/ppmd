@@ -6,7 +6,7 @@ import ctypes
 import numpy as np
 
 #package level imports
-import ppmd.access
+import ppmd.access as access
 
 # cuda imports
 import cuda_base
@@ -54,6 +54,9 @@ class ScalarArray(cuda_base.Array):
         """
         if new_length > self.ncomp:
             self.realloc(new_length)
+
+    def __call__(self, mode=access.RW, halo=False):
+        return self, mode, halo
 
 ###################################################################################################
 # Blank arrays.
@@ -138,10 +141,41 @@ class ParticleDat(cuda_base.Matrix):
             self.max_npart = n
             self.realloc(n, self.ncol)
 
+    def __call__(self, mode=access.RW, halo=True):
+        return self, mode, halo
+
+class TypedDat(cuda_base.Matrix):
+    # Follows cuda_base.Matrix Init except for name prameter/attribute.
+
+    def __init__(self, nrow=0, ncol=0, initial_value=None, name=None, dtype=ctypes.c_double):
+
+        self.idtype = dtype
 
 
+        self._ncol = ctypes.c_int(0)
+        self._nrow = ctypes.c_int(0)
 
+        self._ptr = ctypes.POINTER(self.idtype)()
 
+        if initial_value is not None:
+            if type(initial_value) is np.ndarray:
+                self._create_from_existing(initial_value, dtype)
+            else:
+                self._create_from_existing(np.array([initial_value]),dtype)
+
+        else:
+            self._create_zeros(nrow, ncol, dtype)
+
+        self._version = 0
+
+        self._struct = type('MatrixT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)),
+                                                                          ('nrow', ctypes.POINTER(ctypes.c_int)),
+                                                                          ('ncol', ctypes.POINTER(ctypes.c_int)))))()
+
+        self.name = name
+
+    def __call__(self, mode=access.RW, halo=False):
+        return self, mode, halo
 
 
 
