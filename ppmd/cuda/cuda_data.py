@@ -105,7 +105,7 @@ class ParticleDat(cuda_base.Matrix):
             else:
                 self.max_npart = ctypes.c_int(npart)
 
-            self._create_zeros(self.max_npart, ncomp, dtype)
+            self._create_zeros(self.max_npart.value, ncomp, dtype)
             self._npart = ctypes.c_int(npart)
 
         self._ncomp = ctypes.c_int(self._ncol.value)
@@ -113,8 +113,8 @@ class ParticleDat(cuda_base.Matrix):
 
         self._version = 0
 
-        self._halo_start = self._npart.value
-        self._npart_halo = 0
+        self._halo_start = ctypes.c_int(self._npart.value)
+        self._npart_halo = ctypes.c_int(0)
 
         self._struct = type('ParticleDatT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)),
                                                                                 ('nrow', ctypes.POINTER(ctypes.c_int)),
@@ -133,7 +133,7 @@ class ParticleDat(cuda_base.Matrix):
 
     @property
     def npart_total(self):
-        return self._npart.value + self.npart_halo
+        return self._npart.value + self._npart_halo.value
 
 
     def resize(self, n):
@@ -143,6 +143,15 @@ class ParticleDat(cuda_base.Matrix):
 
     def __call__(self, mode=access.RW, halo=True):
         return self, mode, halo
+
+    @property
+    def ncomp(self):
+        return self._ncol.value
+
+    @property
+    def npart(self):
+        return self._npart.value
+
 
 class TypedDat(cuda_base.Matrix):
     # Follows cuda_base.Matrix Init except for name prameter/attribute.

@@ -175,10 +175,11 @@ class Code(object):
         self._c += str(code)
 
     def __iadd__(self, other):
-        self.add(other)
+        self.add(code=str(other))
+        return self
 
     def __str__(self):
-        return self._c
+        return str(self._c)
 
 
 
