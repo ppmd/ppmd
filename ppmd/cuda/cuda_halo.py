@@ -43,6 +43,15 @@ class CartesianHalo(object):
 
         self._setup()
 
+    def occ_matrix(self):
+        """
+        Returns the occupancy matrix involved.
+        :return:
+        """
+        return self._occ_matrix
+
+
+
     def _setup(self):
         """
         Internally setup the libraries for the calculation of exchange sizes.
@@ -75,7 +84,7 @@ class CartesianHalo(object):
         }
         ''' % {'ARGS':p1_args}
 
-        self._p1_lib = cuda_build.simple_lib_creator(_p1_header_code, _p1_code, 'CartesianHaloL0')
+        #self._p1_lib = cuda_build.simple_lib_creator(_p1_header_code, _p1_code, 'CartesianHaloL0')
 
 
 

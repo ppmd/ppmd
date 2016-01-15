@@ -5,6 +5,7 @@ import os
 import hashlib
 import subprocess
 import re
+import pio
 import runtime
 import mpi
 
@@ -686,3 +687,148 @@ class SharedLib(GenericToolChain):
                 argnames += host.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
 
         return argnames[:-1]
+
+
+####################################
+# Build Lib
+####################################
+
+
+def md5(string):
+    """Create unique hex digest"""
+    m = hashlib.md5()
+    m.update(string)
+    return m.hexdigest()
+
+
+def source_write(header_code, src_code, name, extensions=('.h', '.c'), dst_dir=runtime.BUILD_DIR.dir):
+    _filename = 'HOST_' + str(name)
+    _filename += '_' + md5(_filename + str(header_code) + str(src_code) + str(name))
+
+    _fh = open(os.path.join(dst_dir, _filename + extensions[0]), 'w')
+    _fh.write('''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+        ''' % {'UNIQUENAME':_filename})
+
+    _fh.write(str(header_code))
+
+    _fh.write('''
+        #endif
+        ''' % {'UNIQUENAME':_filename})
+
+    _fh.close()
+
+    _fh = open(os.path.join(dst_dir, _filename + extensions[1]), 'w')
+    _fh.write('#include <' + _filename + extensions[0] + '>')
+    _fh.write(str(src_code))
+    _fh.close()
+
+    return _filename, dst_dir
+
+
+def load(filename):
+    try:
+        return ctypes.cdll.LoadLibrary(str(filename))
+    except:
+        print "build:load error. Could not load following library,", str(filename)
+        quit()
+
+def check_file_existance(abs_path=None):
+    assert abs_path is not None, "build:check_file_existance error. No absolute path passed."
+    return os.path.exists(abs_path)
+
+def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cu'), dst_dir=runtime.BUILD_DIR.dir):
+    _filename = 'HOST_' + str(name)
+    _filename += '_' + md5(_filename + str(header_code) + str(src_code) + str(name))
+    _lib_filename = os.path.join(dst_dir, _filename + '.so')
+
+    if not check_file_existance(_lib_filename):
+        source_write(header_code, src_code, name, extensions=('.h', '.c'), dst_dir=runtime.BUILD_DIR.dir)
+        build_lib(_filename, hash=False)
+
+    return load(_lib_filename)
+
+
+def build_lib(lib, source_dir=runtime.BUILD_DIR.dir, CC=TMPCC, dst_dir=runtime.BUILD_DIR.dir, hash=True):
+
+    with open(source_dir + lib + ".c", "r") as fh:
+        _code = fh.read()
+        fh.close()
+    with open(source_dir + lib + ".h", "r") as fh:
+        _code += fh.read()
+        fh.close()
+
+    if hash:
+        _m = hashlib.md5()
+        _m.update(_code)
+        _m = '_' + _m.hexdigest()
+    else:
+        _m = ''
+
+    _lib_filename = os.path.join(dst_dir, lib + str(_m) + '.so')
+
+    if mpi.MPI_HANDLE.rank == 0:
+        if not os.path.exists(_lib_filename):
+
+            _lib_src_filename = source_dir + lib + '.c'
+
+            _c_cmd = CC.binary + [_lib_src_filename] + ['-o'] + [_lib_filename] + CC.c_flags \
+                     + CC.l_flags + ['-I' + str(runtime.LIB_DIR.dir)] + ['-I' + str(source_dir)]
+            if runtime.DEBUG.level > 0:
+                _c_cmd += CC.dbg_flags
+            else:
+                _c_cmd += CC.opt_flags
+
+            _c_cmd += CC.shared_lib_flag
+
+            if runtime.VERBOSE.level > 2:
+                print "Building", _lib_filename
+
+            stdout_filename = dst_dir + lib + str(_m) + '.log'
+            stderr_filename = dst_dir + lib + str(_m) + '.err'
+            try:
+                with open(stdout_filename, 'w') as stdout:
+                    with open(stderr_filename, 'w') as stderr:
+                        stdout.write('Compilation command:\n')
+                        stdout.write(' '.join(_c_cmd))
+                        stdout.write('\n\n')
+                        p = subprocess.Popen(_c_cmd,
+                                             stdout=stdout,
+                                             stderr=stderr)
+                        p.communicate()
+            except:
+                if runtime.ERROR_LEVEL.level > 2:
+                    raise RuntimeError('build error: helper library not built.')
+                elif runtime.VERBOSE.level > 2:
+                    print "build error: Shared library not built:", lib
+
+    mpi.MPI_HANDLE.barrier()
+    if not os.path.exists(_lib_filename):
+        pio.pprint("Critical build Error: Library not built, " + str(lib) + ", rank:", mpi.MPI_HANDLE.rank)
+
+        quit()
+
+    return _lib_filename
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

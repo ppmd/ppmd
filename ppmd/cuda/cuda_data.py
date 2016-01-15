@@ -7,9 +7,12 @@ import numpy as np
 
 #package level imports
 import ppmd.access as access
+import ppmd.mpi as mpi
 
 # cuda imports
 import cuda_base
+import cuda_halo
+import cuda_build
 
 
 class ScalarArray(cuda_base.Array):
@@ -122,6 +125,8 @@ class ParticleDat(cuda_base.Matrix):
                                                                                 ('npart', ctypes.POINTER(ctypes.c_int)),
                                                                                 ('ncomp', ctypes.POINTER(ctypes.c_int)))))()
 
+        self._1p_halo_lib = None
+
     @property
     def struct(self):
         self._struct.ptr = self._ptr
@@ -151,6 +156,48 @@ class ParticleDat(cuda_base.Matrix):
     @property
     def npart(self):
         return self._npart.value
+
+    def halo_exchange(self):
+        if mpi.MPI_HANDLE.nproc == 1:
+            self._1p_halo_exchange()
+
+    def _1p_halo_exchange(self):
+        if self._1p_halo_lib is None:
+            self._build_1p_halo_lib()
+
+
+
+    def _build_1p_halo_lib(self):
+
+        _name = '1p_halo_lib'
+
+        _args = '''const int blocksize[3],
+                   const int threadsize[3],
+                   const int h_n,               // Total possible number of cells
+                   const int h_npc,             // Maximum number of layers in use
+                   '''
+
+
+        _header = '''
+            #include <cuda_generic.h>
+            extern "C" int %(NAME)s(%(ARGS)s);
+        ''' % {'NAME': _name, 'ARGS': _args}
+
+        _src = '''
+
+        '''
+
+
+
+
+        self._1p_halo_lib = cuda_build.simple_lib_creator(_header, _src, _name)
+
+
+
+
+
+
+
 
 
 class TypedDat(cuda_base.Matrix):

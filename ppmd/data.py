@@ -563,7 +563,7 @@ class ParticleDat(host.Matrix):
                          }
 
 
-        _tmp, self._boundary_groups_start_end_indices = halo.HALOS.get_boundary_cell_groups
+        _tmp, self._boundary_groups_start_end_indices = halo.HALOS.get_boundary_cell_groups()
         _dynamic_args['CIA'] = _tmp
         _dynamic_args['CCA_I'] = self._boundary_groups_start_end_indices
 
