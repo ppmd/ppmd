@@ -93,7 +93,7 @@ class CartesianHalo(object):
         # RUNNING
 
 
-        self._boundary_cell_groups.sync_from_version(halo.HALOS.get_boundary_cell_groups[0])
+        self._boundary_cell_groups.sync_from_version(halo.HALOS.get_boundary_cell_groups()[0])
 
         if self._boundary_groups_contents_array.ncomp < self._boundary_cell_groups.ncomp:
             self._boundary_groups_contents_array.realloc(self._boundary_cell_groups.ncomp)
@@ -114,7 +114,7 @@ class CartesianHalo(object):
                 self._boundary_groups_contents_array.struct
                 ]
 
-        print self._p1_lib['CartesianHaloL0_0'](*args)
+        #print self._p1_lib['CartesianHaloL0_0'](*args)
 
 
 
@@ -186,7 +186,62 @@ class CartesianHalo(object):
 
         return self._boundary_groups_contents_array, self._exchange_sizes
 
+    def get_position_shifts(self):
 
+        '''Calculate flag to determine if a boundary between processes is also a boundary in domain.'''
+        _bc_flag = [0, 0, 0, 0, 0, 0]
+        for ix in range(3):
+            if mpi.MPI_HANDLE.top[ix] == 0:
+                _bc_flag[2 * ix] = 1
+            if mpi.MPI_HANDLE.top[ix] == mpi.MPI_HANDLE.dims[ix] - 1:
+                _bc_flag[2 * ix + 1] = 1
+
+
+        _extent = self._occ_matrix.domain.extent
+
+        '''Shifts to apply to positions when exchanging over boundaries.'''
+        _cell_shifts = [
+            [-1 * _extent[0] * _bc_flag[1], -1 * _extent[1] * _bc_flag[3],
+             -1 * _extent[2] * _bc_flag[5]],
+            [0., -1 * _extent[1] * _bc_flag[3], -1 * _extent[2] * _bc_flag[5]],
+            [_extent[0] * _bc_flag[0], -1 * _extent[1] * _bc_flag[3], -1 * _extent[2] * _bc_flag[5]],
+            [-1 * _extent[0] * _bc_flag[1], 0., -1 * _extent[2] * _bc_flag[5]],
+            [0., 0., -1 * _extent[2] * _bc_flag[5]],
+            [_extent[0] * _bc_flag[0], 0., -1 * _extent[2] * _bc_flag[5]],
+            [-1 * _extent[0] * _bc_flag[1], _extent[1] * _bc_flag[2], -1 * _extent[2] * _bc_flag[5]],
+            [0., _extent[1] * _bc_flag[2], -1 * _extent[2] * _bc_flag[5]],
+            [_extent[0] * _bc_flag[0], _extent[1] * _bc_flag[2], -1 * _extent[2] * _bc_flag[5]],
+
+            [-1 * _extent[0] * _bc_flag[1], -1 * _extent[1] * _bc_flag[3], 0.],
+            [0., -1 * _extent[1] * _bc_flag[3], 0.],
+            [_extent[0] * _bc_flag[0], -1 * _extent[1] * _bc_flag[3], 0.],
+            [-1 * _extent[0] * _bc_flag[1], 0., 0.],
+            [_extent[0] * _bc_flag[0], 0., 0.],
+            [-1 * _extent[0] * _bc_flag[1], _extent[1] * _bc_flag[2], 0.],
+            [0., _extent[1] * _bc_flag[2], 0.],
+            [_extent[0] * _bc_flag[0], _extent[1] * _bc_flag[2], 0.],
+
+            [-1 * _extent[0] * _bc_flag[1], -1 * _extent[1] * _bc_flag[3], _extent[2] * _bc_flag[4]],
+            [0., -1 * _extent[1] * _bc_flag[3], _extent[2] * _bc_flag[4]],
+            [_extent[0] * _bc_flag[0], -1 * _extent[1] * _bc_flag[3], _extent[2] * _bc_flag[4]],
+            [-1 * _extent[0] * _bc_flag[1], 0., _extent[2] * _bc_flag[4]],
+            [0., 0., _extent[2] * _bc_flag[4]],
+            [_extent[0] * _bc_flag[0], 0., _extent[2] * _bc_flag[4]],
+            [-1 * _extent[0] * _bc_flag[1], _extent[1] * _bc_flag[2], _extent[2] * _bc_flag[4]],
+            [0., _extent[1] * _bc_flag[2], _extent[2] * _bc_flag[4]],
+            [_extent[0] * _bc_flag[0], _extent[1] * _bc_flag[2], _extent[2] * _bc_flag[4]]
+        ]
+
+
+        '''make scalar array object from above shifts'''
+        _tmp_list_local = []
+        '''zero scalar array for data that is not position dependent'''
+        _tmp_zero = range(26)
+        for ix in range(26):
+            _tmp_list_local += _cell_shifts[ix]
+            _tmp_zero[ix] = 0
+
+        return cuda_base.Array(initial_value=host.Array(_tmp_list_local, dtype=ctypes.c_double), dtype=ctypes.c_double)
 
 
 HALOS = None

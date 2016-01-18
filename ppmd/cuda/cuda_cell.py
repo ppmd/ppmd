@@ -296,6 +296,9 @@ class CellOccupancyMatrix(object):
     def layers_per_cell(self):
         return self._n_layers
 
+    @property
+    def domain(self):
+        return self._domain
 
 
 

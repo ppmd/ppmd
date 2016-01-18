@@ -171,20 +171,57 @@ class ParticleDat(cuda_base.Matrix):
 
         _name = '1p_halo_lib'
 
-        _args = '''const int blocksize[3],
+        _hargs = '''const int blocksize[3],
                    const int threadsize[3],
-                   const int h_n,               // Total possible number of cells
+                   const int h_n,               // Total possible number of cells*maximum number of layers in use.
                    const int h_npc,             // Maximum number of layers in use
                    '''
 
+        _dargs = '''
+                    '''
+
+        _d_call_args = ''''''
+
+
+        if self.name == 'positions':
+            _hargs += '''const double* %(R)s d_shifts \n''' % {'R':cuda_build.NVCC.restrict_keyword}
+            _dargs += '''const double* %(R)s d_shifts \n''' % {'R':cuda_build.NVCC.restrict_keyword}
+
+            _d_call_args += ''' d_shifts'''
+
+            self._position_shifts = cuda_halo.HALOS.get_position_shifts()
+            _shift_code = ''''''
+        else:
+            _shift_code = ''''''
 
         _header = '''
             #include <cuda_generic.h>
-            extern "C" int %(NAME)s(%(ARGS)s);
-        ''' % {'NAME': _name, 'ARGS': _args}
+            extern "C" int %(NAME)s(%(HARGS)s);
+        ''' % {'NAME': _name, 'HARGS': _hargs}
 
         _src = '''
 
+        __constant__ int d_n;
+        __constant__ int d_npc;
+
+        __global__ void d_1p_halo_copy_shift(%(DARGS)s){
+
+            return;
+        }
+
+        int %(NAME)s(%(HARGS)s){
+            checkCudaErrors(cudaMemcpyToSymbol(d_n, &h_n, sizeof(h_n)));
+            checkCudaErrors(cudaMemcpyToSymbol(d_npc, &h_npc, sizeof(h_npc)));
+
+            dim3 bs; bs.x = blocksize[0]; bs.y = blocksize[1]; bs.z = blocksize[2];
+            dim3 ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
+
+            d_1p_halo_copy_shift<<<bs,ts>>>(%(DARGS)s);
+            checkCudaErrors(cudaDeviceSynchronize());
+            getLastCudaError("1proc halo lib Execution failed. \\n");
+
+            return 0;
+        }
         '''
 
 
