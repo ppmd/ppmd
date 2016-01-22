@@ -4,9 +4,10 @@ Methods to aid CUDA halo exchanges.
 
 # system level imports
 import ctypes
+import numpy as np
 
 # package level imports
-from ppmd import halo
+#from ppmd import halo
 
 
 # cuda level imports
@@ -15,13 +16,59 @@ import cuda_build
 import cuda_cell
 import cuda_base
 
+class CellSlice(object):
+    def __getitem__(self, item):
+        return item
+
+
+def create_halo_pairs(cell_array, slicexyz, direction):
+    """
+    Automatically create the pairs of cells for halos.
+    """
+
+    xr = range(1, cell_array[0] - 1)[slicexyz[0]]
+    yr = range(1, cell_array[1] - 1)[slicexyz[1]]
+    zr = range(1, cell_array[2] - 1)[slicexyz[2]]
+
+    if type(xr) is not list:
+        xr = [xr]
+    if type(yr) is not list:
+        yr = [yr]
+    if type(zr) is not list:
+        zr = [zr]
+
+    l = len(xr) * len(yr) * len(zr)
+
+    b_cells = np.zeros(l)
+    h_cells = np.zeros(l)
+
+    i = 0
+
+    for iz in zr:
+        for iy in yr:
+            for ix in xr:
+                b_cells[i] = ix + (iy + iz * cell_array[1]) * cell_array[0]
+
+                _ix = (ix + direction[0] * 2) % cell_array[0]
+                _iy = (iy + direction[1] * 2) % cell_array[1]
+                _iz = (iz + direction[2] * 2) % cell_array[2]
+
+                h_cells[i] = _ix + (_iy + _iz * cell_array[1]) * cell_array[0]
+
+                i += 1
+
+    return b_cells, h_cells
+
 
 
 
 class CartesianHalo(object):
 
-    def __init__(self, host_halo=halo.HALOS, occ_matrix=cuda_cell.OCCUPANCY_MATRIX):
-        self._host_halo_handle = host_halo
+    def __init__(self, # host_halo=halo.HALOS,
+                 occ_matrix=cuda_cell.OCCUPANCY_MATRIX):
+
+        # self._host_halo_handle = host_halo
+
         self._occ_matrix = occ_matrix
         self._init = False
 
