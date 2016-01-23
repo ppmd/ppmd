@@ -7,7 +7,6 @@ import ctypes
 import numpy as np
 
 # package level imports
-#from ppmd import halo
 
 
 # cuda level imports
@@ -19,6 +18,8 @@ import cuda_base
 class CellSlice(object):
     def __getitem__(self, item):
         return item
+
+Slice = CellSlice()
 
 
 def create_halo_pairs(cell_array, slicexyz, direction):
@@ -57,6 +58,15 @@ def create_halo_pairs(cell_array, slicexyz, direction):
 
                 i += 1
 
+
+    _bc_flag = [0, 0, 0, 0, 0, 0]
+    for ix in range(3):
+        if mpi.MPI_HANDLE.top[ix] == 0:
+            _bc_flag[2 * ix] = 1
+        if mpi.MPI_HANDLE.top[ix] == mpi.MPI_HANDLE.dims[ix] - 1:
+            _bc_flag[2 * ix + 1] = 1
+
+
     return b_cells, h_cells
 
 
@@ -70,6 +80,8 @@ class CartesianHalo(object):
         # self._host_halo_handle = host_halo
 
         self._occ_matrix = occ_matrix
+        self._occ_matrix_version = -1
+
         self._init = False
 
         # vars init
@@ -177,6 +189,61 @@ class CartesianHalo(object):
         self._init = True
 
 
+    def _get_pairs(self):
+        _cell_pairs = (
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[0,0,0],(-1,-1,-1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[::,0,0],(0,-1,-1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[-1,0,0],(1,-1,-1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[0,::,0],(-1,0,-1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[::,::,0],(0,0,-1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[-1,::,0],(1,0,-1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[-1,-1,0],(-1,1,-1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[::,-1,0],(0,-1,-1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[-1,-1,0],(1,1,-1)),
+
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[0,0,::],(-1,-1,0)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[::,0,::],(0,-1,0)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[-1,0,::],(1,-1,0)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[0,::,::],(-1,0,0)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[-1,::,::],(1,0,0)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[-1,-1,::],(-1,1,0)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[::,-1,::],(0,-1,0)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[-1,-1,::],(1,1,0)),
+
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[0,0,-1],(-1,-1,1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[::,0,-1],(0,-1,1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[-1,0,-1],(1,-1,1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[0,::,-1],(-1,0,1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[::,::,-1],(0,0,1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[-1,::,-1],(1,0,1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[-1,-1,-1],(-1,1,1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[::,-1,-1],(0,-1,1)),
+            create_halo_pairs(self.occ_matrix.domain.cell_array, Slice[-1,-1,-1],(1,1,1))
+        )
+
+        _bs = [0]
+        _b = []
+
+        _hs = [0]
+        _h = []
+
+        for bhx in _cell_pairs:
+            _bs.append(len(bhx[0]))
+            _hs.append(len(bhx[1]))
+
+            _b.append(bhx[0])
+            _h.append(bhx[1])
+
+        self._boundary_groups_start_end_indices = cuda_base.Array(_bs, dtype=ctypes.c_int)
+        self._halo_groups_start_end_indices = cuda_base.Array(_hs, dtype=ctypes.c_int)
+
+        self._boundary_cell_groups = cuda_base.Array(_b, dtype=ctypes.c_int)
+        self._halo_cell_groups = cuda_base.Array(_h, dtype=ctypes.c_int)
+
+        self._occ_matrix_version = self._occ_matrix.version
+
+
+
     @property
     def get_boundary_cell_groups(self):
         """
@@ -187,12 +254,15 @@ class CartesianHalo(object):
         :return: Tuple, array of local cell indices to pack, array of starting points within the first array.
         """
 
-        assert self._host_halo_handle is not None, "No host halo setup."
+        #assert self._host_halo_handle is not None, "No host halo setup."
 
-        _t = self._host_halo_handle.get_boundary_cell_groups
+        #_t = self._host_halo_handle.get_boundary_cell_groups
 
-        self._boundary_cell_groups.sync_from_version(_t[0])
-        self._boundary_groups_start_end_indices.sync_from_version(_t[1])
+        #self._boundary_cell_groups.sync_from_version(_t[0])
+        #self._boundary_groups_start_end_indices.sync_from_version(_t[1])
+
+        if self._occ_matrix_version < self._occ_matrix.version:
+            self._get_pairs()
 
         return self._boundary_cell_groups, self._boundary_groups_start_end_indices
 
@@ -205,12 +275,15 @@ class CartesianHalo(object):
 
         :return: Tuple, array of local halo cell indices to unpack into, array of starting points within the first array.
         """
-        assert self._host_halo_handle is not None, "No host halo setup."
+        # assert self._host_halo_handle is not None, "No host halo setup."
 
-        _t = self._host_halo_handle.get_halo_cell_groups
+        #_t = self._host_halo_handle.get_halo_cell_groups
 
-        self._halo_cell_groups.sync_from_version(_t[0])
-        self._halo_groups_start_end_indices.sync_from_version(_t[1])
+        #self._halo_cell_groups.sync_from_version(_t[0])
+        #self._halo_groups_start_end_indices.sync_from_version(_t[1])
+
+        if self._occ_matrix_version < self.occ_matrix.version:
+            self._get_pairs()
 
         return self._halo_cell_groups, self._halo_groups_start_end_indices
 
