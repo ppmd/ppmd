@@ -95,13 +95,13 @@
 
 template <typename T>
 struct cuda_Array {
-    T* ptr;
+    T* __restrict__ ptr;
     int *ncomp;
 };
 
 template <typename T>
 struct cuda_Matrix {
-    T* ptr;
+    T* __restrict__ ptr;
     int *nrow;
     int *ncol;
 };

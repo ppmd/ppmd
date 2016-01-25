@@ -47,7 +47,7 @@ class Array(object):
             if type(initial_value) is np.ndarray:
                 self._create_from_existing(initial_value, dtype)
             else:
-                self._create_from_existing(np.array([initial_value]), dtype)
+                self._create_from_existing(np.array([initial_value], dtype=dtype), dtype)
         else:
             self._create_zeros(ncomp, dtype)
 
@@ -89,11 +89,12 @@ class Array(object):
     def _create_from_existing(self, ndarray=None, dtype=ctypes.c_double):
 
         if dtype != ndarray.dtype:
-            print "cuda_base:Array._create_from_existing() data type miss matched."
+            print "cuda_base:Array._create_from_existing() data type miss matched.", dtype, ndarray.dtype
 
         self.idtype = dtype
         if dtype != self.dtype:
             self.idtype = dtype
+
 
         self.realloc(ndarray.size)
         cuda_runtime.cuda_mem_cpy(self._ptr,
@@ -259,12 +260,17 @@ class Matrix(object):
         """
         assert self._ptr is not None, "cuda_base.Matrix: realloc error: pointer type unknown."
 
-        if (self._ncol.value != 0) and (self._nrow.value != 0) and (self._ptr is not None):
-            cuda_runtime.cuda_free(self._ptr)
-
-
         if (nrow != self._nrow.value) and (ncol != self._ncol.value):
-            cuda_runtime.cuda_malloc(self._ptr, nrow * ncol, self.idtype)
+
+            _ptr_new = ctypes.POINTER(self.idtype)()
+            cuda_runtime.cuda_malloc(_ptr_new, nrow * ncol, self.idtype)
+            cuda_runtime.cuda_mem_cpy(_ptr_new,
+                                      self._ptr,
+                                      ctypes.c_size_t(self._ncol.value * self._nrow.value * ctypes.sizeof(self.idtype)),
+                                      'cudaMemcpyDeviceToDevice')
+
+            cuda_runtime.cuda_free(self._ptr)
+            self._ptr = _ptr_new
 
         self._ncol.value = ncol
         self._nrow.value = nrow
