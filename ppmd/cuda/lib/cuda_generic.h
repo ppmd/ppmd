@@ -106,6 +106,13 @@ struct cuda_Matrix {
     int *ncol;
 };
 
-
+template <typename T>
+struct cuda_ParticleDat {
+    T* __restrict__ ptr;
+    int* nrow;
+    int* ncol;
+    int* npart;
+    int* ncomp;
+};
 
 #endif

@@ -46,6 +46,49 @@ COM.setup(sim1.state.as_func('n'), sim1.state.d_positions, sim1.state.domain)
 COM.sort()
 cuda_halo.HALOS = cuda_halo.CartesianHalo(COM)
 
+#cuda_halo.HALOS.get_position_shifts
+
+host_shifts = host.Array(ncomp=26*3, dtype=ctypes.c_double)
+cuda_runtime.cuda_mem_cpy(host_shifts.ctypes_data,
+                          cuda_halo.HALOS.get_position_shifts.ctypes_data,
+                          ctypes.c_size_t(ctypes.sizeof(ctypes.c_double) * 26 * 3),
+                          'cudaMemcpyDeviceToHost')
+print "P1", cuda_halo.HALOS.get_position_shifts.ctypes_data
+print host_shifts.dat
+
+print "DAT", sim1.state.d_positions.ctypes_data, sim1.state.d_positions.struct.ptr
+print "SHIFT", cuda_halo.HALOS.get_position_shifts.ctypes_data, cuda_halo.HALOS.get_position_shifts.struct.ptr
+
+
+_h = '''
+     #include <cuda_generic.h>
+     extern "C" int test(cuda_Array<double> d_shift);
+     '''
+
+_s = '''
+     int test(cuda_Array<double> d_shift){
+        double h_shift[26*3];
+        cudaMemcpy(h_shift, d_shift.ptr, 26*3*sizeof(double), cudaMemcpyDeviceToHost);
+
+        printf("%f \\n", h_shift[0]);
+
+
+        return 0;
+     }
+     '''
+
+test_lib = cuda_build.simple_lib_creator(_h,_s,'test')['test']
+test_lib(cuda_halo.HALOS.get_position_shifts.struct)
+
+print "AFTER TEST LIB"
+
+
+
+
+
+
+
+
 
 sim1.state.d_positions.halo_exchange()
 

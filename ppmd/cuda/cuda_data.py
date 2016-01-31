@@ -198,7 +198,6 @@ class ParticleDat(cuda_base.Matrix):
         if self.name == 'positions':
             args.append(cuda_halo.HALOS.get_position_shifts.struct)
 
-
         self._1p_halo_lib(*args)
 
 
@@ -216,7 +215,7 @@ class ParticleDat(cuda_base.Matrix):
                     const cuda_Array<int> d_bhc_map,
                     const cuda_Array<int> d_ccc,
                     cuda_Matrix<int> d_occ_matrix,
-                    cuda_Matrix<%(TYPE)s> d_dat
+                    cuda_ParticleDat<%(TYPE)s> d_dat
                    ''' % {'TYPE': host.ctypes_map[self.idtype]}
 
         _dargs = '''const cuda_Array<int> d_b,
@@ -224,7 +223,7 @@ class ParticleDat(cuda_base.Matrix):
                     const cuda_Array<int> d_bhc_map,
                     const cuda_Array<int> d_ccc,
                     cuda_Matrix<int> d_occ_matrix,
-                    cuda_Matrix<%(TYPE)s> d_dat
+                    cuda_ParticleDat<%(TYPE)s> d_dat
                     ''' % {'TYPE': host.ctypes_map[self.idtype]}
 
         _d_call_args = '''d_b, d_h, d_bhc_map, d_ccc, d_occ_matrix, d_dat'''

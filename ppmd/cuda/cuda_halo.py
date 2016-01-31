@@ -258,10 +258,10 @@ class CartesianHalo(object):
         self._boundary_cell_groups = cuda_base.Array(_b, dtype=ctypes.c_int)
         self._halo_cell_groups = cuda_base.Array(_h, dtype=ctypes.c_int)
 
-        print _s, type(_s), _s.size
 
+        print "SHIFTS"
         self._halo_shifts = cuda_base.Array(_s, dtype=ctypes.c_double)
-
+        print "E_SHIFTS", self._halo_shifts.ctypes_data
 
         self._reverse_lookup = cuda_base.Array(_r, dtype=ctypes.c_int)
 

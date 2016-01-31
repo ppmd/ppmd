@@ -230,8 +230,8 @@ def cuda_malloc(d_ptr=None, num=None, dtype=None):
     assert num is not None, "cuda_runtime:cuda_malloc error: no length."
     assert dtype is not None, "cuda_runtime:cuda_malloc error: no type."
 
-    libcudart('cudaMalloc', ctypes.byref(d_ptr), ctypes.c_size_t(num * ctypes.sizeof(dtype)))
 
+    libcudart('cudaMalloc', ctypes.byref(d_ptr), ctypes.c_size_t(num * ctypes.sizeof(dtype)))
 
 #####################################################################################
 # cuda_free
