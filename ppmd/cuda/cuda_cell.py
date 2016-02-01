@@ -220,6 +220,7 @@ class CellOccupancyMatrix(object):
             if ((*nl)*(*n_cells)>old_nl*(*n_cells)){
             //need to resize.
                 cudaFree(*d_M);
+                printf("new number of layers = %%d \\n", *nl);
                 cudaMalloc((void**)d_M, (*nl)*(*n_cells)*sizeof(int));
             }
 

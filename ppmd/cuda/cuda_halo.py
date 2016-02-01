@@ -255,6 +255,9 @@ class CartesianHalo(object):
         self._boundary_groups_start_end_indices = cuda_base.Array(_bs, dtype=ctypes.c_int)
         self._halo_groups_start_end_indices = cuda_base.Array(_hs, dtype=ctypes.c_int)
 
+        print "CA =", self.occ_matrix.domain.cell_array
+        print _b
+
         self._boundary_cell_groups = cuda_base.Array(_b, dtype=ctypes.c_int)
         self._halo_cell_groups = cuda_base.Array(_h, dtype=ctypes.c_int)
 

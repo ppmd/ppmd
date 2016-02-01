@@ -233,6 +233,7 @@ def cuda_malloc(d_ptr=None, num=None, dtype=None):
 
     libcudart('cudaMalloc', ctypes.byref(d_ptr), ctypes.c_size_t(num * ctypes.sizeof(dtype)))
 
+
 #####################################################################################
 # cuda_free
 #####################################################################################

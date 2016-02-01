@@ -38,15 +38,21 @@ sim1 = simulation.BaseMDSimulation(domain_in=test_domain,
 COM = cuda_cell.CellOccupancyMatrix()
 
 # Create a particle dat with the positions in from the sim1.state
-sim1.state.d_positions = cuda_data.ParticleDat(initial_value=sim1.state.positions.dat, name='positions')
-
+sim1.state.d_positions = cuda_data.ParticleDat(initial_value=sim1.state.positions, name='positions')
+print sim1.state.positions.max_npart, sim1.state.positions.npart
 
 COM.setup(sim1.state.as_func('n'), sim1.state.d_positions, sim1.state.domain)
 
 COM.sort()
 cuda_halo.HALOS = cuda_halo.CartesianHalo(COM)
 
-#cuda_halo.HALOS.get_position_shifts
+
+_s = COM.matrix.ncol*COM.matrix.nrow
+gpu_occ = host.Array(ncomp=_s, dtype=ctypes.c_int)
+cuda_runtime.cuda_mem_cpy(gpu_occ.ctypes_data, COM.matrix.ctypes_data, ctypes.c_size_t(_s * ctypes.sizeof(ctypes.c_int)), 'cudaMemcpyDeviceToHost')
+
+
+print gpu_occ.dat[86 * COM.layers_per_cell], "layers per cell", COM.layers_per_cell
 
 host_shifts = host.Array(ncomp=26*3, dtype=ctypes.c_double)
 cuda_runtime.cuda_mem_cpy(host_shifts.ctypes_data,

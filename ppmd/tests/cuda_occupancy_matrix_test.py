@@ -7,7 +7,7 @@ from ppmd.cuda import *
 
 
 # n=25 reasonable size
-n = 100
+n = 10
 N = n**3
 # n=860
 rho = 1.
@@ -57,6 +57,7 @@ cell.cell_list.sort()
 # alias the cell list
 _cl = cell.cell_list.cell_list
 
+print gpu_occ.dat[86*COM.layers_per_cell]
 
 _n = 0
 

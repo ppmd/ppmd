@@ -10,6 +10,7 @@ import math
 import ppmd.access as access
 import ppmd.mpi as mpi
 import ppmd.host as host
+import ppmd.data as data
 
 # cuda imports
 import cuda_base
@@ -98,23 +99,24 @@ class ParticleDat(cuda_base.Matrix):
         if initial_value is not None:
             if type(initial_value) is np.ndarray:
                 self._create_from_existing(initial_value, dtype)
+                self._npart = ctypes.c_int(self._nrow.value)
+
+            elif type(initial_value) is data.ParticleDat:
+                self._create_from_existing(initial_value.dat, initial_value.dtype)
+                self._npart = ctypes.c_int(initial_value.npart)
+
             else:
                 self._create_from_existing(np.array([initial_value]),dtype)
-
-            self._max_npart = ctypes.c_int(self._nrow.value)
-            self._npart = ctypes.c_int(self._nrow.value)
+                self._npart = ctypes.c_int(self._nrow.value)
 
         else:
             if max_npart is not None:
-                self._max_npart = ctypes.c_int(max_npart)
+                self._nrow = ctypes.c_int(max_npart)
             else:
-                self._max_npart = ctypes.c_int(npart)
+                self._nrow = ctypes.c_int(npart)
 
-            self._create_zeros(self._max_npart.value, ncomp, dtype)
+            self._create_zeros(self._nrow.value, ncomp, dtype)
             self._npart = ctypes.c_int(npart)
-
-        self._ncomp = ctypes.c_int(self._ncol.value)
-
 
         self._version = 0
 
@@ -132,15 +134,15 @@ class ParticleDat(cuda_base.Matrix):
     @property
     def struct(self):
         self._struct.ptr = self._ptr
-        self._struct.nrow = ctypes.pointer(self._max_npart)
+        self._struct.nrow = ctypes.pointer(self._nrow)
         self._struct.ncol = ctypes.pointer(self._ncol)
         self._struct.npart = ctypes.pointer(self._npart)
-        self._struct.ncomp = ctypes.pointer(self._ncomp)
+        self._struct.ncomp = ctypes.pointer(self._ncol)
         return self._struct
 
     @property
     def max_npart(self):
-        return self._max_npart.value
+        return self._nrow.value
 
 
     @property
@@ -150,7 +152,6 @@ class ParticleDat(cuda_base.Matrix):
 
     def resize(self, n):
         if n > self.max_npart:
-            self._max_npart.value = n
             self.realloc(n, self.ncol)
 
     def __call__(self, mode=access.RW, halo=True):
@@ -172,7 +173,6 @@ class ParticleDat(cuda_base.Matrix):
         if self._1p_halo_lib is None:
             self._build_1p_halo_lib()
 
-        # TODO check dat is large enough here
         boundary_cell_groups = cuda_halo.HALOS.get_boundary_cell_groups[0]
         n = cuda_halo.HALOS.occ_matrix.layers_per_cell * boundary_cell_groups.ncomp
         if self.max_npart < self.npart + n:
@@ -184,16 +184,26 @@ class ParticleDat(cuda_base.Matrix):
         threadsize = (ctypes.c_int * 3)(threads_per_block, 1, 1)
 
 
+        #if self.npart_total
+        #self.resize(self.npart_total)
+
+        print self.max_npart, self.npart, n, cuda_halo.HALOS.occ_matrix.layers_per_cell
+
         args=[blocksize,
-            threadsize,
-            ctypes.c_int(n),
-            ctypes.c_int(cuda_halo.HALOS.occ_matrix.layers_per_cell),
-            cuda_halo.HALOS.get_boundary_cell_groups[0].struct,
-            cuda_halo.HALOS.get_halo_cell_groups[0].struct,
-            cuda_halo.HALOS.get_boundary_cell_to_halo_map.struct,
-            cuda_halo.HALOS.occ_matrix.cell_contents_count.struct,
-            cuda_halo.HALOS.occ_matrix.matrix.struct,
-            self.struct]
+              threadsize,
+              self._npart,
+              ctypes.c_int(n),
+              ctypes.c_int(cuda_halo.HALOS.occ_matrix.layers_per_cell),
+              cuda_halo.HALOS.get_boundary_cell_groups[0].struct,
+              cuda_halo.HALOS.get_halo_cell_groups[0].struct,
+              cuda_halo.HALOS.get_boundary_cell_to_halo_map.struct,
+              cuda_halo.HALOS.occ_matrix.cell_contents_count.struct,
+              cuda_halo.HALOS.occ_matrix.matrix.struct,
+              self.struct]
+
+
+
+
 
         if self.name == 'positions':
             args.append(cuda_halo.HALOS.get_position_shifts.struct)
@@ -208,6 +218,7 @@ class ParticleDat(cuda_base.Matrix):
 
         _hargs = '''const int blocksize[3],
                     const int threadsize[3],
+                    const int h_n_total,
                     const int h_n,
                     const int h_npc,
                     const cuda_Array<int> d_b,
@@ -251,6 +262,7 @@ class ParticleDat(cuda_base.Matrix):
 
         _src = '''
 
+        __constant__ int d_n_total;
         __constant__ int d_n;
         __constant__ int d_npc;
 
@@ -259,33 +271,36 @@ class ParticleDat(cuda_base.Matrix):
             //particle index
             const int idx = (threadIdx.x + blockIdx.x*blockDim.x)/%(NCOMP)s;
 
+
             if (idx < d_n){
                 //component corresponding to thread.
                 const int _comp = (threadIdx.x + blockIdx.x*blockDim.x) %% %(NCOMP)s;
 
                 const int _cx = idx/d_npc;
-                const int _bc = d_b.ptr[_cx];
-                const int _Np = d_ccc.ptr[_bc];
-                const int _pi = idx %% d_npc;
+                const int _bc = d_b.ptr[_cx]; // some boundary cell
+                const int _pi = idx %% d_npc; // particle layer
 
-                if (_pi < _Np){ //Do we need this thread to do anything?
+
+                if (_pi < d_ccc.ptr[_bc]){ //Do we need this thread to do anything?
 
                     // local index of particle
                     const int px = d_occ_matrix.ptr[_bc*d_npc + _pi];
 
                     //halo index of particle
-                    const int hpx = d_n + _cx*d_npc + _pi;
+                    const int hpx = d_n_total + idx;
 
-                    d_dat.ptr[hpx* %(NCOMP)s + _comp] = d_dat.ptr[px * %(NCOMP)s + _comp] %(SHIFT_CODE)s ;
+                    d_dat.ptr[hpx* %(NCOMP)s + _comp] = d_dat.ptr[px * %(NCOMP)s + _comp] + %(SHIFT_CODE)s ;
 
                     %(OCC_CODE)s
 
                     }
+
             }
             return;
         }
 
         int %(NAME)s(%(HARGS)s){
+            checkCudaErrors(cudaMemcpyToSymbol(d_n_total, &h_n_total, sizeof(h_n_total)));
             checkCudaErrors(cudaMemcpyToSymbol(d_n, &h_n, sizeof(h_n)));
             checkCudaErrors(cudaMemcpyToSymbol(d_npc, &h_npc, sizeof(h_npc)));
 

@@ -244,9 +244,15 @@ class Matrix(object):
 
     def _create_from_existing(self, ndarray=None, dtype=ctypes.c_double):
 
+        print "Create start"
+
+        assert type(ndarray) is np.ndarray, "cuda_base::Matrix._create_from_existing error: passed array is not a numpy array."
+
         self.idtype = dtype
         if dtype != self.dtype:
             self.idtype = dtype
+
+        print ctypes.c_size_t(ndarray.shape[0] * ndarray.shape[1] * ctypes.sizeof(dtype))
 
         self.realloc(ndarray.shape[0], ndarray.shape[1])
         cuda_runtime.cuda_mem_cpy(self._ptr,
@@ -254,13 +260,15 @@ class Matrix(object):
                                   ctypes.c_size_t(ndarray.shape[0] * ndarray.shape[1] * ctypes.sizeof(dtype)),
                                   'cudaMemcpyHostToDevice')
 
+        print "Create end"
+
     def realloc(self, nrow=None, ncol=None):
         """
         Re allocate memory for a matrix.
         """
         assert self._ptr is not None, "cuda_base.Matrix: realloc error: pointer type unknown."
 
-        if (nrow != self._nrow.value) and (ncol != self._ncol.value):
+        if (nrow != self._nrow.value) or (ncol != self._ncol.value):
 
             _ptr_new = ctypes.POINTER(self.idtype)()
             cuda_runtime.cuda_malloc(_ptr_new, nrow * ncol, self.idtype)
