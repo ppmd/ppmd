@@ -10,7 +10,7 @@ from ppmd import runtime, pio, mpi
 
 
 ERROR_LEVEL = runtime.Level(3)
-DEBUG = runtime.Level(3)
+DEBUG = runtime.Level(0)
 VERBOSE = runtime.Level(3)
 BUILD_TIMER = runtime.Level(0)
 

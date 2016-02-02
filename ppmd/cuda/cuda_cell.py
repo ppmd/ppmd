@@ -4,7 +4,6 @@ CUDA implementations of methods to handle the cell decomposition of a domain.
 
 #system
 import ctypes
-import numpy as np
 import math
 
 #package
@@ -301,11 +300,256 @@ class CellOccupancyMatrix(object):
     def domain(self):
         return self._domain
 
+    @property
+    def positions(self):
+        return self._positions
 
 
 
 # Default
 OCCUPANCY_MATRIX = None
+
+class NeighbourListLayerBased(object):
+
+    def __init__(self, occ_matrix=OCCUPANCY_MATRIX, cutoff=None):
+
+        self._occ_matrix = occ_matrix
+        assert cutoff is not None, "cuda_cell::NeighbourListLayerBased.setup error: No cutoff passed."
+        self._rc = cutoff
+
+
+        self.list = cuda_base.Matrix(nrow=1, ncol=1, dtype=ctypes.c_int)
+
+        _name = 'NeighbourList'
+
+        hargs = '''
+            const int blocksize[3],
+            const int threadsize[3],
+            const int h_nmax,
+            const int h_npart,
+            const int h_nlayers,
+            const double h_cutoff_squared,
+            const int* __restrict__ h_CA,
+            const cuda_ParticleDat<double> d_positions,
+            const cuda_Array<int> d_CRL,
+            const cuda_Matrix<int> d_OM,
+            const cuda_Array<int> d_ccc,
+            cuda_Matrix<int> d_W
+        '''
+
+        dargs = '''
+            int* __restrict__ d_W,
+            const double* __restrict__ d_positions,
+            const int* __restrict__ d_CRL,
+            const int* __restrict__ d_OM,
+            const int* __restrict__ d_ccc
+        '''
+
+        d_call_args = '''d_W.ptr, d_positions.ptr, d_CRL.ptr, d_OM.ptr, d_ccc.ptr'''
+
+
+        _header = '''
+            #include <cuda_generic.h>
+            extern "C" int %(NAME)s(%(HARGS)s);
+        ''' % {'NAME': _name, 'HARGS': hargs}
+
+
+        _code = '''
+
+            const int h_map[27][3] = {
+                                {-1,1,-1},
+                                {-1,-1,-1},
+                                {-1,0,-1},
+                                {0,1,-1},
+                                {0,-1,-1},
+                                {0,0,-1},
+                                {1,0,-1},
+                                {1,1,-1},
+                                {1,-1,-1},
+
+                                {-1,1,0},
+                                {-1,0,0},
+                                {-1,-1,0},
+                                {0,-1,0},
+                                {0,0,0},
+                                {0,1,0},
+                                {1,0,0},
+                                {1,1,0},
+                                {1,-1,0},
+
+                                {-1,0,1},
+                                {-1,1,1},
+                                {-1,-1,1},
+                                {0,0,1},
+                                {0,1,1},
+                                {0,-1,1},
+                                {1,0,1},
+                                {1,1,1},
+                                {1,-1,1}
+                              };
+
+
+            __constant__ int d_nmax;                    //maximum number of neighbours
+            __constant__ int d_npart;
+            __constant__ int d_cell_offsets[27];
+            __constant__ int d_nlayers;
+            __constant__ double d_cutoff_squared;
+
+            __global__ void CreateNeighbourList(%(DARGS)s){
+
+                const int idx = threadIdx.x + blockIdx.x*blockDim.x;
+
+                if (idx < d_npart){
+
+                    // position of this particle
+                    const double3 r0 = {d_positions[idx*3],
+                                        d_positions[idx*3 + 1],
+                                        d_positions[idx*3 + 2]};
+
+                    //index of next neighbour
+                    int m = 0;
+
+                    //cell containing this particle
+                    const int cp = d_CRL[idx];
+
+                    //loop over 27 directions.
+                    for(int k = 0; k < 27; k++){
+
+                        // other cell.
+                        const int cpp = cp + d_cell_offsets[k];
+
+
+                        // loop over layers in neighbouring cell.
+                        for( int _idy = 0; _idy < d_ccc[cpp]; _idy++){
+
+                            // get particle in cell cpp in layer _idy
+                            const int idy = d_OM[cpp*d_nlayers + _idy];
+
+                            if (idx != idy){
+
+                                const double3 r1 = {
+                                                    d_positions[idy*3    ] - r0.x,
+                                                    d_positions[idy*3 + 1] - r0.y,
+                                                    d_positions[idy*3 + 2] - r0.z
+                                                    };
+
+                                // see if candidate neighbour
+                                if ( (r1.x*r1.x + r1.y*r1.y + r1.z*r1.z) < d_cutoff_squared ){
+
+                                    // work out new index
+                                    m++;
+
+                                    d_W[idx + d_npart * m] = idy;
+
+                                    //experiment to swap order, appears to be faster by
+                                    // about 10%%
+                                    //d_W[idx*d_nmax + m] = idy;
+
+                                }
+
+
+                            } //ix==iy check
+                        }//layers
+                    } //directions
+
+                    //Number of neighbours for this particle
+                    d_W[idx] = m;
+
+                } //threads
+
+                return;
+            }
+
+
+            int %(NAME)s(%(HARGS)s){
+
+                int h_offsets[27];
+
+                for(int ix = 0; ix < 27; ix++){
+                    h_offsets[ix] = h_map[ix][0] + h_map[ix][1] * h_CA[0] + h_map[ix][2] * h_CA[0]*h_CA[1];
+                }
+
+
+                checkCudaErrors(cudaMemcpyToSymbol(d_cell_offsets, &h_offsets[0], 27*sizeof(int)));
+                checkCudaErrors(cudaMemcpyToSymbol(d_nmax, &h_nmax, sizeof(int)));
+                checkCudaErrors(cudaMemcpyToSymbol(d_npart, &h_npart, sizeof(int)));
+                checkCudaErrors(cudaMemcpyToSymbol(d_nlayers, &h_nlayers, sizeof(int)));
+                checkCudaErrors(cudaMemcpyToSymbol(d_cutoff_squared, &h_cutoff_squared, sizeof(double)));
+
+
+                dim3 bs; bs.x = blocksize[0]; bs.y = blocksize[1]; bs.z = blocksize[2];
+                dim3 ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
+
+                CreateNeighbourList<<<bs,ts>>>(%(D_CALL_ARGS)s);
+                checkCudaErrors(cudaDeviceSynchronize());
+                getLastCudaError("NeighbourListLayerBased library failed \\n");
+
+                return 0;
+            }
+        ''' % {'NAME': _name, 'HARGS': hargs, 'DARGS': dargs, 'D_CALL_ARGS': d_call_args}
+
+        self._lib = cuda_build.simple_lib_creator(_header, _code, _name)[_name]
+
+
+
+    def update(self):
+
+
+
+        if (self.list.ncol < self._occ_matrix.positions.npart) or (self.list.nrow < 27 * self._occ_matrix.layers_per_cell):
+            self.list.realloc(nrow=27 * self._occ_matrix.layers_per_cell,
+                              ncol=self._occ_matrix.positions.npart)
+
+        _tpb = 256
+        _blocksize = (ctypes.c_int * 3)(int(math.ceil(self._occ_matrix.positions.npart / float(_tpb))), 1, 1)
+        _threadsize = (ctypes.c_int * 3)(_tpb, 1, 1)
+
+
+        args = (
+            _blocksize,
+            _threadsize,
+            ctypes.c_int(27 * self._occ_matrix.layers_per_cell), # nmax
+            ctypes.c_int(self._occ_matrix.positions.npart),      # npart
+            ctypes.c_int(self._occ_matrix.layers_per_cell),      # nlayers max
+            ctypes.c_double(self._rc ** 2),                      # cutoff squared
+            self._occ_matrix.domain.cell_array.ctypes_data,
+            self._occ_matrix.positions.struct,
+            self._occ_matrix.cell_reverse_lookup.struct,
+            self._occ_matrix.matrix.struct,
+            self._occ_matrix.cell_contents_count.struct,
+            self.list.struct
+        )
+
+        self._lib(*args)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
