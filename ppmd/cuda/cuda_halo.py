@@ -202,8 +202,8 @@ class CartesianHalo(object):
             create_halo_pairs(self.occ_matrix.domain, Slice[0,::,0],(-1,0,-1)),
             create_halo_pairs(self.occ_matrix.domain, Slice[::,::,0],(0,0,-1)),
             create_halo_pairs(self.occ_matrix.domain, Slice[-1,::,0],(1,0,-1)),
-            create_halo_pairs(self.occ_matrix.domain, Slice[-1,-1,0],(-1,1,-1)),
-            create_halo_pairs(self.occ_matrix.domain, Slice[::,-1,0],(0,-1,-1)),
+            create_halo_pairs(self.occ_matrix.domain, Slice[0,-1,0],(-1,1,-1)),
+            create_halo_pairs(self.occ_matrix.domain, Slice[::,-1,0],(0,1,-1)),
             create_halo_pairs(self.occ_matrix.domain, Slice[-1,-1,0],(1,1,-1)),
 
             create_halo_pairs(self.occ_matrix.domain, Slice[0,0,::],(-1,-1,0)),
@@ -211,8 +211,8 @@ class CartesianHalo(object):
             create_halo_pairs(self.occ_matrix.domain, Slice[-1,0,::],(1,-1,0)),
             create_halo_pairs(self.occ_matrix.domain, Slice[0,::,::],(-1,0,0)),
             create_halo_pairs(self.occ_matrix.domain, Slice[-1,::,::],(1,0,0)),
-            create_halo_pairs(self.occ_matrix.domain, Slice[-1,-1,::],(-1,1,0)),
-            create_halo_pairs(self.occ_matrix.domain, Slice[::,-1,::],(0,-1,0)),
+            create_halo_pairs(self.occ_matrix.domain, Slice[0,-1,::],(-1,1,0)),
+            create_halo_pairs(self.occ_matrix.domain, Slice[::,-1,::],(0,1,0)),
             create_halo_pairs(self.occ_matrix.domain, Slice[-1,-1,::],(1,1,0)),
 
             create_halo_pairs(self.occ_matrix.domain, Slice[0,0,-1],(-1,-1,1)),
@@ -221,8 +221,8 @@ class CartesianHalo(object):
             create_halo_pairs(self.occ_matrix.domain, Slice[0,::,-1],(-1,0,1)),
             create_halo_pairs(self.occ_matrix.domain, Slice[::,::,-1],(0,0,1)),
             create_halo_pairs(self.occ_matrix.domain, Slice[-1,::,-1],(1,0,1)),
-            create_halo_pairs(self.occ_matrix.domain, Slice[-1,-1,-1],(-1,1,1)),
-            create_halo_pairs(self.occ_matrix.domain, Slice[::,-1,-1],(0,-1,1)),
+            create_halo_pairs(self.occ_matrix.domain, Slice[0,-1,-1],(-1,1,1)),
+            create_halo_pairs(self.occ_matrix.domain, Slice[::,-1,-1],(0,1,1)),
             create_halo_pairs(self.occ_matrix.domain, Slice[-1,-1,-1],(1,1,1))
         )
 
@@ -255,16 +255,16 @@ class CartesianHalo(object):
         self._boundary_groups_start_end_indices = cuda_base.Array(_bs, dtype=ctypes.c_int)
         self._halo_groups_start_end_indices = cuda_base.Array(_hs, dtype=ctypes.c_int)
 
-        print "CA =", self.occ_matrix.domain.cell_array
-        print _b
+        # print "CA =", self.occ_matrix.domain.cell_array
+        # print _b
 
         self._boundary_cell_groups = cuda_base.Array(_b, dtype=ctypes.c_int)
         self._halo_cell_groups = cuda_base.Array(_h, dtype=ctypes.c_int)
 
 
-        print "SHIFTS"
+        # print "SHIFTS"
         self._halo_shifts = cuda_base.Array(_s, dtype=ctypes.c_double)
-        print "E_SHIFTS", self._halo_shifts.ctypes_data
+        # print "E_SHIFTS", self._halo_shifts.ctypes_data
 
         self._reverse_lookup = cuda_base.Array(_r, dtype=ctypes.c_int)
 
