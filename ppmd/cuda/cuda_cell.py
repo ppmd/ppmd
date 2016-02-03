@@ -317,6 +317,8 @@ class NeighbourListLayerBased(object):
         assert cutoff is not None, "cuda_cell::NeighbourListLayerBased.setup error: No cutoff passed."
         self._rc = cutoff
 
+        self.max_neigbours_per_particle = None
+
 
         self.list = cuda_base.Matrix(nrow=1, ncol=1, dtype=ctypes.c_int)
 
@@ -444,6 +446,7 @@ class NeighbourListLayerBased(object):
                                     //experiment to swap order, appears to be faster by
                                     // about 10%%
                                     //d_W[idx*d_nmax + m] = idy;
+                                    //d_W[idx] = idy + m;
 
                                 }
 
@@ -494,10 +497,8 @@ class NeighbourListLayerBased(object):
 
     def update(self):
 
-
-
-        if (self.list.ncol < self._occ_matrix.positions.npart) or (self.list.nrow < 27 * self._occ_matrix.layers_per_cell):
-            self.list.realloc(nrow=27 * self._occ_matrix.layers_per_cell,
+        if (self.list.ncol < self._occ_matrix.positions.npart) or (self.list.nrow < (27 * self._occ_matrix.layers_per_cell + 1)):
+            self.list.realloc(nrow=27 * self._occ_matrix.layers_per_cell + 1,
                               ncol=self._occ_matrix.positions.npart)
 
         _tpb = 256
@@ -508,7 +509,7 @@ class NeighbourListLayerBased(object):
         args = (
             _blocksize,
             _threadsize,
-            ctypes.c_int(27 * self._occ_matrix.layers_per_cell), # nmax
+            ctypes.c_int(27 * self._occ_matrix.layers_per_cell + 1), # nmax
             ctypes.c_int(self._occ_matrix.positions.npart),      # npart
             ctypes.c_int(self._occ_matrix.layers_per_cell),      # nlayers max
             ctypes.c_double(self._rc ** 2),                      # cutoff squared
@@ -521,13 +522,7 @@ class NeighbourListLayerBased(object):
         )
 
         self._lib(*args)
-
-
-
-
-
-
-
+        self.max_neigbours_per_particle = 27 * self._occ_matrix.layers_per_cell + 1
 
 
 

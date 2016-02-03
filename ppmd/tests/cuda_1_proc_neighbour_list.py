@@ -10,7 +10,7 @@ from ppmd.cuda import *
 n = 60
 N = n**3
 # n=860
-rho = 1.
+rho = 0.2
 mu = 1.0
 nsig = 5.0
 
@@ -39,6 +39,10 @@ COM = cuda_cell.CellOccupancyMatrix()
 
 # Create a particle dat with the positions in from the sim1.state
 sim1.state.d_positions = cuda_data.ParticleDat(initial_value=sim1.state.positions, name='positions')
+sim1.state.d_forces = cuda_data.ParticleDat(initial_value=sim1.state.forces, name='forces')
+sim1.state.d_velocities = cuda_data.ParticleDat(initial_value=sim1.state.velocities, name='velocities')
+sim1.state.d_u = cuda_data.ScalarArray(initial_value=sim1.state.u, name='potential_energy')
+
 # print sim1.state.positions.max_npart, sim1.state.positions.npart, sim1.state.positions.dat
 
 COM.setup(sim1.state.as_func('n'), sim1.state.d_positions, sim1.state.domain)
@@ -90,8 +94,6 @@ test_lib(cuda_halo.HALOS.get_position_shifts.struct)
 
 
 
-
-
 cell_contents_count = host.Array(ncomp=COM.cell_contents_count.ncomp, dtype=ctypes.c_int)
 cuda_runtime.cuda_mem_cpy(cell_contents_count.ctypes_data, COM.cell_contents_count.ctypes_data, ctypes.c_size_t(cell_contents_count.ncomp * ctypes.sizeof(ctypes.c_int)), 'cudaMemcpyDeviceToHost')
 # print "CELL contents count BEFORE", cell_contents_count.dat
@@ -106,15 +108,19 @@ cuda_runtime.cuda_mem_cpy(cell_contents_count.ctypes_data, COM.cell_contents_cou
 # print "CELL contents count AFTER", cell_contents_count.dat
 
 
-
+print COM.layers_per_cell
 
 neighbour_list = cuda_cell.NeighbourListLayerBased(COM, 1.1 * test_potential.rc)
 neighbour_list.update()
 
 
+dat_map = {'P': sim1.state.d_positions(access.R), 'A': sim1.state.d_forces(access.INC0), 'u': sim1.state.d_u(access.INC)}
 
+pair_loop = cuda_pairloop.PairLoopNeighbourList(kernel_in=test_potential.kernel,
+                                                particle_dat_dict=dat_map,
+                                                neighbour_list=neighbour_list)
 
-
+pair_loop.execute(n=sim1.state.d_positions.npart)
 
 
 

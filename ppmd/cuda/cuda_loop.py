@@ -64,13 +64,6 @@ class ParticleLoop(object):
             args += 'd_' + arg[0] + ','
         return args[:-1]
 
-    @staticmethod
-    def _mode_arg_dec_str(mode):
-        _s = ' '
-        if mode is access.R:
-            _s = 'const '
-        return _s
-
 
     def _generate_header_source(self):
         """Generate the source code of the header file.
@@ -130,6 +123,8 @@ class ParticleLoop(object):
             %(HCODE_kernel_name)s_gpukernel<<<bs,ts>>>(%(HCODE_kernel_arguments)s);
             checkCudaErrors(cudaDeviceSynchronize());
             getLastCudaError(" %(HCODE_kernel_name)s Execution failed. \\n");
+
+            return;
         }
         '''
 

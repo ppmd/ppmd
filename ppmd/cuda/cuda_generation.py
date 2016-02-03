@@ -52,8 +52,20 @@ def create_local_reduction_vars_arrays(symbol_external, symbol_internal, dat, ac
 
         else:
             if access_type is access.INC:
-                _s = _space + host.ctypes_map[dat.dtype] + ' ' + symbol_internal + '[' + str(dat.ncomp) + '];\n'
-                _s += _space + 'memcpy( &'+ symbol_internal + '[0],' + '&'+ symbol_external + '[0],' + str(dat.ncomp) + ' * sizeof(' + host.ctypes_map[dat.dtype] + ')) ;\n'
+                #_s = _space + host.ctypes_map[dat.dtype] + ' ' + symbol_internal + '[' + str(dat.ncomp) + '];\n'
+                #_s += _space + 'memcpy( &'+ symbol_internal + '[0],' + '&'+ symbol_external + '[0],' + str(dat.ncomp) + ' * sizeof(' + host.ctypes_map[dat.dtype] + ')) ;\n'
+
+                _s = _space + host.ctypes_map[dat.dtype] + ' ' + symbol_internal + '[' + str(dat.ncomp) + '] = {'
+
+                for cx in range(dat.ncomp - 1):
+                    _s += symbol_external + '[' + str(cx) + '], '
+
+                _s += symbol_external + '[' + str(dat.ncomp - 1) + ']}; \n'
+
+
+
+
+
 
             elif access_type is access.INC0:
                 _s = _space + host.ctypes_map[dat.dtype] + symbol_internal + '[' + str(dat.ncomp) + '] = { 0 };\n'
@@ -63,8 +75,9 @@ def create_local_reduction_vars_arrays(symbol_external, symbol_internal, dat, ac
                 raise Exception("Generate mapping failure: Incremental access_type not found.")
 
         return _s + '\n'
+
     else:
-        return ''
+        return '\n'
 
 
 def create_pre_loop_map_matrices(pair=True, symbol_external=None, symbol_internal=None, dat=None, access_type=None):
@@ -104,7 +117,7 @@ def create_pre_loop_map_matrices(pair=True, symbol_external=None, symbol_interna
         if pair is True:
             _s = _space + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '[2]; \n'
         else:
-            _s = _space + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '; \n'
+            _s = _space + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + ' * __restrict__' + symbol_internal + '; \n'
 
         if not access_type.incremented:
 
@@ -117,9 +130,14 @@ def create_pre_loop_map_matrices(pair=True, symbol_external=None, symbol_interna
         else:
             # Create a local copy/new row vector for the row in the particle dat.
             if access_type is access.INC:
-                _s += _space + host.ctypes_map[dat.dtype] + ' _tmp_' + symbol_internal + '[' + str(dat.ncomp) + '];\n'
 
-                _s += _space + 'memcpy( &_tmp_'+ symbol_internal + '[0],' + '&'+ symbol_external + '[' + '_ix *' + str(dat.ncomp) + '],' + str(dat.ncomp) + ' * sizeof(' + host.ctypes_map[dat.dtype] + ')) ;\n'
+                _s = _space + host.ctypes_map[dat.dtype] + ' _tmp_' + symbol_internal + '[' + str(dat.ncomp) + '] = {'
+
+                for cx in range(dat.ncomp - 1):
+                    _s += symbol_external + '[_ix*' + str(dat.ncomp) + '+' + str(cx) + '], '
+
+                _s += symbol_external + '[_ix*' + str(dat.ncomp) + '+' + str(dat.ncomp - 1) + ']}; \n'
+
 
             elif access_type is access.INC0:
                 _s += _space + host.ctypes_map[dat.dtype] + ' _tmp_' + symbol_internal + '[' + str(dat.ncomp) + '] = { 0 };\n'
@@ -172,8 +190,10 @@ def generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None
 
     elif issubclass(type(dat), cuda_base.Array):
 
-        _s = '\n' + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + '* __restrict__ ' + symbol_internal + ' = ' + symbol_external + ';'
-
+        if not access_type.incremented:
+            _s = '\n' + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + '* __restrict__ ' + symbol_internal + ' = ' + symbol_external + ';'
+        else:
+            _s = ''
 
         return _s + '\n'
 

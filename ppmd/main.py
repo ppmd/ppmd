@@ -67,10 +67,10 @@ if __name__ == '__main__':
 
     if test_1000:
         # n=25 reasonable size
-        n = 60
+        n = 100
         N = n**3
         # n=860
-        rho = 0.05
+        rho = 0.2
         mu = 1.0
         nsig = 5.0
         
