@@ -11,7 +11,7 @@ from ppmd import runtime, pio, mpi
 
 ERROR_LEVEL = runtime.Level(3)
 DEBUG = runtime.Level(0)
-VERBOSE = runtime.Level(3)
+VERBOSE = runtime.Level(0)
 BUILD_TIMER = runtime.Level(0)
 
 BUILD_DIR = runtime.BUILD_DIR
@@ -102,7 +102,7 @@ def libcudart(*args):
 
     assert LIBCUDART is not None, "cuda_runtime error: No CUDA Runtime library loaded"
 
-    if runtime.VERBOSE.level > 2:
+    if VERBOSE.level > 2:
         pio.rprint(args)
 
     cuda_err_check(LIBCUDART[args[0]](*args[1::]))

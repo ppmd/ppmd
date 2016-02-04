@@ -291,7 +291,7 @@ class Matrix(object):
     @nrow.setter
     def nrow(self, val):
         self._nrow.value = val
-        if cuda_runtime.VERBOSE > 2:
+        if cuda_runtime.VERBOSE.level > 2:
             print "cuda_base.Matrix warning: nrow externally changed."
 
     @property
@@ -301,7 +301,7 @@ class Matrix(object):
     @ncol.setter
     def ncol(self, val):
         self._ncol.value = val
-        if cuda_runtime.VERBOSE > 2:
+        if cuda_runtime.VERBOSE.level > 2:
             print "cuda_base.Matrix warning: ncol externally changed."
 
     @property

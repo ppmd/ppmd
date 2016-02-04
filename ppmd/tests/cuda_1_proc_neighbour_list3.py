@@ -7,8 +7,8 @@ from ppmd.cuda import *
 
 
 # n=25 reasonable size
-n = 10
-N = n**3
+n = 15
+N = n ** 3
 
 #N = 2 # uncomment for 2 bounce
 
@@ -45,7 +45,7 @@ sim1 = simulation.BaseMDSimulation(domain_in=test_domain,
                                    particle_vel_init=test_vel_init,
                                    particle_mass_init=test_mass_init,
                                    n=N,
-                                   setup_only=True)
+                                   setup_only=False)
 
 COM = cuda_cell.CellOccupancyMatrix()
 
@@ -78,7 +78,7 @@ sim1.state.d_positions.halo_exchange()
 
 
 
-neighbour_list = cuda_cell.NeighbourListLayerBased(COM, test_potential.rc)
+neighbour_list = cuda_cell.NeighbourListLayerBased(COM, 1.1*test_potential.rc)
 neighbour_list.update()
 
 
@@ -92,7 +92,7 @@ print "n =", sim1.state.d_positions.npart
 
 # integration definitons -------------------------------------------
 
-t = 0.001
+t = 0.1
 dt = 0.0001
 
 
@@ -249,7 +249,8 @@ print "START"
 pair_loop.execute(n=sim1.state.d_positions.npart)
 
 timer.start()
-for ix in range(100):
+for ix in range(int(t / dt)):
+
     vv1.execute(n=sim1.state.d_positions.npart)
 
 
@@ -257,10 +258,11 @@ for ix in range(100):
     _one_process_pbc_lib.execute(n=sim1.state.d_positions.npart,
                                  static_args={'E0':ctypes.c_double(_E.dat[0]), 'E1':ctypes.c_double(_E.dat[1]), 'E2':ctypes.c_double(_E.dat[2])})
 
-
-    COM.sort()
+    if ix % 1 == 0:
+        COM.sort()
     sim1.state.d_positions.halo_exchange()
-    neighbour_list.update()
+    if ix % 1 == 0:
+        neighbour_list.update()
 
 
     pair_loop.execute(n=sim1.state.d_positions.npart)
@@ -276,16 +278,32 @@ isnormal.execute(n=sim1.state.d_positions.npart)
 
 
 
-'''
+sim1.state.h_positions = data.ParticleDat(npart=N, ncomp=3, dtype=ctypes.c_double)
+cuda_runtime.cuda_mem_cpy(sim1.state.h_positions.ctypes_data, sim1.state.d_positions.ctypes_data, ctypes.c_size_t(N * 3 * ctypes.sizeof(ctypes.c_double)), 'cudaMemcpyDeviceToHost')
+
+per_printer = method.PercentagePrinter(dt,t,10)
+schedule=method.Schedule([1], [per_printer.tick])
+test_integrator = method.VelocityVerlet(simulation=sim1, schedule=schedule)
+test_integrator.integrate(dt=dt, t=t)
+
+
+
+
+
+
 passed = True
 
+for ix in range(N):
+    err = np.linalg.norm(sim1.state.h_positions.dat[ix,::] - sim1.state.positions.dat[ix,::])
 
+    if err > 10 ** (-4):
+        passed = False
+        print ix, err, sim1.state.h_positions.dat[ix,::], sim1.state.positions.dat[ix,::]
 
 if passed:
     print "Test PASSED"
 else:
     print "Test FAILED <------------"
-'''
 
 
 

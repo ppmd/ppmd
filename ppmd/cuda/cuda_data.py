@@ -189,7 +189,7 @@ class ParticleDat(cuda_base.Matrix):
         #if self.npart_total
         #self.resize(self.npart_total)
 
-        print self.max_npart, self.npart, n, cuda_halo.HALOS.occ_matrix.layers_per_cell
+        #print self.max_npart, self.npart, n, cuda_halo.HALOS.occ_matrix.layers_per_cell
 
         args=[blocksize,
               threadsize,
