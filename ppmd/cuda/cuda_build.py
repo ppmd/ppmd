@@ -16,7 +16,7 @@ NVCC = build.Compiler(['nvcc_system_default'],
                       ['-Xcompiler', '"-fPIC"', '-arch=sm_35', '-m64', '-lineinfo'],
                       ['-lm'],
                       ['-O3', '--ptxas-options=-v -dlcm=ca', '--maxrregcount=32', '-lineinfo'],  # '-O3', '-Xptxas', '"-v"', '-lineinfo'
-                      ['-G', '-g', '--source-in-ptx', '--ptxas-options=-v'],
+                      ['-G', '-g', '-lineinfo' ,'--source-in-ptx', '--ptxas-options=-v'],
                       ['-c', '-arch=sm_35', '-m64', '-lineinfo'],
                       ['-shared', '-Xcompiler', '"-fPIC"'],
                       '__restrict__')

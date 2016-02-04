@@ -252,6 +252,7 @@ class Matrix(object):
         if dtype != self.dtype:
             self.idtype = dtype
 
+
         print ctypes.c_size_t(ndarray.shape[0] * ndarray.shape[1] * ctypes.sizeof(dtype))
 
         self.realloc(ndarray.shape[0], ndarray.shape[1])

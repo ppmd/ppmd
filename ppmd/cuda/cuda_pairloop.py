@@ -69,15 +69,24 @@ class PairLoopNeighbourList(object):
 
             %(KCODE_pre_if)s
 
+
             if (_ix < _d_n){
+
 
                 %(KCODE_pre_loop)s
 
-                for(int _idy = 0; _idy < d_nm[_ix]; _idy++){
+                //printf("PL ix=%%d, N_neigh=%%d \\n", _ix, d_nm[_ix]);
 
-                    const int _iy = d_nm[_ix + _d_max_neigh*_idy];
+
+                for(int _idy = 1; _idy <= d_nm[_ix]; _idy++){
+
+
+                    const int _iy = d_nm[_ix + _d_n*_idy];
+
+                    //printf("PL ix=%%d, iy=%%d \\n", _ix, _iy);
 
                     %(KCODE_gpu_pointer)s
+
 
                     %(KCODE_gpu_kernel)s
 

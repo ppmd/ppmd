@@ -29,7 +29,7 @@ class ParticleLoop(object):
         self._generate()
 
         # Create library
-        self._lib = cuda_build.simple_lib_creator(self._generate_header_source(), self._generate_impl_source(), 'ParticleLoop')
+        self._lib = cuda_build.simple_lib_creator(self._generate_header_source(), self._generate_impl_source(), kernel.name + '_ParticleLoop')
 
 
     def _included_headers(self):

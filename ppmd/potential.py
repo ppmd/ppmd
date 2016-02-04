@@ -380,3 +380,50 @@ class LennardJonesCounter(LennardJones):
         """
         return {'P': input_state.positions(access.R), 'A': input_state.forces(access.INC), 'u': input_state.u(access.INC), 'COUNT': self._counter(access.INC),
                 'OUTCOUNT': self._counter_outer(access.INC)}
+
+class TestPotential1(LennardJones):
+    """Lennard Jones potential.
+
+    .. math:
+        V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + u(5/2 \sigma))
+
+    for :math:`r>r_c=(5/2) \sigma` the potential (and force) is set to zero.
+
+    :arg epsilon: Potential parameter :math:`\epsilon`
+    :arg sigma: Potential parameter :math:`\sigma`
+    """
+
+
+
+    @property
+    def kernel(self):
+        """
+        Returns a kernel class for the potential.
+        """
+
+        kernel_code = '''
+
+        const double R[3] = {P[1][0] - P[0][0], P[1][1] - P[0][1], P[1][2] - P[0][2]};
+
+        double r2 = R[0]*R[0] + R[1]*R[1] + R[2]*R[2];
+
+        if (r2 < rc2){
+
+            r2=1./r2;
+
+            A[0][0]+=r2;
+            A[0][1]+=r2;
+            A[0][2]+=r2;
+
+            A[1][0]+=r2;
+            A[1][1]+=r2;
+            A[1][2]+=r2;
+
+        }
+        '''
+        constants = (kernel.Constant('rc2', self._rc ** 2),)
+
+        return kernel.Kernel('TestPotential1', kernel_code, constants, ['stdio.h'], None)
+
+
+

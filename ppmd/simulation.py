@@ -39,7 +39,8 @@ class BaseMDSimulation(object):
                  particle_mass_init=None,
                  n=0,
                  cutoff=None,
-                 domain_boundary_condition=domain.BoundaryTypePeriodic()):
+                 domain_boundary_condition=domain.BoundaryTypePeriodic(),
+                 setup_only=False):
 
         self.potential = potential_in
         """Short range potential between particles."""
@@ -64,7 +65,7 @@ class BaseMDSimulation(object):
         self._boundary_method.set_state(self.state)
 
         # Add particle dats
-        _factor = 1.5
+        _factor = 5
         self.state.positions = data.ParticleDat(n, 3, name='positions', max_npart=_factor * n)
         self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
         self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
@@ -134,7 +135,7 @@ class BaseMDSimulation(object):
             _potential_dat_dict = self.potential.datdict(self.state)
 
 
-        if self._cell_structure and self.potential is not None:
+        if self._cell_structure and self.potential is not None and not setup_only:
             # Need to pass entire state such that all particle dats can be sorted.
             cell.group_by_cell.setup(self.state)
 
@@ -190,7 +191,7 @@ class BaseMDSimulation(object):
             '''
 
         # If no cell structure was created
-        elif self.potential is not None:
+        elif self.potential is not None and not setup_only:
             self._forces_update_lib = pairloop.DoubleAllParticleLoopPBC(n=self.state.as_func('n'),
                                                                         domain=self.state.domain,
                                                                         kernel=self.potential.kernel,
@@ -245,6 +246,7 @@ class BaseMDSimulation(object):
         """
         Updates the forces in the simulation state using the short range potential.
         """
+
 
         self.timer.start()
 

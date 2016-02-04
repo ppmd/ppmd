@@ -139,9 +139,12 @@ class CellOccupancyMatrix(object):
 
             const int val = (C2*d_ca[1] + C1)*d_ca[0] + C0;
 
+            //printf("COM ix=%%d, val=%%d\\n", _ix, val );
 
             d_crl[_ix] = val;
             //old=atomicAdd(address, new);
+
+
             d_pl[_ix] = atomicAdd(&d_ccc[val], (int)1);
 
 
@@ -427,6 +430,8 @@ class NeighbourListLayerBased(object):
                             // get particle in cell cpp in layer _idy
                             const int idy = d_OM[cpp*d_nlayers + _idy];
 
+                            //printf("NL ix=%%d, iy=%%d\\n", idx, idy);
+
                             if (idx != idy){
 
                                 const double3 r1 = {
@@ -436,11 +441,17 @@ class NeighbourListLayerBased(object):
                                                     };
 
                                 // see if candidate neighbour
-                                if ( (r1.x*r1.x + r1.y*r1.y + r1.z*r1.z) < d_cutoff_squared ){
+
+                                //printf("NL ix=%%d, iy=%%d, r2_fma=%%f, r2_trad=%%f \\n", idx, idy, __fma_rz(r1.x, r1.x, __fma_rz(r1.y, r1.y, r1.z*r1.z)),
+                                // r1.x*r1.x + r1.y*r1.y + r1.z*r1.z);
+
+                                if ( __fma_rz(r1.x, r1.x, __fma_rz(r1.y, r1.y, r1.z*r1.z)) < d_cutoff_squared ){
 
                                     // work out new index
                                     m++;
 
+
+                                    //printf("NL ix=%%d : d_W[%%d] = %%d \\n", idx, idx + d_npart * m, idy);
                                     d_W[idx + d_npart * m] = idy;
 
                                     //experiment to swap order, appears to be faster by

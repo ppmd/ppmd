@@ -253,6 +253,9 @@ def create_post_loop_map_matrices(pair=True, symbol_external=None, symbol_intern
             _s += 2 * _space + symbol_external + '[_ix*' + str(dat.ncomp) + '+_iz] = ' + ' _tmp_' + symbol_internal + '[_iz]; \n'
             _s += _space + '}\n'
 
+            # slooooooow
+            #_s += _space + 'memcpy( &' + symbol_external + '[_ix * ' + str(dat.ncomp) + '], _tmp_' + symbol_internal + ', sizeof(' + host.ctypes_map[dat.dtype] + ')*' + str(dat.ncomp) + '); \n'
+
             return _s
         else:
             return ''
@@ -278,15 +281,25 @@ def generate_reduction_final_stage(symbol_external, symbol_internal, dat, access
         # Case for cuda_base.Array and cuda_data.ScalarArray.
         # reduce on the warp.
         _s = '\n'
+
         _s += _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
         _s += 2 * _space + symbol_internal + '[_iz] = warpReduceSumDouble(' + symbol_internal + '[_iz]); \n'
         _s += _space + '}\n'
 
-        # reduce into the global dat.
-        _s += _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
-        _s += 2 * _space + 'if (  (int)(threadIdx.x & (warpSize - 1)) == 0){ \n'
-        _s += 3 * _space +'atomicAddDouble(&' + symbol_external + '[_iz], ' + symbol_internal + '[_iz]); \n'
+
+
+        _s += _space + '__shared__ ' + host.ctypes_map[dat.dtype] + ' _d_red_' + symbol_internal + '[' + str(dat.ncomp) + ']; \n'
+        # reduce into the shared dat.
+        _s += _space + 'if (  (int)(threadIdx.x & (warpSize - 1)) == 0){ \n'
+        _s += 2 * _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
+        _s += 3 * _space +'atomicAddDouble(&_d_red_' + symbol_internal + '[_iz], ' + symbol_internal + '[_iz]); \n'
         _s += _space + '}} \n'
+
+        _s += _space + 'if (threadIdx.x == 0){ \n'
+        _s += 2 * _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
+        _s += 3 * _space +'atomicAddDouble(&' + symbol_external + '[_iz], _d_red_' + symbol_internal + '[_iz]); \n'
+        _s += _space + '}} \n'
+
 
         return _s + '\n'
     else:

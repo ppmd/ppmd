@@ -126,3 +126,8 @@ struct const_cuda_ParticleDat {
 };
 
 #endif
+
+__device__ bool isnormal(double value)
+{
+	return !(isinf(value) || isnan(value));
+}
