@@ -107,6 +107,7 @@ class Level(object):
         """
         self._level = int(level)
 
+OPT = Level(1)
 DEBUG = Level(0)
 VERBOSE = Level(0)
 TIMER = Level(0)

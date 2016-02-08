@@ -68,7 +68,7 @@ def create_local_reduction_vars_arrays(symbol_external, symbol_internal, dat, ac
 
 
             elif access_type is access.INC0:
-                _s = _space + host.ctypes_map[dat.dtype] + symbol_internal + '[' + str(dat.ncomp) + '] = { 0 };\n'
+                _s = _space + host.ctypes_map[dat.dtype] + ' ' + symbol_internal + '[' + str(dat.ncomp) + '] = { 0 };\n'
 
             else:
 
@@ -289,11 +289,18 @@ def generate_reduction_final_stage(symbol_external, symbol_internal, dat, access
 
 
         _s += _space + '__shared__ ' + host.ctypes_map[dat.dtype] + ' _d_red_' + symbol_internal + '[' + str(dat.ncomp) + ']; \n'
+        _s += _space + 'if (  (int)(threadIdx.x & (warpSize - 1)) == 0){ \n'
+        _s += 2 * _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
+        _s += 3 * _space +'_d_red_' + symbol_internal + '[_iz] = 0; \n'
+        _s += _space + '}} __syncthreads(); \n'
+
+
+
         # reduce into the shared dat.
         _s += _space + 'if (  (int)(threadIdx.x & (warpSize - 1)) == 0){ \n'
         _s += 2 * _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
         _s += 3 * _space +'atomicAddDouble(&_d_red_' + symbol_internal + '[_iz], ' + symbol_internal + '[_iz]); \n'
-        _s += _space + '}} \n'
+        _s += _space + '}} __syncthreads(); \n'
 
         _s += _space + 'if (threadIdx.x == 0){ \n'
         _s += 2 * _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'

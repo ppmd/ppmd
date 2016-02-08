@@ -8,7 +8,7 @@ import os
 #package level imports
 from ppmd import runtime, pio, mpi
 
-
+OPT = runtime.Level(1)
 ERROR_LEVEL = runtime.Level(3)
 DEBUG = runtime.Level(0)
 VERBOSE = runtime.Level(0)

@@ -445,7 +445,7 @@ class NeighbourListLayerBased(object):
                                 //printf("NL ix=%%d, iy=%%d, r2_fma=%%f, r2_trad=%%f \\n", idx, idy, __fma_rz(r1.x, r1.x, __fma_rz(r1.y, r1.y, r1.z*r1.z)),
                                 // r1.x*r1.x + r1.y*r1.y + r1.z*r1.z);
 
-                                if ( __fma_rz(r1.x, r1.x, __fma_rz(r1.y, r1.y, r1.z*r1.z)) < d_cutoff_squared ){
+                                if ( __fma_rn(r1.x, r1.x, __fma_rn(r1.y, r1.y, r1.z*r1.z)) < d_cutoff_squared ){
 
                                     // work out new index
                                     m++;

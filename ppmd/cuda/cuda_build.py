@@ -121,7 +121,8 @@ def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR.dir, CC=NVCC, dst_dir=
                      + CC.l_flags + ['-I ' + str(cuda_runtime.LIB_DIR.dir)] + ['-I ' + str(source_dir)]
             if cuda_runtime.DEBUG.level > 0:
                 _c_cmd += CC.dbg_flags
-            else:
+
+            if cuda_runtime.OPT.level > 0:
                 _c_cmd += CC.opt_flags
 
             _c_cmd += CC.shared_lib_flag
