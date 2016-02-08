@@ -37,7 +37,7 @@ double_prof double_prof::operator+(const double_prof& other){
 
 double_prof double_prof::operator+=(const double_prof& other){
     double_counters::a ++;
-    this->v += other.v;
+    return double_prof(this->v += other.v);
 }
 
 double_prof double_prof::operator*(const double_prof& other){
@@ -96,7 +96,7 @@ int_prof int_prof::operator+(const int_prof& other){
 
 int_prof int_prof::operator+=(const int_prof& other){
     int_counters::a ++;
-    this->v += other.v;
+    return int_prof(this->v += other.v);
 }
 
 int_prof int_prof::operator*(const int_prof& other){

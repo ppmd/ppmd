@@ -158,7 +158,7 @@ def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR.dir, CC=NVCC, dst_dir=
 
 
 #####################################################################################
-# block of code class. experimental
+# block of code class
 #####################################################################################
 
 class Code(object):

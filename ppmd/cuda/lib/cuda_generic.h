@@ -8,6 +8,8 @@
     #include <builtin_types.h>
     #include <cuda_profiler_api.h>
     #include <device_functions.h>
+    #include "cuda_counting_types.h"
+
 
     /*
     // double shuffle down edited from nvidia example
@@ -125,9 +127,10 @@ struct const_cuda_ParticleDat {
     const int* ncomp;
 };
 
-#endif
 
 __device__ bool isnormal(double value)
 {
 	return !(isinf(value) || isnan(value));
 }
+
+#endif
