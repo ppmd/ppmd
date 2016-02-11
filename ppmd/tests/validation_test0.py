@@ -55,12 +55,13 @@ if __name__ == '__main__':
     t = float(_control[_control.index('steps') + 1]) * dt
     rc = float(_control[_control.index('cutoff') + 1])
 
+    print "rc =", rc
 
     # Initialise basic domain
     test_domain = domain.BaseDomainHalo()
 
     # Initialise LJ potential
-    test_potential = potential.LennardJones(sigma=sigma,epsilon=epsilon)
+    test_potential = potential.LennardJones(sigma=sigma,epsilon=epsilon, rc=rc)
 
     # Initialise masses
     test_mass_init = simulation.MassInitIdentical(mass)

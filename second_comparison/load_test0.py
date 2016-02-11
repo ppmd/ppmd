@@ -3,6 +3,7 @@
 import os
 import ctypes
 import numpy as np
+import math
 
 from ppmd import *
 
@@ -73,13 +74,38 @@ for ix in range(N):
     diff[mask] = _extent[mask] - diff[mask]
     err0 += np.sum(np.square(diff))
 
+err0 = np.sqrt(err0)
 err0 /= N
 
-print "Error 0:", err0
+print "Error 0:", err0, "<-- Test invalid if this is not 0"
+
+err1 = 0.0
+max_err1 = 0.0
+
+
+for ix in range(N):
+    diff = np.abs(x1_dl.dat[ix,::] - x1_ppmd.dat[ix,::])
+    mask = diff > _extent/2
+    diff[mask] = _extent[mask] - diff[mask]
+    err1 += np.sum(np.square(diff))
+    
+    if (np.sum(np.square(diff)) > max_err1):
+        print "New max error", np.abs(x1_dl.dat[ix,::] - x1_ppmd.dat[ix,::]), x1_dl.dat[ix,::] , x1_ppmd.dat[ix,::]
 
 
 
+    max_err1 = max(max_err1, np.sum(np.square(diff)))
+    
 
+
+err1 = np.sqrt(err1)
+err1 /= N
+
+print "Error 1:", err1
+print "Maximum squared error:", max_err1
+
+print "DL_POLY ------------- \n", x1_dl.dat[0:10:,::]
+print "PPMD ------------- \n", x1_ppmd.dat[0:10:,::]
 
 
 

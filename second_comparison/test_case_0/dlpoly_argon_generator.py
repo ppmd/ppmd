@@ -44,8 +44,8 @@ if (E>I):
 
 
 rho     = 0.05
-sigma   = 3.405
-eps     = 0.9661
+sigma   = 1.0 #3.405
+eps     = 1.0 #0.9661
 cutoff  = 7.5
 mass    = 39.948
 temp    = 85.0
