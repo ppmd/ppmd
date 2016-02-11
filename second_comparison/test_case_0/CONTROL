@@ -1,0 +1,29 @@
+Argon System
+temperature        85.0
+pressure	       0.0
+steps		       100
+equilibration	   0
+multiple           100
+scale		       101
+print		       100
+stack		       0
+stats		       100
+trajectory	       100         5         0
+rdf		           100
+timestep	       1.0000E-03
+cutoff		       7.5
+delr               1.0000E+00
+rvdw               7.5
+mxquat 0
+mxshak 0
+vdw shift
+no electrostatics
+no vafaveraging
+restart noscale
+mxquat 0
+mxshak 0
+shake tolerance	       1.0000E-04
+quaternion tolerance   1.0000E-04
+job time	       3.6000E+03
+close time	       1.0000E+02
+finish

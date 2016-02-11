@@ -18,20 +18,21 @@ __all__ = [ 'access',
             'potential',
             'runtime',
             'simulation',
-            'state'] # ,
-            # 'cuda']
+            'state',
+            'io',
+            'cuda']
 
 
 
 
 
-import host
 import access
 import build
 import cell
 import data
 import domain
 import halo
+import host
 import kernel
 import loop
 import main
@@ -39,8 +40,10 @@ import method
 import mpi
 import pairloop
 import pio
+import potential
 import runtime
 import simulation
 import state
-#import cuda
+import io
+import cuda
 

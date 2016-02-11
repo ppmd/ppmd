@@ -12,17 +12,20 @@ __all__ = [
     'cuda_pairloop'
 ]
 
+CUDA_IMPORT = False
 
-import cuda_runtime
-import cuda_build
-import cuda_base
-import cuda_data
-import cuda_cell
-import cuda_halo
-import cuda_loop
-import cuda_pairloop
-
-
+try:
+    import cuda_runtime
+    import cuda_build
+    import cuda_base
+    import cuda_data
+    import cuda_cell
+    import cuda_halo
+    import cuda_loop
+    import cuda_pairloop
+    CUDA_IMPORT = True
+except:
+    pass
 
 
 
@@ -33,7 +36,8 @@ import cuda_pairloop
 # Module Init
 #####################################################################################
 
-cuda_runtime.cuda_set_device()
+if CUDA_IMPORT:
+    cuda_runtime.cuda_set_device()
 
 
 
@@ -42,10 +46,11 @@ cuda_runtime.cuda_set_device()
 #####################################################################################
 
 def gpucuda_cleanup():
-    cuda_runtime.cuda_device_reset()
+    if CUDA_IMPORT:
+        cuda_runtime.cuda_device_reset()
 
-
-atexit.register(gpucuda_cleanup)
+if CUDA_IMPORT:
+    atexit.register(gpucuda_cleanup)
 
 
 

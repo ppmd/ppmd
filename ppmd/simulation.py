@@ -65,7 +65,7 @@ class BaseMDSimulation(object):
         self._boundary_method.set_state(self.state)
 
         # Add particle dats
-        _factor = 5
+        _factor = 10
         self.state.positions = data.ParticleDat(n, 3, name='positions', max_npart=_factor * n)
         self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
         self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
@@ -110,7 +110,6 @@ class BaseMDSimulation(object):
             halo.HALOS = halo.CartesianHalo()
 
 
-
         # Initialise positions
         particle_pos_init.reset(self.state)
 
@@ -141,8 +140,11 @@ class BaseMDSimulation(object):
 
             # TODO remove these two lines when creating access descriptors.
             cell.cell_list.sort()
-            cell.group_by_cell.group_by_cell()
+            # cell.group_by_cell.group_by_cell()
+
             cell.cell_list.trigger_update()
+
+
 
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
@@ -677,9 +679,12 @@ class PosInitDLPOLYConfig(object):
 
                 if (_d[0] <= _tx < _d[1]) and (_d[2] <= _ty < _d[3]) and (_d[4] <= _tz < _d[5]):
 
-                    state_input.positions[_n, 0] = _tx
-                    state_input.positions[_n, 1] = _ty
-                    state_input.positions[_n, 2] = _tz
+                    state_input.positions.dat[_n, 0] = _tx
+                    state_input.positions.dat[_n, 1] = _ty
+                    state_input.positions.dat[_n, 2] = _tz
+
+                    #print state_input.positions.dat[_n,::]
+
 
                     state_input.global_ids[_n] = count
                     _n += 1
