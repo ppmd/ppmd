@@ -156,8 +156,8 @@ if (R==False):
 
     fh.close()
 
-elif Q==False:
-    os.system("mv REVCON CONFIG")
+#elif Q==False:
+#    os.system("mv REVCON CONFIG")
 
 
 

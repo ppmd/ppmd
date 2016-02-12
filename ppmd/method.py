@@ -977,3 +977,47 @@ class PercentagePrinter(object):
                 pio.pprint(self._curr_p, "%")
 
             self._curr_p += self._p
+
+
+
+
+
+class ParticleTracker(object):
+    def __init__(self, dat=None, index=None, filename=None):
+        """
+        Writes the index in a particle dat to a file
+        """
+        assert dat is not None, "No dat"
+        assert index is not None, "No index"
+        assert filename is not None, "No filename"
+
+
+        self._dat = dat
+        self._fh = open(filename, 'w')
+        self._i = index
+
+    def write(self):
+        """
+        Call to write at a particular point in time.
+        """
+
+        for lx in range(self._dat.ncomp):
+            self._fh.write("%(VAL)s\t" % {'VAL':str(self._dat.dat[self._i,lx])})
+        self._fh.write('\n')
+
+
+    def finalise(self):
+        self._fh.close()
+        self._fh = None
+
+
+
+
+
+
+
+
+
+
+
+

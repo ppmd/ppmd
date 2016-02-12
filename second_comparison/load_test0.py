@@ -90,7 +90,7 @@ for ix in range(N):
     err1 += np.sum(np.square(diff))
     
     if (np.sum(np.square(diff)) > max_err1):
-        print "New max error", np.abs(x1_dl.dat[ix,::] - x1_ppmd.dat[ix,::]), x1_dl.dat[ix,::] , x1_ppmd.dat[ix,::]
+        print "New max error", ix, np.sum(np.square(diff)), x1_dl.dat[ix,::] , x1_ppmd.dat[ix,::]
 
 
 

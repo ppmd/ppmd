@@ -82,7 +82,13 @@ if __name__ == '__main__':
 
     # Helper methods
     per_printer = method.PercentagePrinter(dt,t,10)
-    schedule = method.Schedule([1], [per_printer.tick])
+    pos_print = method.ParticleTracker(sim1.state.positions, 627, file_dir + '/pos.track')
+    vel_print = method.ParticleTracker(sim1.state.velocities, 627, file_dir + '/vel.track')
+    for_print = method.ParticleTracker(sim1.state.forces, 627, file_dir + '/for.track')
+
+    tick = 5
+
+    schedule = method.Schedule([1, tick, tick, tick], [per_printer.tick, pos_print.write, vel_print.write, for_print.write])
 
     # Create an integrator for above state class.
     test_integrator = method.VelocityVerlet(simulation=sim1, schedule=schedule)
@@ -91,10 +97,8 @@ if __name__ == '__main__':
 
     io.ParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x0.xml')
 
+    # Check ParticleDat dump is correct
     test = io.xml_to_ParticleDat(file_dir + 'ppmd_x0.xml')
-
-    # print test.dat[0:N:,::]
-
     for ix in range(N):
         assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
 
@@ -112,8 +116,8 @@ if __name__ == '__main__':
 
     io.ParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x1.xml')
 
+    # check ParticleDat dump is correct.
     test = io.xml_to_ParticleDat(file_dir + 'ppmd_x1.xml')
-
     for ix in range(N):
         assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
 

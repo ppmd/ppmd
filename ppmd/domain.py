@@ -545,6 +545,8 @@ class BoundaryTypePeriodic(object):
         self._escape_count = None
         self._escape_linked_list = None
 
+        self._flag = host.Array(ncomp=1, dtype=ctypes.c_int)
+
     def set_state(self, state_in=None):
         assert state_in is not None, "BoundaryTypePeriodic error: No state passed."
         self.state = state_in
@@ -553,6 +555,9 @@ class BoundaryTypePeriodic(object):
         """
         Enforce the boundary conditions on the held state.
         """
+
+        self._flag.dat[0] = 0
+
         if mpi.MPI_HANDLE.nproc == 1:
             """
             BC code for one proc. porbably removable when restricting to large parallel systems.
@@ -560,6 +565,8 @@ class BoundaryTypePeriodic(object):
             if self._one_process_pbc_lib is None:
 
                 _one_proc_pbc_code = '''
+
+                int _F = 0;
 
                 for(int _ix = 0; _ix < _end; _ix++){
 
@@ -569,9 +576,11 @@ class BoundaryTypePeriodic(object):
 
                         if (x < 0){
                             P[3*_ix] = (E[0] - fmod(abs_md(x) , E[0])) - E0_2;
+                            _F = 1;
                         }
                         else{
                             P[3*_ix] = fmod( x , E[0] ) - E0_2;
+                            _F = 1;
                         }
                     }
 
@@ -581,9 +590,11 @@ class BoundaryTypePeriodic(object):
 
                         if (x < 0){
                             P[3*_ix+1] = (E[1] - fmod(abs_md(x) , E[1])) - E1_2;
+                            _F = 1;
                         }
                         else{
                             P[3*_ix+1] = fmod( x , E[1] ) - E1_2;
+                            _F = 1;
                         }
                     }
 
@@ -593,19 +604,25 @@ class BoundaryTypePeriodic(object):
 
                         if (x < 0){
                             P[3*_ix+2] = (E[2] - fmod(abs_md(x) , E[2])) - E2_2;
+                            _F = 1;
                         }
                         else{
                             P[3*_ix+2] = fmod( x , E[2] ) - E2_2;
+                            _F = 1;
                         }
                     }
 
                 }
 
+                F[0] = _F;
+
                 '''
 
                 _one_proc_pbc_kernel = kernel.Kernel('_one_proc_pbc_kernel', _one_proc_pbc_code, None,['math.h', 'stdio.h'], static_args={'_end':ctypes.c_int})
                 self._one_process_pbc_lib = build.SharedLib(_one_proc_pbc_kernel, {'P': self.state.positions,
-                                                                                   'E': self.state.domain.extent})
+                                                                                   'E': self.state.domain.extent,
+                                                                                   'F': self._flag})
+
             self._one_process_pbc_lib.execute(static_args={'_end': ctypes.c_int(self.state.n)})
         else:
             #print '-' * 14
@@ -727,6 +744,7 @@ class BoundaryTypePeriodic(object):
                                          self.state.domain.get_shift())
 
 
+        return self._flag.dat[0]
 
 
 

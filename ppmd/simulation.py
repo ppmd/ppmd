@@ -58,7 +58,12 @@ class BaseMDSimulation(object):
         else:
             self._cutoff = cutoff
 
-        self._cell_width = 1.1 * self._cutoff
+
+        # r_n = (1+\delta) * r_c
+
+        self._delta = 0.1
+
+        self._cell_width = (1 + self._delta) * self._cutoff
 
 
         self._boundary_method = domain_boundary_condition
@@ -149,7 +154,7 @@ class BaseMDSimulation(object):
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
 
-                self._forces_update_lib = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
+                self._forces_update_lib2 = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
                                                                         potential=self.potential,
                                                                         dat_dict=_potential_dat_dict)
                 '''
@@ -161,7 +166,7 @@ class BaseMDSimulation(object):
                 self._forces_update_lib = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
                 '''
-                self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
+                self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
                 ''''
                 self._forces_update_lib2 = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
@@ -227,12 +232,19 @@ class BaseMDSimulation(object):
         Return true if update of cell list and neighbour list is needed.
         :return:
         """
+
+        #TODO REMOVE THIS
+        # return True
+
+        self._test_count += 1
         self._moved_distance += self._get_max_moved_distance()
 
-        if self._moved_distance >= 0.5 * (self._cell_width - self._cutoff):
+        if self._moved_distance >= 0.5 * self._delta * self._cutoff:
             print "WARNING PARTICLE MOVED TOO FAR, rank:", mpi.MPI_HANDLE.rank
 
-        if (self._moved_distance >= 0.5 * (self._cell_width - self._cutoff)) or \
+        #print self._test_count
+
+        if (self._moved_distance >= 0.5 * self._delta * self._cutoff) or \
                 (self.state.version_id % 10 == 0) or \
                 self.state.invalidate_lists:
             return True
@@ -241,6 +253,7 @@ class BaseMDSimulation(object):
             return False
 
     def _reset_moved_distance(self):
+        self._test_count = 0
         self._moved_distance = 0.0
         self.state.invalidate_lists = False
 
@@ -317,7 +330,9 @@ class BaseMDSimulation(object):
         """
         Execute the boundary conditions for the simulation.
         """
-        self._boundary_method.apply()
+        flag = self._boundary_method.apply()
+        if flag > 0:
+            self.state.invalidate_lists = True
 
 
 
