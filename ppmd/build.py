@@ -777,7 +777,7 @@ def build_lib(lib, source_dir=runtime.BUILD_DIR.dir, CC=TMPCC, dst_dir=runtime.B
                      + CC.l_flags + ['-I' + str(runtime.LIB_DIR.dir)] + ['-I' + str(source_dir)]
             if runtime.DEBUG.level > 0:
                 _c_cmd += CC.dbg_flags
-            else:
+            elif runtime.OPT.level > 0:
                 _c_cmd += CC.opt_flags
 
             _c_cmd += CC.shared_lib_flag

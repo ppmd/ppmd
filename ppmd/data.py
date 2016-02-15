@@ -1,7 +1,7 @@
 """
 This module contains high level arrays and matrices.
 """
-
+import sys
 import host
 import ctypes
 import numpy as np
@@ -148,6 +148,9 @@ class ScalarArray(host.Array):
         :arg val: Coefficient to scale all elements by.
         """
         self.dat = self.dat * np.array([val], dtype=self.dtype)
+
+    def zero(self):
+        self.dat.fill(0)
 
     @property
     def ctypes_value(self):
@@ -390,14 +393,18 @@ class ParticleDat(host.Matrix):
         :arg int n: New minimum size.
         """
 
+
         if n > self.max_npart:
             self.max_npart = n
             self.realloc(n, self.ncol)
+
+
 
     def halo_exchange(self):
         """
         Perform a halo exchange for the particle dat. WIP currently only functional for positions.
         """
+
 
         if cell.cell_list.halos_exist is True:
             self.halo_pack()
@@ -599,6 +606,8 @@ class ParticleDat(host.Matrix):
         # SEND START -------------------------------------------------------------------------------------------
         for i in range(26):
             # Exchange sizes --------------------------------------------------------------------------
+
+
             if halo.HALOS.send_ranks[i] > -1 and halo.HALOS.recv_ranks[i] > -1:
                 mpi.MPI_HANDLE.comm.Sendrecv(_boundary_groups_contents_array[
                                              self._boundary_groups_start_end_indices[i]:self._boundary_groups_start_end_indices[i + 1]:],
@@ -623,10 +632,14 @@ class ParticleDat(host.Matrix):
                                          mpi.MPI_HANDLE.rank,
                                          _status)
 
+
+
             _t_size = self.halo_start + self._cell_contents_recv[_halo_groups_start_end_indices[i]:_halo_groups_start_end_indices[i + 1]:].sum()
-            if _t_size > self.max_npart:
-                # print self.max_npart
-                self.resize(_t_size)
+            self.resize(_t_size)
+
+
+
+
 
             # Exchange data --------------------------------------------------------------------------
             if halo.HALOS.send_ranks[i] > -1 and halo.HALOS.recv_ranks[i] > -1:
@@ -661,10 +674,14 @@ class ParticleDat(host.Matrix):
 
                 self.halo_start_shift(_shift / self.ncomp)
 
+
+
         # SEND END -------------------------------------------------------------------------------------------
 
+
+
         if (self.name == 'positions') and cell.cell_list.version_id > cell.cell_list.halo_version_id:
-            cell.cell_list.sort_halo_cells(_halo_cell_groups, self._cell_contents_recv, self.npart)
+            cell.cell_list.sort_halo_cells(_halo_cell_groups, self._cell_contents_recv, self.npart, self.max_npart)
 
 
 

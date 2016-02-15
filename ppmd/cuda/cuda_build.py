@@ -96,14 +96,14 @@ def build_static_libs(lib):
 
 def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR.dir, CC=NVCC, dst_dir=cuda_runtime.BUILD_DIR.dir, hash=True):
 
-    with open(source_dir + lib + ".cu", "r") as fh:
-        _code = fh.read()
-        fh.close()
-    with open(source_dir + lib + ".h", "r") as fh:
-        _code += fh.read()
-        fh.close()
-
     if hash:
+        with open(source_dir + lib + ".cu", "r") as fh:
+            _code = fh.read()
+            fh.close()
+        with open(source_dir + lib + ".h", "r") as fh:
+            _code += fh.read()
+            fh.close()
+
         _m = hashlib.md5()
         _m.update(_code)
         _m = '_' + _m.hexdigest()

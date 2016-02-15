@@ -7,7 +7,7 @@ from ppmd.cuda import *
 
 
 # n=25 reasonable size
-n = 60
+n = 100
 N = n ** 3
 
 #N = 2 # uncomment for 2 bounce

@@ -289,7 +289,29 @@ class CellList(object):
                                           static_args=_static_args)
         self._halo_cell_sort_loop = build.SharedLib(_cell_sort_kernel, _cell_sort_dict)
 
-    def sort_halo_cells(self,local_cell_indices_array, cell_contents_recv, npart):
+    def sort_halo_cells(self,local_cell_indices_array, cell_contents_recv, npart, total_size):
+
+        # if the total size is larger than the current array we need to resize.
+
+
+        cell_count = self._domain.cell_array[0] * self._domain.cell_array[1] * self._domain.cell_array[2]
+
+        if total_size + cell_count + 1 > self._cell_list.ncomp:
+            cell_start = self._cell_list[self._cell_list.end]
+            cell_end = self._cell_list.end
+
+            print cell_count, cell_start, cell_end, self._cell_list.ncomp, total_size
+
+
+
+            self._cell_list.realloc(total_size + cell_count + 1)
+
+            self._cell_list.dat[self._cell_list.end - cell_count: self._cell_list.end:] = self._cell_list.dat[cell_start:cell_end:]
+
+            self._cell_list.dat[self._cell_list.end] = self._cell_list.end - cell_count
+
+            # cell reverse lookup
+            self._cell_reverse_lookup.realloc(total_size)
 
         if self._halo_cell_sort_loop is None:
             self._setup_halo_sorting_lib()
@@ -310,6 +332,8 @@ class CellList(object):
                                           dat_dict=_cell_sort_dict)
 
         self.halo_version_id += 1
+
+
 
     @property
     def num_particles(self):
@@ -670,7 +694,7 @@ class NeighbourList(object):
             print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
 
 
-        _n = cell_list.cell_list.end - self._domain.cell_count
+        _n = self.cell_list.cell_list.end - self._domain.cell_count
         self._neighbour_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
 
         self.n_total = self._positions.npart_total

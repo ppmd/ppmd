@@ -92,9 +92,10 @@ class Array(object):
         pass
 
     def realloc(self, length):
+
         assert ctypes.sizeof(self.dtype) * length < available_free_memory(), "host.Array realloc error: Not enough free memory."
 
-        self.dat.resize(length)
+        self.dat = np.resize(self.dat, length)
 
     def zero(self):
         self.dat.fill(0)
@@ -253,9 +254,13 @@ class Matrix(object):
         pass
 
     def realloc(self, nrow, ncol):
+
         assert ctypes.sizeof(self.dtype) * nrow * ncol < available_free_memory(), "host.Matrix realloc error: Not enough free memory."
 
-        self.dat.resize(nrow, ncol)
+        self.dat = np.resize(self.dat,[nrow, ncol])
+
+
+
 
     def zero(self):
         self.dat.fill(self.idtype(0))

@@ -82,9 +82,12 @@ if __name__ == '__main__':
 
     # Helper methods
     per_printer = method.PercentagePrinter(dt,t,10)
-    pos_print = method.ParticleTracker(sim1.state.positions, 627, file_dir + '/pos.track')
-    vel_print = method.ParticleTracker(sim1.state.velocities, 627, file_dir + '/vel.track')
-    for_print = method.ParticleTracker(sim1.state.forces, 627, file_dir + '/for.track')
+
+    tagged_particle = 146
+
+    pos_print = method.ParticleTracker(sim1.state.positions, tagged_particle, file_dir + '/pos.track')
+    vel_print = method.ParticleTracker(sim1.state.velocities, tagged_particle, file_dir + '/vel.track')
+    for_print = method.ParticleTracker(sim1.state.forces, tagged_particle, file_dir + '/for.track')
 
     tick = 5
 

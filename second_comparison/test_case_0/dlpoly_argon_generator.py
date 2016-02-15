@@ -98,7 +98,7 @@ stack		       0
 stats		       %(STEPS)s
 trajectory	       %(STEPS)s         5         0
 rdf		           %(STEPS)s
-timestep	       1.0000E-03
+timestep	       1.0000E-04
 cutoff		       %(CUTOFF)s
 delr               1.0000E+00
 rvdw               %(CUTOFF)s

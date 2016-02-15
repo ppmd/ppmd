@@ -70,7 +70,7 @@ class BaseMDSimulation(object):
         self._boundary_method.set_state(self.state)
 
         # Add particle dats
-        _factor = 10
+        _factor = 1
         self.state.positions = data.ParticleDat(n, 3, name='positions', max_npart=_factor * n)
         self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
         self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
@@ -141,7 +141,7 @@ class BaseMDSimulation(object):
 
         if self._cell_structure and self.potential is not None and not setup_only:
             # Need to pass entire state such that all particle dats can be sorted.
-            cell.group_by_cell.setup(self.state)
+            #cell.group_by_cell.setup(self.state)
 
             # TODO remove these two lines when creating access descriptors.
             cell.cell_list.sort()
@@ -154,7 +154,7 @@ class BaseMDSimulation(object):
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
 
-                self._forces_update_lib2 = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
+                self._forces_update_lib = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
                                                                         potential=self.potential,
                                                                         dat_dict=_potential_dat_dict)
                 '''
@@ -166,36 +166,19 @@ class BaseMDSimulation(object):
                 self._forces_update_lib = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
                 '''
-                self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
+                self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
                 ''''
                 self._forces_update_lib2 = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
                                                                                      dat_dict=_potential_dat_dict,
                                                                                      openmp=False)
                 '''
-
-
             # If domain is without halos
             elif type(self.state.domain) is domain.BaseDomain:
                 self._forces_update_lib = pairloop.PairLoopRapaport(domain=self.state.domain,
                                                                     potential=self.potential,
                                                                     dat_dict=_potential_dat_dict)
 
-            # create gpu looping method if gpucuda module is initialised
-            '''
-            if gpucuda.INIT_STATUS():
-                self.gpu_forces_timer = runtime.Timer(runtime.TIMER, 0)
-                if type(self.state.domain) is domain.BaseDomain:
-                     self._forces_update_lib_gpucuda = gpucuda.SimpleCudaPairLoop(n=self.state.as_func('n'),
-                                                                                  domain=self.state.domain,
-                                                                                  potential=self.potential,
-                                                                                  dat_dict=_potential_dat_dict)
-                if type(self.state.domain) is domain.BaseDomainHalo:
-                    self._forces_update_lib_gpucuda = gpucuda.SimpleCudaPairLoopHalo3D(n=self.state.as_func('n'),
-                                                                                       domain=self.state.domain,
-                                                                                       potential=self.potential,
-                                                                                       dat_dict=_potential_dat_dict)
-            '''
 
         # If no cell structure was created
         elif self.potential is not None and not setup_only:
@@ -240,7 +223,7 @@ class BaseMDSimulation(object):
         self._moved_distance += self._get_max_moved_distance()
 
         if self._moved_distance >= 0.5 * self._delta * self._cutoff:
-            print "WARNING PARTICLE MOVED TOO FAR, rank:", mpi.MPI_HANDLE.rank
+            print "WARNING PARTICLE MOVED TOO FAR, rank:", mpi.MPI_HANDLE.rank, "distance", self._moved_distance, "times reused", self._test_count, "dist:", 0.5 * self._delta * self._cutoff
 
         #print self._test_count
 
@@ -268,7 +251,7 @@ class BaseMDSimulation(object):
 
         # reset forces
         self.state.forces.set_val(0.)
-        self.state.u.scale(0.)
+        self.state.u.zero()
 
         '''
         if gpucuda.INIT_STATUS():

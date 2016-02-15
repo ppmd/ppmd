@@ -400,7 +400,8 @@ class PairLoopRapaport(_Base):
         """
         cell.cell_list.check()
         if n is not None:
-            _N = n
+            print "error option depreciated"
+            #_N = n
         else:
             _N = cell.cell_list.cell_list[cell.cell_list.cell_list.end]
 
@@ -1297,7 +1298,8 @@ class PairLoopRapaportHalo(PairLoopRapaport):
         _halo_exchange_particle_dat(self._particle_dat_dict)
 
         if n is not None:
-            _N = n
+            print "warning option depreciated"
+            #_N = n
         else:
             _N = cell.cell_list.cell_list[cell.cell_list.cell_list.end]
 
