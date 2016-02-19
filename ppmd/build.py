@@ -818,14 +818,17 @@ def check_file_existance(abs_path=None):
     assert abs_path is not None, "build:check_file_existance error. No absolute path passed."
     return os.path.exists(abs_path)
 
-def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cu'), dst_dir=runtime.BUILD_DIR.dir):
+def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.c'), dst_dir=runtime.BUILD_DIR.dir, CC=TMPCC):
     _filename = 'HOST_' + str(name)
     _filename += '_' + md5(_filename + str(header_code) + str(src_code) + str(name))
     _lib_filename = os.path.join(dst_dir, _filename + '.so')
 
     if not check_file_existance(_lib_filename):
+        if not os.path.exists(dst_dir) and mpi.MPI_HANDLE.rank == 0:
+            os.mkdir(dst_dir)
+
         source_write(header_code, src_code, name, extensions=('.h', '.c'), dst_dir=runtime.BUILD_DIR.dir)
-        build_lib(_filename, hash=False)
+        build_lib(_filename, CC=CC, hash=False)
 
     return load(_lib_filename)
 
@@ -879,7 +882,7 @@ def build_lib(lib, source_dir=runtime.BUILD_DIR.dir, CC=TMPCC, dst_dir=runtime.B
                         p.communicate()
             except:
                 if runtime.ERROR_LEVEL.level > 2:
-                    raise RuntimeError('build error: helper library not built.')
+                    raise RuntimeError('build error: library not built.')
                 elif runtime.VERBOSE.level > 2:
                     print "build error: Shared library not built:", lib
 

@@ -55,7 +55,7 @@ if __name__ == '__main__':
     plotting = False
     
     # log energy?
-    logging = True
+    logging = False
 
     # Write XYZ?
     writing = False

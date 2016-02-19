@@ -2,9 +2,7 @@
 # system level
 import numpy as np
 import ctypes
-import os
-import hashlib
-import subprocess
+#import os
 
 # package level
 import data
@@ -27,14 +25,11 @@ class _Base(object):
 
     def __init__(self, n, types_map, kernel, particle_dat_dict):
 
-        self._compiler_set()
+        self._cc = build.TMPCC
+
         self._N = n
         self._types_map = types_map
 
-        self._temp_dir = runtime.BUILD_DIR.dir
-
-        if not os.path.exists(self._temp_dir):
-            os.mkdir(self._temp_dir)
         self._kernel = kernel
 
         self._particle_dat_dict = particle_dat_dict
@@ -42,27 +37,10 @@ class _Base(object):
 
         self._code_init()
 
-        self._unique_name = self._unique_name_calc()
-
-        self._library_filename = self._unique_name + '.so'
-
-        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-
-            if mpi.MPI_HANDLE is None:
-                self._create_library()
-
-            else:
-                if mpi.MPI_HANDLE.rank == 0:
-                    self._create_library()
-                mpi.MPI_HANDLE.barrier()
-
-        try:
-            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
-        except:
-            build.load_library_exception(self._kernel.name, self._unique_name, type(self))
-
-    def _compiler_set(self):
-        self._cc = build.TMPCC
+        self._lib = build.simple_lib_creator(self._generate_header_source(),
+                                             self._generate_impl_source(),
+                                             self._kernel.name,
+                                             CC=self._cc)
 
     def _kernel_argument_declarations(self):
         """Define and declare the kernel arguments.
@@ -107,6 +85,7 @@ class _Base(object):
                     ncomp) + ',' + '0, ' + '_TYPE_MAP[i])];\n'
 
         return s
+
     def _argnames(self):
         """Comma separated string of argument name declarations.
 
@@ -145,39 +124,20 @@ class _Base(object):
             argnames += dat[0] + ','
         return argnames[:-1]
 
-    def _unique_name_calc(self):
-        """Return name which can be used to identify the pair loop
-        in a unique way.
-        """
-        return self._kernel.name + '_' + self.hexdigest()
-
-    def hexdigest(self):
-        """Create unique hex digest"""
-        m = hashlib.md5()
-        m.update(self._kernel.code + self._code)
-        if self._kernel.headers is not None:
-            for header in self._kernel.headers:
-                m.update(header)
-        return m.hexdigest()
-
     def _generate_header_source(self):
         """Generate the source code of the header file.
 
         Returns the source code for the header file.
         """
         code = '''
-        #ifndef %(UNIQUENAME)s_H
-        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
         void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
 
-        #endif
         '''
 
-        d = {'UNIQUENAME': self._unique_name,
-             'INCLUDED_HEADERS': self._included_headers(),
+        d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
              'LIB_DIR': runtime.LIB_DIR.dir}
@@ -192,69 +152,11 @@ class _Base(object):
                 s += '#include \"' + x + '\" \n'
         return s
 
-    def _create_library(self):
-        """
-        Create a shared library from the source code.
-        """
-
-        filename_base = os.path.join(self._temp_dir, self._unique_name)
-
-        header_filename = filename_base + '.h'
-        impl_filename = filename_base + '.c'
-        with open(header_filename, 'w') as f:
-            print >> f, self._generate_header_source()
-        with open(impl_filename, 'w') as f:
-            print >> f, self._generate_impl_source()
-
-        object_filename = filename_base + '.o'
-        library_filename = filename_base + '.so'
-
-        if runtime.VERBOSE.level > 2:
-            print "Building", library_filename
-
-        cflags = []
-        cflags += self._cc.c_flags
-
-        if runtime.DEBUG.level > 0:
-            cflags += self._cc.dbg_flags
-
-        if runtime.OPT.level > 0:
-            cflags += self._cc.opt_flags
-
-
-        cc = self._cc.binary
-        ld = self._cc.binary
-        lflags = self._cc.l_flags
-
-        compile_cmd = cc + self._cc.compile_flag + cflags + ['-I', self._temp_dir] + ['-o', object_filename,
-                                                                                      impl_filename]
-
-        link_cmd = ld + self._cc.shared_lib_flag + lflags + ['-o', library_filename, object_filename]
-        stdout_filename = filename_base + '.log'
-        stderr_filename = filename_base + '.err'
-        with open(stdout_filename, 'w') as stdout:
-            with open(stderr_filename, 'w') as stderr:
-                stdout.write('Compilation command:\n')
-                stdout.write(' '.join(compile_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(compile_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate()
-                stdout.write('Link command:\n')
-                stdout.write(' '.join(link_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(link_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate()
-
     def _generate_impl_source(self):
         """Generate the source code the actual implementation.
         """
 
-        d = {'UNIQUENAME': self._unique_name,
-             'KERNEL': self._kernel_code,
+        d = {'KERNEL': self._kernel_code,
              'ARGUMENTS': self._argnames(),
              'LOC_ARGUMENTS': self._loc_argnames(),
              'KERNEL_NAME': self._kernel.name,
@@ -316,7 +218,6 @@ class SingleAllParticleLoop(_Base):
         self._kernel_code = self._kernel.code
 
         self._code = '''
-        #include \"%(UNIQUENAME)s.h\"
 
         void %(KERNEL_NAME)s_wrapper(const int n, int *_TYPE_MAP,%(ARGUMENTS)s) { 
         
@@ -340,18 +241,14 @@ class SingleAllParticleLoop(_Base):
         Returns the source code for the header file.
         """
         code = '''
-        #ifndef %(UNIQUENAME)s_H
-        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
         void %(KERNEL_NAME)s_wrapper(const int n, int *_TYPE_MAP,%(ARGUMENTS)s);
 
-        #endif
         '''
 
-        d = {'UNIQUENAME': self._unique_name,
-             'INCLUDED_HEADERS': self._included_headers(),
+        d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
              'LIB_DIR': runtime.LIB_DIR.dir}
@@ -369,7 +266,6 @@ class SingleParticleLoop(_Base):
         self._kernel_code = self._kernel.code
 
         self._code = '''
-        #include \"%(UNIQUENAME)s.h\"
 
         void %(KERNEL_NAME)s_wrapper(const int start_ix, const int end_ix, %(ARGUMENTS)s) { 
           int i;
@@ -392,18 +288,14 @@ class SingleParticleLoop(_Base):
         Returns the source code for the header file.
         """
         code = '''
-        #ifndef %(UNIQUENAME)s_H
-        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
         void %(KERNEL_NAME)s_wrapper(const int start_ix, const int end_ix,%(ARGUMENTS)s);
 
-        #endif
         '''
 
-        d = {'UNIQUENAME': self._unique_name,
-             'INCLUDED_HEADERS': self._included_headers(),
+        d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
              'LIB_DIR': runtime.LIB_DIR.dir}
