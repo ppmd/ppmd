@@ -410,6 +410,7 @@ class ParticleDat(host.Matrix):
             self.halo_pack()
             self._transfer_unpack()
 
+        self._vid_halo = self._vid_int
 
     def _setup_halo_packing(self):
         """

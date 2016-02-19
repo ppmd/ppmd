@@ -676,7 +676,7 @@ class PairLoopRapaportHalo(_Base):
             self._particle_dat_dict = dat_dict
 
         '''Create arg list'''
-
+        _halo_exchange_particle_dat(self._particle_dat_dict)
         if n is not None:
             print "warning option depreciated"
             #_N = n
@@ -696,8 +696,10 @@ class PairLoopRapaportHalo(_Base):
         '''Add pointer arguments to launch command'''
         for dat_orig in self._particle_dat_dict.values():
             if type(dat_orig) is tuple:
+                #print dat_orig[0].name, dat_orig[1]
                 args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
             else:
+                #print dat_orig.name, "else"
                 args.append(dat_orig.ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''

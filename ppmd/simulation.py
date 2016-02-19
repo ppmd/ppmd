@@ -156,7 +156,7 @@ class BaseMDSimulation(object):
                 self._forces_update_lib = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
                 '''
-                self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
+                self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
                 ''''
                 self._forces_update_lib2 = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
