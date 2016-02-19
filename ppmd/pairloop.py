@@ -1138,9 +1138,6 @@ class PairLoopRapaportHalo(PairLoopRapaport):
 
         return s
 
-
-
-
     def _generate_header_source(self):
         """Generate the source code of the header file.
 
@@ -1585,10 +1582,6 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaport):
                 dat_orig.ctypes_data_post()
 
 
-
-
-
-
 ################################################################################################################
 # Neighbour list looping using NIII
 ################################################################################################################
@@ -1788,7 +1781,6 @@ class PairLoopNeighbourList(_Base):
             else:
                 dat_orig.ctypes_data_post()
 
-
 # Unnecsary workaround
 def _halo_exchange_particle_dat(dats_in):
     # loop through passed dats
@@ -1808,8 +1800,6 @@ def _halo_exchange_particle_dat(dats_in):
 
         elif type(ix) is data.ParticleDat:
             ix.halo_exchange()
-
-
 
 
 
@@ -2071,9 +2061,6 @@ class PairLoopNeighbourListOpenMP(PairLoopNeighbourList):
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
                 dat_orig.ctypes_data_post()
-
-
-
 
 
 

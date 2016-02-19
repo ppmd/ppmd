@@ -474,7 +474,7 @@ class GenericToolChain(object):
 # TOOLCHAIN TO COMPILE KERNEL AS LIBRARY
 ################################################################################################################
 
-class SharedLib(GenericToolChain):
+class SharedLib(object):
     """
     Generic base class to loop over all particles once.
     
@@ -644,9 +644,6 @@ class SharedLib(GenericToolChain):
 
         return return_code
 
-
-
-
     def _code_init(self):
         self._kernel_code = self._kernel.code
 
@@ -690,6 +687,112 @@ class SharedLib(GenericToolChain):
         return argnames[:-1]
     
     # --------------------------------- END OF PREVIOUS METHODS
+
+    def _loc_argnames(self):
+        """Comma separated string of local argument names.
+        """
+        argnames = ''
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+            # dat[0] is always the name, even with access descriptiors.
+            argnames += dat[0] + ','
+        return argnames[:-1]
+
+    def _unique_name_calc(self):
+        """Return name which can be used to identify the pair loop
+        in a unique way.
+        """
+        return self._kernel.name + '_' + self.hexdigest()
+
+    def hexdigest(self):
+        """Create unique hex digest"""
+        m = hashlib.md5()
+        m.update(self._kernel.code + self._code)
+        if self._kernel.headers is not None:
+            for header in self._kernel.headers:
+                m.update(header)
+        return m.hexdigest()
+
+    def _included_headers(self):
+        """Return names of included header files."""
+        s = ''
+        if self._kernel.headers is not None:
+            s += '\n'
+            for x in self._kernel.headers:
+                s += '#include \"' + x + '\" \n'
+        return s
+
+    def _create_library(self):
+        """
+        Create a shared library from the source code.
+        """
+
+        filename_base = os.path.join(self._temp_dir, self._unique_name)
+
+        header_filename = filename_base + '.h'
+        impl_filename = filename_base + '.c'
+        with open(header_filename, 'w') as f:
+            print >> f, self._generate_header_source()
+        with open(impl_filename, 'w') as f:
+            print >> f, self._generate_impl_source()
+
+        object_filename = filename_base + '.o'
+        library_filename = filename_base + '.so'
+
+        if runtime.VERBOSE.level > 2:
+            print "Building", library_filename
+
+        cflags = []
+        cflags += self._cc.c_flags
+
+        if runtime.DEBUG.level > 0:
+            cflags += self._cc.dbg_flags
+
+        if runtime.OPT.level > 0:
+            cflags += self._cc.opt_flags
+
+
+        cc = self._cc.binary
+        ld = self._cc.binary
+        lflags = self._cc.l_flags
+
+        compile_cmd = cc + self._cc.compile_flag + cflags + ['-I', self._temp_dir] + ['-o', object_filename,
+                                                                                      impl_filename]
+
+        link_cmd = ld + self._cc.shared_lib_flag + lflags + ['-o', library_filename, object_filename]
+        stdout_filename = filename_base + '.log'
+        stderr_filename = filename_base + '.err'
+        with open(stdout_filename, 'w') as stdout:
+            with open(stderr_filename, 'w') as stderr:
+                stdout.write('Compilation command:\n')
+                stdout.write(' '.join(compile_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(compile_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate()
+                stdout.write('Link command:\n')
+                stdout.write(' '.join(link_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(link_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate()
+
+    def _generate_impl_source(self):
+        """Generate the source code the actual implementation.
+        """
+
+        d = {'UNIQUENAME': self._unique_name,
+             'KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'LOC_ARGUMENTS': self._loc_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'KERNEL_ARGUMENT_DECL': self._kernel_argument_declarations()}
+
+        return self._code % d
+
+
+
 
 ####################################
 # Build Lib
