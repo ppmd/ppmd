@@ -300,8 +300,7 @@ class CellList(object):
             cell_start = self._cell_list[self._cell_list.end]
             cell_end = self._cell_list.end
 
-            print cell_count, cell_start, cell_end, self._cell_list.ncomp, total_size
-
+            # print cell_count, cell_start, cell_end, self._cell_list.ncomp, total_size
 
 
             self._cell_list.realloc(total_size + cell_count + 1)
@@ -624,6 +623,7 @@ class NeighbourList(object):
         // loop over particles
         int m = -1;
         for (int ix=0; ix<end_ix; ix++) {
+
 
             const int C0 = (int)((P[ix*3]     - B[0])/CEL[0]);
             const int C1 = (int)((P[ix*3 + 1] - B[2])/CEL[1]);

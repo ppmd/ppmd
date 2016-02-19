@@ -382,7 +382,8 @@ class GenericToolChain(object):
 
         if runtime.DEBUG.level > 0:
             cflags += self._cc.dbg_flags
-        else:
+
+        if runtime.OPT.level > 0:
             cflags += self._cc.opt_flags
 
 
@@ -777,7 +778,7 @@ def build_lib(lib, source_dir=runtime.BUILD_DIR.dir, CC=TMPCC, dst_dir=runtime.B
                      + CC.l_flags + ['-I' + str(runtime.LIB_DIR.dir)] + ['-I' + str(source_dir)]
             if runtime.DEBUG.level > 0:
                 _c_cmd += CC.dbg_flags
-            elif runtime.OPT.level > 0:
+            if runtime.OPT.level > 0:
                 _c_cmd += CC.opt_flags
 
             _c_cmd += CC.shared_lib_flag

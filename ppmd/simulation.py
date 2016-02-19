@@ -154,7 +154,7 @@ class BaseMDSimulation(object):
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
 
-                self._forces_update_lib = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
+                self._forces_update_lib2 = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
                                                                         potential=self.potential,
                                                                         dat_dict=_potential_dat_dict)
                 '''
@@ -166,7 +166,7 @@ class BaseMDSimulation(object):
                 self._forces_update_lib = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
                 '''
-                self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
+                self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
                 ''''
                 self._forces_update_lib2 = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
@@ -216,14 +216,13 @@ class BaseMDSimulation(object):
         :return:
         """
 
-        #TODO REMOVE THIS
-        # return True
 
         self._test_count += 1
         self._moved_distance += self._get_max_moved_distance()
 
         if self._moved_distance >= 0.5 * self._delta * self._cutoff:
             print "WARNING PARTICLE MOVED TOO FAR, rank:", mpi.MPI_HANDLE.rank, "distance", self._moved_distance, "times reused", self._test_count, "dist:", 0.5 * self._delta * self._cutoff
+
 
         #print self._test_count
 
@@ -618,6 +617,16 @@ class PosInitOneParticleInABox(object):
 # PosInitDLPOLYConfig DEFINITIONS
 ################################################################################################################
 
+def periodic_mod(lower, val, upper):
+    extent = upper - lower
+    if val < lower:
+        val += extent
+    elif val > upper:
+        val -= extent
+
+    return val
+
+
 class PosInitDLPOLYConfig(object):
     """
     Read positions from DLPLOY config file.
@@ -696,9 +705,26 @@ class PosInitDLPOLYConfig(object):
                     state_input.global_ids[_n]=count
                     _n += 1
                     '''
-                    pass
+                    if mpi.MPI_HANDLE.nproc == 1:
+                        print "Warning an input position was outside the simulation domain, correcting."
 
-                count += 1
+                        print _d[0] , _tx , _d[1],_d[2] , _ty , _d[3],_d[4] , _tz , _d[5]
+                        
+                        _tx = periodic_mod(_d[0] , _tx , _d[1])
+                        _ty = periodic_mod(_d[2] , _ty , _d[3])
+                        _tz = periodic_mod(_d[4] , _tz , _d[5])
+                            
+                        state_input.positions.dat[_n, 0] = _tx
+                        state_input.positions.dat[_n, 1] = _ty
+                        state_input.positions.dat[_n, 2] = _tz
+
+                        #print state_input.positions.dat[_n,::]
+
+
+                        state_input.global_ids[_n] = count
+                        _n += 1
+
+
 
         state_input.n = _n
 

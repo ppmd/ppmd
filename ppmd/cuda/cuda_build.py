@@ -127,7 +127,7 @@ def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR.dir, CC=NVCC, dst_dir=
 
             _c_cmd += CC.shared_lib_flag
 
-            if cuda_runtime.VERBOSE.level > 2:
+            if cuda_runtime.VERBOSE.level > 1:
                 print "Building", _lib_filename
 
             stdout_filename = dst_dir + lib + str(_m) + '.log'

@@ -56,8 +56,8 @@ for ix in range(N):
     x0_dl.dat[ix,::] = np.array(_config_positions[ix])
     x1_dl.dat[ix,::] = np.array(_history_positions[ix])
 
-x0_ppmd = io.xml_to_ParticleDat('test_case_0/ppmd_x0.xml')
-x1_ppmd = io.xml_to_ParticleDat('test_case_0/ppmd_x1.xml')
+x0_ppmd = fio.xml_to_ParticleDat('test_case_0/ppmd_x0.xml')
+x1_ppmd = fio.xml_to_ParticleDat('test_case_0/ppmd_x1.xml')
 
 print "DL_POLY ------------- \n", x0_dl.dat[0:10:,::]
 print "PPMD ------------- \n", x0_ppmd.dat[0:10:,::]
@@ -89,7 +89,7 @@ for ix in range(N):
     diff[mask] = _extent[mask] - diff[mask]
     err1 += np.sum(np.square(diff))
     
-    if (np.sum(np.square(diff)) > max_err1):
+    if (np.sum(np.square(diff)) > max_err1 or ix==1652):
         print "New max error", ix, np.sum(np.square(diff)), x1_dl.dat[ix,::] , x1_ppmd.dat[ix,::]
 
 

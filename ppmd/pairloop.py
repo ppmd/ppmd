@@ -1709,10 +1709,10 @@ class PairLoopNeighbourList(_Base):
                 for(int _k = START_POINTS[_i]; _k < START_POINTS[_i+1]; _k++){
                     int _j = NLIST[_k];
                     int _cpp_halo_flag;
-                    int _cp_halo_flag;
+                    int _cp_halo_flag = 0;
 
                     // set halo flag, TODO move all halo flags to be an if condition on particle index?
-                    if (_i >= N_LOCAL) { _cp_halo_flag = 1; } else { _cp_halo_flag = 0; }
+                    //if (_i >= N_LOCAL) { _cp_halo_flag = 1; } else { _cp_halo_flag = 0; }
                     if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
 
                      %(KERNEL_ARGUMENT_DECL)s
@@ -2191,7 +2191,7 @@ class PairLoopNeighbourListLayersHybrid(_Base):
                     int _cpp_halo_flag;
                     int _cp_halo_flag;
 
-                    // set halo flag, TODO move all halo flags to be an if condition on particle index?
+                    set halo flag, TODO move all halo flags to be an if condition on particle index?
                     if (_i >= N_LOCAL) { _cp_halo_flag = 1; } else { _cp_halo_flag = 0; }
                     if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
 

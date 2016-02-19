@@ -10,6 +10,7 @@ runtime.TIMER.level = 3
 #build timer level
 runtime.BUILD_TIMER.level = 3
 
+runtime.OPT.level = 3
 
 #cuda on/off
 runtime.CUDA_ENABLED.flag = True
@@ -20,7 +21,7 @@ from ppmd import domain
 from ppmd import potential
 from ppmd import method
 from ppmd import simulation
-from ppmd import io
+from ppmd import fio
 import numpy as np
 
 if __name__ == '__main__':
@@ -83,13 +84,13 @@ if __name__ == '__main__':
     # Helper methods
     per_printer = method.PercentagePrinter(dt,t,10)
 
-    tagged_particle = 146
+    tagged_particle = 233
 
     pos_print = method.ParticleTracker(sim1.state.positions, tagged_particle, file_dir + '/pos.track')
     vel_print = method.ParticleTracker(sim1.state.velocities, tagged_particle, file_dir + '/vel.track')
     for_print = method.ParticleTracker(sim1.state.forces, tagged_particle, file_dir + '/for.track')
 
-    tick = 5
+    tick = None
 
     schedule = method.Schedule([1, tick, tick, tick], [per_printer.tick, pos_print.write, vel_print.write, for_print.write])
 
@@ -98,17 +99,25 @@ if __name__ == '__main__':
 
 
 
-    io.ParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x0.xml')
+    fio.ParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x0.xml')
 
     # Check ParticleDat dump is correct
-    test = io.xml_to_ParticleDat(file_dir + 'ppmd_x0.xml')
+    test = fio.xml_to_ParticleDat(file_dir + 'ppmd_x0.xml')
+
+    print N
+
     for ix in range(N):
-        assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
+        # print ix
+        if not np.all(test.dat[ix] == sim1.state.positions.dat[ix]):
+            print test.dat[ix,0:3:], sim1.state.positions.dat[ix,0:3:]
+
+
+            assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
 
 
 
     ###########################################################
-
+    print "t", t, "dt", dt
     test_integrator.integrate(dt=dt, t=t)
 
     sim1.timer.time("Total time in forces update.")
@@ -117,10 +126,10 @@ if __name__ == '__main__':
     ###########################################################
 
 
-    io.ParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x1.xml')
+    fio.ParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x1.xml')
 
     # check ParticleDat dump is correct.
-    test = io.xml_to_ParticleDat(file_dir + 'ppmd_x1.xml')
+    test = fio.xml_to_ParticleDat(file_dir + 'ppmd_x1.xml')
     for ix in range(N):
         assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
 
