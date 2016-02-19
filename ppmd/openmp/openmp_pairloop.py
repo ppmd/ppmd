@@ -5,7 +5,7 @@ import ctypes
 import os
 
 # package level
-from ppmd import cpu_generate_generic
+from ppmd import generation
 from ppmd import data
 from ppmd import build
 from ppmd import runtime
@@ -18,7 +18,7 @@ from ppmd import host
 import openmp_generation
 
 
-class _Base(build.GenericToolChain):
+class _Base(object):
 
     def __init__(self, n, types_map, kernel, particle_dat_dict):
 
@@ -107,6 +107,7 @@ class _Base(build.GenericToolChain):
         return s
 
     def _generate_header_source(self):
+
         """Generate the source code of the header file.
 
         Returns the source code for the header file.
@@ -128,6 +129,179 @@ class _Base(build.GenericToolChain):
              'ARGUMENTS': self._argnames(),
              'LIB_DIR': runtime.LIB_DIR.dir}
         return code % d
+
+    def _argnames(self):
+        """Comma separated string of argument name declarations.
+
+        This string of argument names is used in the declaration of
+        the method which executes the pairloop over the grid.
+        If, for example, the pairloop gets passed two particle_dats,
+        then the result will be ``double** arg_000,double** arg_001`.`
+        """
+
+        #self._argtypes = []
+
+        argnames = ''
+        if self._kernel.static_args is not None:
+            self._static_arg_order = []
+
+            for i, dat in enumerate(self._kernel.static_args.items()):
+                argnames += 'const ' + host.ctypes_map[dat[1]] + ' ' + dat[0] + ','
+                self._static_arg_order.append(dat[0])
+
+
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+            if type(dat[1]) is not tuple:
+                argnames += host.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
+            else:
+                argnames += host.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
+
+
+        return argnames[:-1]
+
+    def _loc_argnames(self):
+        """Comma separated string of local argument names.
+        """
+        argnames = ''
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+            # dat[0] is always the name, even with access descriptiors.
+            argnames += dat[0] + ','
+        return argnames[:-1]
+
+    def _unique_name_calc(self):
+        """Return name which can be used to identify the pair loop
+        in a unique way.
+        """
+        return self._kernel.name + '_' + self.hexdigest()
+
+    def hexdigest(self):
+        """Create unique hex digest"""
+        m = hashlib.md5()
+        m.update(self._kernel.code + self._code)
+        if self._kernel.headers is not None:
+            for header in self._kernel.headers:
+                m.update(header)
+        return m.hexdigest()
+
+    def _included_headers(self):
+        """Return names of included header files."""
+        s = ''
+        if self._kernel.headers is not None:
+            s += '\n'
+            for x in self._kernel.headers:
+                s += '#include \"' + x + '\" \n'
+        return s
+
+    def _create_library(self):
+        """
+        Create a shared library from the source code.
+        """
+
+        filename_base = os.path.join(self._temp_dir, self._unique_name)
+
+        header_filename = filename_base + '.h'
+        impl_filename = filename_base + '.c'
+        with open(header_filename, 'w') as f:
+            print >> f, self._generate_header_source()
+        with open(impl_filename, 'w') as f:
+            print >> f, self._generate_impl_source()
+
+        object_filename = filename_base + '.o'
+        library_filename = filename_base + '.so'
+
+        if runtime.VERBOSE.level > 2:
+            print "Building", library_filename
+
+        cflags = []
+        cflags += self._cc.c_flags
+
+        if runtime.DEBUG.level > 0:
+            cflags += self._cc.dbg_flags
+
+        if runtime.OPT.level > 0:
+            cflags += self._cc.opt_flags
+
+
+        cc = self._cc.binary
+        ld = self._cc.binary
+        lflags = self._cc.l_flags
+
+        compile_cmd = cc + self._cc.compile_flag + cflags + ['-I', self._temp_dir] + ['-o', object_filename,
+                                                                                      impl_filename]
+
+        link_cmd = ld + self._cc.shared_lib_flag + lflags + ['-o', library_filename, object_filename]
+        stdout_filename = filename_base + '.log'
+        stderr_filename = filename_base + '.err'
+        with open(stdout_filename, 'w') as stdout:
+            with open(stderr_filename, 'w') as stderr:
+                stdout.write('Compilation command:\n')
+                stdout.write(' '.join(compile_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(compile_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate()
+                stdout.write('Link command:\n')
+                stdout.write(' '.join(link_cmd))
+                stdout.write('\n\n')
+                p = subprocess.Popen(link_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                p.communicate()
+
+    def _generate_impl_source(self):
+        """Generate the source code the actual implementation.
+        """
+
+        d = {'UNIQUENAME': self._unique_name,
+             'KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'LOC_ARGUMENTS': self._loc_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'KERNEL_ARGUMENT_DECL': self._kernel_argument_declarations()}
+
+        return self._code % d
+
+    def execute(self, n=None, dat_dict=None, static_args=None):
+
+        """Allow alternative pointers"""
+        if dat_dict is not None:
+            self._particle_dat_dict = dat_dict
+
+        '''Currently assume n is always needed'''
+        if n is not None:
+            _N = n
+        else:
+            _N = self._N()
+
+        args = [ctypes.c_int(_N)]
+
+        if self._types_map is not None:
+            args.append(self._types_map.ctypes_data)
+
+        '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
+
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+        '''Add pointer arguments to launch command'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
+            else:
+                args.append(dat_orig.ctypes_data)
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
+        method(*args)
+
+        '''after wards access descriptors'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
 
 ################################################################################################################
 # RAPAPORT LOOP SERIAL
@@ -1116,9 +1290,6 @@ class DoubleAllParticleLoopOpenMP(DoubleAllParticleLoop):
 ################################################################################################################
 
 
-
-
-
 class PairLoopRapaportHaloOpenMP(PairLoopRapaport):
     def _compiler_set(self):
         self._cc = build.TMPCC_OpenMP
@@ -1467,7 +1638,7 @@ class PairLoopNeighbourList(_Base):
                 _dd = []
 
 
-            s += cpu_generate_generic.generate_map(pair=True,
+            s += generation.generate_map(pair=True,
                                                    symbol_external=dat[0] + '_ext',
                                                    symbol_internal=dat[0],
                                                    dat=dat[1],
@@ -1689,7 +1860,7 @@ class PairLoopNeighbourListOpenMP(PairLoopNeighbourList):
                 _dd = []
 
 
-            s += cpu_generate_generic.generate_map(pair=True,
+            s += generation.generate_map(pair=True,
                                                    symbol_external=dat[0] + '_ext',
                                                    symbol_internal=dat[0],
                                                    dat=dat[1],

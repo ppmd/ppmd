@@ -9,7 +9,6 @@ import data
 import build
 import runtime
 import access
-import mpi
 import host
 import cell
 

@@ -173,11 +173,6 @@ class BaseMDSimulation(object):
                                                                                      dat_dict=_potential_dat_dict,
                                                                                      openmp=False)
                 '''
-            # If domain is without halos
-            elif type(self.state.domain) is domain.BaseDomain:
-                self._forces_update_lib = pairloop.PairLoopRapaport(domain=self.state.domain,
-                                                                    potential=self.potential,
-                                                                    dat_dict=_potential_dat_dict)
 
 
         # If no cell structure was created

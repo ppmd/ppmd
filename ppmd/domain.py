@@ -26,163 +26,13 @@ def pfactor(n):
     return lst
 
 
-class BaseDomain(object):
-    """
-    Base class for simulation domain, cartesian, 3D. Initialises domain with given extents.
-    
-    :arg np.array(3,1) extent: [x,y,z] numpy array with extents of simulation domain.
-    :arg int cellcount: Number of cells within domain (optional).
-
-    """
-
-    def __init__(self, extent=np.array([1., 1., 1.]), cell_count=1):
-
-
-        self._COMM = None
-
-        self._extent = data.ScalarArray(extent)
-
-        self._cell_count = cell_count
-        self._cell_array = data.ScalarArray(np.array([1, 1, 1]), dtype=ctypes.c_int)
-        self._cell_edge_lengths = data.ScalarArray(np.array([1., 1., 1.], dtype=ctypes.c_double))
-
-        self._BCloop = None
-        self._boundary = [
-            -0.5 * self._extent[0],
-            0.5 * self._extent[0],
-            -0.5 * self._extent[1],
-            0.5 * self._extent[1],
-            -0.5 * self._extent[2],
-            0.5 * self._extent[2]
-        ]
-        self._boundary = data.ScalarArray(self._boundary, dtype=ctypes.c_double)
-        self._halos = False
-
-    @property
-    def comm(self):
-        return self._COMM
-
-
-    @property
-    def extent(self):
-        """
-        Returns list of domain extents.
-        """
-        return self._extent
-
-    def set_extent(self, new_extent=np.array([1., 1., 1.])):
-        """
-        Set domain extents
-        :arg np.array(3,1) new_extent: New extents.
-        """
-        self._extent[0:4:] = new_extent
-
-        self._boundary = [
-            -0.5 * self._extent[0],
-            0.5 * self._extent[0],
-            -0.5 * self._extent[1],
-            0.5 * self._extent[1],
-            -0.5 * self._extent[2],
-            0.5 * self._extent[2]
-        ]
-        self._boundary = data.ScalarArray(self._boundary, dtype=ctypes.c_double)
-
-    @property
-    def cell_count(self):
-        """
-        Return cell count for domain.
-        """
-        return self._cell_count
-
-    def _cell_count_recalc(self):
-        """    
-        Recalculates number of cells in domain. Alongside computing cell edge lengths.
-        """
-        self._cell_count = self._cell_array[0] * self._cell_array[1] * self._cell_array[2]
-        self._cell_edge_lengths[0] = self._extent[0] / self._cell_array[0]
-        self._cell_edge_lengths[1] = self._extent[1] / self._cell_array[1]
-        self._cell_edge_lengths[2] = self._extent[2] / self._cell_array[2]
-
-    @property
-    def volume(self):
-        """
-        Return domain volume.
-        """
-        return self._extent[0] * self._extent[1] * self._extent[2]
-
-    def set_cell_array_explicit(self, cell_array):
-        """
-        Set cell array with a vector.
-        
-        :arg np.array(3,1) cell_array: new cell array.
-        """
-
-        self._cell_array[0:4] = cell_array
-        self._cell_count_recalc()
-
-    def set_cell_array_radius(self, rn):
-        """
-        Create cell structure based on current extent and extended cutoff distance.
-        
-        :arg double rn:  :math:`r_n = r_c + \delta`
-        """
-
-        if (int(self._extent[0] / rn) < 3) or (int(self._extent[1] / rn) < 3) or (int(self._extent[2] / rn) < 3):
-            print "WARNING: Less than three cells per coordinate direction. Cell based domain will not be used"
-
-            self._cell_array[0] = 1
-            self._cell_array[1] = 1
-            self._cell_array[2] = 1
-            self._cell_count_recalc()
-            return False
-
-        else:
-            self._cell_array[0] = int(self._extent[0] / rn)
-            self._cell_array[1] = int(self._extent[1] / rn)
-            self._cell_array[2] = int(self._extent[2] / rn)
-            self._cell_count_recalc()
-
-        return True
-
-    @property
-    def cell_array(self):
-        """
-        Return cell array.
-        """
-
-        return self._cell_array
-
-    @property
-    def cell_edge_lengths(self):
-        """
-        Return cell edge lengths.
-        """
-        return self._cell_edge_lengths
-
-    @property
-    def boundary(self):
-        """
-        Return local domain boundary
-        """
-        return self._boundary
-
-    @property
-    def boundary_outer(self):
-        """
-        Return local domain boundary
-        """
-        return self._boundary
-
-    @property
-    def halos(self):
-        return self._halos
 
 ##############################################################################################################
 # BASE DOMAIN HALO
 ##############################################################################################################
 
 
-class BaseDomainHalo(BaseDomain):
+class BaseDomainHalo(object):
     """
     A cell based domain for mpi/private memory. Creates a shell of halos cells around
     each processes internal cells as halos.
@@ -256,7 +106,12 @@ class BaseDomainHalo(BaseDomain):
 
         return self._boundary_cells
 
-
+    @property
+    def cell_array(self):
+        """
+        Return cell array.
+        """
+        return self._cell_array
 
     @property
     def halos(self):
@@ -438,6 +293,13 @@ class BaseDomainHalo(BaseDomain):
         return True
 
     @property
+    def volume(self):
+        """
+        Return domain volume.
+        """
+        return self._extent[0] * self._extent[1] * self._extent[2]
+
+    @property
     def mpi_handle(self):
         return self._MPI_handle
 
@@ -484,9 +346,6 @@ class BaseDomainHalo(BaseDomain):
 
     def barrier(self):
         self._MPI.Barrier()
-
-
-
 
     def get_shift(self, direction=None):
 
@@ -574,7 +433,19 @@ class BaseDomainHalo(BaseDomain):
         else:
             return host.Array(_sfd, dtype=ctypes.c_double)
 
+    @property
+    def cell_edge_lengths(self):
+        """
+        Return cell edge lengths.
+        """
+        return self._cell_edge_lengths
 
+    @property
+    def cell_count(self):
+        """
+        Return cell count for domain.
+        """
+        return self._cell_count
 
 class BoundaryTypePeriodic(object):
     """
