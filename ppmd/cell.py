@@ -53,6 +53,8 @@ class CellList(object):
 
         self.halo_version_id = 0
         """halo version id incremented when halo cell list is updated."""
+        
+
 
         # vars for automatic updating based on a counter
         self._update_set = False
@@ -82,6 +84,7 @@ class CellList(object):
         self._positions = positions
         self._domain = domain
         self._cell_width = cell_width
+        
 
         # partition domain.
         _err = self._domain.set_cell_array_radius(cell_width)
@@ -361,6 +364,11 @@ class CellList(object):
         Return the cell width used to setup the cell structure. N.B. cells may be larger than this.
         """
         return self._cell_width
+
+
+
+
+
 
 # default cell list
 cell_list = CellList()

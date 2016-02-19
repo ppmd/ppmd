@@ -210,6 +210,54 @@ class BaseDomainHalo(BaseDomain):
         self._BCloop = None
         self._halos = True
 
+        #vars to return boudary cells
+        self._boundary_cell_version = -1
+        self._boundary_cells = None
+
+    def get_boundary_cells(self):
+        """
+        Return a host.Array containing the boundary cell indices of the domain.
+        """
+
+        if self._boundary_cell_version < self._cell_array.version:
+            _ca = self._cell_array
+            _count = (_ca[0] - 2) * (_ca[1] - 2) * (_ca[2] - 2) - (_ca[0] - 4) * (_ca[1] - 4) * (_ca[2] - 4)
+
+            self._boundary_cells = host.Array(ncomp=_count, dtype=ctypes.c_int)
+            m = 0
+
+            for ix in range(1, _ca[0] - 1):
+                for iy in range(1, _ca[1] - 1):
+
+                    self._boundary_cells[m] = ix + _ca[0]*(iy + _ca[1])
+                    self._boundary_cells[m + (_ca[0]-2) * (_ca[1]-2) ] = ix + _ca[0]*(iy + (_ca[2] - 2)*_ca[1])
+                    m += 1
+            m += (_ca[0]-2)*(_ca[1]-2)
+
+            for ix in range(1, _ca[0] - 1):
+                for iz in range(2, _ca[2] - 2):
+                        self._boundary_cells[m] = ix + _ca[0]*(1 + iz*_ca[1])
+                        self._boundary_cells[m + (_ca[0]-2) * (_ca[2]-4) ] = ix + _ca[0]*((_ca[1] - 2) + iz*_ca[1])
+                        m += 1
+
+            m += (_ca[0]-2)*(_ca[2]-4)
+
+            for iy in range(2, _ca[1] - 2):
+                for iz in range(2, _ca[2] - 2):
+                        self._boundary_cells[m] = 1 + _ca[0]*(iy + iz*_ca[1])
+                        self._boundary_cells[m + (_ca[1]-4) * (_ca[2]-4) ] = _ca[0]-2 + _ca[0]*(iy + iz*_ca[1])
+                        m += 1
+
+            m += (_ca[1]-4)*(_ca[2]-4)
+            
+
+            self._boundary_cell_version = self._cell_array.version
+
+
+        return self._boundary_cells
+
+
+
     @property
     def halos(self):
         return self._halos

@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
     if test_1000:
         # n=25 reasonable size
-        n = 100
+        n = 20
         N = n**3
         # n=860
         rho = 0.2
@@ -81,7 +81,7 @@ if __name__ == '__main__':
         test_domain = domain.BaseDomainHalo()
 
         # Initialise LJ potential
-        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0) 
+        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0, rc=7.5) 
         
         # print kernel.analyse(test_potential.kernel, [])
 
@@ -201,6 +201,9 @@ if __name__ == '__main__':
     # Create an integrator for above state class.
     test_integrator = method.VelocityVerlet(simulation = sim1, schedule=schedule)
     # test_integrator = method.VelocityVerletBox(state = sim1.state, schedule=schedule)
+
+    
+    sim1.state.domain.get_boundary_cells().dat
 
 
     ###########################################################

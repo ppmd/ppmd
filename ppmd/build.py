@@ -688,7 +688,8 @@ class SharedLib(GenericToolChain):
                 argnames += host.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
 
         return argnames[:-1]
-
+    
+    # --------------------------------- END OF PREVIOUS METHODS
 
 ####################################
 # Build Lib

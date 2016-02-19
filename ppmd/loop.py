@@ -7,6 +7,7 @@ import runtime
 import access
 import mpi
 import host
+import cell
 
 class _Base(build.GenericToolChain):
     """
