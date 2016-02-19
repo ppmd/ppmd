@@ -91,15 +91,6 @@ class BaseMDSimulation(object):
         self.state.k = data.ScalarArray()
 
 
-        '''
-        # gpucuda dats
-        if gpucuda.INIT_STATUS():
-            gpucuda.CUDA_DATS.register(self.state.u)
-            gpucuda.CUDA_DATS.register(self.state.positions)
-            gpucuda.CUDA_DATS.register(self.state.forces)
-        '''
-
-        # domain TODO: Maybe move domain to simulation not state.
         self.state.domain = domain_in
 
         # Initialise domain extent
@@ -111,8 +102,7 @@ class BaseMDSimulation(object):
         cell.cell_list.setup_callback_on_update(self._reset_moved_distance)
 
 
-        if type(self.state.domain) is domain.BaseDomainHalo:
-            halo.HALOS = halo.CartesianHalo()
+        halo.HALOS = halo.CartesianHalo()
 
 
         # Initialise positions
@@ -154,7 +144,7 @@ class BaseMDSimulation(object):
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
 
-                self._forces_update_lib2 = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
+                self._forces_update_lib = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
                                                                         potential=self.potential,
                                                                         dat_dict=_potential_dat_dict)
                 '''
@@ -166,7 +156,7 @@ class BaseMDSimulation(object):
                 self._forces_update_lib = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
                 '''
-                self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
+                self._forces_update_lib2 = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
                 ''''
                 self._forces_update_lib2 = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
@@ -219,8 +209,7 @@ class BaseMDSimulation(object):
             print "WARNING PARTICLE MOVED TOO FAR, rank:", mpi.MPI_HANDLE.rank, "distance", self._moved_distance, "times reused", self._test_count, "dist:", 0.5 * self._delta * self._cutoff
 
 
-        #print self._test_count
-
+        #print self._test_count, self.state.invalidate_lists
         if (self._moved_distance >= 0.5 * self._delta * self._cutoff) or \
                 (self.state.version_id % 10 == 0) or \
                 self.state.invalidate_lists:
@@ -309,6 +298,7 @@ class BaseMDSimulation(object):
         """
         flag = self._boundary_method.apply()
         if flag > 0:
+            # print "invalidating lists on BCs"
             self.state.invalidate_lists = True
 
 

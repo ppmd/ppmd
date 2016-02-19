@@ -124,25 +124,6 @@ class _Base(object):
             argnames += dat[0] + ','
         return argnames[:-1]
 
-    def _generate_header_source(self):
-        """Generate the source code of the header file.
-
-        Returns the source code for the header file.
-        """
-        code = '''
-        #include "%(LIB_DIR)s/generic.h"
-        %(INCLUDED_HEADERS)s
-
-        void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
-
-        '''
-
-        d = {'INCLUDED_HEADERS': self._included_headers(),
-             'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
-        return code % d
-
     def _included_headers(self):
         """Return names of included header files."""
         s = ''
@@ -205,302 +186,6 @@ class _Base(object):
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_post(dat_orig[1])
 
-################################################################################################################
-# RAPAPORT LOOP SERIAL
-################################################################################################################
-
-
-class PairLoopRapaport(_Base):
-    """
-    Class to implement rapaport 14 cell looping.
-    
-    :arg int n: Number of elements to loop over.
-    :arg domain domain: Domain containing the particles.
-    :arg dat positions: Postitions of particles.
-    :arg potential potential: Potential between particles.
-    :arg dict dat_dict: Dictonary mapping between state vars and kernel vars.
-    :arg bool DEBUG: Flag to enable debug flags.
-    """
-
-    def __init__(self, domain, potential=None, dat_dict=None, kernel=None):
-        self._domain = domain
-        self._potential = potential
-        self._particle_dat_dict = dat_dict
-        self._cc = build.TMPCC
-
-        ##########
-        # End of Rapaport initialisations.
-        ##########
-
-        self._temp_dir = runtime.BUILD_DIR.dir
-        if not os.path.exists(self._temp_dir):
-            os.mkdir(self._temp_dir)
-
-        if potential is not None:
-            self._kernel = self._potential.kernel
-        elif kernel is not None:
-            self._kernel = kernel
-        else:
-            print "pairloop error, no kernel passed."
-
-        self._code_init()
-
-        self._lib = build.simple_lib_creator(self._generate_header_source(),
-                                             self._generate_impl_source(),
-                                             self._kernel.name,
-                                             CC=self._cc)
-
-
-    def _code_init(self):
-        self._kernel_code = self._kernel.code
-        self._code = '''
-
-        void cell_index_offset(const unsigned int cp, const unsigned int cpp_i, int* cell_array, double *d_extent, unsigned int* cpp, unsigned int *flag, double *offset){
-        
-            const int cell_map[14][3] = {   {0,0,0},
-                                            {1,0,0},
-                                            {0,1,0},
-                                            {1,1,0},
-                                            {1,-1,0},
-                                            {-1,1,1},
-                                            {0,1,1},
-                                            {1,1,1},
-                                            {-1,0,1},
-                                            {0,0,1},
-                                            {1,0,1},
-                                            {-1,-1,1},
-                                            {0,-1,1},
-                                            {1,-1,1}};     
-                
-                
-            unsigned int tmp = cell_array[0]*cell_array[1];    
-            int Cz = cp/tmp;
-            int Cx = cp %% cell_array[0];
-            int Cy = (cp - Cz*tmp)/cell_array[0];
-            
-            
-            Cx += cell_map[cpp_i][0];
-            Cy += cell_map[cpp_i][1];
-            Cz += cell_map[cpp_i][2];
-            
-            int C0 = (Cx + cell_array[0]) %% cell_array[0];    
-            int C1 = (Cy + cell_array[1]) %% cell_array[1];
-            int C2 = (Cz + cell_array[2]) %% cell_array[2];
-                
-             
-            if ((Cx != C0) || (Cy != C1) || (Cz != C2)) { 
-                *flag = 1;
-                offset[0] = ((double)sign(Cx - C0))*d_extent[0];
-                offset[1] = ((double)sign(Cy - C1))*d_extent[1];
-                offset[2] = ((double)sign(Cz - C2))*d_extent[2];
-                
-                
-                
-            } else {*flag = 0; }
-            
-            *cpp = (C2*cell_array[1] + C1)*cell_array[0] + C0;
-            //printf("cp=%%d, cpp_i=%%d, cpp=%%d, flag=%%d, offset[0]=%%f, offset[1]=%%f, offset[2]=%%f \\n ",
-            //cp, cpp_i, *cpp, *flag, offset[0], offset[1], offset[2]);
-            
-                
-            return;      
-        }    
-        
-        void %(KERNEL_NAME)s_wrapper(const int n, const int cell_count, int* cell_array, int* q_list, double* d_extent,%(ARGUMENTS)s) { 
-            
-            
-            for(unsigned int cp = 0; cp < cell_count; cp++){
-                for(unsigned int cpp_i=0; cpp_i<14; cpp_i++){
-                
-                    double s[3]; 
-                    unsigned int flag, cpp; 
-                    int i,j;
-                    
-                    
-                    cell_index_offset(cp, cpp_i, cell_array, d_extent, &cpp, &flag, s);
-                    
-                    
-                    double r1[3];
-                    
-                    i = q_list[n+cp];
-
-                    /*
-                    if (i==25) {
-                        printf("CPU: i=%%d, cp=%%d ,cpp=%%d, s= %%f %%f %%f, p= %%f %%f %%f \\n", i, cp ,cpp, s[0], s[1], s[2], P_ext[25*3], P_ext[25*3+1], P_ext[25*3+2]);
-                    }
-                    */
-
-                    while (i > -1){
-                        j = q_list[n+cpp];
-                        while (j > -1){
-                            if (cp != cpp || i < j){
-        
-                                %(KERNEL_ARGUMENT_DECL)s
-                                
-                                  //KERNEL CODE START
-                                  
-                                  %(KERNEL)s
-                                  
-                                  //KERNEL CODE END
-                                    /*
-                                  if (i == 25 || j == 25) {
-                                    printf("CPU r2=%%f \\n", r2);
-                                  } */
-
-
-                                
-                                
-                            }
-                            j = q_list[j];  
-                        }
-                        i=q_list[i];
-                    }
-                }
-            }
-            
-            //printf("CPU: i=%%d, A=%%f %%f %%f \\n", 25, A_ext[25*3], A_ext[25*3 + 1], A_ext[25*3 + 2]);
-            return;
-        }        
-        
-        
-        '''
-
-    def _kernel_argument_declarations(self):
-        """Define and declare the kernel arguments.
-
-        For each argument the kernel gets passed a pointer of type
-        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
-        pointer to the data which contains the properties of particle i.
-        These properties are stored consecutively in memory, so for a 
-        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
-        property the vector entry j of particle i is accessed as 
-        ``loc_argXXX[i][j]``.
-
-        This method generates the definitions of the ``loc_argXXX`` variables
-        and populates the data to ensure that ``loc_argXXX[i]`` points to
-        the correct address in the particle_dats.
-        """
-        s = '\n'
-        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
-            space = ' ' * 14
-
-            if type(dat_orig[1]) is tuple:
-                dat = dat_orig[0], dat_orig[1][0]
-                _mode = dat_orig[1][1]
-            else:
-                dat = dat_orig
-                _mode = access.RW
-
-            argname = dat[0] + '_ext'
-            loc_argname = dat[0]
-
-            if type(dat[1]) == data.ScalarArray:
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
-
-            elif type(dat[1]) == data.ParticleDat:
-                if dat[1].name == 'positions':
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-
-                    s += space + 'if (flag){ \n'
-
-                    # s += space+'double r1[3];\n'
-                    s += space + 'r1[0] =' + argname + '[LINIDX_2D(3,j,0)] + s[0]; \n'
-                    s += space + 'r1[1] =' + argname + '[LINIDX_2D(3,j,1)] + s[1]; \n'
-                    s += space + 'r1[2] =' + argname + '[LINIDX_2D(3,j,2)] + s[2]; \n'
-                    s += space + loc_argname + '[1] = r1;\n'
-
-                    s += space + '}else{ \n'
-                    s += space + loc_argname + '[1] = ' + argname + '+3*j;\n'
-                    s += space + '} \n'
-                    s += space + loc_argname + '[0] = ' + argname + '+3*i;\n'
-
-                else:
-                    ncomp = dat[1].ncomp
-                    s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-                    s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
-                    s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
-
-            elif type(dat[1]) == data.TypedDat:
-
-                ncomp = dat[1].ncomp
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
-                s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
-                    ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
-                s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
-                    ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
-
-        return s
-
-    def _generate_header_source(self):
-        """Generate the source code of the header file.
-
-        Returns the source code for the header file.
-        """
-        code = '''
-
-        %(INCLUDED_HEADERS)s
-
-        #include "%(LIB_DIR)s/generic.h"
-        
-        void %(KERNEL_NAME)s_wrapper(const int n,const int cell_count, int* cells, int* q_list, double* d_extent,%(ARGUMENTS)s);
-
-        '''
-        d = {'INCLUDED_HEADERS': self._included_headers(),
-             'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
-        return code % d
-
-    def execute(self, n=None, dat_dict=None, static_args=None):
-        """
-        C version of the pair_locate: Loop over all cells update forces and potential engery.
-        """
-        cell.cell_list.check()
-        if n is not None:
-            print "error option depreciated"
-            #_N = n
-        else:
-            _N = cell.cell_list.cell_list[cell.cell_list.cell_list.end]
-
-        '''Allow alternative pointers'''
-        if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
-
-        '''Create arg list'''
-        args = [ctypes.c_int(_N),
-                ctypes.c_int(self._domain.cell_count),
-                self._domain.cell_array.ctypes_data,
-                cell.cell_list.cell_list.ctypes_data,
-                self._domain.extent.ctypes_data]
-
-        '''Add static arguments to launch command'''
-        if self._kernel.static_args is not None:
-            assert static_args is not None, "Error: static arguments not passed to loop."
-            for dat in static_args.values():
-                args.append(dat)
-
-        '''Add pointer arguments to launch command'''
-        for dat_orig in self._particle_dat_dict.values():
-            if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
-            else:
-                args.append(dat_orig.ctypes_data)
-
-        '''Execute the kernel over all particle pairs.'''
-        method = self._lib[self._kernel.name + '_wrapper']
-
-        method(*args)
-
-        '''afterwards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_post(dat_orig[1])
-            else:
-                dat_orig.ctypes_data_post()
-
-################################################################################################################
-# DOUBLE PARTICLE LOOP
-################################################################################################################
 
 
 class DoubleAllParticleLoop(_Base):
@@ -513,6 +198,24 @@ class DoubleAllParticleLoop(_Base):
     :arg list headers: list containing C headers required by kernel.
     """
 
+    def _generate_header_source(self):
+        """Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        """
+        code = '''
+        #include "%(LIB_DIR)s/generic.h"
+        %(INCLUDED_HEADERS)s
+
+        void %(KERNEL_NAME)s_wrapper(int n, int *_TYPE_MAP,%(ARGUMENTS)s);
+
+        '''
+
+        d = {'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
+        return code % d
 
     def _code_init(self):
         self._kernel_code = self._kernel.code
@@ -767,14 +470,39 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
                 dat_orig.ctypes_data_post()
 
 
-
 ################################################################################################################
 # RAPAPORT LOOP SERIAL FOR HALO DOMAINS
 ################################################################################################################
 
 
-class PairLoopRapaportHalo(PairLoopRapaport):
+class PairLoopRapaportHalo(_Base):
+    def __init__(self, domain, potential=None, dat_dict=None, kernel=None):
+        self._domain = domain
+        self._potential = potential
+        self._particle_dat_dict = dat_dict
+        self._cc = build.TMPCC
 
+        ##########
+        # End of Rapaport initialisations.
+        ##########
+
+        self._temp_dir = runtime.BUILD_DIR.dir
+        if not os.path.exists(self._temp_dir):
+            os.mkdir(self._temp_dir)
+
+        if potential is not None:
+            self._kernel = self._potential.kernel
+        elif kernel is not None:
+            self._kernel = kernel
+        else:
+            print "pairloop error, no kernel passed."
+
+        self._code_init()
+
+        self._lib = build.simple_lib_creator(self._generate_header_source(),
+                                             self._generate_impl_source(),
+                                             self._kernel.name,
+                                             CC=self._cc)
 
     def _kernel_argument_declarations(self):
         s = '\n'
@@ -949,9 +677,6 @@ class PairLoopRapaportHalo(PairLoopRapaport):
 
         '''Create arg list'''
 
-        '''Halo exchange'''
-        _halo_exchange_particle_dat(self._particle_dat_dict)
-
         if n is not None:
             print "warning option depreciated"
             #_N = n
@@ -1026,8 +751,11 @@ class PairLoopNeighbourList(_Base):
                                              self._kernel.name,
                                              CC=self._cc)
 
+
         self.neighbour_list = cell.NeighbourList()
         self.neighbour_list.setup(*cell.cell_list.get_setup_parameters())
+        self._neighbourlist_count = 0
+        self._invocations = 0
 
 
     def _generate_header_source(self):
@@ -1137,8 +865,10 @@ class PairLoopNeighbourList(_Base):
                 args.append(dat_orig.ctypes_data)
 
         '''Rebuild neighbour list potentially'''
+        self._invocations += 1
         if cell.cell_list.version_id > self.neighbour_list.version_id:
             self.neighbour_list.update()
+            self._neighbourlist_count += 1
 
         '''Create arg list'''
         _N_TOTAL = ctypes.c_int(self.neighbour_list.n_total)

@@ -45,9 +45,7 @@ class BaseDomainHalo(object):
 
         self._MPI_handle = mpi.MPI_HANDLE
         self._MPI_handle.set_periods = self._periods
-        self._MPI = MPI.COMM_WORLD
         self._MPIstatus = MPI.Status()
-        self._DEBUG = True
 
         self._extent = data.ScalarArray(extent)
 
@@ -143,7 +141,7 @@ class BaseDomainHalo(object):
 
 
         if runtime.VERBOSE.level > 1:
-            pio.pprint("Global cell array:", self._cell_array, ", Global cell extent:",self._extent)
+            pio.pprint("Internal cell array:", self._cell_array, ", Extent:",self._extent)
 
         self._cell_edge_lengths[0] = self._extent[0] / self._cell_array[0]
         self._cell_edge_lengths[1] = self._extent[1] / self._cell_array[1]
@@ -152,7 +150,7 @@ class BaseDomainHalo(object):
         self._cell_count_internal = self._cell_array[0] * self._cell_array[1] * self._cell_array[2]
 
         '''Get number of processes'''
-        _Np = self._MPI.Get_size()
+        _Np = MPI.COMM_WORLD.Get_size()
 
         '''Prime factor number of processes'''
         _factors = pfactor(_Np)
@@ -199,9 +197,9 @@ class BaseDomainHalo(object):
 
         '''Create cartesian communicator'''
         self._dims = tuple(_dims)
-        self._COMM = self._MPI.Create_cart(self._dims[::-1],
-                                           (bool(self._periods[2]), bool(self._periods[1]), bool(self._periods[0])),
-                                           True)
+        self._COMM = MPI.COMM_WORLD.Create_cart(self._dims[::-1],
+                                                (bool(self._periods[2]), bool(self._periods[1]), bool(self._periods[0])),
+                                                True)
 
         '''Set the simulation mpi handle to be the newly created one'''
         if self._MPI_handle is not None:
@@ -300,10 +298,6 @@ class BaseDomainHalo(object):
         return self._extent[0] * self._extent[1] * self._extent[2]
 
     @property
-    def mpi_handle(self):
-        return self._MPI_handle
-
-    @property
     def boundary(self):
         """
         Return local domain boundary
@@ -339,13 +333,6 @@ class BaseDomainHalo(object):
         Return internal cell count.
         """
         return self._cell_count_internal
-
-    @property
-    def rank(self):
-        return self._rank
-
-    def barrier(self):
-        self._MPI.Barrier()
 
     def get_shift(self, direction=None):
 

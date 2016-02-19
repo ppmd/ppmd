@@ -55,7 +55,7 @@ if __name__ == '__main__':
     plotting = False
     
     # log energy?
-    logging = False
+    logging = True
 
     # Write XYZ?
     writing = False
@@ -70,12 +70,12 @@ if __name__ == '__main__':
 
     if test_1000:
         # n=25 reasonable size
-        n = 20
+        n = 15
         N = n**3
         # n=860
         rho = 0.2
         mu = 1.0
-        nsig = 5.0
+        nsig = 1.0
         
         # Initialise basic domain
         test_domain = domain.BaseDomainHalo()
@@ -219,6 +219,8 @@ if __name__ == '__main__':
     ###########################################################
     # sim1.state.swaptimer.time("state time to swap arrays")
     
+
+
 
     #If logging was enabled, plot data.
     if (logging):

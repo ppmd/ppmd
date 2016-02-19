@@ -339,7 +339,7 @@ class ParticleDat(host.Matrix):
         """
         if mode.read:
             if (self._vid_int > self._vid_halo) and cell.cell_list.halos_exist is True:
-                # print "halo exchangeing", self.name
+                #print "halo exchangeing", self.name
                 self.halo_exchange()
 
                 self._vid_halo = self._vid_int

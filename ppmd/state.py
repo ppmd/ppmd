@@ -146,7 +146,8 @@ class BaseMDState(object):
             _dat.npart = int(value)
             _dat.halo_start_reset()
             #_dat.halo_start_set(int(value))
-            self.invalidate_lists = True
+            #print "invalidating lists on change on number of particles"
+            #self.invalidate_lists = True
 
     @property
     def time(self):
@@ -246,12 +247,14 @@ class BaseMDState(object):
 
 
         else:
+            # print "setting n"
             self.n = self.n + _recv_total - _send_total
 
         # Compress particle dats.
         self._compress_particle_dats(_send_total - _recv_total)
 
         if _send_total > 0 or _recv_total > 0:
+            #print "invalidating lists in move"
             self.invalidate_lists = True
 
         self.move_timer.pause()
