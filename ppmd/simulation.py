@@ -724,7 +724,7 @@ class PosInitDLPOLYConfig(object):
                         state_input.global_ids[_n] = count
                         _n += 1
 
-
+                count += 1
 
         state_input.n = _n
 

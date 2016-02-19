@@ -1,16 +1,16 @@
 Argon System
 temperature        85.0
 pressure	       0.0
-steps		       2000
+steps		       20000
 equilibration	   0
-multiple           2000
-scale		       2001
-print		       2000
+multiple           20000
+scale		       20001
+print		       20000
 stack		       0
-stats		       2000
-trajectory	       2000         5         0
-rdf		           2000
-timestep	       1.0000E-03
+stats		       20000
+trajectory	       20000         5         0
+rdf		           20000
+timestep	       1.0000E-04
 cutoff		       7.5
 delr               1.0000E+00
 rvdw               7.5

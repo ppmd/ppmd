@@ -84,13 +84,13 @@ if __name__ == '__main__':
     # Helper methods
     per_printer = method.PercentagePrinter(dt,t,10)
 
-    tagged_particle = 233
+    tagged_particle = 2
 
     pos_print = method.ParticleTracker(sim1.state.positions, tagged_particle, file_dir + '/pos.track')
     vel_print = method.ParticleTracker(sim1.state.velocities, tagged_particle, file_dir + '/vel.track')
     for_print = method.ParticleTracker(sim1.state.forces, tagged_particle, file_dir + '/for.track')
 
-    tick = None
+    tick = 5
 
     schedule = method.Schedule([1, tick, tick, tick], [per_printer.tick, pos_print.write, vel_print.write, for_print.write])
 
@@ -114,7 +114,7 @@ if __name__ == '__main__':
 
             assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
 
-
+    print sim1.state.velocities.dat[0:10:,::]
 
     ###########################################################
     print "t", t, "dt", dt
