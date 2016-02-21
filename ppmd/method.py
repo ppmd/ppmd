@@ -70,7 +70,10 @@ class VelocityVerlet(object):
         self._kernel1_code = '''
         //self._V+=0.5*self._dt*self._A
         //self._P+=self._dt*self._V
-        const double M_tmp = 1/M[0];
+
+        //printf("M[0]=%f \\n", M[0]);
+
+        const double M_tmp = 1.0/M[0];
         V[0] += dht*A[0]*M_tmp;
         V[1] += dht*A[1]*M_tmp;
         V[2] += dht*A[2]*M_tmp;
