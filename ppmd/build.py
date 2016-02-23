@@ -89,7 +89,7 @@ class Compiler(object):
 
 
 GCC = Compiler(['GCC'],
-               ['gcc'],
+               ['g++'],
                ['-fPIC', '-std=c99'],
                ['-lm'],
                ['-O3', '-march=native', '-m64'],
@@ -100,7 +100,7 @@ GCC = Compiler(['GCC'],
 
 # Define system gcc version as OpenMP Compiler.
 GCC_OpenMP = Compiler(['GCC'],
-                      ['gcc'],
+                      ['g++'],
                       ['-fopenmp', '-fPIC', '-std=c99'],
                       ['-lgomp', '-lrt', '-Wall'],
                       ['-O3', '-march=native', '-m64'],
@@ -337,7 +337,7 @@ class SharedLib(object):
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
-        void %(KERNEL_NAME)s_wrapper(%(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(%(ARGUMENTS)s);
 
         '''
 
@@ -488,7 +488,7 @@ def md5(string):
     m.update(string)
     return m.hexdigest()
 
-def source_write(header_code, src_code, name, extensions=('.h', '.c'), dst_dir=runtime.BUILD_DIR.dir):
+def source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR.dir):
     _filename = 'HOST_' + str(name)
     _filename += '_' + md5(_filename + str(header_code) + str(src_code) + str(name))
 
@@ -524,7 +524,7 @@ def check_file_existance(abs_path=None):
     assert abs_path is not None, "build:check_file_existance error. No absolute path passed."
     return os.path.exists(abs_path)
 
-def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.c'), dst_dir=runtime.BUILD_DIR.dir, CC=TMPCC):
+def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR.dir, CC=TMPCC):
     _filename = 'HOST_' + str(name)
     _filename += '_' + md5(_filename + str(header_code) + str(src_code) + str(name))
     _lib_filename = os.path.join(dst_dir, _filename + '.so')
@@ -533,17 +533,17 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.c'), dst
         if not os.path.exists(dst_dir) and mpi.MPI_HANDLE.rank == 0:
             os.mkdir(dst_dir)
 
-        source_write(header_code, src_code, name, extensions=('.h', '.c'), dst_dir=runtime.BUILD_DIR.dir)
-        build_lib(_filename, CC=CC, hash=False)
+        source_write(header_code, src_code, name, extensions=extensions, dst_dir=runtime.BUILD_DIR.dir)
+        build_lib(_filename, extensions=extensions, CC=CC, hash=False)
 
     return load(_lib_filename)
 
-def build_lib(lib, source_dir=runtime.BUILD_DIR.dir, CC=TMPCC, dst_dir=runtime.BUILD_DIR.dir, hash=True):
+def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir, CC=TMPCC, dst_dir=runtime.BUILD_DIR.dir, hash=True):
 
-    with open(source_dir + lib + ".c", "r") as fh:
+    with open(source_dir + lib + extensions[1], "r") as fh:
         _code = fh.read()
         fh.close()
-    with open(source_dir + lib + ".h", "r") as fh:
+    with open(source_dir + lib + extensions[0], "r") as fh:
         _code += fh.read()
         fh.close()
 
@@ -559,7 +559,7 @@ def build_lib(lib, source_dir=runtime.BUILD_DIR.dir, CC=TMPCC, dst_dir=runtime.B
     if mpi.MPI_HANDLE.rank == 0:
         if not os.path.exists(_lib_filename):
 
-            _lib_src_filename = source_dir + lib + '.c'
+            _lib_src_filename = source_dir + lib + extensions[1]
 
             _c_cmd = CC.binary + [_lib_src_filename] + ['-o'] + [_lib_filename] + CC.c_flags \
                      + CC.l_flags + ['-I' + str(runtime.LIB_DIR.dir)] + ['-I' + str(source_dir)]

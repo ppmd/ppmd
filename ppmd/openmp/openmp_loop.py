@@ -9,10 +9,7 @@ from ppmd import data
 from ppmd import build
 from ppmd import runtime
 from ppmd import access
-from ppmd import mpi
 from ppmd import host
-from ppmd import cell
-from ppmd import loop
 
 class _Base(object):
     """
@@ -134,7 +131,7 @@ class _Base(object):
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
-        void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
 
         '''
 
@@ -260,7 +257,7 @@ class SingleAllParticleLoop(_Base):
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
-        void %(KERNEL_NAME)s_wrapper(const int n, int *_TYPE_MAP,%(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int n, int *_TYPE_MAP,%(ARGUMENTS)s);
 
         '''
 

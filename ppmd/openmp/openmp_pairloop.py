@@ -118,7 +118,7 @@ class _Base(object):
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
-        void %(KERNEL_NAME)s_wrapper(int n, int *_TYPE_MAP,%(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(int n, int *_TYPE_MAP,%(ARGUMENTS)s);
 
         #endif
         '''
@@ -563,7 +563,7 @@ class PairLoopRapaport(_Base):
 
         #include "%(LIB_DIR)s/generic.h"
         
-        void %(KERNEL_NAME)s_wrapper(const int n,const int cell_count, int* cells, int* q_list, double* d_extent,%(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int n,const int cell_count, int* cells, int* q_list, double* d_extent,%(ARGUMENTS)s);
 
         #endif
         '''
@@ -791,7 +791,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
-        void %(KERNEL_NAME)s_wrapper(int n,double *extent_ext,%(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(int n,double *extent_ext,%(ARGUMENTS)s);
 
         #endif
         '''
@@ -1355,7 +1355,7 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaport):
         #include "%(LIB_DIR)s/generic.h"
         #include <omp.h>
 
-        void %(KERNEL_NAME)s_wrapper(const int N_LOCAL, const int* cell_map, const int n, int* cell_array, int* q_list,%(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int N_LOCAL, const int* cell_map, const int n, int* cell_array, int* q_list,%(ARGUMENTS)s);
 
         #endif
         '''
@@ -1610,7 +1610,7 @@ class PairLoopNeighbourList(_Base):
 
         #include "%(LIB_DIR)s/generic.h"
 
-        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* START_POINTS, const int* NLIST, %(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* START_POINTS, const int* NLIST, %(ARGUMENTS)s);
 
         #endif
         '''
@@ -1832,7 +1832,7 @@ class PairLoopNeighbourListOpenMP(PairLoopNeighbourList):
         #include "%(LIB_DIR)s/generic.h"
         #include <omp.h>
 
-        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* START_POINTS, const int* NLIST, %(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* START_POINTS, const int* NLIST, %(ARGUMENTS)s);
 
         #endif
         '''
@@ -2098,7 +2098,7 @@ class PairLoopNeighbourListLayersHybrid(_Base):
         #include "%(LIB_DIR)s/generic.h"
         #include <omp.h>
 
-        void %(KERNEL_NAME)s_wrapper(const int N_LOCAL, const int Nn, const int* NMATRIX, %(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int N_LOCAL, const int Nn, const int* NMATRIX, %(ARGUMENTS)s);
 
         #endif
         '''

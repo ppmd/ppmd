@@ -132,7 +132,7 @@ class _Base(object):
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
-        void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
 
         '''
 
@@ -243,7 +243,7 @@ class SingleAllParticleLoop(_Base):
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
-        void %(KERNEL_NAME)s_wrapper(const int n, int *_TYPE_MAP,%(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int n, int *_TYPE_MAP,%(ARGUMENTS)s);
 
         '''
 
@@ -290,7 +290,7 @@ class SingleParticleLoop(_Base):
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
-        void %(KERNEL_NAME)s_wrapper(const int start_ix, const int end_ix,%(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int start_ix, const int end_ix,%(ARGUMENTS)s);
 
         '''
 
