@@ -282,20 +282,10 @@ class SharedLib(object):
 
         self._code_init()
 
-        self._unique_name = self._unique_name_calc()
-
-        self._library_filename = self._unique_name + '.so'
-
-
-
-        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if mpi.MPI_HANDLE.rank == 0:
-                self._create_library()
-            mpi.MPI_HANDLE.barrier()
-        try:
-            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
-        except:
-            load_library_exception(self._kernel.name, self._unique_name, type(self))
+        self._lib = simple_lib_creator(self._generate_header_source(),
+                                       self._generate_impl_source(),
+                                       self._kernel.name,
+                                       CC=self._cc)
 
         self.creation_timer.stop("SharedLib creation timer " + str(self._kernel.name))
 
@@ -344,18 +334,14 @@ class SharedLib(object):
         Returns the source code for the header file.
         """
         code = '''
-        #ifndef %(UNIQUENAME)s_H
-        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
         void %(KERNEL_NAME)s_wrapper(%(ARGUMENTS)s);
 
-        #endif
         '''
 
-        d = {'UNIQUENAME': self._unique_name,
-             'INCLUDED_HEADERS': self._included_headers(),
+        d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
              'LIB_DIR': runtime.LIB_DIR.dir}
@@ -421,7 +407,6 @@ class SharedLib(object):
         self._kernel_code = self._kernel.code
 
         self._code = '''
-        #include \"%(UNIQUENAME)s.h\"
 
         void %(KERNEL_NAME)s_wrapper(%(ARGUMENTS)s) {
           
@@ -459,8 +444,6 @@ class SharedLib(object):
 
         return argnames[:-1]
     
-    # --------------------------------- END OF PREVIOUS METHODS
-
     def _loc_argnames(self):
         """Comma separated string of local argument names.
         """
@@ -469,21 +452,6 @@ class SharedLib(object):
             # dat[0] is always the name, even with access descriptiors.
             argnames += dat[0] + ','
         return argnames[:-1]
-
-    def _unique_name_calc(self):
-        """Return name which can be used to identify the pair loop
-        in a unique way.
-        """
-        return self._kernel.name + '_' + self.hexdigest()
-
-    def hexdigest(self):
-        """Create unique hex digest"""
-        m = hashlib.md5()
-        m.update(self._kernel.code + self._code)
-        if self._kernel.headers is not None:
-            for header in self._kernel.headers:
-                m.update(header)
-        return m.hexdigest()
 
     def _included_headers(self):
         """Return names of included header files."""
@@ -494,69 +462,11 @@ class SharedLib(object):
                 s += '#include \"' + x + '\" \n'
         return s
 
-    def _create_library(self):
-        """
-        Create a shared library from the source code.
-        """
-
-        filename_base = os.path.join(self._temp_dir, self._unique_name)
-
-        header_filename = filename_base + '.h'
-        impl_filename = filename_base + '.c'
-        with open(header_filename, 'w') as f:
-            print >> f, self._generate_header_source()
-        with open(impl_filename, 'w') as f:
-            print >> f, self._generate_impl_source()
-
-        object_filename = filename_base + '.o'
-        library_filename = filename_base + '.so'
-
-        if runtime.VERBOSE.level > 2:
-            print "Building", library_filename
-
-        cflags = []
-        cflags += self._cc.c_flags
-
-        if runtime.DEBUG.level > 0:
-            cflags += self._cc.dbg_flags
-
-        if runtime.OPT.level > 0:
-            cflags += self._cc.opt_flags
-
-
-        cc = self._cc.binary
-        ld = self._cc.binary
-        lflags = self._cc.l_flags
-
-        compile_cmd = cc + self._cc.compile_flag + cflags + ['-I', self._temp_dir] + ['-o', object_filename,
-                                                                                      impl_filename]
-
-        link_cmd = ld + self._cc.shared_lib_flag + lflags + ['-o', library_filename, object_filename]
-        stdout_filename = filename_base + '.log'
-        stderr_filename = filename_base + '.err'
-        with open(stdout_filename, 'w') as stdout:
-            with open(stderr_filename, 'w') as stderr:
-                stdout.write('Compilation command:\n')
-                stdout.write(' '.join(compile_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(compile_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate()
-                stdout.write('Link command:\n')
-                stdout.write(' '.join(link_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(link_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate()
-
     def _generate_impl_source(self):
         """Generate the source code the actual implementation.
         """
 
-        d = {'UNIQUENAME': self._unique_name,
-             'KERNEL': self._kernel_code,
+        d = {'KERNEL': self._kernel_code,
              'ARGUMENTS': self._argnames(),
              'LOC_ARGUMENTS': self._loc_argnames(),
              'KERNEL_NAME': self._kernel.name,
@@ -577,7 +487,6 @@ def md5(string):
     m = hashlib.md5()
     m.update(string)
     return m.hexdigest()
-
 
 def source_write(header_code, src_code, name, extensions=('.h', '.c'), dst_dir=runtime.BUILD_DIR.dir):
     _filename = 'HOST_' + str(name)
@@ -604,7 +513,6 @@ def source_write(header_code, src_code, name, extensions=('.h', '.c'), dst_dir=r
 
     return _filename, dst_dir
 
-
 def load(filename):
     try:
         return ctypes.cdll.LoadLibrary(str(filename))
@@ -629,7 +537,6 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.c'), dst
         build_lib(_filename, CC=CC, hash=False)
 
     return load(_lib_filename)
-
 
 def build_lib(lib, source_dir=runtime.BUILD_DIR.dir, CC=TMPCC, dst_dir=runtime.BUILD_DIR.dir, hash=True):
 

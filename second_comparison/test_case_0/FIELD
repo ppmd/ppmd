@@ -2,7 +2,7 @@ Argon
     UNITS internal
     MOLECULES 1
     Argon Atoms
-    NUMMOLS 1728
+    NUMMOLS 8000
     ATOMS   1
     Ar         39.948    0.000000
     FINISH

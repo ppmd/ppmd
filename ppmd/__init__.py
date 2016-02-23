@@ -10,7 +10,6 @@ __all__ = [ 'access',
             'host',
             'kernel',
             'loop',
-            'main',
             'method',
             'mpi',
             'pairloop',
@@ -35,7 +34,6 @@ import halo
 import host
 import kernel
 import loop
-import main
 import method
 import mpi
 import pairloop

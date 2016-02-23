@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
-import runtime
+from ppmd import *
+
+#import runtime
 # debug level
 runtime.DEBUG.level = 3
 #verbosity level
@@ -21,18 +23,18 @@ runtime.CUDA_ENABLED.flag = True
 
 
 
-import mpi
-import domain
-import potential
-import state
+#import mpi
+#import domain
+#import potential
+#import state
 import numpy as np
-import method
-import data
+#import method
+#import data
 
 import os
-import simulation
-import halo
-import kernel
+#import simulation
+#import halo
+#import kernel
 
 
 if __name__ == '__main__':
@@ -61,9 +63,6 @@ if __name__ == '__main__':
     writing = False
 
 
-    t=0.0001*24
-    #t=0.0024
-    #t=0.0174
     t=.01
     dt=0.0001
 
@@ -73,7 +72,7 @@ if __name__ == '__main__':
         n = 50
         N = n**3
         # n=860
-        rho = 0.2
+        rho = 0.1
         mu = 1.0
         nsig = 1.0
         
@@ -180,8 +179,8 @@ if __name__ == '__main__':
         energyfn = None
     
 
-    test_vaf_method = method.VelocityAutoCorrelation(state = sim1.state)
-    test_gr_method = method.RadialDistributionPeriodicNVE(state = sim1.state, rsteps = 200)
+    #test_vaf_method = method.VelocityAutoCorrelation(state = sim1.state)
+    #test_gr_method = method.RadialDistributionPeriodicNVE(state = sim1.state, rsteps = 200)
 
     per_printer = method.PercentagePrinter(dt,t,10)
 
@@ -203,7 +202,6 @@ if __name__ == '__main__':
     # test_integrator = method.VelocityVerletBox(state = sim1.state, schedule=schedule)
 
     
-    sim1.state.domain.get_boundary_cells().dat
 
 
     ###########################################################

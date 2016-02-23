@@ -43,7 +43,7 @@ if (E>I):
 
 
 
-rho     = 0.05
+rho     = 0.5
 sigma   = 1.0 #3.405
 eps     = 1.0 #0.9661
 cutoff  = 7.5
