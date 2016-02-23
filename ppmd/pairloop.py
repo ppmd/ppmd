@@ -13,6 +13,7 @@ import runtime
 import access
 import cell
 import host
+import opt
 
 
 class _Base(object):
@@ -27,7 +28,8 @@ class _Base(object):
         self._kernel = kernel
 
         self._particle_dat_dict = particle_dat_dict
-        self._nargs = len(self._particle_dat_dict)
+
+        self.loop_timer = opt.LoopTimer()
 
         self._code_init()
 
@@ -95,9 +97,10 @@ class _Base(object):
         then the result will be ``double** arg_000,double** arg_001`.`
         """
 
-        #self._argtypes = []
 
-        argnames = ''
+        argnames = str(self.loop_timer.get_cpp_arguments()) + ','
+
+
         if self._kernel.static_args is not None:
             self._static_arg_order = []
 
@@ -115,15 +118,6 @@ class _Base(object):
 
         return argnames[:-1]
 
-    def _loc_argnames(self):
-        """Comma separated string of local argument names.
-        """
-        argnames = ''
-        for i, dat in enumerate(self._particle_dat_dict.items()):
-            # dat[0] is always the name, even with access descriptiors.
-            argnames += dat[0] + ','
-        return argnames[:-1]
-
     def _included_headers(self):
         """Return names of included header files."""
         s = ''
@@ -131,6 +125,9 @@ class _Base(object):
             s += '\n'
             for x in self._kernel.headers:
                 s += '#include \"' + x + '\" \n'
+
+        s += str(self.loop_timer.get_cpp_headers())
+
         return s
 
     def _generate_impl_source(self):
@@ -139,9 +136,10 @@ class _Base(object):
 
         d = {'KERNEL': self._kernel_code,
              'ARGUMENTS': self._argnames(),
-             'LOC_ARGUMENTS': self._loc_argnames(),
              'KERNEL_NAME': self._kernel.name,
-             'KERNEL_ARGUMENT_DECL': self._kernel_argument_declarations()}
+             'KERNEL_ARGUMENT_DECL': self._kernel_argument_declarations(),
+             'LOOP_TIMER_PRE': str(self.loop_timer.get_cpp_pre_loop_code()),
+             'LOOP_TIMER_POST': str(self.loop_timer.get_cpp_post_loop_code())}
 
         return self._code % d
 
@@ -161,6 +159,10 @@ class _Base(object):
 
         if self._types_map is not None:
             args.append(self._types_map.ctypes_data)
+
+
+        args.append(self.loop_timer.get_python_parameters())
+
 
         '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
 
@@ -284,9 +286,9 @@ class DoubleAllParticleLoop(_Base):
 
         return s
 
-################################################################################################################
+###############################################################################
 # DOUBLE PARTICLE LOOP APPLIES PBC
-################################################################################################################
+###############################################################################
 
 
 class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
@@ -310,7 +312,8 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         self._kernel = kernel
 
         self._particle_dat_dict = particle_dat_dict
-        self._nargs = len(self._particle_dat_dict)
+
+        self.loop_timer = opt.LoopTimer()
 
         self._code_init()
 
@@ -443,6 +446,8 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         '''Currently assume n is always needed'''
         args = [self._N(), self._domain.extent.ctypes_data]
 
+        args.append(self.loop_timer.get_python_parameters())
+
         '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
 
         '''Add static arguments to launch command'''
@@ -470,9 +475,9 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
                 dat_orig.ctypes_data_post()
 
 
-################################################################################################################
+###############################################################################
 # RAPAPORT LOOP SERIAL FOR HALO DOMAINS
-################################################################################################################
+###############################################################################
 
 
 class PairLoopRapaportHalo(_Base):
@@ -687,6 +692,9 @@ class PairLoopRapaportHalo(_Base):
                 self._domain.cell_array.ctypes_data,
                 cell.cell_list.cell_list.ctypes_data]
 
+        args.append(self.loop_timer.get_python_parameters())
+
+
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not passed to loop."
@@ -715,9 +723,9 @@ class PairLoopRapaportHalo(_Base):
                 dat_orig.ctypes_data_post()
 
 
-################################################################################################################
+###############################################################################
 # Neighbour list looping using NIII
-################################################################################################################
+###############################################################################
 
 class PairLoopNeighbourList(_Base):
     def __init__(self, potential=None, dat_dict=None, kernel=None):
@@ -741,8 +749,7 @@ class PairLoopNeighbourList(_Base):
         else:
             print "pairloop error, no kernel passed."
 
-
-        self._nargs = len(self._particle_dat_dict)
+        self.loop_timer = opt.LoopTimer()
 
         # Init code
         self._kernel_code = self._kernel.code
@@ -756,9 +763,15 @@ class PairLoopNeighbourList(_Base):
 
         self.neighbour_list = cell.NeighbourList()
         self.neighbour_list.setup(*cell.cell_list.get_setup_parameters())
+
+
+
+
+
+
+
         self._neighbourlist_count = 0
         self._invocations = 0
-
 
     def _generate_header_source(self):
         """Generate the source code of the header file.
@@ -812,6 +825,10 @@ class PairLoopNeighbourList(_Base):
 
         void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* __restrict__ START_POINTS, const int* __restrict__ NLIST, %(ARGUMENTS)s) {
 
+
+            %(LOOP_TIMER_PRE)s
+
+
             for(int _i = 0; _i < N_LOCAL; _i++){
                 for(int _k = START_POINTS[_i]; _k < START_POINTS[_i+1]; _k++){
                     int _j = NLIST[_k];
@@ -832,6 +849,8 @@ class PairLoopNeighbourList(_Base):
 
                 }
             }
+
+            %(LOOP_TIMER_POST)s
 
             return;
         }
@@ -883,6 +902,8 @@ class PairLoopNeighbourList(_Base):
                  _STARTS,
                  _LIST]
 
+        args2.append(self.loop_timer.get_python_parameters())
+
         args = args2 + args
 
         '''Execute the kernel over all particle pairs.'''
@@ -898,9 +919,9 @@ class PairLoopNeighbourList(_Base):
                 dat_orig.ctypes_data_post()
 
 
-
-
-
+###############################################################################
+# Neighbour list with a list for inside and outside the halo
+###############################################################################
 
 
 class PairLoopNeighbourListHaloAware(_Base):
@@ -925,8 +946,7 @@ class PairLoopNeighbourListHaloAware(_Base):
         else:
             print "pairloop error, no kernel passed."
 
-
-        self._nargs = len(self._particle_dat_dict)
+        self.loop_timer = opt.LoopTimer()
 
         # Init code
         self._kernel_code = self._kernel.code
@@ -1094,6 +1114,8 @@ class PairLoopNeighbourListHaloAware(_Base):
                  _STARTS,
                  _LIST]
 
+        args2.append(self.loop_timer.get_python_parameters())
+
         args = args2 + args
 
         '''Execute the kernel over all particle pairs.'''
@@ -1114,6 +1136,7 @@ class PairLoopNeighbourListHaloAware(_Base):
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
                 dat_orig.ctypes_data_post()
+
 
 
 

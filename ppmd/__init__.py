@@ -19,7 +19,8 @@ __all__ = [ 'access',
             'simulation',
             'state',
             'fio',
-            'cuda']
+            'cuda',
+            'opt']
 
 
 
@@ -44,4 +45,4 @@ import simulation
 import state
 import fio
 import cuda
-
+import opt

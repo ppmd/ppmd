@@ -216,8 +216,9 @@ if __name__ == '__main__':
     sim1.cpu_forces_timer.time("Total time cpu forces update.")
     ###########################################################
     # sim1.state.swaptimer.time("state time to swap arrays")
-    
 
+    pio.pprint("LoopTimer resolution: ", opt.get_timer_accuracy(), "s")
+    pio.pprint("Recorded forces cputime from looping ", sim1._forces_update_lib.loop_timer.cpu_time)
 
 
     #If logging was enabled, plot data.
