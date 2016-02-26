@@ -23,18 +23,9 @@ runtime.CUDA_ENABLED.flag = True
 
 
 
-#import mpi
-#import domain
-#import potential
-#import state
-import numpy as np
-#import method
-#import data
 
-import os
-#import simulation
-#import halo
-#import kernel
+import numpy as np
+
 
 
 if __name__ == '__main__':
@@ -69,10 +60,10 @@ if __name__ == '__main__':
 
     if test_1000:
         # n=25 reasonable size
-        n = 50
+        n = 100
         N = n**3
         # n=860
-        rho = 0.1
+        rho = 0.5
         mu = 1.0
         nsig = 1.0
         
@@ -80,8 +71,9 @@ if __name__ == '__main__':
         test_domain = domain.BaseDomainHalo()
 
         # Initialise LJ potential
-        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0, rc=7.5) 
-        
+        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0, rc=7.5)
+        #test_potential = potential.TestPotential2(sigma=1.0,epsilon=1.0, rc=7.5)
+
         # print kernel.analyse(test_potential.kernel, [])
 
 

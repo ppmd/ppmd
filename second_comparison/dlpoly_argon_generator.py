@@ -105,6 +105,7 @@ rvdw               %(CUTOFF)s
 mxquat 0
 mxshak 0
 vdw shift
+no vom
 no electrostatics
 no vafaveraging
 restart noscale

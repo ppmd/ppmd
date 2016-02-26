@@ -628,16 +628,33 @@ class NeighbourList(object):
             tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * CA[0] + _h_map[ix][2] * CA[0]* CA[1];
         }
 
+        const double _b0 = B[0];
+        const double _b2 = B[2];
+        const double _b4 = B[4];
+
+        const double _icel0 = 1.0/CEL[0];
+        const double _icel1 = 1.0/CEL[1];
+        const double _icel2 = 1.0/CEL[2];
+
+        const int _ca0 = CA[0];
+        const int _ca1 = CA[1];
+        const int _ca2 = CA[2];
+
+
+
         // loop over particles
         int m = -1;
         for (int ix=0; ix<end_ix; ix++) {
 
+            const double pi0 = P[ix*3];
+            const double pi1 = P[ix*3 + 1];
+            const double pi2 = P[ix*3 + 2];
 
-            const int C0 = (int)((P[ix*3]     - B[0])/CEL[0]);
-            const int C1 = (int)((P[ix*3 + 1] - B[2])/CEL[1]);
-            const int C2 = (int)((P[ix*3 + 2] - B[4])/CEL[2]);
+            const int C0 = (int)((pi0 - _b0)*_icel0);
+            const int C1 = (int)((pi1 - _b2)*_icel1);
+            const int C2 = (int)((pi2 - _b4)*_icel2);
 
-            const int val = (C2*CA[1] + C1)*CA[0] + C0;
+            const int val = (C2*_ca1 + C1)*_ca0 + C0;
 
             NEIGHBOUR_STARTS[ix] = m + 1;
 
@@ -647,18 +664,19 @@ class NeighbourList(object):
                 while (iy > -1) {
                     if (ix < iy){
 
-                        const double rj0 = P[iy*3] - P[ix*3];
-                        const double rj1 = P[iy*3+1] - P[ix*3 + 1];
-                        const double rj2 = P[iy*3+2] - P[ix*3 + 2];
+                        const double rj0 = P[iy*3]   - pi0;
+                        const double rj1 = P[iy*3+1] - pi1;
+                        const double rj2 = P[iy*3+2] - pi2;
 
                         if ( (rj0*rj0 + rj1*rj1 + rj2*rj2) <= cutoff ) {
+
                             m++;
-                            if (m < max_len){
-                                NEIGHBOUR_LIST[m] = iy;
-                            } else {
+                            if (m >= max_len){
                                 RC[0] = -1;
                                 return;
                             }
+
+                            NEIGHBOUR_LIST[m] = iy;
                         }
 
                     }

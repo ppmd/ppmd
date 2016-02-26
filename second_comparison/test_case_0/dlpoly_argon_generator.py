@@ -43,7 +43,7 @@ if (E>I):
 
 
 
-rho     = 0.5
+rho     = 0.05
 sigma   = 1.0 #3.405
 eps     = 1.0 #0.9661
 cutoff  = 7.5
@@ -105,6 +105,7 @@ rvdw               %(CUTOFF)s
 mxquat 0
 mxshak 0
 vdw shift
+no vom
 no electrostatics
 no vafaveraging
 restart noscale

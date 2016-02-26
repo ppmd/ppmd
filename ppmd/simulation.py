@@ -1,14 +1,20 @@
+
+
+# system level
+from mpi4py import MPI
+import numpy as np
+import random
+import ctypes as ct
+import math
+
+# package level
 import halo
 import loop
 import mpi
 import pio
 import runtime
 import state
-import numpy as np
-import math
-import random
 import data
-import ctypes as ct
 import cell
 import domain
 import pairloop
@@ -144,10 +150,10 @@ class BaseMDSimulation(object):
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
 
-                '''
                 self._forces_update_lib2 = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
                                                                         potential=self.potential,
                                                                         dat_dict=_potential_dat_dict)
+                '''
                 self._forces_update_lib2 = pairloop.PairLoopRapaportHaloOpenMP(domain=self.state.domain,
                                                                                potential=self.potential,
                                                                                dat_dict=_potential_dat_dict)
@@ -157,9 +163,9 @@ class BaseMDSimulation(object):
                                                                          dat_dict=_potential_dat_dict)
                 '''
                 self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
-                                                                         dat_dict=_potential_dat_dict)
+                                                                              dat_dict=_potential_dat_dict)
 
-                ''''
+                '''
                 self._forces_update_lib2 = pairloop.PairLoopNeighbourListHaloAware(potential=self.potential,
                                                                                   dat_dict=_potential_dat_dict)
                 self._forces_update_lib2 = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
@@ -170,6 +176,7 @@ class BaseMDSimulation(object):
 
         # If no cell structure was created
         elif self.potential is not None and not setup_only:
+            print "Warning check looping method!"
             self._forces_update_lib = pairloop.DoubleAllParticleLoopPBC(n=self.state.as_func('n'),
                                                                         domain=self.state.domain,
                                                                         kernel=self.potential.kernel,
@@ -204,6 +211,9 @@ class BaseMDSimulation(object):
         :return:
         """
 
+        # force update
+        #self.state.invalidate_lists = True
+
 
         self._test_count += 1
         self._moved_distance += self._get_max_moved_distance()
@@ -211,15 +221,28 @@ class BaseMDSimulation(object):
         if self._moved_distance >= 0.5 * self._delta * self._cutoff:
             print "WARNING PARTICLE MOVED TOO FAR, rank:", mpi.MPI_HANDLE.rank, "distance", self._moved_distance, "times reused", self._test_count, "dist:", 0.5 * self._delta * self._cutoff
 
+        _ret = 0
+
 
         #print self._test_count, self.state.invalidate_lists
         if (self._moved_distance >= 0.5 * self._delta * self._cutoff) or \
                 (self.state.version_id % 10 == 0) or \
                 self.state.invalidate_lists:
-            return True
-        else:
-            # print "False", self._moved_distance, (self._cell_width - self._cutoff)
-            return False
+
+            _ret = 1
+
+        _ret_old = _ret
+
+        _tmp = np.array([_ret], dtype=ct.c_int)
+        mpi.MPI_HANDLE.comm.Allreduce(_tmp, _tmp, op=MPI.LOR)
+        _ret = _tmp[0]
+
+        if _ret_old == 1 and _ret != 1:
+            print "update status reduction error, rank:", mpi.MPI_HANDLE.rank
+
+        #assert bool(_ret) is True, "d"
+
+        return bool(_ret)
 
     def _reset_moved_distance(self):
         self._test_count = 0

@@ -110,7 +110,7 @@ class Level(object):
 OPT = Level(1)
 DEBUG = Level(0)
 VERBOSE = Level(0)
-TIMER = Level(0)
+TIMER = Level(1)
 BUILD_TIMER = Level(0)
 ERROR_LEVEL = Level(3)
 

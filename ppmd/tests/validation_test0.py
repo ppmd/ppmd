@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
-import runtime
+from ppmd import *
+
 # debug level
 runtime.DEBUG.level = 0
 #verbosity level
@@ -17,11 +18,7 @@ runtime.CUDA_ENABLED.flag = True
 
 import os
 
-from ppmd import domain
-from ppmd import potential
-from ppmd import method
-from ppmd import simulation
-from ppmd import fio
+
 import numpy as np
 
 if __name__ == '__main__':
@@ -98,23 +95,23 @@ if __name__ == '__main__':
     test_integrator = method.VelocityVerlet(simulation=sim1, schedule=schedule)
 
 
-
-    fio.ParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x0.xml')
+    if mpi.MPI_HANDLE.nproc == 1:
+        fio.ParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x0.xml')
+    else:
+        fio.MPIParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x0.xml', sim1.state.global_ids)
 
     # Check ParticleDat dump is correct
     test = fio.xml_to_ParticleDat(file_dir + 'ppmd_x0.xml')
 
     print N
 
-    for ix in range(N):
-        # print ix
-        if not np.all(test.dat[ix] == sim1.state.positions.dat[ix]):
-            print test.dat[ix,0:3:], sim1.state.positions.dat[ix,0:3:]
+    if mpi.MPI_HANDLE.nproc == 1:
+        for ix in range(N):
+            # print ix
+            if not np.all(test.dat[ix] == sim1.state.positions.dat[ix]):
+                assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
 
-
-            assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
-
-    print sim1.state.velocities.dat[0:10:,::]
+    #print sim1.state.velocities.dat[0:10:,::]
 
     ###########################################################
     print "t", t, "dt", dt
@@ -126,12 +123,17 @@ if __name__ == '__main__':
     ###########################################################
 
 
-    fio.ParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x1.xml')
+    if mpi.MPI_HANDLE.nproc == 1:
+        fio.ParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x1.xml')
+    else:
+        fio.MPIParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x1.xml', sim1.state.global_ids)
 
     # check ParticleDat dump is correct.
-    test = fio.xml_to_ParticleDat(file_dir + 'ppmd_x1.xml')
-    for ix in range(N):
-        assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
+
+    if mpi.MPI_HANDLE.nproc == 1:
+        test = fio.xml_to_ParticleDat(file_dir + 'ppmd_x1.xml')
+        for ix in range(N):
+            assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
 
 
 

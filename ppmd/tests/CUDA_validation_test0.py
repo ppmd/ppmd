@@ -80,10 +80,10 @@ if __name__ == '__main__':
                                        )
 
 
-    io.ParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x0.xml')
+    fio.ParticleDat_to_xml(sim1.state.positions, file_dir + 'gpu_ppmd_x0.xml')
 
     # Check ParticleDat dump is correct
-    test = io.xml_to_ParticleDat(file_dir + 'ppmd_x0.xml')
+    test = fio.xml_to_ParticleDat(file_dir + 'gpu_ppmd_x0.xml')
     for ix in range(N):
         assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
 
@@ -284,6 +284,7 @@ if __name__ == '__main__':
     ke = cuda_loop.ParticleLoop(kernel.Kernel('ke', ke_code), ke_map)
 
 
+    per_printer = method.PercentagePrinter(dt,t,10)
     # Some running ---------------------------------------------
 
 
@@ -339,7 +340,7 @@ if __name__ == '__main__':
             cuda_runtime.cuda_mem_cpy(sim1.state.h_u.ctypes_data, sim1.state.d_u.ctypes_data, ctypes.c_size_t(ctypes.sizeof(ctypes.c_double)), 'cudaMemcpyDeviceToHost')
             print sim1.state.h_k.dat[0], 0.5 * sim1.state.h_u.dat[0], sim1.state.h_k.dat[0] + 0.5 * sim1.state.h_u.dat[0]
 
-
+        per_printer.tick()
 
     sim1.state.d_k.zero()
     ke.execute(n=sim1.state.d_positions.npart)
@@ -354,15 +355,15 @@ if __name__ == '__main__':
 
 
 
-    cuda_runtime.cuda_mem_cpy(sim1.state.positions.ctypes_data, sim1.state.d_positions.ctypes_data, ctypes.c_size_t(N * ctypes.sizeof(ctypes.c_double)), 'cudaMemcpyDeviceToHost')
+    cuda_runtime.cuda_mem_cpy(sim1.state.positions.ctypes_data, sim1.state.d_positions.ctypes_data, ctypes.c_size_t(N * 3 * ctypes.sizeof(ctypes.c_double)), 'cudaMemcpyDeviceToHost')
 
 
 
 
-    io.ParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x1.xml')
+    fio.ParticleDat_to_xml(sim1.state.positions, file_dir + 'gpu_ppmd_x1.xml')
 
     # check ParticleDat dump is correct.
-    test = io.xml_to_ParticleDat(file_dir + 'ppmd_x1.xml')
+    test = fio.xml_to_ParticleDat(file_dir + 'gpu_ppmd_x1.xml')
     for ix in range(N):
         assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
 
