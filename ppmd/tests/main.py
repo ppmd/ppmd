@@ -1,9 +1,14 @@
 #!/usr/bin/python
 
-import runtime
+from ppmd import *
+
+#import runtime
 # debug level
-runtime.DEBUG.level = 0
+runtime.DEBUG.level = 3
 #verbosity level
+runtime.OPT.level = 3
+
+
 runtime.VERBOSE.level = 3
 #timer level
 runtime.TIMER.level = 3
@@ -18,19 +23,9 @@ runtime.CUDA_ENABLED.flag = True
 
 
 
-import mpi
-import domain
-import potential
-import state
-import numpy as np
-import method
-import data
-import gpucuda
 
-import os
-import simulation
-import halo
-import kernel
+import numpy as np
+
 
 
 if __name__ == '__main__':
@@ -59,28 +54,26 @@ if __name__ == '__main__':
     writing = False
 
 
-    t=0.0001*24
-    #t=0.0024
-    #t=0.0174
-    t=.1
+    t=.01
     dt=0.0001
 
 
     if test_1000:
         # n=25 reasonable size
-        n = 10
+        n = 100
         N = n**3
         # n=860
-        rho = 1.
+        rho = 0.05
         mu = 1.0
-        nsig = 5.0
+        nsig = 1.0
         
         # Initialise basic domain
         test_domain = domain.BaseDomainHalo()
 
         # Initialise LJ potential
-        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0)    
-        
+        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0, rc=7.5)
+        #test_potential = potential.TestPotential2(sigma=1.0,epsilon=1.0, rc=7.5)
+
         # print kernel.analyse(test_potential.kernel, [])
 
 
@@ -178,8 +171,8 @@ if __name__ == '__main__':
         energyfn = None
     
 
-    test_vaf_method = method.VelocityAutoCorrelation(state = sim1.state)
-    test_gr_method = method.RadialDistributionPeriodicNVE(state = sim1.state, rsteps = 200)
+    #test_vaf_method = method.VelocityAutoCorrelation(state = sim1.state)
+    #test_gr_method = method.RadialDistributionPeriodicNVE(state = sim1.state, rsteps = 200)
 
     per_printer = method.PercentagePrinter(dt,t,10)
 
@@ -200,6 +193,8 @@ if __name__ == '__main__':
     test_integrator = method.VelocityVerlet(simulation = sim1, schedule=schedule)
     # test_integrator = method.VelocityVerletBox(state = sim1.state, schedule=schedule)
 
+    
+
 
     ###########################################################
 
@@ -211,11 +206,12 @@ if __name__ == '__main__':
 
     sim1.timer.time("Total time in forces update.")
     sim1.cpu_forces_timer.time("Total time cpu forces update.")
-    if gpucuda.INIT_STATUS():
-        sim1.gpu_forces_timer.time("Total time gpu forces update.")
     ###########################################################
     # sim1.state.swaptimer.time("state time to swap arrays")
-    
+
+    pio.pprint("LoopTimer resolution: ", opt.get_timer_accuracy(), "s")
+    pio.pprint("Recorded forces cputime from looping ", sim1._forces_update_lib.loop_timer.cpu_time)
+
 
     #If logging was enabled, plot data.
     if (logging):
@@ -227,7 +223,7 @@ if __name__ == '__main__':
     if mpi.MPI_HANDLE.rank ==0:
         try:
 
-            a=input("PRESS ENTER TO CONTINUE.\n")
+            #a=input("PRESS ENTER TO CONTINUE.\n")
             pass
         except:
             pass

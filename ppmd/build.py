@@ -5,13 +5,14 @@ import os
 import hashlib
 import subprocess
 import re
+import pio
 import runtime
 import mpi
 
 
-################################################################################################################
+###############################################################################
 # COMPILERS START
-################################################################################################################
+###############################################################################
 
 
 class Compiler(object):
@@ -24,12 +25,16 @@ class Compiler(object):
     :arg list l_flags: List of link flags as strings.
     :arg list opt_flags: List of optimisation flags.
     :arg list dbg_flags: List of runtime.DEBUG flags as strings.
-    :arg list compile_flag: List of compile flag as single string (eg ['-c'] for gcc).
-    :arg list shared_lib_flag: List of flags as strings to link as shared library.
+    :arg list compile_flag: List of compile flag as single string (eg ['-c']
+    for gcc).
+    :arg list shared_lib_flag: List of flags as strings to link as shared
+    library.
     :arg string restrict_keyword: keyword to use for non aliased pointers
     """
 
-    def __init__(self, name, binary, c_flags, l_flags, opt_flags, dbg_flags, compile_flag, shared_lib_flag, restrict_keyword=''):
+    def __init__(self, name, binary, c_flags, l_flags, opt_flags, dbg_flags,
+                 compile_flag, shared_lib_flag, restrict_keyword=''):
+
         self._name = name
         self._binary = binary
         self._cflags = c_flags
@@ -88,8 +93,8 @@ class Compiler(object):
 
 
 GCC = Compiler(['GCC'],
-               ['gcc'],
-               ['-fPIC', '-std=c99'],
+               ['g++'],
+               ['-fPIC', '-std=c++0x'],
                ['-lm'],
                ['-O3', '-march=native', '-m64'],
                ['-g'],
@@ -99,8 +104,8 @@ GCC = Compiler(['GCC'],
 
 # Define system gcc version as OpenMP Compiler.
 GCC_OpenMP = Compiler(['GCC'],
-                      ['gcc'],
-                      ['-fopenmp', '-fPIC', '-std=c99'],
+                      ['g++'],
+                      ['-fopenmp', '-fPIC', '-std=c++0x'],
                       ['-lgomp', '-lrt', '-Wall'],
                       ['-O3', '-march=native', '-m64'],
                       ['-g'],
@@ -112,9 +117,9 @@ GCC_OpenMP = Compiler(['GCC'],
 # Define system icc version as Compiler.
 ICC = Compiler(['ICC'],
                ['icc'],
-               ['-fpic', '-std=c99'],
+               ['-fpic', '-std=c++0x'],
                ['-lm'],
-               ['-O3', '-xHost', '-restrict', '-m64'],
+               ['-O3', '-xHost', '-restrict', '-m64', '-opt-report=4'],
                ['-g'],
                ['-c'],
                ['-shared'],
@@ -123,9 +128,9 @@ ICC = Compiler(['ICC'],
 # Define system icc version as OpenMP Compiler.
 ICC_OpenMP = Compiler(['ICC'],
                       ['icc'],
-                      ['-fpic', '-openmp', '-std=c99'],
+                      ['-fpic', '-openmp', '-std=c++0x'],
                       ['-openmp', '-lgomp', '-lpthread', '-lc', '-lrt'],
-                      ['-O3', '-xHost', '-restrict', '-m64'],
+                      ['-O3', '-xHost', '-restrict', '-m64', '-opt-report=4'],
                       ['-g'],
                       ['-c'],
                       ['-shared'],
@@ -145,38 +150,16 @@ else:
     TMPCC_OpenMP = GCC_OpenMP
 
 
-################################################################################################################
-# OPENMP TOOLS START
-################################################################################################################
 
-def replace_dict(code, new_dict):
-    for x in new_dict.items():
-        regex = '(?<=[\W])(' + x[0] + ')(?=[\W])'
-        code = re.sub(regex, str(x[1]), code)
-    return code
-
-
-def replace(code, old, new):
-    old = old.replace('[', '\[')
-    old = old.replace(']', '\]')
-
-    regex = '(?<=[\W])(' + old + ')(?=[\W])'
-
-    code = re.sub(regex, str(new), code)
-
-    return code
-
-
-# OpenMP Reduction definitions
-omp_operator_init_values = {'+': '0', '-': '0', '*': '1', '&': '~0', '|': '0', '^': '0', '&&': '1', '||': '0'}
-
-
-################################################################################################################
+###############################################################################
 # AUTOCODE TOOLS START
-################################################################################################################
+###############################################################################
 
 
-def load_library_exception(kernel_name='None supplied', unique_name='None supplied', looping_type='None supplied'):
+def load_library_exception(kernel_name='None supplied',
+                           unique_name='None supplied',
+                           looping_type='None supplied'):
+
     """
     Attempts to create useful error messages for code generation.
     
@@ -226,25 +209,26 @@ def load_library_exception(kernel_name='None supplied', unique_name='None suppli
     print "Unique name", unique_name, "Rank", mpi.MPI_HANDLE.rank
 
     raise RuntimeError("\n"
-                       "###################################################### \n"
+                       "################################################### \n"
                        "\t \t \t ERROR \n"
-                       "###################################################### \n"
+                       "################################################### \n"
                        "kernel name: " + str(kernel_name) + "\n"
-                       "------------------------------------------------------ \n"
+                       "--------------------------------------------------- \n"
                        "looping class: " + str(looping_type) + "\n"
-                       "------------------------------------------------------ \n"
+                       "--------------------------------------------------- \n"
                        "Compile/link error message: \n \n" +
                        str(err_msg) + "\n"
-                       "------------------------------------------------------ \n"
+                       "--------------------------------------------------- \n"
                        "Error location attempt: \n \n" +
                        str(err_code) + "\n \n"
-                       "###################################################### \n"
+                       "################################################### \n"
                        )
 
 
 def loop_unroll(str_start, i, j, step, str_end=None, key=None):
     """
-    Function to create unrolled loops in python source. Potentialy add auto padding here?
+    Function to create unrolled loops in python source.
+    Potentialy add auto padding here?
     
     :arg str str_start: Starting string.
     :arg int i: Start index.
@@ -265,220 +249,20 @@ def loop_unroll(str_start, i, j, step, str_end=None, key=None):
     return _s
 
 
-################################################################################################################
-# GENERIC TOOL CHAIN LOOPING
-################################################################################################################
 
 
-class GenericToolChain(object):
-    def _argnames(self):
-        """Comma separated string of argument name declarations.
-
-        This string of argument names is used in the declaration of 
-        the method which executes the pairloop over the grid. 
-        If, for example, the pairloop gets passed two particle_dats, 
-        then the result will be ``double** arg_000,double** arg_001`.`
-        """
-
-        #self._argtypes = []
-
-        argnames = ''
-        if self._kernel.static_args is not None:
-            self._static_arg_order = []
-
-            for i, dat in enumerate(self._kernel.static_args.items()):
-                argnames += 'const ' + host.ctypes_map[dat[1]] + ' ' + dat[0] + ','
-                self._static_arg_order.append(dat[0])
-
-
-        for i, dat in enumerate(self._particle_dat_dict.items()):
-            if type(dat[1]) is not tuple:
-                argnames += host.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
-            else:
-                argnames += host.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
-
-
-        return argnames[:-1]
-
-    def _loc_argnames(self):
-        """Comma separated string of local argument names.
-        """
-        argnames = ''
-        for i, dat in enumerate(self._particle_dat_dict.items()):
-            # dat[0] is always the name, even with access descriptiors.
-            argnames += dat[0] + ','
-        return argnames[:-1]
-
-    def _unique_name_calc(self):
-        """Return name which can be used to identify the pair loop
-        in a unique way.
-        """
-        return self._kernel.name + '_' + self.hexdigest()
-
-    def hexdigest(self):
-        """Create unique hex digest"""
-        m = hashlib.md5()
-        m.update(self._kernel.code + self._code)
-        if self._kernel.headers is not None:
-            for header in self._kernel.headers:
-                m.update(header)
-        return m.hexdigest()
-
-    def _generate_header_source(self):
-        """Generate the source code of the header file.
-
-        Returns the source code for the header file.
-        """
-        code = '''
-        #ifndef %(UNIQUENAME)s_H
-        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #include "%(LIB_DIR)s/generic.h"
-        %(INCLUDED_HEADERS)s
-
-        void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
-
-        #endif
-        '''
-
-        d = {'UNIQUENAME': self._unique_name,
-             'INCLUDED_HEADERS': self._included_headers(),
-             'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
-        return code % d
-
-    def _included_headers(self):
-        """Return names of included header files."""
-        s = ''
-        if self._kernel.headers is not None:
-            s += '\n'
-            for x in self._kernel.headers:
-                s += '#include \"' + x + '\" \n'
-        return s
-
-    def _create_library(self):
-        """
-        Create a shared library from the source code.
-        """
-
-        filename_base = os.path.join(self._temp_dir, self._unique_name)
-
-        header_filename = filename_base + '.h'
-        impl_filename = filename_base + '.c'
-        with open(header_filename, 'w') as f:
-            print >> f, self._generate_header_source()
-        with open(impl_filename, 'w') as f:
-            print >> f, self._generate_impl_source()
-
-        object_filename = filename_base + '.o'
-        library_filename = filename_base + '.so'
-
-        if runtime.VERBOSE.level > 2:
-            print "Building", library_filename
-
-        cflags = []
-        cflags += self._cc.c_flags
-
-        if runtime.DEBUG.level > 0:
-            cflags += self._cc.dbg_flags
-        else:
-            cflags += self._cc.opt_flags
-
-
-        cc = self._cc.binary
-        ld = self._cc.binary
-        lflags = self._cc.l_flags
-
-        compile_cmd = cc + self._cc.compile_flag + cflags + ['-I', self._temp_dir] + ['-o', object_filename,
-                                                                                      impl_filename]
-
-        link_cmd = ld + self._cc.shared_lib_flag + lflags + ['-o', library_filename, object_filename]
-        stdout_filename = filename_base + '.log'
-        stderr_filename = filename_base + '.err'
-        with open(stdout_filename, 'w') as stdout:
-            with open(stderr_filename, 'w') as stderr:
-                stdout.write('Compilation command:\n')
-                stdout.write(' '.join(compile_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(compile_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate()
-                stdout.write('Link command:\n')
-                stdout.write(' '.join(link_cmd))
-                stdout.write('\n\n')
-                p = subprocess.Popen(link_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                p.communicate()
-
-
-    def _generate_impl_source(self):
-        """Generate the source code the actual implementation.
-        """
-
-        d = {'UNIQUENAME': self._unique_name,
-             'KERNEL': self._kernel_code,
-             'ARGUMENTS': self._argnames(),
-             'LOC_ARGUMENTS': self._loc_argnames(),
-             'KERNEL_NAME': self._kernel.name,
-             'KERNEL_ARGUMENT_DECL': self._kernel_argument_declarations()}
-
-        return self._code % d
-
-    def execute(self, n=None, dat_dict=None, static_args=None):
-
-        """Allow alternative pointers"""
-        if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
-
-        '''Currently assume n is always needed'''
-        if n is not None:
-            _N = n
-        else:
-            _N = self._N()
-
-        args = [ctypes.c_int(_N)]
-
-        if self._types_map is not None:
-            args.append(self._types_map.ctypes_data)
-
-        '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
-
-        '''Add static arguments to launch command'''
-        if self._kernel.static_args is not None:
-            assert static_args is not None, "Error: static arguments not passed to loop."
-            for dat in static_args.values():
-                args.append(dat)
-
-        '''Add pointer arguments to launch command'''
-        for dat_orig in self._particle_dat_dict.values():
-            if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
-            else:
-                args.append(dat_orig.ctypes_data)
-
-        '''Execute the kernel over all particle pairs.'''
-        method = self._lib[self._kernel.name + '_wrapper']
-        method(*args)
-
-        '''after wards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_post(dat_orig[1])
-
-
-################################################################################################################
+###############################################################################
 # TOOLCHAIN TO COMPILE KERNEL AS LIBRARY
-################################################################################################################
+###############################################################################
 
-class SharedLib(GenericToolChain):
+class SharedLib(object):
     """
     Generic base class to loop over all particles once.
     
     :arg int n: Number of elements to loop over.
     :arg kernel kernel:  Kernel to apply at each element.
-    :arg dict particle_dat_dict: Dictonary storing map between kernel variables and state variables.
+    :arg dict particle_dat_dict: Dictonary storing map between kernel variables
+    and state variables.
     :arg bool runtime.DEBUG: Flag to enable runtime.DEBUG flags.
     """
 
@@ -486,13 +270,17 @@ class SharedLib(GenericToolChain):
 
         # Timers
         self.creation_timer = runtime.Timer(runtime.BUILD_TIMER, 2, start=True)
-        """Timer that times the creation of the shared library if runtime.BUILD_TIMER.level > 2"""
+        """Timer that times the creation of the shared library if
+        runtime.BUILD_TIMER.level > 2"""
 
         self.execute_timer = runtime.Timer(runtime.BUILD_TIMER, 2, start=False)
-        """Timer that times the execution time of the shared library if runtime.BUILD_TIMER.level > 2"""
+        """Timer that times the execution time of the shared library if
+        runtime.BUILD_TIMER.level > 2"""
 
-        self.execute_overhead_timer = runtime.Timer(runtime.BUILD_TIMER, 2, start=False)
-        """Times the overhead required before the shared library is ran if runtime.BUILD_TIMER.level > 2. """
+        self.execute_overhead_timer = runtime.Timer(runtime.BUILD_TIMER, 2,
+                                                    start=False)
+        """Times the overhead required before the shared library is ran if
+        runtime.BUILD_TIMER.level > 2. """
 
         self._omp = openmp
 
@@ -507,22 +295,14 @@ class SharedLib(GenericToolChain):
 
         self._code_init()
 
-        self._unique_name = self._unique_name_calc()
+        self._lib = simple_lib_creator(self._generate_header_source(),
+                                       self._generate_impl_source(),
+                                       self._kernel.name,
+                                       CC=self._cc)
 
-        self._library_filename = self._unique_name + '.so'
 
-
-
-        if not os.path.exists(os.path.join(self._temp_dir, self._library_filename)):
-            if mpi.MPI_HANDLE.rank == 0:
-                self._create_library()
-            mpi.MPI_HANDLE.barrier()
-        try:
-            self._lib = np.ctypeslib.load_library(self._library_filename, self._temp_dir)
-        except:
-            load_library_exception(self._kernel.name, self._unique_name, type(self))
-
-        self.creation_timer.stop("SharedLib creation timer " + str(self._kernel.name))
+        self.creation_timer.stop("SharedLib creation timer " +
+                                 str(self._kernel.name))
 
     def _compiler_set(self):
         if self._omp is False:
@@ -554,12 +334,15 @@ class SharedLib(GenericToolChain):
             loc_argname = argname  # dat[0]
 
             if issubclass(type(dat[1]), host.Array):
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+                s += space + host.ctypes_map[dat[1].dtype] + ' *' + \
+                     loc_argname + ' = ' + argname + ';\n'
 
             if issubclass(type(dat[1]), host.Matrix):
                 ncomp = dat[1].ncol
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
-                s += space + loc_argname + ' = ' + argname + '+' + str(ncomp) + '*i;\n'
+                s += space + host.ctypes_map[dat[1].dtype] + ' *' + \
+                     loc_argname + ';\n'
+                s += space + loc_argname + ' = ' + argname + '+' + \
+                     str(ncomp) + '*i;\n'
 
         return s
 
@@ -569,18 +352,14 @@ class SharedLib(GenericToolChain):
         Returns the source code for the header file.
         """
         code = '''
-        #ifndef %(UNIQUENAME)s_H
-        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
-        void %(KERNEL_NAME)s_wrapper(%(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(%(ARGUMENTS)s);
 
-        #endif
         '''
 
-        d = {'UNIQUENAME': self._unique_name,
-             'INCLUDED_HEADERS': self._included_headers(),
+        d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
              'LIB_DIR': runtime.LIB_DIR.dir}
@@ -603,7 +382,8 @@ class SharedLib(GenericToolChain):
 
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:
-            assert static_args is not None, "Error: static arguments not passed to loop."
+            assert static_args is not None, "Error: static arguments not " \
+                                            "passed to loop."
             for dat in static_args.values():
                 args.append(dat)
 
@@ -642,14 +422,10 @@ class SharedLib(GenericToolChain):
 
         return return_code
 
-
-
-
     def _code_init(self):
         self._kernel_code = self._kernel.code
 
         self._code = '''
-        #include \"%(UNIQUENAME)s.h\"
 
         void %(KERNEL_NAME)s_wrapper(%(ARGUMENTS)s) {
           
@@ -681,8 +457,218 @@ class SharedLib(GenericToolChain):
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
             if type(dat[1]) is not tuple:
-                argnames += host.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
+                argnames += host.ctypes_map[dat[1].dtype] + ' * ' + \
+                            self._cc.restrict_keyword + ' ' + dat[0] + ','
             else:
-                argnames += host.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + ','
+                argnames += host.ctypes_map[dat[1][0].dtype] + ' * ' + \
+                            self._cc.restrict_keyword + ' ' + dat[0] + ','
 
         return argnames[:-1]
+    
+    def _loc_argnames(self):
+        """Comma separated string of local argument names.
+        """
+        argnames = ''
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+            # dat[0] is always the name, even with access descriptiors.
+            argnames += dat[0] + ','
+        return argnames[:-1]
+
+    def _included_headers(self):
+        """Return names of included header files."""
+        s = ''
+        if self._kernel.headers is not None:
+            s += '\n'
+            for x in self._kernel.headers:
+                s += '#include \"' + x + '\" \n'
+        return s
+
+    def _generate_impl_source(self):
+        """Generate the source code the actual implementation.
+        """
+
+        d = {'KERNEL': self._kernel_code,
+             'ARGUMENTS': self._argnames(),
+             'LOC_ARGUMENTS': self._loc_argnames(),
+             'KERNEL_NAME': self._kernel.name,
+             'KERNEL_ARGUMENT_DECL': self._kernel_argument_declarations()}
+
+        return self._code % d
+
+
+
+
+####################################
+# Build Lib
+####################################
+
+
+def md5(string):
+    """Create unique hex digest"""
+    m = hashlib.md5()
+    m.update(string)
+    return m.hexdigest()
+
+def source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR.dir):
+    _filename = 'HOST_' + str(name)
+    _filename += '_' + md5(_filename + str(header_code) + str(src_code) +
+                           str(name))
+
+    _fh = open(os.path.join(dst_dir, _filename + extensions[0]), 'w')
+    _fh.write('''
+        #ifndef %(UNIQUENAME)s_H
+        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+        ''' % {'UNIQUENAME':_filename})
+
+    _fh.write(str(header_code))
+
+    _fh.write('''
+        #endif
+        ''' % {'UNIQUENAME':_filename})
+
+    _fh.close()
+
+    _fh = open(os.path.join(dst_dir, _filename + extensions[1]), 'w')
+    _fh.write('#include <' + _filename + extensions[0] + '>')
+    _fh.write(str(src_code))
+    _fh.close()
+
+    return _filename, dst_dir
+
+def load(filename):
+    try:
+        return ctypes.cdll.LoadLibrary(str(filename))
+    except:
+        print "build:load error. Could not load following library,", \
+            str(filename)
+        quit()
+
+def check_file_existance(abs_path=None):
+    assert abs_path is not None, "build:check_file_existance error. " \
+                                 "No absolute path passed."
+    return os.path.exists(abs_path)
+
+def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR.dir, CC=TMPCC):
+    _filename = 'HOST_' + str(name)
+    _filename += '_' + md5(_filename + str(header_code) + str(src_code) +
+                           str(name))
+    _lib_filename = os.path.join(dst_dir, _filename + '.so')
+
+    if not check_file_existance(_lib_filename):
+        if not os.path.exists(dst_dir) and mpi.MPI_HANDLE.rank == 0:
+            os.mkdir(dst_dir)
+
+        source_write(header_code, src_code, name, extensions=extensions, dst_dir=runtime.BUILD_DIR.dir)
+        build_lib(_filename, extensions=extensions, CC=CC, hash=False)
+
+    return load(_lib_filename)
+
+def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
+              CC=TMPCC, dst_dir=runtime.BUILD_DIR.dir, hash=True):
+
+    with open(source_dir + lib + extensions[1], "r") as fh:
+        _code = fh.read()
+        fh.close()
+    with open(source_dir + lib + extensions[0], "r") as fh:
+        _code += fh.read()
+        fh.close()
+
+    if hash:
+        _m = hashlib.md5()
+        _m.update(_code)
+        _m = '_' + _m.hexdigest()
+    else:
+        _m = ''
+
+    _lib_filename = os.path.join(dst_dir, lib + str(_m) + '.so')
+
+    if mpi.MPI_HANDLE.rank == 0:
+        if not os.path.exists(_lib_filename):
+
+            _lib_src_filename = source_dir + lib + extensions[1]
+
+            _c_cmd = CC.binary + [_lib_src_filename] + ['-o'] + \
+                     [_lib_filename] + CC.c_flags  + CC.l_flags + \
+                     ['-I' + str(runtime.LIB_DIR.dir)] + ['-I' + str(source_dir)]
+            if runtime.DEBUG.level > 0:
+                _c_cmd += CC.dbg_flags
+            if runtime.OPT.level > 0:
+                _c_cmd += CC.opt_flags
+
+            _c_cmd += CC.shared_lib_flag
+
+            if runtime.VERBOSE.level > 2:
+                print "Building", _lib_filename
+
+            stdout_filename = dst_dir + lib + str(_m) + '.log'
+            stderr_filename = dst_dir + lib + str(_m) + '.err'
+            try:
+                with open(stdout_filename, 'w') as stdout:
+                    with open(stderr_filename, 'w') as stderr:
+                        stdout.write('Compilation command:\n')
+                        stdout.write(' '.join(_c_cmd))
+                        stdout.write('\n\n')
+                        p = subprocess.Popen(_c_cmd,
+                                             stdout=stdout,
+                                             stderr=stderr)
+                        p.communicate()
+            except:
+                if runtime.ERROR_LEVEL.level > 2:
+                    raise RuntimeError('build error: library not built.')
+                elif runtime.VERBOSE.level > 2:
+                    print "build error: Shared library not built:", lib
+
+    mpi.MPI_HANDLE.barrier()
+    if not os.path.exists(_lib_filename):
+        pio.pprint("Critical build Error: Library not built, " +
+                   str(lib) + ", rank:", mpi.MPI_HANDLE.rank)
+
+        quit()
+
+    return _lib_filename
+
+
+
+###############################################################################
+# block of code class
+###############################################################################
+
+class Code(object):
+    def __init__(self, init=''):
+        self._c = str(init)
+
+    @property
+    def string(self):
+        return self._c
+
+    def add_line(self, line=''):
+        self._c += '\n' + str(line)
+
+    def add(self, code=''):
+        self._c += str(code)
+
+    def __iadd__(self, other):
+        self.add(code=str(other))
+        return self
+
+    def __str__(self):
+        return str(self._c)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

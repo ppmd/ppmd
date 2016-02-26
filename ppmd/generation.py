@@ -192,28 +192,7 @@ def generate_reduction_final_stage(symbol_external, symbol_internal, dat, access
     :return: string for initialisation code.
     """
 
-    _space = ' ' * 14
-    if issubclass(type(dat), host.Array):
-        # Case for host.Array and data.ScalarArray.
-        if not access_type.incremented:
-            return ''
-
-        else:
-
-            _s = _space + '#pragma omp critical \n' + _space + '{ \n'
-
-            _s += 2 * _space + 'for(int _rix = 0; _rix < ' + str(dat.ncomp) + '; _rix++){ \n'
-
-            _s += 3 * _space + symbol_external + '[_rix] += ' + symbol_internal + '[_rix]; \n'
-
-            _s += 2 * _space + '} \n'
-
-            _s += _space + '} \n'
-
-
-        return _s + '\n'
-    else:
-        return ''
+    return ''
 
 
 

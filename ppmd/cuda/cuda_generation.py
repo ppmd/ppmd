@@ -1,6 +1,7 @@
-import access
-import data
-import host
+import ppmd.access as access
+import ppmd.host as host
+import cuda_data
+import cuda_base
 
 def get_first_index_symbol():
     return '_ix'
@@ -17,6 +18,20 @@ def get_variable_prefix(access_mode):
     else:
         return ' '
 
+def create_host_function_argument_decleration(symbol=None, dat=None, mode=None, cc=None):
+
+    assert symbol is not None, "No symbol passed"
+    assert dat is not None, "No dat passed"
+    assert mode is not None, "No mode"
+    assert cc is not None, "No compiler"
+
+    if not mode.write:
+        const_str = 'const '
+    else:
+        const_str = ''
+
+    return const_str + host.ctypes_map[dat.dtype] + ' * ' + cc.restrict_keyword + ' ' + symbol
+
 
 def create_local_reduction_vars_arrays(symbol_external, symbol_internal, dat, access_type):
     """
@@ -28,27 +43,41 @@ def create_local_reduction_vars_arrays(symbol_external, symbol_internal, dat, ac
     :return:
     """
 
+
     _space = ' ' * 14
-    if issubclass(type(dat), host.Array):
-        # Case for host.Array and data.ScalarArray.
+    if issubclass(type(dat), cuda_base.Array):
+        # Case for cuda_base.Array and cuda_data.ScalarArray.
         if not access_type.incremented:
             _s = _space + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + ' = ' + symbol_external + ';\n'
 
         else:
             if access_type is access.INC:
-                _s = _space + host.ctypes_map[dat.dtype] + ' ' + symbol_internal + '[' + str(dat.ncomp) + '];\n'
-                _s += _space + 'memcpy( &'+ symbol_internal + '[0],' + '&'+ symbol_external + '[0],' + str(dat.ncomp) + ' * sizeof(' + host.ctypes_map[dat.dtype] + ')) ;\n'
+                #_s = _space + host.ctypes_map[dat.dtype] + ' ' + symbol_internal + '[' + str(dat.ncomp) + '];\n'
+                #_s += _space + 'memcpy( &'+ symbol_internal + '[0],' + '&'+ symbol_external + '[0],' + str(dat.ncomp) + ' * sizeof(' + host.ctypes_map[dat.dtype] + ')) ;\n'
+
+                _s = _space + host.ctypes_map[dat.dtype] + ' ' + symbol_internal + '[' + str(dat.ncomp) + '] = {'
+
+                for cx in range(dat.ncomp - 1):
+                    _s += symbol_external + '[' + str(cx) + '], '
+
+                _s += symbol_external + '[' + str(dat.ncomp - 1) + ']}; \n'
+
+
+
+
+
 
             elif access_type is access.INC0:
-                _s = _space + host.ctypes_map[dat.dtype] + symbol_internal + '[' + str(dat.ncomp) + '] = { 0 };\n'
+                _s = _space + host.ctypes_map[dat.dtype] + ' ' + symbol_internal + '[' + str(dat.ncomp) + '] = { 0 };\n'
 
             else:
 
                 raise Exception("Generate mapping failure: Incremental access_type not found.")
 
         return _s + '\n'
+
     else:
-        return ''
+        return '\n'
 
 
 def create_pre_loop_map_matrices(pair=True, symbol_external=None, symbol_internal=None, dat=None, access_type=None):
@@ -75,7 +104,7 @@ def create_pre_loop_map_matrices(pair=True, symbol_external=None, symbol_interna
         _n = 1
 
 
-    if type(dat) is data.TypedDat:
+    if type(dat) is cuda_data.TypedDat:
         #case for typed dat
         _s = '\n'
         _s += _space + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '[' + str(_n) +'];\n'
@@ -83,12 +112,12 @@ def create_pre_loop_map_matrices(pair=True, symbol_external=None, symbol_interna
 
         return _s
 
-    elif issubclass(type(dat), host.Matrix):
-        # Case for host.Array and data.ScalarArray.
+    elif issubclass(type(dat), cuda_base.Matrix):
+        # Case for cuda_base.Array and cuda_data.ScalarArray.
         if pair is True:
             _s = _space + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '[2]; \n'
         else:
-            _s = _space + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '; \n'
+            _s = _space + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + ' * __restrict__' + symbol_internal + '; \n'
 
         if not access_type.incremented:
 
@@ -101,9 +130,14 @@ def create_pre_loop_map_matrices(pair=True, symbol_external=None, symbol_interna
         else:
             # Create a local copy/new row vector for the row in the particle dat.
             if access_type is access.INC:
-                _s += _space + host.ctypes_map[dat.dtype] + ' _tmp_' + symbol_internal + '[' + str(dat.ncomp) + '];\n'
 
-                _s += _space + 'memcpy( &_tmp_'+ symbol_internal + '[0],' + '&'+ symbol_external + '[' + '_ix *' + str(dat.ncomp) + '],' + str(dat.ncomp) + ' * sizeof(' + host.ctypes_map[dat.dtype] + ')) ;\n'
+                _s = _space + host.ctypes_map[dat.dtype] + ' _tmp_' + symbol_internal + '[' + str(dat.ncomp) + '] = {'
+
+                for cx in range(dat.ncomp - 1):
+                    _s += symbol_external + '[_ix*' + str(dat.ncomp) + '+' + str(cx) + '], '
+
+                _s += symbol_external + '[_ix*' + str(dat.ncomp) + '+' + str(dat.ncomp - 1) + ']}; \n'
+
 
             elif access_type is access.INC0:
                 _s += _space + host.ctypes_map[dat.dtype] + ' _tmp_' + symbol_internal + '[' + str(dat.ncomp) + '] = { 0 };\n'
@@ -146,7 +180,7 @@ def generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None
     else:
         _n = 1
 
-    if type(dat) is data.TypedDat:
+    if type(dat) is cuda_data.TypedDat:
         #case for typed dat
         _s = ''
         if pair:
@@ -154,11 +188,17 @@ def generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None
 
         return _s
 
-    elif issubclass(type(dat), host.Array):
-        return '\n'
+    elif issubclass(type(dat), cuda_base.Array):
 
-    elif issubclass(type(dat), host.Matrix):
-        # Case for host.Matrix and data.ParticleDat.
+        if not access_type.incremented:
+            _s = '\n' + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + '* __restrict__ ' + symbol_internal + ' = ' + symbol_external + ';'
+        else:
+            _s = ''
+
+        return _s + '\n'
+
+    elif issubclass(type(dat), cuda_base.Matrix):
+        # Case for cuda_base.Matrix and cuda_data.ParticleDat.
 
         if dat in n3_disable_dats:
             # Point the second element at a null_array that should be removed by compiler optimiser.
@@ -173,6 +213,11 @@ def generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None
             _s = '\n'
             if pair:
                 _s += _space + symbol_internal + '[1] = ' + symbol_external + '+' + str(_ncomp) + '* _iy;\n'
+
+            else:
+                _s += get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + '* __restrict__ ' + symbol_internal + ' = &' + symbol_external + '[' + str(_ncomp) + '*' + get_first_index_symbol() + ']' + '; \n'
+
+
 
         return _s
 
@@ -200,13 +245,16 @@ def create_post_loop_map_matrices(pair=True, symbol_external=None, symbol_intern
     _space = ' ' * 14
 
 
-    if (type(dat) is data.ParticleDat) and access_type.write:
-        # Case for host.Array and data.ScalarArray.
+    if (type(dat) is cuda_data.ParticleDat) and access_type.write:
+        # Case for cuda_base.Array and cuda_data.ScalarArray.
         if access_type.incremented:
             _s = '\n'
             _s += _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
             _s += 2 * _space + symbol_external + '[_ix*' + str(dat.ncomp) + '+_iz] = ' + ' _tmp_' + symbol_internal + '[_iz]; \n'
             _s += _space + '}\n'
+
+            # slooooooow
+            #_s += _space + 'memcpy( &' + symbol_external + '[_ix * ' + str(dat.ncomp) + '], _tmp_' + symbol_internal + ', sizeof(' + host.ctypes_map[dat.dtype] + ')*' + str(dat.ncomp) + '); \n'
 
             return _s
         else:
@@ -222,26 +270,43 @@ def generate_reduction_final_stage(symbol_external, symbol_internal, dat, access
 
     :arg string symbol_external: variable name for shared library
     :arg string symbol_internal: variable name for kernel.
-    :arg data dat: :class:`~data.ParticleDat` or :class:`~data.ScalarArray` data object in question.
+    :arg cuda_data.dat: :class:`~cuda_data.ParticleDat` or :class:`~cuda_data.ScalarArray` cuda_data.object in question.
     :arg access access_type: Access being used.
 
     :return: string for initialisation code.
     """
 
     _space = ' ' * 14
-    if issubclass(type(dat), host.Array) and access_type.incremented:
-        # Case for host.Array and data.ScalarArray.
+    if issubclass(type(dat), cuda_base.Array) and access_type.incremented:
+        # Case for cuda_base.Array and cuda_data.ScalarArray.
         # reduce on the warp.
         _s = '\n'
+
         _s += _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
         _s += 2 * _space + symbol_internal + '[_iz] = warpReduceSumDouble(' + symbol_internal + '[_iz]); \n'
         _s += _space + '}\n'
 
-        # reduce into the global dat.
-        _s += _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
-        _s += 2 * _space + 'if (  (int)(threadIdx.x & (warpSize - 1)) == 0){ \n'
-        _s += 3 * _space +'atomicAddDouble(&' + symbol_external + '[_iz], ' + symbol_internal + '[_iz]); \n'
+
+
+        _s += _space + '__shared__ ' + host.ctypes_map[dat.dtype] + ' _d_red_' + symbol_internal + '[' + str(dat.ncomp) + ']; \n'
+        _s += _space + 'if (  (int)(threadIdx.x & (warpSize - 1)) == 0){ \n'
+        _s += 2 * _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
+        _s += 3 * _space +'_d_red_' + symbol_internal + '[_iz] = 0; \n'
+        _s += _space + '}} __syncthreads(); \n'
+
+
+
+        # reduce into the shared dat.
+        _s += _space + 'if (  (int)(threadIdx.x & (warpSize - 1)) == 0){ \n'
+        _s += 2 * _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
+        _s += 3 * _space +'atomicAddDouble(&_d_red_' + symbol_internal + '[_iz], ' + symbol_internal + '[_iz]); \n'
+        _s += _space + '}} __syncthreads(); \n'
+
+        _s += _space + 'if (threadIdx.x == 0){ \n'
+        _s += 2 * _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
+        _s += 3 * _space +'atomicAddDouble(&' + symbol_external + '[_iz], _d_red_' + symbol_internal + '[_iz]); \n'
         _s += _space + '}} \n'
+
 
         return _s + '\n'
     else:

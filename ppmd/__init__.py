@@ -6,12 +6,10 @@ __all__ = [ 'access',
             'cell',
             'data',
             'domain',
-            'gpucuda',
             'halo',
             'host',
             'kernel',
             'loop',
-            'main',
             'method',
             'mpi',
             'pairloop',
@@ -19,28 +17,32 @@ __all__ = [ 'access',
             'potential',
             'runtime',
             'simulation',
-            'state']
+            'state',
+            'fio',
+            'cuda',
+            'opt']
 
 
 
 
 
-import host
 import access
 import build
 import cell
 import data
 import domain
-import gpucuda
 import halo
+import host
 import kernel
 import loop
-import main
 import method
 import mpi
 import pairloop
 import pio
+import potential
 import runtime
 import simulation
 import state
-
+import fio
+import cuda
+import opt

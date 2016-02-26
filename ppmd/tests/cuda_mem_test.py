@@ -4,9 +4,7 @@
 import numpy as np
 
 from ppmd.cuda import *
- 
 
-cuda_runtime.cuda_mem_get_info()
 
 d_a1 = cuda_base.Array(np.array(range(10)))
 d_a2 = cuda_base.Array(ncomp=1000)

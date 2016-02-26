@@ -3,9 +3,12 @@
 
     #include "generic.h"
     #include <cuda.h>
+    #include <cuda_runtime.h>
     #include "helper_cuda.h"
-    #include <vector_types.h>
+    #include <builtin_types.h>
     #include <cuda_profiler_api.h>
+    #include <device_functions.h>
+    #include "cuda_counting_types.h"
 
 
     /*
@@ -92,5 +95,42 @@
     }
 
 
+template <typename T>
+struct cuda_Array {
+    T* __restrict__ ptr;
+    int *ncomp;
+};
+
+template <typename T>
+struct cuda_Matrix {
+    T* __restrict__ ptr;
+    int *nrow;
+    int *ncol;
+};
+
+template <typename T>
+struct cuda_ParticleDat {
+    T* __restrict__ ptr;
+    int* nrow;
+    int* ncol;
+    int* npart;
+    int* ncomp;
+};
+
+
+template <typename T>
+struct const_cuda_ParticleDat {
+    const T* __restrict__ ptr;
+    const int* nrow;
+    const int* ncol;
+    const int* npart;
+    const int* ncomp;
+};
+
+
+__device__ bool isnormal(double value)
+{
+	return !(isinf(value) || isnan(value));
+}
 
 #endif

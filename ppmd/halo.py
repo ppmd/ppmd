@@ -26,17 +26,7 @@ class CartesianHalo(object):
 
         self.timer.stop("halo setup time.")
 
-    def _exchange_size_calc(self):
 
-        _args = {
-            'CCC': cell.cell_list.cell_contents_count,
-            'ES': self._exchange_sizes,
-            'CI': self._boundary_cell_groups,
-            'CIL': self._boundary_cell_grouping_lengths,
-            'CCA': self._boundary_groups_contents_array,
-        }
-
-        self._exchange_sizes_lib.execute(dat_dict=_args)
 
     def _halo_setup_prepare(self):
 
@@ -328,6 +318,22 @@ class CartesianHalo(object):
                          cell.cell_list.domain.cell_array[1],
                          cell.cell_list.domain.cell_array[2]]
 
+        # boundary cells to halo lookup
+        self._boundary_halo_lookup = host.Array(ncomp=1, dtype=ctypes.c_int)
+        self._boundary_lookup_lib = None
+
+    def _exchange_size_calc(self):
+
+        _args = {
+            'CCC': cell.cell_list.cell_contents_count,
+            'ES': self._exchange_sizes,
+            'CI': self._boundary_cell_groups,
+            'CIL': self._boundary_cell_grouping_lengths,
+            'CCA': self._boundary_groups_contents_array,
+        }
+
+        self._exchange_sizes_lib.execute(dat_dict=_args)
+
     def check_valid(self):
         """
         Check if current values are still correct.
@@ -340,8 +346,51 @@ class CartesianHalo(object):
             return True
 
 
-    @property
-    def get_boundary_cell_groups(self):
+    def _create_reverse_boundary_lookup(self):
+
+        if self._boundary_halo_lookup.ncomp < self._boundary_cell_groups:
+            self._boundary_halo_lookup.realloc(self._boundary_cell_groups.ncomp)
+
+        if self._boundary_lookup_lib is None:
+            _name = 'boundary_lookup_lib'
+
+            _args = '''const int * %(R)s CCA,
+                       const int * %(R)s CCA_I,
+                       int * %(R)s BHL
+            ''' % {'R': build.TMPCC.restrict_keyword}
+
+            _header = '''
+            #include <generic.h>
+                int %(NAME)s(%(ARGS)s);
+            ''' % {'NAME': _name, 'ARGS':_args}
+
+            _src = '''
+                int %(NAME)s(%(ARGS)s){
+
+                    for (int ih = 0; ih < 26; ih++){
+
+                        const int start = CCA_I[ih];
+                        const int end = CCA_I[ih];
+
+                        for (int ic = start; ic < end; ic++){
+
+                            BHL[ic] = ih;
+
+                        }
+                    }
+
+
+                    return 0;
+                }
+            ''' % {'NAME': _name, 'ARGS':_args}
+
+            self._boundary_lookup_lib = build.simple_lib_creator(_header, _src, _name)
+
+        args = [self._boundary_cell_groups.ctypes_data, self._boundary_groups_start_end_indices.ctypes_data, self._boundary_halo_lookup.ctypes_data]
+
+        self._boundary_lookup_lib['boundary_lookup_lib'](*args)
+
+    def get_boundary_cell_groups(self, reverse_lookup=False):
         """
         Get the local boundary cells to pack for each halo. Formatted as an data.Array. Cells for halo
         0 first followed by cells for halo 1 etc. Also returns an data.Array of 27 elements with the
@@ -350,10 +399,18 @@ class CartesianHalo(object):
         :return: Tuple, array of local cell indices to pack, array of starting points within the first array.
         """
 
+        _trigger = False
         if not self.check_valid():
+            _trigger = True
             self._halo_setup_prepare()
-        return self._boundary_cell_groups, self._boundary_groups_start_end_indices
 
+        if reverse_lookup and(_trigger or self._boundary_halo_lookup is None):
+            self._create_reverse_boundary_lookup()
+
+        if reverse_lookup:
+            return self._boundary_cell_groups, self._boundary_groups_start_end_indices, self._boundary_halo_lookup
+        else:
+            return self._boundary_cell_groups, self._boundary_groups_start_end_indices
 
     @property
     def get_halo_cell_groups(self):

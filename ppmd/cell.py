@@ -53,6 +53,8 @@ class CellList(object):
 
         self.halo_version_id = 0
         """halo version id incremented when halo cell list is updated."""
+        
+
 
         # vars for automatic updating based on a counter
         self._update_set = False
@@ -82,6 +84,7 @@ class CellList(object):
         self._positions = positions
         self._domain = domain
         self._cell_width = cell_width
+        
 
         # partition domain.
         _err = self._domain.set_cell_array_radius(cell_width)
@@ -161,6 +164,7 @@ class CellList(object):
         //needed, may improve halo exchange times
         CCC[val]++;
         CRL[ix] = val;
+        
 
         q[ix] = q[n + val];
         q[n + val] = ix;
@@ -288,7 +292,28 @@ class CellList(object):
                                           static_args=_static_args)
         self._halo_cell_sort_loop = build.SharedLib(_cell_sort_kernel, _cell_sort_dict)
 
-    def sort_halo_cells(self,local_cell_indices_array, cell_contents_recv, npart):
+    def sort_halo_cells(self,local_cell_indices_array, cell_contents_recv, npart, total_size):
+
+        # if the total size is larger than the current array we need to resize.
+
+
+        cell_count = self._domain.cell_array[0] * self._domain.cell_array[1] * self._domain.cell_array[2]
+
+        if total_size + cell_count + 1 > self._cell_list.ncomp:
+            cell_start = self._cell_list[self._cell_list.end]
+            cell_end = self._cell_list.end
+
+            # print cell_count, cell_start, cell_end, self._cell_list.ncomp, total_size
+
+
+            self._cell_list.realloc(total_size + cell_count + 1)
+
+            self._cell_list.dat[self._cell_list.end - cell_count: self._cell_list.end:] = self._cell_list.dat[cell_start:cell_end:]
+
+            self._cell_list.dat[self._cell_list.end] = self._cell_list.end - cell_count
+
+            # cell reverse lookup
+            self._cell_reverse_lookup.realloc(total_size)
 
         if self._halo_cell_sort_loop is None:
             self._setup_halo_sorting_lib()
@@ -309,6 +334,8 @@ class CellList(object):
                                           dat_dict=_cell_sort_dict)
 
         self.halo_version_id += 1
+
+
 
     @property
     def num_particles(self):
@@ -337,6 +364,11 @@ class CellList(object):
         Return the cell width used to setup the cell structure. N.B. cells may be larger than this.
         """
         return self._cell_width
+
+
+
+
+
 
 # default cell list
 cell_list = CellList()
@@ -596,9 +628,236 @@ class NeighbourList(object):
             tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * CA[0] + _h_map[ix][2] * CA[0]* CA[1];
         }
 
+        const double _b0 = B[0];
+        const double _b2 = B[2];
+        const double _b4 = B[4];
+
+        const double _icel0 = 1.0/CEL[0];
+        const double _icel1 = 1.0/CEL[1];
+        const double _icel2 = 1.0/CEL[2];
+
+        const int _ca0 = CA[0];
+        const int _ca1 = CA[1];
+        const int _ca2 = CA[2];
+
+
+
         // loop over particles
         int m = -1;
         for (int ix=0; ix<end_ix; ix++) {
+
+            const double pi0 = P[ix*3];
+            const double pi1 = P[ix*3 + 1];
+            const double pi2 = P[ix*3 + 2];
+
+            const int C0 = (int)((pi0 - _b0)*_icel0);
+            const int C1 = (int)((pi1 - _b2)*_icel1);
+            const int C2 = (int)((pi2 - _b4)*_icel2);
+
+            const int val = (C2*_ca1 + C1)*_ca0 + C0;
+
+            NEIGHBOUR_STARTS[ix] = m + 1;
+
+            for(int k = 0; k < 27; k++){
+
+                int iy = q[n + val + tmp_offset[k]];
+                while (iy > -1) {
+                    if (ix < iy){
+
+                        const double rj0 = P[iy*3]   - pi0;
+                        const double rj1 = P[iy*3+1] - pi1;
+                        const double rj2 = P[iy*3+2] - pi2;
+
+                        if ( (rj0*rj0 + rj1*rj1 + rj2*rj2) <= cutoff ) {
+
+                            m++;
+                            if (m >= max_len){
+                                RC[0] = -1;
+                                return;
+                            }
+
+                            NEIGHBOUR_LIST[m] = iy;
+                        }
+
+                    }
+
+                    iy = q[iy];
+                }
+
+            }
+        }
+        NEIGHBOUR_STARTS[end_ix] = m + 1;
+
+        RC[0] = 0;
+        return;
+        '''
+        _dat_dict = {'B': self._domain.boundary_outer,        # Outer boundary on local domain (inc halo cells)
+                     'P': self._positions,                    # positions
+                     'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
+                     'CA': self._domain.cell_array,           # local domain cell array
+                     'q': self.cell_list.cell_list,           # cell list
+                     'CUTOFF': self.cell_width_squared,
+                     'NEIGHBOUR_STARTS': self.neighbour_starting_points,
+                     'NEIGHBOUR_LIST': self.list,
+                     'MAX_LEN': self.max_len,
+                     'RC': self._return_code}
+
+        _static_args = {'end_ix': ct.c_int,  # Number of particles.
+                        'n': ct.c_int}       # start of cell point in list.
+
+
+        _kernel = kernel.Kernel('cell_neighbour_list_method', _code, headers=['stdio.h'], static_args=_static_args)
+        self._neighbour_lib = build.SharedLib(_kernel, _dat_dict)
+
+
+    def update(self, _attempt=1):
+
+        assert self.max_len is not None and self.list is not None and self._neighbour_lib is not None, "Neighbourlist setup not ran, or failed."
+
+        if self.neighbour_starting_points.ncomp < self._n() + 1:
+            self.neighbour_starting_points.realloc(self._n() + 1)
+        if runtime.VERBOSE.level > 3:
+            print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
+
+
+        _n = self.cell_list.cell_list.end - self._domain.cell_count
+        self._neighbour_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
+
+        self.n_total = self._positions.npart_total
+        self.n_local = self._n()
+        self._last_n = self._n()
+
+
+        if self._return_code[0] < 0:
+            if runtime.VERBOSE.level > 2:
+                print "rank:", mpi.MPI_HANDLE.rank, "neighbour list resizing", "old", self.max_len[0], "new", 2*self.max_len[0]
+            self.max_len[0] *= 2
+            self.list.realloc(self.max_len[0])
+
+            assert _attempt < 20, "Tried to create neighbour list too many times."
+
+            self.update(_attempt + 1)
+
+        self.version_id += 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################################################################################################
+# NeighbourList with inner and outer lists.
+################################################################################################################
+
+
+class NeighbourListHaloAware(object):
+
+    def __init__(self, list=cell_list):
+        self.cell_list = cell_list
+        self.max_len = None
+        self.list = None
+        self.lib = None
+
+        self.version_id = 0
+        """Update tracking of neighbour list. """
+
+        self.cell_width = None
+        self.time = 0
+        self._time_func = None
+
+
+        self._positions = None
+        self._domain = None
+        self.neighbour_starting_points = None
+        self.cell_width_squared = None
+        self._neighbour_lib = None
+        self._n = None
+
+        self.n_local = None
+        self.n_total = None
+
+        self._last_n = -1
+
+        """Return the number of particle that have neighbours listed"""
+
+        self._return_code = None
+
+        #halo neighbourlist
+        self._halo_neighbour_lib = None
+        self.halo_neighbour_starting_points = None
+        self.halo_max_len = None
+        self.halo_list = None
+        self._boundary_cells = None
+        self.halo_part_count = None
+
+
+    def setup(self, n, positions, domain, cell_width):
+
+        # setup the cell list if not done already (also handles domain decomp)
+        if self.cell_list.cell_list is None:
+            self.cell_list.setup(n, positions, domain, cell_width)
+
+        self.cell_width = cell_width
+
+        self.cell_width_squared = host.Array(initial_value=cell_width ** 2, dtype=ct.c_double)
+        self._domain = domain
+        self._positions = positions
+        self._n = n
+
+        # assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
+
+        self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_int)
+
+        _initial_factor = math.ceil(15. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
+
+
+        self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_int)
+
+        self.list = host.Array(ncomp=_initial_factor, dtype=ct.c_int)
+
+
+        self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
+        self._return_code.dat[0] = -1
+
+
+
+
+        _code = '''
+
+        const double cutoff = CUTOFF[0];
+        const int max_len = MAX_LEN[0];
+
+        const int _h_map[14][3] = {         {0,0,0},
+                                            {1,0,0},
+                                            {0,1,0},
+                                            {1,1,0},
+                                            {1,-1,0},
+                                            {-1,1,1},
+                                            {0,1,1},
+                                            {1,1,1},
+                                            {-1,0,1},
+                                            {0,0,1},
+                                            {1,0,1},
+                                            {-1,-1,1},
+                                            {0,-1,1},
+                                            {1,-1,1}};
+
+        int tmp_offset[14];
+        for(int ix=0; ix<14; ix++){
+            tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * CA[0] + _h_map[ix][2] * CA[0]* CA[1];
+        }
+
+        // loop over particles
+        int m = -1;
+        for (int ix=0; ix<end_ix; ix++) {
+
 
             const int C0 = (int)((P[ix*3]     - B[0])/CEL[0]);
             const int C1 = (int)((P[ix*3 + 1] - B[2])/CEL[1]);
@@ -608,11 +867,11 @@ class NeighbourList(object):
 
             NEIGHBOUR_STARTS[ix] = m + 1;
 
-            for(int k = 0; k < 27; k++){
+            for(int k = 0; k < 14; k++){
 
                 int iy = q[n + val + tmp_offset[k]];
-                while (iy > -1) {
-                    if (ix < iy){
+                while ((iy > -1) && (iy < end_ix)) {
+                    if ((tmp_offset[k] != 0) || (ix < iy)){
 
                         const double rj0 = P[iy*3] - P[ix*3];
                         const double rj1 = P[iy*3+1] - P[ix*3 + 1];
@@ -659,17 +918,178 @@ class NeighbourList(object):
         self._neighbour_lib = build.SharedLib(_kernel, _dat_dict)
 
 
-    def update(self, _attempt=1):
+        #----------------- halo lib ----------------------------
+
+
+        self.halo_neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_int)
+
+        _initial_factor = math.ceil(15. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
+
+
+        self.halo_max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_int)
+
+        self.halo_list = host.Array(ncomp=_initial_factor, dtype=ct.c_int)
+
+        self._boundary_cells = self._domain.get_boundary_cells()
+
+        self.halo_part_count = host.Array(ncomp=1, dtype=ct.c_int)
+
+
+        _code = '''
+
+        const double cutoff = CUTOFF[0];
+        const int max_len = MAX_LEN[0];
+
+        const int _h_map[26][3] = {
+                                            {-1,1,-1},
+                                            {-1,-1,-1},
+                                            {-1,0,-1},
+                                            {0,1,-1},
+                                            {0,-1,-1},
+                                            {0,0,-1},
+                                            {1,0,-1},
+                                            {1,1,-1},
+                                            {1,-1,-1},
+
+                                            {-1,1,0},
+                                            {-1,0,0},
+                                            {-1,-1,0},
+                                            {0,-1,0},
+                                            {0,1,0},
+                                            {1,0,0},
+                                            {1,1,0},
+                                            {1,-1,0},
+
+                                            {-1,0,1},
+                                            {-1,1,1},
+                                            {-1,-1,1},
+                                            {0,0,1},
+                                            {0,1,1},
+                                            {0,-1,1},
+                                            {1,0,1},
+                                            {1,1,1},
+                                            {1,-1,1}
+                                        };
+
+        int tmp_offset[26];
+        for(int ix=0; ix<26; ix++){
+            tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * CA[0] + _h_map[ix][2] * CA[0]* CA[1];
+        }
+
+        // loop over boundary cells
+        int m = -1;
+        int ns = -2;
+
+        //printf("end_ix=%d \\n", end_ix);
+
+
+
+        for (int cx=0; cx<end_ix; cx++) {
+
+            const int val = B_cells[cx];
+
+
+            //printf("val=%d \\n", val);
+
+            int ix = q[n + val];
+            while (ix > -1){
+
+                ns += 2;
+
+
+                //printf("ns=%d, m=%d, ix=%d \\n", ns, m, ix);
+                NEIGHBOUR_STARTS[ns] = m + 1;
+                NEIGHBOUR_STARTS[ns + 1] = ix;
+
+
+                for(int k = 0; k < 26; k++){
+
+                    int iy = q[n + val + tmp_offset[k]];
+                    while (iy >= N_LOCAL) {
+
+                        const double rj0 = P[iy*3] - P[ix*3];
+                        const double rj1 = P[iy*3+1] - P[ix*3 + 1];
+                        const double rj2 = P[iy*3+2] - P[ix*3 + 2];
+
+                        if ( (rj0*rj0 + rj1*rj1 + rj2*rj2) <= cutoff ) {
+                            m++;
+                            if (m < max_len){
+                                NEIGHBOUR_LIST[m] = iy;
+                            } else {
+                                RC[0] = -1;
+                                return;
+                            }
+                        }
+
+                        iy = q[iy];
+                    }
+
+                }
+
+                ix = q[ix];
+            }
+
+        }
+        ns += 2;
+        NEIGHBOUR_STARTS[ns] = m + 1;
+        if (ns > 0){
+            HPC[0] = ns/2;
+        } else {
+            HPC[0] = 0;
+        }
+
+        RC[0] = 0;
+        return;
+        '''
+        _halo_dat_dict = {'B_cells': self._boundary_cells,         # boundary cells
+                          'B': self._domain.boundary_outer,        # Outer boundary on local domain (inc halo cells)
+                          'P': self._positions,                    # positions
+                          'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
+                          'CA': self._domain.cell_array,           # local domain cell array
+                          'q': self.cell_list.cell_list,           # cell list
+                          'CUTOFF': self.cell_width_squared,
+                          'NEIGHBOUR_STARTS': self.halo_neighbour_starting_points,
+                          'NEIGHBOUR_LIST': self.halo_list,
+                          'MAX_LEN': self.halo_max_len,
+                          'RC': self._return_code,
+                          'HPC': self.halo_part_count}
+
+        _halo_static_args = {'end_ix': ct.c_int,  # Number of boundary cells.
+                             'n': ct.c_int,       # start of cell point in list.
+                             'N_LOCAL': ct.c_int  # local number of particles.
+                             }
+
+        _halo_kernel = kernel.Kernel('cell_neighbour_list_method_halo', _code, headers=['stdio.h'], static_args=_halo_static_args)
+        self._halo_neighbour_lib = build.SharedLib(_halo_kernel, _halo_dat_dict)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def update(self, _attempt=1, _hattempt=1):
 
         assert self.max_len is not None and self.list is not None and self._neighbour_lib is not None, "Neighbourlist setup not ran, or failed."
 
         if self.neighbour_starting_points.ncomp < self._n() + 1:
             self.neighbour_starting_points.realloc(self._n() + 1)
+            self.halo_neighbour_starting_points.realloc(self._n() + 1)
+
         if runtime.VERBOSE.level > 3:
             print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
 
 
-        _n = cell_list.cell_list.end - self._domain.cell_count
+        _n = self.cell_list.cell_list.end - self._domain.cell_count
         self._neighbour_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
 
         self.n_total = self._positions.npart_total
@@ -679,15 +1099,49 @@ class NeighbourList(object):
 
         if self._return_code[0] < 0:
             if runtime.VERBOSE.level > 2:
-                print "rank:", mpi.MPI_HANDLE.rank, "neighbour list resizing", "old", self.max_len[0], "new", 2*self.max_len[0]
+                print "rank:", mpi.MPI_HANDLE.rank, "neighbour list resizing", "old", self.max_len[0], "new", 2 * self.max_len[0]
             self.max_len[0] *= 2
             self.list.realloc(self.max_len[0])
 
             assert _attempt < 20, "Tried to create neighbour list too many times."
 
-            self.update(_attempt + 1)
+            self.update(_attempt=_attempt + 1)
+
 
         self.version_id += 1
+
+    def halo_update(self, _hattempt=1):
+
+        _n = self.cell_list.cell_list.end - self._domain.cell_count
+
+        self._boundary_cells = self._domain.get_boundary_cells()
+
+        # print self._boundary_cells.ncomp
+
+        self._halo_neighbour_lib.execute(static_args={'end_ix': ct.c_int(self._boundary_cells.ncomp), 'n': ct.c_int(_n), 'N_LOCAL': ct.c_int(self._n())})
+        if self._return_code[0] < 0:
+            if runtime.VERBOSE.level > 2:
+                print "rank:", mpi.MPI_HANDLE.rank, "halo neighbour list resizing", "old", self.halo_max_len[0], "new", 2 * self.halo_max_len[0]
+            self.halo_max_len[0] *= 2
+            self.halo_list.realloc(self.halo_max_len[0])
+
+            assert _hattempt < 20, "Tried to create neighbour list too many times."
+
+            self.update(_hattempt=_hattempt + 1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

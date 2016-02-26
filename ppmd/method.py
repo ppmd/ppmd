@@ -31,6 +31,7 @@ import mpi
 np.set_printoptions(threshold='nan')
 
 
+
 ###############################################################################################################
 # Velocity Verlet Method
 ###############################################################################################################
@@ -69,7 +70,10 @@ class VelocityVerlet(object):
         self._kernel1_code = '''
         //self._V+=0.5*self._dt*self._A
         //self._P+=self._dt*self._V
-        const double M_tmp = 1/M[0];
+
+        //printf("M[0]=%f \\n", M[0]);
+
+        const double M_tmp = 1.0/M[0];
         V[0] += dht*A[0]*M_tmp;
         V[1] += dht*A[1]*M_tmp;
         V[2] += dht*A[2]*M_tmp;
@@ -977,3 +981,47 @@ class PercentagePrinter(object):
                 pio.pprint(self._curr_p, "%")
 
             self._curr_p += self._p
+
+
+
+
+
+class ParticleTracker(object):
+    def __init__(self, dat=None, index=None, filename=None):
+        """
+        Writes the index in a particle dat to a file
+        """
+        assert dat is not None, "No dat"
+        assert index is not None, "No index"
+        assert filename is not None, "No filename"
+
+
+        self._dat = dat
+        self._fh = open(filename, 'w')
+        self._i = index
+
+    def write(self):
+        """
+        Call to write at a particular point in time.
+        """
+
+        for lx in range(self._dat.ncomp):
+            self._fh.write("%(VAL)s\t" % {'VAL':str(self._dat.dat[self._i,lx])})
+        self._fh.write('\n')
+
+
+    def finalise(self):
+        self._fh.close()
+        self._fh = None
+
+
+
+
+
+
+
+
+
+
+
+

@@ -107,10 +107,12 @@ class Level(object):
         """
         self._level = int(level)
 
+OPT = Level(1)
 DEBUG = Level(0)
 VERBOSE = Level(0)
-TIMER = Level(0)
+TIMER = Level(1)
 BUILD_TIMER = Level(0)
+ERROR_LEVEL = Level(3)
 
 ################################################################################################################
 # Enable class to provide flags to disable/enable major code blocks, eg use cuda y/n
