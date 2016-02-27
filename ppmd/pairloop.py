@@ -1451,3 +1451,218 @@ def _halo_exchange_particle_dat(dats_in):
 
 
 
+###############################################################################
+# Neighbour list looping using NIII and pairwise lists
+###############################################################################
+
+class PairLoopNeighbourListPairIndices(_Base):
+    def __init__(self, potential=None, dat_dict=None, kernel=None):
+
+        self._potential = potential
+        self._particle_dat_dict = dat_dict
+        self._cc = build.TMPCC
+
+        ##########
+        # End of Rapaport initialisations.
+        ##########
+
+        self._temp_dir = runtime.BUILD_DIR.dir
+        if not os.path.exists(self._temp_dir):
+            os.mkdir(self._temp_dir)
+
+        if potential is not None:
+            self._kernel = self._potential.kernel
+        elif kernel is not None:
+            self._kernel = kernel
+        else:
+            print "pairloop error, no kernel passed."
+
+        self.loop_timer = opt.LoopTimer()
+
+        # Init code
+        self._kernel_code = self._kernel.code
+        self._code_init()
+
+        self._lib = build.simple_lib_creator(self._generate_header_source(),
+                                             self._generate_impl_source(),
+                                             self._kernel.name,
+                                             CC=self._cc)
+
+
+        self.neighbour_list = cell.NeighbourListPairIndices()
+        self.neighbour_list.setup(*cell.cell_list.get_setup_parameters())
+
+
+
+        self._neighbourlist_count = 0
+        self._invocations = 0
+
+    def _generate_header_source(self):
+        """Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        """
+        code = '''
+
+        %(INCLUDED_HEADERS)s
+
+        #include "%(LIB_DIR)s/generic.h"
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int N_LOCAL, const int N_PAIRS, const int* __restrict__ LIST_I, const int* __restrict__ LIST_J, %(ARGUMENTS)s);
+
+        '''
+        d = {'INCLUDED_HEADERS': self._included_headers(),
+             'KERNEL_NAME': self._kernel.name,
+             'ARGUMENTS': self._argnames(),
+             'LIB_DIR': runtime.LIB_DIR.dir}
+        return code % d
+
+    def _kernel_argument_declarations(self):
+        s = '\n'
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+
+            if dat[1].name == 'forces':
+                _dd = [dat[1]]
+            else:
+                _dd = []
+
+
+            s += generation.generate_map(pair=True,
+                                         symbol_external=dat[0] + '_ext',
+                                         symbol_internal=dat[0],
+                                         dat=dat[1],
+                                         access_type=_mode)
+
+        return s
+
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+        self._code = '''
+        #include <stdio.h>
+        
+        #define _BLOCK_SIZE 8
+
+        void %(KERNEL_NAME)s_wrapper(const int N_LOCAL, const int N_PAIRS, const int* __restrict__ LIST_I, const int* __restrict__ LIST_J, %(ARGUMENTS)s) {
+            
+            const int _NBLOCKS = N_PAIRS / _BLOCK_SIZE;
+
+            %(LOOP_TIMER_PRE)s
+            
+
+            for(int _px = 0; _px < _NBLOCKS*_BLOCK_SIZE; _px++){
+                const int _i = LIST_I[_px];
+                const int _j = LIST_J[_px];
+            
+                    int _cpp_halo_flag;
+                    int _cp_halo_flag = 0;
+
+                    // set halo flag, TODO move all halo flags to be an if condition on particle index?
+                    if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
+
+                     %(KERNEL_ARGUMENT_DECL)s
+
+                     //KERNEL CODE START
+
+                     %(KERNEL)s
+
+                     //KERNEL CODE END
+
+            }
+
+
+            for(int _px = _NBLOCKS*_BLOCK_SIZE; _px < N_PAIRS; _px++){
+                const int _i = LIST_I[_px];
+                const int _j = LIST_J[_px];
+            
+                    int _cpp_halo_flag;
+                    int _cp_halo_flag = 0;
+
+                    // set halo flag, TODO move all halo flags to be an if condition on particle index?
+                    if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
+
+                     %(KERNEL_ARGUMENT_DECL)s
+
+                     //KERNEL CODE START
+
+                     %(KERNEL)s
+
+                     //KERNEL CODE END
+
+            }
+
+
+            %(LOOP_TIMER_POST)s
+
+            return;
+        }
+
+
+        '''
+
+    def execute(self, n=None, dat_dict=None, static_args=None):
+        """
+        C version of the pair_locate: Loop over all cells update forces and potential engery.
+        """
+
+        cell.cell_list.check()
+
+        '''Allow alternative pointers'''
+        if dat_dict is not None:
+            self._particle_dat_dict = dat_dict
+
+
+
+        args = []
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+        '''Add pointer arguments to launch command'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
+            else:
+                args.append(dat_orig.ctypes_data)
+
+        '''Rebuild neighbour list potentially'''
+        self._invocations += 1
+        if cell.cell_list.version_id > self.neighbour_list.version_id:
+            self.neighbour_list.update()
+            self._neighbourlist_count += 1
+
+        '''Create arg list'''
+        _N_LOCAL = ctypes.c_int(self.neighbour_list.n_local)
+        _N_PAIRS = self.neighbour_list.list_length
+        _LIST_I = self.neighbour_list.listi.ctypes_data
+        _LIST_J = self.neighbour_list.listj.ctypes_data
+
+        args2 = [_N_LOCAL,
+                 _N_PAIRS,
+                 _LIST_I,
+                 _LIST_J]
+
+        args2.append(self.loop_timer.get_python_parameters())
+
+        args = args2 + args
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        method(*args)
+
+        '''afterwards access descriptors'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()
+
+

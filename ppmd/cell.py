@@ -1636,3 +1636,221 @@ class NeighbourListLayerBased(object):
 
 
 
+################################################################################################################
+# PairNeighbourList definition 14 cell version
+################################################################################################################
+
+
+class NeighbourListPairIndices(object):
+
+    def __init__(self, list=cell_list):
+        self.cell_list = cell_list
+        self.max_len = None
+
+        self.listi = None
+        self.listj = None
+        self.list_length = ct.c_int(0)
+
+
+        self.version_id = 0
+        """Update tracking of neighbour list. """
+
+        self.cell_width = None
+        self.time = 0
+        self._time_func = None
+
+
+        self._positions = None
+        self._domain = None
+        self.cell_width_squared = None
+        self._neighbour_lib = None
+        self._n = None
+
+        self.n_local = None
+
+
+        self._return_code = None
+
+
+    def setup(self, n, positions, domain, cell_width):
+
+        # setup the cell list if not done already (also handles domain decomp)
+        if self.cell_list.cell_list is None:
+            self.cell_list.setup(n, positions, domain, cell_width)
+
+        self.cell_width = cell_width
+
+        self.cell_width_squared = ct.c_double(cell_width ** 2)
+        self._domain = domain
+        self._positions = positions
+        self._n = n
+
+        # assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
+
+
+        _initial_factor = int(math.ceil(15. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2])))
+
+        self.max_len = ct.c_int(_initial_factor)
+
+        self.listi = host.Array(ncomp=_initial_factor, dtype=ct.c_int)
+        self.listj = host.Array(ncomp=_initial_factor, dtype=ct.c_int)
+
+
+        self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
+        self._return_code.dat[0] = -1
+
+        _name = 'pairwise_neighbour_list'
+
+
+        _args = '''
+                const int q_na,                     //starting point in cell list
+                const int* __restrict__ q,          //cell list.
+                const int * __restrict__ CA,        //cell array
+                const double* __restrict__ P,       //particle positions
+                const double cutoff2,               //cutoff squared
+                const int max_len,                  //maximum length of lists.
+                int* RC,                            //return code
+                int* __restrict__ LIST_I,           //list i
+                int* __restrict__ LIST_J,           //list j
+                int* PAIR_COUNT                     //number of pairs.
+                '''
+
+        _header = '''
+        #include <generic.h>
+        extern "C" void pairwise_neighbour_list(%(ARGS)s);
+        ''' % {'ARGS':_args}
+
+        _code = '''
+        void pairwise_neighbour_list(%(ARGS)s){
+
+        const int _h_map[27][3] = {
+{-1,1,-1}, {-1,-1,-1}, {-1,0,-1}, {0,1,-1}, {0,-1,-1}, {0,0,-1}, {1,0,-1}, {1,1,-1}, {1,-1,-1},  {-1,1,0}, {-1,0,0}, {-1,-1,0}, {0,-1,0}, {0,0,0}, {0,1,0}, {1,0,0}, {1,1,0}, {1,-1,0},  {-1,0,1}, {-1,1,1}, {-1,-1,1}, {0,0,1}, {0,1,1}, {0,-1,1}, {1,0,1}, {1,1,1}, {1,-1,1}  };
+
+
+        int tmp_offset[27];
+        for(int ix=0; ix<27; ix++){
+            tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * CA[0] + _h_map[ix][2] * CA[0]* CA[1];
+        }
+        
+        //current index.
+        int m = -1;
+
+
+        for(int k = 0; k < 27; k++){
+
+            for (int cx = 1; cx < CA[0]-1; cx++){ for (int cy = 1; cy < CA[1]-1; cy++){ for (int cz = 1; cz < CA[2]-1; cz++){
+            
+                const int bx = cx + CA[0] * (cy + cz*CA[1]);
+
+                int ix = q[q_na + bx];
+                while(ix > -1){
+                    
+                    int iy = q[q_na + bx + tmp_offset[k]];
+                    while (iy > -1){
+                        
+                        if (ix < iy){
+
+                            const double rj0 = P[iy*3]   - P[ix*3];
+                            const double rj1 = P[iy*3+1] - P[ix*3+1];
+                            const double rj2 = P[iy*3+2] - P[ix*3+2];
+
+                            if ( (rj0*rj0 + rj1*rj1 + rj2*rj2) <= cutoff2 ) {
+
+                                m++;
+                                if (m >= max_len){
+                                    RC[0] = -1;
+                                    return;
+                                }
+
+                                LIST_I[m] = ix;
+                                LIST_J[m] = iy;
+                            }
+
+                        }
+
+
+                        iy = q[iy];
+                    }
+        
+                    ix = q[ix];
+                }
+
+            }}}
+        }
+
+
+        *PAIR_COUNT = m+1;
+        RC[0] = 0;
+        return;
+
+        }
+        ''' % {'ARGS': _args}
+
+
+        self._neighbour_lib = build.simple_lib_creator(_header, _code, _name)[_name]
+
+
+    def update(self, _attempt=1):
+
+        assert self.max_len is not None and self.listi is not None and self._neighbour_lib is not None, "Neighbourlist setup not ran, or failed."
+
+        
+        _initial_factor = int(math.ceil(15. * (self._n() ** 2) / (self._domain.cell_array[0] * self._domain.cell_array[1] * self._domain.cell_array[2])))
+        
+        if self.listi.ncomp < _initial_factor:
+            self.listi.realloc(_initial_factor)
+            self.listj.realloc(_initial_factor)
+            self.max_len.value = _initial_factor 
+        if runtime.VERBOSE.level > 3:
+            print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
+
+
+        _n = self.cell_list.cell_list.end - self._domain.cell_count
+
+        self._neighbour_lib(
+                ct.c_int(_n),
+                self.cell_list.cell_list.ctypes_data,
+                self._domain.cell_array.ctypes_data,
+                self._positions.ctypes_data,
+                self.cell_width_squared,
+                self.max_len,
+                self._return_code.ctypes_data,
+                self.listi.ctypes_data,
+                self.listj.ctypes_data,
+                ct.byref(self.list_length)
+                )
+
+
+        '''
+        const int q_na,                     //starting point in cell list
+        const int* __restrict__ q,          //cell list.
+        const int * __restrict__ CA,        //cell array
+        const double* __restrict__ P,       //particle positions
+        const double cutoff2,               //cutoff squared
+        const int max_len,                  //maximum length of lists.
+        int* RC,                            //return code
+        int* __restrict__ LIST_I,           //list i
+        int* __restrict__ LIST_J,           //list j
+        int* PAIR_COUNT                     //number of pairs.
+        '''
+
+
+        self.n_total = self._positions.npart_total
+        self.n_local = self._n()
+
+
+        if self._return_code[0] < 0:
+            if runtime.VERBOSE.level > 2:
+                print "rank:", mpi.MPI_HANDLE.rank, "neighbour list resizing", "old", self.max_len.value, "new", 2*self.max_len.value
+            self.max_len.value *= 2
+            self.listi.realloc(self.max_len.value)
+            self.listj.realloc(self.max_len.value)
+
+            assert _attempt < 20, "Tried to create neighbour list too many times."
+
+            self.update(_attempt + 1)
+
+        self.version_id += 1
+
+
+
