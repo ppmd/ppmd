@@ -162,7 +162,7 @@ class BaseMDSimulation(object):
                 self._forces_update_lib = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
                 '''
-                self._forces_update_lib = pairloop.PairLoopNeighbourListPairIndices(potential=self.potential,
+                self._forces_update_lib = pairloop.PairLoopNeighbourListNonN3(potential=self.potential,
                                                                               dat_dict=_potential_dat_dict)
 
                 '''
