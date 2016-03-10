@@ -78,6 +78,7 @@ def generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None
         if (access_type.write is True) and (pair is True):
             # Point the second element at a null_array that should be removed by compiler optimiser.
 
+
             _ncomp = dat.ncol
             _s = _space + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '[2];\n'
 
@@ -102,9 +103,16 @@ def generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None
 
 
         else:
+
+            if not access_type.write:
+                const_str = 'const '
+            else:
+                const_str = ''
+
+
             _ncomp = dat.ncol
             _s = '\n'
-            _s += _space + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '[' + str(_n) +'];\n'
+            _s += _space + const_str + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '[' + str(_n) +'];\n'
             _s += _space + symbol_internal + '[0] = ' + symbol_external + '+' + str(_ncomp) + '* _i;\n'
             if pair:
                 _s += _space + symbol_internal + '[1] = ' + symbol_external + '+' + str(_ncomp) + '* _j;\n'

@@ -96,7 +96,7 @@ GCC = Compiler(['GCC'],
                ['g++'],
                ['-fPIC', '-std=c++0x'],
                ['-lm'],
-               ['-O3', '-march=native', '-m64', '-ftree-vectorizer-verbose=5'],
+               ['-O3', '-march=native', '-m64', '-ftree-vectorizer-verbose=5', '-fassociative-math'],
                ['-g'],
                ['-c'],
                ['-shared'],
@@ -138,7 +138,7 @@ ICC_OpenMP = Compiler(['ICC'],
 
 
 # Temporary Compiler flag
-ICC_LIST = ['mapc-4044']
+ICC_LIST = ['mapc-4044', 'itd-ngpu-01']
 
 if os.uname()[1] in ICC_LIST:
     TMPCC = ICC
