@@ -480,3 +480,233 @@ class TestPotential2(LennardJones):
         reductions = (kernel.Reduction('u', 'u[0]', '+'),)
 
         return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'], reductions)
+
+
+
+
+
+class TestPotential3(LennardJones):
+    """Lennard Jones potential.
+
+    .. math:
+        V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + u(5/2 \sigma))
+
+    for :math:`r>r_c=(5/2) \sigma` the potential (and force) is set to zero.
+
+    :arg epsilon: Potential parameter :math:`\epsilon`
+    :arg sigma: Potential parameter :math:`\sigma`
+    """
+
+
+    @property
+    def kernel(self):
+        """
+        Returns a kernel class for the potential.
+        """
+
+        kernel_code = '''
+
+        const double R0 = P(1, 0) - P(0, 0);
+        const double R1 = P(1, 1) - P(0, 1);
+        const double R2 = P(1, 2) - P(0, 2);
+
+        const double r2 = R0*R0 + R1*R1 + R2*R2;
+
+            const double r_m2 = sigma2/r2;
+            const double r_m4 = r_m2*r_m2;
+            const double r_m6 = r_m4*r_m2;
+
+
+            u(0)+=(r2 < rc2) ? CV*((r_m6-1.0)*r_m6 + internalshift) : 0.0 ;
+
+            const double r_m8 = r_m4*r_m4;
+            const double f_tmp = CF*(r_m6 - 0.5)*r_m8;
+
+            A(0, 0)+=(r2 < rc2) ? f_tmp*R0 : 0.0;
+            A(0, 1)+=(r2 < rc2) ? f_tmp*R1 : 0.0;
+            A(0, 2)+=(r2 < rc2) ? f_tmp*R2 : 0.0;
+
+            A(1, 0)-=(r2 < rc2) ? f_tmp*R0 : 0.0;
+            A(1, 1)-=(r2 < rc2) ? f_tmp*R1 : 0.0;
+            A(1, 2)-=(r2 < rc2) ? f_tmp*R2 : 0.0;
+
+
+        '''
+        constants = (kernel.Constant('sigma2', self._sigma ** 2),
+                     kernel.Constant('rc2', self._rc ** 2),
+                     kernel.Constant('internalshift', self._shift_internal),
+                     kernel.Constant('CF', self._C_F),
+                     kernel.Constant('CV', self._C_V))
+
+        reductions = (kernel.Reduction('u', 'u[0]', '+'),)
+
+        return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'], reductions)
+
+
+class TestPotential4(LennardJones):
+    """Lennard Jones potential.
+
+    .. math:
+        V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + u(5/2 \sigma))
+
+    for :math:`r>r_c=(5/2) \sigma` the potential (and force) is set to zero.
+
+    :arg epsilon: Potential parameter :math:`\epsilon`
+    :arg sigma: Potential parameter :math:`\sigma`
+    """
+
+
+    @property
+    def kernel(self):
+        """
+        Returns a kernel class for the potential.
+        """
+
+        kernel_code = '''
+
+        const double R0 = P(1, 0) - P(0, 0);
+        const double R1 = P(1, 1) - P(0, 1);
+        const double R2 = P(1, 2) - P(0, 2);
+
+        const double r2 = R0*R0 + R1*R1 + R2*R2;
+
+            double xn = 0.01;
+            for(int ix = 0; ix < 10; ix++){
+                xn = xn*(2.0 - r2*xn);
+            }
+
+
+
+            const double r_m2 = sigma2*xn;
+            const double r_m4 = r_m2*r_m2;
+            const double r_m6 = r_m4*r_m2;
+
+            const double _ex = r_m6;
+            double _et = 1.0, _ep = 1.0, _ef = 1.0, _epx = 1.0;
+            for(int _etx = 1; _etx < 21; _etx++){
+                _epx *= _ex;
+                _ef *= _ep;
+                _ep++;
+
+                xn = 0.01;
+                for(int ix = 0; ix < 10; ix++){
+                    xn = xn*(2.0 - _ef*xn);
+                }
+
+
+                _et += _epx*xn;
+            }
+
+            u(0)+=CV*((r_m6-1.0)*r_m6 + internalshift) + _et;
+
+            const double r_m8 = r_m4*r_m4;
+            const double f_tmp = CF*(r_m6 - 0.5)*r_m8;
+
+            A(0, 0)+=f_tmp*R0;
+            A(0, 1)+=f_tmp*R1;
+            A(0, 2)+=f_tmp*R2;
+
+            A(1, 0)-=f_tmp*R0;
+            A(1, 1)-=f_tmp*R1;
+            A(1, 2)-=f_tmp*R2;
+
+
+        '''
+        constants = (kernel.Constant('sigma2', self._sigma ** 2),
+                     kernel.Constant('rc2', self._rc ** 2),
+                     kernel.Constant('internalshift', self._shift_internal),
+                     kernel.Constant('CF', self._C_F),
+                     kernel.Constant('CV', self._C_V))
+
+        reductions = (kernel.Reduction('u', 'u[0]', '+'),)
+
+        return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'], reductions)
+
+
+class TestPotential4p(LennardJones):
+    """Lennard Jones potential.
+
+    .. math:
+        V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + u(5/2 \sigma))
+
+    for :math:`r>r_c=(5/2) \sigma` the potential (and force) is set to zero.
+
+    :arg epsilon: Potential parameter :math:`\epsilon`
+    :arg sigma: Potential parameter :math:`\sigma`
+    """
+
+
+    @property
+    def kernel(self):
+        """
+        Returns a kernel class for the potential.
+        """
+
+        kernel_code = '''
+
+        const double R0 = P[1][0] - P[0][0];
+        const double R1 = P[1][1] - P[0][1];
+        const double R2 = P[1][2] - P[0][2];
+
+        const double r2 = R0*R0 + R1*R1 + R2*R2;
+
+
+            double xn = 0.01;
+            for(int ix = 0; ix < 2; ix++){
+                xn = xn*(2.0 - r2*xn);
+            }
+
+
+            const double r_m2 = sigma2*xn;
+            const double r_m4 = r_m2*r_m2;
+            const double r_m6 = r_m4*r_m2;
+
+            const double _ex = r_m6;
+            double _et = 1.0, _ep = 1.0, _ef = 1.0, _epx = 1.0;
+
+            /*
+            #pragma novector
+            for(int _etx = 1; _etx < 21; _etx++){
+                _epx *= _ex;
+                _ef *= _ep;
+                _ep++;
+
+                xn = 0.01;
+
+            #pragma novector
+                for(int ix = 0; ix < 10; ix++){
+                    xn = xn*(2.0 - _ef*xn);
+                }
+
+
+                _et += _epx*xn;
+            }
+            */
+
+            u[0]+=CV*((r_m6-1.0)*r_m6 + internalshift);
+
+            const double r_m8 = r_m4*r_m4;
+            const double f_tmp = CF*(r_m6 - 0.5)*r_m8;
+
+            A[0][0]+=f_tmp*R0;
+            A[0][1]+=f_tmp*R1;
+            A[0][2]+=f_tmp*R2;
+
+            A[1][0]-=f_tmp*R0;
+            A[1][1]-=f_tmp*R1;
+            A[1][2]-=f_tmp*R2;
+
+
+        '''
+        constants = (kernel.Constant('sigma2', self._sigma ** 2),
+                     kernel.Constant('rc2', self._rc ** 2),
+                     kernel.Constant('internalshift', self._shift_internal),
+                     kernel.Constant('CF', self._C_F),
+                     kernel.Constant('CV', self._C_V))
+
+        reductions = (kernel.Reduction('u', 'u[0]', '+'),)
+
+        return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'], reductions)
+
+
+

@@ -944,6 +944,16 @@ class VectorPairLoopNeighbourList(PairLoopNeighbourList):
 
         #define _BLOCK_SIZE 8
 
+        #pragma simd
+        double _DIV(const double a){
+
+            double xn = 0.01;
+            for(int ix = 0; ix < 10; ix++){
+                xn = xn*(2.0 - a*xn);
+            }
+            return xn;
+        }
+
 
 
 
@@ -994,7 +1004,7 @@ class VectorPairLoopNeighbourList(PairLoopNeighbourList):
 
 
                 //loop over the blocks
-                for(int _bx; _bx < _NBLOCKS; _bx++){
+                for(int _bx = 0; _bx < _NBLOCKS; _bx++){
 
 
                     // zero the stores for this block

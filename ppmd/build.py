@@ -138,7 +138,7 @@ ICC_OpenMP = Compiler(['ICC'],
 
 
 # Temporary Compiler flag
-ICC_LIST = ['mapc-4044', 'itd-ngpu-01']
+ICC_LIST = ['mapc-4044', 'itd-ngpu-01', 'itd-ngpu-02']
 
 if os.uname()[1] in ICC_LIST:
     TMPCC = ICC

@@ -67,7 +67,7 @@ class BaseMDSimulation(object):
 
         # r_n = (1+\delta) * r_c
 
-        self._delta = 0.1
+        self._delta = 0.02
 
         self._cell_width = (1 + self._delta) * self._cutoff
 
@@ -162,7 +162,7 @@ class BaseMDSimulation(object):
                 self._forces_update_lib = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
                 '''
-                self._forces_update_lib = pairloop.VectorPairLoopNeighbourList(potential=self.potential,
+                self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                                dat_dict=_potential_dat_dict)
 
                 '''
