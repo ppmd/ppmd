@@ -68,26 +68,20 @@ class VelocityVerlet(object):
         self._schedule = schedule
         
         self._kernel1_code = '''
-        //self._V+=0.5*self._dt*self._A
-        //self._P+=self._dt*self._V
-
-        //printf("M[0]=%f \\n", M[0]);
-
-        const double M_tmp = 1.0/M[0];
-        V[0] += dht*A[0]*M_tmp;
-        V[1] += dht*A[1]*M_tmp;
-        V[2] += dht*A[2]*M_tmp;
-        P[0] += dt*V[0];
-        P[1] += dt*V[1];
-        P[2] += dt*V[2];
+        const double M_tmp = 1.0/M(0);
+        V(0) += dht*A(0)*M_tmp;
+        V(1) += dht*A(1)*M_tmp;
+        V(2) += dht*A(2)*M_tmp;
+        P(0) += dt*V(0);
+        P(1) += dt*V(1);
+        P(2) += dt*V(2);
         '''
                 
         self._kernel2_code = '''
-        //self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat
-        const double M_tmp = 1/M[0];
-        V[0] += dht*A[0]*M_tmp;
-        V[1] += dht*A[1]*M_tmp;
-        V[2] += dht*A[2]*M_tmp;
+        const double M_tmp = 1/M(0);
+        V(0) += dht*A(0)*M_tmp;
+        V(1) += dht*A(1)*M_tmp;
+        V(2) += dht*A(2)*M_tmp;
         '''
 
 

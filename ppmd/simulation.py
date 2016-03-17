@@ -162,7 +162,7 @@ class BaseMDSimulation(object):
                 self._forces_update_lib = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
                 '''
-                self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
+                self._forces_update_lib = pairloop.VectorPairLoopNeighbourList(potential=self.potential,
                                                                                dat_dict=_potential_dat_dict)
 
                 '''
@@ -254,7 +254,6 @@ class BaseMDSimulation(object):
         Updates the forces in the simulation state using the short range potential.
         """
 
-
         self.timer.start()
 
 
@@ -305,7 +304,7 @@ class BaseMDSimulation(object):
 
         if self._kinetic_energy_lib is None:
             _K_kernel_code = '''
-            k[0] += (V[0]*V[0] + V[1]*V[1] + V[2]*V[2])*0.5*M[0];
+            k(0) += (V(0)*V(0) + V(1)*V(1) + V(2)*V(2))*0.5*M(0);
             '''
             _constants_K = []
             _K_kernel = kernel.Kernel('K_kernel', _K_kernel_code, _constants_K)
