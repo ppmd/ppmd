@@ -153,11 +153,21 @@ class CellList(object):
         _cell_sort_code = '''
 
         int ix;
+
+        const double _icel0 = 1.0/CEL[0];
+        const double _icel1 = 1.0/CEL[1];
+        const double _icel2 = 1.0/CEL[2];
+
+        const double _b0 = B[0];
+        const double _b2 = B[2];
+        const double _b4 = B[4];
+
+
         for (ix=0; ix<end_ix; ix++) {
 
-        const int C0 = (int)((P[ix*3]     - B[0])/CEL[0]);
-        const int C1 = (int)((P[ix*3 + 1] - B[2])/CEL[1]);
-        const int C2 = (int)((P[ix*3 + 2] - B[4])/CEL[2]);
+        const int C0 = (int)(P[ix*3]     - _b0)*_icel0;
+        const int C1 = (int)(P[ix*3 + 1] - _b2)*_icel1;
+        const int C2 = (int)(P[ix*3 + 2] - _b4)*_icel2;
 
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
 

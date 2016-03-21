@@ -188,20 +188,20 @@ class VelocityVerletAnderson(VelocityVerlet):
             //Box-Muller method.
 
 
-            const double scale = sqrt(temperature/M[0]);
+            const double scale = sqrt(temperature/M(0));
             const double stmp = scale*sqrt(-2.0*log(rand()*tmp_rand_max));
 
             const double V0 = 2.0*M_PI*rand()*tmp_rand_max;
-            V[0] = stmp*cos(V0);
-            V[1] = stmp*sin(V0);
-            V[2] = scale*sqrt(-2.0*log(rand()*tmp_rand_max))*cos(2.0*M_PI*rand()*tmp_rand_max);
+            V(0) = stmp*cos(V0);
+            V(1) = stmp*sin(V0);
+            V(2) = scale*sqrt(-2.0*log(rand()*tmp_rand_max))*cos(2.0*M_PI*rand()*tmp_rand_max);
 
         }
         else {
-            const double M_tmp = 1/M[0];
-            V[0] += dht*A[0]*M_tmp;
-            V[1] += dht*A[1]*M_tmp;
-            V[2] += dht*A[2]*M_tmp;
+            const double M_tmp = 1/M(0);
+            V(0) += dht*A(0)*M_tmp;
+            V(1) += dht*A(1)*M_tmp;
+            V(2) += dht*A(2)*M_tmp;
         }
 
         '''
@@ -277,9 +277,9 @@ class RadialDistributionPeriodicNVE(object):
         _kernel = '''
         
         
-        double R0 = P[1][0] - P[0][0];
-        double R1 = P[1][1] - P[0][1];
-        double R2 = P[1][2] - P[0][2];
+        double R0 = P(1)(0) - P(0)(0);
+        double R1 = P(1)(1) - P(0)(1);
+        double R2 = P(1)(2) - P(0)(2);
         
         if (abs_md(R0) > exto20 ) { R0 += isign(R0) * extent0 ; }
         if (abs_md(R1) > exto21 ) { R1 += isign(R1) * extent1 ; }
@@ -565,7 +565,7 @@ class VelocityAutoCorrelation(object):
         _constants = None
         _kernel_code = '''
 
-        VAF[0] += (v0[0]*VT[0] + v0[1]*VT[1] + v0[2]*VT[2])*Ni;
+        VAF(0) += (v0(0)*VT(0) + v0(1)*VT(1) + v0(2)*VT(2))*Ni;
 
         '''
         _reduction = (kernel.Reduction('VAF', 'VAF[I]', '+'),)
