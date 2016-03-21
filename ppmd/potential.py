@@ -709,4 +709,53 @@ class TestPotential4p(LennardJones):
         return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'], reductions)
 
 
+class VLennardJones(LennardJones):
+    @property
+    def kernel(self):
+        """
+        Returns a kernel class for the potential.
+        """
+
+        kernel_code = '''
+
+        const double R0 = P(1, 0) - P(0, 0);
+        const double R1 = P(1, 1) - P(0, 1);
+        const double R2 = P(1, 2) - P(0, 2);
+
+        const double r2 = R0*R0 + R1*R1 + R2*R2;
+
+        if (r2 < rc2){
+
+            const double r_m2 = sigma2/r2;
+            const double r_m4 = r_m2*r_m2;
+            const double r_m6 = r_m4*r_m2;
+
+            u(0)+= CV*((r_m6-1.0)*r_m6 + internalshift);
+
+            const double r_m8 = r_m4*r_m4;
+            const double f_tmp = CF*(r_m6 - 0.5)*r_m8;
+
+            A(0, 0)+=f_tmp*R0;
+            A(0, 1)+=f_tmp*R1;
+            A(0, 2)+=f_tmp*R2;
+
+            A(1, 0)-=f_tmp*R0;
+            A(1, 1)-=f_tmp*R1;
+            A(1, 2)-=f_tmp*R2;
+
+            }
+
+        '''
+        constants = (kernel.Constant('sigma2', self._sigma ** 2),
+                     kernel.Constant('rc2', self._rc ** 2),
+                     kernel.Constant('internalshift', self._shift_internal),
+                     kernel.Constant('CF', self._C_F),
+                     kernel.Constant('CV', self._C_V))
+
+        reductions = (kernel.Reduction('u', 'u[0]', '+'),)
+
+        return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'], reductions)
+
+
+
 

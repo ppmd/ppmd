@@ -277,9 +277,9 @@ class RadialDistributionPeriodicNVE(object):
         _kernel = '''
         
         
-        double R0 = P(1)(0) - P(0)(0);
-        double R1 = P(1)(1) - P(0)(1);
-        double R2 = P(1)(2) - P(0)(2);
+        double R0 = P(1, 0) - P(0, 0);
+        double R1 = P(1, 1) - P(0, 1);
+        double R2 = P(1, 2) - P(0, 2);
         
         if (abs_md(R0) > exto20 ) { R0 += isign(R0) * extent0 ; }
         if (abs_md(R1) > exto21 ) { R1 += isign(R1) * extent1 ; }

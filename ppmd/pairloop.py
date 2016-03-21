@@ -806,7 +806,7 @@ class PairLoopNeighbourList(_Base):
         return code % d
 
     def _kernel_argument_declarations(self):
-        s = '\n'
+        s = build.Code()
         for i, dat_orig in enumerate(self._particle_dat_dict.items()):
 
             if type(dat_orig[1]) is tuple:
@@ -828,7 +828,7 @@ class PairLoopNeighbourList(_Base):
                                          dat=dat[1],
                                          access_type=_mode)
 
-        return s
+        return s.string
 
     def _code_init(self):
         self._kernel_code = self._kernel.code
@@ -943,18 +943,6 @@ class VectorPairLoopNeighbourList(PairLoopNeighbourList):
         #include <stdio.h>
 
         #define _BLOCK_SIZE 8
-
-        #pragma simd
-        double _DIV(const double a){
-
-            double xn = 0.01;
-            for(int ix = 0; ix < 10; ix++){
-                xn = xn*(2.0 - a*xn);
-            }
-            return xn;
-        }
-
-
 
 
         void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* %(RESTRICT)s START_POINTS, const int* %(RESTRICT)s NLIST, %(ARGUMENTS)s) {
