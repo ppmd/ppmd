@@ -78,7 +78,7 @@ class VelocityVerlet(object):
         '''
                 
         self._kernel2_code = '''
-        const double M_tmp = 1/M(0);
+        const double M_tmp = 1.0/M(0);
         V(0) += dht*A(0)*M_tmp;
         V(1) += dht*A(1)*M_tmp;
         V(2) += dht*A(2)*M_tmp;

@@ -242,18 +242,18 @@ class SingleAllParticleLoop(_Base):
 
         self._code = '''
 
-        void %(KERNEL_NAME)s_wrapper(const int n, int* _RESTRICT _TYPE_MAP,%(ARGUMENTS)s) {
-        
-          for (int %(INDEX_I)s=0; %(INDEX_I)s<n; %(INDEX_I)s++) {
-              %(KERNEL_ARGUMENT_DECL)s
-              
-                  //KERNEL CODE START
-                  
-                  %(KERNEL)s
-                  
-                  //KERNEL CODE END
-              
+        void %(KERNEL_NAME)s_wrapper(const int _N, int* _RESTRICT _TYPE_MAP,%(ARGUMENTS)s) {
+
+            for (int %(INDEX_I)s=0; %(INDEX_I)s<_N; %(INDEX_I)s++) {
+                %(KERNEL_ARGUMENT_DECL)s
+
+                    //KERNEL CODE START
+
+                    %(KERNEL)s
+
+                    //KERNEL CODE END
             }
+
         }
         '''
 
