@@ -236,7 +236,7 @@ class _Base(object):
 ################################################################################################################
 
 
-class SingleAllParticleLoop(_Base):
+class ParticleLoop(_Base):
 
     def _code_init(self):
 
@@ -263,14 +263,14 @@ class SingleAllParticleLoop(_Base):
 
         Returns the source code for the header file.
         """
+
         code = '''
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
         #define _RESTRICT %(RESTRICT)s
 
-        extern "C" void %(KERNEL_NAME)s_wrapper(const int n, int* _RESTRICT _TYPE_MAP,%(ARGUMENTS)s);
-
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int _N, int* _RESTRICT _TYPE_MAP,%(ARGUMENTS)s);
         '''
 
         d = {'INCLUDED_HEADERS': self._included_headers(),
@@ -286,15 +286,14 @@ class SingleAllParticleLoop(_Base):
 ################################################################################################################
 
 
-class SingleParticleLoop(_Base):
+class LimitedParticleLoop(_Base):
 
     def _code_init(self):
 
         self._code = '''
 
-        void %(KERNEL_NAME)s_wrapper(const int start_ix, const int end_ix, %(ARGUMENTS)s) { 
-          int i;
-          for (%(INDEX_I)s=start_ix; %(INDEX_I)s<end_ix; %(INDEX_I)s++) {
+        void %(KERNEL_NAME)s_wrapper(const int _START_IX, const int _END_IX, int* _RESTRICT _TYPE_MAP, %(ARGUMENTS)s) {
+          for (int %(INDEX_I)s=_START_IX; %(INDEX_I)s<_END_IX; %(INDEX_I)s++) {
               %(KERNEL_ARGUMENT_DECL)s
               
                   //KERNEL CODE START
@@ -318,7 +317,7 @@ class SingleParticleLoop(_Base):
 
         #define _RESTRICT %(RESTRICT)s
 
-        extern "C" void %(KERNEL_NAME)s_wrapper(const int start_ix, const int end_ix,%(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int _START_IX, const int _END_IX, int* _RESTRICT _TYPE_MAP, %(ARGUMENTS)s);
 
         '''
 
@@ -329,13 +328,22 @@ class SingleParticleLoop(_Base):
              'RESTRICT':self._cc.restrict_keyword}
         return code % d
 
-    def execute(self, start=0, end=0, dat_dict=None, static_args=None):
+    def execute(self, start=None, end=None, dat_dict=None, static_args=None):
 
         # Allow alternative pointers
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
+
         args = [ctypes.c_int(start), ctypes.c_int(end)]
+
+
+        if self._types_map is not None:
+            args.append(self._types_map.ctypes_data)
+        else:
+            _null_type_map = ctypes.c_int()
+            args.append(ctypes.byref(_null_type_map))
+
 
         '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
 

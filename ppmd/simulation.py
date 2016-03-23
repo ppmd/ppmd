@@ -308,10 +308,10 @@ class BaseMDSimulation(object):
             '''
             _constants_K = []
             _K_kernel = kernel.Kernel('K_kernel', _K_kernel_code, _constants_K)
-            self._kinetic_energy_lib = loop.SingleAllParticleLoop(self.state.as_func('n'),
-                                                                  self.state.types,
-                                                                  _K_kernel,
-                                                                  {'V': self.state.velocities, 'k': self.state.k, 'M': self.state.mass})
+            self._kinetic_energy_lib = loop.ParticleLoop(self.state.as_func('n'),
+                                                         self.state.types,
+                                                         _K_kernel,
+                                                         {'V': self.state.velocities, 'k': self.state.k, 'M': self.state.mass})
         self.state.k.dat[0] = 0.0
         self._kinetic_energy_lib.execute()
 
