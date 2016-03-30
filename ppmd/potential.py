@@ -752,9 +752,8 @@ class VLennardJones(LennardJones):
                      kernel.Constant('CF', self._C_F),
                      kernel.Constant('CV', self._C_V))
 
-        reductions = (kernel.Reduction('u', 'u[0]', '+'),)
 
-        return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'], reductions)
+        return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'])
 
 
 

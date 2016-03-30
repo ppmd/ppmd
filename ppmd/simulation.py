@@ -313,7 +313,7 @@ class BaseMDSimulation(object):
                                                          _K_kernel,
                                                          {'V': self.state.velocities, 'k': self.state.k, 'M': self.state.mass})
         self.state.k.dat[0] = 0.0
-        self._kinetic_energy_lib.execute()
+        self._kinetic_energy_lib.execute(self.state.n)
 
         return self.state.k.dat
 

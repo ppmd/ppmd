@@ -31,6 +31,10 @@ class BaseMDState(object):
     """
 
     def __init__(self):
+        # We currently only work with one type at a time.
+        self._types = data.Type()
+
+
         # Registered particle dats.
         self.particle_dats = []
 
@@ -105,12 +109,16 @@ class BaseMDState(object):
             self._move_send_buffer = None
             self._move_recv_buffer = None
 
+            # Re-create the move library.
             self._total_ncomp = 0
             self._move_ncomp = []
             for ixi, ix in enumerate(self.particle_dats):
                 _dat = getattr(self, ix)
                 self._move_ncomp.append(_dat.ncomp)
                 self._total_ncomp += _dat.ncomp
+
+            # register resize callback
+            getattr(self,name)._resize_callback = self._resize_callback
 
 
         # Any other attribute.
@@ -145,9 +153,20 @@ class BaseMDState(object):
             _dat = getattr(self,ix)
             _dat.npart = int(value)
             _dat.halo_start_reset()
-            #_dat.halo_start_set(int(value))
-            #print "invalidating lists on change on number of particles"
-            #self.invalidate_lists = True
+
+    def _resize_callback(self, value=None):
+        """
+        Work around until types are implemented. The assumptions for the macro
+        based pairlooping assume that all ParticleDats have the halo space
+        allocated. This method is registered with ParticleDats added to the
+        state such that resizing one dat resizes all dats.
+        """
+        assert type(value) is not None, "No new size passed"
+        for ix in self.particle_dats:
+            _dat = getattr(self,ix)
+            _dat.resize(int(value), _callback=False)
+
+
 
     @property
     def time(self):

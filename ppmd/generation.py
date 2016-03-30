@@ -107,15 +107,15 @@ def generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None
 
         if pair:
             _c += '#define ' + symbol_internal + '(x,y) ' + symbol_internal + '_##x(y)' + _nl
-            _c += '#define ' + symbol_internal + '_0(y) ' + symbol_external + \
-                  '[' + get_first_index_symbol() + '*' + _ncomp + '+ (y) ]' + _nl
+            _c += '#define ' + symbol_internal + '_0(y) (' + symbol_external + \
+                  '[' + get_first_index_symbol() + '*' + _ncomp + '+ (y) ])' + _nl
 
-            _c += '#define ' + symbol_internal + '_1(y) ' + symbol_external + \
-                  '[' + get_second_index_symbol() + '*' + _ncomp + '+ (y) ]' + _nl
+            _c += '#define ' + symbol_internal + '_1(y) (' + symbol_external + \
+                  '[' + get_second_index_symbol() + '*' + _ncomp + '+ (y) ])' + _nl
 
         else:
-            _c += '#define ' + symbol_internal + '(y) ' + symbol_external + \
-                  '[' + get_first_index_symbol() + '*' + _ncomp + ' + (y)]' + \
+            _c += '#define ' + symbol_internal + '(y) (' + symbol_external + \
+                  '[' + get_first_index_symbol() + '*' + _ncomp + ' + (y)])' + \
                   _nl
 
 
