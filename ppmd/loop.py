@@ -84,8 +84,8 @@ class _Base(object):
             if (type(dat[1]) == data.ScalarArray) or (type(dat[1]) == host.PointerArray):
                 _map += '#define ' + loc_argname + '(x) ' + argname + '[(x)]' + _nl
 
-            # if the symbol is a particle dat then the first index should be 1
-            # or 0. The second index then maps into the correct column
+            # if the symbol is a particle dat then the first index and only
+            # index maps into the correct column.
             if type(dat[1]) == data.ParticleDat:
                 ncomp = dat[1].ncomp
                 _map += '#define ' + loc_argname + '(x) ' + argname + '[' + generation.get_first_index_symbol() + '*' + str(ncomp) + ' + (x)]' + _nl

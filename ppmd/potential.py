@@ -142,7 +142,7 @@ class LennardJones(LennardJonesShifted):
         """
 
         kernel_code = '''
-        
+
         const double R0 = P[1][0] - P[0][0];
         const double R1 = P[1][1] - P[0][1];
         const double R2 = P[1][2] - P[0][2];
@@ -154,9 +154,9 @@ class LennardJones(LennardJonesShifted):
             const double r_m2 = sigma2/r2;
             const double r_m4 = r_m2*r_m2;
             const double r_m6 = r_m4*r_m2;
-            
+
             u[0]+= CV*((r_m6-1.0)*r_m6 + internalshift);
-            
+
             const double r_m8 = r_m4*r_m4;
             const double f_tmp = CF*(r_m6 - 0.5)*r_m8;
 
@@ -751,7 +751,6 @@ class VLennardJones(LennardJones):
                      kernel.Constant('internalshift', self._shift_internal),
                      kernel.Constant('CF', self._C_F),
                      kernel.Constant('CV', self._C_V))
-
 
         return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'])
 

@@ -3,6 +3,8 @@ import ppmd.host as host
 import cuda_data
 import cuda_base
 
+_nl = '\n'
+
 def get_first_index_symbol():
     return '_ix'
 
@@ -51,28 +53,39 @@ def create_local_reduction_vars_arrays(symbol_external, symbol_internal, dat, ac
             _s = _space + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + ' = ' + symbol_external + ';\n'
 
         else:
-            if access_type is access.INC:
-                #_s = _space + host.ctypes_map[dat.dtype] + ' ' + symbol_internal + '[' + str(dat.ncomp) + '];\n'
-                #_s += _space + 'memcpy( &'+ symbol_internal + '[0],' + '&'+ symbol_external + '[0],' + str(dat.ncomp) + ' * sizeof(' + host.ctypes_map[dat.dtype] + ')) ;\n'
 
+            if access_type is access.INC:
+                # create tmp var
                 _s = _space + host.ctypes_map[dat.dtype] + ' ' + symbol_internal + '[' + str(dat.ncomp) + '] = {'
 
+                # copy existing value into var
                 for cx in range(dat.ncomp - 1):
                     _s += symbol_external + '[' + str(cx) + '], '
-
                 _s += symbol_external + '[' + str(dat.ncomp - 1) + ']}; \n'
 
-
-
+                # map kernel symbol to tmp var
+                _s += '#undef ' + symbol_internal + '\n'
+                _s += '#define ' + symbol_internal + '(x) ' + symbol_internal +\
+                      '[(x)] \n'
 
 
 
             elif access_type is access.INC0:
-                _s = _space + host.ctypes_map[dat.dtype] + ' ' + symbol_internal + '[' + str(dat.ncomp) + '] = { 0 };\n'
+                # create the temp var and init to zero.
+                _s = _space + host.ctypes_map[dat.dtype] + ' ' +\
+                      symbol_internal + '[' + str(dat.ncomp) + '] = { 0 };\n'
+
+                # map kernel symbol to temp var
+                _s += '#undef ' + symbol_internal + '\n'
+                _s += '#define ' + symbol_internal + '(x) ' + symbol_internal +\
+                      '[(x)] \n'
+
 
             else:
 
                 raise Exception("Generate mapping failure: Incremental access_type not found.")
+
+
 
         return _s + '\n'
 
@@ -107,25 +120,29 @@ def create_pre_loop_map_matrices(pair=True, symbol_external=None, symbol_interna
     if type(dat) is cuda_data.TypedDat:
         #case for typed dat
         _s = '\n'
-        _s += _space + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '[' + str(_n) +'];\n'
-        _s += _space + symbol_internal + '[0] = &' + symbol_external + '[' + str(dat.ncol) + '* _TYPE_MAP[_ix]];\n'
+        # _s += _space + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '[' + str(_n) +'];\n'
+        # _s += _space + symbol_internal + '[0] = &' + symbol_external + '[' + str(dat.ncol) + '* _TYPE_MAP[_ix]];\n'
+
+        _s += '#undef ' + symbol_internal + '\n'
 
         return _s
 
     elif issubclass(type(dat), cuda_base.Matrix):
         # Case for cuda_base.Array and cuda_data.ScalarArray.
-        if pair is True:
-            _s = _space + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '[2]; \n'
-        else:
-            _s = _space + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + ' * __restrict__' + symbol_internal + '; \n'
+
+        _s = ''
 
         if not access_type.incremented:
 
+            return _nl
+
             # First pointer, the one which is associated with the thread.
-            if pair is True:
-                _s += _space + symbol_internal + '[0] = ' + symbol_external + '+ _ix *' + str(dat.ncomp) + ' ;\n'
-            else:
-                _s += _space + symbol_internal + ' = ' + symbol_external + '+ _ix *' + str(dat.ncomp) + ';\n'
+            # if pair is True:
+            #     _s += _space + symbol_internal + '[0] = ' + symbol_external + '+ _ix *' + str(dat.ncomp) + ' ;\n'
+            # else:
+            #     _s += _space + symbol_internal + ' = ' + symbol_external + '+ _ix *' + str(dat.ncomp) + ';\n'
+
+
 
         else:
             # Create a local copy/new row vector for the row in the particle dat.
@@ -145,11 +162,7 @@ def create_pre_loop_map_matrices(pair=True, symbol_external=None, symbol_interna
             else:
                 raise Exception("Generate mapping failure: Incremental access_type not found.")
 
-            # assign first pointer to hopefully local copy here.
-            if pair is True:
-                _s += _space + symbol_internal + '[0] = _tmp_' + symbol_internal + ' ;\n'
-            else:
-                _s += _space + symbol_internal + ' = _tmp_' + symbol_internal + ' ;\n'
+
 
         return _s + '\n'
     else:
@@ -175,23 +188,39 @@ def generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None
 
     _space = ' ' * 14
 
-    if pair:
-        _n = 2
-    else:
-        _n = 1
 
     if type(dat) is cuda_data.TypedDat:
+
+
         #case for typed dat
-        _s = ''
+        _s = '#undef ' + symbol_internal + _nl
         if pair:
-            _s = '\n' + _space + symbol_internal + '[1] = &' + symbol_external + '[' + str(dat.ncol) + '* _TYPE_MAP[_iy]];\n'
+
+            _s += '#define ' + symbol_internal + '(x,y) ' + \
+                 symbol_internal + '_##x(y)' + _nl
+            _s += '#define ' + symbol_internal + '_0(y) ' + symbol_external + \
+                  '[' + str(dat.ncol) + '* _TYPE_MAP[' + \
+                  get_first_index_symbol() + ' + (y) ]]' + _nl
+
+            _s += '#define ' + symbol_internal + '_1(y) ' + symbol_external + \
+                  '[' + str(dat.ncol) + '* _TYPE_MAP[' + \
+                  get_second_index_symbol() + ' + (y) ]]' + _nl
+
+        else:
+
+            _s += '#define ' + symbol_internal + '(x) ' + symbol_external + \
+                  '[' + str(dat.ncol) + '* _TYPE_MAP[' + \
+                  get_first_index_symbol() + ' + (x) ]]' + _nl
 
         return _s
 
     elif issubclass(type(dat), cuda_base.Array):
 
         if not access_type.incremented:
-            _s = '\n' + get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + '* __restrict__ ' + symbol_internal + ' = ' + symbol_external + ';'
+
+            _s = '#undef ' + symbol_internal + '\n'
+            _s += '\n' + '#define ' + symbol_internal + '(x) ' + \
+                  symbol_external + '[(x)] \n'
         else:
             _s = ''
 
@@ -200,24 +229,59 @@ def generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None
     elif issubclass(type(dat), cuda_base.Matrix):
         # Case for cuda_base.Matrix and cuda_data.ParticleDat.
 
-        if dat in n3_disable_dats:
-            # Point the second element at a null_array that should be removed by compiler optimiser.
-            _ncomp = dat.ncol
-            _s = '\n'
-            if pair:
-                _s += _space + host.ctypes_map[dat.dtype] + ' _null_' + symbol_internal + '[' + str(_ncomp) + '] = {0}; \n'
-                _s += _space + symbol_internal + '[1] = ' + '&_null_' + symbol_internal + '[0];\n'
+
+        _ncomp = dat.ncol
+        _s = '\n'
+
+        if pair:
+
+
+
+            if not access_type.incremented:
+                #_s += _space + symbol_internal + '[1] = ' + symbol_external + '+' + str(_ncomp) + '* _iy;\n'
+                _s += '#undef ' + symbol_internal + _nl
+
+                _s += '#define ' + symbol_internal + '(x,y) ' + \
+                       symbol_internal + '_##x(y)' + _nl
+
+                _s += '#define ' + symbol_internal + '_0(y) ' + symbol_external+\
+                      '[' + get_first_index_symbol() + '*' + str(_ncomp) +\
+                      ' + (y) ]' + _nl
+                _s += '#define ' + symbol_internal + '_1(y) ' + symbol_external+\
+                      '[' + get_second_index_symbol() + '*' + str(_ncomp) +\
+                      ' + (y) ]' + _nl
+            else:
+
+                # create null var
+                _s += _space + host.ctypes_map[dat.dtype] + ' _null_' + \
+                      symbol_internal + ' = 0; \n'
+
+                _s += '#undef ' + symbol_internal + _nl
+
+                _s += '#define ' + symbol_internal + '(x,y) ' + \
+                       symbol_internal + '_##x(y)' + _nl
+
+                _s += '#define ' + symbol_internal + '_0(y) ' + \
+                      '_tmp_' + symbol_internal + \
+                      '[ (y) ]' + _nl
+
+                _s += '#define ' + symbol_internal + '_1(y) ' + \
+                      '_null_' + symbol_internal + _nl
+
 
         else:
-            _ncomp = dat.ncol
-            _s = '\n'
-            if pair:
-                _s += _space + symbol_internal + '[1] = ' + symbol_external + '+' + str(_ncomp) + '* _iy;\n'
 
-            else:
-                _s += get_variable_prefix(access_type) + host.ctypes_map[dat.dtype] + '* __restrict__ ' + symbol_internal + ' = &' + symbol_external + '[' + str(_ncomp) + '*' + get_first_index_symbol() + ']' + '; \n'
-
-
+            '''
+            _s += get_variable_prefix(access_type) + \
+                  host.ctypes_map[dat.dtype] + '* __restrict__ ' + \
+                  symbol_internal + ' = &' + symbol_external + \
+                  '[' + str(_ncomp) + '*' + get_first_index_symbol() + \
+                  ']' + '; \n'
+            '''
+            _s += '#undef ' + symbol_internal + '\n'
+            _s += '#define ' + symbol_internal + '(x) ' + symbol_external+\
+                  '[' + get_first_index_symbol() + '*' + str(_ncomp) +\
+                  ' + (x) ] \n'
 
         return _s
 

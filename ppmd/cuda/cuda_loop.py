@@ -31,7 +31,6 @@ class ParticleLoop(object):
         # Create library
         self._lib = cuda_build.simple_lib_creator(self._generate_header_source(), self._generate_impl_source(), kernel.name + '_ParticleLoop')
 
-
     def _included_headers(self):
         """Return names of included header files."""
         s = ''
@@ -53,8 +52,6 @@ class ParticleLoop(object):
                 self._gcode['HCODE_device_constant_copy'].add_line('checkCudaErrors(cudaMemcpyToSymbol(' + ix[0] + ', &h_' + ix[0] + ', sizeof(h_' + ix[0] + ')));')
                 self._gcode['HCODE_arguments'] += 'const ' + host.ctypes_map[ix[1]] + ' h_' + ix[0] + ','
 
-
-
     def _kernel_argnames(self):
         """
         Comma separated string of argument names to be passed to kernel launch.
@@ -63,7 +60,6 @@ class ParticleLoop(object):
         for arg in self._particle_dat_dict.items():
             args += 'd_' + arg[0] + ','
         return args[:-1]
-
 
     def _generate_header_source(self):
         """Generate the source code of the header file.
@@ -80,7 +76,6 @@ class ParticleLoop(object):
         '''
 
         return code % self._gcode
-
 
     def _code_init(self):
 
@@ -156,7 +151,6 @@ class ParticleLoop(object):
         self._static_arg_init()
         self._generate_dynamics()
 
-
     def _base_generation(self):
         """
         Create the basics in the code generation.
@@ -167,8 +161,6 @@ class ParticleLoop(object):
         self._gcode['HCODE_kernel_name'].add(self._kernel.name)
         self._gcode['HCODE_lib_dir'].add(cuda_runtime.LIB_DIR.dir)
         self._gcode['KCODE_gpu_kernel'].add(self._kernel.code)
-
-
 
     def _generate_impl_source(self):
         """Generate the source code the actual implementation.
@@ -214,7 +206,6 @@ class ParticleLoop(object):
         method = self._lib[self._kernel.name + '_wrapper']
 
         method(*args)
-
 
     def _generate_dynamics(self):
 
