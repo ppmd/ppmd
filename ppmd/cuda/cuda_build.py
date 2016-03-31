@@ -182,7 +182,8 @@ class Code(object):
     def __str__(self):
         return str(self._c)
 
-
+    def __add__(self, other):
+        return Code(self.string + str(other))
 
 
 

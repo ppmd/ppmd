@@ -210,9 +210,9 @@ class ScalarArray(host.Array):
 
 
 
-###################################################################################################
+###############################################################################
 # Blank arrays.
-###################################################################################################
+###############################################################################
 
 NullIntScalarArray = ScalarArray(dtype=ctypes.c_int)
 """Empty integer :class:`~data.ScalarArray` for specifying a kernel argument that may not yet be
@@ -223,9 +223,9 @@ NullDoubleScalarArray = ScalarArray(dtype=ctypes.c_double)
 """Empty double :class:`~data.ScalarArray` for specifying a kernel argument that may not yet be
 declared."""
 
-###################################################################################################
+###############################################################################
 # ParticleDat.
-###################################################################################################
+###############################################################################
 
 
 class ParticleDat(host.Matrix):
@@ -282,9 +282,8 @@ class ParticleDat(host.Matrix):
         self.npart_halo = 0
         """:return: The number of particles currently stored within the halo region of the particle dat."""
 
-        # TODO: remove
-        self._cuda_dat = None
 
+        self._resize_callback = None
         self._version = 0
 
     @property
@@ -356,7 +355,8 @@ class ParticleDat(host.Matrix):
 
     def halo_start_shift(self, shift):
         """
-        Shift the starting point of the halo in the particle dat by the specified shift.
+        Shift the starting point of the halo in the particle dat by the
+        specified shift.
         :param int shift: Offset to shift by.
         """
 
@@ -365,7 +365,8 @@ class ParticleDat(host.Matrix):
 
     def halo_start_set(self, index):
         """
-        Set the start of the halo region in the particle dat to the specified index.
+        Set the start of the halo region in the particle dat to the specified
+         index.
         :param int index: Index to set to.
         """
         if index < self.npart:
@@ -380,18 +381,25 @@ class ParticleDat(host.Matrix):
 
     def halo_start_reset(self):
         """
-        Reset the starting postion of the halo region in the particle dat to the end of the
+        Reset the starting postion of the halo region in the particle dat to
+         the end of the
         local particles.
         :return:
         """
         self.halo_start = self.npart
         self.npart_halo = 0
 
-    def resize(self, n):
+    def resize(self, n, _callback=True):
         """
-        Resize particle dat to be at least a certain size, does not resize if already large enough.
+        Resize particle dat to be at least a certain size, does not resize if
+        already large enough.
         :arg int n: New minimum size.
         """
+
+        if _callback and (self._resize_callback is not None):
+            self._resize_callback(n)
+            return
+            #pass
 
 
         if n > self.max_npart:
@@ -399,10 +407,10 @@ class ParticleDat(host.Matrix):
             self.realloc(n, self.ncol)
 
 
-
     def halo_exchange(self):
         """
-        Perform a halo exchange for the particle dat. WIP currently only functional for positions.
+        Perform a halo exchange for the particle dat. WIP currently only
+        functional for positions.
         """
 
 
@@ -604,9 +612,9 @@ class ParticleDat(host.Matrix):
 
         _status = mpi.Status()
 
-        # SEND START -------------------------------------------------------------------------------------------
+        # SEND START ==========================================================
         for i in range(26):
-            # Exchange sizes --------------------------------------------------------------------------
+            # Exchange sizes --------------------------------------------------
 
 
             if halo.HALOS.send_ranks[i] > -1 and halo.HALOS.recv_ranks[i] > -1:
@@ -635,14 +643,20 @@ class ParticleDat(host.Matrix):
 
 
 
-            _t_size = self.halo_start + self._cell_contents_recv[_halo_groups_start_end_indices[i]:_halo_groups_start_end_indices[i + 1]:].sum()
+            _t_size = self.halo_start + \
+                      self._cell_contents_recv[
+                      _halo_groups_start_end_indices[i]:
+                      _halo_groups_start_end_indices[i + 1]:
+                      ].sum()
+
+
             self.resize(_t_size)
 
 
 
 
 
-            # Exchange data --------------------------------------------------------------------------
+            # Exchange data ---------------------------------------------------
             if halo.HALOS.send_ranks[i] > -1 and halo.HALOS.recv_ranks[i] > -1:
                 mpi.MPI_HANDLE.comm.Sendrecv(self._halo_packing_buffer.dat[
                                              self._cumulative_exchange_sizes[i]:self._cumulative_exchange_sizes[i] + _exchange_sizes[i]:,
@@ -677,7 +691,7 @@ class ParticleDat(host.Matrix):
 
 
 
-        # SEND END -------------------------------------------------------------------------------------------
+        # SEND END ============================================================
 
 
 
@@ -743,6 +757,44 @@ class TypedDat(host.Matrix):
         self.dat[ix] = val
 
 
+###################################################################################################
+# Type
+###################################################################################################
+
+class Type(object):
+    """
+    Object to store information such as number of 
+    particles in a type.
+    """
+    def __init__(self):
+        self._n = 0
+        self._h_n = 0
+        self._dats = []
+
+    @property
+    def n(self):
+        return self._n
+
+    @n.setter
+    def n(self, val):
+        # place code to call resize on dats here.
+        self._n = int(val)
+    
+    @property
+    def _hn(self):
+        return self._h_n
+
+    @_hn.setter
+    def _hn(self, val):
+        self._h_n = int(val)
+
+    @property
+    def _total_size(self):
+        return self._h_n + self._n
+
+    def _append_dat(self, dat=None):
+        assert dat is not None, "No dat added to Type instance"
+        self._dats.append(dat)
 
 
 

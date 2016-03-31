@@ -1,6 +1,7 @@
 import host
 import access
 import data
+import build
 
 def get_type_map_symbol():
     return '_TYPE_MAP'
@@ -17,6 +18,7 @@ def get_first_cell_is_halo_symbol():
 def get_second_cell_is_halo_symbol():
     return '_cpp_halo_flag'
 
+_nl = '\n'
 
 def generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None, access_type=None):
     """
@@ -43,73 +45,81 @@ def generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None
     else:
         _n = 1
 
+    _c = build.Code()
+    _c += '#undef ' + symbol_internal + _nl
 
     if type(dat) is data.TypedDat:
         #case for typed dat
-        _s = '\n'
-        _s += _space + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '[' + str(_n) +'];\n'
-        _s += _space + symbol_internal + '[0] = &' + symbol_external + '[' + str(dat.ncol) + '* _TYPE_MAP[_i]];\n'
-        if pair:
-            _s += _space + symbol_internal + '[1] = &' + symbol_external + '[' + str(dat.ncol) + '* _TYPE_MAP[_j]];\n'
+        _ncomp = dat.ncol
 
-        return _s
+        # Define the entry point into the map
+        _c += '#define ' + symbol_internal + '(x,y) ' + symbol_internal + '_##x(y)' + _nl
 
+        # define the first particle map
+        _c += '#define ' + symbol_internal + '_0(y) ' + symbol_external + \
+              '[LINIDX_2D(' + str(_ncomp) + ',' + get_first_index_symbol() + \
+              ',' + '(y)]' + _nl
+        # second particle map
+        _c += '#define ' + symbol_internal + '_1(y) ' + symbol_external + \
+              '[LINIDX_2D(' + str(_ncomp) + ',' + get_second_index_symbol() + \
+              ',' + '(y)]' + _nl
+
+        return _c
+
+    # case when dat is an ScalarArray
     elif issubclass(type(dat), host.Array):
+
+        # If the ScalarArray is "halo aware" then when one or more of the
+        # particles are in the halo the pointer should point to the second
+        # element. In a reduction case this redirection should be at the
+        # reduction stage of the kernel execution
+
+        _c = build.Code()
+        _c += '#undef ' + symbol_internal + _nl
+
         if (dat.halo_aware is True) and pair is True:
 
-            _s = _space + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '; \n'
-            _s += '\n'
-            _s += _space + 'if (_cp_halo_flag + _cpp_halo_flag >= 1){ \n'
+            # if condition is true we are in a halo, else we are in the
+            # interior
+            # TODO: Make the offset correct for ScalarArrays that are more than
+            # TODO: one element.
 
-            #TODO make below more generic for dats that are not just two elements
-            _s += _space + symbol_internal + ' = &' + symbol_external + '[' + str(1) + '];\n'
+            _c += '#define ' + symbol_internal + '(x) ' + \
+                  '(((_cp_halo_flag || _cpp_halo_flag) > 0 ) ? ( ' + \
+                  symbol_external + '[(x) + ' + str(1) + ']) : (' + \
+                  symbol_external + '[(x)]' \
+                  '))' + _nl
 
-            _s += _space + '}else{ \n'
-            _s += _space + symbol_internal + ' = ' + symbol_external + ';\n'
-            _s += _space + '}\n'
         else:
-            _s = _space + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + ' = ' + symbol_external + ';\n'
+            # case where we map straight through to the external dat.
+            _c += '#define ' + symbol_internal + '(x) ' + symbol_external + \
+                  '[(x)]' + _nl
 
-        return _s
+        return _c
 
     elif issubclass(type(dat), host.Matrix):
         # Case for host.Matrix and data.ParticleDat.
 
-        if (access_type.write is True) and (pair is True):
-            # Point the second element at a null_array that should be removed by compiler optimiser.
+        _c = build.Code()
+        _c += '#undef ' + symbol_internal + _nl
 
-            _ncomp = dat.ncol
-            _s = _space + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '[2];\n'
+        _ncomp = str(dat.ncol)
 
-            _s += _space + 'if (_cp_halo_flag > 0){ \n'
-            _s += _space + host.ctypes_map[dat.dtype] + ' _null_' + symbol_internal + '[' + str(_ncomp) + '] = {0}; \n'
-            _s += _space + symbol_internal + '[0] = ' + '&_null_' + symbol_internal + '[0];\n'
-            _s += _space + '}else{ \n'
-            # if not in halo
-            _s += _space + symbol_internal + '[0] = ' + symbol_external + '+' + str(_ncomp) + '*_i;}\n'
+        if pair:
+            _c += '#define ' + symbol_internal + '(x,y) ' + symbol_internal + '_##x(y)' + _nl
+            _c += '#define ' + symbol_internal + '_0(y) (' + symbol_external + \
+                  '[' + get_first_index_symbol() + '*' + _ncomp + '+ (y) ])' + _nl
 
-            _s += '\n'
-
-            _s += _space + 'if (_cpp_halo_flag > 0){ \n'
-            _s += _space + host.ctypes_map[dat.dtype] + ' _null_' + symbol_internal + '[' + str(_ncomp) + '] = {0}; \n'
-            _s += _space + symbol_internal + '[1] = ' + '&_null_' + symbol_internal + '[0];\n'
-
-            _s += _space + '}else{ \n'
-            # if not in halo
-            _s += _space + symbol_internal + '[1] = ' + symbol_external + '+' + str(_ncomp) + '*_j;}\n'
-
-            _s += '\n'
-
+            _c += '#define ' + symbol_internal + '_1(y) (' + symbol_external + \
+                  '[' + get_second_index_symbol() + '*' + _ncomp + '+ (y) ])' + _nl
 
         else:
-            _ncomp = dat.ncol
-            _s = '\n'
-            _s += _space + host.ctypes_map[dat.dtype] + ' *' + symbol_internal + '[' + str(_n) +'];\n'
-            _s += _space + symbol_internal + '[0] = ' + symbol_external + '+' + str(_ncomp) + '* _i;\n'
-            if pair:
-                _s += _space + symbol_internal + '[1] = ' + symbol_external + '+' + str(_ncomp) + '* _j;\n'
+            _c += '#define ' + symbol_internal + '(y) (' + symbol_external + \
+                  '[' + get_first_index_symbol() + '*' + _ncomp + ' + (y)])' + \
+                  _nl
 
-        return _s
+
+        return _c
 
     else:
 

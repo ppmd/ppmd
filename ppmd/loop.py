@@ -10,7 +10,7 @@ import build
 import runtime
 import access
 import host
-#import cell
+import generation
 
 class _Base(object):
     """
@@ -56,7 +56,10 @@ class _Base(object):
         and populates the data to ensure that ``loc_argXXX[i]`` points to
         the correct address in the particle_dats.
         """
-        s = '\n'
+        # s = '\n'
+
+        # Code block to hold the macros for the mapping from symbols to pointers
+        _map = build.Code()
 
         for i, dat_orig in enumerate(self._particle_dat_dict.items()):
             if type(dat_orig[1]) is tuple:
@@ -66,24 +69,33 @@ class _Base(object):
                 dat = dat_orig
                 _mode = access.RW
             space = ' ' * 14
+            _nl = '\n'
+
+            # This is the symbol used for the function decleration
             argname = dat[0] + '_ext'
+
+            # symbol used in the kernel
             loc_argname = dat[0]
 
-            if (type(dat[1]) == data.ScalarArray) or (type(dat[1]) == host.PointerArray):
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
+            # undef any previous macros for this symbol
+            _map += '#undef ' + loc_argname + _nl
 
+            # If the symbol corresponds to an array we want a direct map
+            if (type(dat[1]) == data.ScalarArray) or (type(dat[1]) == host.PointerArray):
+                _map += '#define ' + loc_argname + '(x) ' + argname + '[(x)]' + _nl
+
+            # if the symbol is a particle dat then the first index and only
+            # index maps into the correct column.
             if type(dat[1]) == data.ParticleDat:
                 ncomp = dat[1].ncomp
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';\n'
-                s += space + loc_argname + ' = ' + argname + '+' + str(ncomp) + '*i;\n'
+                _map += '#define ' + loc_argname + '(x) ' + argname + '[' + generation.get_first_index_symbol() + '*' + str(ncomp) + ' + (x)]' + _nl
 
             if type(dat[1]) == data.TypedDat:
                 ncomp = dat[1].ncol
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
-                s += space + loc_argname + ' = &' + argname + '[LINIDX_2D(' + str(
-                    ncomp) + ',' + '0, ' + '_TYPE_MAP[i])];\n'
+                _map += '#define ' + loc_argname + '(x) ' + argname + '[LINIDX_2D(' + str(
+                     ncomp) + ',' + '(x), ' + '_TYPE_MAP[' + generation.get_first_index_symbol() + '])]' + _nl
 
-        return s
+        return _map
 
     def _argnames(self):
         """Comma separated string of argument name declarations.
@@ -106,10 +118,19 @@ class _Base(object):
 
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
-            if type(dat[1]) is not tuple:
-                argnames += host.ctypes_map[dat[1].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
+            if type(dat[1]) is tuple:
+                _dtype = dat[1][0].dtype
+                _mode = dat[1][1]
             else:
-                argnames += host.ctypes_map[dat[1][0].dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
+                _dtype = dat[1].dtype
+                _mode = access.RW
+
+            if not _mode.write:
+                _const = 'const '
+            else:
+                _const = ''
+
+            argnames += _const + host.ctypes_map[_dtype] + ' * ' + self._cc.restrict_keyword + ' ' + dat[0] + '_ext,'
 
 
         return argnames[:-1]
@@ -132,6 +153,8 @@ class _Base(object):
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
+        #define _RESTRICT %(RESTRICT)s
+
         extern "C" void %(KERNEL_NAME)s_wrapper(int n,%(ARGUMENTS)s);
 
         '''
@@ -139,7 +162,8 @@ class _Base(object):
         d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR.dir,
+             'RESTRICT':self._cc.restrict_keyword}
         return code % d
 
     def _included_headers(self):
@@ -155,7 +179,8 @@ class _Base(object):
         """Generate the source code the actual implementation.
         """
 
-        d = {'KERNEL': self._kernel_code,
+        d = {'INDEX_I': generation.get_first_index_symbol(),
+             'KERNEL': self._kernel.code,
              'ARGUMENTS': self._argnames(),
              'LOC_ARGUMENTS': self._loc_argnames(),
              'KERNEL_NAME': self._kernel.name,
@@ -211,25 +236,24 @@ class _Base(object):
 ################################################################################################################
 
 
-class SingleAllParticleLoop(_Base):
+class ParticleLoop(_Base):
 
     def _code_init(self):
-        self._kernel_code = self._kernel.code
 
         self._code = '''
 
-        void %(KERNEL_NAME)s_wrapper(const int n, int *_TYPE_MAP,%(ARGUMENTS)s) { 
-        
-          for (int i=0; i<n; i++) {
-              %(KERNEL_ARGUMENT_DECL)s
-              
-                  //KERNEL CODE START
-                  
-                  %(KERNEL)s
-                  
-                  //KERNEL CODE END
-              
+        void %(KERNEL_NAME)s_wrapper(const int _N, int* _RESTRICT _TYPE_MAP,%(ARGUMENTS)s) {
+
+            for (int %(INDEX_I)s=0; %(INDEX_I)s<_N; %(INDEX_I)s++) {
+                %(KERNEL_ARGUMENT_DECL)s
+
+                    //KERNEL CODE START
+
+                    %(KERNEL)s
+
+                    //KERNEL CODE END
             }
+
         }
         '''
 
@@ -239,18 +263,21 @@ class SingleAllParticleLoop(_Base):
 
         Returns the source code for the header file.
         """
+
         code = '''
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
-        extern "C" void %(KERNEL_NAME)s_wrapper(const int n, int *_TYPE_MAP,%(ARGUMENTS)s);
+        #define _RESTRICT %(RESTRICT)s
 
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int _N, int* _RESTRICT _TYPE_MAP,%(ARGUMENTS)s);
         '''
 
         d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR.dir,
+             'RESTRICT':self._cc.restrict_keyword}
         return code % d
 
 
@@ -259,16 +286,14 @@ class SingleAllParticleLoop(_Base):
 ################################################################################################################
 
 
-class SingleParticleLoop(_Base):
+class LimitedParticleLoop(_Base):
 
     def _code_init(self):
-        self._kernel_code = self._kernel.code
 
         self._code = '''
 
-        void %(KERNEL_NAME)s_wrapper(const int start_ix, const int end_ix, %(ARGUMENTS)s) { 
-          int i;
-          for (i=start_ix; i<end_ix; i++) {
+        void %(KERNEL_NAME)s_wrapper(const int _START_IX, const int _END_IX, int* _RESTRICT _TYPE_MAP, %(ARGUMENTS)s) {
+          for (int %(INDEX_I)s=_START_IX; %(INDEX_I)s<_END_IX; %(INDEX_I)s++) {
               %(KERNEL_ARGUMENT_DECL)s
               
                   //KERNEL CODE START
@@ -290,23 +315,35 @@ class SingleParticleLoop(_Base):
         #include "%(LIB_DIR)s/generic.h"
         %(INCLUDED_HEADERS)s
 
-        extern "C" void %(KERNEL_NAME)s_wrapper(const int start_ix, const int end_ix,%(ARGUMENTS)s);
+        #define _RESTRICT %(RESTRICT)s
+
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int _START_IX, const int _END_IX, int* _RESTRICT _TYPE_MAP, %(ARGUMENTS)s);
 
         '''
 
         d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR.dir,
+             'RESTRICT':self._cc.restrict_keyword}
         return code % d
 
-    def execute(self, start=0, end=0, dat_dict=None, static_args=None):
+    def execute(self, start=None, end=None, dat_dict=None, static_args=None):
 
         # Allow alternative pointers
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
+
         args = [ctypes.c_int(start), ctypes.c_int(end)]
+
+
+        if self._types_map is not None:
+            args.append(self._types_map.ctypes_data)
+        else:
+            _null_type_map = ctypes.c_int()
+            args.append(ctypes.byref(_null_type_map))
+
 
         '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
 

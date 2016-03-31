@@ -96,7 +96,7 @@ GCC = Compiler(['GCC'],
                ['g++'],
                ['-fPIC', '-std=c++0x'],
                ['-lm'],
-               ['-O3', '-march=native', '-m64','-fopt-info-vec', '-fopt-info-vec-missed'],
+               ['-O3', '-march=native', '-m64', '-ftree-vectorizer-verbose=5', '-fassociative-math'],
                ['-g'],
                ['-c'],
                ['-shared'],
@@ -107,7 +107,7 @@ GCC_OpenMP = Compiler(['GCC'],
                       ['g++'],
                       ['-fopenmp', '-fPIC', '-std=c++0x'],
                       ['-lgomp', '-lrt', '-Wall'],
-                      ['-O3', '-march=native', '-m64', '-fopt-info-vec', '-fopt-info-vec-missed'],
+                      ['-O3', '-march=native', '-m64','-ftree-vectorizer-verbose=5'],
                       ['-g'],
                       ['-c', '-Wall'],
                       ['-shared'],
@@ -138,7 +138,7 @@ ICC_OpenMP = Compiler(['ICC'],
 
 
 # Temporary Compiler flag
-ICC_LIST = ['mapc-4044']
+ICC_LIST = ['mapc-4044', 'itd-ngpu-01', 'itd-ngpu-02']
 
 if os.uname()[1] in ICC_LIST:
     TMPCC = ICC
@@ -654,7 +654,8 @@ class Code(object):
     def __str__(self):
         return str(self._c)
 
-
+    def __add__(self, other):
+        return Code(self.string + str(other))
 
 
 

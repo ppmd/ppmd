@@ -67,7 +67,7 @@ class BaseMDSimulation(object):
 
         # r_n = (1+\delta) * r_c
 
-        self._delta = 0.1
+        self._delta = 0.05
 
         self._cell_width = (1 + self._delta) * self._cutoff
 
@@ -150,28 +150,9 @@ class BaseMDSimulation(object):
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
 
-                self._forces_update_lib2 = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
-                                                                        potential=self.potential,
-                                                                        dat_dict=_potential_dat_dict)
-                '''
-                self._forces_update_lib2 = pairloop.PairLoopRapaportHaloOpenMP(domain=self.state.domain,
-                                                                               potential=self.potential,
-                                                                               dat_dict=_potential_dat_dict)
-
-                
-                self._forces_update_lib = pairloop.PairLoopNeighbourListOpenMP(potential=self.potential,
-                                                                         dat_dict=_potential_dat_dict)
-                '''
                 self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
-                                                                              dat_dict=_potential_dat_dict)
+                                                                         dat_dict=_potential_dat_dict)
 
-                '''
-                self._forces_update_lib2 = pairloop.PairLoopNeighbourListHaloAware(potential=self.potential,
-                                                                                  dat_dict=_potential_dat_dict)
-                self._forces_update_lib2 = pairloop.PairLoopNeighbourListLayersHybrid(potential=self.potential,
-                                                                                     dat_dict=_potential_dat_dict,
-                                                                                     openmp=False)
-                '''
 
 
         # If no cell structure was created
@@ -254,7 +235,6 @@ class BaseMDSimulation(object):
         Updates the forces in the simulation state using the short range potential.
         """
 
-
         self.timer.start()
 
 
@@ -305,16 +285,16 @@ class BaseMDSimulation(object):
 
         if self._kinetic_energy_lib is None:
             _K_kernel_code = '''
-            k[0] += (V[0]*V[0] + V[1]*V[1] + V[2]*V[2])*0.5*M[0];
+            k(0) += (V(0)*V(0) + V(1)*V(1) + V(2)*V(2))*0.5*M(0);
             '''
             _constants_K = []
             _K_kernel = kernel.Kernel('K_kernel', _K_kernel_code, _constants_K)
-            self._kinetic_energy_lib = loop.SingleAllParticleLoop(self.state.as_func('n'),
-                                                                  self.state.types,
-                                                                  _K_kernel,
-                                                                  {'V': self.state.velocities, 'k': self.state.k, 'M': self.state.mass})
+            self._kinetic_energy_lib = loop.ParticleLoop(self.state.as_func('n'),
+                                                         self.state.types,
+                                                         _K_kernel,
+                                                         {'V': self.state.velocities, 'k': self.state.k, 'M': self.state.mass})
         self.state.k.dat[0] = 0.0
-        self._kinetic_energy_lib.execute()
+        self._kinetic_energy_lib.execute(self.state.n)
 
         return self.state.k.dat
 
@@ -707,9 +687,6 @@ class PosInitDLPOLYConfig(object):
                     state_input.positions.dat[_n, 2] = _tz
 
                     #print state_input.positions.dat[_n,::]
-
-
-                    print state_input.positions[_n,::]
 
                     state_input.global_ids[_n] = count
                     _n += 1

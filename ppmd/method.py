@@ -68,26 +68,20 @@ class VelocityVerlet(object):
         self._schedule = schedule
         
         self._kernel1_code = '''
-        //self._V+=0.5*self._dt*self._A
-        //self._P+=self._dt*self._V
-
-        //printf("M[0]=%f \\n", M[0]);
-
-        const double M_tmp = 1.0/M[0];
-        V[0] += dht*A[0]*M_tmp;
-        V[1] += dht*A[1]*M_tmp;
-        V[2] += dht*A[2]*M_tmp;
-        P[0] += dt*V[0];
-        P[1] += dt*V[1];
-        P[2] += dt*V[2];
+        const double M_tmp = 1.0/M(0);
+        V(0) += dht*A(0)*M_tmp;
+        V(1) += dht*A(1)*M_tmp;
+        V(2) += dht*A(2)*M_tmp;
+        P(0) += dt*V(0);
+        P(1) += dt*V(1);
+        P(2) += dt*V(2);
         '''
                 
         self._kernel2_code = '''
-        //self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat
-        const double M_tmp = 1/M[0];
-        V[0] += dht*A[0]*M_tmp;
-        V[1] += dht*A[1]*M_tmp;
-        V[2] += dht*A[2]*M_tmp;
+        const double M_tmp = 1.0/M(0);
+        V(0) += dht*A(0)*M_tmp;
+        V(1) += dht*A(1)*M_tmp;
+        V(2) += dht*A(2)*M_tmp;
         '''
 
 
@@ -109,10 +103,10 @@ class VelocityVerlet(object):
         self._constants = [kernel.Constant('dt',self._dt), kernel.Constant('dht',0.5*self._dt),]
 
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
+        self._p1 = loop.ParticleLoop(self._N, self._state.types,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
 
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-        self._p2 = loop.SingleAllParticleLoop(self._N, self._state.types,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
+        self._p2 = loop.ParticleLoop(self._N, self._state.types,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
 
         _t = runtime.Timer(runtime.TIMER, 0, start=True)
         self._velocity_verlet_integration()
@@ -180,7 +174,7 @@ class VelocityVerletAnderson(VelocityVerlet):
 
         self._constants1 = [kernel.Constant('dt',self._dt), kernel.Constant('dht',0.5*self._dt),]
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
-        self._p1 = loop.SingleAllParticleLoop(self._N, self._state.types ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
+        self._p1 = loop.ParticleLoop(self._N, self._state.types ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
 
         self._kernel2_thermostat_code = '''
 
@@ -194,20 +188,20 @@ class VelocityVerletAnderson(VelocityVerlet):
             //Box-Muller method.
 
 
-            const double scale = sqrt(temperature/M[0]);
+            const double scale = sqrt(temperature/M(0));
             const double stmp = scale*sqrt(-2.0*log(rand()*tmp_rand_max));
 
             const double V0 = 2.0*M_PI*rand()*tmp_rand_max;
-            V[0] = stmp*cos(V0);
-            V[1] = stmp*sin(V0);
-            V[2] = scale*sqrt(-2.0*log(rand()*tmp_rand_max))*cos(2.0*M_PI*rand()*tmp_rand_max);
+            V(0) = stmp*cos(V0);
+            V(1) = stmp*sin(V0);
+            V(2) = scale*sqrt(-2.0*log(rand()*tmp_rand_max))*cos(2.0*M_PI*rand()*tmp_rand_max);
 
         }
         else {
-            const double M_tmp = 1/M[0];
-            V[0] += dht*A[0]*M_tmp;
-            V[1] += dht*A[1]*M_tmp;
-            V[2] += dht*A[2]*M_tmp;
+            const double M_tmp = 1/M(0);
+            V(0) += dht*A(0)*M_tmp;
+            V(1) += dht*A(1)*M_tmp;
+            V(2) += dht*A(2)*M_tmp;
         }
 
         '''
@@ -215,7 +209,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         self._constants2_thermostat = [kernel.Constant('rate',self._dt*self._nu), kernel.Constant('dt',self._dt), kernel.Constant('dht',0.5*self._dt), kernel.Constant('temperature',self._Temp),]
 
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
-        self._p2_thermostat = loop.SingleAllParticleLoop(self._N, self._state.types, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
+        self._p2_thermostat = loop.ParticleLoop(self._N, self._state.types, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
 
         _t = runtime.Timer(runtime.TIMER, 0, start=True)
         self._velocity_verlet_integration_thermostat()
@@ -283,9 +277,9 @@ class RadialDistributionPeriodicNVE(object):
         _kernel = '''
         
         
-        double R0 = P[1][0] - P[0][0];
-        double R1 = P[1][1] - P[0][1];
-        double R2 = P[1][2] - P[0][2];
+        double R0 = P(1, 0) - P(0, 0);
+        double R1 = P(1, 1) - P(0, 1);
+        double R2 = P(1, 2) - P(0, 2);
         
         if (abs_md(R0) > exto20 ) { R0 += isign(R0) * extent0 ; }
         if (abs_md(R1) > exto21 ) { R1 += isign(R1) * extent1 ; }
@@ -571,7 +565,7 @@ class VelocityAutoCorrelation(object):
         _constants = None
         _kernel_code = '''
 
-        VAF[0] += (v0[0]*VT[0] + v0[1]*VT[1] + v0[2]*VT[2])*Ni;
+        VAF(0) += (v0(0)*VT(0) + v0(1)*VT(1) + v0(2)*VT(2))*Ni;
 
         '''
         _reduction = (kernel.Reduction('VAF', 'VAF[I]', '+'),)
@@ -582,7 +576,7 @@ class VelocityAutoCorrelation(object):
 
         self._datdict = {'VAF': self._VAF, 'v0': self._V0, 'VT': self._VT}
 
-        self._loop = loop.SingleAllParticleLoop(self._state.as_func('n'), None, kernel=_kernel, particle_dat_dict=self._datdict)
+        self._loop = loop.ParticleLoop(self._state.as_func('n'), None, kernel=_kernel, particle_dat_dict=self._datdict)
 
     def set_v0(self, v0=None, state=None):
         """

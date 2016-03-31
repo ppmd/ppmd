@@ -19,7 +19,7 @@ runtime.BUILD_TIMER.level = 3
 
 
 #cuda on/off
-runtime.CUDA_ENABLED.flag = True
+runtime.CUDA_ENABLED.flag = False
 
 
 
@@ -71,8 +71,9 @@ if __name__ == '__main__':
         test_domain = domain.BaseDomainHalo()
 
         # Initialise LJ potential
-        test_potential = potential.LennardJones(sigma=1.0,epsilon=1.0, rc=7.5)
+        test_potential = potential.VLennardJones(sigma=1.0,epsilon=1.0, rc=7.5)
         #test_potential = potential.TestPotential2(sigma=1.0,epsilon=1.0, rc=7.5)
+        #test_potential = potential.TestPotential3(sigma=1.0,epsilon=1.0, rc=7.5)
 
         # print kernel.analyse(test_potential.kernel, [])
 
