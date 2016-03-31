@@ -14,9 +14,9 @@ N = n ** 3
 
 
 # n=860
-rho = 0.05
+rho = 0.02
 mu = 0.0
-nsig = 5.0
+nsig = 2.0
 
 # Initialise basic domain
 test_domain = domain.BaseDomainHalo()

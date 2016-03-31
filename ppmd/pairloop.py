@@ -236,7 +236,7 @@ class PairLoopRapaportHalo(_Base):
                                              CC=self._cc)
 
     def _kernel_argument_declarations(self):
-        s = '\n'
+        s = build.Code()
         for i, dat_orig in enumerate(self._particle_dat_dict.items()):
 
             if type(dat_orig[1]) is tuple:
@@ -258,7 +258,7 @@ class PairLoopRapaportHalo(_Base):
                                          dat=dat[1],
                                          access_type=_mode)
 
-        return s
+        return str(s)
 
     def _generate_header_source(self):
         """Generate the source code of the header file.
