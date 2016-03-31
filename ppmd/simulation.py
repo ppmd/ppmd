@@ -707,9 +707,6 @@ class PosInitDLPOLYConfig(object):
 
                     #print state_input.positions.dat[_n,::]
 
-
-                    print state_input.positions[_n,::]
-
                     state_input.global_ids[_n] = count
                     _n += 1
                 else:

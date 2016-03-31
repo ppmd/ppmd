@@ -508,8 +508,8 @@ class NeighbourListLayerBased(object):
 
     def update(self):
 
-        if (self.list.ncol < self._occ_matrix.positions.npart) or (self.list.nrow < (27 * self._occ_matrix.layers_per_cell + 1)):
-            self.list.realloc(nrow=27 * self._occ_matrix.layers_per_cell + 1,
+        if (self.list.ncol < self._occ_matrix.positions.npart) or (self.list.nrow < (8 * self._occ_matrix.layers_per_cell + 1)):
+            self.list.realloc(nrow=8 * self._occ_matrix.layers_per_cell + 1,
                               ncol=self._occ_matrix.positions.npart)
 
         _tpb = 256
@@ -520,7 +520,7 @@ class NeighbourListLayerBased(object):
         args = (
             _blocksize,
             _threadsize,
-            ctypes.c_int(27 * self._occ_matrix.layers_per_cell + 1), # nmax
+            ctypes.c_int(8 * self._occ_matrix.layers_per_cell + 1), # nmax
             ctypes.c_int(self._occ_matrix.positions.npart),      # npart
             ctypes.c_int(self._occ_matrix.layers_per_cell),      # nlayers max
             ctypes.c_double(self._rc ** 2),                      # cutoff squared
@@ -533,7 +533,7 @@ class NeighbourListLayerBased(object):
         )
 
         self._lib(*args)
-        self.max_neigbours_per_particle = 27 * self._occ_matrix.layers_per_cell + 1
+        self.max_neigbours_per_particle = 8 * self._occ_matrix.layers_per_cell + 1
 
 
 

@@ -143,36 +143,36 @@ if __name__ == '__main__':
     vv1_code = '''
     //self._V+=0.5*self._dt*self._A
     //self._P+=self._dt*self._V
-    const double M_tmp = 1./M[0];
+    const double M_tmp = 1./M(0);
 
     //const double M_tmp = 1.0;
 
-    V[0] += dht*A[0]*M_tmp;
-    V[1] += dht*A[1]*M_tmp;
-    V[2] += dht*A[2]*M_tmp;
-    P[0] += dt*V[0];
-    P[1] += dt*V[1];
-    P[2] += dt*V[2];
+    V(0) += dht*A(0)*M_tmp;
+    V(1) += dht*A(1)*M_tmp;
+    V(2) += dht*A(2)*M_tmp;
+    P(0) += dt*V(0);
+    P(1) += dt*V(1);
+    P(2) += dt*V(2);
     '''
 
     t_vv1_code = '''
     //self._V+=0.5*self._dt*self._A
     //self._P+=self._dt*self._V
-    const double M_tmp = 1./M[0];
+    const double M_tmp = 1./M(0);
 
     //const double M_tmp = 1.0;
 
-    double3 v = {V[0], V[1], V[2]};
-    double3 a = {A[0], A[1], A[2]};
-    double3 p = {P[0], P[1], P[2]};
+    double3 v = {V(0), V(1), V(2)};
+    double3 a = {A(0), A(1), A(2)};
+    double3 p = {P(0), P(1), P(2)};
 
-    V[0] = __fma_rn(dht*M_tmp, a.x, v.x);
-    V[1] = __fma_rn(dht*M_tmp, a.y, v.y);
-    V[2] = __fma_rn(dht*M_tmp, a.z, v.z);
+    V(0) = __fma_rn(dht*M_tmp, a.x, v.x);
+    V(1) = __fma_rn(dht*M_tmp, a.y, v.y);
+    V(2) = __fma_rn(dht*M_tmp, a.z, v.z);
 
-    P[0] = __fma_rn(dt, v.x, p.x);
-    P[1] = __fma_rn(dt, v.y, p.y);
-    P[2] = __fma_rn(dt, v.z, p.z);
+    P(0) = __fma_rn(dt, v.x, p.x);
+    P(1) = __fma_rn(dt, v.y, p.y);
+    P(2) = __fma_rn(dt, v.z, p.z);
 
     '''
 
@@ -188,12 +188,12 @@ if __name__ == '__main__':
 
 
     vv2_code = '''
-    //self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat
-    const double M_tmp = 1/M[0];
+    //self._V.Dat()(...,...)+= 0.5*self._dt*self._A.Dat
+    const double M_tmp = 1/M(0);
     //const double M_tmp = 1.0;
-    V[0] += dht*A[0]*M_tmp;
-    V[1] += dht*A[1]*M_tmp;
-    V[2] += dht*A[2]*M_tmp;
+    V(0) += dht*A(0)*M_tmp;
+    V(1) += dht*A(1)*M_tmp;
+    V(2) += dht*A(2)*M_tmp;
     '''
 
 
@@ -202,7 +202,7 @@ if __name__ == '__main__':
 
 
     ke_code = '''
-    K[0] += 0.5 * M[0] * ( V[0]*V[0] + V[1]*V[1] + V[2]*V[2] );
+    K(0) += 0.5 * M(0) * ( V(0)*V(0) + V(1)*V(1) + V(2)*V(2) );
 
     '''
 
@@ -220,56 +220,56 @@ if __name__ == '__main__':
 
     int _F = 0;
 
-    //printf("BEFORE ID %d | x=%f y=%f z=%f \\n", _ix, P[0], P[1], P[2]);
-    if (abs_md(P[0]) > 0.5*E0){
+    //printf("BEFORE ID %d | x=%f y=%f z=%f \\n", _ix, P(0), P(1), P(2));
+    if (abs_md(P(0)) > 0.5*E0){
         const double E0_2 = 0.5*E0;
-        const double x = P[0] + E0_2;
+        const double x = P(0) + E0_2;
 
 
         if (x < 0){
-            P[0] = (E0 - fmod(abs_md(x) , E0)) - E0_2;
+            P(0) = (E0 - fmod(abs_md(x) , E0)) - E0_2;
             _F = 1;
         }
         else{
-            P[0] = fmod( x , E0 ) - E0_2;
+            P(0) = fmod( x , E0 ) - E0_2;
             _F = 1;
         }
     }
 
-    if (abs_md(P[1]) > 0.5*E1){
+    if (abs_md(P(1)) > 0.5*E1){
         const double E1_2 = 0.5*E1;
-        const double x = P[1] + E1_2;
+        const double x = P(1) + E1_2;
 
         if (x < 0){
-            P[1] = (E1 - fmod(abs_md(x) , E1)) - E1_2;
+            P(1) = (E1 - fmod(abs_md(x) , E1)) - E1_2;
             _F = 1;
         }
         else{
-            P[1] = fmod( x , E1 ) - E1_2;
+            P(1) = fmod( x , E1 ) - E1_2;
             _F = 1;
         }
     }
 
-    if (abs_md(P[2]) > 0.5*E2){
+    if (abs_md(P(2)) > 0.5*E2){
         const double E2_2 = 0.5*E2;
-        const double x = P[2] + E2_2;
+        const double x = P(2) + E2_2;
 
         if (x < 0){
-            P[2] = (E2 - fmod(abs_md(x) , E2)) - E2_2;
+            P(2) = (E2 - fmod(abs_md(x) , E2)) - E2_2;
             _F = 1;
         }
         else{
-            P[2] = fmod( x , E2 ) - E2_2;
+            P(2) = fmod( x , E2 ) - E2_2;
             _F = 1;
         }
     }
 
     if (_F > 0){
         //printf("f \\n");
-        BCFLAG[0] = BCFLAG[0] || _F;
+        BCFLAG(0) = BCFLAG(0) || _F;
     }
 
-    //printf("AFTER ID %d | x=%f y=%f z=%f \\n", _ix, P[0], P[1], P[2]);
+    //printf("AFTER ID %d | x=%f y=%f z=%f \\n", _ix, P(0), P(1), P(2));
     '''
 
 
@@ -320,10 +320,10 @@ if __name__ == '__main__':
                                      static_args={'E0':ctypes.c_double(_E.dat[0]), 'E1':ctypes.c_double(_E.dat[1]), 'E2':ctypes.c_double(_E.dat[2])})
         cuda_runtime.cuda_mem_cpy(h_BC_flag.ctypes_data, BC_flag.ctypes_data, ctypes.c_size_t(ctypes.sizeof(ctypes.c_int)), 'cudaMemcpyDeviceToHost')
 
-        if (ix % 10) or (h_BC_flag.dat[0] > 0) == 0:
+        if ((ix % 10) == 0) or (h_BC_flag.dat[0] > 0):
             COM.sort()
         sim1.state.d_positions.halo_exchange()
-        if (ix % 10) or (h_BC_flag.dat[0] > 0) == 0:
+        if ((ix % 10) == 0) or (h_BC_flag.dat[0] > 0):
             neighbour_list.update()
 
 

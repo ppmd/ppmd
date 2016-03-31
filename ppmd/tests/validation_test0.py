@@ -14,7 +14,7 @@ runtime.BUILD_TIMER.level = 3
 runtime.OPT.level = 3
 
 #cuda on/off
-runtime.CUDA_ENABLED.flag = True
+runtime.CUDA_ENABLED.flag = False
 
 import os
 
