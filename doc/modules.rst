@@ -9,14 +9,11 @@ Modules
    cell
    data
    domain
-   gpucuda
    halo
    host
    kernel
    loop
-   main
    method
-   move
    mpi
    pairloop
    pio

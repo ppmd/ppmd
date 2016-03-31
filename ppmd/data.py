@@ -367,7 +367,6 @@ class ParticleDat(host.Matrix):
         """
         Set the start of the halo region in the particle dat to the specified
          index.
-        :param int index: Index to set to.
         """
         if index < self.npart:
             if index >= 0:
@@ -382,9 +381,7 @@ class ParticleDat(host.Matrix):
     def halo_start_reset(self):
         """
         Reset the starting postion of the halo region in the particle dat to
-         the end of the
-        local particles.
-        :return:
+         the end of the local particles.
         """
         self.halo_start = self.npart
         self.npart_halo = 0
