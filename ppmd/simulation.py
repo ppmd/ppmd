@@ -150,6 +150,7 @@ class BaseMDSimulation(object):
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
 
+
                 self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
 
@@ -199,7 +200,7 @@ class BaseMDSimulation(object):
         """
 
         # force update
-        #self.state.invalidate_lists = True
+        # self.state.invalidate_lists = True
 
 
         self._test_count += 1
@@ -227,7 +228,7 @@ class BaseMDSimulation(object):
         if _ret_old == 1 and _ret != 1:
             print "update status reduction error, rank:", mpi.MPI_HANDLE.rank
 
-        #assert bool(_ret) is True, "d"
+        # assert bool(_ret) is True, "d"
 
         return bool(_ret)
 

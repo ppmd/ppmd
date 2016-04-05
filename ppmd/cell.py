@@ -165,9 +165,9 @@ class CellList(object):
 
         for (ix=0; ix<end_ix; ix++) {
 
-        const int C0 = (int)(P[ix*3]     - _b0)*_icel0;
-        const int C1 = (int)(P[ix*3 + 1] - _b2)*_icel1;
-        const int C2 = (int)(P[ix*3 + 2] - _b4)*_icel2;
+        const int C0 = (int)((P[ix*3]     - _b0)*_icel0);
+        const int C1 = (int)((P[ix*3 + 1] - _b2)*_icel1);
+        const int C2 = (int)((P[ix*3 + 2] - _b4)*_icel2);
 
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
 
