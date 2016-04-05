@@ -154,6 +154,11 @@ class BaseMDSimulation(object):
                                                                          dat_dict=_potential_dat_dict)
 
 
+                '''
+                self._forces_update_lib = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
+                                                                        potential=self.potential,
+                                                                        dat_dict=_potential_dat_dict)
+                '''
 
         # If no cell structure was created
         elif self.potential is not None and not setup_only:
@@ -182,6 +187,7 @@ class BaseMDSimulation(object):
         self._prev_time = self.state.time
 
         if self.state.n > 0:
+            #print self.state.velocities.dat[0:self.state.n:].max(), np.argmax(self.state.velocities.dat[0:self.state.n:])
             return _dt * self.state.velocities.dat[0:self.state.n:].max()
         else:
             return 0.0

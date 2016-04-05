@@ -54,16 +54,16 @@ if __name__ == '__main__':
     writing = False
 
 
-    t=.01
+    t=1.
     dt=0.0001
 
 
     if test_1000:
         # n=25 reasonable size
-        n = 100
+        n = 10
         N = n**3
         # n=860
-        rho = 0.05
+        rho = 0.1
         mu = 1.0
         nsig = 1.0
         
@@ -71,7 +71,7 @@ if __name__ == '__main__':
         test_domain = domain.BaseDomainHalo()
 
         # Initialise LJ potential
-        test_potential = potential.VLennardJones(sigma=1.0,epsilon=1.0, rc=7.5)
+        test_potential = potential.LennardJones(sigma=1.0, epsilon=1.0, rc=2.5)
         #test_potential = potential.TestPotential2(sigma=1.0,epsilon=1.0, rc=7.5)
         #test_potential = potential.TestPotential3(sigma=1.0,epsilon=1.0, rc=7.5)
 
@@ -217,7 +217,7 @@ if __name__ == '__main__':
     #If logging was enabled, plot data.
     if (logging):
         try:
-            energyhandle.plot()
+            energyhandle.plot(_plot=False)
         except:
             pass
 

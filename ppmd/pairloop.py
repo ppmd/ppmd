@@ -412,11 +412,7 @@ class PairLoopRapaportHalo(_Base):
         else:
             _N = cell.cell_list.cell_list[cell.cell_list.cell_list.end]
 
-        args = [ctypes.c_int(_N),
-                self._domain.cell_array.ctypes_data,
-                cell.cell_list.cell_list.ctypes_data]
 
-        args.append(self.loop_timer.get_python_parameters())
 
 
         '''Add static arguments to launch command'''
@@ -430,6 +426,13 @@ class PairLoopRapaportHalo(_Base):
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_access(dat_orig[1])
 
+        args = [ctypes.c_int(_N),
+                self._domain.cell_array.ctypes_data,
+                cell.cell_list.cell_list.ctypes_data]
+
+        args.append(self.loop_timer.get_python_parameters())
+
+
 
         '''Add pointer arguments to launch command'''
         for dat_orig in self._particle_dat_dict.values():
@@ -440,6 +443,7 @@ class PairLoopRapaportHalo(_Base):
 
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
+
 
         method(*args)
 

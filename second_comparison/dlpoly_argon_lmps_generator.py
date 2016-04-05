@@ -210,7 +210,9 @@ pair_style lj/cut %(CUTOFF)s
 processors * * * grid numa
 read_data        lammps_data.lmps
 
-pair_coeff * * %(EPS)s %(SIGMA)s
+pair_coeff 1 1 %(EPS)s %(SIGMA)s
+pair_modify shift yes
+
 
 mass 1 %(MASS)s
 
