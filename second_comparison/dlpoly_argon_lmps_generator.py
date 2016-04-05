@@ -5,17 +5,30 @@ import random
 import getopt
 import sys
 import os
+import hashlib
 
 
-N       = 10**3
-I       = 100
-E       = 0
-R       = False
-K       = 6
-Q       = False
+N       = 10**3 # Number of particles
+I       = 100   # Number of interations
+R       = 0.05  # density
+C       = 2.5   # cutoff
+
+# random seed for reproducibility
+S_len = 8
+S       = hashlib.sha256(str(random.random())).hexdigest()[0:S_len]
+
+F = False       # reload config from file
+F_file = None
+
+
+H = False       # print help and quit
+
+
+
+
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "RN:I:E:K:Q")
+    opts, args = getopt.getopt(sys.argv[1:], "hN:I:R:S:C:F:")
 except getopt.GetoptError as err:
     # print help information and exit:
     print str(err) # will print something like "option -a not recognized"
@@ -25,38 +38,97 @@ for o, a in opts:
         N=int(a)
     elif o == "-I":
         I=int(a)
-    elif o == "-E":
-        E=int(a)
     elif o == "-R":
-        R=True
-    elif o == "-Q":
-        Q=True        
-    elif o == "-K":
-    	K=int(a)
-        N=(K**3)*23
+        R=float(a)
+    elif o == "-C":
+        C=float(a)
+    elif o == "-S":
+        S=str(a)
+    elif o == "-h":
+        H = True
+    elif o == "-F":
+        F = True
+        F_file=str(a)
+        print "Loading values from file:", F_file
     else:
         assert False, "unhandled option"
 
-if (E>I):
-	I=E
+if H:
+    _h_str = '''
+    Configuration file generation for DL_POLY, LAMMPS and PPMD.
+    
+    -N      Number of particles
+    -I      Number of iterations
+    -R      Density
+    -C      LJ interaction cutoff
+    -S      Random seed for velocities
+
+    -F      File to load config values from seperated by
+            whitespace in the order of the above options.
+
+    -h      Show this help
+    '''
+    print _h_str
+    quit()
+
+
+if F:
+    fh = open(F_file, 'r')
+    F_str = fh.read()
+    fh.close()
+    
+    F_str = F_str.splitlines()
+
+    N = int(F_str[0])
+
+    print F_str[0]
+
+    I = int(F_str[1])
+    R = float(F_str[2])
+    C = float(F_str[3])
+    S = str(F_str[4])
 
 
 
 
-rho     = 0.02
+S = S.upper()
+assert len(S) == S_len, "Seed has incorrect length"
+
+# write config values to file for record
+
+print N, I, R, C, S
+
+
+fh = open('SIMULATION_RECORD', 'w')
+fh.write(str(N)+'\n')
+fh.write(str(I)+'\n')
+fh.write(str(R)+'\n')
+fh.write(str(C)+'\n')
+fh.write(str(S)+'\n')
+fh.close()
+
+
+
+
+
+# set random seed
+random.seed(S)
+
+
+
+
+rho     = R
 sigma   = 1.0 #3.405
 eps     = 1.0 #0.9661
-cutoff  = 2.5
+cutoff  = C
 mass    = 39.948
 temp    = 85.0
 pressure= 0.0
 steps   = I
-steps_eq= E
+steps_eq= 0
 steps_scale = steps+1
 print_steps = steps
-#extent  = [30.000000000, 30.000000000, 30.000000000]
 extent = [(float(N) / float(rho))**(1./3.),(float(N) / float(rho))**(1./3.),(float(N) / float(rho))**(1./3.)]
-#extent = [float(K*cutoff),float(K*cutoff),float(K*cutoff)]
 
 
 print extent
@@ -64,23 +136,22 @@ print math.ceil(extent[0]/cutoff)
 
 #####################################################################################
 #Create FIELD FILE
-if (R==False):
-    FIELD_STR = '''Argon
-    UNITS internal
-    MOLECULES 1
-    Argon Atoms
-    NUMMOLS %(NUMMOLS)s
-    ATOMS   1
-    Ar         %(MASS)s    0.000000
-    FINISH
-    VDW     1
-    Ar      Ar      lj   %(EPS)s      %(SIGMA)s
-    CLOSE
-    ''' % {'NUMMOLS':N, 'MASS':mass, 'SIGMA':sigma, 'EPS':eps}
+FIELD_STR = '''Argon
+UNITS internal
+MOLECULES 1
+Argon Atoms
+NUMMOLS %(NUMMOLS)s
+ATOMS   1
+Ar         %(MASS)s    0.000000
+FINISH
+VDW     1
+Ar      Ar      lj   %(EPS)s      %(SIGMA)s
+CLOSE
+''' % {'NUMMOLS':N, 'MASS':mass, 'SIGMA':sigma, 'EPS':eps}
 
-    fh = open('FIELD','w')
-    fh.write(FIELD_STR)
-    fh.close()
+fh = open('FIELD','w')
+fh.write(FIELD_STR)
+fh.close()
 
 
 #####################################################################################
@@ -130,7 +201,7 @@ fh.close()
 LMP_INPUT = '''
 
 atom_style full
-units metal
+units lj
 
 variable Ni equal   %(STEPS)s
 
@@ -143,13 +214,19 @@ pair_coeff * * %(EPS)s %(SIGMA)s
 
 mass 1 %(MASS)s
 
+neighbor 0.1 bin
+neigh_modify delay 0 every 10 check no
+
+
+
+
 timestep 0.001
 
 
 
 fix     1 all nve
 
-run $Ni
+run %(STEPS)s
 
 ''' % {'MASS': mass, 'CUTOFF': cutoff, 'EPS':eps, 'SIGMA':sigma, 'STEPS': steps}
 

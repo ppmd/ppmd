@@ -67,7 +67,7 @@ class BaseMDSimulation(object):
 
         # r_n = (1+\delta) * r_c
 
-        self._delta = 0.05
+        self._delta = 0.1
 
         self._cell_width = (1 + self._delta) * self._cutoff
 

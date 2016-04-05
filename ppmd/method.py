@@ -813,8 +813,7 @@ class EnergyStore(object):
 
 
 
-
-    def plot(self):
+    def plot(self, _plot = True):
         """
         Plot the stored energy data.
 
@@ -885,20 +884,22 @@ class EnergyStore(object):
             print "first kinetic", _K[0]
             print "first potential", _U[0]
 
-            plt.ion()
-            fig2 = plt.figure()
-            ax2 = fig2.add_subplot(111)
+            if _plot:
 
-            ax2.plot(_T, _Q, color='r', linewidth=2)
-            ax2.plot(_T, _U, color='g')
-            ax2.plot(_T, _K, color='b')
+                plt.ion()
+                fig2 = plt.figure()
+                ax2 = fig2.add_subplot(111)
 
-            ax2.set_title('Red: Total energy, Green: Potential energy, Blue: kinetic energy')
-            ax2.set_xlabel('Time')
-            ax2.set_ylabel('Energy')
+                ax2.plot(_T, _Q, color='r', linewidth=2)
+                ax2.plot(_T, _U, color='g')
+                ax2.plot(_T, _K, color='b')
 
-            fig2.canvas.draw()
-            plt.show(block=False)
+                ax2.set_title('Red: Total energy, Green: Potential energy, Blue: kinetic energy')
+                ax2.set_xlabel('Time')
+                ax2.set_ylabel('Energy')
+
+                fig2.canvas.draw()
+                plt.show(block=False)
 
         if mpi.MPI_HANDLE.rank == 0:
             if not os.path.exists(os.path.join(os.getcwd(),'./output')):
