@@ -273,7 +273,7 @@ class SharedLib(object):
         """Timer that times the creation of the shared library if
         runtime.BUILD_TIMER.level > 2"""
 
-        self.execute_timer = runtime.Timer(runtime.BUILD_TIMER, 2, start=False)
+        self.execute_timer = runtime.Timer(runtime.TIMER, 0, start=False)
         """Timer that times the execution time of the shared library if
         runtime.BUILD_TIMER.level > 2"""
 
@@ -286,8 +286,7 @@ class SharedLib(object):
 
         self._compiler_set()
         self._temp_dir = runtime.BUILD_DIR.dir
-        if not os.path.exists(self._temp_dir):
-            os.mkdir(self._temp_dir)
+
         self._kernel = kernel
 
         self._particle_dat_dict = particle_dat_dict
@@ -510,6 +509,8 @@ def md5(string):
     return m.hexdigest()
 
 def source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR.dir):
+
+
     _filename = 'HOST_' + str(name)
     _filename += '_' + md5(_filename + str(header_code) + str(src_code) +
                            str(name))
@@ -557,6 +558,7 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
     if not check_file_existance(_lib_filename):
         if not os.path.exists(dst_dir) and mpi.MPI_HANDLE.rank == 0:
             os.mkdir(dst_dir)
+        mpi.MPI_HANDLE.barrier()
 
         source_write(header_code, src_code, name, extensions=extensions, dst_dir=runtime.BUILD_DIR.dir)
         build_lib(_filename, extensions=extensions, CC=CC, hash=False)

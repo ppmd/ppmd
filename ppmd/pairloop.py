@@ -414,13 +414,6 @@ class PairLoopRapaportHalo(_Base):
 
 
 
-
-        '''Add static arguments to launch command'''
-        if self._kernel.static_args is not None:
-            assert static_args is not None, "Error: static arguments not passed to loop."
-            for dat in static_args.values():
-                args.append(dat)
-
         '''Pass access descriptor to dat'''
         for dat_orig in self._particle_dat_dict.values():
             if type(dat_orig) is tuple:
@@ -433,6 +426,11 @@ class PairLoopRapaportHalo(_Base):
         args.append(self.loop_timer.get_python_parameters())
 
 
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
 
         '''Add pointer arguments to launch command'''
         for dat_orig in self._particle_dat_dict.values():
@@ -493,10 +491,14 @@ class PairLoopNeighbourList(_Base):
                                              CC=self._cc)
 
 
-        self.neighbour_list = cell.NeighbourList()
+        #self.neighbour_list = cell.NeighbourList()
+        #self.neighbour_list.setup(*cell.cell_list.get_setup_parameters())
+
+        self.neighbour_list = cell.NeighbourListv2()
         self.neighbour_list.setup(*cell.cell_list.get_setup_parameters())
 
-
+        #self.neighbour_matrix = cell.NeighbourMatrix()
+        #self.neighbour_matrix.setup(*cell.cell_list.get_setup_parameters())
 
 
 
@@ -631,6 +633,11 @@ class PairLoopNeighbourList(_Base):
             self.neighbour_list.update()
             self._neighbourlist_count += 1
 
+            #self.neighbour_list_v2.update()
+            #self.neighbour_matrix.update()
+
+
+
         '''Create arg list'''
         _N_TOTAL = ctypes.c_int(self.neighbour_list.n_total)
         _N_LOCAL = ctypes.c_int(self.neighbour_list.n_local)
@@ -666,6 +673,8 @@ class PairLoopNeighbourList(_Base):
 
 class VectorPairLoopNeighbourList(PairLoopNeighbourList):
     def _code_init(self):
+        self._cc = build.ICC
+
         self._kernel_code = self._kernel.code
         self._code = '''
         #include <stdio.h>

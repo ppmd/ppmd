@@ -244,6 +244,14 @@ class ParticleDat(host.Matrix):
         self._vid_int = 0
         self._vid_halo = -1
 
+
+        # Initialise timers
+        self.timer_comm = runtime.Timer(runtime.TIMER, 0)
+        self.timer_pack = runtime.Timer(runtime.TIMER, 0)
+        self.timer_transfer = runtime.Timer(runtime.TIMER, 0)
+
+
+
         self.name = name
         """:return: The name of the ParticleDat instance."""
 
@@ -410,12 +418,19 @@ class ParticleDat(host.Matrix):
         functional for positions.
         """
 
+        self.timer_comm.start()
 
         if cell.cell_list.halos_exist is True:
+
+            self.timer_pack.start()
             self.halo_pack()
+            self.timer_pack.pause()
+
             self._transfer_unpack()
 
         self._vid_halo = self._vid_int
+
+        self.timer_comm.pause()
 
     def _setup_halo_packing(self):
         """
@@ -610,6 +625,10 @@ class ParticleDat(host.Matrix):
         _status = mpi.Status()
 
         # SEND START ==========================================================
+
+
+        self.timer_transfer.start()
+
         for i in range(26):
             # Exchange sizes --------------------------------------------------
 
@@ -637,7 +656,6 @@ class ParticleDat(host.Matrix):
                                          halo.HALOS.recv_ranks[i],
                                          mpi.MPI_HANDLE.rank,
                                          _status)
-
 
 
             _t_size = self.halo_start + \
@@ -687,7 +705,7 @@ class ParticleDat(host.Matrix):
                 self.halo_start_shift(_shift / self.ncomp)
 
 
-
+        self.timer_transfer.pause()
         # SEND END ============================================================
 
 

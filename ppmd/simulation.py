@@ -72,6 +72,14 @@ class BaseMDSimulation(object):
         self._cell_width = (1 + self._delta) * self._cutoff
 
 
+        # Initilise timers
+        self.boundary_method_timer = runtime.Timer(runtime.TIMER, 0)
+        self.timer = runtime.Timer(runtime.TIMER, 0)
+        self.cpu_forces_timer = runtime.Timer(runtime.TIMER, 0)
+
+
+
+
         self._boundary_method = domain_boundary_condition
         self._boundary_method.set_state(self.state)
 
@@ -104,6 +112,8 @@ class BaseMDSimulation(object):
         # Initialise cell list
         self._cell_structure = cell.cell_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cell_width)
         # Setup callbacks
+
+        cell.cell_list.setup_pre_update(self.execute_boundary_conditions)
         cell.cell_list.setup_update_tracking(self._determine_update_status)
         cell.cell_list.setup_callback_on_update(self._reset_moved_distance)
 
@@ -154,8 +164,11 @@ class BaseMDSimulation(object):
                 self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
                                                                          dat_dict=_potential_dat_dict)
 
-
                 '''
+                self._forces_update_lib = pairloop.VectorPairLoopNeighbourList(potential=self.potential,
+                                                                         dat_dict=_potential_dat_dict)
+
+
                 self._forces_update_lib = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
                                                                         potential=self.potential,
                                                                         dat_dict=_potential_dat_dict)
@@ -169,8 +182,7 @@ class BaseMDSimulation(object):
                                                                         kernel=self.potential.kernel,
                                                                         particle_dat_dict=_potential_dat_dict)
 
-        self.timer = runtime.Timer(runtime.TIMER, 0)
-        self.cpu_forces_timer = runtime.Timer(runtime.TIMER, 0)
+
 
         if runtime.DEBUG.level > 0:
             pio.pprint("DEBUG IS ON")
@@ -309,11 +321,14 @@ class BaseMDSimulation(object):
         """
         Execute the boundary conditions for the simulation.
         """
+        self.boundary_method_timer.start()
+
         flag = self._boundary_method.apply()
         if flag > 0:
             # print "invalidating lists on BCs"
             self.state.invalidate_lists = True
 
+        self.boundary_method_timer.pause()
 
 
 

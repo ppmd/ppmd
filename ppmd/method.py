@@ -56,6 +56,8 @@ class VelocityVerlet(object):
 
         self._sim = simulation
         self._state = self._sim.state
+
+        self.timer = runtime.Timer(runtime.TIMER, 0)
         
         self._domain = self._state.domain
         self._N = self._state.n
@@ -108,9 +110,9 @@ class VelocityVerlet(object):
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
         self._p2 = loop.ParticleLoop(self._N, self._state.types,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
 
-        _t = runtime.Timer(runtime.TIMER, 0, start=True)
+        self.timer.start()
         self._velocity_verlet_integration()
-        _t.stop("VelocityVerlet")
+        self.timer.pause()
 
 
     def _velocity_verlet_integration(self):
@@ -122,16 +124,11 @@ class VelocityVerlet(object):
 
         self._sim.forces_update()
 
-        _t = runtime.Timer(runtime.TIMER, 0)
-
         for i in range(self._max_it):
 
             self._p1.execute(self._state.n)
 
-            _t.start()
-
-            self._sim.execute_boundary_conditions()
-            _t.pause()
+            #self._sim.execute_boundary_conditions()
 
             #TODO: fix this.
             self._sim.forces_update()
@@ -143,8 +140,7 @@ class VelocityVerlet(object):
             if self._schedule is not None:
                 self._schedule.tick()
 
-        _t.stop("boundary condition timer")
-                
+
 
 ################################################################################################################
 # Anderson thermostat
@@ -942,21 +938,6 @@ class PercentagePrinter(object):
         self._curr_p = percent
         self.timer = runtime.Timer(runtime.TIMER, 0, start=False)
         self._timing = False
-
-    def new_times(self, dt, t):
-        """
-        Change times.
-
-        :arg float dt: Time step size.
-        :arg float t: End time.
-        :arg int percent: Percent to print on.
-        """
-        _dt = dt
-        _t = t
-        self._p = percent
-        self._max_it = math.ceil(_t/_dt)
-        self._count = 0
-        self._curr_p = percent
 
     def tick(self):
         """

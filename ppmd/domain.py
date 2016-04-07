@@ -434,6 +434,7 @@ class BaseDomainHalo(object):
         """
         return self._cell_count
 
+
 class BoundaryTypePeriodic(object):
     """
     Class to hold and perform periodic boundary conditions.
@@ -443,6 +444,12 @@ class BoundaryTypePeriodic(object):
 
     def __init__(self, state_in=None):
         self.state = state_in
+
+        # Initialise timers
+        self.timer_apply = runtime.Timer(runtime.TIMER, 0)
+        self.timer_lib_overhead = runtime.Timer(runtime.TIMER, 0)
+        self.timer_search = runtime.Timer(runtime.TIMER, 0)
+        self.timer_move = runtime.Timer(runtime.TIMER, 0)
 
         # One proc PBC lib
         self._one_process_pbc_lib = None
@@ -462,12 +469,17 @@ class BoundaryTypePeriodic(object):
         Enforce the boundary conditions on the held state.
         """
 
+        self.timer_apply.start()
+
         self._flag.dat[0] = 0
 
         if mpi.MPI_HANDLE.nproc == 1:
             """
             BC code for one proc. porbably removable when restricting to large parallel systems.
             """
+
+            self.timer_lib_overhead.start()
+
             if self._one_process_pbc_lib is None:
 
                 _one_proc_pbc_code = '''
@@ -529,14 +541,22 @@ class BoundaryTypePeriodic(object):
                                                                                    'E': self.state.domain.extent,
                                                                                    'F': self._flag})
 
+            self.timer_lib_overhead.pause()
+
+            self.timer_move.start()
             self._one_process_pbc_lib.execute(static_args={'_end': ctypes.c_int(self.state.n)})
+            self.timer_move.pause()
+
+
         else:
             #print '-' * 14
 
             # Create lib to find escaping particles.
 
+            self.timer_lib_overhead.start()
+
             if self._escape_guard_lib is None:
-                '''Create a lookup table between xor map and linear index for direction'''
+                ''' Create a lookup table between xor map and linear index for direction '''
                 self._bin_to_lin = data.ScalarArray(ncomp=57, dtype=ctypes.c_int)
                 _lin_to_bin = data.ScalarArray(ncomp=26, dtype=ctypes.c_int)
 
@@ -636,19 +656,32 @@ class BoundaryTypePeriodic(object):
                                     'B': self.state.domain.boundary,
                                     'P': self.state.positions}
 
-                _escape_kernel = kernel.Kernel('find_escaping_particles', _escape_guard_code, None, ['stdio.h'], static_args={'_end':ctypes.c_int})
-                self._escape_guard_lib = build.SharedLib(_escape_kernel, _escape_dat_dict)
+                _escape_kernel = kernel.Kernel('find_escaping_particles',
+                                               _escape_guard_code,
+                                               None,
+                                               ['stdio.h'],
+                                               static_args={'_end': ctypes.c_int})
+
+                self._escape_guard_lib = build.SharedLib(_escape_kernel,
+                                                         _escape_dat_dict)
+
+            self.timer_lib_overhead.pause()
 
             # reset linked list
             self._escape_linked_list[0:26:] = -1
             self._escape_count[::] = 0
 
+            self.timer_search.start()
             self._escape_guard_lib.execute(static_args={'_end':self.state.n})
+            self.timer_search.pause()
 
+            self.timer_move.start()
             self.state.move_to_neighbour(self._escape_linked_list,
                                          self._escape_count,
                                          self.state.domain.get_shift())
+            self.timer_move.pause()
 
+        self.timer_apply.pause()
 
         return self._flag.dat[0]
 
