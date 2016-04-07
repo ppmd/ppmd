@@ -100,8 +100,6 @@ if __name__ == '__main__':
 
 
 
-
-
     _fpprint.pprint('\n--------- PAIRLOOP TIMING ---------\n')
 
     _fpprint.pprint("PairLoop timer resolution: \t", opt.get_timer_accuracy(), "s")
@@ -120,8 +118,6 @@ if __name__ == '__main__':
         _fpprint.pprint("Neighbour list execution: \t\t",
                         sim1._forces_update_lib.neighbour_list._neighbour_lib.execute_timer.time())
 
-        # _fpprint.pprint("Neighbour matrix execution: \t\t", sim1._forces_update_lib.neighbour_matrix._neighbour_lib.execute_timer.time())
-        # _fpprint.pprint("Neighbour list v2 execution: \t\t", sim1._forces_update_lib.neighbour_list_v2._neighbour_lib.execute_timer.time())
 
     _fpprint.pprint('\n---- BOUNDARY CONDITION TIMING ----\n')
 

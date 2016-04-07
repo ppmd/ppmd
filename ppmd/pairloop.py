@@ -490,19 +490,14 @@ class PairLoopNeighbourList(_Base):
                                              self._kernel.name,
                                              CC=self._cc)
 
-
         #self.neighbour_list = cell.NeighbourList()
         #self.neighbour_list.setup(*cell.cell_list.get_setup_parameters())
 
         self.neighbour_list = cell.NeighbourListv2()
         self.neighbour_list.setup(*cell.cell_list.get_setup_parameters())
 
-        #self.neighbour_matrix = cell.NeighbourMatrix()
-        #self.neighbour_matrix.setup(*cell.cell_list.get_setup_parameters())
-
-
-
-
+        # self.neighbour_matrix = cell.NeighbourMatrix()
+        # self.neighbour_matrix.setup(*cell.cell_list.get_setup_parameters())
 
         self._neighbourlist_count = 0
         self._invocations = 0

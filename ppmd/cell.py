@@ -137,6 +137,7 @@ class CellList(object):
         """
         if self._update_func_pre is not None:
             self._update_func_pre()
+            # pass
 
 
     def check(self):
@@ -918,19 +919,24 @@ class NeighbourListv2(NeighbourList):
             // selective stencil lookup into halo
 
             int flag = 0;
-            if ( C0 == 1 ) { flag ^= 6729; }
-            if ( C0 == (_ca0 - 2) ) { flag ^= 292; }
-            if ( C1 == 1 ) { flag ^= 1543; }
-            if ( C1 == (_ca1 - 2) ) { flag ^= 4544; }
-            if ( C2 == 1 ) { flag ^= 511; }
+            if ( C0 == 1 ) { flag |= 6729; }
+            if ( C0 == (_ca0 - 2) ) { flag |= 292; }
+            if ( C1 == 1 ) { flag |= 1543; }
+            if ( C1 == (_ca1 - 2) ) { flag |= 4544; }
+            if ( C2 == 1 ) { flag |= 511; }
 
             // if flag > 0 then we are near a halo
             // that needs attention
+
+            // printf("ix: %d flag: %d | C0 %d C1 %d C2 %d  \\n ##", ix, flag, C0, C1, C2);
+
             if (flag > 0) {
 
                 //check the possble 13 directions
                 for( int csx = 0; csx < 13; csx++){
                     if (flag & selective_lookup[csx]){
+
+                        //printf(" %d ", csx);
 
                         int iy = q[n + val + s_tmp_offset[csx]];
                         while(iy > -1){
@@ -953,6 +959,9 @@ class NeighbourListv2(NeighbourList):
                         iy=q[iy]; }
                     }
                 }
+
+                //printf(" ##\\n");
+
             }
 
             // standard directions

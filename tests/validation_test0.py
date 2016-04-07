@@ -89,10 +89,21 @@ if __name__ == '__main__':
 
     tick = 5
 
-    schedule = method.Schedule([1, tick, tick, tick], [per_printer.tick, pos_print.write, vel_print.write, for_print.write])
+
+
+    energyhandle = method.EnergyStore(state=sim1.state)
+    energy_steps = 10
+    energyfn = energyhandle.update
+
+
+
+
+    schedule = method.Schedule([1, tick, tick, tick, energy_steps],
+                               [per_printer.tick, pos_print.write, vel_print.write, for_print.write, energyfn])
 
     # Create an integrator for above state class.
     test_integrator = method.VelocityVerlet(simulation=sim1, schedule=schedule)
+
 
 
     if mpi.MPI_HANDLE.nproc == 1:
@@ -100,18 +111,7 @@ if __name__ == '__main__':
     else:
         fio.MPIParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x0.xml', sim1.state.global_ids)
 
-    # Check ParticleDat dump is correct
-    test = fio.xml_to_ParticleDat(file_dir + 'ppmd_x0.xml')
 
-    print N
-
-    if mpi.MPI_HANDLE.nproc == 1:
-        for ix in range(N):
-            # print ix
-            if not np.all(test.dat[ix] == sim1.state.positions.dat[ix]):
-                assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
-
-    #print sim1.state.velocities.dat[0:10:,::]
 
     ###########################################################
     print "t", t, "dt", dt
@@ -123,17 +123,14 @@ if __name__ == '__main__':
     ###########################################################
 
 
+    energyhandle.plot(_plot=False)
+
+
     if mpi.MPI_HANDLE.nproc == 1:
         fio.ParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x1.xml')
     else:
         fio.MPIParticleDat_to_xml(sim1.state.positions, file_dir + 'ppmd_x1.xml', sim1.state.global_ids)
 
-    # check ParticleDat dump is correct.
-
-    if mpi.MPI_HANDLE.nproc == 1:
-        test = fio.xml_to_ParticleDat(file_dir + 'ppmd_x1.xml')
-        for ix in range(N):
-            assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
 
 
 
