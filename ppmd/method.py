@@ -86,6 +86,22 @@ class VelocityVerlet(object):
         V(2) += dht*A(2)*M_tmp;
         '''
 
+        self._p1 = None
+        self._p2 = None
+
+    @property
+    def timer1(self):
+        if self._p1 is not None:
+            return self._p1.loop_timer
+        else:
+            return None
+
+    @property
+    def timer2(self):
+        if self._p2 is not None:
+            return self._p2.loop_timer
+        else:
+            return None
 
     def integrate(self, dt = None, t = None):
         """
@@ -109,6 +125,10 @@ class VelocityVerlet(object):
 
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
         self._p2 = loop.ParticleLoop(self._N, self._state.types,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
+        
+        
+        self._sim.execute_boundary_conditions()
+        self._sim.forces_update()
 
         self.timer.start()
         self._velocity_verlet_integration()
@@ -120,9 +140,9 @@ class VelocityVerlet(object):
         Perform Velocity Verlet integration up to time T.
         """
 
-        self._sim.execute_boundary_conditions()
+        #self._sim.execute_boundary_conditions()
 
-        self._sim.forces_update()
+        #self._sim.forces_update()
 
         for i in range(self._max_it):
 

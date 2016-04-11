@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+import cProfile, pstats, StringIO, os
+pr = cProfile.Profile()
+
+
+
 
 from ppmd import *
 
@@ -89,7 +94,9 @@ test_integrator = method.VelocityVerlet(simulation=sim1, schedule=schedule)
 
 _fpprint.pprint("t", t, "dt", dt)
 
+pr.enable()
 test_integrator.integrate(dt=dt, t=t)
+pr.disable()
 
 
 ###########################################################
@@ -144,5 +151,17 @@ _fpprint.close()
 
 
 
+
+s = StringIO.StringIO()
+sortby = 'cumulative'
+ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+ps.print_stats()
+ps.print_callers()
+
+fh = open(os.path.join(file_dir, 'cprof_out_' + str(mpi.MPI_HANDLE.rank)), 'w' )
+
+fh.write( s.getvalue() )
+
+fh.close()
 
 

@@ -62,6 +62,19 @@ class LoopTimer(object):
             mpi.MPI_HANDLE.comm.Allreduce(_my_time, _ttime, SUM)
             return _ttime[0]
 
+    @property
+    def av_time(self):
+        """
+        Return the aggregated cpu time.
+        """
+        if mpi.MPI_HANDLE.nproc == 1:
+            return self.time
+        else:
+            _my_time = np.array(self._time.value)
+            _ttime =np.zeros(1)
+            mpi.MPI_HANDLE.comm.Allreduce(_my_time, _ttime, SUM)
+            return _ttime[0]/float(mpi.MPI_HANDLE.nproc)
+
     def get_cpp_headers(self):
         """
         Return the code to include the required header file(s).

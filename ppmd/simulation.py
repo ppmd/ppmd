@@ -46,7 +46,8 @@ class BaseMDSimulation(object):
                  n=0,
                  cutoff=None,
                  domain_boundary_condition=domain.BoundaryTypePeriodic(),
-                 setup_only=False):
+                 setup_only=False,
+                 pairloop_in = None):
 
         self.potential = potential_in
         """Short range potential between particles."""
@@ -76,7 +77,7 @@ class BaseMDSimulation(object):
         self.boundary_method_timer = runtime.Timer(runtime.TIMER, 0)
         self.timer = runtime.Timer(runtime.TIMER, 0)
         self.cpu_forces_timer = runtime.Timer(runtime.TIMER, 0)
-
+        self.kinetic_energy_timer = runtime.Timer(runtime.TIMER, 0)
 
 
 
@@ -160,19 +161,11 @@ class BaseMDSimulation(object):
             # If domain has halos TODO, if when domain gets moved etc
             if type(self.state.domain) is domain.BaseDomainHalo:
 
+                if pairloop_in is None:
+                    self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,dat_dict=_potential_dat_dict)
+                else:
+                    self._forces_update_lib = pairloop_in(potential=self.potential,dat_dict=_potential_dat_dict)
 
-                self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,
-                                                                         dat_dict=_potential_dat_dict)
-
-                '''
-                self._forces_update_lib = pairloop.VectorPairLoopNeighbourList(potential=self.potential,
-                                                                         dat_dict=_potential_dat_dict)
-
-
-                self._forces_update_lib = pairloop.PairLoopRapaportHalo(domain=self.state.domain,
-                                                                        potential=self.potential,
-                                                                        dat_dict=_potential_dat_dict)
-                '''
 
         # If no cell structure was created
         elif self.potential is not None and not setup_only:
@@ -256,45 +249,21 @@ class BaseMDSimulation(object):
 
         self.timer.start()
 
-
         # reset forces
-        self.state.forces.set_val(0.)
-        self.state.u.zero()
-
-        '''
-        if gpucuda.INIT_STATUS():
-            # copy data to gpu
-            t0 = threading.Thread(target=cell.cell_list.cell_list.copy_to_cuda_dat()); t0.start()
-            t1 = threading.Thread(target=self.state.positions.copy_to_cuda_dat()); t1.start()
-            t2 = threading.Thread(target=cell.cell_list.cell_contents_count.copy_to_cuda_dat()); t2.start()
-            t3 = threading.Thread(target=cell.cell_list.cell_reverse_lookup.copy_to_cuda_dat()); t3.start()
-        '''
+        #self.state.forces.set_val(0.)
 
         self.cpu_forces_timer.start()
-        #if self.state.n > 0:
-        #self._forces_update_lib.execute()
+        self.state.forces.zero(self.state.n)
+        self.state.u.zero()
+        self.cpu_forces_timer.pause()
+
         self._forces_update_lib.execute()
 
 
-        self.cpu_forces_timer.pause()
-
-        '''
-        if gpucuda.INIT_STATUS():
-            t0.join()
-            t1.join()
-            t2.join()
-            t3.join()
-
-            self.gpu_forces_timer.start()
-            self._forces_update_lib_gpucuda.execute()
-            self.gpu_forces_timer.pause()
-
-        if gpucuda.INIT_STATUS():
-            self.state.forces.copy_from_cuda_dat()
-        '''
-
-
         self.timer.pause()
+
+
+
 
     def kinetic_energy_update(self):
         """
@@ -312,8 +281,12 @@ class BaseMDSimulation(object):
                                                          self.state.types,
                                                          _K_kernel,
                                                          {'V': self.state.velocities, 'k': self.state.k, 'M': self.state.mass})
+
+            self.kinetic_energy_timer = self._kinetic_energy_lib.loop_timer
+
         self.state.k.dat[0] = 0.0
         self._kinetic_energy_lib.execute(self.state.n)
+
 
         return self.state.k.dat
 

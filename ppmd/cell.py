@@ -334,6 +334,8 @@ class CellList(object):
         # if the total size is larger than the current array we need to resize.
 
 
+        self.timer_sort.start()
+
         cell_count = self._domain.cell_array[0] * self._domain.cell_array[1] * self._domain.cell_array[2]
 
         if total_size + cell_count + 1 > self._cell_list.ncomp:
@@ -371,6 +373,9 @@ class CellList(object):
                                           dat_dict=_cell_sort_dict)
 
         self.halo_version_id += 1
+
+        self.timer_sort.pause()
+
 
 
 

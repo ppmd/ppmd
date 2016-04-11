@@ -11,6 +11,7 @@ import runtime
 import access
 import host
 import generation
+import opt
 
 class _Base(object):
     """
@@ -33,6 +34,8 @@ class _Base(object):
 
         self._particle_dat_dict = particle_dat_dict
         self._nargs = len(self._particle_dat_dict)
+
+        self.loop_timer = opt.LoopTimer()
 
         self._code_init()
 
@@ -108,7 +111,8 @@ class _Base(object):
 
         #self._argtypes = []
 
-        argnames = ''
+        argnames = str(self.loop_timer.get_cpp_arguments()) + ','
+
         if self._kernel.static_args is not None:
             self._static_arg_order = []
 
@@ -173,6 +177,9 @@ class _Base(object):
             s += '\n'
             for x in self._kernel.headers:
                 s += '#include \"' + x + '\" \n'
+
+        s += str(self.loop_timer.get_cpp_headers())
+
         return s
 
     def _generate_impl_source(self):
@@ -184,6 +191,8 @@ class _Base(object):
              'ARGUMENTS': self._argnames(),
              'LOC_ARGUMENTS': self._loc_argnames(),
              'KERNEL_NAME': self._kernel.name,
+             'LOOP_TIMER_PRE': str(self.loop_timer.get_cpp_pre_loop_code()),
+             'LOOP_TIMER_POST': str(self.loop_timer.get_cpp_post_loop_code()),
              'KERNEL_ARGUMENT_DECL': self._kernel_argument_declarations()}
 
         return self._code % d
@@ -206,7 +215,8 @@ class _Base(object):
         if self._types_map is not None:
             args.append(self._types_map.ctypes_data)
 
-        '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
+        args.append(self.loop_timer.get_python_parameters())
+
 
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:
@@ -244,6 +254,8 @@ class ParticleLoop(_Base):
 
         void %(KERNEL_NAME)s_wrapper(const int _N, int* _RESTRICT _TYPE_MAP,%(ARGUMENTS)s) {
 
+            %(LOOP_TIMER_PRE)s
+
             for (int %(INDEX_I)s=0; %(INDEX_I)s<_N; %(INDEX_I)s++) {
                 %(KERNEL_ARGUMENT_DECL)s
 
@@ -253,6 +265,8 @@ class ParticleLoop(_Base):
 
                     //KERNEL CODE END
             }
+
+            %(LOOP_TIMER_POST)s
 
         }
         '''
@@ -293,6 +307,10 @@ class LimitedParticleLoop(_Base):
         self._code = '''
 
         void %(KERNEL_NAME)s_wrapper(const int _START_IX, const int _END_IX, int* _RESTRICT _TYPE_MAP, %(ARGUMENTS)s) {
+
+            %(LOOP_TIMER_PRE)s
+
+
           for (int %(INDEX_I)s=_START_IX; %(INDEX_I)s<_END_IX; %(INDEX_I)s++) {
               %(KERNEL_ARGUMENT_DECL)s
               
@@ -303,6 +321,9 @@ class LimitedParticleLoop(_Base):
                   //KERNEL CODE END
               
             }
+
+            %(LOOP_TIMER_POST)s
+
         }
         '''
 

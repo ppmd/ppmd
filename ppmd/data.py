@@ -294,6 +294,9 @@ class ParticleDat(host.Matrix):
         self._resize_callback = None
         self._version = 0
 
+        self._zero_lib = None
+
+
     @property
     def dat(self):
         self._vid_int += 1
@@ -311,6 +314,32 @@ class ParticleDat(host.Matrix):
         :param val: Value to set all entries to.
         """
         self.dat[..., ...] = val
+
+    def zero(self, n=None):
+        if n is None:
+            self.dat.fill(0)
+        else:
+            self.dat[:n:, ::] = self.idtype(0.0)
+            
+            #if self._zero_lib is None:
+            #    _header = '''
+            #    #include "generic.h"
+            #    #define RESTRICT %(RESTRICT)s
+            #    #define DTYPE %(DTYPE)s
+            #    extern "C" void pd_zero(const int NP, const int NC, DTYPE * RESTRICT dat);
+
+            #    ''' % {'RESTRICT': str(build.TMPCC.restrict_keyword), 
+            #            'DTYPE': host.ctypes_map[self.idtype]}
+            #    _code = '''
+            #    void pd_zero(const int NP, const int NC, DTYPE * RESTRICT dat){
+            #        for (int ix = 0; ix < NP*NC; ix++){
+            #            dat[ix] = 0.0;
+            #        }
+            #    }
+            #    '''
+            #    self._zero_lib = build.simple_lib_creator(_header, _code, 'pd_zero')['pd_zero']
+            #self._zero_lib(ctypes.c_int(n), ctypes.c_int(self.ncomp), self.ctypes_data)
+            
 
     @property
     def npart_total(self):#
