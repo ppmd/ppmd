@@ -85,7 +85,13 @@ sim1 = simulation.BaseMDSimulation(domain_in=test_domain,
 # Helper methods
 per_printer = method.PercentagePrinter(dt, t, 10)
 
-schedule = method.Schedule([1], [per_printer.tick])
+
+energyhandle = method.EnergyStore(state=sim1.state)
+energy_steps = 10
+energyfn = energyhandle.update
+
+
+schedule = method.Schedule([1, energy_steps], [per_printer.tick, energyfn])
 
 # Create an integrator for above state class.
 test_integrator = method.VelocityVerlet(simulation=sim1, schedule=schedule)
@@ -143,7 +149,7 @@ _fpprint.pprint("Total: \t\t", sim1.state.positions.timer_comm.time())
 _fpprint.pprint("Pack: \t\t", sim1.state.positions.timer_pack.time())
 _fpprint.pprint("Transfer: \t", sim1.state.positions.timer_transfer.time())
 
-
+energyhandle.plot(_plot=False)
 
 _fpprint.close()
 

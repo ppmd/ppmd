@@ -163,6 +163,8 @@ class BaseMDSimulation(object):
 
                 if pairloop_in is None:
                     self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,dat_dict=_potential_dat_dict)
+                elif pairloop_in is pairloop.PairLoopRapaportHalo:
+                    self._forces_update_lib = pairloop.PairLoopRapaportHalo(potential=self.potential,dat_dict=_potential_dat_dict, domain=domain_in)
                 else:
                     self._forces_update_lib = pairloop_in(potential=self.potential,dat_dict=_potential_dat_dict)
 
@@ -642,8 +644,6 @@ class PosInitDLPOLYConfig(object):
             else:
                 pass
 
-        print extent
-
         fh.close()
 
         assert extent.sum() > 0., "PosInit Error: Bad extent read"
@@ -664,8 +664,6 @@ class PosInitDLPOLYConfig(object):
         _n = 0
 
         _d = state_input.domain.boundary
-
-        print "boundary", _d, "extent", state_input.domain.extent
 
         for i, line in enumerate(fh):
 

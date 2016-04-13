@@ -488,7 +488,7 @@ class BoundaryTypePeriodic(object):
 
                 for(int _ix = 0; _ix < _end; _ix++){
 
-                    if (abs_md(P[3*_ix]) > 0.5*E[0]){
+                    if (abs_md(P[3*_ix]) >= 0.5*E[0]){
                         const double E0_2 = 0.5*E[0];
                         const double x = P[3*_ix] + E0_2;
 
@@ -502,7 +502,7 @@ class BoundaryTypePeriodic(object):
                         }
                     }
 
-                    if (abs_md(P[3*_ix+1]) > 0.5*E[1]){
+                    if (abs_md(P[3*_ix+1]) >= 0.5*E[1]){
                         const double E1_2 = 0.5*E[1];
                         const double x = P[3*_ix+1] + E1_2;
 
@@ -516,7 +516,7 @@ class BoundaryTypePeriodic(object):
                         }
                     }
 
-                    if (abs_md(P[3*_ix+2]) > 0.5*E[2]){
+                    if (abs_md(P[3*_ix+2]) >= 0.5*E[2]){
                         const double E2_2 = 0.5*E[2];
                         const double x = P[3*_ix+2] + E2_2;
 
@@ -604,7 +604,7 @@ class BoundaryTypePeriodic(object):
                     //Check x direction
                     if (P[3*_ix] < B[0]){
                         b ^= 32;
-                    }else if (P[3*_ix] > B[1]){
+                    }else if (P[3*_ix] >= B[1]){
                         b ^= 4;
                     }
 
@@ -613,14 +613,14 @@ class BoundaryTypePeriodic(object):
                     //check y direction
                     if (P[3*_ix+1] < B[2]){
                         b ^= 16;
-                    }else if (P[3*_ix+1] > B[3]){
+                    }else if (P[3*_ix+1] >= B[3]){
                         b ^= 2;
                     }
 
                     //check z direction
                     if (P[3*_ix+2] < B[4]){
                         b ^= 1;
-                    }else if (P[3*_ix+2] > B[5]){
+                    }else if (P[3*_ix+2] >= B[5]){
                         b ^= 8;
                     }
 

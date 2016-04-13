@@ -625,9 +625,10 @@ class PairLoopNeighbourList(_Base):
         '''Rebuild neighbour list potentially'''
         self._invocations += 1
         if cell.cell_list.version_id > self.neighbour_list.version_id:
+            #print "BEFORE list| cell id", cell.cell_list.version_id, "neigh id", self.neighbour_list.version_id
             self.neighbour_list.update()
             self._neighbourlist_count += 1
-
+            #print "AFTER list| cell id", cell.cell_list.version_id, "neigh id", self.neighbour_list.version_id
             #self.neighbour_list_v2.update()
             #self.neighbour_matrix.update()
 

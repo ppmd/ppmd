@@ -188,9 +188,9 @@ class CellList(object):
 
         for (ix=0; ix<end_ix; ix++) {
 
-        const int C0 = (int)((P[ix*3]     - _b0)*_icel0);
-        const int C1 = (int)((P[ix*3 + 1] - _b2)*_icel1);
-        const int C2 = (int)((P[ix*3 + 2] - _b4)*_icel2);
+        const int C0 = 1 + (int)((P[ix*3]     - _b0)*_icel0);
+        const int C1 = 1 + (int)((P[ix*3 + 1] - _b2)*_icel1);
+        const int C2 = 1 + (int)((P[ix*3 + 2] - _b4)*_icel2);
 
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
 
@@ -204,7 +204,7 @@ class CellList(object):
 
         }
         '''
-        _dat_dict = {'B': self._domain.boundary_outer,        # Outer boundary on local domain (inc halo cells)
+        _dat_dict = {'B': self._domain.boundary,              # Inner boundary on local domain (inc halo cells)
                      'P': self._positions,                    # positions
                      'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
                      'CA': self._domain.cell_array,           # local domain cell array
@@ -368,10 +368,10 @@ class CellList(object):
         _cell_sort_static_args = {'CC': ct.c_int(cell_contents_recv.ncomp),
                                   'shift': ct.c_int(npart),
                                   'end': ct.c_int(self._cell_list[self._cell_list.end])}
-
+        
         self._halo_cell_sort_loop.execute(static_args=_cell_sort_static_args,
                                           dat_dict=_cell_sort_dict)
-
+        
         self.halo_version_id += 1
 
         self.timer_sort.pause()
@@ -696,9 +696,9 @@ class NeighbourList(object):
             const double pi1 = P[ix*3 + 1];
             const double pi2 = P[ix*3 + 2];
 
-            const int C0 = (int)((pi0 - _b0)*_icel0);
-            const int C1 = (int)((pi1 - _b2)*_icel1);
-            const int C2 = (int)((pi2 - _b4)*_icel2);
+            const int C0 = 1 + (int)((pi0 - _b0)*_icel0);
+            const int C1 = 1 + (int)((pi1 - _b2)*_icel1);
+            const int C2 = 1 + (int)((pi2 - _b4)*_icel2);
 
             const int val = (C2*_ca1 + C1)*_ca0 + C0;
 
@@ -737,7 +737,7 @@ class NeighbourList(object):
         RC[0] = 0;
         return;
         '''
-        _dat_dict = {'B': self._domain.boundary_outer,        # Outer boundary on local domain (inc halo cells)
+        _dat_dict = {'B': self._domain.boundary,              # Inner boundary on local domain (inc halo cells)
                      'P': self._positions,                    # positions
                      'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
                      'CA': self._domain.cell_array,           # local domain cell array
@@ -789,7 +789,7 @@ class NeighbourList(object):
 
             self.update(_attempt + 1)
 
-        self.version_id += 1
+        self.version_id = self.cell_list.version_id
 
         self.timer_update.pause()
 
@@ -912,9 +912,9 @@ class NeighbourListv2(NeighbourList):
             const double pi1 = P[ix*3 + 1];
             const double pi2 = P[ix*3 + 2];
 
-            const int C0 = (int)((pi0 - _b0)*_icel0);
-            const int C1 = (int)((pi1 - _b2)*_icel1);
-            const int C2 = (int)((pi2 - _b4)*_icel2);
+            const int C0 = 1 + (int)((pi0 - _b0)*_icel0);
+            const int C1 = 1 + (int)((pi1 - _b2)*_icel1);
+            const int C2 = 1 + (int)((pi2 - _b4)*_icel2);
 
             const int val = (C2*_ca1 + C1)*_ca0 + C0;
 
@@ -1011,7 +1011,7 @@ class NeighbourListv2(NeighbourList):
 
 
 
-        _dat_dict = {'B': self._domain.boundary_outer,        # Outer boundary on local domain (inc halo cells)
+        _dat_dict = {'B': self._domain.boundary,              # Inner boundary on local domain (inc halo cells)
                      'P': self._positions,                    # positions
                      'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
                      'CA': self._domain.cell_array,           # local domain cell array
@@ -1431,9 +1431,9 @@ class NeighbourListHaloAware(object):
         for (int ix=0; ix<end_ix; ix++) {
 
 
-            const int C0 = (int)((P[ix*3]     - B[0])/CEL[0]);
-            const int C1 = (int)((P[ix*3 + 1] - B[2])/CEL[1]);
-            const int C2 = (int)((P[ix*3 + 2] - B[4])/CEL[2]);
+            const int C0 = 1 + (int)((P[ix*3]     - B[0])/CEL[0]);
+            const int C1 = 1 + (int)((P[ix*3 + 1] - B[2])/CEL[1]);
+            const int C2 = 1 + (int)((P[ix*3 + 2] - B[4])/CEL[2]);
 
             const int val = (C2*CA[1] + C1)*CA[0] + C0;
 
@@ -1471,7 +1471,7 @@ class NeighbourListHaloAware(object):
         RC[0] = 0;
         return;
         '''
-        _dat_dict = {'B': self._domain.boundary_outer,        # Outer boundary on local domain (inc halo cells)
+        _dat_dict = {'B': self._domain.boundary,              # Inner boundary on local domain (inc halo cells)
                      'P': self._positions,                    # positions
                      'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
                      'CA': self._domain.cell_array,           # local domain cell array
@@ -1798,9 +1798,9 @@ class NeighbourListNonN3(NeighbourList):
         int m = -1;
         for (int ix=0; ix<end_ix; ix++) {
 
-            const int C0 = (int)((P[ix*3]     - B[0])/CEL[0]);
-            const int C1 = (int)((P[ix*3 + 1] - B[2])/CEL[1]);
-            const int C2 = (int)((P[ix*3 + 2] - B[4])/CEL[2]);
+            const int C0 = 1 + (int)((P[ix*3]     - B[0])/CEL[0]);
+            const int C1 = 1 + (int)((P[ix*3 + 1] - B[2])/CEL[1]);
+            const int C2 = 1 + (int)((P[ix*3 + 2] - B[4])/CEL[2]);
 
             const int val = (C2*CA[1] + C1)*CA[0] + C0;
 
@@ -1838,7 +1838,7 @@ class NeighbourListNonN3(NeighbourList):
         RC[0] = 0;
         return;
         '''
-        _dat_dict = {'B': self._domain.boundary_outer,        # Outer boundary on local domain (inc halo cells)
+        _dat_dict = {'B': self._domain.boundary,              # Inner boundary on local domain (inc halo cells)
                      'P': self._positions,                    # positions
                      'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
                      'CA': self._domain.cell_array,           # local domain cell array
