@@ -500,7 +500,7 @@ class SharedLib(object):
 ####################################
 # Build Lib
 ####################################
-
+_PER_PROC = False
 
 def md5(string):
     """Create unique hex digest"""
@@ -514,6 +514,9 @@ def source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir
     _filename = 'HOST_' + str(name)
     _filename += '_' + md5(_filename + str(header_code) + str(src_code) +
                            str(name))
+
+    if _PER_PROC:
+        _filename += '_' + str(mpi.MPI_HANDLE.rank)
 
     _fh = open(os.path.join(dst_dir, _filename + extensions[0]), 'w')
     _fh.write('''
@@ -553,9 +556,13 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
     _filename = 'HOST_' + str(name)
     _filename += '_' + md5(_filename + str(header_code) + str(src_code) +
                            str(name))
+
+    if _PER_PROC:
+        _filename += '_' + str(mpi.MPI_HANDLE.rank)
+
     _lib_filename = os.path.join(dst_dir, _filename + '.so')
 
-    if not check_file_existance(_lib_filename):
+    if (not check_file_existance(_lib_filename)) or (_PER_PROC):
         if not os.path.exists(dst_dir) and mpi.MPI_HANDLE.rank == 0:
             os.mkdir(dst_dir)
         mpi.MPI_HANDLE.barrier()
@@ -582,9 +589,11 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
     else:
         _m = ''
 
+
     _lib_filename = os.path.join(dst_dir, lib + str(_m) + '.so')
 
-    if mpi.MPI_HANDLE.rank == 0:
+
+    if (mpi.MPI_HANDLE.rank == 0) or _PER_PROC:
         if not os.path.exists(_lib_filename):
 
             _lib_src_filename = source_dir + lib + extensions[1]
@@ -600,7 +609,7 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
             _c_cmd += CC.shared_lib_flag
 
             if runtime.VERBOSE.level > 2:
-                print "Building", _lib_filename
+                print "Building", _lib_filename, mpi.MPI_HANDLE.rank
 
             stdout_filename = dst_dir + lib + str(_m) + '.log'
             stderr_filename = dst_dir + lib + str(_m) + '.err'

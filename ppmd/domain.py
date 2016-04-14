@@ -163,12 +163,29 @@ class BaseDomainHalo(object):
         elif len(_factors) == 2:
             _NP = [_factors[0], _factors[1], 1]
         else:
+
             _factors.sort(reverse=True)
-            _q = len(_factors) / 3
-            _NP = []
-            _NP.append(reduce(lambda x, y: x * y, _factors[0:_q:]))
-            _NP.append(reduce(lambda x, y: x * y, _factors[_q:2 * _q:]))
-            _NP.append(reduce(lambda x, y: x * y, _factors[2 * _q::]))
+
+            if len(_factors)==4:
+                _NP = []
+                _NP.append(_factors[0])
+                _NP.append(_factors[1])
+                _NP.append(_factors[2] * _factors[3])
+
+            elif len(_factors)==5:
+                _NP = []
+                _NP.append(_factors[0])
+                _NP.append(_factors[1] * _factors[2])
+                _NP.append(_factors[3] * _factors[4])
+
+            else:
+                _factors.sort(reverse=True)
+                _q = len(_factors) / 3
+                _NP = []
+                _NP.append(reduce(lambda x, y: x * y, _factors[0:_q:]))
+                _NP.append(reduce(lambda x, y: x * y, _factors[_q:2 * _q:]))
+                _NP.append(reduce(lambda x, y: x * y, _factors[2 * _q::]))
+            
 
         '''Order processor calculated dimension sizes in descending order'''
         _NP.sort(reverse=True)
@@ -178,15 +195,15 @@ class BaseDomainHalo(object):
         _cal.sort(key=lambda x: x[1], reverse=True)
 
         '''Try to match avaible processor dimensions to phyiscal cells'''
-        _dims = [0, 0, 0]
+        _dimsi = [0, 0, 0]
         for i in range(3):
             ix = _cal[i][0]
-            _dims[ix] = _NP[i]
+            _dimsi[ix] = _NP[i]
 
         '''Calculate what cell array sizes would be using given processor grid'''
-        _bsc = [math.ceil(self._cell_array[0] / float(_dims[0])),
-                math.ceil(self._cell_array[1] / float(_dims[1])),
-                math.ceil(self._cell_array[2] / float(_dims[2]))]
+        _bsc = [math.ceil(self._cell_array[0] / float(_dimsi[0])),
+                math.ceil(self._cell_array[1] / float(_dimsi[1])),
+                math.ceil(self._cell_array[2] / float(_dimsi[2]))]
 
         '''Round down number of processes per direction if excessive'''
         _dims = [
@@ -194,6 +211,9 @@ class BaseDomainHalo(object):
             int(math.ceil(self._cell_array[1] / _bsc[1])),
             int(math.ceil(self._cell_array[2] / _bsc[2]))
         ]
+
+        for i in range(3):
+            assert _dims[i] == _dimsi[i], "Processor grid error, suitable layout search failed."
 
         '''Create cartesian communicator'''
         self._dims = tuple(_dims)
