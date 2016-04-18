@@ -221,6 +221,8 @@ class BaseMDState(object):
             self._move_recv_buffer = host.Array(ncomp=self._total_ncomp * _recv_total, dtype=ctypes.c_double)
         elif self._move_recv_buffer.ncomp < self._total_ncomp * _recv_total:
             self._move_recv_buffer.realloc(self._total_ncomp * _recv_total)
+        
+
 
         for ix in self.particle_dats:
             _d = getattr(self,ix)
@@ -380,6 +382,8 @@ class BaseMDState(object):
                     mpi.MPI_HANDLE.comm.Send(self._move_send_buffer.dat[_s_start:_s_end:],
                                              _send_rank,
                                              _send_rank)
+
+
             elif self._move_dir_recv_totals[ix] > 0:
                     mpi.MPI_HANDLE.comm.Recv(self._move_recv_buffer.dat[_r_start:_r_end:],
                                              _recv_rank,

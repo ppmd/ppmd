@@ -207,7 +207,7 @@ class BaseMDSimulation(object):
         """
 
         # force update
-        # self.state.invalidate_lists = True
+        self.state.invalidate_lists = True
 
 
         self._test_count += 1

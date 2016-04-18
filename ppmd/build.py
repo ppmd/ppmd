@@ -562,7 +562,7 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
 
     _lib_filename = os.path.join(dst_dir, _filename + '.so')
 
-    if (not check_file_existance(_lib_filename)) or (_PER_PROC):
+    if (not check_file_existance(_lib_filename)):# or (_PER_PROC):
         if not os.path.exists(dst_dir) and mpi.MPI_HANDLE.rank == 0:
             os.mkdir(dst_dir)
         mpi.MPI_HANDLE.barrier()
