@@ -281,6 +281,7 @@ class ParticleDat(host.Matrix):
             self.ncomp = self.ncol
 
         self._halo_packing_lib = None
+        self._transfer_unpack_lib = None
         self._halo_packing_buffer = None
         self._cell_contents_recv = None
 
@@ -600,7 +601,7 @@ class ParticleDat(host.Matrix):
         """
         if self._halo_packing_lib is None:
             self._setup_halo_packing()
-
+        
 
         _boundary_groups_contents_array, _exchange_sizes = halo.HALOS.get_boundary_cell_contents_count
 
@@ -632,10 +633,50 @@ class ParticleDat(host.Matrix):
 
         self._halo_packing_lib.execute(static_args=_static_args, dat_dict=_dynamic_args)
 
+        
+    def _setup_halo_transfer(self):
+        """
+        build self._transfer_unpack_lib
+        """
+        
+        _name = "transfer_unpack"
+        
+        _args = '''
+        const int F_comm
+        '''
+
+        _header = '''
+        
+        #include "generic.h"
+        #include <mpi.h>
+        extern "C" int transfer_unpack(%(ARGS)s);
+        ''' % {'ARGS': _args}
+
+        _code = '''
+        
+        int transfer_unpack(%(ARGS)s){
+            MPI_Comm COMM = MPI_Comm_f2c(F_comm);
+            
+            return 0;
+        }
+        ''' % {'ARGS': _args}
+        
+        '''
+        self._transfer_unpack_lib = build.simple_lib_creator(_header, 
+                                                             _code, 
+                                                             _name,
+                                                             CC=build.ICC_MPI)
+        '''
+
+
     def _transfer_unpack(self):
         """
         Transfer the packed data. Will use the particle dat as the recv buffer.
         """
+        
+        if self._transfer_unpack_lib is None:
+            self._setup_halo_transfer()
+
 
         _halo_cell_groups, _halo_groups_start_end_indices = halo.HALOS.get_halo_cell_groups
 

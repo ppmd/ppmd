@@ -89,7 +89,6 @@ class Compiler(object):
         """Return Compiler link as shared library flag."""
         return self._sharedlibf
 
-        # Define system gcc version as Compiler.
 
 
 GCC = Compiler(['GCC'],
@@ -101,6 +100,10 @@ GCC = Compiler(['GCC'],
                ['-c'],
                ['-shared'],
                '__restrict__')
+
+
+
+
 
 # Define system gcc version as OpenMP Compiler.
 GCC_OpenMP = Compiler(['GCC'],
@@ -124,6 +127,18 @@ ICC = Compiler(['ICC'],
                ['-c'],
                ['-shared'],
                'restrict')
+
+
+ICC_MPI = Compiler(['ICC'],
+                   ['icc'],
+                   ['-fpic', '-std=c++0x'],
+                   ['-lm'],
+                   ['-O3', '-xHost', '-restrict', '-m64', '-opt-report=4', '-I $MPI_INCLUDE_DIR'],
+                   ['-lmpi'],
+                   ['-c'],
+                   ['-shared'],
+                   'restrict')
+
 
 # Define system icc version as OpenMP Compiler.
 ICC_OpenMP = Compiler(['ICC'],

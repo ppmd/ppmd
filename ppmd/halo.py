@@ -76,7 +76,7 @@ class CartesianHalo(object):
         '''Array to store the number of particles to exchange for each halo'''
         self._exchange_sizes = host.Array(ncomp=26, dtype=ctypes.c_int)
 
-        # CELL INDICES TO PACK (local boundary) =============================================================
+        # CELL INDICES TO PACK (local boundary) =======================
 
         _ca = cell.cell_list.domain.cell_array
 
@@ -144,7 +144,7 @@ class CartesianHalo(object):
             [_BS]
         ]
 
-        # ===========================================================================
+        # =============================================================
         # LOCAL CELL INDICES TO SORT INTO (local halo)
 
         _LE = _ca[0] * _ca[1] * _ca[2]
@@ -214,7 +214,7 @@ class CartesianHalo(object):
             [_LE - 1],
         ]
 
-        # =====================================================================================================================
+        # =============================================================
 
         '''How many cells are in each halo (internal to pack)'''
         self._boundary_cell_grouping_lengths = host.Array(ncomp=26, dtype=ctypes.c_int)
@@ -277,7 +277,7 @@ class CartesianHalo(object):
 
 
         # Code to calculate exchange sizes
-        # ==========================================================================================================================
+        # =============================================================
 
         _exchange_sizes_code = '''
         int start_index = 0;
