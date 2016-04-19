@@ -16,9 +16,6 @@ import runtime
 
 np.set_printoptions(threshold=1000)
 
-import cProfile, pstats, StringIO, os
-
-
 
 
 
@@ -258,10 +255,6 @@ class ParticleDat(host.Matrix):
         self.timer_transfer_2 = runtime.Timer(runtime.TIMER, 0)
         self.timer_transfer_resize = runtime.Timer(runtime.TIMER, 0)
 
-        '''
-        if name == "positions":
-            self.pr = cProfile.Profile()
-        '''
 
         self.name = name
         """:return: The name of the ParticleDat instance."""
@@ -460,11 +453,6 @@ class ParticleDat(host.Matrix):
         functional for positions.
         """
 
-        '''
-        if self.name == "positions":
-            self.pr.enable()
-        '''
-
         self.timer_comm.start()
 
         if cell.cell_list.halos_exist is True:
@@ -478,10 +466,7 @@ class ParticleDat(host.Matrix):
         self._vid_halo = self._vid_int
 
         self.timer_comm.pause()
-        '''
-        if self.name == "positions":
-            self.pr.disable()
-        '''
+
 
     def _setup_halo_packing(self):
         """
