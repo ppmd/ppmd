@@ -61,6 +61,10 @@ class MDMPI(object):
         """
         return self._COMM
 
+    @property
+    def fortran_comm(self):
+        return self._COMM.py2f()
+
     @comm.setter
     def comm(self, new_comm=None):
         """

@@ -128,17 +128,17 @@ ICC = Compiler(['ICC'],
                ['-shared'],
                'restrict')
 
-
+'''
 ICC_MPI = Compiler(['ICC'],
                    ['icc'],
                    ['-fpic', '-std=c++0x'],
                    ['-lm'],
-                   ['-O3', '-xHost', '-restrict', '-m64', '-opt-report=4', '-I $MPI_INCLUDE_DIR'],
+                   ['-O3', '-xHost', '-restrict', '-m64', '-opt-report=4', '-I ' + os.environ["MPI_INCLUDE_DIR"]],
                    ['-lmpi'],
                    ['-c'],
                    ['-shared'],
                    'restrict')
-
+'''
 
 # Define system icc version as OpenMP Compiler.
 ICC_OpenMP = Compiler(['ICC'],

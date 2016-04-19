@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-
 from ppmd import *
 
 # debug level
@@ -142,7 +141,9 @@ _fpprint.pprint('\n----------- HALO TIMING -----------\n')
 _fpprint.pprint("Total: \t\t", sim1.state.positions.timer_comm.time())
 _fpprint.pprint("Pack: \t\t", sim1.state.positions.timer_pack.time())
 _fpprint.pprint("Transfer: \t", sim1.state.positions.timer_transfer.time())
-
+_fpprint.pprint("Transfer 1: \t", sim1.state.positions.timer_transfer_1.time())
+_fpprint.pprint("Transfer 2: \t", sim1.state.positions.timer_transfer_2.time())
+_fpprint.pprint("Transfer resize:", sim1.state.positions.timer_transfer_resize.time())
 
 
 _fpprint.close()

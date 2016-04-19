@@ -16,6 +16,11 @@ import runtime
 
 np.set_printoptions(threshold=1000)
 
+import cProfile, pstats, StringIO, os
+
+
+
+
 
 """
 rst_doc{
@@ -249,11 +254,18 @@ class ParticleDat(host.Matrix):
         self.timer_comm = runtime.Timer(runtime.TIMER, 0)
         self.timer_pack = runtime.Timer(runtime.TIMER, 0)
         self.timer_transfer = runtime.Timer(runtime.TIMER, 0)
+        self.timer_transfer_1 = runtime.Timer(runtime.TIMER, 0)
+        self.timer_transfer_2 = runtime.Timer(runtime.TIMER, 0)
+        self.timer_transfer_resize = runtime.Timer(runtime.TIMER, 0)
 
-
+        '''
+        if name == "positions":
+            self.pr = cProfile.Profile()
+        '''
 
         self.name = name
         """:return: The name of the ParticleDat instance."""
+
 
         self.idtype = dtype
 
@@ -448,6 +460,11 @@ class ParticleDat(host.Matrix):
         functional for positions.
         """
 
+        '''
+        if self.name == "positions":
+            self.pr.enable()
+        '''
+
         self.timer_comm.start()
 
         if cell.cell_list.halos_exist is True:
@@ -461,6 +478,10 @@ class ParticleDat(host.Matrix):
         self._vid_halo = self._vid_int
 
         self.timer_comm.pause()
+        '''
+        if self.name == "positions":
+            self.pr.disable()
+        '''
 
     def _setup_halo_packing(self):
         """
@@ -638,19 +659,20 @@ class ParticleDat(host.Matrix):
         """
         build self._transfer_unpack_lib
         """
-        
+        _cc = build.ICC_MPI
         _name = "transfer_unpack"
         
         _args = '''
-        const int F_comm
+        const int F_comm,
+        const int * RESTRICT _halo_cell_groups
         '''
-
         _header = '''
         
         #include "generic.h"
         #include <mpi.h>
+        #define RESTRICT %(RESTRICT)s
         extern "C" int transfer_unpack(%(ARGS)s);
-        ''' % {'ARGS': _args}
+        ''' % {'ARGS': _args, 'RESTRICT':_cc.restrict_keyword}
 
         _code = '''
         
@@ -661,12 +683,10 @@ class ParticleDat(host.Matrix):
         }
         ''' % {'ARGS': _args}
         
-        '''
         self._transfer_unpack_lib = build.simple_lib_creator(_header, 
                                                              _code, 
                                                              _name,
-                                                             CC=build.ICC_MPI)
-        '''
+                                                             CC=_cc)
 
 
     def _transfer_unpack(self):
@@ -674,8 +694,8 @@ class ParticleDat(host.Matrix):
         Transfer the packed data. Will use the particle dat as the recv buffer.
         """
         
-        if self._transfer_unpack_lib is None:
-            self._setup_halo_transfer()
+        #if self._transfer_unpack_lib is None:
+        #    self._setup_halo_transfer()
 
 
         _halo_cell_groups, _halo_groups_start_end_indices = halo.HALOS.get_halo_cell_groups
@@ -695,78 +715,93 @@ class ParticleDat(host.Matrix):
         _status = mpi.Status()
 
         # SEND START ==========================================================
+        _send_ranks = halo.HALOS.send_ranks
+        _recv_ranks = halo.HALOS.recv_ranks
 
 
         self.timer_transfer.start()
 
+        _t_size = self.halo_start
+
         for i in range(26):
             # Exchange sizes --------------------------------------------------
 
+            self.timer_transfer_1.start()
 
-            if halo.HALOS.send_ranks[i] > -1 and halo.HALOS.recv_ranks[i] > -1:
+            if _send_ranks[i] > -1 and _recv_ranks[i] > -1:
                 mpi.MPI_HANDLE.comm.Sendrecv(_boundary_groups_contents_array[
                                              self._boundary_groups_start_end_indices[i]:self._boundary_groups_start_end_indices[i + 1]:],
-                                             halo.HALOS.send_ranks[i],
-                                             halo.HALOS.send_ranks[i],
+                                             _send_ranks[i],
+                                             _send_ranks[i],
                                              self._cell_contents_recv[
                                              _halo_groups_start_end_indices[i]:_halo_groups_start_end_indices[i + 1]:],
-                                             halo.HALOS.recv_ranks[i],
+                                             _recv_ranks[i],
                                              mpi.MPI_HANDLE.rank,
                                              _status)
 
-            elif halo.HALOS.send_ranks[i] > -1:
+            elif _send_ranks[i] > -1:
                 mpi.MPI_HANDLE.comm.Send(_boundary_groups_contents_array[
                                          self._boundary_groups_start_end_indices[i]:self._boundary_groups_start_end_indices[i + 1]:],
-                                         halo.HALOS.send_ranks[i],
-                                         halo.HALOS.send_ranks[i])
+                                         _send_ranks[i],
+                                         _send_ranks[i])
 
-            elif halo.HALOS.recv_ranks[i] > -1:
+            elif _recv_ranks[i] > -1:
                 mpi.MPI_HANDLE.comm.Recv(self._cell_contents_recv[
                                          _halo_groups_start_end_indices[i]:_halo_groups_start_end_indices[i + 1]:],
-                                         halo.HALOS.recv_ranks[i],
+                                         _recv_ranks[i],
                                          mpi.MPI_HANDLE.rank,
                                          _status)
 
 
-            _t_size = self.halo_start + \
-                      self._cell_contents_recv[
-                      _halo_groups_start_end_indices[i]:
-                      _halo_groups_start_end_indices[i + 1]:
-                      ].sum()
+            _t_size += self._cell_contents_recv[
+                       _halo_groups_start_end_indices[i]:
+                       _halo_groups_start_end_indices[i + 1]:
+                       ].sum()
 
 
-            self.resize(_t_size)
+            self.timer_transfer_1.pause()
+
+        self.timer_transfer_resize.start()
+
+        self.resize(_t_size)
+
+        self.timer_transfer_resize.pause()
 
 
 
+        for i in range(26):
+
+
+            # Exchange sizes --------------------------------------------------
+            self.timer_transfer_2.start()
 
 
             # Exchange data ---------------------------------------------------
-            if halo.HALOS.send_ranks[i] > -1 and halo.HALOS.recv_ranks[i] > -1:
+            if _send_ranks[i] > -1 and _recv_ranks[i] > -1:
                 mpi.MPI_HANDLE.comm.Sendrecv(self._halo_packing_buffer.dat[
                                              self._cumulative_exchange_sizes[i]:self._cumulative_exchange_sizes[i] + _exchange_sizes[i]:,
                                              ::],
-                                             halo.HALOS.send_ranks[i],
-                                             halo.HALOS.send_ranks[i],
+                                             _send_ranks[i],
+                                             _send_ranks[i],
                                              self.dat[self.halo_start::, ::],
-                                             halo.HALOS.recv_ranks[i],
+                                             _recv_ranks[i],
                                              mpi.MPI_HANDLE.rank,
                                              _status)
 
                 _shift = _status.Get_count(mpi.mpi_map[self.dtype])
                 self.halo_start_shift(_shift / self.ncomp)
 
-            elif halo.HALOS.send_ranks[i] > -1:
+            elif _send_ranks[i] > -1:
                 mpi.MPI_HANDLE.comm.Send(self._halo_packing_buffer.dat[
                                          self._cumulative_exchange_sizes[i]:self._cumulative_exchange_sizes[i] + _exchange_sizes[i],
                                          ::],
-                                         halo.HALOS.send_ranks[i],
-                                         halo.HALOS.send_ranks[i])
+                                         _send_ranks[i],
+                                         _send_ranks[i])
 
-            elif halo.HALOS.recv_ranks[i] > -1:
+            elif _recv_ranks[i] > -1:
 
                 mpi.MPI_HANDLE.comm.Recv(self.dat[self.halo_start::, ::],
-                                         halo.HALOS.recv_ranks[i],
+                                         _recv_ranks[i],
                                          mpi.MPI_HANDLE.rank,
                                          _status)
 
@@ -774,6 +809,7 @@ class ParticleDat(host.Matrix):
 
                 self.halo_start_shift(_shift / self.ncomp)
 
+            self.timer_transfer_2.pause()
 
         self.timer_transfer.pause()
         # SEND END ============================================================
