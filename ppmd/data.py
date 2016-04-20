@@ -669,13 +669,12 @@ class ParticleDat(host.Matrix):
 
 
         self.timer_transfer.start()
+        self.timer_transfer_1.start()
 
         _t_size = self.halo_start
 
         for i in range(26):
             # Exchange sizes --------------------------------------------------
-
-            self.timer_transfer_1.start()
 
             if _send_ranks[i] > -1 and _recv_ranks[i] > -1:
                 mpi.MPI_HANDLE.comm.Sendrecv(_boundary_groups_contents_array[
@@ -708,7 +707,7 @@ class ParticleDat(host.Matrix):
                        ].sum()
 
 
-            self.timer_transfer_1.pause()
+        self.timer_transfer_1.pause()
 
         self.timer_transfer_resize.start()
 
@@ -717,13 +716,9 @@ class ParticleDat(host.Matrix):
         self.timer_transfer_resize.pause()
 
 
-
+        # Exchange sizes --------------------------------------------------
+        self.timer_transfer_2.start()
         for i in range(26):
-
-
-            # Exchange sizes --------------------------------------------------
-            self.timer_transfer_2.start()
-
 
             # Exchange data ---------------------------------------------------
             if _send_ranks[i] > -1 and _recv_ranks[i] > -1:
@@ -758,8 +753,7 @@ class ParticleDat(host.Matrix):
 
                 self.halo_start_shift(_shift / self.ncomp)
 
-            self.timer_transfer_2.pause()
-
+        self.timer_transfer_2.pause()
         self.timer_transfer.pause()
         # SEND END ============================================================
 

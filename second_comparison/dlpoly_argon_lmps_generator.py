@@ -229,6 +229,7 @@ timestep 0.001
 fix     1 all nve
 
 run %(STEPS)s
+write_dump all xyz lammps_out.xyz
 
 ''' % {'MASS': mass, 'CUTOFF': cutoff, 'EPS':eps, 'SIGMA':sigma, 'STEPS': steps}
 
