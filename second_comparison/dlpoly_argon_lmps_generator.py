@@ -216,7 +216,7 @@ pair_modify shift yes
 
 mass 1 %(MASS)s
 
-neighbor 0.1 bin
+neighbor %(SHELL_THICKNESS)s bin
 neigh_modify delay 0 every 10 check no
 
 
@@ -231,7 +231,7 @@ fix     1 all nve
 run %(STEPS)s
 write_dump all xyz lammps_out.xyz
 
-''' % {'MASS': mass, 'CUTOFF': cutoff, 'EPS':eps, 'SIGMA':sigma, 'STEPS': steps}
+''' % {'MASS': mass, 'CUTOFF': cutoff, 'EPS':eps, 'SIGMA':sigma, 'STEPS': steps, 'SHELL_THICKNESS': str(0.1 * cutoff)}
 
 
 
