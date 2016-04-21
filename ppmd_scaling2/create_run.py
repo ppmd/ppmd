@@ -15,7 +15,7 @@ runs = (
 cwd = os.getcwd()
 config_dir = os.path.join(cwd, 'config_dir')
 jobscript_dir = os.path.join(cwd, 'jobscript_dir')
-time_base = 1
+time_base = 2
 
 def make_config():
 
