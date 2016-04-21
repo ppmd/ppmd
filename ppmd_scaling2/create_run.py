@@ -85,7 +85,7 @@ def make_run():
 
         # ppmd jobscript
         make_jobscript('ppmd_' + str(run[0]) + '_' + str(run[1]),
-                       folder_name,'../validation_test_timing.py',run[0],run[1], time_est)
+                       folder_name,'python ../validation_test_timing.py',run[0],run[1], time_est)
         
         # lammps jobscript
         make_jobscript('lmps_' + str(run[0]) + '_' + str(run[1]),
