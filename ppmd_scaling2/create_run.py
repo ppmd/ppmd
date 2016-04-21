@@ -106,7 +106,7 @@ def make_jobscript(se, wd, cmd, nn, nc, et, acc="free"):
     :arg acc: account to use (default "free")
     """
 
-    _time = datetime.timedelta(minutes=et)
+    _time = datetime.timedelta(minutes=et+2)
     _time = datetime.datetime(1,1,1) + _time
 
     ET = "%02d:%02d:%02d" % (_time.hour, _time.minute, _time.second)
