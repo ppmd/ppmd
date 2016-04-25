@@ -287,6 +287,7 @@ class ParticleDat(host.Matrix):
 
         self._halo_packing_lib = None
         self._transfer_unpack_lib = None
+
         self._halo_packing_buffer = None
         self._cell_contents_recv = None
 
@@ -327,25 +328,7 @@ class ParticleDat(host.Matrix):
         else:
             self.dat[:n:, ::] = self.idtype(0.0)
             
-            #if self._zero_lib is None:
-            #    _header = '''
-            #    #include "generic.h"
-            #    #define RESTRICT %(RESTRICT)s
-            #    #define DTYPE %(DTYPE)s
-            #    extern "C" void pd_zero(const int NP, const int NC, DTYPE * RESTRICT dat);
 
-            #    ''' % {'RESTRICT': str(build.TMPCC.restrict_keyword), 
-            #            'DTYPE': host.ctypes_map[self.idtype]}
-            #    _code = '''
-            #    void pd_zero(const int NP, const int NC, DTYPE * RESTRICT dat){
-            #        for (int ix = 0; ix < NP*NC; ix++){
-            #            dat[ix] = 0.0;
-            #        }
-            #    }
-            #    '''
-            #    self._zero_lib = build.simple_lib_creator(_header, _code, 'pd_zero')['pd_zero']
-            #self._zero_lib(ctypes.c_int(n), ctypes.c_int(self.ncomp), self.ctypes_data)
-            
 
     @property
     def npart_total(self):#
@@ -458,7 +441,25 @@ class ParticleDat(host.Matrix):
         if cell.cell_list.halos_exist is True:
 
             self.timer_pack.start()
+
+            # new start
+            # can only exchage sizes if needed.
+            #if cell.cell_list.version_id > cell.cell_list.halo_version_id:
+
+            # 0 index contains number of expected particles
+            # 1 index contains the required size of tmp arrays
+            _sizes = halo.HALOS.exchange_cell_counts()
+
+            _size = self.halo_start + _sizes[0]
+            self.resize(_size)
+
+
+
+
+
+
             self.halo_pack()
+
             self.timer_pack.pause()
 
             self._transfer_unpack()
@@ -466,6 +467,7 @@ class ParticleDat(host.Matrix):
         self._vid_halo = self._vid_int
 
         self.timer_comm.pause()
+
 
 
     def _setup_halo_packing(self):
@@ -530,7 +532,6 @@ class ParticleDat(host.Matrix):
                 _tmp_zero[ix] = 0
 
             self._cell_shifts_array_pbc = host.Array(_tmp_list_local, dtype=ctypes.c_double)
-
 
 
         else:
@@ -779,10 +780,9 @@ class ParticleDat(host.Matrix):
 
 
 
-###################################################################################################
+#########################################################################
 # TypedDat.
-###################################################################################################
-
+#########################################################################
 
 class TypedDat(host.Matrix):
     """
@@ -821,10 +821,9 @@ class TypedDat(host.Matrix):
         self.dat[ix] = val
 
 
-###################################################################################################
+########################################################################
 # Type
-###################################################################################################
-
+########################################################################
 class Type(object):
     """
     Object to store information such as number of 

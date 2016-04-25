@@ -119,7 +119,8 @@ class BaseMDSimulation(object):
         cell.cell_list.setup_callback_on_update(self._reset_moved_distance)
 
 
-        halo.HALOS = halo.CartesianHalo()
+        #halo.HALOS = halo.CartesianHalo()
+        halo.HALOS = halo.CartesianHaloSix()
 
 
         # Initialise positions

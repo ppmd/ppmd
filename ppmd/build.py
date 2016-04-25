@@ -122,30 +122,31 @@ ICC = Compiler(['ICC'],
                ['icc'],
                ['-fpic', '-std=c++0x'],
                ['-lm'],
-               ['-O3', '-xHost', '-restrict', '-m64', '-opt-report=4'],
+               ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=4'],
                ['-g'],
                ['-c'],
                ['-shared'],
                'restrict')
 
-'''
-ICC_MPI = Compiler(['ICC'],
-                   ['icc'],
-                   ['-fpic', '-std=c++0x'],
-                   ['-lm'],
-                   ['-O3', '-xHost', '-restrict', '-m64', '-opt-report=4', '-I ' + os.environ["MPI_INCLUDE_DIR"]],
-                   ['-lmpi'],
-                   ['-c'],
-                   ['-shared'],
-                   'restrict')
-'''
+try:
+    ICC_MPI = Compiler(['ICC'],
+                       ['icc'],
+                       ['-fpic', '-std=c++0x'],
+                       ['-lm'],
+                       ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=4', '-I' + os.environ["MPI_INCLUDE_DIR"]],
+                       ['-lmpi'],
+                       ['-c'],
+                       ['-shared'],
+                       'restrict')
+except:
+    pass
 
 # Define system icc version as OpenMP Compiler.
 ICC_OpenMP = Compiler(['ICC'],
                       ['icc'],
                       ['-fpic', '-openmp', '-std=c++0x'],
                       ['-openmp', '-lgomp', '-lpthread', '-lc', '-lrt'],
-                      ['-O3', '-xHost', '-restrict', '-m64', '-opt-report=4'],
+                      ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=4'],
                       ['-g'],
                       ['-c'],
                       ['-shared'],
@@ -158,8 +159,7 @@ ICC_LIST = ['mapc-4044']#, 'itd-ngpu-01', 'itd-ngpu-02']
 if os.uname()[1] in ICC_LIST:
     TMPCC = ICC
     TMPCC_OpenMP = ICC_OpenMP
-    # TMPCC = GCC
-    # TMPCC_OpenMP = GCC_OpenMP
+    MPI_CC = ICC_MPI
 else:
     TMPCC = GCC
     TMPCC_OpenMP = GCC_OpenMP
@@ -646,8 +646,8 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
 
     mpi.MPI_HANDLE.barrier()
     if not os.path.exists(_lib_filename):
-        pio.pprint("Critical build Error: Library not built, " +
-                   str(lib) + ", rank:", mpi.MPI_HANDLE.rank)
+        pio.pprint("Critical build Error: Library not built,\n" +
+                   _lib_filename + "\n rank:", mpi.MPI_HANDLE.rank)
 
         quit()
 
