@@ -581,6 +581,9 @@ class CartesianHaloSix(object):
         self._h_tmp = host.Array(ncomp=10, dtype=ctypes.c_int)
         self._b_tmp = host.Array(ncomp=10, dtype=ctypes.c_int)
 
+        self.dir_counts = host.Array(ncomp=6, dtype=ctypes.c_int)
+
+
         self._halo_shifts = None
 
         # ensure first update
@@ -752,9 +755,10 @@ class CartesianHaloSix(object):
             const int * RESTRICT b_arr,       // b cell indices
             int * RESTRICT ccc,               // cell contents count
             int * RESTRICT h_count,           // number of halo particles
-            int * RESTRICT t_count,           // number of boundary particles
+            int * RESTRICT t_count,           // amount of tmp space needed
             int * RESTRICT h_tmp,             // tmp space for recving
-            int * RESTRICT b_tmp              // tmp space for sending
+            int * RESTRICT b_tmp,             // tmp space for sending
+            int * RESTRICT dir_counts         // expected recv counts
             '''
 
             _es_header = '''
@@ -811,7 +815,7 @@ class CartesianHaloSix(object):
                         *h_count += h_tmp[ix];
                         tmp_count++;
                     }
-
+                    dir_counts[dir] = tmp_count;
                     *t_count = MAX(*t_count, tmp_count);
 
                 }
@@ -849,7 +853,8 @@ class CartesianHaloSix(object):
                                  ctypes.byref(self._h_count),
                                  ctypes.byref(self._t_count),
                                  self._h_tmp.ctypes_data,
-                                 self._b_tmp.ctypes_data)
+                                 self._b_tmp.ctypes_data,
+                                 self.dir_counts.ctypes_data)
 
         return self._h_count.value, self._t_count.value
 

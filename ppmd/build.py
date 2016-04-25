@@ -1,4 +1,3 @@
-import numpy as np
 import host
 import ctypes
 import os
