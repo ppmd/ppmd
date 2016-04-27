@@ -55,7 +55,7 @@ test_vel_init = simulation.VelInitTwoParticlesInABox(vx=np.array([0., 0., 0.]), 
 
 
 # Initialise two particles on an axis a set distance apart.
-test_pos_init = simulation.PosInitTwoParticlesInABox(rx=0.35, extent=np.array([20., 20., 20.]), axis=np.array([1,0,0]))
+test_pos_init = simulation.PosInitTwoParticlesInABox(rx=0.35, extent=np.array([20., 20., 20.]), axis=np.array([1,1,1]))
 
 # Create simulation class from above initialisations.
 
