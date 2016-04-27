@@ -447,25 +447,25 @@ class ParticleDat(host.Matrix):
         self.halo_start_reset()
         _sizes = halo.HALOS.exchange_cell_counts()
 
-        print "\t\tAFTER sizes exchange"
+        # print "\t\tAFTER sizes exchange"
 
         _size = self.halo_start + _sizes[0]
         self.resize(_size)
 
         sys.stdout.flush()
 
-        print "\t\tAFTER dat resize"
+        # print "\t\tAFTER dat resize"
         if self._tmp_halo_space.ncomp < (self.ncomp * _sizes[1]):
-            print "\t\t\tresizing tmp space", _sizes[1]
+            # print "\t\t\tresizing tmp space", _sizes[1]
             self._tmp_halo_space.realloc(_sizes[1] * self.ncomp)
 
-        print "\t\tAFTER TMP resize"
+        # print "\t\tAFTER TMP resize"
 
 
         if (self.name == 'positions') and cell.cell_list.version_id > cell.cell_list.halo_version_id:
             cell.cell_list.prepare_halo_sort(_size)
 
-        print "\t\tAFTER cell resize"
+        # print "\t\tAFTER cell resize"
 
         self._transfer_unpack()
         self.halo_start_shift(_sizes[0])
@@ -528,15 +528,15 @@ class ParticleDat(host.Matrix):
                 MPI_Request sr;
                 MPI_Request rr;
 
-                for( int dir=0 ; dir<6 ; dir++ ){
-                    cout << "dir: " << dir << " count: " << dir_counts[dir] << endl;;
-                }
+                //for( int dir=0 ; dir<6 ; dir++ ){
+                //    cout << "dir: " << dir << " count: " << dir_counts[dir] << endl;;
+                //}
 
 
                 for( int dir=0 ; dir<6 ; dir++ ){
-                    for( int iy=0 ; iy<%(NCOMP)s ; iy++ ){
-                        cout << "\tdir: " << dir << " comp " << iy << " shift " << SHIFT[dir*%(NCOMP)s + iy] << endl;
-                    }
+                    //for( int iy=0 ; iy<%(NCOMP)s ; iy++ ){
+                    //    cout << "\tdir: " << dir << " comp " << iy << " shift " << SHIFT[dir*%(NCOMP)s + iy] << endl;
+                    //}
                     const int b_s = b_ind[dir];
                     const int b_e = b_ind[dir+1];
                     const int b_c = b_e - b_s;
@@ -563,24 +563,25 @@ class ParticleDat(host.Matrix):
 
                                 b_tmp[p_index * %(NCOMP)s + iy] = DAT[ix*%(NCOMP)s + iy];
 
-                                cout << "packed: " << b_tmp[p_index * %(NCOMP)s +iy];
+                                //cout << "packed: " << b_tmp[p_index * %(NCOMP)s +iy];
 
                                 #ifdef POS
                                     b_tmp[p_index * %(NCOMP)s + iy] += SHIFT[dir*%(NCOMP)s + iy];
                                 #endif
 
-                                cout << " p_shifted: " << b_tmp[p_index * %(NCOMP)s +iy] << endl;
+                                //cout << " p_shifted: " << b_tmp[p_index * %(NCOMP)s +iy] << endl;
                             }
 
                         ix = cell_list[ix];}
                     }
 
+                    /*
                     cout << " SEND | ";
                     for( int tx=0 ; tx < (p_index + 1)*3; tx++){
                         cout << b_tmp[tx] << " |";
                     }
                     cout << endl;
-
+                    */
 
                     // start the sendrecv as non blocking.
                     if (( SEND_RANKS[dir] > -1 ) && ( p_index > -1 ) ){
@@ -593,7 +594,7 @@ class ParticleDat(host.Matrix):
                               %(MPI_DTYPE)s, RECV_RANKS[dir], RECV_RANKS[dir], MPI_COMM, &rr);
                     }
 
-                    cout << "DAT_END: " << DAT_END << endl;
+                    //cout << "DAT_END: " << DAT_END << endl;
 
 
 
@@ -615,7 +616,7 @@ class ParticleDat(host.Matrix):
 
                             if (hx_count > 0) {
 
-                            cout << "\tsorting cell: " << hx << " ccc: " << hx_count << endl;
+                            //cout << "\tsorting cell: " << hx << " ccc: " << hx_count << endl;
                                 cell_list[cell_offset + hx] = DAT_END_T;
 
                                 for( int iy=0 ; iy<(hx_count-1) ; iy++ ){
@@ -647,7 +648,7 @@ class ParticleDat(host.Matrix):
                     MPI_Barrier(MPI_COMM);
 
 
-                cout << "dir end " << dir << " -----------" << endl;
+                //cout << "dir end " << dir << " -----------" << endl;
 
                 }
 
@@ -680,7 +681,7 @@ class ParticleDat(host.Matrix):
 
         # End of creation code -----------------------------------------
 
-        print "~~~~~~~~~~~~~~~~~~~preparing exxchange"
+        # print "~~~~~~~~~~~~~~~~~~~preparing exxchange"
 
         _h = halo.HALOS.get_halo_cell_groups()
         _b = halo.HALOS.get_boundary_cell_groups()
@@ -690,10 +691,10 @@ class ParticleDat(host.Matrix):
         else:
             _sort_flag = ctypes.c_int(-1)
 
-        print "SORT FLAG:", _sort_flag.value, "cell vid:", cell.cell_list.version_id, "halo vid:", cell.cell_list.halo_version_id
+        # print "SORT FLAG:", _sort_flag.value, "cell vid:", cell.cell_list.version_id, "halo vid:", cell.cell_list.halo_version_id
 
-        print str(mpi.MPI_HANDLE.rank) + " -------------- before exchange lib ------------------"
-        sys.stdout.flush()
+        # print str(mpi.MPI_HANDLE.rank) + " -------------- before exchange lib ------------------"
+        # sys.stdout.flush()
 
         self._exchange_lib(self.ctypes_data,
                            ctypes.c_int(self.npart),
@@ -715,9 +716,9 @@ class ParticleDat(host.Matrix):
                            )
 
 
-        print str(mpi.MPI_HANDLE.rank) +  " --------------- after exchange lib ------------------"
-        print self.npart
-        print self._dat
+        # print str(mpi.MPI_HANDLE.rank) +  " --------------- after exchange lib ------------------"
+        # print self.npart
+        # print self._dat
 
 
         '''

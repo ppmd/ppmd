@@ -639,7 +639,7 @@ class CartesianHaloSix(object):
 
         for hx, bhx in enumerate(_cell_pairs):
 
-            print hx, bhx
+            # print hx, bhx
 
 
             _len_b_tmp = max(_len_b_tmp, len(bhx[0]))
@@ -814,7 +814,7 @@ class CartesianHaloSix(object):
                 // [W E] [N S] [O I]
                 for( int dir=0 ; dir<6 ; dir++ ){
 
-                    cout << "dir " << dir << "-------" << endl;
+                    //cout << "dir " << dir << "-------" << endl;
 
                     const int dir_s = b_ind[dir];             // start index
                     const int dir_c = b_ind[dir+1] - dir_s;   // cell count
@@ -836,14 +836,14 @@ class CartesianHaloSix(object):
                         tmp_count += ccc[b_arr[dir_s + ix]];
                     }
 
-                    cout << "\tcount 1: " << tmp_count << endl;
+                    //cout << "\tcount 1: " << tmp_count << endl;
 
 
                     *t_count = MAX(*t_count, tmp_count);
 
                     // send b_tmp recv h_tmp
 
-                    cout << "\tsendrecv " << dir_c << " " << dir_c_r << " " << SEND_RANKS[dir] << " " << RECV_RANKS[dir] << " " << rank << endl;
+                    //cout << "\tsendrecv " << dir_c << " " << dir_c_r << " " << SEND_RANKS[dir] << " " << RECV_RANKS[dir] << " " << rank << endl;
 
 
                     if(rank == RECV_RANKS[dir]){
@@ -859,7 +859,7 @@ class CartesianHaloSix(object):
                                   RECV_RANKS[dir], RECV_RANKS[dir],
                                   MPI_COMM, &MPI_STATUS);
                     }
-                    cout << "\tsendrecv completed" << endl;
+                    //cout << "\tsendrecv completed" << endl;
                     // copy recieved values into correct places and sum;
 
                     tmp_count=0;
@@ -872,7 +872,7 @@ class CartesianHaloSix(object):
                     *t_count = MAX(*t_count, tmp_count);
 
 
-                    cout << "\tcount 2: " << tmp_count << endl;
+                    //cout << "\tcount 2: " << tmp_count << endl;
                 }
 
                 return;
@@ -897,7 +897,7 @@ class CartesianHaloSix(object):
         if self._version < self._domain.cell_array.version:
             self._get_pairs()
 
-        print str(mpi.MPI_HANDLE.rank) +  ' #' + ' before size exchange ' + 10*'#'
+        # print str(mpi.MPI_HANDLE.rank) +  ' #' + ' before size exchange ' + 10*'#'
 
         self._exchange_sizes_lib(ctypes.c_int(mpi.MPI_HANDLE.fortran_comm),
                                  self._send_ranks.ctypes_data,
@@ -913,9 +913,9 @@ class CartesianHaloSix(object):
                                  self._b_tmp.ctypes_data,
                                  self.dir_counts.ctypes_data)
 
-        print self.dir_counts.dat
+        # print self.dir_counts.dat
 
-        print str(mpi.MPI_HANDLE.rank) +  10*' #' + ' after size exchange  ' + 10*'#'
+        # print str(mpi.MPI_HANDLE.rank) +  10*' #' + ' after size exchange  ' + 10*'#'
 
         return self._h_count.value, self._t_count.value
 

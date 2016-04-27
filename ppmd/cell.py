@@ -194,7 +194,7 @@ class CellList(object):
 
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
 
-        printf("ix %d c0 %d c1 %d c2 %d val %d \\n", ix, C0, C1, C2, val);
+        //printf("ix %d c0 %d c1 %d c2 %d val %d \\n", ix, C0, C1, C2, val);
 
 
         //needed, may improve halo exchange times
