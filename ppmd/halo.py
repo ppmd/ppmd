@@ -13,6 +13,7 @@ import host
 ################################################################################################################
 # HALO DEFINITIONS
 ################################################################################################################
+from ppmd import pio
 
 
 class CartesianHalo(object):
@@ -637,12 +638,16 @@ class CartesianHaloSix(object):
         _len_b_tmp = 10
 
         for hx, bhx in enumerate(_cell_pairs):
+
+            print hx, bhx
+
+
             _len_b_tmp = max(_len_b_tmp, len(bhx[0]))
             _len_h_tmp = max(_len_h_tmp, len(bhx[1]))
 
             # Boundary and Halo start index.
-            _bs = np.append(_bs, ctypes.c_int(len(bhx[0])))
-            _hs = np.append(_hs, ctypes.c_int(len(bhx[1])))
+            _bs = np.append(_bs, ctypes.c_int(len(bhx[0]) + _bs[-1] ))
+            _hs = np.append(_hs, ctypes.c_int(len(bhx[1]) + _hs[-1] ))
 
             # Actual cell indices
             _b = np.append(_b, bhx[0])
@@ -659,6 +664,7 @@ class CartesianHaloSix(object):
 
         if _len_h_tmp > self._h_tmp.ncomp:
             self._h_tmp.realloc(_len_h_tmp)
+
 
         # indices in array of cell indices
         self._boundary_groups_start_end_indices = host.Array(_bs, dtype=ctypes.c_int)
@@ -735,6 +741,29 @@ class CartesianHaloSix(object):
 
         return self._halo_shifts
 
+    def get_send_ranks(self):
+        """
+        Get the mpi ranks to send to.
+        """
+
+        if self._version < self._domain.cell_array.version:
+            self._get_pairs()
+
+        return self._send_ranks
+
+    def get_recv_ranks(self):
+        """
+        Get the mpi ranks to recv from.
+        """
+
+        if self._version < self._domain.cell_array.version:
+            self._get_pairs()
+
+        return self._recv_ranks
+
+    def get_dir_counts(self):
+        return self.dir_counts
+
     def exchange_cell_counts(self):
         """
         Exchange the contents count of cells between processes. This is
@@ -785,6 +814,8 @@ class CartesianHaloSix(object):
                 // [W E] [N S] [O I]
                 for( int dir=0 ; dir<6 ; dir++ ){
 
+                    cout << "dir " << dir << "-------" << endl;
+
                     const int dir_s = b_ind[dir];             // start index
                     const int dir_c = b_ind[dir+1] - dir_s;   // cell count
 
@@ -795,29 +826,53 @@ class CartesianHaloSix(object):
                     for( int ix=0 ; ix<dir_c ; ix++ ){
                         b_tmp[ix] = ccc[b_arr[dir_s + ix]];    // copy into
                                                                // send buffer
-                        tmp_count++;
+
+
+                        //cout << "\tcell: " << b_arr[dir_s + ix] << endl;
+                        //cout << "\t\tcount: " << b_tmp[ix] << endl;
+
+                        if (b_tmp[ix] == 946) { cout << "946 ccc: " << ccc[946] << endl;}
+
+                        tmp_count += ccc[b_arr[dir_s + ix]];
                     }
+
+                    cout << "\tcount 1: " << tmp_count << endl;
+
 
                     *t_count = MAX(*t_count, tmp_count);
 
                     // send b_tmp recv h_tmp
+
+                    cout << "\tsendrecv " << dir_c << " " << dir_c_r << " " << SEND_RANKS[dir] << " " << RECV_RANKS[dir] << " " << rank << endl;
+
+
+                    if(rank == RECV_RANKS[dir]){
+
+                        for( int tx=0 ; tx < dir_c ; tx++ ){
+                            h_tmp[tx] = b_tmp[tx];
+                        }
+
+                    } else {
                     MPI_Sendrecv ((void *) b_tmp, dir_c, MPI_INT,
                                   SEND_RANKS[dir], rank,
                                   (void *) h_tmp, dir_c_r, MPI_INT,
                                   RECV_RANKS[dir], RECV_RANKS[dir],
                                   MPI_COMM, &MPI_STATUS);
-
+                    }
+                    cout << "\tsendrecv completed" << endl;
                     // copy recieved values into correct places and sum;
 
                     tmp_count=0;
                     for( int ix=0 ; ix<dir_c_r ; ix++ ){
                         ccc[h_arr[dir_s_r + ix]] = h_tmp[ix];
                         *h_count += h_tmp[ix];
-                        tmp_count++;
+                        tmp_count += h_tmp[ix];
                     }
                     dir_counts[dir] = tmp_count;
                     *t_count = MAX(*t_count, tmp_count);
 
+
+                    cout << "\tcount 2: " << tmp_count << endl;
                 }
 
                 return;
@@ -842,6 +897,8 @@ class CartesianHaloSix(object):
         if self._version < self._domain.cell_array.version:
             self._get_pairs()
 
+        print str(mpi.MPI_HANDLE.rank) +  ' #' + ' before size exchange ' + 10*'#'
+
         self._exchange_sizes_lib(ctypes.c_int(mpi.MPI_HANDLE.fortran_comm),
                                  self._send_ranks.ctypes_data,
                                  self._recv_ranks.ctypes_data,
@@ -855,6 +912,10 @@ class CartesianHaloSix(object):
                                  self._h_tmp.ctypes_data,
                                  self._b_tmp.ctypes_data,
                                  self.dir_counts.ctypes_data)
+
+        print self.dir_counts.dat
+
+        print str(mpi.MPI_HANDLE.rank) +  10*' #' + ' after size exchange  ' + 10*'#'
 
         return self._h_count.value, self._t_count.value
 

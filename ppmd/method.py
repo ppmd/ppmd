@@ -145,7 +145,7 @@ class VelocityVerlet(object):
         #self._sim.forces_update()
 
         for i in range(self._max_it):
-            #print i
+            print i
 
             self._p1.execute(self._state.n)
 

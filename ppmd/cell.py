@@ -194,6 +194,9 @@ class CellList(object):
 
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
 
+        printf("ix %d c0 %d c1 %d c2 %d val %d \\n", ix, C0, C1, C2, val);
+
+
         //needed, may improve halo exchange times
         CCC[val]++;
         CRL[ix] = val;
@@ -328,6 +331,36 @@ class CellList(object):
         _cell_sort_kernel = kernel.Kernel('halo_cell_list_method', _cell_sort_code, headers=['stdio.h'],
                                           static_args=_static_args)
         self._halo_cell_sort_loop = build.SharedLib(_cell_sort_kernel, _cell_sort_dict)
+
+
+    def prepare_halo_sort(self, total_size):
+
+        # if the total size is larger than the current array we need to resize.
+
+        cell_count = self._domain.cell_array[0] * self._domain.cell_array[1] * self._domain.cell_array[2]
+
+        if total_size + cell_count + 1 > self._cell_list.ncomp:
+            cell_start = self._cell_list[self._cell_list.end]
+            cell_end = self._cell_list.end
+
+            # print cell_count, cell_start, cell_end, self._cell_list.ncomp, total_size
+
+
+            self._cell_list.realloc(total_size + cell_count + 1)
+
+            self._cell_list.dat[self._cell_list.end - cell_count: self._cell_list.end:] = self._cell_list.dat[cell_start:cell_end:]
+
+            self._cell_list.dat[self._cell_list.end] = self._cell_list.end - cell_count
+
+            # cell reverse lookup
+            self._cell_reverse_lookup.realloc(total_size)
+
+
+    def post_halo_exchange(self):
+
+        self.halo_version_id += 1
+
+
 
     def sort_halo_cells(self,local_cell_indices_array, cell_contents_recv, npart, total_size):
 
@@ -621,7 +654,14 @@ class NeighbourList(object):
 
         self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_int)
 
-        _initial_factor = math.ceil(15. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
+        _n = n()
+        if _n < 10:
+            _n = 10
+
+        _initial_factor = math.ceil(15. * (_n ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
+
+        if _initial_factor < 100:
+            _initial_factor = 100
 
 
         self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_int)
@@ -818,7 +858,14 @@ class NeighbourListv2(NeighbourList):
 
         self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_int)
 
-        _initial_factor = math.ceil(15. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
+        _n = n()
+        if _n < 10:
+            _n = 10
+
+        _initial_factor = math.ceil(15. * (_n ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
+
+        if _initial_factor < 10:
+            _initial_factor = 10
 
 
         self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_int)

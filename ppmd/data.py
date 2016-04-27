@@ -285,11 +285,6 @@ class ParticleDat(host.Matrix):
             self.npart = self.nrow
             self.ncomp = self.ncol
 
-        self._halo_packing_lib = None
-        self._transfer_unpack_lib = None
-
-        self._halo_packing_buffer = None
-        self._cell_contents_recv = None
 
         self.halo_start = self.npart
         """:return: The starting index of the halo region of the particle dat. """
@@ -301,7 +296,8 @@ class ParticleDat(host.Matrix):
         self._resize_callback = None
         self._version = 0
 
-        self._zero_lib = None
+        self._exchange_lib = None
+        self._tmp_halo_space = host.Array(ncomp=1, dtype=self.dtype)
 
 
     @property
@@ -438,25 +434,48 @@ class ParticleDat(host.Matrix):
 
         self.timer_comm.start()
 
-        if cell.cell_list.halos_exist is True:
 
-            self.timer_pack.start()
 
-            # new start
-            # can only exchage sizes if needed.
-            #if cell.cell_list.version_id > cell.cell_list.halo_version_id:
 
-            # 0 index contains number of expected particles
-            # 1 index contains the required size of tmp arrays
-            _sizes = halo.HALOS.exchange_cell_counts()
+        # new start
+        # can only exchage sizes if needed.
+        #if cell.cell_list.version_id > cell.cell_list.halo_version_id:
 
-            _size = self.halo_start + _sizes[0]
-            self.resize(_size)
+        # 0 index contains number of expected particles
+        # 1 index contains the required size of tmp arrays
 
-            self._transfer_unpack()
+        self.halo_start_reset()
+        _sizes = halo.HALOS.exchange_cell_counts()
+
+        print "\t\tAFTER sizes exchange"
+
+        _size = self.halo_start + _sizes[0]
+        self.resize(_size)
+
+        sys.stdout.flush()
+
+        print "\t\tAFTER dat resize"
+        if self._tmp_halo_space.ncomp < (self.ncomp * _sizes[1]):
+            print "\t\t\tresizing tmp space", _sizes[1]
+            self._tmp_halo_space.realloc(_sizes[1] * self.ncomp)
+
+        print "\t\tAFTER TMP resize"
+
+
+        if (self.name == 'positions') and cell.cell_list.version_id > cell.cell_list.halo_version_id:
+            cell.cell_list.prepare_halo_sort(_size)
+
+        print "\t\tAFTER cell resize"
+
+        self._transfer_unpack()
+        self.halo_start_shift(_sizes[0])
+
+        if (self.name == 'positions') and cell.cell_list.version_id > cell.cell_list.halo_version_id:
+            cell.cell_list.post_halo_exchange()
+
+
 
         self._vid_halo = self._vid_int
-
         self.timer_comm.pause()
 
 
@@ -464,7 +483,7 @@ class ParticleDat(host.Matrix):
         """
         pack and transfer the particle dat, rebuild cell list if needed
         """
-        if self._transfer_unpack_lib is None:
+        if self._exchange_lib is None:
 
             _ex_args = '''
             %(DTYPE)s * RESTRICT DAT,         // DAT pointer
@@ -479,11 +498,11 @@ class ParticleDat(host.Matrix):
             const int * RESTRICT b_arr,       // b cell indices
             const int * RESTRICT dir_counts,  // expected recv counts
             const int cell_offset,            // offset for cell list
+            const int sort_flag,              // does the cl require updating
             int * RESTRICT ccc,               // cell contents count
+            int * RESTRICT crl,               // cell reverse lookup
             int * RESTRICT cell_list,         // cell list
-            int * RESTRICT t_count,           // number of boundary particles
-            int * RESTRICT h_tmp,             // tmp space for recving
-            int * RESTRICT b_tmp              // tmp space for sending
+            %(DTYPE)s * RESTRICT b_tmp        // tmp space for sending
             ''' % {'DTYPE': host.ctypes_map[self.dtype]}
 
             _ex_header = '''
@@ -509,10 +528,15 @@ class ParticleDat(host.Matrix):
                 MPI_Request sr;
                 MPI_Request rr;
 
+                for( int dir=0 ; dir<6 ; dir++ ){
+                    cout << "dir: " << dir << " count: " << dir_counts[dir] << endl;;
+                }
 
 
                 for( int dir=0 ; dir<6 ; dir++ ){
-
+                    for( int iy=0 ; iy<%(NCOMP)s ; iy++ ){
+                        cout << "\tdir: " << dir << " comp " << iy << " shift " << SHIFT[dir*%(NCOMP)s + iy] << endl;
+                    }
                     const int b_s = b_ind[dir];
                     const int b_e = b_ind[dir+1];
                     const int b_c = b_e - b_s;
@@ -522,7 +546,7 @@ class ParticleDat(host.Matrix):
                     const int h_c = h_e - h_s;
 
                     //packing index;
-                    int p_index = -1 * %(NCOMP)s;
+                    int p_index = -1;
 
                     // packing loop
                     for( int cx=0 ; cx<b_c ; cx++ ){
@@ -534,42 +558,96 @@ class ParticleDat(host.Matrix):
                         int ix = cell_list[cell_offset + ci];
                         while(ix > -1){
 
-                            p_index += %(NCOMP)s;
+                            p_index ++;
                             for( int iy=0 ; iy<%(NCOMP)s ; iy++ ){
 
                                 b_tmp[p_index * %(NCOMP)s + iy] = DAT[ix*%(NCOMP)s + iy];
+
+                                cout << "packed: " << b_tmp[p_index * %(NCOMP)s +iy];
+
                                 #ifdef POS
-                                b_tmp[p_index * %(NCOMP)s + iy] += SHIFT[iy];
+                                    b_tmp[p_index * %(NCOMP)s + iy] += SHIFT[dir*%(NCOMP)s + iy];
                                 #endif
 
+                                cout << " p_shifted: " << b_tmp[p_index * %(NCOMP)s +iy] << endl;
                             }
 
                         ix = cell_list[ix];}
                     }
 
+                    cout << " SEND | ";
+                    for( int tx=0 ; tx < (p_index + 1)*3; tx++){
+                        cout << b_tmp[tx] << " |";
+                    }
+                    cout << endl;
+
+
                     // start the sendrecv as non blocking.
-                    if (( SEND_RANKS[dir] > -1 ) && ( p_index > 0 ) ) {
-                    MPI_Isend((void *) b_tmp, p_index, %(MPI_DTYPE)s,
+                    if (( SEND_RANKS[dir] > -1 ) && ( p_index > -1 ) ){
+                    MPI_Isend((void *) b_tmp, (p_index + 1) * %(NCOMP)s, %(MPI_DTYPE)s,
                              SEND_RANKS[dir], rank, MPI_COMM, &sr);
                     }
 
-                    if (( RECV_RANKS[dir] > -1 ) && ( dir_counts[dir] > 0 ) ) {
-                    MPI_Irecv((void *) &DAT[DAT_END * %(NCOMP)s], dir_counts[dir],
+                    if (( RECV_RANKS[dir] > -1 ) && ( dir_counts[dir] > 0 ) ){
+                    MPI_Irecv((void *) &DAT[DAT_END * %(NCOMP)s], %(NCOMP)s * dir_counts[dir],
                               %(MPI_DTYPE)s, RECV_RANKS[dir], RECV_RANKS[dir], MPI_COMM, &rr);
                     }
 
+                    cout << "DAT_END: " << DAT_END << endl;
+
+
+
+                    int DAT_END_T = DAT_END;
+                    DAT_END += dir_counts[dir];
+
                     // build halo part of cell list whilst exchange occuring.
 
+                    #ifdef POS
+                    if (sort_flag > 0){
 
+                        for( int hxi=h_s ; hxi<h_e ; hxi++ ){
 
+                            // index of a halo cell
+                            const int hx = h_arr[ hxi ];
+
+                            // number of particles in cell
+                            const int hx_count = ccc[ hx ];
+
+                            if (hx_count > 0) {
+
+                            cout << "\tsorting cell: " << hx << " ccc: " << hx_count << endl;
+                                cell_list[cell_offset + hx] = DAT_END_T;
+
+                                for( int iy=0 ; iy<(hx_count-1) ; iy++ ){
+
+                                    cell_list[ DAT_END_T+iy ] = DAT_END_T + iy + 1;
+                                    crl[ DAT_END_T+iy ] = hx;
+
+                                }
+
+                                cell_list[ DAT_END_T + hx_count - 1 ] = -1;
+                                crl[ DAT_END_T + hx_count -1 ] = hx;
+
+                                DAT_END_T += hx_count;
+                            }
+                        }
+
+                    }
+                    #endif
 
                     // after send has completed move to next direction.
+                    if (( SEND_RANKS[dir] > -1 ) && ( p_index > -1 ) ){
+                        MPI_Wait(&sr, &MPI_STATUS);
+                    }
+
+                    if (( RECV_RANKS[dir] > -1 ) && ( dir_counts[dir] > 0 ) ){
+                        MPI_Wait(&rr, &MPI_STATUS);
+                    }
+
                     MPI_Barrier(MPI_COMM);
 
-                    // THESE MUST HAVE THE ABOVE CONDITIONALS IF USED
-                    // MPI_Wait(&sr, &MPI_STATUS);
-                    // MPI_Wait(&rr, &MPI_STATUS);
 
+                cout << "dir end " << dir << " -----------" << endl;
 
                 }
 
@@ -593,18 +671,74 @@ class ParticleDat(host.Matrix):
             _ex_header %= _ex_dict
             _ex_code %= _ex_dict
 
-            self._exchange_sizes_lib = build.simple_lib_creator(_ex_header,
-                                                                _ex_code,
-                                                                'HALO_EXCHANGE_PD',
-                                                                CC=build.MPI_CC
-                                                                )['HALO_EXCHANGE_PD']
-
+            self._exchange_lib = build.simple_lib_creator(_ex_header,
+                                                          _ex_code,
+                                                          'HALO_EXCHANGE_PD',
+                                                          CC=build.MPI_CC
+                                                          )['HALO_EXCHANGE_PD']
 
 
         # End of creation code -----------------------------------------
 
+        print "~~~~~~~~~~~~~~~~~~~preparing exxchange"
+
+        _h = halo.HALOS.get_halo_cell_groups()
+        _b = halo.HALOS.get_boundary_cell_groups()
+
+        if (self.name == 'positions') and cell.cell_list.version_id > cell.cell_list.halo_version_id:
+            _sort_flag = ctypes.c_int(1)
+        else:
+            _sort_flag = ctypes.c_int(-1)
+
+        print "SORT FLAG:", _sort_flag.value, "cell vid:", cell.cell_list.version_id, "halo vid:", cell.cell_list.halo_version_id
+
+        print str(mpi.MPI_HANDLE.rank) + " -------------- before exchange lib ------------------"
+        sys.stdout.flush()
+
+        self._exchange_lib(self.ctypes_data,
+                           ctypes.c_int(self.npart),
+                           halo.HALOS.get_position_shifts().ctypes_data,
+                           ctypes.c_int(mpi.MPI_HANDLE.fortran_comm),
+                           halo.HALOS.get_send_ranks().ctypes_data,
+                           halo.HALOS.get_recv_ranks().ctypes_data,
+                           _h[1].ctypes_data,
+                           _b[1].ctypes_data,
+                           _h[0].ctypes_data,
+                           _b[0].ctypes_data,
+                           halo.HALOS.get_dir_counts().ctypes_data,
+                           cell.cell_list.offset,
+                           _sort_flag,
+                           cell.cell_list.cell_contents_count.ctypes_data,
+                           cell.cell_list.cell_reverse_lookup.ctypes_data,
+                           cell.cell_list.cell_list.ctypes_data,
+                           self._tmp_halo_space.ctypes_data
+                           )
 
 
+        print str(mpi.MPI_HANDLE.rank) +  " --------------- after exchange lib ------------------"
+        print self.npart
+        print self._dat
+
+
+        '''
+        %(DTYPE)s * RESTRICT DAT,         // DAT pointer
+        int DAT_END,                      // end of dat.
+        const double * RESTRICT SHIFT,    // position shifts
+        const int f_MPI_COMM,             // F90 comm from mpi4py
+        const int * RESTRICT SEND_RANKS,  // send directions
+        onst int * RESTRICT RECV_RANKS,  // recv directions
+        const int * RESTRICT h_ind,       // halo indices
+        const int * RESTRICT b_ind,       // local b indices
+        const int * RESTRICT h_arr,       // h cell indices
+        const int * RESTRICT b_arr,       // b cell indices
+        const int * RESTRICT dir_counts,  // expected recv counts
+        const int cell_offset,            // offset for cell list
+        const int sort_flag,              // does the cl require updating
+        int * RESTRICT ccc,               // cell contents count
+        int * RESTRICT crl,               // cell reverse lookup
+        int * RESTRICT cell_list,         // cell list
+        int * RESTRICT b_tmp              // tmp space for sending
+        '''
 
 
 
