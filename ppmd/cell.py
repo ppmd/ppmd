@@ -878,7 +878,13 @@ class NeighbourListv2(NeighbourList):
 
         _code = '''
 
-        //printf("start P[0] = %f \\n", P[0]);
+        #define RK %(_RK)s
+        //#define PP ((RK==49) || (RK==50) || (RK==32))
+        #define PP (1)
+
+        cout << "------------------------------" << endl;
+        printf("start P[0] = %%f \\n", P[0]);
+
 
         const double cutoff = CUTOFF[0];
         const int max_len = MAX_LEN[0];
@@ -941,6 +947,12 @@ class NeighbourListv2(NeighbourList):
         const double _b0 = B[0];
         const double _b2 = B[2];
         const double _b4 = B[4];
+        
+        cout << "boundary" << endl;
+        cout << B[0] << " " << B[1] << endl;
+        cout << B[2] << " " << B[3] << endl;
+        cout << B[4] << " " << B[5] << endl;
+
 
         const double _icel0 = 1.0/CEL[0];
         const double _icel1 = 1.0/CEL[1];
@@ -959,11 +971,23 @@ class NeighbourListv2(NeighbourList):
             const double pi1 = P[ix*3 + 1];
             const double pi2 = P[ix*3 + 2];
 
+            cout << "boundary" << endl;
+            cout << B[0] << " " << B[1] << endl;
+            cout << B[2] << " " << B[3] << endl;
+            cout << B[4] << " " << B[5] << endl;
+            cout << "ix = " << ix << " p0 = " << pi0 << " p1 = " << pi1 << " p2 = " << pi2 << endl;
+
+
             const int C0 = 1 + (int)((pi0 - _b0)*_icel0);
             const int C1 = 1 + (int)((pi1 - _b2)*_icel1);
             const int C2 = 1 + (int)((pi2 - _b4)*_icel2);
 
-            const int val = (C2*_ca1 + C1)*_ca0 + C0;
+            //const int val = (C2*_ca1 + C1)*_ca0 + C0;
+            const int val = CRL[ix];
+
+            cout << "val = " << val << " C0 = " << C0 << " C1 = " << C1 << " C2 = " << C2 << endl;
+            cout << " Ca0 = " << _ca0 << " Ca1 = " << _ca1 << " Ca2 = " << _ca2 << endl;
+
 
             NEIGHBOUR_STARTS[ix] = m + 1;
 
@@ -980,15 +1004,15 @@ class NeighbourListv2(NeighbourList):
             // if flag > 0 then we are near a halo
             // that needs attention
 
-            // printf("ix: %d flag: %d | C0 %d C1 %d C2 %d  \\n ##", ix, flag, C0, C1, C2);
+            cout << "flag " << flag << endl;
 
             if (flag > 0) {
 
                 //check the possble 13 directions
                 for( int csx = 0; csx < 13; csx++){
                     if (flag & selective_lookup[csx]){
-
-                        //printf(" %d ", csx);
+                        
+                        //cout << "S look " << csx << endl;
 
                         int iy = q[n + val + s_tmp_offset[csx]];
                         while(iy > -1){
@@ -996,6 +1020,9 @@ class NeighbourListv2(NeighbourList):
                             const double rj0 = P[iy*3]   - pi0;
                             const double rj1 = P[iy*3+1] - pi1;
                             const double rj2 = P[iy*3+2] - pi2;
+
+                            //cout << "S_iy = " << iy << " py0 = " << P[iy*3+0] << " py1 = " << P[iy*3+1] << " py2 = " << P[iy*3+2] << endl;
+
 
                             if ( (rj0*rj0 + rj1*rj1 + rj2*rj2) <= cutoff ) {
 
@@ -1019,15 +1046,22 @@ class NeighbourListv2(NeighbourList):
             // standard directions
 
             for(int k = 0; k < 14; k++){
+                
+                cout << "\\toffset: " << k << endl;
 
                 int iy = q[n + val + tmp_offset[k]];
                 while (iy > -1) {
 
                     if ( (tmp_offset[k] != 0) || (iy > ix) ){
 
+                        //if (k==12){ cout << "iy=" << iy << endl;}
+
                         const double rj0 = P[iy*3]   - pi0;
                         const double rj1 = P[iy*3+1] - pi1;
                         const double rj2 = P[iy*3+2] - pi2;
+                        
+                        //if (k==12){ cout << "iy=" << iy << " y= " << P[iy*3+0] << " y= " << P[iy*3+1] << " y=" << P[iy*3+2] << endl;}
+
 
                         if ( (rj0*rj0 + rj1*rj1 + rj2*rj2) <= cutoff ) {
 
@@ -1051,10 +1085,11 @@ class NeighbourListv2(NeighbourList):
         RC[0] = 0;
 
 
-        //printf("end P[0] = %f \\n", P[0]);
+        printf("end P[0] = %%f \\n", P[0]);
 
+        cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
         return;
-        '''
+        ''' % {'_RK': str(mpi.MPI_HANDLE.rank)}
 
 
 
@@ -1063,6 +1098,7 @@ class NeighbourListv2(NeighbourList):
                      'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
                      'CA': self._domain.cell_array,           # local domain cell array
                      'q': self.cell_list.cell_list,           # cell list
+                     'CRL': self.cell_list.cell_reverse_lookup,
                      'CUTOFF': self.cell_width_squared,
                      'NEIGHBOUR_STARTS': self.neighbour_starting_points,
                      'NEIGHBOUR_LIST': self.list,

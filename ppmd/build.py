@@ -121,7 +121,7 @@ ICC = Compiler(['ICC'],
                ['icc'],
                ['-fpic', '-std=c++0x'],
                ['-lm'],
-               ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=4'],
+               ['-O0', '-g', '-xHost', '-restrict', '-m64', '-qopt-report=4'],
                ['-g'],
                ['-c'],
                ['-shared'],
@@ -132,7 +132,7 @@ try:
                        ['icc'],
                        ['-fpic', '-std=c++0x'],
                        ['-lm'],
-                       ['-O3','-xHost', '-restrict', '-m64', '-qopt-report=4', '-I' + os.environ["MPI_INCLUDE_DIR"]],
+                       ['-O0', '-g', '-xHost', '-restrict', '-m64', '-qopt-report=4', '-I' + os.environ["MPI_INCLUDE_DIR"]],
                        ['-lmpi'],
                        ['-c'],
                        ['-shared'],
@@ -514,7 +514,7 @@ class SharedLib(object):
 ####################################
 # Build Lib
 ####################################
-_PER_PROC = False
+_PER_PROC = True
 
 def md5(string):
     """Create unique hex digest"""

@@ -213,7 +213,7 @@ class BaseDomainHalo(object):
         ]
 
         for i in range(3):
-            assert _dims[i] == _dimsi[i], "Processor grid error, suitable layout search failed."
+            assert _dims[i] == _dimsi[i], "Processor grid error, suitable layout search failed." + str(_dims[:]) + str(_dimsi[:])
 
         '''Create cartesian communicator'''
         self._dims = tuple(_dims)
