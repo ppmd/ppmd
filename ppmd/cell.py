@@ -912,11 +912,21 @@ class NeighbourListv2(NeighbourList):
             const double pi1 = P[ix*3 + 1];
             const double pi2 = P[ix*3 + 2];
 
-            const int C0 = 1 + (int)((pi0 - _b0)*_icel0);
-            const int C1 = 1 + (int)((pi1 - _b2)*_icel1);
-            const int C2 = 1 + (int)((pi2 - _b4)*_icel2);
+            // this is flawed becuase the bcs are only applied on cell 
+            // list rebuild
+            //const int C0 = 1 + (int)((pi0 - _b0)*_icel0);
+            //const int C1 = 1 + (int)((pi1 - _b2)*_icel1);
+            //const int C2 = 1 + (int)((pi2 - _b4)*_icel2);
 
-            const int val = (C2*_ca1 + C1)*_ca0 + C0;
+            //const int val = (C2*_ca1 + C1)*_ca0 + C0;
+
+            const int val = CRL[ix];
+            const int C0 = val % _ca0;
+            const int C1 = ((val - C0) / _ca0) % _ca1;
+            const int C2 = (((val - C0) / _ca0) - C1 ) / _ca1;
+
+            if (val != ((C2*_ca1 + C1)*_ca0 + C0) ) {cout << "CELL FAILURE, val=" << val << " 0 " << C0 << " 1 " << C1 << " 2 " << C2 << endl;}
+
 
             NEIGHBOUR_STARTS[ix] = m + 1;
 
@@ -1016,6 +1026,7 @@ class NeighbourListv2(NeighbourList):
                      'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
                      'CA': self._domain.cell_array,           # local domain cell array
                      'q': self.cell_list.cell_list,           # cell list
+                     'CRL': self.cell_list.cell_reverse_lookup,
                      'CUTOFF': self.cell_width_squared,
                      'NEIGHBOUR_STARTS': self.neighbour_starting_points,
                      'NEIGHBOUR_LIST': self.list,
