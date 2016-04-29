@@ -1,4 +1,9 @@
+
+# system level
 import ctypes
+import numpy as np
+
+# package level
 import build
 import data
 import host
@@ -264,7 +269,9 @@ class BaseMDState(object):
 
         if _recv_total < _send_total:
             self.compressed = False
-            self._move_empty_slots.dat[0:_send_total-_recv_total:] = self._move_empty_slots.dat[_recv_total:_send_total:]
+            _tmp = self._move_empty_slots.dat[_recv_total:_send_total:]
+         
+            self._move_empty_slots.dat[0:_send_total-_recv_total:] = np.array(_tmp, copy=True)
 
 
         else:
