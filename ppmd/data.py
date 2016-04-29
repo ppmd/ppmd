@@ -696,6 +696,10 @@ class ParticleDat(host.Matrix):
         # print str(mpi.MPI_HANDLE.rank) + " -------------- before exchange lib ------------------"
         # sys.stdout.flush()
 
+
+        print "HALO_SEND", halo.HALOS.get_send_ranks().dat
+        print "HALO_RECV", halo.HALOS.get_recv_ranks().dat
+
         self._exchange_lib(self.ctypes_data,
                            ctypes.c_int(self.npart),
                            halo.HALOS.get_position_shifts().ctypes_data,

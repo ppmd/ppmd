@@ -193,6 +193,19 @@ class CellList(object):
         const int C2 = 1 + (int)((P[ix*3 + 2] - _b4)*_icel2);
 
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
+        
+        if ((C0 < 1) || (C0 > (CA[0]-2))) {
+            cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C0 " << C0 << endl;
+            cout << "B[0] " << B[0] << " B[1] " << B[1] << " Px " << P[ix*3+0] << endl;
+        }
+        if ((C1 < 1) || (C1 > (CA[1]-2))) {
+            cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C1 " << C1 << endl;
+            cout << "B[2] " << B[2] << " B[3] " << B[3] << " Py " << P[ix*3+1] << endl;
+        }
+        if ((C2 < 1) || (C2 > (CA[2]-2))) {
+            cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C2 " << C2 << endl;
+            cout << "B[4] " << B[4] << " B[5] " << B[5] << " Pz " << P[ix*3+2] << endl;
+        }
 
         //printf("ix %d c0 %d c1 %d c2 %d val %d \\n", ix, C0, C1, C2, val);
 
@@ -884,6 +897,7 @@ class NeighbourListv2(NeighbourList):
 
         cout << "------------------------------" << endl;
         printf("start P[0] = %%f \\n", P[0]);
+        
 
 
         const double cutoff = CUTOFF[0];
@@ -978,12 +992,18 @@ class NeighbourListv2(NeighbourList):
             cout << "ix = " << ix << " p0 = " << pi0 << " p1 = " << pi1 << " p2 = " << pi2 << endl;
 
 
-            const int C0 = 1 + (int)((pi0 - _b0)*_icel0);
-            const int C1 = 1 + (int)((pi1 - _b2)*_icel1);
-            const int C2 = 1 + (int)((pi2 - _b4)*_icel2);
+            //const int C0 = 1 + (int)((pi0 - _b0)*_icel0);
+            //const int C1 = 1 + (int)((pi1 - _b2)*_icel1);
+            //const int C2 = 1 + (int)((pi2 - _b4)*_icel2);
 
             //const int val = (C2*_ca1 + C1)*_ca0 + C0;
+
             const int val = CRL[ix];
+            const int C0 = val %% _ca0;
+            const int C1 = ((val - C0) / _ca0) %% _ca1;
+            const int C2 = (((val - C0) / _ca0) - C1 ) / _ca1;
+            if (val != ((C2*_ca1 + C1)*_ca0 + C0) ) {cout << "CELL FAILURE, val=" << val << " 0 " << C0 << " 1 " << C1 << " 2 " << C2 << endl;}
+
 
             cout << "val = " << val << " C0 = " << C0 << " C1 = " << C1 << " C2 = " << C2 << endl;
             cout << " Ca0 = " << _ca0 << " Ca1 = " << _ca1 << " Ca2 = " << _ca2 << endl;
@@ -1047,7 +1067,7 @@ class NeighbourListv2(NeighbourList):
 
             for(int k = 0; k < 14; k++){
                 
-                cout << "\\toffset: " << k << endl;
+                //cout << "\\toffset: " << k << endl;
 
                 int iy = q[n + val + tmp_offset[k]];
                 while (iy > -1) {

@@ -1,4 +1,9 @@
+
+# system level
 import ctypes
+import numpy as np
+
+# package level
 import build
 import data
 import host
@@ -212,6 +217,7 @@ class BaseMDState(object):
 
         #exchange number of particles about to be sent.
         self._move_dir_send_totals = dir_send_totals
+
         self._move_dir_recv_totals.zero()
         self._move_exchange_send_recv_sizes()
 
@@ -264,7 +270,21 @@ class BaseMDState(object):
 
         if _recv_total < _send_total:
             self.compressed = False
-            self._move_empty_slots.dat[0:_send_total-_recv_total:] = self._move_empty_slots.dat[_recv_total:_send_total:]
+            print "EMPTIES_PRE_MOVE", self._move_empty_slots.dat[0:_send_total]
+            print "recv_total", _recv_total, "send_total", _send_total
+            print "should copy?", self._move_empty_slots.dat[_recv_total:_send_total:]
+
+            _tmp = self._move_empty_slots.dat[_recv_total:_send_total:]
+            #self._move_empty_slots.dat[0:_send_total-_recv_total:, ::] = self._move_empty_slots.dat[_recv_total:_send_total:, ::]
+            
+            print "TMP", _tmp, type(_tmp)
+            '''
+            for ix in range(_send_total-_recv_total):
+                self._move_empty_slots.dat[ix]=_tmp[ix]
+            '''
+
+            self._move_empty_slots.dat[0:_send_total-_recv_total:] = np.array(_tmp, copy=True)   
+            print "EMPTIES", self._move_empty_slots.dat[0:_send_total-_recv_total:]
 
 
         else:
@@ -310,6 +330,7 @@ class BaseMDState(object):
                 // prioritise filling spaces in dat.
                 if (ix < _num_free_slots) {
                     pos = _free_slots[ix];
+                    cout << "UNPACK_FREE_SLOT " << pos << endl;
                 } else {
                     pos = _prev_num_particles + ix - _num_free_slots;
                 }
@@ -357,6 +378,10 @@ class BaseMDState(object):
 
         _n = self._total_ncomp
 
+        print "SEND_TOTALS", self._move_dir_send_totals.dat
+        print "RECV_TOTALS", self._move_dir_recv_totals.dat
+
+
         for ix in range(26):
             _s_end += _n * self._move_dir_send_totals[ix]
             _r_end += _n * self._move_dir_recv_totals[ix]
@@ -367,6 +392,8 @@ class BaseMDState(object):
             _send_rank = mpi.MPI_HANDLE.shift((-1 * direction[0],
                                                -1 * direction[1],
                                                -1 * direction[2]), ignore_periods=True)
+
+            print "DIR", ix, _send_rank, _recv_rank
 
 
             # sending of particles.
@@ -392,7 +419,10 @@ class BaseMDState(object):
 
             _s_start += _n * self._move_dir_send_totals[ix]
             _r_start += _n * self._move_dir_recv_totals[ix]
-
+            
+            if self._move_dir_recv_totals[ix] > 0:
+                _tsize = self._status.Get_count(mpi.mpi_map[ctypes.c_double])
+                assert _tsize == self._move_dir_recv_totals[ix]*self._total_ncomp, "RECVD incorrect amount of data:" + str(_tsize) + " " + str(self._move_dir_recv_totals[ix]*self._total_ncomp)
 
 
     def _move_exchange_send_recv_sizes(self):
@@ -463,6 +493,7 @@ class BaseMDState(object):
                 //Generate code based on ParticleDats
 
                 int _ix = direction_id_list[_ixd];
+                //cout << "packing " << _ix << endl;
 
                 \n%(DYNAMIC_DATS)s
 
@@ -599,8 +630,11 @@ class BaseMDState(object):
             self._compressing_lib = build.SharedLib(_compressing_kernel, self._compressing_dyn_args)
 
         if self.compressed is True:
+            print "COMPRESSED"
             return
         else:
+            print "NOT COMPRESSED", num_slots_to_fill
+            print "slots", self._move_empty_slots.dat
 
             self._compressing_dyn_args['slots'] = self._move_empty_slots
             self._compressing_dyn_args['n_new_out'] = self._compressing_n_new
