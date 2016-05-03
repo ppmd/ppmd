@@ -140,6 +140,18 @@ try:
 except:
     pass
 
+try:
+    GCC_MPI = Compiler(['GCC_MPI'],
+                       ['mpic++'],
+                       ['-fpic', '-std=c++0x'],
+                       ['-lm'],
+                       ['-O0', '-g', '-xHost', '-restrict', '-m64', '-qopt-report=4', '-I' + os.environ["MPI_HOME"] + '/include'],
+                       ['-lmpi'],
+                       ['-c'],
+                       ['-shared'],
+                       'restrict')
+except:
+    pass
 # Define system icc version as OpenMP Compiler.
 ICC_OpenMP = Compiler(['ICC'],
                       ['icc'],
@@ -162,7 +174,7 @@ if os.uname()[1] in ICC_LIST:
 else:
     TMPCC = GCC
     TMPCC_OpenMP = GCC_OpenMP
-
+    MPI_CC = GCC_MPI
 
 
 ###############################################################################
