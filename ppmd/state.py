@@ -158,7 +158,7 @@ class BaseMDState(object):
             _dat = getattr(self,ix)
             _dat.npart = int(value)
             _dat.halo_start_reset()
-        print "N set:", value
+        # print "N set:", value
 
     def _resize_callback(self, value=None):
         """
@@ -279,12 +279,12 @@ class BaseMDState(object):
                                                     -1 * direction[1],
                                                     -1 * direction[2]), ignore_periods=True)
 
-        print "recv_ranks ", _recv_rank
-        print "recv_totals", self._move_dir_recv_totals.dat
-        print "send_totals", self._move_dir_send_totals.dat
-        print "send_ranks ", _send_rank
+        # print "recv_ranks ", _recv_rank
+        # print "recv_totals", self._move_dir_recv_totals.dat
+        # print "send_totals", self._move_dir_send_totals.dat
+        # print "send_ranks ", _send_rank
 
-        print mpi.MPI_HANDLE.rank, "(recv, send, n)", (_recv_total, _send_total, self._n)
+        # print mpi.MPI_HANDLE.rank, "(recv, send, n)", (_recv_total, _send_total, self._n)
 
         if _recv_total < _send_total:
             self.compressed = False

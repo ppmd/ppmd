@@ -588,7 +588,7 @@ class BoundaryTypePeriodic(object):
                     //If b > 0 then particle has escaped through some boundary
                     if (b>0){
 
-
+                        /*
                         cout << "BC " << _ix << " dir " << BL[b] << " | B0-B5 " 
                         << B[0] << " " << B[1] << " "
                         << B[2] << " " << B[3] << " "
@@ -598,7 +598,7 @@ class BoundaryTypePeriodic(object):
                         << P[3*_ix + 1] << ", "
                         << P[3*_ix + 2]
                         << endl;
-
+                        */
 
                         EC[BL[b]]++;        //lookup which direction then increment that direction escape count.
 

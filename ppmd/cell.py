@@ -889,9 +889,9 @@ class NeighbourListv2(NeighbourList):
         self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
         self._return_code.dat[0] = -1
 
+        # //#define RK %(_RK)s
         _code = '''
 
-        #define RK %(_RK)s
         //#define PP ((RK==49) || (RK==50) || (RK==32))
         #define PP (1)
 
@@ -1109,7 +1109,7 @@ class NeighbourListv2(NeighbourList):
 
         //cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
         return;
-        ''' % {'_RK': str(mpi.MPI_HANDLE.rank)}
+        ''' % {'NULL': ''}
 
 
 
