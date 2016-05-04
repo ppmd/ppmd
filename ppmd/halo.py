@@ -72,11 +72,11 @@ class CartesianHalo(object):
         self._send_list = []
         self._recv_list = []
         for ix in _recv_modifiers:
-            _tr = mpi.MPI_HANDLE.shift([-1 * ix[0], -1 * ix[1], -1 * ix[2]])
-            self._send_list.append(_tr)
+            _tr = mpi.MPI_HANDLE.shift((-1 * ix[0], -1 * ix[1], -1 * ix[2]))
+            self._recv_list.append(_tr)
 
             _tr = mpi.MPI_HANDLE.shift(ix)
-            self._recv_list.append(_tr)
+            self._send_list.append(_tr)
 
         '''Array to store the number of particles to exchange for each halo'''
         self._exchange_sizes = host.Array(ncomp=26, dtype=ctypes.c_int)
@@ -539,11 +539,11 @@ def create_halo_pairs_slice_halo(domain_in, slicexyz, direction):
             shift[ix] = -1. * extent[ix]
 
 
-    send_rank = mpi.MPI_HANDLE.shift((-1 * direction[0],
+    recv_rank = mpi.MPI_HANDLE.shift((-1 * direction[0],
                                       -1 * direction[1],
                                       -1 * direction[2]))
 
-    recv_rank = mpi.MPI_HANDLE.shift(direction)
+    send_rank = mpi.MPI_HANDLE.shift(direction)
 
     return b_cells, h_cells, shift, send_rank, recv_rank
 
@@ -831,7 +831,7 @@ class CartesianHaloSix(object):
                         //cout << "\tcell: " << b_arr[dir_s + ix] << endl;
                         //cout << "\t\tcount: " << b_tmp[ix] << endl;
 
-                        if (b_tmp[ix] == 946) { cout << "946 ccc: " << ccc[946] << endl;}
+                        //if (b_tmp[ix] == 946) { cout << "946 ccc: " << ccc[946] << endl;}
 
                         tmp_count += ccc[b_arr[dir_s + ix]];
                     }

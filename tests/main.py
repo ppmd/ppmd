@@ -54,7 +54,7 @@ if __name__ == '__main__':
     writing = False
 
 
-    t=1.
+    t=10.
     dt=0.0001
 
 
@@ -63,9 +63,9 @@ if __name__ == '__main__':
         n = 10
         N = n**3
         # n=860
-        rho = 1.6
+        rho = 2.0
         mu = 1.0
-        nsig = 1.0
+        nsig = 2.0
         
         # Initialise basic domain
         test_domain = domain.BaseDomainHalo()

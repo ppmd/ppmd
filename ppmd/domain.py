@@ -354,92 +354,32 @@ class BaseDomainHalo(object):
         """
         return self._cell_count_internal
 
-    def get_shift(self, direction=None):
+    def get_shift(self):
 
-        if type(direction) is tuple:
-            direction = mpi.tuple_to_direction[str(direction)]
+        _sfd = host.Array(ncomp=26*3, dtype=ctypes.c_double)
+
+        for dx in range(26):
+            dir = mpi.recv_modifiers[dx]
+
+            for ix in range(3):
+
+                if mpi.MPI_HANDLE.top[ix] == 0 and \
+                   mpi.MPI_HANDLE.periods[ix] == 1 and \
+                   dir[ix] == -1:
+
+                    _sfd[dx*3 + ix] = self.extent[ix]
+
+                elif mpi.MPI_HANDLE.top[ix] == mpi.MPI_HANDLE.dims[ix] - 1 and \
+                   mpi.MPI_HANDLE.periods[ix] == 1 and \
+                   dir[ix] == 1:
+
+                    _sfd[dx*3 + ix] = -1. * self.extent[ix]
+
+                else:
+                    _sfd[dx*3 + ix] = 0.0
 
 
-        _sf = range(6)
-        for ix in range(3):
-            if self._top[ix] == 0:
-                _sf[2 * ix] = self._extent_global[ix]
-            else:
-                _sf[2 * ix] = 0.
-            if self._top[ix] == self._dims[ix] - 1:
-                _sf[2 * ix + 1] = -1. * self._extent_global[ix]
-            else:
-                _sf[2 * ix + 1] = 0.
-
-        if direction is not None:
-            _sfd = [
-                   [_sf[1], _sf[3], _sf[5]],  # 0
-                   [0., _sf[3], _sf[5]],  # 1
-                   [_sf[0], _sf[3], _sf[5]],  # 2
-                   [_sf[1], 0., _sf[5]],  # 3
-                   [0., 0., _sf[5]],  # 5
-                   [_sf[0], 0., _sf[5]],  # 4
-                   [_sf[1], _sf[2], _sf[5]],  # 6
-                   [0., _sf[2], _sf[5]],  # 5
-                   [_sf[0], _sf[2], _sf[5]],  # 8
-
-                   [_sf[1], _sf[3], 0.],  # 9
-                   [0., _sf[3], 0.],  # 10
-                   [_sf[0], _sf[3], 0.],  # 11
-                   [_sf[1], 0., 0.],  # 12
-                   [_sf[0], 0., 0.],  # 13
-                   [_sf[1], _sf[2], 0.],  # 15
-                   [0., _sf[2], 0.],  # 14
-                   [_sf[0], _sf[2], 0.],  # 16
-
-                   [_sf[1], _sf[3], _sf[4]],  # 15
-                   [0., _sf[3], _sf[4]],  # 18
-                   [_sf[0], _sf[3], _sf[4]],  # 19
-                   [_sf[1], 0., _sf[4]],  # 20
-                   [0., 0., _sf[4]],  # 21
-                   [_sf[0], 0., _sf[4]],  # 22
-                   [_sf[1], _sf[2], _sf[4]],  # 23
-                   [0., _sf[2], _sf[4]],  # 25
-                   [_sf[0], _sf[2], _sf[4]]  # 24
-                   ]
-        else:
-            _sfd = [
-                   _sf[1], _sf[3], _sf[5],  # 0
-                   0., _sf[3], _sf[5],  # 1
-                   _sf[0], _sf[3], _sf[5],  # 2
-                   _sf[1], 0., _sf[5],  # 3
-                   0., 0., _sf[5],  # 5
-                   _sf[0], 0., _sf[5],  # 4
-                   _sf[1], _sf[2], _sf[5],  # 6
-                   0., _sf[2], _sf[5],  # 5
-                   _sf[0], _sf[2], _sf[5],  # 8
-
-                   _sf[1], _sf[3], 0.,  # 9
-                   0., _sf[3], 0.,  # 10
-                   _sf[0], _sf[3], 0.,  # 11
-                   _sf[1], 0., 0.,  # 12
-                   _sf[0], 0., 0.,  # 13
-                   _sf[1], _sf[2], 0.,  # 15
-                   0., _sf[2], 0.,  # 14
-                   _sf[0], _sf[2], 0.,  # 16
-
-                   _sf[1], _sf[3], _sf[4],  # 15
-                   0., _sf[3], _sf[4],  # 18
-                   _sf[0], _sf[3], _sf[4],  # 19
-                   _sf[1], 0., _sf[4],  # 20
-                   0., 0., _sf[4],  # 21
-                   _sf[0], 0., _sf[4],  # 22
-                   _sf[1], _sf[2], _sf[4],  # 23
-                   0., _sf[2], _sf[4],  # 25
-                   _sf[0], _sf[2], _sf[4]  # 24
-                   ]
-
-        if direction is not None:
-            return _sfd[direction]
-
-        else:
-
-            return host.Array(_sfd, dtype=ctypes.c_double)
+        return _sfd
 
     @property
     def cell_edge_lengths(self):
@@ -624,30 +564,31 @@ class BoundaryTypePeriodic(object):
 
                     //Check x direction
                     if (P[3*_ix] < B[0]){
-                        b ^= 32;
-                    }else if (P[3*_ix] >= B[1]){
                         b ^= 4;
+                    }else if (P[3*_ix] >= B[1]){
+                        b ^= 32;
                     }
 
                     //printf("P[0]=%f, b=%d, B[0]=%f, B[1]=%f \\n", P[3*_ix], b, B[0], B[1]);
 
                     //check y direction
                     if (P[3*_ix+1] < B[2]){
-                        b ^= 16;
-                    }else if (P[3*_ix+1] >= B[3]){
                         b ^= 2;
+                    }else if (P[3*_ix+1] >= B[3]){
+                        b ^= 16;
                     }
 
                     //check z direction
                     if (P[3*_ix+2] < B[4]){
-                        b ^= 8;
-                    }else if (P[3*_ix+2] >= B[5]){
                         b ^= 1;
+                    }else if (P[3*_ix+2] >= B[5]){
+                        b ^= 8;
                     }
 
                     //If b > 0 then particle has escaped through some boundary
                     if (b>0){
-                        
+
+
                         cout << "BC " << _ix << " dir " << BL[b] << " | B0-B5 " 
                         << B[0] << " " << B[1] << " "
                         << B[2] << " " << B[3] << " "
@@ -657,6 +598,7 @@ class BoundaryTypePeriodic(object):
                         << P[3*_ix + 1] << ", "
                         << P[3*_ix + 2]
                         << endl;
+
 
                         EC[BL[b]]++;        //lookup which direction then increment that direction escape count.
 

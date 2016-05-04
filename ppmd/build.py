@@ -94,7 +94,7 @@ GCC = Compiler(['GCC'],
                ['g++'],
                ['-fPIC', '-std=c++0x'],
                ['-lm'],
-               ['-O3', '-march=native', '-m64', '-ftree-vectorizer-verbose=5', '-fassociative-math'],
+               ['-O1', '-g', '-march=native', '-m64', '-ftree-vectorizer-verbose=5', '-fassociative-math'],
                ['-g'],
                ['-c'],
                ['-shared'],
@@ -121,7 +121,7 @@ ICC = Compiler(['ICC'],
                ['icc'],
                ['-fpic', '-std=c++0x'],
                ['-lm'],
-               ['-O0', '-g', '-xHost', '-restrict', '-m64', '-qopt-report=4'],
+               ['-O3', '-g', '-xHost', '-restrict', '-m64', '-qopt-report=4'],
                ['-g'],
                ['-c'],
                ['-shared'],
@@ -132,7 +132,7 @@ try:
                        ['icc'],
                        ['-fpic', '-std=c++0x'],
                        ['-lm'],
-                       ['-O0', '-g', '-xHost', '-restrict', '-m64', '-qopt-report=4', '-I' + os.environ["MPI_INCLUDE_DIR"]],
+                       ['-O3', '-g', '-xHost', '-restrict', '-m64', '-qopt-report=4', '-I' + os.environ["MPI_INCLUDE_DIR"]],
                        ['-lmpi'],
                        ['-c'],
                        ['-shared'],
@@ -141,15 +141,15 @@ except:
     pass
 
 try:
-    GCC_MPI = Compiler(['GCC_MPI'],
-                       ['mpic++'],
-                       ['-fpic', '-std=c++0x'],
-                       ['-lm'],
-                       ['-O0', '-g', '-xHost', '-restrict', '-m64', '-qopt-report=4', '-I' + os.environ["MPI_HOME"] + '/include'],
-                       ['-lmpi'],
-                       ['-c'],
-                       ['-shared'],
-                       'restrict')
+    GCC_MPI = Compiler(['GCC'],
+               ['mpic++'],
+               ['-fPIC', '-std=c++0x'],
+               ['-lm'],
+               ['-O1', '-g', '-march=native', '-m64', '-ftree-vectorizer-verbose=5', '-fassociative-math', '-I' + os.environ['MPI_HOME'] + '/include'],
+               ['-g'],
+               ['-c'],
+               ['-shared'],
+               '__restrict__')
 except:
     pass
 # Define system icc version as OpenMP Compiler.

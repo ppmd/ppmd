@@ -449,7 +449,7 @@ class ParticleDat(host.Matrix):
 
         # print "\t\tAFTER sizes exchange"
 
-        _size = self.halo_start + _sizes[0]
+        _size = self.npart + _sizes[0]
         self.resize(_size)
 
         sys.stdout.flush()
@@ -697,8 +697,8 @@ class ParticleDat(host.Matrix):
         # sys.stdout.flush()
 
 
-        print "HALO_SEND", halo.HALOS.get_send_ranks().dat
-        print "HALO_RECV", halo.HALOS.get_recv_ranks().dat
+        # print "HALO_SEND", halo.HALOS.get_send_ranks().dat
+        # print "HALO_RECV", halo.HALOS.get_recv_ranks().dat
 
         self._exchange_lib(self.ctypes_data,
                            ctypes.c_int(self.npart),
