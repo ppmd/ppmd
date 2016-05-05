@@ -47,7 +47,7 @@ test_potential = potential.LennardJones(1.,1.,0.01)
 
 test_pos_init = simulation.PosInitOneParticleInABox(r = np.array([0.0, 0., 0.]), extent = np.array([0.3, 0.3, 0.3]))
 
-test_vel_init = simulation.VelInitOneParticleInABox(vx = np.array([0., -5., 5.]))
+test_vel_init = simulation.VelInitOneParticleInABox(vx = np.array([-5., 0., 0.]))
 
 test_mass_init = simulation.MassInitIdentical(5.)
 

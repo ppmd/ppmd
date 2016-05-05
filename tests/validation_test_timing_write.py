@@ -21,9 +21,9 @@ runtime.CUDA_ENABLED.flag = False
 
 if __name__ == '__main__':
 
-    file_dir = '/home/wrs20/ppmd_scaling/'
+    file_dir = './'
 
-    _fpprint = pio.pfprint(dirname=file_dir + '/ppmd')
+    _fpprint = pio.pfprint(dirname=file_dir)
 
     # open the field file
     fh = open(file_dir + '/FIELD', 'r')
@@ -67,13 +67,17 @@ if __name__ == '__main__':
     test_pos_init = simulation.PosInitDLPOLYConfig(file_dir + '/CONFIG')
     test_vel_init = simulation.VelInitDLPOLYConfig(file_dir + '/CONFIG')
 
-    # Create simulation class from above initialisations.
+    _pairloop = pairloop.PairLoopNeighbourList
+    # _pairloop = pairloop.PairLoopRapaportHalo
+
+
     sim1 = simulation.BaseMDSimulation(domain_in=test_domain,
                                        potential_in=test_potential,
                                        particle_pos_init=test_pos_init,
                                        particle_vel_init=test_vel_init,
                                        particle_mass_init=test_mass_init,
-                                       n=N
+                                       n=N,
+                                       pairloop_in=_pairloop
                                        )
 
     # Helper methods
