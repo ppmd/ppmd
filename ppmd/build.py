@@ -1,4 +1,5 @@
-import numpy as np
+import sys
+
 import host
 import ctypes
 import os
@@ -9,6 +10,8 @@ import pio
 import runtime
 import mpi
 
+
+_PER_PROC = False
 
 ###############################################################################
 # COMPILERS START
@@ -122,30 +125,43 @@ ICC = Compiler(['ICC'],
                ['icc'],
                ['-fpic', '-std=c++0x'],
                ['-lm'],
-               ['-O3', '-xHost', '-restrict', '-m64', '-opt-report=4'],
+               ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=4'],
                ['-g'],
                ['-c'],
                ['-shared'],
                'restrict')
 
-'''
-ICC_MPI = Compiler(['ICC'],
-                   ['icc'],
-                   ['-fpic', '-std=c++0x'],
-                   ['-lm'],
-                   ['-O3', '-xHost', '-restrict', '-m64', '-opt-report=4', '-I ' + os.environ["MPI_INCLUDE_DIR"]],
-                   ['-lmpi'],
-                   ['-c'],
-                   ['-shared'],
-                   'restrict')
-'''
+try:
+    ICC_MPI = Compiler(['ICC'],
+                       ['icc'],
+                       ['-fpic', '-std=c++0x'],
+                       ['-lm'],
+                       ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=4', '-I' + os.environ["MPI_INCLUDE_DIR"]],
+                       ['-lmpi'],
+                       ['-c'],
+                       ['-shared'],
+                       'restrict')
+except:
+    pass
 
+try:
+    GCC_MPI = Compiler(['GCC'],
+               ['mpic++'],
+               ['-fPIC', '-std=c++0x'],
+               ['-lm'],
+               ['-O3', '-march=native', '-m64', '-ftree-vectorizer-verbose=5', '-fassociative-math', '-I' + os.environ['MPI_HOME'] + '/include'],
+               ['-g'],
+               ['-c'],
+               ['-shared'],
+               '__restrict__')
+except:
+    pass
 # Define system icc version as OpenMP Compiler.
 ICC_OpenMP = Compiler(['ICC'],
                       ['icc'],
                       ['-fpic', '-openmp', '-std=c++0x'],
                       ['-openmp', '-lgomp', '-lpthread', '-lc', '-lrt'],
-                      ['-O3', '-xHost', '-restrict', '-m64', '-opt-report=4'],
+                      ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=4'],
                       ['-g'],
                       ['-c'],
                       ['-shared'],
@@ -158,12 +174,11 @@ ICC_LIST = ['mapc-4044']#, 'itd-ngpu-01', 'itd-ngpu-02']
 if os.uname()[1] in ICC_LIST:
     TMPCC = ICC
     TMPCC_OpenMP = ICC_OpenMP
-    # TMPCC = GCC
-    # TMPCC_OpenMP = GCC_OpenMP
+    MPI_CC = ICC_MPI
 else:
     TMPCC = GCC
     TMPCC_OpenMP = GCC_OpenMP
-
+    MPI_CC = GCC_MPI
 
 
 ###############################################################################
@@ -515,7 +530,6 @@ class SharedLib(object):
 ####################################
 # Build Lib
 ####################################
-_PER_PROC = False
 
 def md5(string):
     """Create unique hex digest"""
@@ -568,6 +582,10 @@ def check_file_existance(abs_path=None):
     return os.path.exists(abs_path)
 
 def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR.dir, CC=TMPCC):
+    if not os.path.exists(dst_dir) and mpi.MPI_HANDLE.rank == 0:
+        os.mkdir(dst_dir)
+
+
     _filename = 'HOST_' + str(name)
     _filename += '_' + md5(_filename + str(header_code) + str(src_code) +
                            str(name))
@@ -577,18 +595,18 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
 
     _lib_filename = os.path.join(dst_dir, _filename + '.so')
 
-    if (not check_file_existance(_lib_filename)):# or (_PER_PROC):
-        if not os.path.exists(dst_dir) and mpi.MPI_HANDLE.rank == 0:
-            os.mkdir(dst_dir)
-        mpi.MPI_HANDLE.barrier()
+    if not check_file_existance(_lib_filename):
 
-        source_write(header_code, src_code, name, extensions=extensions, dst_dir=runtime.BUILD_DIR.dir)
+        if (mpi.MPI_HANDLE.rank == 0)  or _PER_PROC:
+            source_write(header_code, src_code, name, extensions=extensions, dst_dir=runtime.BUILD_DIR.dir)
         build_lib(_filename, extensions=extensions, CC=CC, hash=False)
 
     return load(_lib_filename)
 
 def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
               CC=TMPCC, dst_dir=runtime.BUILD_DIR.dir, hash=True):
+
+    mpi.MPI_HANDLE.barrier()
 
     with open(source_dir + lib + extensions[1], "r") as fh:
         _code = fh.read()
@@ -604,9 +622,9 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
     else:
         _m = ''
 
-
     _lib_filename = os.path.join(dst_dir, lib + str(_m) + '.so')
 
+    #print mpi.MPI_HANDLE.rank, "building", _lib_filename
 
     if (mpi.MPI_HANDLE.rank == 0) or _PER_PROC:
         if not os.path.exists(_lib_filename):
@@ -644,10 +662,21 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
                 elif runtime.VERBOSE.level > 2:
                     print "build error: Shared library not built:", lib
 
+    #print "before barrier", mpi.MPI_HANDLE.rank
+    #sys.stdout.flush()
+
     mpi.MPI_HANDLE.barrier()
+
+
+    #print "after barrier", mpi.MPI_HANDLE.rank
+    #sys.stdout.flush()
+
+    #mpi.MPI_HANDLE.barrier()
+
+
     if not os.path.exists(_lib_filename):
-        pio.pprint("Critical build Error: Library not built, " +
-                   str(lib) + ", rank:", mpi.MPI_HANDLE.rank)
+        pio.pprint("Critical build Error: Library not built,\n" +
+                   _lib_filename + "\n rank:", mpi.MPI_HANDLE.rank)
 
         quit()
 

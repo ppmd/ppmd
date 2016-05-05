@@ -217,7 +217,7 @@ class MDMPI(object):
                 _sf[2 * ix + 1] = 1
         return _sf
 
-    def shift(self, offset=(0, 0, 0), ignore_periods = False):
+    def shift(self, offset=(0, 0, 0), ignore_periods=False):
         """
         Returns rank of process found at a given offset, will return -1 if no process exists.
 
@@ -225,11 +225,7 @@ class MDMPI(object):
         """
 
         if type(offset) is int:
-            offset = (-1 * recv_modifiers[offset][0],
-                      -1 * recv_modifiers[offset][1],
-                      -1 * recv_modifiers[offset][2])
-
-
+            offset = recv_modifiers[offset]
 
         self._check_comm()
 

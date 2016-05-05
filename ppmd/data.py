@@ -285,10 +285,6 @@ class ParticleDat(host.Matrix):
             self.npart = self.nrow
             self.ncomp = self.ncol
 
-        self._halo_packing_lib = None
-        self._transfer_unpack_lib = None
-        self._halo_packing_buffer = None
-        self._cell_contents_recv = None
 
         self.halo_start = self.npart
         """:return: The starting index of the halo region of the particle dat. """
@@ -300,7 +296,8 @@ class ParticleDat(host.Matrix):
         self._resize_callback = None
         self._version = 0
 
-        self._zero_lib = None
+        self._exchange_lib = None
+        self._tmp_halo_space = host.Array(ncomp=1, dtype=self.dtype)
 
 
     @property
@@ -327,25 +324,7 @@ class ParticleDat(host.Matrix):
         else:
             self.dat[:n:, ::] = self.idtype(0.0)
             
-            #if self._zero_lib is None:
-            #    _header = '''
-            #    #include "generic.h"
-            #    #define RESTRICT %(RESTRICT)s
-            #    #define DTYPE %(DTYPE)s
-            #    extern "C" void pd_zero(const int NP, const int NC, DTYPE * RESTRICT dat);
 
-            #    ''' % {'RESTRICT': str(build.TMPCC.restrict_keyword), 
-            #            'DTYPE': host.ctypes_map[self.idtype]}
-            #    _code = '''
-            #    void pd_zero(const int NP, const int NC, DTYPE * RESTRICT dat){
-            #        for (int ix = 0; ix < NP*NC; ix++){
-            #            dat[ix] = 0.0;
-            #        }
-            #    }
-            #    '''
-            #    self._zero_lib = build.simple_lib_creator(_header, _code, 'pd_zero')['pd_zero']
-            #self._zero_lib(ctypes.c_int(n), ctypes.c_int(self.ncomp), self.ctypes_data)
-            
 
     @property
     def npart_total(self):#
@@ -455,334 +434,322 @@ class ParticleDat(host.Matrix):
 
         self.timer_comm.start()
 
-        if cell.cell_list.halos_exist is True:
 
-            self.timer_pack.start()
-            self.halo_pack()
-            self.timer_pack.pause()
 
-            self._transfer_unpack()
+
+        # new start
+        # can only exchage sizes if needed.
+        #if cell.cell_list.version_id > cell.cell_list.halo_version_id:
+
+        # 0 index contains number of expected particles
+        # 1 index contains the required size of tmp arrays
+
+        self.halo_start_reset()
+        _sizes = halo.HALOS.exchange_cell_counts()
+
+        # print "\t\tAFTER sizes exchange"
+
+        _size = self.npart + _sizes[0]
+        self.resize(_size)
+
+        sys.stdout.flush()
+
+        # print "\t\tAFTER dat resize"
+        if self._tmp_halo_space.ncomp < (self.ncomp * _sizes[1]):
+            # print "\t\t\tresizing tmp space", _sizes[1]
+            self._tmp_halo_space.realloc(_sizes[1] * self.ncomp)
+
+        # print "\t\tAFTER TMP resize"
+
+
+        if (self.name == 'positions') and cell.cell_list.version_id > cell.cell_list.halo_version_id:
+            cell.cell_list.prepare_halo_sort(_size)
+
+        # print "\t\tAFTER cell resize"
+
+        self._transfer_unpack()
+        self.halo_start_shift(_sizes[0])
+
+        if (self.name == 'positions') and cell.cell_list.version_id > cell.cell_list.halo_version_id:
+            cell.cell_list.post_halo_exchange()
+
+
 
         self._vid_halo = self._vid_int
-
         self.timer_comm.pause()
-
-
-    def _setup_halo_packing(self):
-        """
-        Setup the halo packing shared library and buffer space
-        """
-        if self.name == 'positions':
-            _shift_code = '+ CSA[LINIDX_2D(%(NCOMP)s,ix,cx)]' % {'NCOMP': self.ncomp}
-            _args = {'CSA': host.NullDoubleArray}
-
-            '''Calculate flag to determine if a boundary between processes is also a boundary in domain.'''
-            _bc_flag = [0, 0, 0, 0, 0, 0]
-            for ix in range(3):
-                if mpi.MPI_HANDLE.top[ix] == 0:
-                    _bc_flag[2 * ix] = 1
-                if mpi.MPI_HANDLE.top[ix] == mpi.MPI_HANDLE.dims[ix] - 1:
-                    _bc_flag[2 * ix + 1] = 1
-
-
-            _extent = cell.cell_list.domain.extent
-
-            '''Shifts to apply to positions when exchanging over boundaries.'''
-            _cell_shifts = [
-                [-1 * _extent[0] * _bc_flag[1], -1 * _extent[1] * _bc_flag[3],
-                 -1 * _extent[2] * _bc_flag[5]],
-                [0., -1 * _extent[1] * _bc_flag[3], -1 * _extent[2] * _bc_flag[5]],
-                [_extent[0] * _bc_flag[0], -1 * _extent[1] * _bc_flag[3], -1 * _extent[2] * _bc_flag[5]],
-                [-1 * _extent[0] * _bc_flag[1], 0., -1 * _extent[2] * _bc_flag[5]],
-                [0., 0., -1 * _extent[2] * _bc_flag[5]],
-                [_extent[0] * _bc_flag[0], 0., -1 * _extent[2] * _bc_flag[5]],
-                [-1 * _extent[0] * _bc_flag[1], _extent[1] * _bc_flag[2], -1 * _extent[2] * _bc_flag[5]],
-                [0., _extent[1] * _bc_flag[2], -1 * _extent[2] * _bc_flag[5]],
-                [_extent[0] * _bc_flag[0], _extent[1] * _bc_flag[2], -1 * _extent[2] * _bc_flag[5]],
-
-                [-1 * _extent[0] * _bc_flag[1], -1 * _extent[1] * _bc_flag[3], 0.],
-                [0., -1 * _extent[1] * _bc_flag[3], 0.],
-                [_extent[0] * _bc_flag[0], -1 * _extent[1] * _bc_flag[3], 0.],
-                [-1 * _extent[0] * _bc_flag[1], 0., 0.],
-                [_extent[0] * _bc_flag[0], 0., 0.],
-                [-1 * _extent[0] * _bc_flag[1], _extent[1] * _bc_flag[2], 0.],
-                [0., _extent[1] * _bc_flag[2], 0.],
-                [_extent[0] * _bc_flag[0], _extent[1] * _bc_flag[2], 0.],
-
-                [-1 * _extent[0] * _bc_flag[1], -1 * _extent[1] * _bc_flag[3], _extent[2] * _bc_flag[4]],
-                [0., -1 * _extent[1] * _bc_flag[3], _extent[2] * _bc_flag[4]],
-                [_extent[0] * _bc_flag[0], -1 * _extent[1] * _bc_flag[3], _extent[2] * _bc_flag[4]],
-                [-1 * _extent[0] * _bc_flag[1], 0., _extent[2] * _bc_flag[4]],
-                [0., 0., _extent[2] * _bc_flag[4]],
-                [_extent[0] * _bc_flag[0], 0., _extent[2] * _bc_flag[4]],
-                [-1 * _extent[0] * _bc_flag[1], _extent[1] * _bc_flag[2], _extent[2] * _bc_flag[4]],
-                [0., _extent[1] * _bc_flag[2], _extent[2] * _bc_flag[4]],
-                [_extent[0] * _bc_flag[0], _extent[1] * _bc_flag[2], _extent[2] * _bc_flag[4]]
-            ]
-
-
-            '''make scalar array object from above shifts'''
-            _tmp_list_local = []
-            '''zero scalar array for data that is not position dependent'''
-            _tmp_zero = range(26)
-            for ix in range(26):
-                _tmp_list_local += _cell_shifts[ix]
-                _tmp_zero[ix] = 0
-
-            self._cell_shifts_array_pbc = host.Array(_tmp_list_local, dtype=ctypes.c_double)
-
-
-
-        else:
-            _shift_code = ''
-            _args = {}
-
-
-        _packing_code = '''
-        int index = 0;
-
-
-        //Loop over directions
-        for(int ix = 0; ix<26; ix++ ){
-
-            CES[ix] = index;
-
-            //get the start and end indices in the array containing cell indices
-            const int start = CCA_I[ix];
-            const int end = CCA_I[ix+1];
-
-
-            //loop over cells
-            for(int iy = start; iy < end; iy++){
-
-                // current cell
-                int c_i = CIA[iy];
-
-                // first particle
-                int iz = q[cell_start+c_i];
-
-                while(iz > -1){
-
-                    // loop over the number of components for particle dat.
-                    for(int cx = 0; cx<%(NCOMP)s;cx++){
-                        SEND_BUFFER[LINIDX_2D(%(NCOMP)s,index,cx)] = data_buffer[LINIDX_2D(%(NCOMP)s,iz,cx)] %(SHIFT_CODE)s;
-                    }
-                    index++;
-                    iz = q[iz];
-                }
-            }
-
-        }
-
-
-
-        ''' % {'NCOMP': self.ncomp, 'SHIFT_CODE': _shift_code}
-
-        _static_args = {
-            'cell_start': ctypes.c_int,  # ctypes.c_int(cell.cell_list.cell_list[cell.cell_list.cell_list.end])
-            'data_buffer': host.pointer_lookup[self.dtype]
-        }
-
-        _args['q'] = host.NullIntArray  # cell.cell_list.cell_list.ctypes_data
-        _args['CCA_I'] = host.NullIntArray
-        _args['CIA'] = host.NullIntArray
-        _args['CSA'] = host.NullDoubleArray # self._cell_shifts_array
-        _args['SEND_BUFFER'] = host.null_matrix(self.dtype) # packing to send buffer
-
-        self._cumulative_exchange_sizes = host.Array(ncomp=26,dtype=ctypes.c_int)
-
-        _args['CES'] = host.NullIntArray
-
-        _headers = ['stdio.h']
-        _kernel = kernel.Kernel('ParticleDatHaloPackingCode', _packing_code, None, _headers, None, _static_args)
-
-
-        self._halo_packing_lib = build.SharedLib(_kernel, _args)
-
-        self._halo_packing_buffer = host.Matrix(nrow=self.npart, ncol=self.ncomp)
-
-    def halo_pack(self):
-        """
-        Pack data to prepare for halo exchange.
-        """
-        if self._halo_packing_lib is None:
-            self._setup_halo_packing()
-        
-
-        _boundary_groups_contents_array, _exchange_sizes = halo.HALOS.get_boundary_cell_contents_count
-
-        if _exchange_sizes.dat.sum() > self._halo_packing_buffer.nrow:
-            if runtime.VERBOSE.level > 3:
-                print "rank:", mpi.MPI_HANDLE.rank, "halo send buffer resized"
-            self._halo_packing_buffer.realloc(nrow=_exchange_sizes.dat.sum(), ncol=self.ncomp)
-
-        _static_args = {
-            'cell_start': ctypes.c_int(cell.cell_list.cell_list[cell.cell_list.cell_list.end]),
-            'data_buffer': self.ctypes_data
-        }
-
-        _dynamic_args = {
-                         'q': cell.cell_list.cell_list,
-                         'SEND_BUFFER': self._halo_packing_buffer
-                         }
-
-
-        _tmp, self._boundary_groups_start_end_indices = halo.HALOS.get_boundary_cell_groups()
-        _dynamic_args['CIA'] = _tmp
-        _dynamic_args['CCA_I'] = self._boundary_groups_start_end_indices
-
-
-        _dynamic_args['CES'] = self._cumulative_exchange_sizes
-
-        if self.name == 'positions':
-            _dynamic_args['CSA'] = self._cell_shifts_array_pbc
-
-        self._halo_packing_lib.execute(static_args=_static_args, dat_dict=_dynamic_args)
-
-        
 
 
     def _transfer_unpack(self):
         """
-        Transfer the packed data. Will use the particle dat as the recv buffer.
+        pack and transfer the particle dat, rebuild cell list if needed
         """
+        if self._exchange_lib is None:
 
-        _halo_cell_groups, _halo_groups_start_end_indices = halo.HALOS.get_halo_cell_groups
+            _ex_args = '''
+            %(DTYPE)s * RESTRICT DAT,         // DAT pointer
+            int DAT_END,                      // end of dat.
+            const double * RESTRICT SHIFT,    // position shifts
+            const int f_MPI_COMM,             // F90 comm from mpi4py
+            const int * RESTRICT SEND_RANKS,  // send directions
+            const int * RESTRICT RECV_RANKS,  // recv directions
+            const int * RESTRICT h_ind,       // halo indices
+            const int * RESTRICT b_ind,       // local b indices
+            const int * RESTRICT h_arr,       // h cell indices
+            const int * RESTRICT b_arr,       // b cell indices
+            const int * RESTRICT dir_counts,  // expected recv counts
+            const int cell_offset,            // offset for cell list
+            const int sort_flag,              // does the cl require updating
+            int * RESTRICT ccc,               // cell contents count
+            int * RESTRICT crl,               // cell reverse lookup
+            int * RESTRICT cell_list,         // cell list
+            %(DTYPE)s * RESTRICT b_tmp        // tmp space for sending
+            ''' % {'DTYPE': host.ctypes_map[self.dtype]}
 
-        # reset halo starting position in dat.
-        self.halo_start_reset()
+            _ex_header = '''
+            #include <generic.h>
+            #include <mpi.h>
+            #include <iostream>
+            using namespace std;
+            #define RESTRICT %(RESTRICT)s
 
-        # Array
-        if self._cell_contents_recv is None or halo.HALOS.check_valid is False:
-            self._cell_contents_recv = host.Array(ncomp=_halo_cell_groups.ncomp, dtype=ctypes.c_int)
+            %(POS_ENABLE)s
 
-        # zero incoming sizes array
-        self._cell_contents_recv.zero()
+            extern "C" void HALO_EXCHANGE_PD(%(ARGS)s);
+            '''
 
-        _boundary_groups_contents_array, _exchange_sizes = halo.HALOS.get_boundary_cell_contents_count
+            _ex_code = '''
 
-        _status = mpi.Status()
+            void HALO_EXCHANGE_PD(%(ARGS)s){
 
-        # SEND START ==========================================================
-        _send_ranks = halo.HALOS.send_ranks
-        _recv_ranks = halo.HALOS.recv_ranks
+                // get mpi comm and rank
+                MPI_Comm MPI_COMM = MPI_Comm_f2c(f_MPI_COMM);
+                int rank = -1; MPI_Comm_rank( MPI_COMM, &rank );
+                MPI_Status MPI_STATUS;
+                MPI_Request sr;
+                MPI_Request rr;
 
-
-        self.timer_transfer.start()
-        self.timer_transfer_1.start()
-
-        _t_size = self.halo_start
-
-        for i in range(26):
-            # Exchange sizes --------------------------------------------------
-
-            if _send_ranks[i] > -1 and _recv_ranks[i] > -1:
-                mpi.MPI_HANDLE.comm.Sendrecv(_boundary_groups_contents_array[
-                                             self._boundary_groups_start_end_indices[i]:self._boundary_groups_start_end_indices[i + 1]:],
-                                             _send_ranks[i],
-                                             _send_ranks[i],
-                                             self._cell_contents_recv[
-                                             _halo_groups_start_end_indices[i]:_halo_groups_start_end_indices[i + 1]:],
-                                             _recv_ranks[i],
-                                             mpi.MPI_HANDLE.rank,
-                                             _status)
-
-            elif _send_ranks[i] > -1:
-                mpi.MPI_HANDLE.comm.Send(_boundary_groups_contents_array[
-                                         self._boundary_groups_start_end_indices[i]:self._boundary_groups_start_end_indices[i + 1]:],
-                                         _send_ranks[i],
-                                         _send_ranks[i])
-
-            elif _recv_ranks[i] > -1:
-                mpi.MPI_HANDLE.comm.Recv(self._cell_contents_recv[
-                                         _halo_groups_start_end_indices[i]:_halo_groups_start_end_indices[i + 1]:],
-                                         _recv_ranks[i],
-                                         mpi.MPI_HANDLE.rank,
-                                         _status)
+                //for( int dir=0 ; dir<6 ; dir++ ){
+                //    cout << "dir: " << dir << " count: " << dir_counts[dir] << endl;;
+                //}
 
 
-            _t_size += self._cell_contents_recv[
-                       _halo_groups_start_end_indices[i]:
-                       _halo_groups_start_end_indices[i + 1]:
-                       ].sum()
+                for( int dir=0 ; dir<6 ; dir++ ){
+                    //for( int iy=0 ; iy<%(NCOMP)s ; iy++ ){
+                    //    cout << "\tdir: " << dir << " comp " << iy << " shift " << SHIFT[dir*%(NCOMP)s + iy] << endl;
+                    //}
+                    const int b_s = b_ind[dir];
+                    const int b_e = b_ind[dir+1];
+                    const int b_c = b_e - b_s;
+
+                    const int h_s = h_ind[dir];
+                    const int h_e = h_ind[dir+1];
+                    const int h_c = h_e - h_s;
+
+                    //packing index;
+                    int p_index = -1;
+
+                    // packing loop
+                    for( int cx=0 ; cx<b_c ; cx++ ){
+
+                        // cell index
+                        const int ci = b_arr[b_s + cx];
+
+                        // loop over contents of cell.
+                        int ix = cell_list[cell_offset + ci];
+                        while(ix > -1){
+
+                            p_index ++;
+                            for( int iy=0 ; iy<%(NCOMP)s ; iy++ ){
+
+                                b_tmp[p_index * %(NCOMP)s + iy] = DAT[ix*%(NCOMP)s + iy];
+
+                                //cout << "packed: " << b_tmp[p_index * %(NCOMP)s +iy];
+
+                                #ifdef POS
+                                    b_tmp[p_index * %(NCOMP)s + iy] += SHIFT[dir*%(NCOMP)s + iy];
+                                #endif
+
+                                //cout << " p_shifted: " << b_tmp[p_index * %(NCOMP)s +iy] << endl;
+                            }
+
+                        ix = cell_list[ix];}
+                    }
+
+                    /*
+                    cout << " SEND | ";
+                    for( int tx=0 ; tx < (p_index + 1)*3; tx++){
+                        cout << b_tmp[tx] << " |";
+                    }
+                    cout << endl;
+                    */
+
+                    // start the sendrecv as non blocking.
+                    if (( SEND_RANKS[dir] > -1 ) && ( p_index > -1 ) ){
+                    MPI_Isend((void *) b_tmp, (p_index + 1) * %(NCOMP)s, %(MPI_DTYPE)s,
+                             SEND_RANKS[dir], rank, MPI_COMM, &sr);
+                    }
+
+                    if (( RECV_RANKS[dir] > -1 ) && ( dir_counts[dir] > 0 ) ){
+                    MPI_Irecv((void *) &DAT[DAT_END * %(NCOMP)s], %(NCOMP)s * dir_counts[dir],
+                              %(MPI_DTYPE)s, RECV_RANKS[dir], RECV_RANKS[dir], MPI_COMM, &rr);
+                    }
+
+                    //cout << "DAT_END: " << DAT_END << endl;
 
 
-        self.timer_transfer_1.pause()
 
-        self.timer_transfer_resize.start()
+                    int DAT_END_T = DAT_END;
+                    DAT_END += dir_counts[dir];
 
-        self.resize(_t_size)
+                    // build halo part of cell list whilst exchange occuring.
 
-        self.timer_transfer_resize.pause()
+                    #ifdef POS
+                    if (sort_flag > 0){
+
+                        for( int hxi=h_s ; hxi<h_e ; hxi++ ){
+
+                            // index of a halo cell
+                            const int hx = h_arr[ hxi ];
+
+                            // number of particles in cell
+                            const int hx_count = ccc[ hx ];
+
+                            if (hx_count > 0) {
+
+                            //cout << "\tsorting cell: " << hx << " ccc: " << hx_count << endl;
+                                cell_list[cell_offset + hx] = DAT_END_T;
+
+                                for( int iy=0 ; iy<(hx_count-1) ; iy++ ){
+
+                                    cell_list[ DAT_END_T+iy ] = DAT_END_T + iy + 1;
+                                    crl[ DAT_END_T+iy ] = hx;
+
+                                }
+
+                                cell_list[ DAT_END_T + hx_count - 1 ] = -1;
+                                crl[ DAT_END_T + hx_count -1 ] = hx;
+
+                                DAT_END_T += hx_count;
+                            }
+                        }
+
+                    }
+                    #endif
+
+                    // after send has completed move to next direction.
+                    if (( SEND_RANKS[dir] > -1 ) && ( p_index > -1 ) ){
+                        MPI_Wait(&sr, &MPI_STATUS);
+                    }
+
+                    if (( RECV_RANKS[dir] > -1 ) && ( dir_counts[dir] > 0 ) ){
+                        MPI_Wait(&rr, &MPI_STATUS);
+                    }
+
+                    MPI_Barrier(MPI_COMM);
 
 
-        # Exchange sizes --------------------------------------------------
-        self.timer_transfer_2.start()
-        for i in range(26):
+                //cout << "dir end " << dir << " -----------" << endl;
 
-            # Exchange data ---------------------------------------------------
-            if _send_ranks[i] > -1 and _recv_ranks[i] > -1:
-                mpi.MPI_HANDLE.comm.Sendrecv(self._halo_packing_buffer.dat[
-                                             self._cumulative_exchange_sizes[i]:self._cumulative_exchange_sizes[i] + _exchange_sizes[i]:,
-                                             ::],
-                                             _send_ranks[i],
-                                             _send_ranks[i],
-                                             self.dat[self.halo_start::, ::],
-                                             _recv_ranks[i],
-                                             mpi.MPI_HANDLE.rank,
-                                             _status)
+                }
 
-                _shift = _status.Get_count(mpi.mpi_map[self.dtype])
-                self.halo_start_shift(_shift / self.ncomp)
+                return;
+            }
+            '''
 
-            elif _send_ranks[i] > -1:
-                mpi.MPI_HANDLE.comm.Send(self._halo_packing_buffer.dat[
-                                         self._cumulative_exchange_sizes[i]:self._cumulative_exchange_sizes[i] + _exchange_sizes[i],
-                                         ::],
-                                         _send_ranks[i],
-                                         _send_ranks[i])
-
-            elif _recv_ranks[i] > -1:
-
-                mpi.MPI_HANDLE.comm.Recv(self.dat[self.halo_start::, ::],
-                                         _recv_ranks[i],
-                                         mpi.MPI_HANDLE.rank,
-                                         _status)
-
-                _shift = _status.Get_count(mpi.mpi_map[self.dtype])
-
-                self.halo_start_shift(_shift / self.ncomp)
-
-        self.timer_transfer_2.pause()
-        self.timer_transfer.pause()
-        # SEND END ============================================================
+            if self.name == 'positions':
+                _pos_enable = '#define POS'
+            else:
+                _pos_enable = ''
 
 
+            _ex_dict = {'ARGS': _ex_args,
+                        'RESTRICT': build.MPI_CC.restrict_keyword,
+                        'DTYPE': host.ctypes_map[self.dtype],
+                        'POS_ENABLE': _pos_enable,
+                        'NCOMP': self.ncomp,
+                        'MPI_DTYPE': host.mpi_type_map[self.dtype]}
+
+            _ex_header %= _ex_dict
+            _ex_code %= _ex_dict
+
+            self._exchange_lib = build.simple_lib_creator(_ex_header,
+                                                          _ex_code,
+                                                          'HALO_EXCHANGE_PD',
+                                                          CC=build.MPI_CC
+                                                          )['HALO_EXCHANGE_PD']
+
+
+        # End of creation code -----------------------------------------
+
+        # print "~~~~~~~~~~~~~~~~~~~preparing exxchange"
+
+        _h = halo.HALOS.get_halo_cell_groups()
+        _b = halo.HALOS.get_boundary_cell_groups()
 
         if (self.name == 'positions') and cell.cell_list.version_id > cell.cell_list.halo_version_id:
-            cell.cell_list.sort_halo_cells(_halo_cell_groups, self._cell_contents_recv, self.npart, self.max_npart)
+            _sort_flag = ctypes.c_int(1)
+        else:
+            _sort_flag = ctypes.c_int(-1)
+
+        # print "SORT FLAG:", _sort_flag.value, "cell vid:", cell.cell_list.version_id, "halo vid:", cell.cell_list.halo_version_id
+
+        # print str(mpi.MPI_HANDLE.rank) + " -------------- before exchange lib ------------------"
+        # sys.stdout.flush()
+
+
+        # print "HALO_SEND", halo.HALOS.get_send_ranks().dat
+        # print "HALO_RECV", halo.HALOS.get_recv_ranks().dat
+
+        self._exchange_lib(self.ctypes_data,
+                           ctypes.c_int(self.npart),
+                           halo.HALOS.get_position_shifts().ctypes_data,
+                           ctypes.c_int(mpi.MPI_HANDLE.fortran_comm),
+                           halo.HALOS.get_send_ranks().ctypes_data,
+                           halo.HALOS.get_recv_ranks().ctypes_data,
+                           _h[1].ctypes_data,
+                           _b[1].ctypes_data,
+                           _h[0].ctypes_data,
+                           _b[0].ctypes_data,
+                           halo.HALOS.get_dir_counts().ctypes_data,
+                           cell.cell_list.offset,
+                           _sort_flag,
+                           cell.cell_list.cell_contents_count.ctypes_data,
+                           cell.cell_list.cell_reverse_lookup.ctypes_data,
+                           cell.cell_list.cell_list.ctypes_data,
+                           self._tmp_halo_space.ctypes_data
+                           )
+
+
+        # print str(mpi.MPI_HANDLE.rank) +  " --------------- after exchange lib ------------------"
+        # print self.npart
+        # print self._dat
+
+
+        '''
+        %(DTYPE)s * RESTRICT DAT,         // DAT pointer
+        int DAT_END,                      // end of dat.
+        const double * RESTRICT SHIFT,    // position shifts
+        const int f_MPI_COMM,             // F90 comm from mpi4py
+        const int * RESTRICT SEND_RANKS,  // send directions
+        onst int * RESTRICT RECV_RANKS,  // recv directions
+        const int * RESTRICT h_ind,       // halo indices
+        const int * RESTRICT b_ind,       // local b indices
+        const int * RESTRICT h_arr,       // h cell indices
+        const int * RESTRICT b_arr,       // b cell indices
+        const int * RESTRICT dir_counts,  // expected recv counts
+        const int cell_offset,            // offset for cell list
+        const int sort_flag,              // does the cl require updating
+        int * RESTRICT ccc,               // cell contents count
+        int * RESTRICT crl,               // cell reverse lookup
+        int * RESTRICT cell_list,         // cell list
+        int * RESTRICT b_tmp              // tmp space for sending
+        '''
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-###################################################################################################
+#########################################################################
 # TypedDat.
-###################################################################################################
-
+#########################################################################
 
 class TypedDat(host.Matrix):
     """
@@ -821,10 +788,9 @@ class TypedDat(host.Matrix):
         self.dat[ix] = val
 
 
-###################################################################################################
+########################################################################
 # Type
-###################################################################################################
-
+########################################################################
 class Type(object):
     """
     Object to store information such as number of 

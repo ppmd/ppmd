@@ -12,6 +12,8 @@ ctypes_map = {ctypes.c_double: 'double', ctypes.c_int: 'int', 'float64': 'double
 pointer_lookup = {ctypes.c_int: 'intpointer',
                   ctypes.c_double: 'doublepointer'}
 
+mpi_type_map = {ctypes.c_double: 'MPI_DOUBLE', ctypes.c_int: 'MPI_INT'}
+
 ################################################################################################
 # Get available memory.
 ################################################################################################

@@ -20,9 +20,9 @@ runtime.CUDA_ENABLED.flag = False
 
 
 
-file_dir = '/home/wrs20/ppmd_scaling'
+file_dir = './'
 
-_fpprint = pio.pfprint(dirname=file_dir + '/ppmd')
+_fpprint = pio.pfprint(dirname=file_dir)
 
 # open the field file
 fh = open(file_dir + '/FIELD', 'r')

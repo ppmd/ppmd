@@ -119,7 +119,8 @@ class BaseMDSimulation(object):
         cell.cell_list.setup_callback_on_update(self._reset_moved_distance)
 
 
-        halo.HALOS = halo.CartesianHalo()
+        #halo.HALOS = halo.CartesianHalo()
+        halo.HALOS = halo.CartesianHaloSix()
 
 
         # Initialise positions
@@ -214,7 +215,7 @@ class BaseMDSimulation(object):
         self._moved_distance += self._get_max_moved_distance()
 
         if self._moved_distance >= 0.5 * self._delta * self._cutoff:
-            print "WARNING PARTICLE MOVED TOO FAR, rank:", mpi.MPI_HANDLE.rank, "distance", self._moved_distance, "times reused", self._test_count, "dist:", 0.5 * self._delta * self._cutoff
+            print "RANK %(RK)s  WARNING PARTICLE MOVED TOO FAR, rank:" % {'RK':mpi.MPI_HANDLE.rank}, mpi.MPI_HANDLE.rank, "distance", self._moved_distance, "times reused", self._test_count, "dist:", 0.5 * self._delta * self._cutoff
 
         _ret = 0
 

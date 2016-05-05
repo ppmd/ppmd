@@ -193,6 +193,22 @@ class CellList(object):
         const int C2 = 1 + (int)((P[ix*3 + 2] - _b4)*_icel2);
 
         const int val = (C2*CA[1] + C1)*CA[0] + C0;
+        
+        if ((C0 < 1) || (C0 > (CA[0]-2))) {
+            cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C0 " << C0 << endl;
+            cout << "B[0] " << B[0] << " B[1] " << B[1] << " Px " << P[ix*3+0] << endl;
+        }
+        if ((C1 < 1) || (C1 > (CA[1]-2))) {
+            cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C1 " << C1 << endl;
+            cout << "B[2] " << B[2] << " B[3] " << B[3] << " Py " << P[ix*3+1] << endl;
+        }
+        if ((C2 < 1) || (C2 > (CA[2]-2))) {
+            cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C2 " << C2 << endl;
+            cout << "B[4] " << B[4] << " B[5] " << B[5] << " Pz " << P[ix*3+2] << endl;
+        }
+
+        //printf("ix %d c0 %d c1 %d c2 %d val %d \\n", ix, C0, C1, C2, val);
+
 
         //needed, may improve halo exchange times
         CCC[val]++;
@@ -328,6 +344,36 @@ class CellList(object):
         _cell_sort_kernel = kernel.Kernel('halo_cell_list_method', _cell_sort_code, headers=['stdio.h'],
                                           static_args=_static_args)
         self._halo_cell_sort_loop = build.SharedLib(_cell_sort_kernel, _cell_sort_dict)
+
+
+    def prepare_halo_sort(self, total_size):
+
+        # if the total size is larger than the current array we need to resize.
+
+        cell_count = self._domain.cell_array[0] * self._domain.cell_array[1] * self._domain.cell_array[2]
+
+        if total_size + cell_count + 1 > self._cell_list.ncomp:
+            cell_start = self._cell_list[self._cell_list.end]
+            cell_end = self._cell_list.end
+
+            # print cell_count, cell_start, cell_end, self._cell_list.ncomp, total_size
+
+
+            self._cell_list.realloc(total_size + cell_count + 1)
+
+            self._cell_list.dat[self._cell_list.end - cell_count: self._cell_list.end:] = self._cell_list.dat[cell_start:cell_end:]
+
+            self._cell_list.dat[self._cell_list.end] = self._cell_list.end - cell_count
+
+            # cell reverse lookup
+            self._cell_reverse_lookup.realloc(total_size)
+
+
+    def post_halo_exchange(self):
+
+        self.halo_version_id += 1
+
+
 
     def sort_halo_cells(self,local_cell_indices_array, cell_contents_recv, npart, total_size):
 
@@ -621,7 +667,14 @@ class NeighbourList(object):
 
         self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_int)
 
-        _initial_factor = math.ceil(15. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
+        _n = n()
+        if _n < 10:
+            _n = 10
+
+        _initial_factor = math.ceil(15. * (_n ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
+
+        if _initial_factor < 100:
+            _initial_factor = 100
 
 
         self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_int)
@@ -818,7 +871,14 @@ class NeighbourListv2(NeighbourList):
 
         self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_int)
 
-        _initial_factor = math.ceil(15. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
+        _n = n()
+        if _n < 10:
+            _n = 10
+
+        _initial_factor = math.ceil(15. * (_n ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
+
+        if _initial_factor < 10:
+            _initial_factor = 10
 
 
         self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_int)
@@ -829,9 +889,16 @@ class NeighbourListv2(NeighbourList):
         self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
         self._return_code.dat[0] = -1
 
+        # //#define RK %(_RK)s
         _code = '''
 
-        //printf("start P[0] = %f \\n", P[0]);
+        //#define PP ((RK==49) || (RK==50) || (RK==32))
+        #define PP (1)
+
+        //cout << "------------------------------" << endl;
+        //printf("start P[0] = %%f \\n", P[0]);
+        
+
 
         const double cutoff = CUTOFF[0];
         const int max_len = MAX_LEN[0];
@@ -894,6 +961,12 @@ class NeighbourListv2(NeighbourList):
         const double _b0 = B[0];
         const double _b2 = B[2];
         const double _b4 = B[4];
+        
+        //cout << "boundary" << endl;
+        //cout << B[0] << " " << B[1] << endl;
+        //cout << B[2] << " " << B[3] << endl;
+        //cout << B[4] << " " << B[5] << endl;
+
 
         const double _icel0 = 1.0/CEL[0];
         const double _icel1 = 1.0/CEL[1];
@@ -912,20 +985,16 @@ class NeighbourListv2(NeighbourList):
             const double pi1 = P[ix*3 + 1];
             const double pi2 = P[ix*3 + 2];
 
-            // this is flawed becuase the bcs are only applied on cell 
-            // list rebuild
-            //const int C0 = 1 + (int)((pi0 - _b0)*_icel0);
-            //const int C1 = 1 + (int)((pi1 - _b2)*_icel1);
-            //const int C2 = 1 + (int)((pi2 - _b4)*_icel2);
-
-            //const int val = (C2*_ca1 + C1)*_ca0 + C0;
-
             const int val = CRL[ix];
-            const int C0 = val % _ca0;
-            const int C1 = ((val - C0) / _ca0) % _ca1;
-            const int C2 = (((val - C0) / _ca0) - C1 ) / _ca1;
 
+            const int C0 = val %% _ca0;
+            const int C1 = ((val - C0) / _ca0) %% _ca1;
+            const int C2 = (((val - C0) / _ca0) - C1 ) / _ca1;
             if (val != ((C2*_ca1 + C1)*_ca0 + C0) ) {cout << "CELL FAILURE, val=" << val << " 0 " << C0 << " 1 " << C1 << " 2 " << C2 << endl;}
+
+
+            //cout << "val = " << val << " C0 = " << C0 << " C1 = " << C1 << " C2 = " << C2 << endl;
+            //cout << " Ca0 = " << _ca0 << " Ca1 = " << _ca1 << " Ca2 = " << _ca2 << endl;
 
 
             NEIGHBOUR_STARTS[ix] = m + 1;
@@ -943,15 +1012,15 @@ class NeighbourListv2(NeighbourList):
             // if flag > 0 then we are near a halo
             // that needs attention
 
-            // printf("ix: %d flag: %d | C0 %d C1 %d C2 %d  \\n ##", ix, flag, C0, C1, C2);
+            //cout << "flag " << flag << endl;
 
             if (flag > 0) {
 
                 //check the possble 13 directions
                 for( int csx = 0; csx < 13; csx++){
                     if (flag & selective_lookup[csx]){
-
-                        //printf(" %d ", csx);
+                        
+                        //cout << "S look " << csx << endl;
 
                         int iy = q[n + val + s_tmp_offset[csx]];
                         while(iy > -1){
@@ -959,6 +1028,9 @@ class NeighbourListv2(NeighbourList):
                             const double rj0 = P[iy*3]   - pi0;
                             const double rj1 = P[iy*3+1] - pi1;
                             const double rj2 = P[iy*3+2] - pi2;
+
+                            //cout << "S_iy = " << iy << " py0 = " << P[iy*3+0] << " py1 = " << P[iy*3+1] << " py2 = " << P[iy*3+2] << endl;
+
 
                             if ( (rj0*rj0 + rj1*rj1 + rj2*rj2) <= cutoff ) {
 
@@ -982,15 +1054,22 @@ class NeighbourListv2(NeighbourList):
             // standard directions
 
             for(int k = 0; k < 14; k++){
+                
+                //cout << "\\toffset: " << k << endl;
 
                 int iy = q[n + val + tmp_offset[k]];
                 while (iy > -1) {
 
                     if ( (tmp_offset[k] != 0) || (iy > ix) ){
 
+                        //if (k==12){ cout << "iy=" << iy << endl;}
+
                         const double rj0 = P[iy*3]   - pi0;
                         const double rj1 = P[iy*3+1] - pi1;
                         const double rj2 = P[iy*3+2] - pi2;
+                        
+                        //if (k==12){ cout << "iy=" << iy << " y= " << P[iy*3+0] << " y= " << P[iy*3+1] << " y=" << P[iy*3+2] << endl;}
+
 
                         if ( (rj0*rj0 + rj1*rj1 + rj2*rj2) <= cutoff ) {
 
@@ -1014,10 +1093,11 @@ class NeighbourListv2(NeighbourList):
         RC[0] = 0;
 
 
-        //printf("end P[0] = %f \\n", P[0]);
+        //printf("end P[0] = %%f \\n", P[0]);
 
+        //cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << endl;
         return;
-        '''
+        ''' % {'NULL': ''}
 
 
 
