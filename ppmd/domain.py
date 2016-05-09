@@ -1,11 +1,15 @@
+
+
+# system level
 import numpy as np
 import math
 import ctypes
+
+# package level
 import data
 import host
 import kernel
 import build
-from mpi4py import MPI
 import mpi
 import runtime
 import pio
@@ -43,19 +47,13 @@ class BaseDomainHalo(object):
 
         self._periods = periods
 
-        self._MPI_handle = mpi.MPI_HANDLE
-        self._MPI_handle.set_periods = self._periods
-        self._MPIstatus = MPI.Status()
-
         self._extent = data.ScalarArray(extent)
 
         self._extent_global = data.ScalarArray(extent)
 
-        self._cell_count = cell_count
         self._cell_array = data.ScalarArray(np.array([1, 1, 1]), dtype=ctypes.c_int)
         self._cell_edge_lengths = data.ScalarArray(np.array([1., 1., 1.], dtype=ctypes.c_double))
 
-        self._BCloop = None
         self._halos = True
 
         #vars to return boudary cells
@@ -139,7 +137,6 @@ class BaseDomainHalo(object):
         self._cell_array[1] = int(self._extent[1] / rn)
         self._cell_array[2] = int(self._extent[2] / rn)
 
-
         if runtime.VERBOSE.level > 1:
             pio.pprint("Internal cell array:", self._cell_array, ", Extent:",self._extent)
 
@@ -147,126 +144,27 @@ class BaseDomainHalo(object):
         self._cell_edge_lengths[1] = self._extent[1] / self._cell_array[1]
         self._cell_edge_lengths[2] = self._extent[2] / self._cell_array[2]
 
-        self._cell_count_internal = self._cell_array[0] * self._cell_array[1] * self._cell_array[2]
 
-        '''Get number of processes'''
-        _Np = MPI.COMM_WORLD.Get_size()
+        '''Get a local cell array and perform domain decomp'''
+        _ca_tuple, _bs = _create_domain_decomp(self.cell_array, self._periods)
+        self.cell_array[0] = _ca_tuple[0]
+        self.cell_array[1] = _ca_tuple[1]
+        self.cell_array[2] = _ca_tuple[2]
 
-        '''Prime factor number of processes'''
-        _factors = pfactor(_Np)
-
-        '''Create grid from factorisation'''
-        if len(_factors) == 0:
-            _NP = [1, 1, 1]
-        elif len(_factors) == 1:
-            _NP = [_factors[0], 1, 1]
-        elif len(_factors) == 2:
-            _NP = [_factors[0], _factors[1], 1]
-        else:
-
-            _factors.sort(reverse=True)
-
-            if len(_factors)==4:
-                _NP = []
-                _NP.append(_factors[0])
-                _NP.append(_factors[1])
-                _NP.append(_factors[2] * _factors[3])
-
-            elif len(_factors)==5:
-                _NP = []
-                _NP.append(_factors[0])
-                _NP.append(_factors[1] * _factors[2])
-                _NP.append(_factors[3] * _factors[4])
-
-            else:
-                _factors.sort(reverse=True)
-                _q = len(_factors) / 3
-                _NP = []
-                _NP.append(reduce(lambda x, y: x * y, _factors[0:_q:]))
-                _NP.append(reduce(lambda x, y: x * y, _factors[_q:2 * _q:]))
-                _NP.append(reduce(lambda x, y: x * y, _factors[2 * _q::]))
-            
-
-        '''Order processor calculated dimension sizes in descending order'''
-        _NP.sort(reverse=True)
-
-        '''Order domain dimension sizes in descending order'''
-        _cal = [[0, self._cell_array[0]], [1, self._cell_array[1]], [2, self._cell_array[2]]]
-        _cal.sort(key=lambda x: x[1], reverse=True)
-
-        '''Try to match avaible processor dimensions to phyiscal cells'''
-        _dimsi = [0, 0, 0]
-        for i in range(3):
-            ix = _cal[i][0]
-            _dimsi[ix] = _NP[i]
-
-        '''Calculate what cell array sizes would be using given processor grid'''
-        _bsc = [math.ceil(self._cell_array[0] / float(_dimsi[0])),
-                math.ceil(self._cell_array[1] / float(_dimsi[1])),
-                math.ceil(self._cell_array[2] / float(_dimsi[2]))]
-
-        '''Round down number of processes per direction if excessive'''
-        _dims = [
-            int(math.ceil(self._cell_array[0] / _bsc[0])),
-            int(math.ceil(self._cell_array[1] / _bsc[1])),
-            int(math.ceil(self._cell_array[2] / _bsc[2]))
-        ]
-
-        for i in range(3):
-            assert _dims[i] == _dimsi[i], "Processor grid error, suitable layout search failed." + str(_dims[:]) + str(_dimsi[:])
-
-        '''Create cartesian communicator'''
-        self._dims = tuple(_dims)
-        self._COMM = MPI.COMM_WORLD.Create_cart(self._dims[::-1],
-                                                (bool(self._periods[2]), bool(self._periods[1]), bool(self._periods[0])),
-                                                True)
-
-        '''Set the simulation mpi handle to be the newly created one'''
-        if self._MPI_handle is not None:
-            self._MPI_handle.comm = self._COMM
-
-        '''get rank, nprocs'''
-        self._rank = self._COMM.Get_rank()
-        self._nproc = self._COMM.Get_size()
-
-        if runtime.VERBOSE.level > 1:
-            pio.pprint("Processor count ", self._nproc, " Processor layout ", self._dims)
-
-        '''Topology has below indexing, last index reverses'''
-        # [z,y,x]
-        self._top = self._COMM.Get_topo()[2][::-1]
-
-        '''Calculate global distribution of cells'''
-        _bs = []
-        for ix in range(3):
-            _tmp = []
-            for iy in range(_dims[ix] - 1):
-                _tmp.append(int(_bsc[ix]))
-            _tmp.append(int(self._cell_array[0] - (_dims[ix] - 1) * _bsc[ix]))
-            _bs.append(_tmp)
-
-        # print "bs =", _bs
-
-        if runtime.VERBOSE.level > 1:
-            pio.pprint("Cell layout", _bs)
-
-        '''Get local cell array'''
-        self._cell_array[0] = _bs[0][self._top[0]]
-        self._cell_array[1] = _bs[1][self._top[1]]
-        self._cell_array[2] = _bs[2][self._top[2]]
+        _top = mpi.MPI_HANDLE.top
 
         '''Calculate local boundary'''
         '''Cumalitive sum up to self_index - 1 '''
         _Cx = 0
-        for ix in range(self._top[0]):
+        for ix in range(_top[0]):
             _Cx += _bs[0][ix]
 
         _Cy = 0
-        for ix in range(self._top[1]):
+        for ix in range(_top[1]):
             _Cy += _bs[1][ix]
 
         _Cz = 0
-        for ix in range(self._top[2]):
+        for ix in range(_top[2]):
             _Cz += _bs[2][ix]
 
         '''Inner boundary (inside halo cells)'''
@@ -301,9 +199,6 @@ class BaseDomainHalo(object):
         self._cell_array[0] += 2
         self._cell_array[1] += 2
         self._cell_array[2] += 2
-
-        '''Get local cell count'''
-        self._cell_count = self._cell_array[0] * self._cell_array[1] * self._cell_array[2]
 
         '''Outer extent including halos, used?'''
         self._extent_outer = data.ScalarArray(self._extent.dat + np.array([2, 2, 2]) * self._cell_edge_lengths.dat)
@@ -347,12 +242,6 @@ class BaseDomainHalo(object):
 
         return self._extent
 
-    @property
-    def cell_count_internal(self):
-        """
-        Return internal cell count.
-        """
-        return self._cell_count_internal
 
     def get_shift(self):
 
@@ -393,7 +282,120 @@ class BaseDomainHalo(object):
         """
         Return cell count for domain.
         """
-        return self._cell_count
+        return self._cell_array[0] * self._cell_array[1] * self._cell_array[2]
+
+
+
+
+
+
+
+
+
+
+def _create_domain_decomp(global_cell_array=None, periods=None):
+    """
+    Create a local cell array from a global cell array and decompose the domain
+    :param global_cell_array:
+    :return:
+    """
+
+    '''Get number of processes'''
+    _Np = mpi.MPI_HANDLE.nproc
+
+    '''Prime factor number of processes'''
+    _factors = pfactor(_Np)
+
+    '''Create grid from factorisation'''
+    if len(_factors) == 0:
+        _NP = [1, 1, 1]
+    elif len(_factors) == 1:
+        _NP = [_factors[0], 1, 1]
+    elif len(_factors) == 2:
+        _NP = [_factors[0], _factors[1], 1]
+    else:
+
+        _factors.sort(reverse=True)
+
+        if len(_factors)==4:
+            _NP = []
+            _NP.append(_factors[0])
+            _NP.append(_factors[1])
+            _NP.append(_factors[2] * _factors[3])
+
+        elif len(_factors)==5:
+            _NP = []
+            _NP.append(_factors[0])
+            _NP.append(_factors[1] * _factors[2])
+            _NP.append(_factors[3] * _factors[4])
+
+        else:
+            _factors.sort(reverse=True)
+            _q = len(_factors) / 3
+            _NP = []
+            _NP.append(reduce(lambda x, y: x * y, _factors[0:_q:]))
+            _NP.append(reduce(lambda x, y: x * y, _factors[_q:2 * _q:]))
+            _NP.append(reduce(lambda x, y: x * y, _factors[2 * _q::]))
+
+
+    '''Order processor calculated dimension sizes in descending order'''
+    _NP.sort(reverse=True)
+
+    '''Order domain dimension sizes in descending order'''
+    _cal = [[0, global_cell_array[0]], [1, global_cell_array[1]], [2, global_cell_array[2]]]
+    _cal.sort(key=lambda x: x[1], reverse=True)
+
+    '''Try to match avaible processor dimensions to phyiscal cells'''
+    _dimsi = [0, 0, 0]
+    for i in range(3):
+        ix = _cal[i][0]
+        _dimsi[ix] = _NP[i]
+
+    '''Calculate what cell array sizes would be using given processor grid'''
+    _bsc = [math.ceil(global_cell_array[0] / float(_dimsi[0])),
+            math.ceil(global_cell_array[1] / float(_dimsi[1])),
+            math.ceil(global_cell_array[2] / float(_dimsi[2]))]
+
+    '''Round down number of processes per direction if excessive'''
+    _dims = [
+        int(math.ceil(global_cell_array[0] / _bsc[0])),
+        int(math.ceil(global_cell_array[1] / _bsc[1])),
+        int(math.ceil(global_cell_array[2] / _bsc[2]))
+    ]
+
+    for i in range(3):
+        assert _dims[i] == _dimsi[i], "Processor grid error, suitable layout search failed." + str(_dims[:]) + str(_dimsi[:])
+
+    '''Create cartesian communicator'''
+    _dims = tuple(_dims)
+    mpi.MPI_HANDLE.create_cart(_dims[::-1],
+                               (bool(periods[2]), bool(periods[1]), bool(periods[0])),
+                               True)
+
+
+    '''Topology has below indexing, last index reverses'''
+    # [z,y,x]
+    _top = mpi.MPI_HANDLE.top
+
+    '''Calculate global distribution of cells'''
+    _bs = []
+    for ix in range(3):
+        _tmp = []
+        for iy in range(_dims[ix] - 1):
+            _tmp.append(int(_bsc[ix]))
+        _tmp.append(int(global_cell_array[0] - (_dims[ix] - 1) * _bsc[ix]))
+        _bs.append(_tmp)
+
+    if runtime.VERBOSE.level > 1:
+        pio.pprint("Cell layout", _bs)
+
+    '''Get local cell array'''
+    local_cell_array = (_bs[0][_top[0]], _bs[1][_top[1]], _bs[2][_top[2]])
+
+    return local_cell_array, _bs
+
+
+
 
 
 class BoundaryTypePeriodic(object):
@@ -643,6 +645,7 @@ class BoundaryTypePeriodic(object):
             # reset linked list
             self._escape_linked_list[0:26:] = -1
             self._escape_count[::] = 0
+
 
             self.timer_search.start()
             self._escape_guard_lib.execute(static_args={'_end':self.state.n})

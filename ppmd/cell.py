@@ -461,6 +461,11 @@ class CellList(object):
 # default cell list
 cell_list = CellList()
 
+def reset_cell_list():
+    global cell_list
+    cell_list = CellList()
+
+
 
 ################################################################################################################
 # GroupByCell definition

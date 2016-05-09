@@ -45,7 +45,7 @@ class BaseMDSimulation(object):
                  particle_mass_init=None,
                  n=0,
                  cutoff=None,
-                 domain_boundary_condition=domain.BoundaryTypePeriodic(),
+                 domain_boundary_condition=None,
                  setup_only=False,
                  pairloop_in = None):
 
@@ -80,8 +80,8 @@ class BaseMDSimulation(object):
         self.kinetic_energy_timer = runtime.Timer(runtime.TIMER, 0)
 
 
-
-        self._boundary_method = domain_boundary_condition
+        if domain_boundary_condition is None:
+            self._boundary_method = domain.BoundaryTypePeriodic()
         self._boundary_method.set_state(self.state)
 
         # Add particle dats
@@ -515,7 +515,7 @@ class PosInitTwoParticlesInABox(object):
 
     def __init__(self, rx, extent=np.array([1.0, 1.0, 1.0]), axis=np.array([1.0, 0.0, 0.0])):
         self._extent = extent
-        self._axis = axis
+        self._axis = np.array(axis, dtype=ct.c_double)
         self._rx = (0.5 / np.linalg.norm(self._axis)) * rx
 
     def get_extent(self, state_input):
@@ -531,6 +531,8 @@ class PosInitTwoParticlesInABox(object):
 
         :arg state state_input: State object containing at least two particles.
         """
+
+
         if state_input.n >= 2:
             _N = 0
             _d = state_input.domain.boundary
@@ -539,12 +541,12 @@ class PosInitTwoParticlesInABox(object):
             _tmp2 = self._rx * self._axis
 
             if (_d[0] <= _tmp[0] < _d[1]) and (_d[2] <= _tmp[1] < _d[3]) and (_d[4] <= _tmp[2] < _d[5]):
-                state_input.positions[0,] = _tmp
+                state_input.positions.dat[0,::] = np.array(_tmp[::], dtype=ct.c_double, copy=True)
                 state_input.global_ids[0] = 0
                 _N += 1
 
             if (_d[0] <= _tmp2[0] < _d[1]) and (_d[2] <= _tmp2[1] < _d[3]) and (_d[4] <= _tmp2[2] < _d[5]):
-                state_input.positions[_N,] = _tmp2
+                state_input.positions.dat[_N,::] = np.array(_tmp2[::], dtype=ct.c_double, copy=True)
                 state_input.global_ids[_N] = 1
                 _N += 1
 

@@ -1,6 +1,13 @@
+
+# system level
 from mpi4py import MPI
 import sys
 import ctypes as ct
+
+#package level
+import runtime
+import pio
+
 
 mpi_map = {ct.c_double: MPI.DOUBLE, ct.c_int: MPI.INT, int: MPI.INT}
 
@@ -60,6 +67,16 @@ class MDMPI(object):
         Return the current communicator.
         """
         return self._COMM
+
+    def create_cart(self, dims, periods, reorder_flag):
+        """
+        Create an mpi cart on the current comm
+        """
+        self._COMM = MPI.COMM_WORLD.Create_cart(dims, periods, reorder_flag)
+
+        if runtime.VERBOSE.level > 1:
+            pio.pprint("Processor count ", self.nproc, " Processor layout ", self.dims)
+
 
     @property
     def fortran_comm(self):
@@ -252,5 +269,12 @@ class MDMPI(object):
 
 # Main MPI communicatior used by program.
 
-MPI_HANDLE = MDMPI()
+MPI_HANDLE = None
+def reset_mpi():
+    global MPI_HANDLE
+    MPI_HANDLE = MDMPI()
+
+reset_mpi()
+
+
 Status = MPI.Status
