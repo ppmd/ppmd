@@ -400,12 +400,18 @@ def _get_cell_distribution(global_cell_array=None, dims=None, top=None):
 
         else:
 
-            for iy in range(global_cell_array[ix] % dims[ix]):
+            R = global_cell_array[ix] % dims[ix]
+            for iy in range(R):
                 _tmp.append(_bsc[ix])
-            R = dims[ix] - (global_cell_array[ix] % dims[ix])
             for iy in range(dims[ix] - R):
                 _tmp.append((global_cell_array[ix] - R * _bsc[ix])/ (dims[ix] - R) )
 
+        assert len(_tmp) == dims[ix], "DD size missmatch, dim: " + str(ix) + " " + str(_tmp[:])
+        _tsum = 0
+        for tx in _tmp:
+            _tsum += tx
+
+        assert _tsum == global_cell_array[ix], "DD failure to assign cells, dim: " + str(ix) + " " + str(_tmp[:])
 
         _bs.append(_tmp)
 
