@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 import os, getopt, sys, shutil, math, datetime
+import numpy as np
+from ppmd import domain
 
 runs = (
         (1,1),
@@ -8,7 +10,8 @@ runs = (
         (1,8),
         (1,16),
         (2,16),
-        (4,16)
+        (4,16),
+        (8,16)
         )
 
 
@@ -38,6 +41,39 @@ def make_config():
     else:
         print "ERROR File not found:", F
         quit()
+
+    fh = open(F, 'r')
+    F_str = fh.read()
+    fh.close()
+
+    F_str = F_str.splitlines()
+
+    N = int(F_str[0])
+    R = float(F_str[2])
+    C = float(F_str[3])
+
+
+    rho     = R
+    cutoff  = C
+    extent = [(float(N) / float(rho))**(1./3.),(float(N) / float(rho))**(1./3.),(float(N) / float(rho))**(1./3.)]
+
+
+    cell_array = np.zeros(3, dtype='int')
+    rn = cutoff * 1.1
+
+    cell_array[0] = int(extent[0] / rn)
+    cell_array[1] = int(extent[1] / rn)
+    cell_array[2] = int(extent[2] / rn)
+
+    for run in runs:
+        nproc = run[0] * run[1]
+        dims = domain._find_domain_decomp(cell_array, nproc)
+        dim_sum = dims[0] * dims[1] * dims[2]
+
+        print "Run:", run, "DD:", dims
+        assert dim_sum == nproc, "Cannot create domain decomp for: " + str(run)
+
+
 
     files = (F, 'SIMULATION_RECORD', 'CONFIG', 'CONTROL', 'FIELD', 'lammps_data.lmps', 'lammps_input.lmps')
 
