@@ -28,9 +28,11 @@ lmps_gpu = np.loadtxt(record_lmps_gpu)
 
 fig, ax = plt.subplots()
 
-p_ppmd, = plt.loglog(ppmd[::,0], ppmd[::,1], 'ro--', label='Framework')
-p_lmps, = plt.loglog(lmps[::,0], lmps[::,1], 'bs--', label='Lammps')
-p_dlpoly, = plt.loglog(dlpoly[::,0], dlpoly[::,1], 'g^--', label='DLPOLY')
+lwidth = 2.0
+
+p_ppmd, = plt.loglog(ppmd[::,0], ppmd[::,1], 'ro--', linewidth=lwidth, label='Framework')
+p_lmps, = plt.loglog(lmps[::,0], lmps[::,1], 'bs--', linewidth=lwidth, label='Lammps')
+p_dlpoly, = plt.loglog(dlpoly[::,0], dlpoly[::,1], 'g^--', linewidth=lwidth, label='DLPOLY')
 
 
 width = 1.0
@@ -57,7 +59,6 @@ plt.title("Strong scaling comparison (log-log)\n" + _sim)
 plt.xlabel("\nNumber of cores (top)\nNumber of particle pairs per core (bottom)")
 plt.ylabel("Total time taken for integration (s)")
 
-
 ymin = min( ppmd_gpu[1], lmps_gpu[1], min(ppmd[::,1]), min(lmps[::,1]), min(dlpoly[::, 1]) )
 ymax = max( ppmd_gpu[1], lmps_gpu[1], max(ppmd[::,1]), max(lmps[::,1]), max(dlpoly[::, 1]) )
 
@@ -77,8 +78,9 @@ for lx, l in enumerate(labels):
 
 ax.yaxis.grid(True, which='major')
 
-
 plt.xticks(ppmd[::,0], labels)
+
+plt.tight_layout()
 
 plt.show()
 
