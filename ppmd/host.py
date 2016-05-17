@@ -4,15 +4,22 @@ import numpy as np
 import access
 
 
-ctypes_map = {ctypes.c_double: 'double', ctypes.c_int: 'int', 'float64': 'double', 'int32': 'int',
-              'doublepointerpointer': 'double **', ctypes.c_longlong: 'long long',
+ctypes_map = {ctypes.c_double: 'double',
+              ctypes.c_int: 'int',
+              ctypes.c_long: 'long',
+              'float64': 'double',
+              'int32': 'int',
+              'doublepointerpointer': 'double **',
+              ctypes.c_longlong: 'long long',
               'doublepointer': 'double *',
-              'intpointer': 'int *'}
+              'intpointer': 'int *',
+              'longpointer': 'long *'}
 
 pointer_lookup = {ctypes.c_int: 'intpointer',
+                  ctypes.c_long: 'longpointer',
                   ctypes.c_double: 'doublepointer'}
 
-mpi_type_map = {ctypes.c_double: 'MPI_DOUBLE', ctypes.c_int: 'MPI_INT'}
+mpi_type_map = {ctypes.c_double: 'MPI_DOUBLE', ctypes.c_int: 'MPI_INT', ctypes.c_long: 'MPI_LONG'}
 
 ################################################################################################
 # Get available memory.

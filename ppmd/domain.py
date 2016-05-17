@@ -346,6 +346,7 @@ def _find_domain_decomp(global_cell_array=None, nproc=None):
         else:
             _factors.sort(reverse=True)
             _q = len(_factors) / 3
+            #print _q, _factors[0:_q:], _factors[_q:2 * _q:], _factors[2*_q::]
             _NP = []
             _NP.append(reduce(lambda x, y: x * y, _factors[0:_q:]))
             _NP.append(reduce(lambda x, y: x * y, _factors[_q:2 * _q:]))

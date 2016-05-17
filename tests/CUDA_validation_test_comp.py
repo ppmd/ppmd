@@ -313,17 +313,40 @@ if __name__ == '__main__':
 
         vv1.execute(n=sim1.state.d_positions.npart)
 
-
+        '''
         # boundary conditions here.
         BC_flag.zero()
         _one_process_pbc_lib.execute(n=sim1.state.d_positions.npart,
-                                     static_args={'E0':ctypes.c_double(_E.dat[0]), 'E1':ctypes.c_double(_E.dat[1]), 'E2':ctypes.c_double(_E.dat[2])})
+                                     static_args={'E0':ctypes.c_double(_E.dat[0]),
+                                                  'E1':ctypes.c_double(_E.dat[1]),
+                                                  'E2':ctypes.c_double(_E.dat[2])})
+
+
         cuda_runtime.cuda_mem_cpy(h_BC_flag.ctypes_data, BC_flag.ctypes_data, ctypes.c_size_t(ctypes.sizeof(ctypes.c_int)), 'cudaMemcpyDeviceToHost')
+
+
 
         if ((ix % 10) == 0) or (h_BC_flag.dat[0] > 0):
             COM.sort()
         sim1.state.d_positions.halo_exchange()
         if ((ix % 10) == 0) or (h_BC_flag.dat[0] > 0):
+            neighbour_list.update()
+        '''
+
+
+
+
+        if (ix % 10) == 0:
+            BC_flag.zero()
+            _one_process_pbc_lib.execute(n=sim1.state.d_positions.npart,
+                                         static_args={'E0':ctypes.c_double(_E.dat[0]),
+                                                      'E1':ctypes.c_double(_E.dat[1]),
+                                                      'E2':ctypes.c_double(_E.dat[2])})
+
+            COM.sort()
+
+        sim1.state.d_positions.halo_exchange()
+        if (ix % 10) == 0:
             neighbour_list.update()
 
 
@@ -331,6 +354,11 @@ if __name__ == '__main__':
         pair_loop.execute(n=sim1.state.d_positions.npart)
 
         vv2.execute(n=sim1.state.d_positions.npart)
+
+
+
+
+
 
         if ix == 0:
             sim1.state.d_k.zero()
@@ -341,6 +369,11 @@ if __name__ == '__main__':
             print sim1.state.h_k.dat[0], 0.5 * sim1.state.h_u.dat[0], sim1.state.h_k.dat[0] + 0.5 * sim1.state.h_u.dat[0]
 
         per_printer.tick()
+
+
+
+
+
 
     sim1.state.d_k.zero()
     ke.execute(n=sim1.state.d_positions.npart)

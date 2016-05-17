@@ -131,6 +131,18 @@ def make_run():
         make_jobscript('dlpoly_' + str(run[0]) + '_' + str(run[1]),
                        folder_name,'DLPOLY.Z',run[0],run[1], 4*time_est)
 
+    folders = (os.path.join(cwd, 'run_1_1'),
+               os.path.join(cwd, 'run_1_4'),
+               os.path.join(cwd, 'run_1_8'))
+
+
+    time_est = int(math.ceil (float(time_base) * 2.0 ))
+
+    make_combo_jobscript('ppmd_1_148', cwd, folders, 'python ../validation_test_timing.py', time_est, acc="free")
+    make_combo_jobscript('lmps_1_148', cwd, folders, 'python ../validation_test_timing.py', time_est, acc="free")
+    make_combo_jobscript('dlpoly_1_148', cwd, folders, 'python ../validation_test_timing.py', 4*time_est, acc="free")
+
+
 def make_jobscript(se, wd, cmd, nn, nc, et, acc="free"):
     """
     :arg se: script extension, append jobscript name
@@ -209,7 +221,87 @@ mpirun -n $SLURM_NTASKS $EXEC
     _fh.write(base)
     _fh.close()
 
+def make_combo_jobscript(se, wd, wdirs, cmd, et, acc="free"):
+    """
+    :arg se: script extension, append jobscript name
+    :arg wd: working directory for job
+    :arg cmd: command to execute with mpirun
+    :arg et: estimated time for job (minutes)
+    :arg acc: account to use (default "free")
+    """
 
+    _time = datetime.timedelta(minutes=et+2)
+    _time = datetime.datetime(1,1,1) + _time
+
+    ET = "%02d:%02d:%02d" % (_time.hour, _time.minute, _time.second)
+
+    _d = {'WD': str(wd),
+          'CMD': str(cmd),
+          'ET': str(ET),
+          'ACC': str(acc),
+          'WD1': str(wdirs[0]),
+          'WD4': str(wdirs[1]),
+          'WD8': str(wdirs[2])
+         }
+
+
+    base = '''#!/bin/bash
+
+# set the account to be used for the job
+#SBATCH --account=%(ACC)s
+
+export EXEC="%(CMD)s"
+
+#SBATCH --workdir="%(WD)s"
+
+#export vars
+#SBATCH --export=ALL
+
+NAME="$SLURM_JOBID"
+
+# set name of job
+#SBATCH --job-name=ppmd_test
+#SBATCH --output=job.%%J.out
+#SBATCH --error=job.%%J.err
+
+# set the number of nodes
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=16
+
+#use gpus
+#SBATCH --partition=batch-all
+##SBATCH --constraint=k20x
+
+# set max wallclock time
+####SBATCH --time=00:05:00
+#SBATCH --time=%(ET)s
+
+
+#print info
+echo "Starting at `date`"
+echo "Running on hosts: $SLURM_NODELIST"
+echo "Running on $SLURM_NNODES nodes."
+echo "Running on $SLURM_NPROCS processors."
+echo "Current working directory is `pwd`"
+echo "$SLURM_SUBMIT_DIR"
+echo "mpirun -np $SLURM_NTASKS $EXEC"
+
+
+# run the application
+
+mpirun -wdir %(WD1)s -np 1 numactl --cpunodebind=0 $EXEC &
+mpirun -wdir %(WD4)s -np 4 numactl --cpunodebind=0 $EXEC &
+mpirun -wdir %(WD8)s -np 8 numactl --cpunodebind=1 $EXEC &
+
+
+wait $(pgrep mpirun)
+''' % _d
+
+    # end of base jobscript
+
+    _fh = open(os.path.join(jobscript_dir, 'jobscript_' + str(se)),'w')
+    _fh.write(base)
+    _fh.close()
 
 if __name__ == "__main__":
     make_run()

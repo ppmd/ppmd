@@ -6,10 +6,13 @@ Optimisation and profiling tools
 import ctypes
 from mpi4py.MPI import SUM
 import numpy as np
+import time
 
 # package level imports
 import build
 import mpi
+import runtime
+import pio
 
 def get_timer_accuracy():
 
@@ -115,7 +118,40 @@ class LoopTimer(object):
         return ctypes.byref(self._time)
 
 
+class SynchronizedTimer(runtime.Timer):
 
+    def start(self):
+        """
+        Start the timer.
+        """
+        mpi.MPI_HANDLE.barrier()
+        if (self._lo.level > self._l) and (self._running is False):
+            self._ts = time.time()
+            self._running = True
 
+    def pause(self):
+        """
+        Pause the timer.
+        """
+        mpi.MPI_HANDLE.barrier()
+        if (self._lo.level > self._l) and (self._running is True):
+            self._tt += time.time() - self._ts
+            self._ts = 0.0
+            self._running = False
 
+    def stop(self, str=''):
+        """
+        Stop timer and print time.
+        :arg string str: string to append after time. If None time printing will be suppressed.
+        """
+        mpi.MPI_HANDLE.barrier()
+        if (self._lo.level > self._l) and (self._running is True):
+            self._tt += time.time() - self._ts
 
+        if self._lo.level > self._l:
+            pio.pprint(self._tt, "s :", str)
+
+        self._ts = 0.0
+        self._tt = 0.0
+
+        self._running = False

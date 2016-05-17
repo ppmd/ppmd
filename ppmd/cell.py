@@ -874,7 +874,7 @@ class NeighbourListv2(NeighbourList):
 
         # assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
 
-        self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_int)
+        self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_long)
 
         _n = n()
         if _n < 10:
@@ -886,7 +886,10 @@ class NeighbourListv2(NeighbourList):
             _initial_factor = 10
 
 
-        self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_int)
+        # print "initial_factor", _initial_factor, 15., (_n**2), domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]
+
+        self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_long)
+
 
         self.list = host.Array(ncomp=_initial_factor, dtype=ct.c_int)
 
@@ -906,7 +909,7 @@ class NeighbourListv2(NeighbourList):
 
 
         const double cutoff = CUTOFF[0];
-        const int max_len = MAX_LEN[0];
+        const long max_len = MAX_LEN[0];
 
         const int _h_map[14][3] = {
                                             { 0 , 0 , 0 },
@@ -983,7 +986,7 @@ class NeighbourListv2(NeighbourList):
 
 
         // loop over particles
-        int m = -1;
+        long m = -1;
         for (int ix=0; ix<end_ix; ix++) {
 
             const double pi0 = P[ix*3];

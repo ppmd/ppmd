@@ -480,6 +480,7 @@ class PairLoopNeighbourList(_Base):
             print "pairloop error, no kernel passed."
 
         self.loop_timer = opt.LoopTimer()
+        self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
 
         # Init code
         self._kernel_code = self._kernel.code
@@ -513,7 +514,7 @@ class PairLoopNeighbourList(_Base):
 
         #include "%(LIB_DIR)s/generic.h"
 
-        extern "C" void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* %(RESTRICT)s START_POINTS, const int* %(RESTRICT)s NLIST, %(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const long* %(RESTRICT)s START_POINTS, const int* %(RESTRICT)s NLIST, %(ARGUMENTS)s);
 
         '''
         d = {'INCLUDED_HEADERS': self._included_headers(),
@@ -553,15 +554,14 @@ class PairLoopNeighbourList(_Base):
         self._code = '''
         #include <stdio.h>
 
-        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* %(RESTRICT)s START_POINTS, const int* %(RESTRICT)s NLIST, %(ARGUMENTS)s) {
+        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const long* %(RESTRICT)s START_POINTS, const int* %(RESTRICT)s NLIST, %(ARGUMENTS)s) {
 
 
             %(LOOP_TIMER_PRE)s
 
 
             for(int _i = 0; _i < N_LOCAL; _i++){
-                //for(int _k = START_POINTS[_i+1]-1; _k >= START_POINTS[_i]; _k--){
-                for(int _k = START_POINTS[_i]; _k < START_POINTS[_i+1]; _k++){
+                for(long _k = START_POINTS[_i]; _k < START_POINTS[_i+1]; _k++){
                     int _j = NLIST[_k];
                     int _cpp_halo_flag;
                     int _cp_halo_flag = 0;
@@ -652,7 +652,9 @@ class PairLoopNeighbourList(_Base):
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
 
+        self.wrapper_timer.start()
         method(*args)
+        self.wrapper_timer.pause()
 
         '''afterwards access descriptors'''
         for dat_orig in self._particle_dat_dict.values():

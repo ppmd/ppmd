@@ -28,6 +28,7 @@ import data
 import runtime
 import pio
 import mpi
+import opt
 np.set_printoptions(threshold='nan')
 
 
@@ -57,7 +58,7 @@ class VelocityVerlet(object):
         self._sim = simulation
         self._state = self._sim.state
 
-        self.timer = runtime.Timer(runtime.TIMER, 0)
+        self.timer = opt.SynchronizedTimer(runtime.TIMER)
         
         self._domain = self._state.domain
         self._N = self._state.n
