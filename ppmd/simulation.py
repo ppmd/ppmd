@@ -82,7 +82,13 @@ class BaseMDSimulation(object):
 
         if domain_boundary_condition is None:
             self._boundary_method = domain.BoundaryTypePeriodic()
+
         self._boundary_method.set_state(self.state)
+
+
+
+
+
 
         # Add particle dats
         _factor = 1
@@ -109,6 +115,10 @@ class BaseMDSimulation(object):
 
         self.state.domain = domain_in
 
+        self.state.domain.boundary_condition = self._boundary_method
+
+
+
         # Initialise domain extent
         particle_pos_init.get_extent(self.state)
 
@@ -121,14 +131,6 @@ class BaseMDSimulation(object):
 
         self.state._cell_particle_map_setup()
 
-
-        cell.cell_list.setup_pre_update(self.execute_boundary_conditions)
-        cell.cell_list.setup_update_tracking(self._determine_update_status)
-        cell.cell_list.setup_callback_on_update(self._reset_moved_distance)
-
-
-        #halo.HALOS = halo.CartesianHalo()
-        #halo.HALOS = halo.CartesianHaloSix()
 
 
         # Initialise positions

@@ -43,6 +43,9 @@ class BaseDomainHalo(object):
 
         self._halos = True
 
+
+        self.boundary_condition = None
+
         #vars to return boudary cells
         self._boundary_cell_version = -1
         self._boundary_cells = None

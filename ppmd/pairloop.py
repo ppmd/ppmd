@@ -606,8 +606,8 @@ class PairLoopNeighbourList(_Base):
         """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
-
-        cell.cell_list.check()
+        cell2part = self._group.get_cell_to_particle_map()
+        cell2part.check()
 
         '''Allow alternative pointers'''
         if dat_dict is not None:
@@ -638,13 +638,10 @@ class PairLoopNeighbourList(_Base):
 
         '''Rebuild neighbour list potentially'''
         self._invocations += 1
-        if cell.cell_list.version_id > self.neighbour_list.version_id:
-            #print "BEFORE list| cell id", cell.cell_list.version_id, "neigh id", self.neighbour_list.version_id
+        if cell2part.version_id > self.neighbour_list.version_id:
+            print "rebuilding neighbour list"
             self.neighbour_list.update()
             self._neighbourlist_count += 1
-            #print "AFTER list| cell id", cell.cell_list.version_id, "neigh id", self.neighbour_list.version_id
-            #self.neighbour_list_v2.update()
-            #self.neighbour_matrix.update()
 
 
 

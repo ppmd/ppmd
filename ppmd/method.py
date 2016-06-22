@@ -15,14 +15,18 @@ try:
 except ImportError:
     _GRAPHICS = False
 
+# system level
 import collections
-import kernel
 import ctypes
-import time
 import os
 import re
 import datetime
 import inspect
+from mpi4py import MPI
+
+# package level
+import kernel
+import time
 import build
 import data
 import runtime
@@ -58,6 +62,8 @@ class CellListUpdateController(object):
         self._test_count = 0
         self._step_counter = 0
 
+        self.boundary_method_timer = runtime.Timer(runtime.TIMER, 0)
+
     def increment_step_count(self):
         self._step_counter += 1
 
@@ -71,6 +77,17 @@ class CellListUpdateController(object):
             return self._dt * self._velocity_dat.max()
         else:
             return 0.0
+
+    def pre_update(self):
+        """
+        called after it is determined that an update is happening
+        :return:
+        """
+        self._execute_boundary_conditions()
+
+    def post_update(self):
+        self._reset_moved_distance()
+
 
     def determine_update_status(self):
         """
@@ -90,21 +107,21 @@ class CellListUpdateController(object):
         _ret = 0
 
 
-        #print self._test_count, self.state.invalidate_lists
+        print self._test_count, self._state.invalidate_lists
         if (self._moved_distance >= 0.5 * self._delta) or \
-                (self._state.version_id % 10 == 0) or \
+                (self._step_counter % 10 == 0) or \
                 self._state.invalidate_lists:
 
             _ret = 1
 
         _ret_old = _ret
 
-        _tmp = np.array([_ret], dtype=ct.c_int)
+        _tmp = np.array([_ret], dtype=ctypes.c_int)
         mpi.MPI_HANDLE.comm.Allreduce(_tmp, _tmp, op=MPI.LOR)
         _ret = _tmp[0]
 
         if _ret_old == 1 and _ret != 1:
-            print "update status reduction error, rank:", mpi.MPI_HANDLE.rank
+            print "update status reductypes.on error, rank:", mpi.MPI_HANDLE.rank
 
 
         return bool(_ret)
@@ -113,6 +130,31 @@ class CellListUpdateController(object):
         self._test_count = 0
         self._moved_distance = 0.0
         self._state.invalidate_lists = False
+
+
+    def _execute_boundary_conditions(self):
+        """
+        Execute the boundary conditions for the simulation.
+        """
+
+        if self._state.domain.boundary_condition is not None:
+
+            self.boundary_method_timer.start()
+
+            flag = self._state.domain.boundary_condition.apply()
+            if flag > 0:
+                # print "invalidating lists on BCs"
+                self._state.invalidate_lists = True
+
+            self.boundary_method_timer.pause()
+
+        else:
+            print "WARNING NO BOUNDARY CONDITION TO APPLY"
+
+
+
+
+
 
 
 
@@ -138,13 +180,16 @@ class VelocityVerlet(object):
     :arg bool DEBUG: Flag to enable debug flags.
     """
     
-    def __init__(self, dt=0.0001, t=0.01, simulation=None, schedule=None):
+    def __init__(self, dt=0.0001, t=0.01, simulation=None, schedule=None, shell_tickness=0.0):
     
         self._dt = dt
         self._T = t
 
         self._sim = simulation
         self._state = self._sim.state
+
+        self._delta = shell_tickness
+
 
         self.timer = opt.SynchronizedTimer(runtime.TIMER)
         
@@ -177,6 +222,23 @@ class VelocityVerlet(object):
 
         self._p1 = None
         self._p2 = None
+
+
+        #### NEW
+
+        self._update_controller = CellListUpdateController(self._state,
+                                                           step_count=10,
+                                                           velocity_dat=self._state.velocities,
+                                                           timestep=self._dt,
+                                                           shell_thickness=self._delta
+                                                           )
+
+        _suc = self._update_controller
+
+        self._state.get_cell_to_particle_map().setup_pre_update(_suc.pre_update)
+        self._state.get_cell_to_particle_map().setup_update_tracking(_suc.determine_update_status)
+        self._state.get_cell_to_particle_map().setup_callback_on_update(_suc.post_update)
+
 
     @property
     def timer1(self):
@@ -214,7 +276,11 @@ class VelocityVerlet(object):
 
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
         self._p2 = loop.ParticleLoop(self._N, self._state.types,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
-        
+
+
+
+
+
         print "ATTEMPTING BC execute"
         self._sim.execute_boundary_conditions()
 
@@ -247,7 +313,10 @@ class VelocityVerlet(object):
             self._p2.execute(self._state.n)
 
             self._sim.kinetic_energy_update()
-            self._state.time += self._dt
+
+            #self._state.time += self._dt
+            self._update_controller.increment_step_count()
+
 
             if self._schedule is not None:
                 self._schedule.tick()

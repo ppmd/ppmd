@@ -66,12 +66,13 @@ if __name__ == '__main__':
         rho = 2.0
         mu = 1.0
         nsig = 2.0
+        rc = 2.5
         
         # Initialise basic domain
         test_domain = domain.BaseDomainHalo()
 
         # Initialise LJ potential
-        test_potential = potential.LennardJones(sigma=1.0, epsilon=1.0, rc=2.5)
+        test_potential = potential.LennardJones(sigma=1.0, epsilon=1.0, rc=rc)
         #test_potential = potential.TestPotential2(sigma=1.0,epsilon=1.0, rc=7.5)
         #test_potential = potential.TestPotential3(sigma=1.0,epsilon=1.0, rc=7.5)
 
@@ -192,7 +193,9 @@ if __name__ == '__main__':
 
     # Create an integrator for above state class.
 
-    test_integrator = method.VelocityVerlet(simulation = sim1, schedule=schedule)
+    test_integrator = method.VelocityVerlet(simulation = sim1,
+                                            schedule=schedule,
+                                            shell_tickness=0.1*rc)
 
 
 
