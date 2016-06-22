@@ -89,7 +89,7 @@ class _Base(object):
 
             # if the symbol is a particle dat then the first index and only
             # index maps into the correct column.
-            if type(dat[1]) == data.ParticleDat:
+            if issubclass(type(dat[1]), data.ParticleDat):
                 ncomp = dat[1].ncomp
                 _map += '#define ' + loc_argname + '(x) ' + argname + '[' + generation.get_first_index_symbol() + '*' + str(ncomp) + ' + (x)]' + _nl
 

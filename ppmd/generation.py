@@ -103,6 +103,8 @@ def generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None
         _c = build.Code()
         _c += '#undef ' + symbol_internal + _nl
 
+
+
         _ncomp = str(dat.ncol)
 
         if pair:

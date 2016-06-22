@@ -83,7 +83,7 @@ class CellListUpdateController(object):
         called after it is determined that an update is happening
         :return:
         """
-        self._execute_boundary_conditions()
+        self.execute_boundary_conditions()
 
     def post_update(self):
         self._reset_moved_distance()
@@ -107,9 +107,9 @@ class CellListUpdateController(object):
         _ret = 0
 
 
-        print self._test_count, self._state.invalidate_lists
+        print self._test_count, self._state.invalidate_lists, self._moved_distance
         if (self._moved_distance >= 0.5 * self._delta) or \
-                (self._step_counter % 10 == 0) or \
+                (self._step_counter % self._step_count == 0) or \
                 self._state.invalidate_lists:
 
             _ret = 1
@@ -132,7 +132,7 @@ class CellListUpdateController(object):
         self._state.invalidate_lists = False
 
 
-    def _execute_boundary_conditions(self):
+    def execute_boundary_conditions(self):
         """
         Execute the boundary conditions for the simulation.
         """
@@ -227,7 +227,7 @@ class VelocityVerlet(object):
         #### NEW
 
         self._update_controller = CellListUpdateController(self._state,
-                                                           step_count=10,
+                                                           step_count=1,
                                                            velocity_dat=self._state.velocities,
                                                            timestep=self._dt,
                                                            shell_thickness=self._delta
@@ -278,11 +278,8 @@ class VelocityVerlet(object):
         self._p2 = loop.ParticleLoop(self._N, self._state.types,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
 
 
-
-
-
         print "ATTEMPTING BC execute"
-        self._sim.execute_boundary_conditions()
+        self._update_controller.execute_boundary_conditions()
 
         print "ATTEMPTING force update"
         self._sim.forces_update()

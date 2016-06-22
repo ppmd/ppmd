@@ -92,8 +92,7 @@ class BaseMDSimulation(object):
 
         # Add particle dats
         _factor = 1
-        self.state.positions = data.ParticleDat(n, 3, name='positions', max_npart=_factor * n)
-        self.state.positions2 = data.PositionDat(n, 3, name='positions2', max_npart=_factor * n)
+        self.state.positions = data.PositionDat(n, 3, name='positions', max_npart=_factor * n)
         self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
         self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
         self.state.global_ids = data.ParticleDat(n, 1, dtype=ct.c_int, name='global_ids', max_npart=_factor * n)
@@ -126,11 +125,7 @@ class BaseMDSimulation(object):
         self._cell_structure = self.state.domain.set_cell_array_radius(self._cell_width)
 
         # Initialise cell list
-        # cell.cell_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain)
-        # Setup callbacks
-
         self.state._cell_particle_map_setup()
-
 
 
         # Initialise positions
@@ -158,15 +153,6 @@ class BaseMDSimulation(object):
 
 
         if self._cell_structure and self.potential is not None and not setup_only:
-            # Need to pass entire state such that all particle dats can be sorted.
-            #cell.group_by_cell.setup(self.state)
-
-            # TODO remove these two lines when creating access descriptors.
-            # cell.cell_list.sort()
-            # cell.group_by_cell.group_by_cell()
-
-            # cell.cell_list.trigger_update()
-
 
 
             # If domain has halos TODO, if when domain gets moved etc
@@ -195,65 +181,7 @@ class BaseMDSimulation(object):
 
         self._kinetic_energy_lib = None
 
-    def _get_max_moved_distance(self):
-        """
-        Get the maxium distance moved by a particle. First call will always be incorrect
-        :return:
-        """
 
-        _dt = self.state.time - self._prev_time
-
-        self._prev_time = self.state.time
-
-        if self.state.n > 0:
-            #print self.state.velocities.dat[0:self.state.n:].max(), np.argmax(self.state.velocities.dat[0:self.state.n:])
-            return _dt * self.state.velocities.dat[0:self.state.n:].max()
-        else:
-            return 0.0
-
-    def _determine_update_status(self):
-        """
-        Return true if update of cell list and neighbour list is needed.
-        :return:
-        """
-
-        # force update
-        # self.state.invalidate_lists = True
-
-
-        self._test_count += 1
-        self._moved_distance += self._get_max_moved_distance()
-
-        if self._moved_distance >= 0.5 * self._delta * self._cutoff:
-            print "RANK %(RK)s  WARNING PARTICLE MOVED TOO FAR, rank:" % {'RK':mpi.MPI_HANDLE.rank}, mpi.MPI_HANDLE.rank, "distance", self._moved_distance, "times reused", self._test_count, "dist:", 0.5 * self._delta * self._cutoff
-
-        _ret = 0
-
-
-        #print self._test_count, self.state.invalidate_lists
-        if (self._moved_distance >= 0.5 * self._delta * self._cutoff) or \
-                (self.state.version_id % 10 == 0) or \
-                self.state.invalidate_lists:
-
-            _ret = 1
-
-        _ret_old = _ret
-
-        _tmp = np.array([_ret], dtype=ct.c_int)
-        mpi.MPI_HANDLE.comm.Allreduce(_tmp, _tmp, op=MPI.LOR)
-        _ret = _tmp[0]
-
-        if _ret_old == 1 and _ret != 1:
-            print "update status reduction error, rank:", mpi.MPI_HANDLE.rank
-
-        # assert bool(_ret) is True, "d"
-
-        return bool(_ret)
-
-    def _reset_moved_distance(self):
-        self._test_count = 0
-        self._moved_distance = 0.0
-        self.state.invalidate_lists = False
 
     def forces_update(self):
         """
@@ -303,18 +231,7 @@ class BaseMDSimulation(object):
 
         return self.state.k.dat
 
-    def execute_boundary_conditions(self):
-        """
-        Execute the boundary conditions for the simulation.
-        """
-        self.boundary_method_timer.start()
 
-        flag = self._boundary_method.apply()
-        if flag > 0:
-            # print "invalidating lists on BCs"
-            self.state.invalidate_lists = True
-
-        self.boundary_method_timer.pause()
 
 
 
