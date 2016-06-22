@@ -39,7 +39,6 @@ class CellList(object):
         # positions init
         self._positions = None
 
-        self._cell_width = None
 
         #function handle to get number of local particles from state
         self._n = None
@@ -49,7 +48,7 @@ class CellList(object):
         self._cell_sort_lib = None
         self._halo_cell_sort_loop = None
 
-        self.halos_exist = False
+        self.halos_exist = True
 
         self.update_required = True
 
@@ -74,11 +73,11 @@ class CellList(object):
         :return:
         """
 
-        assert (None in (self._n, self._positions, self._domain, self._cell_width)) is False, "get_setup_parameters Error: cell list not setup."
-        return self._n, self._positions, self._domain, self._cell_width
+        assert (None in (self._n, self._positions, self._domain)) is False, "get_setup_parameters Error: cell list not setup."
+        return self._n, self._positions, self._domain
 
 
-    def setup(self, n, positions, domain, cell_width):
+    def setup(self, n, positions, domain):
         """
         Setup the cell list with a set of positions and a domain.
         :param n: Function handle to get number of local particles.
@@ -90,19 +89,10 @@ class CellList(object):
         self._n = n
         self._positions = positions
         self._domain = domain
-        self._cell_width = cell_width
-        
-
-        # partition domain.
-        _err = self._domain.set_cell_array_radius(cell_width)
 
         # setup methods to sort into cells.
         self._cell_sort_setup()
-
-        if (_err is True) and (self._domain.halos is not False):
-            self.halos_exist = True
-
-        return _err
+        return
 
     def setup_update_tracking(self, func):
         """
@@ -121,6 +111,9 @@ class CellList(object):
         self._update_func_post = func
 
     def _update_tracking(self):
+
+        if self._update_func is None:
+            return True
 
         if self._update_set and self._update_func():
             return True
@@ -145,6 +138,10 @@ class CellList(object):
         Check if the cell_list needs updating and update if required.
         :return:
         """
+
+        if not self._init:
+            return True
+
 
         if (self.update_required is True) or self._update_tracking():
 
@@ -235,6 +232,8 @@ class CellList(object):
         _cell_sort_kernel = kernel.Kernel('cell_class_cell_list_method', _cell_sort_code, headers=['stdio.h'], static_args=_static_args)
         self._cell_sort_lib = build.SharedLib(_cell_sort_kernel, _dat_dict)
 
+        self._init = True
+
     def trigger_update(self):
         """
         Trigger an update of the cell list.
@@ -247,20 +246,27 @@ class CellList(object):
         Sort local particles into cell list.
         :return:
         """
-        self.timer_sort.start()
+        if self._init:
 
-        _n = self._cell_list.end - self._domain.cell_count
+            self.timer_sort.start()
 
-        self._cell_list[self._cell_list.end] = _n
-        self._cell_list.dat[_n:self._cell_list.end:] = ct.c_int(-1)
-        self._cell_contents_count.zero()
+            _n = self._cell_list.end - self._domain.cell_count
 
-        self._cell_sort_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
+            self._cell_list[self._cell_list.end] = _n
+            self._cell_list.dat[_n:self._cell_list.end:] = ct.c_int(-1)
+            self._cell_contents_count.zero()
 
-        self.version_id += 1
-        self.update_required = False
+            self._cell_sort_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
 
-        self.timer_sort.pause()
+            self.version_id += 1
+            self.update_required = False
+
+            self.timer_sort.pause()
+
+        else:
+            print "CELL LIST NOT INITIALISED"
+
+
 
     @property
     def cell_list(self):
@@ -423,8 +429,6 @@ class CellList(object):
         self.timer_sort.pause()
 
 
-
-
     @property
     def num_particles(self):
         """
@@ -440,18 +444,11 @@ class CellList(object):
         return self._positions.npart_total
 
     @property
-    def num_cells(self):
-        """
-        Get the number of cells.
-        """
-        return self._domain.cell_count
-
-    @property
     def cell_width(self):
         """
         Return the cell width used to setup the cell structure. N.B. cells may be larger than this.
         """
-        return self._cell_width
+        return self._domain.cell_edge_lengths[0]
 
 
 
@@ -459,7 +456,9 @@ class CellList(object):
 
 
 # default cell list
-cell_list = CellList()
+#cell_list = CellList()
+
+#print "default cell list is", cell_list
 
 def reset_cell_list():
     global cell_list
@@ -620,12 +619,12 @@ group_by_cell = GroupByCell()
 
 class NeighbourList(object):
 
-    def __init__(self, list=cell_list):
+    def __init__(self, list=None):
 
         # timer inits
         self.timer_update = runtime.Timer(runtime.TIMER, 0)
 
-        self.cell_list = cell_list
+        self.cell_list = list
         self.max_len = None
         self.list = None
         self.lib = None
@@ -862,6 +861,7 @@ class NeighbourListv2(NeighbourList):
     def setup(self, n, positions, domain, cell_width):
 
         # setup the cell list if not done already (also handles domain decomp)
+        # TODO remove...
         if self.cell_list.cell_list is None:
             self.cell_list.setup(n, positions, domain, cell_width)
 
@@ -1138,7 +1138,7 @@ class NeighbourListv2(NeighbourList):
 
 class NeighbourMatrix(object):
 
-    def __init__(self, list=cell_list):
+    def __init__(self, list=None):
 
         # timer inits
         self.timer_update = runtime.Timer(runtime.TIMER, 0)
@@ -1430,7 +1430,7 @@ class NeighbourMatrix(object):
 
 class NeighbourListHaloAware(object):
 
-    def __init__(self, list=cell_list):
+    def __init__(self, list=None):
         self.cell_list = cell_list
         self.max_len = None
         self.list = None
@@ -2018,7 +2018,7 @@ class CellLayerSort(object):
         assert list_in is not None, "CellLayerSort setup error: no CellList passed."
         self._cell_list = list_in
         self.particle_layers = host.Array(ncomp=self._cell_list.num_particles, dtype=ct.c_int)
-        self.cell_occupancy_matrix = host.Array(ncomp=self._cell_list.num_cells, dtype=ct.c_int)
+        self.cell_occupancy_matrix = host.Array(ncomp=self._cell_list.domain.cell_count, dtype=ct.c_int)
 
 
         _code = '''
@@ -2092,7 +2092,7 @@ class CellLayerSort(object):
         assert self._lib is not None, "CellLayerSort error: setup not ran or failed."
         assert self._lib2 is not None, "CellLayerSort error: setup not ran or failed."
 
-        _Nc = self._cell_list.num_cells
+        _Nc = self._cell_list.domain.cell_count
         _CL_start = ct.c_int(self._cell_list.cell_list[self._cell_list.cell_list.end])
 
         _Nc = ct.c_int(_Nc)
@@ -2104,14 +2104,14 @@ class CellLayerSort(object):
 
         self._lib.execute(static_args={'Nc': _Nc, 'CL_start': _CL_start})
 
-        _Lm = self._cell_list.cell_contents_count.dat[0:self._cell_list.num_cells:].max()
+        _Lm = self._cell_list.cell_contents_count.dat[0:self._cell_list.domain.cell_count:].max()
 
         self.num_layers = _Lm
 
         _Na = ct.c_int(self._cell_list.total_num_particles)
 
-        if self.cell_occupancy_matrix.ncomp < (_Lm + 1) * self._cell_list.num_cells:
-            self.cell_occupancy_matrix.realloc((_Lm + 1) * self._cell_list.num_cells)
+        if self.cell_occupancy_matrix.ncomp < (_Lm + 1) * self._cell_list.domain.cell_count:
+            self.cell_occupancy_matrix.realloc((_Lm + 1) * self._cell_list.domain.cell_count)
         _Lm = ct.c_int(_Lm)
 
         _statics2 = {'Na': _Na, 'Nc': _Nc, 'Lm': _Lm}
@@ -2314,7 +2314,7 @@ class NeighbourListLayerBased(object):
 
 class NeighbourListPairIndices(object):
 
-    def __init__(self, list=cell_list):
+    def __init__(self, list=None):
         self.cell_list = cell_list
         self.max_len = None
 

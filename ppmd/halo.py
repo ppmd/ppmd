@@ -3,8 +3,7 @@
 import ctypes
 import numpy as np
 
-import cell
-import kernel
+# package level
 import build
 import runtime
 import mpi
@@ -102,10 +101,14 @@ def create_halo_pairs_slice_halo(domain_in, slicexyz, direction):
 
 class CartesianHaloSix(object):
 
-    def __init__(self):
+    def __init__(self, domain_func, cell_list):
         self._timer = runtime.Timer(runtime.TIMER, 0, start=True)
         
-        self._domain = cell.cell_list.domain
+        self._domain_func = domain_func
+        self._domain = None
+
+        self._cell_list = cell_list
+
         self._ca_copy = [None, None, None]
 
         self._version = -1
@@ -148,7 +151,6 @@ class CartesianHaloSix(object):
         self._exchange_sizes_lib = None
 
 
-
     def _setup(self):
         """
         Internally setup the libraries for the calculation of exchange sizes.
@@ -157,7 +159,14 @@ class CartesianHaloSix(object):
 
         self._init = True
 
+    def _update_domain(self):
+        self._domain = self._domain_func()
+
     def _get_pairs(self):
+
+        self._update_domain()
+
+
         _cell_pairs = (
 
                 # As these are the first exchange the halos cannot contain anything useful
@@ -237,7 +246,7 @@ class CartesianHaloSix(object):
         :return: Tuple, array of local cell indices to pack, array of starting
         points within the first array.
         """
-
+        self._update_domain()
         if self._version < self._domain.cell_array.version:
             self._get_pairs()
 
@@ -253,7 +262,7 @@ class CartesianHaloSix(object):
         :return: Tuple, array of local halo cell indices to unpack into, array
         of starting points within the first array.
         """
-
+        self._update_domain()
         if self._version < self._domain.cell_array.version:
             self._get_pairs()
 
@@ -282,7 +291,7 @@ class CartesianHaloSix(object):
         Calculate flag to determine if a boundary between processes is also
         a boundary in domain.
         """
-
+        self._update_domain()
         if self._version < self._domain.cell_array.version:
             self._get_pairs()
 
@@ -292,7 +301,7 @@ class CartesianHaloSix(object):
         """
         Get the mpi ranks to send to.
         """
-
+        self._update_domain()
         if self._version < self._domain.cell_array.version:
             self._get_pairs()
 
@@ -302,7 +311,7 @@ class CartesianHaloSix(object):
         """
         Get the mpi ranks to recv from.
         """
-
+        self._update_domain()
         if self._version < self._domain.cell_array.version:
             self._get_pairs()
 
@@ -318,7 +327,7 @@ class CartesianHaloSix(object):
         occupancy counts if multiple ParticleDat objects are being
         communicated.
         """
-
+        self._update_domain()
         if self._exchange_sizes_lib is None:
 
             _es_args = '''
@@ -453,7 +462,7 @@ class CartesianHaloSix(object):
                                  self._boundary_groups_start_end_indices.ctypes_data,
                                  self._halo_cell_groups.ctypes_data,
                                  self._boundary_cell_groups.ctypes_data,
-                                 cell.cell_list.cell_contents_count.ctypes_data,
+                                 self._cell_list.cell_contents_count.ctypes_data,
                                  ctypes.byref(self._h_count),
                                  ctypes.byref(self._t_count),
                                  self._h_tmp.ctypes_data,

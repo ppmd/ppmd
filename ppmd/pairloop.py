@@ -458,11 +458,13 @@ class PairLoopRapaportHalo(_Base):
 ###############################################################################
 
 class PairLoopNeighbourList(_Base):
-    def __init__(self, potential=None, dat_dict=None, kernel=None):
+    def __init__(self, potential=None, dat_dict=None, kernel=None, shell_cutoff=None):
 
         self._potential = potential
         self._particle_dat_dict = dat_dict
         self._cc = build.TMPCC
+        self.rc = None
+        self.rn = None
 
         ##########
         # End of Rapaport initialisations.
@@ -479,6 +481,9 @@ class PairLoopNeighbourList(_Base):
         else:
             print "pairloop error, no kernel passed."
 
+        self._rn = shell_cutoff
+
+
         self.loop_timer = opt.LoopTimer()
         self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
 
@@ -491,14 +496,23 @@ class PairLoopNeighbourList(_Base):
                                              self._kernel.name,
                                              CC=self._cc)
 
-        #self.neighbour_list = cell.NeighbourList()
-        #self.neighbour_list.setup(*cell.cell_list.get_setup_parameters())
+        self._group = None
 
-        self.neighbour_list = cell.NeighbourListv2()
-        self.neighbour_list.setup(*cell.cell_list.get_setup_parameters())
+        for pd in self._particle_dat_dict.items():
+            if issubclass(type(pd[1][0]), data.ParticleDat):
+                self._group = pd[1][0].group
+                break
 
-        # self.neighbour_matrix = cell.NeighbourMatrix()
-        # self.neighbour_matrix.setup(*cell.cell_list.get_setup_parameters())
+        assert self._group is not None, "No cell to particle map found"
+
+
+        self.neighbour_list = cell.NeighbourListv2(self._group.get_cell_to_particle_map())
+
+        self.neighbour_list.setup(self._group.get_n_func(),
+                                  self._group.get_position_dat(),
+                                  self._group.get_domain(),
+                                  self._rn)
+
 
         self._neighbourlist_count = 0
         self._invocations = 0

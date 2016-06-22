@@ -87,6 +87,7 @@ class BaseMDSimulation(object):
         # Add particle dats
         _factor = 1
         self.state.positions = data.ParticleDat(n, 3, name='positions', max_npart=_factor * n)
+        self.state.positions2 = data.PositionDat(n, 3, name='positions2', max_npart=_factor * n)
         self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
         self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
         self.state.global_ids = data.ParticleDat(n, 1, dtype=ct.c_int, name='global_ids', max_npart=_factor * n)
@@ -110,9 +111,16 @@ class BaseMDSimulation(object):
 
         # Initialise domain extent
         particle_pos_init.get_extent(self.state)
+
+        # decompose domain
+        self._cell_structure = self.state.domain.set_cell_array_radius(self._cell_width)
+
         # Initialise cell list
-        self._cell_structure = cell.cell_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain, self._cell_width)
+        # cell.cell_list.setup(self.state.as_func('n'), self.state.positions, self.state.domain)
         # Setup callbacks
+
+        self.state._cell_particle_map_setup()
+
 
         cell.cell_list.setup_pre_update(self.execute_boundary_conditions)
         cell.cell_list.setup_update_tracking(self._determine_update_status)
@@ -120,7 +128,7 @@ class BaseMDSimulation(object):
 
 
         #halo.HALOS = halo.CartesianHalo()
-        halo.HALOS = halo.CartesianHaloSix()
+        #halo.HALOS = halo.CartesianHaloSix()
 
 
         # Initialise positions
@@ -152,10 +160,10 @@ class BaseMDSimulation(object):
             #cell.group_by_cell.setup(self.state)
 
             # TODO remove these two lines when creating access descriptors.
-            cell.cell_list.sort()
+            # cell.cell_list.sort()
             # cell.group_by_cell.group_by_cell()
 
-            cell.cell_list.trigger_update()
+            # cell.cell_list.trigger_update()
 
 
 
@@ -163,11 +171,11 @@ class BaseMDSimulation(object):
             if type(self.state.domain) is domain.BaseDomainHalo:
 
                 if pairloop_in is None:
-                    self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,dat_dict=_potential_dat_dict)
+                    self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,dat_dict=_potential_dat_dict, shell_cutoff = self._cell_width)
                 elif pairloop_in is pairloop.PairLoopRapaportHalo:
                     self._forces_update_lib = pairloop.PairLoopRapaportHalo(potential=self.potential,dat_dict=_potential_dat_dict, domain=domain_in)
                 else:
-                    self._forces_update_lib = pairloop_in(potential=self.potential,dat_dict=_potential_dat_dict)
+                    self._forces_update_lib = pairloop_in(potential=self.potential,dat_dict=_potential_dat_dict, shell_cutoff=self._cell_width)
 
 
         # If no cell structure was created

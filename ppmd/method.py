@@ -31,21 +31,109 @@ import mpi
 import opt
 np.set_printoptions(threshold='nan')
 
+###############################################################################
+# Cell to Particle map handler for MD integrators
+###############################################################################
+class CellListUpdateController(object):
+    """
+    The framework does not assume that it is employed in a MD simulation
+    situation. This class implements cell list updating at a specific number of
+    time steps or after a maximum velocity forces an update.
+    """
+
+    def __init__(self,
+                 state_in=None,
+                 step_count=1,
+                 velocity_dat=None,
+                 timestep=None,
+                 shell_thickness=0.0):
+
+        self._state = state_in
+        self._step_count = step_count
+        self._velocity_dat = velocity_dat
+        self._dt = timestep
+        self._delta = shell_thickness
+
+        self._moved_distance = 0.0
+        self._test_count = 0
+        self._step_counter = 0
+
+    def increment_step_count(self):
+        self._step_counter += 1
+
+    def _get_max_moved_distance(self):
+        """
+        Get the maxium distance moved by a particle.
+        :return:
+        """
+
+        if self._velocity_dat.npart > 0:
+            return self._dt * self._velocity_dat.max()
+        else:
+            return 0.0
+
+    def determine_update_status(self):
+        """
+        Return true if update of cell list is needed.
+        :return:
+        """
+
+        self._test_count += 1
+        self._moved_distance += self._get_max_moved_distance()
+
+        if self._moved_distance >= 0.5 * self._delta:
+            print "RANK %(RK)s  WARNING PARTICLE MOVED TOO FAR, rank:" % \
+                  {'RK':mpi.MPI_HANDLE.rank}, mpi.MPI_HANDLE.rank, "distance",\
+                  self._moved_distance, "times reused", self._test_count, \
+                  "dist:", 0.5 * self._delta
+
+        _ret = 0
 
 
-###############################################################################################################
+        #print self._test_count, self.state.invalidate_lists
+        if (self._moved_distance >= 0.5 * self._delta) or \
+                (self._state.version_id % 10 == 0) or \
+                self._state.invalidate_lists:
+
+            _ret = 1
+
+        _ret_old = _ret
+
+        _tmp = np.array([_ret], dtype=ct.c_int)
+        mpi.MPI_HANDLE.comm.Allreduce(_tmp, _tmp, op=MPI.LOR)
+        _ret = _tmp[0]
+
+        if _ret_old == 1 and _ret != 1:
+            print "update status reduction error, rank:", mpi.MPI_HANDLE.rank
+
+
+        return bool(_ret)
+
+    def _reset_moved_distance(self):
+        self._test_count = 0
+        self._moved_distance = 0.0
+        self._state.invalidate_lists = False
+
+
+
+
+
+###############################################################################
 # Velocity Verlet Method
-###############################################################################################################
+###############################################################################
 
 class VelocityVerlet(object):
     """
-    Class to apply Velocity-Verlet to a given state using a given looping method.
+    Class to apply Velocity-Verlet to a given state using a given looping
+    method.
     
     :arg double dt: Time step size, can be specified at integrate call.
     :arg double T: End time, can be specified at integrate call.
     :arg bool USE_C: Flag to use C looping and kernel.
-    :arg DrawParticles plot_handle: PLotting class to plot state at certain progress points.
-    :arg BasicEnergyStore energy_handle: Energy storage class to log energy at each iteration.
+    :arg DrawParticles plot_handle: PLotting class to plot state at certain
+    progress points.
+    :arg BasicEnergyStore energy_handle: Energy storage class to log energy at
+    each iteration.
     :arg bool writexyz: Flag to indicate writing of xyz at each DT.
     :arg bool DEBUG: Flag to enable debug flags.
     """
@@ -111,7 +199,7 @@ class VelocityVerlet(object):
         :arg double dt: Time step size.
         :arg double t: End time.
         """
-        
+        print "starting integration"
         if dt is not None:
             self._dt = dt
         if t is not None:
@@ -127,13 +215,17 @@ class VelocityVerlet(object):
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
         self._p2 = loop.ParticleLoop(self._N, self._state.types,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
         
-        
+        print "ATTEMPTING BC execute"
         self._sim.execute_boundary_conditions()
+
+        print "ATTEMPTING force update"
         self._sim.forces_update()
 
         self.timer.start()
         self._velocity_verlet_integration()
         self.timer.pause()
+
+
 
 
     def _velocity_verlet_integration(self):
@@ -146,13 +238,11 @@ class VelocityVerlet(object):
         #self._sim.forces_update()
 
         for i in range(self._max_it):
-            # print mpi.MPI_HANDLE.rank, "-------", i , self._state.n
+            print mpi.MPI_HANDLE.rank, "-------", i , self._state.n
 
             self._p1.execute(self._state.n)
 
-            #self._sim.execute_boundary_conditions()
 
-            #TODO: fix this.
             self._sim.forces_update()
             self._p2.execute(self._state.n)
 
@@ -164,9 +254,9 @@ class VelocityVerlet(object):
 
 
 
-################################################################################################################
+###############################################################################
 # Anderson thermostat
-################################################################################################################
+###############################################################################
 
 
 class VelocityVerletAnderson(VelocityVerlet):
@@ -258,9 +348,9 @@ class VelocityVerletAnderson(VelocityVerlet):
                 self._schedule.tick()
 
                 
-################################################################################################################
+###############################################################################
 # G(R)
-################################################################################################################
+###############################################################################
 
 
 class RadialDistributionPeriodicNVE(object):
@@ -405,9 +495,9 @@ class RadialDistributionPeriodicNVE(object):
         f.close()
 
 
-################################################################################################################
+###############################################################################
 # WriteTrajectoryXYZ
-################################################################################################################
+###############################################################################
 
 
 class WriteTrajectoryXYZ(object):
@@ -477,9 +567,9 @@ class WriteTrajectoryXYZ(object):
 
         self.timer.pause()
 
-################################################################################################################
+###############################################################################
 # Schedule
-################################################################################################################
+###############################################################################
 
 
 class Schedule(object):

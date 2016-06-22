@@ -6,10 +6,14 @@ import numpy as np
 # package level
 import build
 import data
+import cell
 import host
 import kernel
 import mpi
 import runtime
+import halo
+
+
 
 class _AsFunc(object):
     """
@@ -28,16 +32,32 @@ class _AsFunc(object):
         return getattr(self._i, self._n)
 
 
+
+
 class BaseMDState(object):
     """
     Create an empty state to which particle properties such as position, velocities are added as
     attributes.
-
     """
 
     def __init__(self):
+
+
+        self._global_n = 0
+
+        self._domain = None
+
+        self._cell_to_particle_map = cell.CellList()
+        self._halo_manager = halo.CartesianHaloSix(_AsFunc(self, '_domain'),
+                                                   self._cell_to_particle_map)
+
+        self._position_dat = None
+
+
         # We currently only work with one type at a time.
         self._types = data.Type()
+
+
 
 
         # Registered particle dats.
@@ -45,6 +65,9 @@ class BaseMDState(object):
 
         # Local number of particles
         self._n = 0
+
+
+
 
         # do the ParticleDats have gaps in them?
         self.compressed = True
@@ -91,6 +114,41 @@ class BaseMDState(object):
         self._compressing_dyn_args = None
 
 
+    def _cell_particle_map_setup(self):
+
+        # Can only setup a cell to particle map after a domain and a position
+        # dat is set
+        if (self._domain is not None) and (self._position_dat is not None):
+            self._cell_to_particle_map.setup(self.as_func('n'),
+                                             self.get_position_dat(),
+                                             self.domain)
+            self._cell_to_particle_map.trigger_update()
+            print "SETTING UP CELL LIST"
+
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @domain.setter
+    def domain(self, new_domain):
+        self._domain = new_domain
+        # self._cell_particle_map_setup()
+
+    def get_n_func(self):
+        return self.as_func('n')
+
+    def get_domain(self):
+        return self._domain
+
+    def get_cell_to_particle_map(self):
+        return self._cell_to_particle_map
+
+
+    def get_position_dat(self):
+        assert self._position_dat is not None, "No positions have been added, " \
+                                               "Use data.PositionDat"
+        return getattr(self, self._position_dat)
 
 
     def __setattr__(self, name, value):
@@ -104,10 +162,9 @@ class BaseMDState(object):
         """
 
         # Add to instance list of particle dats.
-        if type(value) is data.ParticleDat:
+        if issubclass(type(value), data.ParticleDat):
             object.__setattr__(self, name, value)
             self.particle_dats.append(name)
-
 
             # Reset these to ensure that move libs are rebuilt.
             self._move_packing_lib = None
@@ -123,8 +180,14 @@ class BaseMDState(object):
                 self._total_ncomp += _dat.ncomp
 
             # register resize callback
-            getattr(self,name)._resize_callback = self._resize_callback
+            getattr(self, name)._resize_callback = self._resize_callback
 
+            # add self to dats group
+            getattr(self, name).group = self
+
+            if type(value) is data.PositionDat:
+                #self._cell_particle_map_setup()
+                self._position_dat = name
 
         # Any other attribute.
         else:
@@ -672,8 +735,8 @@ class BaseMDState(object):
             self.compress_timer.pause()
 
 
-
-
+class Group(BaseMDState):
+    pass
 
 
 

@@ -191,10 +191,14 @@ if __name__ == '__main__':
                                 ])
 
     # Create an integrator for above state class.
+
     test_integrator = method.VelocityVerlet(simulation = sim1, schedule=schedule)
+
+
+
+
     # test_integrator = method.VelocityVerletBox(state = sim1.state, schedule=schedule)
 
-    
 
 
     ###########################################################

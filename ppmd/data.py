@@ -243,8 +243,13 @@ class ParticleDat(host.Matrix):
 
     def __init__(self, npart=1, ncomp=1, initial_value=None, name=None, dtype=ctypes.c_double, max_npart=None):
         # version ids. Internal then halo.
+
         self._vid_int = 0
         self._vid_halo = -1
+
+        self.group = None
+
+
 
 
         # Initialise timers
@@ -324,7 +329,11 @@ class ParticleDat(host.Matrix):
         else:
             self.dat[:n:, ::] = self.idtype(0.0)
             
-
+    def max(self):
+        """
+        :return: Maximum
+        """
+        return self._dat[0:self.npart:].max()
 
     @property
     def npart_total(self):#
@@ -347,7 +356,8 @@ class ParticleDat(host.Matrix):
         return str(self.dat[::])
 
     def __repr__(self):
-        self.__str__()
+        # self.__str__()
+        return "ParticleDat"
 
     def __call__(self, mode=access.RW, halo=True):
 
@@ -359,7 +369,7 @@ class ParticleDat(host.Matrix):
         :return: The pointer to the data.
         """
         if mode.read:
-            if (self._vid_int > self._vid_halo) and cell.cell_list.halos_exist is True:
+            if (self._vid_int > self._vid_halo) and self.group._cell_to_particle_map.halos_exist is True:
                 #print "halo exchangeing", self.name
                 self.halo_exchange()
 
@@ -439,13 +449,13 @@ class ParticleDat(host.Matrix):
 
         # new start
         # can only exchage sizes if needed.
-        #if cell.cell_list.version_id > cell.cell_list.halo_version_id:
+        #if self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
 
         # 0 index contains number of expected particles
         # 1 index contains the required size of tmp arrays
 
         self.halo_start_reset()
-        _sizes = halo.HALOS.exchange_cell_counts()
+        _sizes = self.group._halo_manager.exchange_cell_counts()
 
         # print "\t\tAFTER sizes exchange"
 
@@ -462,16 +472,16 @@ class ParticleDat(host.Matrix):
         # print "\t\tAFTER TMP resize"
 
 
-        if (self.name == 'positions') and cell.cell_list.version_id > cell.cell_list.halo_version_id:
-            cell.cell_list.prepare_halo_sort(_size)
+        if (self.name == 'positions') and self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
+            self.group._cell_to_particle_map.prepare_halo_sort(_size)
 
         # print "\t\tAFTER cell resize"
 
         self._transfer_unpack()
         self.halo_start_shift(_sizes[0])
 
-        if (self.name == 'positions') and cell.cell_list.version_id > cell.cell_list.halo_version_id:
-            cell.cell_list.post_halo_exchange()
+        if (self.name == 'positions') and self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
+            self.group._cell_to_particle_map.post_halo_exchange()
 
 
 
@@ -683,39 +693,39 @@ class ParticleDat(host.Matrix):
 
         # print "~~~~~~~~~~~~~~~~~~~preparing exxchange"
 
-        _h = halo.HALOS.get_halo_cell_groups()
-        _b = halo.HALOS.get_boundary_cell_groups()
+        _h = self.group._halo_manager.get_halo_cell_groups()
+        _b = self.group._halo_manager.get_boundary_cell_groups()
 
-        if (self.name == 'positions') and cell.cell_list.version_id > cell.cell_list.halo_version_id:
+        if (self.name == 'positions') and self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
             _sort_flag = ctypes.c_int(1)
         else:
             _sort_flag = ctypes.c_int(-1)
 
-        # print "SORT FLAG:", _sort_flag.value, "cell vid:", cell.cell_list.version_id, "halo vid:", cell.cell_list.halo_version_id
+        # print "SORT FLAG:", _sort_flag.value, "cell vid:", self.group._cell_to_particle_map.version_id, "halo vid:", self.group._cell_to_particle_map.halo_version_id
 
         # print str(mpi.MPI_HANDLE.rank) + " -------------- before exchange lib ------------------"
         # sys.stdout.flush()
 
 
-        # print "HALO_SEND", halo.HALOS.get_send_ranks().dat
-        # print "HALO_RECV", halo.HALOS.get_recv_ranks().dat
+        # print "HALO_SEND", self.group._halo_manager.get_send_ranks().dat
+        # print "HALO_RECV", self.group._halo_manager.get_recv_ranks().dat
 
         self._exchange_lib(self.ctypes_data,
                            ctypes.c_int(self.npart),
-                           halo.HALOS.get_position_shifts().ctypes_data,
+                           self.group._halo_manager.get_position_shifts().ctypes_data,
                            ctypes.c_int(mpi.MPI_HANDLE.fortran_comm),
-                           halo.HALOS.get_send_ranks().ctypes_data,
-                           halo.HALOS.get_recv_ranks().ctypes_data,
+                           self.group._halo_manager.get_send_ranks().ctypes_data,
+                           self.group._halo_manager.get_recv_ranks().ctypes_data,
                            _h[1].ctypes_data,
                            _b[1].ctypes_data,
                            _h[0].ctypes_data,
                            _b[0].ctypes_data,
-                           halo.HALOS.get_dir_counts().ctypes_data,
-                           cell.cell_list.offset,
+                           self.group._halo_manager.get_dir_counts().ctypes_data,
+                           self.group._cell_to_particle_map.offset,
                            _sort_flag,
-                           cell.cell_list.cell_contents_count.ctypes_data,
-                           cell.cell_list.cell_reverse_lookup.ctypes_data,
-                           cell.cell_list.cell_list.ctypes_data,
+                           self.group._cell_to_particle_map.cell_contents_count.ctypes_data,
+                           self.group._cell_to_particle_map.cell_reverse_lookup.ctypes_data,
+                           self.group._cell_to_particle_map.cell_list.ctypes_data,
                            self._tmp_halo_space.ctypes_data
                            )
 
@@ -744,6 +754,14 @@ class ParticleDat(host.Matrix):
         int * RESTRICT cell_list,         // cell list
         int * RESTRICT b_tmp              // tmp space for sending
         '''
+
+#########################################################################
+# PositionDat.
+#########################################################################
+
+class PositionDat(ParticleDat):
+    pass
+
 
 
 
