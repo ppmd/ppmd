@@ -639,8 +639,15 @@ class PairLoopNeighbourList(_Base):
         '''Rebuild neighbour list potentially'''
         self._invocations += 1
         if cell2part.version_id > self.neighbour_list.version_id:
-            print "rebuilding neighbour list"
+            #print "rebuilding neighbour list"
             self.neighbour_list.update()
+
+            #print "new list"
+            #print self.neighbour_list.neighbour_starting_points.dat[0:3]
+            #print self.neighbour_list.list.dat[0:10:]
+
+
+
             self._neighbourlist_count += 1
 
 

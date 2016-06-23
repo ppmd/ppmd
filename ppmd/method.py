@@ -107,7 +107,7 @@ class CellListUpdateController(object):
         _ret = 0
 
 
-        print self._test_count, self._state.invalidate_lists, self._moved_distance
+        # print self._test_count, self._state.invalidate_lists, self._moved_distance
         if (self._moved_distance >= 0.5 * self._delta) or \
                 (self._step_counter % self._step_count == 0) or \
                 self._state.invalidate_lists:
@@ -227,7 +227,7 @@ class VelocityVerlet(object):
         #### NEW
 
         self._update_controller = CellListUpdateController(self._state,
-                                                           step_count=1,
+                                                           step_count=10,
                                                            velocity_dat=self._state.velocities,
                                                            timestep=self._dt,
                                                            shell_thickness=self._delta
@@ -301,7 +301,7 @@ class VelocityVerlet(object):
         #self._sim.forces_update()
 
         for i in range(self._max_it):
-            print mpi.MPI_HANDLE.rank, "-------", i , self._state.n
+            # print mpi.MPI_HANDLE.rank, "-------", i , self._state.n
 
             self._p1.execute(self._state.n)
 
@@ -859,6 +859,13 @@ class DrawParticles(object):
             self._key = ['red', 'blue']
             plt.show(block=False)
 
+    def norm_vec(self, in_vec):
+        norm=np.linalg.norm(in_vec)
+
+        if norm < 10**(-13) :
+           return in_vec
+        return in_vec/norm
+
     def draw(self):
         """
         Update current plot, use for real time plotting.
@@ -917,14 +924,31 @@ class DrawParticles(object):
 
             if self._Mh.rank == 0:
 
+
                 plt.cla()
                 plt.ion()
                 for ix in range(self._pos.npart):
                     self._ax.scatter(self._pos.dat[ix, 0], self._pos.dat[ix, 1], self._pos.dat[ix, 2],
                                      color=self._key[self._gid[ix] % 2])
+
+                    if mpi.MPI_HANDLE.nproc == 1:
+
+                        self._ax.plot((self._pos.dat[ix, 0], self._pos.dat[ix, 0] + self.norm_vec(self._state.forces.dat[ix, 0])),
+                                      (self._pos.dat[ix, 1], self._pos.dat[ix, 1] + self.norm_vec(self._state.forces.dat[ix, 1])),
+                                      (self._pos.dat[ix, 2],self._pos.dat[ix, 2] + self.norm_vec(self._state.forces.dat[ix, 2])),
+                                      color=self._key[self._gid[ix] % 2],
+                                      linewidth=2)
+
+
+
+
                 self._ax.set_xlim([-0.5 * self._extents[0], 0.5 * self._extents[0]])
                 self._ax.set_ylim([-0.5 * self._extents[1], 0.5 * self._extents[1]])
                 self._ax.set_zlim([-0.5 * self._extents[2], 0.5 * self._extents[2]])
+
+
+
+
 
                 self._ax.set_xlabel('x')
                 self._ax.set_ylabel('y')
