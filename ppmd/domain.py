@@ -31,12 +31,19 @@ class BaseDomainHalo(object):
     """
 
     def __init__(self, extent=np.array([1., 1., 1.]), cell_count=1, periods=(1, 1, 1)):
+        self._init_cells = False
+        self._init_decomp = False
 
         self._periods = periods
 
-        self._extent = data.ScalarArray(extent)
+        self._extent = data.ScalarArray(ncomp=3, dtype=ctypes.c_double)
+        self._extent_global = data.ScalarArray(ncomp=3, dtype=ctypes.c_double)
+        self._boundary_outer = None
+        self._boundary = None
 
-        self._extent_global = data.ScalarArray(extent)
+        self.set_extent(extent)
+
+
 
         self._cell_array = data.ScalarArray(np.array([1, 1, 1]), dtype=ctypes.c_int)
         self._cell_edge_lengths = data.ScalarArray(np.array([1., 1., 1.], dtype=ctypes.c_double))
@@ -49,6 +56,11 @@ class BaseDomainHalo(object):
         #vars to return boudary cells
         self._boundary_cell_version = -1
         self._boundary_cells = None
+
+
+
+
+
 
     def get_boundary_cells(self):
         """
@@ -113,87 +125,109 @@ class BaseDomainHalo(object):
         self._extent[0:4] = new_extent
         self._extent_global[0:4] = new_extent
 
-    def set_cell_array_radius(self, rn):
-        """
-        Create cell structure based on current extent and extended cutoff distance.
-        
-        :arg double rn:  :math:`r_n = r_c + \delta`
-        
-        """
+        self._boundary_outer = (
+            -0.5 * self._extent[0], 0.5 * self._extent[0],
+            -0.5 * self._extent[1], 0.5 * self._extent[1],
+            -0.5 * self._extent[2], 0.5 * self._extent[2]
+        )
 
-        '''Here everything is global'''
+        self._boundary = (
+            -0.5 * self._extent[0], 0.5 * self._extent[0],
+            -0.5 * self._extent[1], 0.5 * self._extent[1],
+            -0.5 * self._extent[2], 0.5 * self._extent[2]
+        )
 
-        self._cell_array[0] = int(self._extent[0] / rn)
-        self._cell_array[1] = int(self._extent[1] / rn)
-        self._cell_array[2] = int(self._extent[2] / rn)
+        if self._init_decomp:
+            print "WARNING EXTENT CHANGED AFTER DECOMP"
 
-        if runtime.VERBOSE.level > 1:
-            pio.pprint("Internal cell array:", self._cell_array, ", Extent:",self._extent)
+
+
+    def mpi_decompose(self, mpi_grid=None):
+
+        if mpi_grid is None:
+            _dims = _find_domain_decomp((int(self.extent[0]),
+                                         int(self.extent[1]),
+                                         int(self.extent[2])),
+                                        mpi.MPI_HANDLE.nproc)
+        else:
+            assert mpi_grid[0]*mpi_grid[1]*mpi_grid[2]==mpi.MPI_HANDLE.nproc,\
+                "Incompatible MPI rank structure"
+            _dims = mpi_grid
+
+         # Create cartesian communicator
+        _dims = tuple(_dims)
+
+        mpi.MPI_HANDLE.create_cart(_dims[::-1],
+                                   (bool(self._periods[2]),
+                                    bool(self._periods[1]),
+                                    bool(self._periods[0])),
+                                   True)
+
+        self._extent[0] = self._extent_global[0] / _dims[0]
+        self._extent[1] = self._extent_global[1] / _dims[1]
+        self._extent[2] = self._extent_global[2] / _dims[2]
+
+        _top = mpi.MPI_HANDLE.top
+
+        _boundary = (
+            -0.5 * self._extent_global[0] + _top[0] * self._extent[0],
+            -0.5 * self._extent_global[0] + (_top[0] + 1.) * self._extent[0],
+            -0.5 * self._extent_global[1] + _top[1] * self._extent[1],
+            -0.5 * self._extent_global[1] + (_top[1] + 1.) * self._extent[1],
+            -0.5 * self._extent_global[2] + _top[2] * self._extent[2],
+            -0.5 * self._extent_global[2] + (_top[2] + 1.) * self._extent[2]
+        )
+
+        self._boundary = data.ScalarArray(_boundary, dtype=ctypes.c_double)
+        self._boundary_outer = data.ScalarArray(_boundary, dtype=ctypes.c_double)
+
+        self._init_decomp = True
+        return True
+
+    def cell_decompose(self, cell_width=None):
+
+        if self._init_cells:
+            print "WARNING: domain already decomposed into cells"
+        assert cell_width is not None, "ERROR: No cell size passed."
+
+        if not self._init_decomp:
+            print "WARNING: domain not spatial decomposed, see mpi_decompose()"
+
+
+        cell_width = float(cell_width)
+
+        self._cell_array[0] = int(self._extent[0] / cell_width)
+        self._cell_array[1] = int(self._extent[1] / cell_width)
+        self._cell_array[2] = int(self._extent[2] / cell_width)
+
+        assert self._cell_array[0] > 0, "Too many MPI ranks in dir 0"
+        assert self._cell_array[1] > 0, "Too many MPI ranks in dir 1"
+        assert self._cell_array[2] > 0, "Too many MPI ranks in dir 2"
 
         self._cell_edge_lengths[0] = self._extent[0] / self._cell_array[0]
         self._cell_edge_lengths[1] = self._extent[1] / self._cell_array[1]
         self._cell_edge_lengths[2] = self._extent[2] / self._cell_array[2]
 
-
-        '''Get a local cell array and perform domain decomp'''
-        _ca_tuple, _bs = _create_domain_decomp(self.cell_array, self._periods)
-        self.cell_array[0] = _ca_tuple[0]
-        self.cell_array[1] = _ca_tuple[1]
-        self.cell_array[2] = _ca_tuple[2]
-
-        _top = mpi.MPI_HANDLE.top
-
-        '''Calculate local boundary'''
-        '''Cumalitive sum up to self_index - 1 '''
-        _Cx = 0
-        for ix in range(_top[0]):
-            _Cx += _bs[0][ix]
-
-        _Cy = 0
-        for ix in range(_top[1]):
-            _Cy += _bs[1][ix]
-
-        _Cz = 0
-        for ix in range(_top[2]):
-            _Cz += _bs[2][ix]
-
-        '''Inner boundary (inside halo cells)'''
-        self._boundary = [
-            -0.5 * self._extent[0] + _Cx * self._cell_edge_lengths[0],
-            -0.5 * self._extent[0] + (_Cx + self._cell_array[0]) * self._cell_edge_lengths[0],
-            -0.5 * self._extent[1] + _Cy * self._cell_edge_lengths[1],
-            -0.5 * self._extent[1] + (_Cy + self._cell_array[1]) * self._cell_edge_lengths[1],
-            -0.5 * self._extent[2] + _Cz * self._cell_edge_lengths[2],
-            -0.5 * self._extent[2] + (_Cz + self._cell_array[2]) * self._cell_edge_lengths[2]
-        ]
-        self._boundary = data.ScalarArray(self._boundary, dtype=ctypes.c_double)
-
-        '''Domain outer boundary including halo cells'''
-
-        self._boundary_outer = [
-            -0.5 * self._extent[0] + (_Cx - 1) * self._cell_edge_lengths[0],
-            -0.5 * self._extent[0] + (_Cx + 1 + self._cell_array[0]) * self._cell_edge_lengths[0],
-            -0.5 * self._extent[1] + (_Cy - 1) * self._cell_edge_lengths[1],
-            -0.5 * self._extent[1] + (_Cy + 1 + self._cell_array[1]) * self._cell_edge_lengths[1],
-            -0.5 * self._extent[2] + (_Cz - 1) * self._cell_edge_lengths[2],
-            -0.5 * self._extent[2] + (_Cz + 1 + self._cell_array[2]) * self._cell_edge_lengths[2]]
-
-        self._boundary_outer = data.ScalarArray(self._boundary_outer, dtype=ctypes.c_double)
-
-        '''Get local extent'''
-        self._extent[0] = self._cell_edge_lengths[0] * self._cell_array[0]
-        self._extent[1] = self._cell_edge_lengths[1] * self._cell_array[1]
-        self._extent[2] = self._cell_edge_lengths[2] * self._cell_array[2]
-
-        '''Increment cell array to include halo'''
         self._cell_array[0] += 2
         self._cell_array[1] += 2
         self._cell_array[2] += 2
 
-        '''Outer extent including halos, used?'''
-        self._extent_outer = data.ScalarArray(self._extent.dat + np.array([2, 2, 2]) * self._cell_edge_lengths.dat)
+        _boundary = (
+            self._boundary[0] - self._cell_edge_lengths[0],
+            self._boundary[1] + self._cell_edge_lengths[0],
+            self._boundary[2] - self._cell_edge_lengths[1],
+            self._boundary[3] + self._cell_edge_lengths[1],
+            self._boundary[4] - self._cell_edge_lengths[2],
+            self._boundary[5] + self._cell_edge_lengths[2]
+        )
 
+        self._boundary_outer = data.ScalarArray(_boundary, dtype=ctypes.c_double)
+
+        print self._cell_array
+
+        self._init_cells = True
         return True
+
 
     @property
     def volume(self):
@@ -214,6 +248,9 @@ class BaseDomainHalo(object):
         """
         Return local domain boundary
         """
+        if not self._init_cells:
+            print "WARNING: No cell decomposition, outer boundary same as inner"
+
         return self._boundary_outer
 
     @property

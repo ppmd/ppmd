@@ -56,7 +56,9 @@ class Array(object):
         self.idtype = dtype
 
         if initial_value is not None:
-            if (type(initial_value) is np.ndarray) or type(initial_value) is list:
+            if (type(initial_value) is np.ndarray) \
+                    or type(initial_value) is list\
+                    or type(initial_value) is tuple:
                 self._create_from_existing(initial_value, dtype)
             else:
                 self._create_from_existing(np.array([initial_value]), dtype)

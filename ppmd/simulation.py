@@ -122,7 +122,10 @@ class BaseMDSimulation(object):
         particle_pos_init.get_extent(self.state)
 
         # decompose domain
-        self._cell_structure = self.state.domain.set_cell_array_radius(self._cell_width)
+        self.state.domain.mpi_decompose()
+
+
+        self._cell_structure = self.state.domain.cell_decompose(self._cell_width)
 
         # Initialise cell list
         self.state._cell_particle_map_setup()
