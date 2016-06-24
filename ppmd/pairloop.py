@@ -464,7 +464,7 @@ class PairLoopNeighbourList(_Base):
         self._particle_dat_dict = dat_dict
         self._cc = build.TMPCC
         self.rc = None
-        self.rn = None
+        # self.rn = None
 
         ##########
         # End of Rapaport initialisations.
@@ -504,6 +504,10 @@ class PairLoopNeighbourList(_Base):
                 break
 
         assert self._group is not None, "No cell to particle map found"
+
+
+        self._group.get_domain().cell_decompose(self._rn)
+        self._group.get_cell_to_particle_map().create()
 
 
         self.neighbour_list = cell.NeighbourListv2(self._group.get_cell_to_particle_map())

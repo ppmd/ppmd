@@ -125,10 +125,12 @@ class BaseMDSimulation(object):
         self.state.domain.mpi_decompose()
 
 
-        self._cell_structure = self.state.domain.cell_decompose(self._cell_width)
+        #self._cell_structure = self.state.domain.cell_decompose(self._cell_width)
+        self._cell_structure = True
+
 
         # Initialise cell list
-        self.state._cell_particle_map_setup()
+        #self.state._cell_particle_map_setup()
 
 
         # Initialise positions

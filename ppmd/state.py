@@ -53,20 +53,14 @@ class BaseMDState(object):
 
         self._position_dat = None
 
-
         # We currently only work with one type at a time.
         self._types = data.Type()
-
-
-
 
         # Registered particle dats.
         self.particle_dats = []
 
         # Local number of particles
         self._n = 0
-
-
 
 
         # do the ParticleDats have gaps in them?
@@ -119,11 +113,11 @@ class BaseMDState(object):
         # Can only setup a cell to particle map after a domain and a position
         # dat is set
         if (self._domain is not None) and (self._position_dat is not None):
+            print "setting up cell list"
             self._cell_to_particle_map.setup(self.as_func('n'),
                                              self.get_position_dat(),
                                              self.domain)
             self._cell_to_particle_map.trigger_update()
-            print "SETTING UP CELL LIST"
 
 
     @property
@@ -133,7 +127,7 @@ class BaseMDState(object):
     @domain.setter
     def domain(self, new_domain):
         self._domain = new_domain
-        # self._cell_particle_map_setup()
+        self._cell_particle_map_setup()
 
     def get_n_func(self):
         return self.as_func('n')
@@ -186,7 +180,7 @@ class BaseMDState(object):
             getattr(self, name).group = self
 
             if type(value) is data.PositionDat:
-                #self._cell_particle_map_setup()
+                self._cell_particle_map_setup()
                 self._position_dat = name
 
         # Any other attribute.
@@ -735,7 +729,7 @@ class BaseMDState(object):
             self.compress_timer.pause()
 
 
-class Group(BaseMDState):
+class State(BaseMDState):
     pass
 
 

@@ -46,6 +46,13 @@ tuple_to_direction = {}
 for idx, dir in enumerate(recv_modifiers):
     tuple_to_direction[str(dir)] = idx
 
+def enum(**enums):
+    return type('Enum', (), enums)
+
+decomposition = enum(spatial=0, particle=1)
+
+# default to spatial decomposition
+decomposition_method = decomposition.spatial
 
 
 

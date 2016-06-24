@@ -91,8 +91,12 @@ class CellList(object):
         self._domain = domain
 
         # setup methods to sort into cells.
-        self._cell_sort_setup()
+        # self._cell_sort_setup()
         return
+
+    def create(self):
+        self._cell_sort_setup()
+
 
     def setup_update_tracking(self, func):
         """
@@ -140,7 +144,11 @@ class CellList(object):
         """
 
         if not self._init:
-            return True
+            self._cell_sort_setup()
+
+            if not self._init:
+                print "Initalisation failed"
+                return False
 
 
         if (self.update_required is True) or self._update_tracking():
@@ -861,9 +869,12 @@ class NeighbourListv2(NeighbourList):
     def setup(self, n, positions, domain, cell_width):
 
         # setup the cell list if not done already (also handles domain decomp)
-        # TODO remove...
-        if self.cell_list.cell_list is None:
-            self.cell_list.setup(n, positions, domain, cell_width)
+
+        assert self.cell_list.cell_list is not None, "No cell to particle map" \
+                                                     " setup"
+
+        #if self.cell_list.cell_list is None:
+        #    self.cell_list.setup(n, positions, domain, cell_width)
 
         self.cell_width = cell_width
 
