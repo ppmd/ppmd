@@ -127,6 +127,11 @@ class BaseMDState(object):
     @domain.setter
     def domain(self, new_domain):
         self._domain = new_domain
+
+        if mpi.decomposition_method == mpi.decomposition.spatial:
+            self._domain.mpi_decompose()
+
+
         self._cell_particle_map_setup()
 
     def get_n_func(self):

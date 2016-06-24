@@ -30,7 +30,7 @@ class BaseDomainHalo(object):
 
     """
 
-    def __init__(self, extent=np.array([1., 1., 1.]), cell_count=1, periods=(1, 1, 1)):
+    def __init__(self, extent=None, cell_count=1, periods=(1, 1, 1)):
         self._init_cells = False
         self._init_decomp = False
 
@@ -41,8 +41,9 @@ class BaseDomainHalo(object):
         self._boundary_outer = None
         self._boundary = None
 
-        self.set_extent(extent)
-
+        self._init_extent = False
+        if extent is not None:
+            self.set_extent(extent)
 
 
         self._cell_array = data.ScalarArray(np.array([1, 1, 1]), dtype=ctypes.c_int)
@@ -140,15 +141,25 @@ class BaseDomainHalo(object):
         if self._init_decomp:
             print "WARNING EXTENT CHANGED AFTER DECOMP"
 
+            self._distribute_domain()
+
+        self._init_extent = True
 
 
     def mpi_decompose(self, mpi_grid=None):
+        if self._init_decomp:
+            print "WARNING: domain already spatially decomposed"
+
 
         if mpi_grid is None:
-            _dims = _find_domain_decomp((int(self.extent[0]),
-                                         int(self.extent[1]),
-                                         int(self.extent[2])),
-                                        mpi.MPI_HANDLE.nproc)
+            if self._init_extent:
+                _dims = _find_domain_decomp((int(self.extent[0]),
+                                             int(self.extent[1]),
+                                             int(self.extent[2])),
+                                            mpi.MPI_HANDLE.nproc)
+            else:
+                 _dims = _find_domain_decomp_no_extent(mpi.MPI_HANDLE.nproc)
+
         else:
             assert mpi_grid[0]*mpi_grid[1]*mpi_grid[2]==mpi.MPI_HANDLE.nproc,\
                 "Incompatible MPI rank structure"
@@ -163,11 +174,23 @@ class BaseDomainHalo(object):
                                     bool(self._periods[0])),
                                    True)
 
+        self._init_decomp = True
+
+        if self._init_extent:
+            self._distribute_domain()
+
+        return True
+
+    def _distribute_domain(self):
+
+        _top = mpi.MPI_HANDLE.top
+        _dims = mpi.MPI_HANDLE.dims
+
         self._extent[0] = self._extent_global[0] / _dims[0]
         self._extent[1] = self._extent_global[1] / _dims[1]
         self._extent[2] = self._extent_global[2] / _dims[2]
 
-        _top = mpi.MPI_HANDLE.top
+
 
         _boundary = (
             -0.5 * self._extent_global[0] + _top[0] * self._extent[0],
@@ -181,8 +204,7 @@ class BaseDomainHalo(object):
         self._boundary = data.ScalarArray(_boundary, dtype=ctypes.c_double)
         self._boundary_outer = data.ScalarArray(_boundary, dtype=ctypes.c_double)
 
-        self._init_decomp = True
-        return True
+
 
     def cell_decompose(self, cell_width=None):
 
@@ -222,8 +244,6 @@ class BaseDomainHalo(object):
         )
 
         self._boundary_outer = data.ScalarArray(_boundary, dtype=ctypes.c_double)
-
-        print self._cell_array
 
         self._init_cells = True
         return True
@@ -328,6 +348,65 @@ def pfactor(n):
         else:
             l += 1
     return lst
+
+
+def _find_domain_decomp_no_extent(nproc):
+    """
+    find a decomp
+    :param global_cell_array:
+    :param nproc:
+    :return:
+    """
+
+    assert nproc is not None, "No number of processes passed"
+
+    '''Prime factor number of processes'''
+    _factors = pfactor(nproc)
+
+    _factors.sort(reverse=True)
+    '''Create grid from factorisation'''
+    if len(_factors) == 0:
+        _NP = [1, 1, 1]
+    elif len(_factors) == 1:
+        _NP = [_factors[0], 1, 1]
+
+    elif len(_factors) == 2:
+         _NP = [_factors[0], _factors[1], 1]
+    else:
+        if len(_factors)==4:
+            _NP = []
+            _NP.append(_factors[0])
+            _NP.append(_factors[1])
+            _NP.append(_factors[2] * _factors[3])
+
+        elif len(_factors)==5:
+            _NP = []
+            _NP.append(_factors[0])
+            _NP.append(_factors[1] * _factors[2])
+            _NP.append(_factors[3] * _factors[4])
+
+        else:
+            _factors.sort(reverse=True)
+            _q = len(_factors) / 3
+            #print _q, _factors[0:_q:], _factors[_q:2 * _q:], _factors[2*_q::]
+            _NP = []
+            _NP.append(reduce(lambda x, y: x * y, _factors[0:_q:]))
+            _NP.append(reduce(lambda x, y: x * y, _factors[_q:2 * _q:]))
+            _NP.append(reduce(lambda x, y: x * y, _factors[2 * _q::]))
+
+
+    '''Order processor calculated dimension sizes in descending order'''
+    _NP.sort(reverse=True)
+
+    '''Try to match avaible processor dimensions to phyiscal cells'''
+
+    _dims = _NP
+
+    return _dims
+
+
+
+
 
 def _find_domain_decomp(global_cell_array=None, nproc=None):
     """
