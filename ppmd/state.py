@@ -62,6 +62,9 @@ class BaseMDState(object):
         # Local number of particles
         self._n = 0
 
+        # Global number of particles
+        self._npart = 0
+
 
         # do the ParticleDats have gaps in them?
         self.compressed = True
@@ -184,6 +187,10 @@ class BaseMDState(object):
             # add self to dats group
             getattr(self, name).group = self
 
+            # resize to Ntotal for time being
+            getattr(self, name).resize(self._npart, _callback=False)
+
+
             if type(value) is data.PositionDat:
                 self._cell_particle_map_setup()
                 self._position_dat = name
@@ -222,6 +229,18 @@ class BaseMDState(object):
             _dat.halo_start_reset()
         # print "N set:", value
 
+
+    @property
+    def npart(self):
+        return self._npart
+
+
+    @npart.setter
+    def npart(self, value=None):
+        assert value >= 0, "no value passed"
+        self._npart = value
+
+
     def _resize_callback(self, value=None):
         """
         Work around until types are implemented. The assumptions for the macro
@@ -233,6 +252,19 @@ class BaseMDState(object):
         for ix in self.particle_dats:
             _dat = getattr(self,ix)
             _dat.resize(int(value), _callback=False)
+
+
+    def broadcast_data_from(self, rank=0):
+        assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
+
+        if mpi.MPI_HANDLE.nproc == 1:
+            return
+        else:
+            s = np.array([self.get_position_dat().dat.shape[0]])
+            mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
+            self.n = s[0]
+            for px in self.particle_dats:
+                getattr(self, px).broadcast_data_from(rank=rank, _resize_callback=False)
 
 
 

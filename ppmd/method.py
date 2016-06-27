@@ -278,10 +278,8 @@ class VelocityVerlet(object):
         self._p2 = loop.ParticleLoop(self._N, self._state.types,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
 
 
-        print "ATTEMPTING BC execute"
         self._update_controller.execute_boundary_conditions()
 
-        print "ATTEMPTING force update"
         self._sim.forces_update()
 
         self.timer.start()

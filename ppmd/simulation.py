@@ -87,9 +87,6 @@ class BaseMDSimulation(object):
 
 
 
-
-
-
         # Add particle dats
         _factor = 1
         self.state.positions = data.PositionDat(n, 3, name='positions', max_npart=_factor * n)
@@ -111,26 +108,17 @@ class BaseMDSimulation(object):
         # Kinetic energy
         self.state.k = data.ScalarArray()
 
-
         self.state.domain = domain_in
 
         self.state.domain.boundary_condition = self._boundary_method
 
 
-
         # Initialise domain extent
         particle_pos_init.get_extent(self.state)
-
-        # decompose domain
-        # self.state.domain.mpi_decompose()
-
 
         #self._cell_structure = self.state.domain.cell_decompose(self._cell_width)
         self._cell_structure = True
 
-
-        # Initialise cell list
-        #self.state._cell_particle_map_setup()
 
 
         # Initialise positions

@@ -1,10 +1,14 @@
 """
 This module contains high level arrays and matrices.
 """
+
+# system level
+from mpi4py import MPI
 import sys
-import host
 import ctypes
 import numpy as np
+
+# package level
 import access
 import halo
 import mpi
@@ -12,7 +16,7 @@ import cell
 import kernel
 import build
 import runtime
-
+import host
 
 np.set_printoptions(threshold=1000)
 
@@ -243,8 +247,10 @@ class ParticleDat(host.Matrix):
     :arg str name: Collective name of stored vars eg positions.
     """
 
-    def __init__(self, npart=1, ncomp=1, initial_value=None, name=None, dtype=ctypes.c_double, max_npart=None):
+    def __init__(self, npart=0, ncomp=1, initial_value=None, name=None, dtype=ctypes.c_double, max_npart=None):
         # version ids. Internal then halo.
+
+        assert ncomp > 0, "Negative number of components is not supported."
 
         self._vid_int = 0
         self._vid_halo = -1
@@ -333,7 +339,7 @@ class ParticleDat(host.Matrix):
             
     def max(self):
         """
-        :return: Maximum
+        :return: Maximum of local particles
         """
         return self._dat[0:self.npart:].max()
 
@@ -364,6 +370,53 @@ class ParticleDat(host.Matrix):
     def __call__(self, mode=access.RW, halo=True):
 
         return self, mode, halo
+
+    def snapshot(self):
+        return ParticleDat(initial_value=self._dat,
+                           ncomp=self.ncomp,
+                           npart=self.npart,
+                           dtype=self.dtype)
+
+
+    def broadcast_data_from(self, rank=0, _resize_callback=True):
+        assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
+
+        if mpi.MPI_HANDLE.nproc == 1:
+            return
+        else:
+            s = np.array([self._dat.shape[0]], dtype=ctypes.c_int)
+            mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
+            self.resize(s[0], _callback=_resize_callback)
+            mpi.MPI_HANDLE.comm.Bcast(self._dat, root=rank)
+
+
+
+
+    def gather_data_on(self, rank=0, _resize_callback=False):
+        assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
+        if mpi.MPI_HANDLE.nproc == 1:
+            return
+        else:
+
+            counts = mpi.MPI_HANDLE.comm.gather(self.npart, root=rank)
+            disp = None
+
+            if mpi.MPI_HANDLE.rank == rank:
+
+                self.resize(sum(counts), _callback=_resize_callback)
+                disp = [0] + counts[:-1:]
+                disp = tuple(self.ncomp * np.array(disp))
+
+                counts = tuple([3*c for c in counts])
+
+
+            mpi.MPI_HANDLE.comm.Gatherv(sendbuf=self._dat[:self.npart:,::],
+                                        recvbuf=(self._dat, counts, disp, None),
+                                        root=rank)
+
+
+
+
 
     def ctypes_data_access(self, mode=access.RW):
         """
@@ -468,8 +521,8 @@ class ParticleDat(host.Matrix):
 
         # print "\t\tAFTER dat resize"
         if self._tmp_halo_space.ncomp < (self.ncomp * _sizes[1]):
-            print "\t\t\tresizing tmp space", _sizes[1]
-            self._tmp_halo_space.realloc(_sizes[1] * self.ncomp)
+            print "\t\t\tresizing temp halo space", _sizes[1]
+            self._tmp_halo_space.realloc(int(1.1 * _sizes[1] * self.ncomp))
 
         # print "\t\tAFTER TMP resize"
 
