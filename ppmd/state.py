@@ -254,7 +254,7 @@ class BaseMDState(object):
             _dat.resize(int(value), _callback=False)
 
 
-    def broadcast_data_from(self, rank=0):
+    def scatter_data_from(self, rank=0):
         assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
 
         if mpi.MPI_HANDLE.nproc == 1:
@@ -264,7 +264,7 @@ class BaseMDState(object):
             mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
             self.n = s[0]
             for px in self.particle_dats:
-                getattr(self, px).broadcast_data_from(rank=rank, _resize_callback=False)
+                getattr(self, px).scatter_data_from(rank=rank, _resize_callback=False)
 
 
 
