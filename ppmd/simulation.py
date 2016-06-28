@@ -58,7 +58,7 @@ class BaseMDSimulation(object):
 
         # Add integer attributes to state
         self.state.n = n
-        self.state.nt = n
+        self.state.npart = n
 
         if potential_in is not None:
             self._cutoff = self.potential.rc

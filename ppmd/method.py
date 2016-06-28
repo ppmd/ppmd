@@ -872,7 +872,7 @@ class DrawParticles(object):
         if _GRAPHICS:
 
             self._N = self._state.n
-            self._NT = self._state.nt
+            self._NT = self._state.npart
             self._extents = self._state.domain.extent
 
             '''Case where all particles are local'''
@@ -997,12 +997,12 @@ class EnergyStore(object):
         if self._state.n > 0:
             # print self._state.u[0], self._state.u[1]
 
-            _U_tmp = self._state.u.dat[0]/self._state.nt
-            _U_tmp += 0.5*self._state.u.dat[1]/self._state.nt
+            _U_tmp = self._state.u.dat[0]/self._state.npart
+            _U_tmp += 0.5*self._state.u.dat[1]/self._state.npart
             _u = _U_tmp
 
-            _k = self._state.k[0]/self._state.nt
-            _q = _U_tmp+(self._state.k[0])/self._state.nt
+            _k = self._state.k[0]/self._state.npart
+            _q = _U_tmp+(self._state.k[0])/self._state.npart
 
 
         self._k.append(_k)

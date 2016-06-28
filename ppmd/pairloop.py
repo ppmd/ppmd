@@ -499,7 +499,7 @@ class PairLoopNeighbourList(_Base):
         self._group = None
 
         for pd in self._particle_dat_dict.items():
-            if issubclass(type(pd[1][0]), data.ParticleDat):
+            if issubclass(type(pd[1][0]), data.PositionDat):
                 self._group = pd[1][0].group
                 break
 
@@ -511,6 +511,9 @@ class PairLoopNeighbourList(_Base):
 
 
         self.neighbour_list = cell.NeighbourListv2(self._group.get_cell_to_particle_map())
+
+        #print self._group.npart, self._group.n
+
 
         self.neighbour_list.setup(self._group.get_n_func(),
                                   self._group.get_position_dat(),
@@ -610,6 +613,7 @@ class PairLoopNeighbourList(_Base):
         """
         C version of the pair_locate: Loop over all cells update forces and potential engery.
         """
+
         cell2part = self._group.get_cell_to_particle_map()
         cell2part.check()
 
@@ -618,13 +622,13 @@ class PairLoopNeighbourList(_Base):
             self._particle_dat_dict = dat_dict
 
 
-
         args = []
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
                 args.append(dat)
+
 
         '''Pass access descriptor to dat'''
         for dat_orig in self._particle_dat_dict.values():
@@ -643,11 +647,10 @@ class PairLoopNeighbourList(_Base):
         '''Rebuild neighbour list potentially'''
         self._invocations += 1
         if cell2part.version_id > self.neighbour_list.version_id:
-            #print "rebuilding neighbour list"
             self.neighbour_list.update()
 
             #print "new list"
-            #print self.neighbour_list.neighbour_starting_points.dat[0:3]
+            #print self.neighbour_list.neighbour_starting_points.dat[0:16]
             #print self.neighbour_list.list.dat[0:10:]
 
 
@@ -666,6 +669,7 @@ class PairLoopNeighbourList(_Base):
                  _N_LOCAL,
                  _STARTS,
                  _LIST]
+
 
         args2.append(self.loop_timer.get_python_parameters())
 

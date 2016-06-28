@@ -191,8 +191,8 @@ class BaseMDState(object):
 
 
             if type(value) is data.PositionDat:
-                self._cell_particle_map_setup()
                 self._position_dat = name
+                self._cell_particle_map_setup()
 
         # Any other attribute.
         else:
@@ -257,6 +257,7 @@ class BaseMDState(object):
         assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
 
         if mpi.MPI_HANDLE.nproc == 1:
+            self.n = self.npart
             return
         else:
             s = np.array([self.get_position_dat().dat.shape[0]])
@@ -587,7 +588,8 @@ class BaseMDState(object):
             # make case where ParticleDat has more than one component.
             if iy > 1:
 
-                if ix == 'positions':
+                # if ix == 'positions':
+                if type(getattr(self,ix)) is data.PositionDat:
                     _dynamic_dats_shift += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP':iy}
                     _dynamic_dats_shift += _space + 'SEND_BUFFER[index+ni] = %(NAME)s[(_ix*%(NCOMP)s)+ni] + SHIFT[(_dir*3)+ni]; \n' % {'NCOMP':iy, 'NAME':str(ix)}
                     _dynamic_dats_shift += _space + '} \n'

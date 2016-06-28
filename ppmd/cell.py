@@ -254,6 +254,7 @@ class CellList(object):
         Sort local particles into cell list.
         :return:
         """
+
         if self._init:
 
             self.timer_sort.start()

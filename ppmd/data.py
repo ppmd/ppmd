@@ -372,7 +372,8 @@ class ParticleDat(host.Matrix):
         return self, mode, halo
 
     def snapshot(self):
-        return ParticleDat(initial_value=self._dat,
+        #print "dat:", self._dat
+        return ParticleDat(initial_value=self._dat[0:self.npart:],
                            ncomp=self.ncomp,
                            npart=self.npart,
                            dtype=self.dtype)
@@ -398,18 +399,22 @@ class ParticleDat(host.Matrix):
             return
         else:
 
+            print self.npart
+
             counts = mpi.MPI_HANDLE.comm.gather(self.npart, root=rank)
+
             disp = None
 
             if mpi.MPI_HANDLE.rank == rank:
 
                 self.resize(sum(counts), _callback=_resize_callback)
                 disp = [0] + counts[:-1:]
-                disp = tuple(self.ncomp * np.array(disp))
+                disp = tuple(np.cumsum(self.ncomp * np.array(disp)))
 
-                counts = tuple([3*c for c in counts])
+                counts = tuple([self.ncomp*c for c in counts])
 
 
+                print [cx/3 for cx in counts], disp
             mpi.MPI_HANDLE.comm.Gatherv(sendbuf=self._dat[:self.npart:,::],
                                         recvbuf=(self._dat, counts, disp, None),
                                         root=rank)
@@ -527,7 +532,7 @@ class ParticleDat(host.Matrix):
         # print "\t\tAFTER TMP resize"
 
 
-        if (self.name == 'positions') and self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
+        if (type(self) is PositionDat) and self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
             self.group._cell_to_particle_map.prepare_halo_sort(_size)
 
         # print "\t\tAFTER cell resize"
@@ -535,7 +540,7 @@ class ParticleDat(host.Matrix):
         self._transfer_unpack()
         self.halo_start_shift(_sizes[0])
 
-        if (self.name == 'positions') and self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
+        if (type(self) is PositionDat) and self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
             self.group._cell_to_particle_map.post_halo_exchange()
 
 
@@ -721,7 +726,7 @@ class ParticleDat(host.Matrix):
             }
             '''
 
-            if self.name == 'positions':
+            if type(self) is PositionDat:
                 _pos_enable = '#define POS'
             else:
                 _pos_enable = ''
@@ -751,7 +756,7 @@ class ParticleDat(host.Matrix):
         _h = self.group._halo_manager.get_halo_cell_groups()
         _b = self.group._halo_manager.get_boundary_cell_groups()
 
-        if (self.name == 'positions') and self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
+        if (type(self) is PositionDat) and self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
             _sort_flag = ctypes.c_int(1)
         else:
             _sort_flag = ctypes.c_int(-1)

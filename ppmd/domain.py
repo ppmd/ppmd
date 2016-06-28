@@ -799,7 +799,7 @@ class BoundaryTypePeriodic(object):
                 | [0-25 escape directions, index of first in direction] [26-end current id and index of next id, (id, next_index) ]|
 
                 '''
-                self._escape_linked_list = host.Array(-1 * np.ones(26 + 2 * self.state.nt), dtype=ctypes.c_int)
+                self._escape_linked_list = host.Array(-1 * np.ones(26 + 2 * self.state.npart), dtype=ctypes.c_int)
 
                 _escape_dat_dict = {'EC': self._escape_count,
                                     'BL': self._bin_to_lin,

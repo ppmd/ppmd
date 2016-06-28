@@ -101,6 +101,8 @@ class LennardJonesShifted(BasePotential):
 
         return {'P': input_state.positions(access.R), 'A': input_state.forces(access.INC0), 'u': input_state.u(access.INC)}
 
+    def get_data_map(self, positions=None, forces=None, potential_energy=None):
+         return {'P': positions(access.R), 'A': forces(access.INC0), 'u': potential_energy(access.INC)}
 
 ################################################################################################################
 # LJ 2.5 sigma
@@ -147,6 +149,7 @@ class LennardJones(LennardJonesShifted):
 
         const double r2 = R0*R0 + R1*R1 + R2*R2;
 
+        //printf("r2: %f\\n", r2);
         if (r2 < rc2){
 
             const double r_m2 = sigma2/r2;
@@ -165,6 +168,8 @@ class LennardJones(LennardJonesShifted):
             A(1, 0)-=f_tmp*R0;
             A(1, 1)-=f_tmp*R1;
             A(1, 2)-=f_tmp*R2;
+
+            //printf("ftmp: %f\\n",f_tmp);
 
             }
 
