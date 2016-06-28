@@ -399,7 +399,6 @@ class ParticleDat(host.Matrix):
             return
         else:
 
-            print self.npart
 
             counts = mpi.MPI_HANDLE.comm.gather(self.npart, root=rank)
 
@@ -414,7 +413,6 @@ class ParticleDat(host.Matrix):
                 counts = tuple([self.ncomp*c for c in counts])
 
 
-                print [cx/3 for cx in counts], disp
             mpi.MPI_HANDLE.comm.Gatherv(sendbuf=self._dat[:self.npart:,::],
                                         recvbuf=(self._dat, counts, disp, None),
                                         root=rank)

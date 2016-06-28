@@ -115,7 +115,7 @@ class BaseMDState(object):
         # Can only setup a cell to particle map after a domain and a position
         # dat is set
         if (self._domain is not None) and (self._position_dat is not None):
-            print "setting up cell list"
+            #print "setting up cell list"
             self._cell_to_particle_map.setup(self.as_func('n'),
                                              self.get_position_dat(),
                                              self.domain)
@@ -275,11 +275,17 @@ class BaseMDState(object):
         b = self.domain.boundary
         p = self.get_position_dat()
 
-        bx = np.logical_not(np.logical_and(
-            np.logical_and((b[0] < p[::,0]), (p[::,0] <= b[1])),
-            np.logical_and((b[2] < p[::,1]), (p[::,1] <= b[3])),
+
+        lo = np.logical_and(
+            np.logical_and(
+                np.logical_and((b[0] < p[::,0]), (p[::,0] <= b[1])),
+                np.logical_and((b[2] < p[::,1]), (p[::,1] <= b[3]))
+            ),
             np.logical_and((b[4] < p[::,2]), (p[::,2] <= b[5]))
-        ))
+        )
+
+
+        bx = np.logical_not(lo)
 
         self._compress_empty_slots(np.nonzero(bx)[0])
 

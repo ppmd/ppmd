@@ -7,7 +7,7 @@ from ppmd import *
 
 
 N = 16
-E = 6.
+E = 12.
 Eo2 = E/2.
 
 A = state.State()
@@ -27,6 +27,7 @@ A.v[::] = np.random.normal(0, 2, [N,3])
 A.f[::] = np.zeros([N,3])
 A.broadcast_data_from(0)
 A.filter_on_domain_boundary()
+
 
 
 ljp = potential.LennardJones(sigma=1.0, epsilon=1.0, rc=2.5)
@@ -61,8 +62,6 @@ if mpi.MPI_HANDLE.rank == 0:
     print g_f
     
 
-#plot_dat = A.p.snapshot()
-#plot_dat.gather_data_on(0)
 
 
 
