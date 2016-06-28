@@ -378,7 +378,7 @@ class ParticleDat(host.Matrix):
                            dtype=self.dtype)
 
 
-    def scatter_data_from(self, rank=0, _resize_callback=True):
+    def broadcast_data_from(self, rank=0, _resize_callback=True):
         assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
 
         if mpi.MPI_HANDLE.nproc == 1:

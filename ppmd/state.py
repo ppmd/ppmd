@@ -107,7 +107,6 @@ class BaseMDState(object):
 
         # compressing vars
         self._compressing_lib = None
-        self._compressing_n_new = None
         self._compressing_dyn_args = None
 
 
@@ -254,7 +253,7 @@ class BaseMDState(object):
             _dat.resize(int(value), _callback=False)
 
 
-    def scatter_data_from(self, rank=0):
+    def broadcast_data_from(self, rank=0):
         assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
 
         if mpi.MPI_HANDLE.nproc == 1:
@@ -264,24 +263,41 @@ class BaseMDState(object):
             mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
             self.n = s[0]
             for px in self.particle_dats:
-                getattr(self, px).scatter_data_from(rank=rank, _resize_callback=False)
+                getattr(self, px).broadcast_data_from(rank=rank, _resize_callback=False)
 
 
+    def filter_on_domain_boundary(self):
+        """
+        Remove particles that do not reside in this subdomain. State requires a
+        domain and a PositionDat
+        """
+        b = self.domain.boundary
+        p = self.get_position_dat()
 
-    @property
-    def time(self):
-        """
-        Get the state time.
-        """
-        return self._time
+        bx = np.logical_not(np.logical_and(
+            np.logical_and((b[0] < p[::,0]), (p[::,0] <= b[1])),
+            np.logical_and((b[2] < p[::,1]), (p[::,1] <= b[3])),
+            np.logical_and((b[4] < p[::,2]), (p[::,2] <= b[5]))
+        ))
 
-    @time.setter
-    def time(self, val):
-        """
-        Set the state time.
-        """
-        self._time = val
-        self.version_id += 1
+        self._compress_empty_slots(np.nonzero(bx)[0])
+
+    def _compress_empty_slots(self, slots):
+        le = len(slots)
+        if le > 0:
+            self._resize_empty_slot_store(le)
+            self._move_empty_slots[0:le:] = slots
+            self.compressed = False
+            self._compress_particle_dats(le)
+
+    def _resize_empty_slot_store(self, new_size):
+
+        if self._move_empty_slots is None:
+            self._move_empty_slots = host.Array(ncomp=new_size, dtype=ctypes.c_int)
+        elif self._move_empty_slots.ncomp < new_size:
+            self._move_empty_slots.realloc(new_size)
+
+
 
     def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None, shifts=None):
         """
@@ -330,12 +346,9 @@ class BaseMDState(object):
             if _recv_total + self._n > _d.max_npart:
                 _d.resize(_recv_total + self._n)
 
-
         # Empty slots store.
-        if self._move_empty_slots is None:
-            self._move_empty_slots = host.Array(ncomp=_send_total, dtype=ctypes.c_int)
-        elif self._move_empty_slots.ncomp < _send_total:
-            self._move_empty_slots.realloc(_send_total)
+        self._resize_empty_slot_store(_send_total)
+
 
         #pack particles to send.
 
@@ -647,7 +660,7 @@ class BaseMDState(object):
         Compress the particle dats held in the state. Compressing removes empty rows.
         """
 
-        self._compressing_n_new = host.Array([0], dtype=ctypes.c_int)
+        _compressing_n_new = host.Array([0], dtype=ctypes.c_int)
         #self._compressing_slots = host.Array(self._move_empty_slots, dtype=ctypes.c_int)
 
         if self._compressing_lib is None:
@@ -672,7 +685,7 @@ class BaseMDState(object):
 
             self._compressing_dyn_args = {
                 'slots': self._move_empty_slots,
-                'n_new_out': self._compressing_n_new
+                'n_new_out': _compressing_n_new
             }
 
             _compressing_code = '''
@@ -750,17 +763,17 @@ class BaseMDState(object):
             # print "slots", self._move_empty_slots.dat
 
             self._compressing_dyn_args['slots'] = self._move_empty_slots
-            self._compressing_dyn_args['n_new_out'] = self._compressing_n_new
+            self._compressing_dyn_args['n_new_out'] = _compressing_n_new
 
-            #print self.n, self._compressing_n_new[0], "compressing slots=", self._compressing_slots.dat
+            #print self.n, _compressing_n_new[0], "compressing slots=", self._compressing_slots.dat
             self.compress_timer.start()
             self._compressing_lib.execute(static_args={'slots_to_fill_in': ctypes.c_int(num_slots_to_fill), 'n_new_in': ctypes.c_int(self.n)},
                                           dat_dict=self._compressing_dyn_args)
 
 
-            #print self.n, self._compressing_n_new[0]
+            #print self.n, _compressing_n_new[0]
 
-            self.n = self._compressing_n_new[0]
+            self.n = _compressing_n_new[0]
             self.compressed = True
             # self._move_empty_slots = []
             self.compress_timer.pause()
