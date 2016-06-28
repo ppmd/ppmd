@@ -252,6 +252,10 @@ class BaseMDState(object):
             _dat = getattr(self,ix)
             _dat.resize(int(value), _callback=False)
 
+    def scatter_data_from(self, rank):
+        self.broadcast_data_from(rank)
+        self.filter_on_domain_boundary()
+
 
     def broadcast_data_from(self, rank=0):
         assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
@@ -283,7 +287,6 @@ class BaseMDState(object):
             ),
             np.logical_and((b[4] < p[::,2]), (p[::,2] <= b[5]))
         )
-
 
         bx = np.logical_not(lo)
 

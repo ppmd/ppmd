@@ -1,13 +1,9 @@
 #!/usr/bin/python
 import numpy as np
-import sys
-
-
 from ppmd import *
 
-
-N = 16
-E = 12.
+N = 1000000
+E = 100.
 Eo2 = E/2.
 
 A = state.State()
@@ -25,8 +21,7 @@ A.u.halo_aware = True
 A.p[::] = np.random.uniform(-1.*Eo2, Eo2, [N,3])
 A.v[::] = np.random.normal(0, 2, [N,3])
 A.f[::] = np.zeros([N,3])
-A.broadcast_data_from(0)
-A.filter_on_domain_boundary()
+A.scatter_data_from(0)
 
 
 
@@ -37,30 +32,14 @@ ljmap = ljp.get_data_map(positions=A.p, forces=A.f, potential_energy=A.u)
 
 lj = pairloop.PairLoopNeighbourList(potential=ljp, 
                                     dat_dict=ljmap, 
-                                    shell_cutoff=2.75)
+                                    shell_cutoff=2.5)
 lj.execute()
 
 
 g_f = A.f.snapshot()
-
-
 g_f.gather_data_on(0)
 
 
-for rx in range(mpi.MPI_HANDLE.nproc):
-    if mpi.MPI_HANDLE.rank == rx:
-        print mpi.MPI_HANDLE.rank
-        print A.f[:A.f.npart:]
-        print 80*"-"
-        sys.stdout.flush()
-    mpi.MPI_HANDLE.barrier()
-
-
-if mpi.MPI_HANDLE.rank == 0:
-    print 80*"="
-    #print A.f
-    print g_f
-    
 
 
 
