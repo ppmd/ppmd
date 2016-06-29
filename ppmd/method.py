@@ -872,7 +872,7 @@ class DrawParticles(object):
         if _GRAPHICS:
 
             self._N = self._state.npart_local
-            self._NT = self._state.npart_local
+            self._NT = self._state.npart
             self._extents = self._state.domain.extent
 
             '''Case where all particles are local'''

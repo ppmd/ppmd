@@ -39,13 +39,13 @@ if __name__ == '__main__':
     test_1000 = True
 
     # 2 particles bouncing agasint each other.
-    test_2_bounce = False
+    test_2_bounce = True
 
     # 1 1 particle
     t_1_particle = False
 
     # plot as computing + at end?
-    plotting = False
+    plotting = True
     
     # log energy?
     logging = True
