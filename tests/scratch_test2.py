@@ -2,8 +2,8 @@
 import numpy as np
 from ppmd import *
 
-N = 1000000
-E = 100.
+N = 16
+E = 8.
 Eo2 = E/2.
 
 A = state.State()
@@ -18,9 +18,9 @@ A.u = data.ScalarArray(ncomp=2)
 A.u.halo_aware = True
 
 
-A.p[::] = np.random.uniform(-1.*Eo2, Eo2, [N,3])
-A.v[::] = np.random.normal(0, 2, [N,3])
-A.f[::] = np.zeros([N,3])
+A.p[:] = np.random.uniform(-1.*Eo2, Eo2, [N,3])
+A.v[:] = np.random.normal(0, 2, [N,3])
+A.f[:] = np.zeros([N,3])
 A.scatter_data_from(0)
 
 
@@ -36,7 +36,7 @@ lj = pairloop.PairLoopNeighbourList(potential=ljp,
 lj.execute()
 
 
-g_f = A.f.snapshot()
+g_f = A.f.copy()
 g_f.gather_data_on(0)
 
 

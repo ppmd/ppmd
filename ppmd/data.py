@@ -371,7 +371,7 @@ class ParticleDat(host.Matrix):
 
         return self, mode, halo
 
-    def snapshot(self):
+    def copy(self):
         #print "dat:", self._dat
         return ParticleDat(initial_value=self._dat[0:self.npart:],
                            ncomp=self.ncomp,
