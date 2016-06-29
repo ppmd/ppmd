@@ -162,7 +162,7 @@ class BaseMDSimulation(object):
         # If no cell structure was created
         elif self.potential is not None and not setup_only:
             print "Warning check looping method!"
-            self._forces_update_lib = pairloop.DoubleAllParticleLoopPBC(n=self.state.as_func('n'),
+            self._forces_update_lib = pairloop.DoubleAllParticleLoopPBC(n=self.state.as_func('npart_local'),
                                                                         domain=self.state.domain,
                                                                         kernel=self.potential.kernel,
                                                                         particle_dat_dict=_potential_dat_dict)
@@ -211,7 +211,7 @@ class BaseMDSimulation(object):
             '''
             _constants_K = []
             _K_kernel = kernel.Kernel('K_kernel', _K_kernel_code, _constants_K)
-            self._kinetic_energy_lib = loop.ParticleLoop(self.state.as_func('n'),
+            self._kinetic_energy_lib = loop.ParticleLoop(self.state.as_func('npart_local'),
                                                          self.state.types,
                                                          _K_kernel,
                                                          {'V': self.state.velocities, 'k': self.state.k, 'M': self.state.mass})

@@ -748,7 +748,7 @@ class VelocityAutoCorrelation(object):
 
         self._datdict = {'VAF': self._VAF, 'v0': self._V0, 'VT': self._VT}
 
-        self._loop = loop.ParticleLoop(self._state.as_func('n'), None, kernel=_kernel, particle_dat_dict=self._datdict)
+        self._loop = loop.ParticleLoop(self._state.as_func('npart_local'), None, kernel=_kernel, particle_dat_dict=self._datdict)
 
     def set_v0(self, v0=None, state=None):
         """
@@ -778,7 +778,7 @@ class VelocityAutoCorrelation(object):
 
         _t = self._state.time
 
-        _Ni = 1./self._state.as_func('n')
+        _Ni = 1./self._state.as_func('npart_local')
 
         self._datdict['VT'] = self._state.velocities
         self._loop.execute(None, self._datdict, {'Ni': ctypes.c_double(_Ni)})
@@ -997,12 +997,12 @@ class EnergyStore(object):
         if self._state.npart_local > 0:
             # print self._state.u[0], self._state.u[1]
 
-            _U_tmp = self._state.u.data[0]/self._state.npart_local
-            _U_tmp += 0.5*self._state.u.data[1]/self._state.npart_local
+            _U_tmp = self._state.u.data[0]/self._state.npart
+            _U_tmp += 0.5*self._state.u.data[1]/self._state.npart
             _u = _U_tmp
 
-            _k = self._state.k[0]/self._state.npart_local
-            _q = _U_tmp+(self._state.k[0])/self._state.npart_local
+            _k = self._state.k[0]/self._state.npart
+            _q = _U_tmp+(self._state.k[0])/self._state.npart
 
 
         self._k.append(_k)
