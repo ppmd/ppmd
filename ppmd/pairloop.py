@@ -650,8 +650,8 @@ class PairLoopNeighbourList(_Base):
             self.neighbour_list.update()
 
             #print "new list"
-            #print self.neighbour_list.neighbour_starting_points.dat[0:16]
-            #print self.neighbour_list.list.dat[0:10:]
+            #print self.neighbour_list.neighbour_starting_points.data[0:16]
+            #print self.neighbour_list.list.data[0:10:]
 
 
 

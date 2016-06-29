@@ -273,9 +273,9 @@ class LennardJonesCounter(LennardJones):
         self._shift_internal = (self._sigma / self._rc) ** 6 - (self._sigma / self._rc) ** 12
 
         self._counter = data.ScalarArray([0], dtype=ctypes.c_longlong, name="counter")
-        self._counter.dat[0] = 0
+        self._counter.data[0] = 0
         self._counter_outer = data.ScalarArray([0], dtype=ctypes.c_longlong, name="counter")
-        self._counter_outer.dat[0] = 0
+        self._counter_outer.data[0] = 0
 
     @property
     def kernel(self):

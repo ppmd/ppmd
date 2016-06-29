@@ -129,17 +129,17 @@ class ScalarArray(host.Array):
         return self, mode
 
     def __setitem__(self, ix, val):
-        self.dat[ix] = np.array([val], dtype=self.dtype)
+        self.data[ix] = np.array([val], dtype=self.dtype)
 
         if self._A is True:
             self._Aarray[ix] = np.array([val], dtype=self.dtype)
             self._Alength += 1
 
     def __str__(self):
-        return str(self.dat)
+        return str(self.data)
 
     def __repr__(self):
-        return str(self.dat)
+        return str(self.data)
 
     def resize(self, new_length):
         """
@@ -155,37 +155,37 @@ class ScalarArray(host.Array):
 
         :arg val: Coefficient to scale all elements by.
         """
-        self.dat = self.dat * np.array([val], dtype=self.dtype)
+        self.data = self.data * np.array([val], dtype=self.dtype)
 
     def zero(self):
-        self.dat.fill(0)
+        self.data.fill(0)
 
     @property
     def ctypes_value(self):
         """:return: first value in correct type."""
-        return self.dtype(self.dat[0])
+        return self.dtype(self.data[0])
 
     @property
     def min(self):
         """:return: The minimum in the array."""
-        return self.dat.min()
+        return self.data.min()
 
     @property
     def max(self):
         """:return: The maximum value in the array."""
-        return self.dat.max()
+        return self.data.max()
 
     @property
     def mean(self):
         """:return: The mean value in the array."""
-        return self.dat.mean()
+        return self.data.mean()
 
     @property
     def sum(self):
         """
         :return: The array sum.
         """
-        return self.dat.sum()
+        return self.data.sum()
 
     @property
     def average(self):
@@ -208,11 +208,11 @@ class ScalarArray(host.Array):
     def average_update(self):
         """Copy values from Dat into averaging array"""
         if self._A is True:
-            self._Aarray += self.dat
+            self._Aarray += self.data
             self._Alength += 1
         else:
             self.average_reset()
-            self._Aarray += self.dat
+            self._Aarray += self.data
             self._Alength += 1
 
 
@@ -314,12 +314,12 @@ class ParticleDat(host.Matrix):
 
 
     @property
-    def dat(self):
+    def data(self):
         self._vid_int += 1
         return self._dat
 
-    @dat.setter
-    def dat(self, value):
+    @data.setter
+    def data(self, value):
         self._vid_int += 1
         self._dat = value
 
@@ -329,13 +329,13 @@ class ParticleDat(host.Matrix):
 
         :param val: Value to set all entries to.
         """
-        self.dat[..., ...] = val
+        self.data[..., ...] = val
 
     def zero(self, n=None):
         if n is None:
-            self.dat.fill(0)
+            self.data.fill(0)
         else:
-            self.dat[:n:, ::] = self.idtype(0.0)
+            self.data[:n:, ::] = self.idtype(0.0)
             
     def max(self):
         """
@@ -354,14 +354,14 @@ class ParticleDat(host.Matrix):
 
 
     def __getitem__(self, ix):
-        return self.dat[ix]
+        return self.data[ix]
 
     def __setitem__(self, ix, val):
         self._vid_int += 1
-        self.dat[ix] = val
+        self.data[ix] = val
 
     def __str__(self):
-        return str(self.dat[::])
+        return str(self.data[::])
 
     def __repr__(self):
         # self.__str__()
@@ -433,7 +433,7 @@ class ParticleDat(host.Matrix):
 
                 self._vid_halo = self._vid_int
 
-        return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+        return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def ctypes_data_post(self, mode=access.RW):
         """
@@ -765,8 +765,8 @@ class ParticleDat(host.Matrix):
         # sys.stdout.flush()
 
 
-        # print "HALO_SEND", self.group._halo_manager.get_send_ranks().dat
-        # print "HALO_RECV", self.group._halo_manager.get_recv_ranks().dat
+        # print "HALO_SEND", self.group._halo_manager.get_send_ranks().data
+        # print "HALO_RECV", self.group._halo_manager.get_recv_ranks().data
 
         self._exchange_lib(self.ctypes_data,
                            ctypes.c_int(self.npart),
@@ -858,10 +858,10 @@ class TypedDat(host.Matrix):
         return self, mode
 
     def __getitem__(self, ix):
-        return self.dat[ix]
+        return self.data[ix]
 
     def __setitem__(self, ix, val):
-        self.dat[ix] = val
+        self.data[ix] = val
 
 
 ########################################################################

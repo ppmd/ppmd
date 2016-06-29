@@ -79,28 +79,28 @@ class Array(object):
         assert ctypes.sizeof(dtype) * length < available_free_memory(), "host.Array _create_zeros error: Not enough free memory."
 
         self.idtype = dtype
-        self.dat = np.zeros(length, dtype=dtype, order='C')
+        self.data = np.zeros(length, dtype=dtype, order='C')
 
     def _create_from_existing(self, ndarray=None, dtype=ctypes.c_double):
         assert sys.getsizeof(ndarray) < available_free_memory(), "host.Array _create_from_existing error: Not enough free memory."
 
         self.idtype = dtype
-        self.dat = np.array(ndarray, dtype=dtype, order='C')
+        self.data = np.array(ndarray, dtype=dtype, order='C')
 
     @property
     def ncomp(self):
-        return self.dat.shape[0]
+        return self.data.shape[0]
 
     @property
     def size(self):
-        return self.dat.shape[0] * ctypes.sizeof(self.dtype)
+        return self.data.shape[0] * ctypes.sizeof(self.dtype)
 
     @property
     def ctypes_data(self):
-        return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+        return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def ctypes_data_access(self, mode=access.RW):
-        return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+        return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def ctypes_data_post(self, mode=access.RW):
         pass
@@ -109,10 +109,10 @@ class Array(object):
 
         assert ctypes.sizeof(self.dtype) * length < available_free_memory(), "host.Array realloc error: Not enough free memory. Requested: " + str(ctypes.sizeof(self.dtype) * length) + " have: " + str(available_free_memory())
 
-        self.dat = np.resize(self.dat, length)
+        self.data = np.resize(self.data, length)
 
     def zero(self):
-        self.dat.fill(0)
+        self.data.fill(0)
 
     @property
     def dtype(self):
@@ -141,10 +141,10 @@ class Array(object):
         self._version += int(inc)
 
     def __getitem__(self, ix):
-        return self.dat[ix]
+        return self.data[ix]
 
     def __setitem__(self, ix, val):
-        self.dat[ix] = val
+        self.data[ix] = val
 
     def __len__(self):
         return self.ncomp
@@ -167,14 +167,14 @@ class Array(object):
         """
         Copy the CPU dat to the cuda device.
         """
-        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
+        assert self._cuda_dat is not None, "particle.data error: cuda_dat not created."
         self._cuda_dat.cpy_htd(self.ctypes_data)
 
     def copy_from_cuda_dat(self):
         """
         Copy the device dat into the cuda dat.
         """
-        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
+        assert self._cuda_dat is not None, "particle.data error: cuda_dat not created."
         self._cuda_dat.cpy_dth(self.ctypes_data)
     '''
 
@@ -215,8 +215,8 @@ class Matrix(object):
 
         self.idtype = dtype
         self._dat = np.array(ndarray, dtype=dtype, order='C')
-        if len(self.dat.shape) == 1:
-            self.dat.shape = (self.dat.shape[0], 1)
+        if len(self.data.shape) == 1:
+            self.data.shape = (self.data.shape[0], 1)
 
     @property
     def version(self):
@@ -234,35 +234,35 @@ class Matrix(object):
         self._version += int(inc)
 
     @property
-    def dat(self):
+    def data(self):
         return self._dat
 
-    @dat.setter
-    def dat(self, value):
+    @data.setter
+    def data(self, value):
         self._dat = value
 
     @property
     def nrow(self):
-        return self.dat.shape[0]
+        return self.data.shape[0]
 
     @property
     def ncol(self):
-        return self.dat.shape[1]
+        return self.data.shape[1]
 
     @property
     def size(self):
-        return self.dat.shape[0] * self.dat.shape[1] * ctypes.sizeof(self.dtype)
+        return self.data.shape[0] * self.data.shape[1] * ctypes.sizeof(self.dtype)
 
     @property
     def ctypes_data(self):
-        return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+        return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def ctypes_data_access(self, mode=access.RW):
         """
         :arg access mode: Access type required by the calling method.
         :return: The pointer to the data.
         """
-        return self.dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+        return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def ctypes_data_post(self, mode=access.RW):
         pass
@@ -271,13 +271,13 @@ class Matrix(object):
 
         assert ctypes.sizeof(self.dtype) * nrow * ncol < available_free_memory(), "host.Matrix realloc error: Not enough free memory."
 
-        self.dat = np.resize(self.dat,[nrow, ncol])
+        self.data = np.resize(self.data,[nrow, ncol])
 
 
 
 
     def zero(self):
-        self.dat.fill(self.idtype(0))
+        self.data.fill(self.idtype(0))
 
     @property
     def dtype(self):
@@ -291,7 +291,7 @@ class Matrix(object):
         Create a corresponding CudaDeviceDat.
         """
         if self._cuda_dat is None:
-            self._cuda_dat = gpucuda.CudaDeviceDat(size=(self.dat.shape[0] * self.dat.shape[1]) * ctypes.sizeof(self.idtype), dtype=self.idtype)
+            self._cuda_dat = gpucuda.CudaDeviceDat(size=(self.data.shape[0] * self.data.shape[1]) * ctypes.sizeof(self.idtype), dtype=self.idtype)
 
     def get_cuda_dat(self):
         """
@@ -303,7 +303,7 @@ class Matrix(object):
         """
         Copy the CPU dat to the cuda device.
         """
-        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
+        assert self._cuda_dat is not None, "particle.data error: cuda_dat not created."
 
 
         self._cuda_dat.cpy_htd(self.ctypes_data)
@@ -312,7 +312,7 @@ class Matrix(object):
         """
         Copy the device dat into the cuda dat.
         """
-        assert self._cuda_dat is not None, "particle.dat error: cuda_dat not created."
+        assert self._cuda_dat is not None, "particle.data error: cuda_dat not created."
         self._cuda_dat.cpy_dth(self.ctypes_data)
     '''
 

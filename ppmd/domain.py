@@ -610,7 +610,7 @@ class BoundaryTypePeriodic(object):
 
         self.timer_apply.start()
 
-        self._flag.dat[0] = 0
+        self._flag.data[0] = 0
 
         if mpi.MPI_HANDLE.nproc == 1:
             """
@@ -835,7 +835,7 @@ class BoundaryTypePeriodic(object):
 
         self.timer_apply.pause()
 
-        return self._flag.dat[0]
+        return self._flag.data[0]
 
 
 

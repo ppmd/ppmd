@@ -437,7 +437,7 @@ class RadialDistributionPeriodicNVE(object):
         self._rmax = rmax
         
         if self._rmax is None:
-            self._rmax = 0.5*np.min(self._extent.dat)
+            self._rmax = 0.5*np.min(self._extent.data)
         
         
         self._rsteps = rsteps
@@ -504,7 +504,7 @@ class RadialDistributionPeriodicNVE(object):
         
     def _scale(self):
         self._r = np.linspace(0.+0.5*(self._rmax/self._rsteps), self._rmax-0.5*(self._rmax/self._rsteps), num=self._rsteps, endpoint=True)
-        self._grscaled = self._gr.dat*self._state.domain.volume/((self._N())*(self._N() - 1)*2*math.pi*(self._r**2) * (self._rmax/float(self._rsteps))*self._count)
+        self._grscaled = self._gr.data*self._state.domain.volume/((self._N())*(self._N() - 1)*2*math.pi*(self._r**2) * (self._rmax/float(self._rsteps))*self._count)
         
     def plot(self):
 
@@ -759,10 +759,10 @@ class VelocityAutoCorrelation(object):
         """
 
         if v0 is not None:
-            self._V0.dat = np.copy(v0.dat)
+            self._V0.data = np.copy(v0.data)
             self._V0_SET = True
         if state is not None:
-            self._V0.dat = np.copy(state.velocities.dat)
+            self._V0.data = np.copy(state.velocities.data)
             self._V0_SET = True
         assert self._V0_SET is True, "No velocities set, check input data."
 
@@ -900,25 +900,25 @@ class DrawParticles(object):
                 if self._Mh.rank == 0:
 
                     '''Copy the local data.'''
-                    self._Dat.dat[0:self._N:, ::] = self._state.positions.dat[0:self._N:, ::]
-                    self._gids.dat[0:self._N:] = self._state.global_ids.dat[0:self._N:, 0]
+                    self._Dat.data[0:self._N:, ::] = self._state.positions.data[0:self._N:, ::]
+                    self._gids.data[0:self._N:] = self._state.global_ids.data[0:self._N:, 0]
 
                     _i = self._N  # starting point pos
                     _ig = self._N  # starting point gids
 
                     for ix in range(1, self._Mh.nproc):
-                        self._Mh.comm.Recv(self._Dat.dat[_i::, ::], ix, ix, _MS)
+                        self._Mh.comm.Recv(self._Dat.data[_i::, ::], ix, ix, _MS)
                         _i += _MS.Get_count(mpi.mpi_map[self._Dat.dtype]) / 3
 
-                        self._Mh.comm.Recv(self._gids.dat[_ig::], ix, ix, _MS)
+                        self._Mh.comm.Recv(self._gids.data[_ig::], ix, ix, _MS)
                         _ig += _MS.Get_count(mpi.mpi_map[self._gids.dtype])
 
                     self._pos = self._Dat
                     self._gid = self._gids
                 else:
 
-                    self._Mh.comm.Send(self._state.positions.dat[0:self._N:, ::], 0, self._Mh.rank)
-                    self._Mh.comm.Send(self._state.global_ids.dat[0:self._N:], 0, self._Mh.rank)
+                    self._Mh.comm.Send(self._state.positions.data[0:self._N:, ::], 0, self._Mh.rank)
+                    self._Mh.comm.Send(self._state.global_ids.data[0:self._N:], 0, self._Mh.rank)
 
             if self._Mh.rank == 0:
 
@@ -926,14 +926,14 @@ class DrawParticles(object):
                 plt.cla()
                 plt.ion()
                 for ix in range(self._pos.npart):
-                    self._ax.scatter(self._pos.dat[ix, 0], self._pos.dat[ix, 1], self._pos.dat[ix, 2],
+                    self._ax.scatter(self._pos.data[ix, 0], self._pos.data[ix, 1], self._pos.data[ix, 2],
                                      color=self._key[self._gid[ix] % 2])
 
                     if mpi.MPI_HANDLE.nproc == 1:
 
-                        self._ax.plot((self._pos.dat[ix, 0], self._pos.dat[ix, 0] + self.norm_vec(self._state.forces.dat[ix, 0])),
-                                      (self._pos.dat[ix, 1], self._pos.dat[ix, 1] + self.norm_vec(self._state.forces.dat[ix, 1])),
-                                      (self._pos.dat[ix, 2],self._pos.dat[ix, 2] + self.norm_vec(self._state.forces.dat[ix, 2])),
+                        self._ax.plot((self._pos.data[ix, 0], self._pos.data[ix, 0] + self.norm_vec(self._state.forces.data[ix, 0])),
+                                      (self._pos.data[ix, 1], self._pos.data[ix, 1] + self.norm_vec(self._state.forces.data[ix, 1])),
+                                      (self._pos.data[ix, 2],self._pos.data[ix, 2] + self.norm_vec(self._state.forces.data[ix, 2])),
                                       color=self._key[self._gid[ix] % 2],
                                       linewidth=2)
 
@@ -997,8 +997,8 @@ class EnergyStore(object):
         if self._state.n > 0:
             # print self._state.u[0], self._state.u[1]
 
-            _U_tmp = self._state.u.dat[0]/self._state.npart
-            _U_tmp += 0.5*self._state.u.dat[1]/self._state.npart
+            _U_tmp = self._state.u.data[0]/self._state.npart
+            _U_tmp += 0.5*self._state.u.data[1]/self._state.npart
             _u = _U_tmp
 
             _k = self._state.k[0]/self._state.npart
@@ -1032,21 +1032,21 @@ class EnergyStore(object):
         if (self._Mh is not None) and (self._Mh.nproc > 1):
 
             # data to collect
-            _d = [self._Q_store.dat, self._U_store.dat, self._K_store.dat]
+            _d = [self._Q_store.data, self._U_store.data, self._K_store.data]
 
             # make a temporary buffer.
             if self._Mh.rank == 0:
                 _buff = data.ScalarArray(ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
-                _T = self._T_store.dat
+                _T = self._T_store.data
                 _Q = data.ScalarArray( ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
                 _U = data.ScalarArray(ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
                 _K = data.ScalarArray(ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
 
-                _Q.dat[::] += self._Q_store.dat[::]
-                _U.dat[::] += self._U_store.dat[::]
-                _K.dat[::] += self._K_store.dat[::]
+                _Q.data[::] += self._Q_store.data[::]
+                _U.data[::] += self._U_store.data[::]
+                _K.data[::] += self._K_store.data[::]
 
-                _dl = [_Q.dat, _U.dat, _K.dat]
+                _dl = [_Q.data, _U.data, _K.data]
             else:
                 _dl = [None, None, None]
 
@@ -1055,22 +1055,22 @@ class EnergyStore(object):
                 if self._Mh.rank == 0:
                     _MS = mpi.Status()
                     for ix in range(1, self._Mh.nproc):
-                        self._Mh.comm.Recv(_buff.dat[::], ix, ix, _MS)
-                        _dj[::] += _buff.dat[::]
+                        self._Mh.comm.Recv(_buff.data[::], ix, ix, _MS)
+                        _dj[::] += _buff.data[::]
 
                 else:
                     self._Mh.comm.Send(_di[::], 0, self._Mh.rank)
 
             if self._Mh.rank == 0:
-                _Q = _Q.dat
-                _U = _U.dat
-                _K = _K.dat
+                _Q = _Q.data
+                _U = _U.data
+                _K = _K.data
 
         else:
-            _T = self._T_store.dat
-            _Q = self._Q_store.dat
-            _U = self._U_store.dat
-            _K = self._K_store.dat
+            _T = self._T_store.data
+            _Q = self._Q_store.data
+            _U = self._U_store.data
+            _K = self._K_store.data
 
 
 
@@ -1185,7 +1185,7 @@ class ParticleTracker(object):
         """
 
         for lx in range(self._dat.ncomp):
-            self._fh.write("%(VAL)s\t" % {'VAL':str(self._dat.dat[self._i,lx])})
+            self._fh.write("%(VAL)s\t" % {'VAL':str(self._dat.data[self._i,lx])})
         self._fh.write('\n')
 
 

@@ -262,7 +262,7 @@ class CellList(object):
             _n = self._cell_list.end - self._domain.cell_count
 
             self._cell_list[self._cell_list.end] = _n
-            self._cell_list.dat[_n:self._cell_list.end:] = ct.c_int(-1)
+            self._cell_list.data[_n:self._cell_list.end:] = ct.c_int(-1)
             self._cell_contents_count.zero()
 
             self._cell_sort_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
@@ -376,9 +376,9 @@ class CellList(object):
 
             self._cell_list.realloc(total_size + cell_count + 1)
 
-            self._cell_list.dat[self._cell_list.end - cell_count: self._cell_list.end:] = self._cell_list.dat[cell_start:cell_end:]
+            self._cell_list.data[self._cell_list.end - cell_count: self._cell_list.end:] = self._cell_list.data[cell_start:cell_end:]
 
-            self._cell_list.dat[self._cell_list.end] = self._cell_list.end - cell_count
+            self._cell_list.data[self._cell_list.end] = self._cell_list.end - cell_count
 
             # cell reverse lookup
             self._cell_reverse_lookup.realloc(total_size)
@@ -408,9 +408,9 @@ class CellList(object):
 
             self._cell_list.realloc(total_size + cell_count + 1)
 
-            self._cell_list.dat[self._cell_list.end - cell_count: self._cell_list.end:] = self._cell_list.dat[cell_start:cell_end:]
+            self._cell_list.data[self._cell_list.end - cell_count: self._cell_list.end:] = self._cell_list.data[cell_start:cell_end:]
 
-            self._cell_list.dat[self._cell_list.end] = self._cell_list.end - cell_count
+            self._cell_list.data[self._cell_list.end] = self._cell_list.end - cell_count
 
             # cell reverse lookup
             self._cell_reverse_lookup.realloc(total_size)
@@ -595,7 +595,7 @@ class GroupByCell(object):
         Run library to group data by cell.
         """
 
-        self._cell_list_new.dat[cell_list.cell_list[cell_list.cell_list.end]:cell_list.cell_list.end:] = ct.c_int(-1)
+        self._cell_list_new.data[cell_list.cell_list[cell_list.cell_list.end]:cell_list.cell_list.end:] = ct.c_int(-1)
 
         self._group_by_cell_lib.execute(static_args={'n':ct.c_int(cell_list.cell_list[cell_list.cell_list.end])})
 
@@ -605,16 +605,16 @@ class GroupByCell(object):
 
         # swap dynamic dats
         for idx, ix in enumerate(self._state.particle_dats):
-            _tmp = getattr(self._state, ix).dat
-            getattr(self._state, ix).dat = self._new_particle_dats[idx].dat
-            self._new_particle_dats[idx].dat = _tmp
+            _tmp = getattr(self._state, ix).data
+            getattr(self._state, ix).data = self._new_particle_dats[idx].data
+            self._new_particle_dats[idx].data = _tmp
 
 
         # swap cell list.
-        _tmp = cell_list.cell_list.dat
-        cell_list.cell_list.dat = self._cell_list_new.dat
-        self._cell_list_new.dat = _tmp
-        cell_list.cell_list.dat[cell_list.cell_list.end] = cell_list.cell_list.end - cell_list.domain.cell_count
+        _tmp = cell_list.cell_list.data
+        cell_list.cell_list.data = self._cell_list_new.data
+        self._cell_list_new.data = _tmp
+        cell_list.cell_list.data[cell_list.cell_list.end] = cell_list.cell_list.end - cell_list.domain.cell_count
 
         self.swaptimer.pause()
 
@@ -696,7 +696,7 @@ class NeighbourList(object):
 
 
         self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
-        self._return_code.dat[0] = -1
+        self._return_code.data[0] = -1
 
         _code = '''
 
@@ -907,7 +907,7 @@ class NeighbourListv2(NeighbourList):
 
 
         self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
-        self._return_code.dat[0] = -1
+        self._return_code.data[0] = -1
 
         # //#define RK %(_RK)s
         _code = '''
@@ -1211,7 +1211,7 @@ class NeighbourMatrix(object):
 
 
         self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
-        self._return_code.dat[0] = -1
+        self._return_code.data[0] = -1
 
         _code = '''
         
@@ -1507,7 +1507,7 @@ class NeighbourListHaloAware(object):
 
 
         self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
-        self._return_code.dat[0] = -1
+        self._return_code.data[0] = -1
 
 
 
@@ -1861,7 +1861,7 @@ class NeighbourListNonN3(NeighbourList):
 
 
         self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
-        self._return_code.dat[0] = -1
+        self._return_code.data[0] = -1
 
         _code = '''
 
@@ -2116,7 +2116,7 @@ class CellLayerSort(object):
 
         self._lib.execute(static_args={'Nc': _Nc, 'CL_start': _CL_start})
 
-        _Lm = self._cell_list.cell_contents_count.dat[0:self._cell_list.domain.cell_count:].max()
+        _Lm = self._cell_list.cell_contents_count.data[0:self._cell_list.domain.cell_count:].max()
 
         self.num_layers = _Lm
 
@@ -2130,8 +2130,8 @@ class CellLayerSort(object):
         self._lib2.execute(static_args=_statics2)
         self.version_id += 1
 
-        #print "occupancy matrix", _Lm, self.cell_occupancy_matrix.dat
-        #print "particle layers", self.particle_layers.dat
+        #print "occupancy matrix", _Lm, self.cell_occupancy_matrix.data
+        #print "particle layers", self.particle_layers.data
 
 
 
@@ -2295,8 +2295,8 @@ class NeighbourListLayerBased(object):
         self._lib.execute(static_args=_statics)
         self.version_id += 1
         #print "Nn", _Nn
-        #print "0", self.neighbour_matrix.dat[0:_tnn:]
-        #print "1", self.neighbour_matrix.dat[_tnn:2*_tnn:]
+        #print "0", self.neighbour_matrix.data[0:_tnn:]
+        #print "1", self.neighbour_matrix.data[_tnn:2*_tnn:]
 
 
 
@@ -2380,7 +2380,7 @@ class NeighbourListPairIndices(object):
 
 
         self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
-        self._return_code.dat[0] = -1
+        self._return_code.data[0] = -1
 
         _name = 'pairwise_neighbour_list'
 

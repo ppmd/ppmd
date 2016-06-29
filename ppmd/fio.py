@@ -73,7 +73,7 @@ def ParticleDat_to_xml(dat=None, filename=None):
     fh.close()
 
     fh = open(filename,'a')
-    dat.dat[0:dat.npart:,::].tofile(fh)
+    dat.data[0:dat.npart:,::].tofile(fh)
     fh.close()
 
 
@@ -135,7 +135,7 @@ def MPIParticleDat_to_xml(dat=None, filename=None, order=None):
         mpi.MPI_HANDLE.comm.Scan(np.array([dat.npart], dtype=ctypes.c_int), _start, MPI.SUM)
         _start = (_start[0] - dat.npart) * dat.ncomp * ctypes.sizeof(dat.dtype)
         mpi_fh.Seek(end_of_xml + _start)
-        mpi_fh.Write(dat.dat[0:dat.npart:,::])
+        mpi_fh.Write(dat.data[0:dat.npart:,::])
         mpi_fh.Close()
 
     else:
@@ -144,7 +144,7 @@ def MPIParticleDat_to_xml(dat=None, filename=None, order=None):
             gid = order[px]
             gloc = end_of_xml + gid * dat.ncomp * ctypes.sizeof(dat.dtype)
             mpi_fh.Seek(gloc)
-            mpi_fh.Write(dat.dat[px, ::])
+            mpi_fh.Write(dat.data[px, ::])
 
 
         mpi_fh.Close()
@@ -154,7 +154,7 @@ def MPIParticleDat_to_xml(dat=None, filename=None, order=None):
 
 
     #fh = open(filename,'a')
-    #dat.dat.tofile(fh)
+    #dat.data.tofile(fh)
     #fh.close()
 
 
@@ -197,7 +197,7 @@ def xml_to_ParticleDat(filename=None):
                            name=children['name'],
                            dtype=TYPE_MAP[children['dtype']])
 
-    dat.dat = np.reshape(np.fromfile(fh, dtype=TYPE_MAP[children['dtype']], count=dat.ncomp * dat.npart),
+    dat.data = np.reshape(np.fromfile(fh, dtype=TYPE_MAP[children['dtype']], count=dat.ncomp * dat.npart),
                          [dat.npart,dat.ncomp])
 
     return dat

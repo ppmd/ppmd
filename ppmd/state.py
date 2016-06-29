@@ -264,7 +264,7 @@ class BaseMDState(object):
             self.n = self.npart
             return
         else:
-            s = np.array([self.get_position_dat().dat.shape[0]])
+            s = np.array([self.get_position_dat().data.shape[0]])
             mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
             self.n = s[0]
             for px in self.particle_dats:
@@ -324,7 +324,7 @@ class BaseMDState(object):
             self._move_build_packing_lib()
 
 
-        _send_total = dir_send_totals.dat.sum()
+        _send_total = dir_send_totals.data.sum()
         # Make/resize send buffer.
         if self._move_send_buffer is None:
             self._move_send_buffer = host.Array(ncomp=self._total_ncomp * _send_total, dtype=ctypes.c_double)
@@ -343,7 +343,7 @@ class BaseMDState(object):
         self._move_exchange_send_recv_sizes()
 
         #resize recv buffer.
-        _recv_total = self._move_dir_recv_totals.dat.sum()
+        _recv_total = self._move_dir_recv_totals.data.sum()
         if self._move_recv_buffer is None:
             self._move_recv_buffer = host.Array(ncomp=self._total_ncomp * _recv_total, dtype=ctypes.c_double)
         elif self._move_recv_buffer.ncomp < self._total_ncomp * _recv_total:
@@ -370,7 +370,7 @@ class BaseMDState(object):
         self._move_packing_shift_lib.execute(dat_dict=self._packing_args_shift)
 
         #sort empty slots.
-        self._move_empty_slots.dat[0:_send_total:].sort()
+        self._move_empty_slots.data[0:_send_total:].sort()
 
         #exchange particle data.
         self._exchange_move_send_recv_buffers()
@@ -397,8 +397,8 @@ class BaseMDState(object):
                                                     -1 * direction[2]), ignore_periods=True)
 
         # print "recv_ranks ", _recv_rank
-        # print "recv_totals", self._move_dir_recv_totals.dat
-        # print "send_totals", self._move_dir_send_totals.dat
+        # print "recv_totals", self._move_dir_recv_totals.data
+        # print "send_totals", self._move_dir_send_totals.data
         # print "send_ranks ", _send_rank
 
         # print mpi.MPI_HANDLE.rank, "(recv, send, n)", (_recv_total, _send_total, self._n)
@@ -406,21 +406,21 @@ class BaseMDState(object):
         if _recv_total < _send_total:
             self.compressed = False
 
-            # print "EMPTIES_PRE_MOVE", self._move_empty_slots.dat[0:_send_total]
+            # print "EMPTIES_PRE_MOVE", self._move_empty_slots.data[0:_send_total]
             # print "recv_total", _recv_total, "send_total", _send_total
-            # print "should copy?", self._move_empty_slots.dat[_recv_total:_send_total:]
+            # print "should copy?", self._move_empty_slots.data[_recv_total:_send_total:]
 
-            _tmp = self._move_empty_slots.dat[_recv_total:_send_total:]
-            #self._move_empty_slots.dat[0:_send_total-_recv_total:, ::] = self._move_empty_slots.dat[_recv_total:_send_total:, ::]
+            _tmp = self._move_empty_slots.data[_recv_total:_send_total:]
+            #self._move_empty_slots.data[0:_send_total-_recv_total:, ::] = self._move_empty_slots.data[_recv_total:_send_total:, ::]
             
             # print "TMP", _tmp, type(_tmp)
             '''
             for ix in range(_send_total-_recv_total):
-                self._move_empty_slots.dat[ix]=_tmp[ix]
+                self._move_empty_slots.data[ix]=_tmp[ix]
             '''
 
-            self._move_empty_slots.dat[0:_send_total-_recv_total:] = np.array(_tmp, copy=True)   
-            # print "EMPTIES", self._move_empty_slots.dat[0:_send_total-_recv_total:]
+            self._move_empty_slots.data[0:_send_total-_recv_total:] = np.array(_tmp, copy=True)
+            # print "EMPTIES", self._move_empty_slots.data[0:_send_total-_recv_total:]
 
 
         else:
@@ -514,8 +514,8 @@ class BaseMDState(object):
 
         _n = self._total_ncomp
 
-        # print "SEND_TOTALS", self._move_dir_send_totals.dat
-        # print "RECV_TOTALS", self._move_dir_recv_totals.dat
+        # print "SEND_TOTALS", self._move_dir_send_totals.data
+        # print "RECV_TOTALS", self._move_dir_recv_totals.data
 
 
         for ix in range(26):
@@ -534,21 +534,21 @@ class BaseMDState(object):
 
             # sending of particles.
             if self._move_dir_send_totals[ix] > 0 and self._move_dir_recv_totals[ix] > 0:
-                mpi.MPI_HANDLE.comm.Sendrecv(self._move_send_buffer.dat[_s_start:_s_end:],
+                mpi.MPI_HANDLE.comm.Sendrecv(self._move_send_buffer.data[_s_start:_s_end:],
                                              _send_rank,
                                              _send_rank,
-                                             self._move_recv_buffer.dat[_r_start:_r_end:],
+                                             self._move_recv_buffer.data[_r_start:_r_end:],
                                              _recv_rank,
                                              mpi.MPI_HANDLE.rank,
                                              self._status)
             elif self._move_dir_send_totals[ix] > 0:
-                    mpi.MPI_HANDLE.comm.Send(self._move_send_buffer.dat[_s_start:_s_end:],
+                    mpi.MPI_HANDLE.comm.Send(self._move_send_buffer.data[_s_start:_s_end:],
                                              _send_rank,
                                              _send_rank)
 
 
             elif self._move_dir_recv_totals[ix] > 0:
-                    mpi.MPI_HANDLE.comm.Recv(self._move_recv_buffer.dat[_r_start:_r_end:],
+                    mpi.MPI_HANDLE.comm.Recv(self._move_recv_buffer.data[_r_start:_r_end:],
                                              _recv_rank,
                                              mpi.MPI_HANDLE.rank,
                                              self._status)
@@ -576,10 +576,10 @@ class BaseMDState(object):
                                                -1 * direction[1],
                                                -1 * direction[2]), ignore_periods=True)
 
-            mpi.MPI_HANDLE.comm.Sendrecv(self._move_dir_send_totals.dat[ix:ix + 1:],
+            mpi.MPI_HANDLE.comm.Sendrecv(self._move_dir_send_totals.data[ix:ix + 1:],
                                          _send_rank,
                                          _send_rank,
-                                         self._move_dir_recv_totals.dat[ix:ix + 1:],
+                                         self._move_dir_recv_totals.data[ix:ix + 1:],
                                          _recv_rank,
                                          mpi.MPI_HANDLE.rank,
                                          _status)
@@ -771,12 +771,12 @@ class BaseMDState(object):
             return
         else:
             # print "NOT COMPRESSED", num_slots_to_fill
-            # print "slots", self._move_empty_slots.dat
+            # print "slots", self._move_empty_slots.data
 
             self._compressing_dyn_args['slots'] = self._move_empty_slots
             self._compressing_dyn_args['n_new_out'] = _compressing_n_new
 
-            #print self.n, _compressing_n_new[0], "compressing slots=", self._compressing_slots.dat
+            #print self.n, _compressing_n_new[0], "compressing slots=", self._compressing_slots.data
             self.compress_timer.start()
             self._compressing_lib.execute(static_args={'slots_to_fill_in': ctypes.c_int(num_slots_to_fill), 'n_new_in': ctypes.c_int(self.n)},
                                           dat_dict=self._compressing_dyn_args)

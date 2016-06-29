@@ -218,11 +218,11 @@ class BaseMDSimulation(object):
 
             self.kinetic_energy_timer = self._kinetic_energy_lib.loop_timer
 
-        self.state.k.dat[0] = 0.0
+        self.state.k.data[0] = 0.0
         self._kinetic_energy_lib.execute(self.state.n)
 
 
-        return self.state.k.dat
+        return self.state.k.data
 
 
 
@@ -461,12 +461,12 @@ class PosInitTwoParticlesInABox(object):
             _tmp2 = self._rx * self._axis
 
             if (_d[0] <= _tmp[0] < _d[1]) and (_d[2] <= _tmp[1] < _d[3]) and (_d[4] <= _tmp[2] < _d[5]):
-                state_input.positions.dat[0,::] = np.array(_tmp[::], dtype=ct.c_double, copy=True)
+                state_input.positions.data[0,::] = np.array(_tmp[::], dtype=ct.c_double, copy=True)
                 state_input.global_ids[0] = 0
                 _N += 1
 
             if (_d[0] <= _tmp2[0] < _d[1]) and (_d[2] <= _tmp2[1] < _d[3]) and (_d[4] <= _tmp2[2] < _d[5]):
-                state_input.positions.dat[_N,::] = np.array(_tmp2[::], dtype=ct.c_double, copy=True)
+                state_input.positions.data[_N,::] = np.array(_tmp2[::], dtype=ct.c_double, copy=True)
                 state_input.global_ids[_N] = 1
                 _N += 1
 
@@ -598,11 +598,11 @@ class PosInitDLPOLYConfig(object):
 
                 if (_d[0] <= _tx < _d[1]) and (_d[2] <= _ty < _d[3]) and (_d[4] <= _tz < _d[5]):
 
-                    state_input.positions.dat[_n, 0] = _tx
-                    state_input.positions.dat[_n, 1] = _ty
-                    state_input.positions.dat[_n, 2] = _tz
+                    state_input.positions.data[_n, 0] = _tx
+                    state_input.positions.data[_n, 1] = _ty
+                    state_input.positions.data[_n, 2] = _tz
 
-                    #print state_input.positions.dat[_n,::]
+                    #print state_input.positions.data[_n,::]
 
                     state_input.global_ids[_n] = count
                     _n += 1
@@ -625,11 +625,11 @@ class PosInitDLPOLYConfig(object):
                         _ty = periodic_mod(_d[2] , _ty , _d[3])
                         _tz = periodic_mod(_d[4] , _tz , _d[5])
                             
-                        state_input.positions.dat[_n, 0] = _tx
-                        state_input.positions.dat[_n, 1] = _ty
-                        state_input.positions.dat[_n, 2] = _tz
+                        state_input.positions.data[_n, 0] = _tx
+                        state_input.positions.data[_n, 1] = _ty
+                        state_input.positions.data[_n, 2] = _tz
 
-                        #print state_input.positions.dat[_n,::]
+                        #print state_input.positions.data[_n,::]
 
 
                         state_input.global_ids[_n] = count

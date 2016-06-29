@@ -469,7 +469,7 @@ class CartesianHaloSix(object):
                                  self._b_tmp.ctypes_data,
                                  self.dir_counts.ctypes_data)
 
-        # print self.dir_counts.dat
+        # print self.dir_counts.data
 
         # print str(mpi.MPI_HANDLE.rank) +  10*' #' + ' after size exchange  ' + 10*'#'
 
