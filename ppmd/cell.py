@@ -450,7 +450,7 @@ class CellList(object):
         """
         Number of local particles + halo particles.
         """
-        return self._positions.npart_local_total
+        return self._positions.npart_total
 
     @property
     def cell_width(self):

@@ -512,10 +512,10 @@ class PairLoopNeighbourList(_Base):
 
         self.neighbour_list = cell.NeighbourListv2(self._group.get_cell_to_particle_map())
 
-        #print self._group.npart, self._group.n
+        #print self._group.npart, self._group.npart_local
 
 
-        self.neighbour_list.setup(self._group.get_n_func(),
+        self.neighbour_list.setup(self._group.get_npart_local_func(),
                                   self._group.get_position_dat(),
                                   self._group.get_domain(),
                                   self._rn)

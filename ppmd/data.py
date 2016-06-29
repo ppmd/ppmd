@@ -350,7 +350,7 @@ class ParticleDat(host.Matrix):
 
         :return:
         """
-        return self.npart_local + self.npart_local_halo
+        return self.npart_local + self.npart_halo
 
 
     def __getitem__(self, ix):

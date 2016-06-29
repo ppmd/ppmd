@@ -194,7 +194,7 @@ class VelocityVerlet(object):
         self.timer = opt.SynchronizedTimer(runtime.TIMER)
         
         self._domain = self._state.domain
-        self._N = self._state.n
+        self._N = self._state.npart_local
         self._A = self._state.forces
         self._V = self._state.velocities
         self._P = self._state.positions
@@ -299,13 +299,13 @@ class VelocityVerlet(object):
         #self._sim.forces_update()
 
         for i in range(self._max_it):
-            # print mpi.MPI_HANDLE.rank, "-------", i , self._state.n
+            # print mpi.MPI_HANDLE.rank, "-------", i , self._state.npart_local
 
-            self._p1.execute(self._state.n)
+            self._p1.execute(self._state.npart_local)
 
 
             self._sim.forces_update()
-            self._p2.execute(self._state.n)
+            self._p2.execute(self._state.npart_local)
 
             self._sim.kinetic_energy_update()
 
@@ -433,7 +433,7 @@ class RadialDistributionPeriodicNVE(object):
         self._state = state
         self._extent = self._state.domain.extent
         self._P = self._state.positions
-        self._N = self._state.n
+        self._N = self._state.npart_local
         self._rmax = rmax
         
         if self._rmax is None:
@@ -609,7 +609,7 @@ class WriteTrajectoryXYZ(object):
 
         if mpi.MPI_HANDLE.rank == 0:
             self._fh = open(os.path.join(self._dn, self._fn), 'a')
-            self._fh.write(str(self._s.nt) + '\n')
+            self._fh.write(str(self._s.npart) + '\n')
             self._fh.write(str(self._title) + '\n')
             self._fh.flush()
         mpi.MPI_HANDLE.barrier()
@@ -618,7 +618,7 @@ class WriteTrajectoryXYZ(object):
             for iz in range(mpi.MPI_HANDLE.nproc):
                 if mpi.MPI_HANDLE.rank == iz:
                     self._fh = open(os.path.join(self._dn, self._fn), 'a')
-                    for ix in range(self._s.n):
+                    for ix in range(self._s.npart):
                         self._fh.write(str(self._symbol).rjust(3))
                         for iy in range(3):
                             self._fh.write(space + str('%.5f' % self._s.positions[ix, iy]))
@@ -720,7 +720,7 @@ class VelocityAutoCorrelation(object):
 
     def __init__(self, state, size=0, v0=None):
         self._state = state
-        self._V0 = data.ParticleDat(self._state.n, 3, name='v0')
+        self._V0 = data.ParticleDat(self._state.npart_local, 3, name='v0')
         self._VT = state.velocities
 
         self._VO_SET = False
@@ -871,7 +871,7 @@ class DrawParticles(object):
 
         if _GRAPHICS:
 
-            self._N = self._state.n
+            self._N = self._state.npart_local
             self._NT = self._state.npart_local
             self._extents = self._state.domain.extent
 
@@ -994,7 +994,7 @@ class EnergyStore(object):
         _q = 0.0
         _t = self._state.time
 
-        if self._state.n > 0:
+        if self._state.npart_local > 0:
             # print self._state.u[0], self._state.u[1]
 
             _U_tmp = self._state.u.data[0]/self._state.npart_local

@@ -114,7 +114,7 @@ class BaseMDState(object):
         # dat is set
         if (self._domain is not None) and (self._position_dat is not None):
             #print "setting up cell list"
-            self._cell_to_particle_map.setup(self.as_func('n'),
+            self._cell_to_particle_map.setup(self.as_func('npart_local'),
                                              self.get_position_dat(),
                                              self.domain)
             self._cell_to_particle_map.trigger_update()
@@ -134,7 +134,7 @@ class BaseMDState(object):
 
         self._cell_particle_map_setup()
 
-    def get_n_func(self):
+    def get_npart_local_func(self):
         return self.as_func('npart_local')
 
     def get_domain(self):
@@ -206,20 +206,20 @@ class BaseMDState(object):
         return _AsFunc(self, name)
 
     @property
-    def n(self):
+    def npart_local(self):
         """
         :return: Local number of particles
         """
-        return self._n
+        return self._npart_local
 
-    @n.setter
-    def n(self, value):
+    @npart_local.setter
+    def npart_local(self, value):
         """
         Set local number of particles.
 
         :arg value: New number of local particles.
         """
-        self._n = int(value)
+        self._npart_local = int(value)
         for ix in self.particle_dats:
             _dat = getattr(self,ix)
             _dat.npart_local = int(value)
@@ -259,12 +259,12 @@ class BaseMDState(object):
         assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
 
         if mpi.MPI_HANDLE.nproc == 1:
-            self.n = self.npart_local
+            self.npart_local = self.npart
             return
         else:
             s = np.array([self.get_position_dat().data.shape[0]])
             mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
-            self.n = s[0]
+            self.npart_local = s[0]
             for px in self.particle_dats:
                 getattr(self, px).broadcast_data_from(rank=rank, _resize_callback=False)
 
@@ -351,8 +351,8 @@ class BaseMDState(object):
 
         for ix in self.particle_dats:
             _d = getattr(self,ix)
-            if _recv_total + self._n > _d.max_npart:
-                _d.resize(_recv_total + self._n)
+            if _recv_total + self._npart_local > _d.max_npart:
+                _d.resize(_recv_total + self._npart_local)
 
         # Empty slots store.
         self._resize_empty_slot_store(_send_total)
@@ -381,7 +381,7 @@ class BaseMDState(object):
         # unpack recv buffer.
         self._move_unpacking_lib.execute(static_args={'_recv_count': ctypes.c_int(_recv_total),
                                                       '_num_free_slots': ctypes.c_int(_send_total),
-                                                      '_prev_num_particles': ctypes.c_int(self._n)})
+                                                      '_prev_num_particles': ctypes.c_int(self._npart_local)})
 
         _recv_rank = np.zeros(26)
         _send_rank = np.zeros(26)
@@ -399,7 +399,7 @@ class BaseMDState(object):
         # print "send_totals", self._move_dir_send_totals.data
         # print "send_ranks ", _send_rank
 
-        # print mpi.MPI_HANDLE.rank, "(recv, send, n)", (_recv_total, _send_total, self._n)
+        # print mpi.MPI_HANDLE.rank, "(recv, send, n)", (_recv_total, _send_total, self._npart_local)
 
         if _recv_total < _send_total:
             self.compressed = False
@@ -423,7 +423,7 @@ class BaseMDState(object):
 
         else:
             # print "setting n"
-            self.n = self.n + _recv_total - _send_total
+            self.npart_local = self.npart_local + _recv_total - _send_total
 
         # Compress particle dats.
         self._compress_particle_dats(_send_total - _recv_total)
@@ -774,15 +774,15 @@ class BaseMDState(object):
             self._compressing_dyn_args['slots'] = self._move_empty_slots
             self._compressing_dyn_args['n_new_out'] = _compressing_n_new
 
-            #print self.n, _compressing_n_new[0], "compressing slots=", self._compressing_slots.data
+            #print self.npart_local, _compressing_n_new[0], "compressing slots=", self._compressing_slots.data
             self.compress_timer.start()
-            self._compressing_lib.execute(static_args={'slots_to_fill_in': ctypes.c_int(num_slots_to_fill), 'n_new_in': ctypes.c_int(self.n)},
+            self._compressing_lib.execute(static_args={'slots_to_fill_in': ctypes.c_int(num_slots_to_fill), 'n_new_in': ctypes.c_int(self.npart_local)},
                                           dat_dict=self._compressing_dyn_args)
 
 
-            #print self.n, _compressing_n_new[0]
+            #print self.npart_local, _compressing_n_new[0]
 
-            self.n = _compressing_n_new[0]
+            self.npart_local = _compressing_n_new[0]
             self.compressed = True
             # self._move_empty_slots = []
             self.compress_timer.pause()

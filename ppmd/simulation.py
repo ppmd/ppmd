@@ -187,7 +187,7 @@ class BaseMDSimulation(object):
         #self.state.forces.set_val(0.)
 
         self.cpu_forces_timer.start()
-        self.state.forces.zero(self.state.n)
+        self.state.forces.zero(self.state.npart_local)
         self.state.u.zero()
         self.cpu_forces_timer.pause()
 
@@ -219,7 +219,7 @@ class BaseMDSimulation(object):
             self.kinetic_energy_timer = self._kinetic_energy_lib.loop_timer
 
         self.state.k.data[0] = 0.0
-        self._kinetic_energy_lib.execute(self.state.n)
+        self._kinetic_energy_lib.execute(self.state.npart_local)
 
 
         return self.state.k.data
@@ -328,7 +328,7 @@ class PosInitLatticeNRho(object):
                 _gid[_n] = ix
                 _n += 1
 
-        state_input.n = _n
+        state_input.npart_local = _n
         _p.halo_start_reset()
 
 
@@ -416,7 +416,7 @@ class PosInitLatticeNRhoRand(object):
 
 
 
-        state_input.n = _n
+        state_input.npart_local = _n
         _p.halo_start_reset()
 
 
@@ -453,7 +453,7 @@ class PosInitTwoParticlesInABox(object):
         """
 
 
-        if state_input.n >= 2:
+        if state_input.npart_local >= 2:
             _N = 0
             _d = state_input.domain.boundary
 
@@ -470,7 +470,7 @@ class PosInitTwoParticlesInABox(object):
                 state_input.global_ids[_N] = 1
                 _N += 1
 
-            state_input.n = _N
+            state_input.npart_local = _N
 
 
         else:
@@ -515,7 +515,7 @@ class PosInitOneParticleInABox(object):
             state_input.positions[0,] = self._r
             _N += 1
 
-        state_input.n = _N
+        state_input.npart_local = _N
         state_input.global_ids[0] = 0
         state_input.positions.halo_start_reset()
         state_input.velocities.halo_start_reset()
@@ -591,7 +591,7 @@ class PosInitDLPOLYConfig(object):
         for i, line in enumerate(fh):
 
 
-            if (i > (shift - 2)) and ((i - shift + 1) % offset == 0) and count < state_input.nt:
+            if (i > (shift - 2)) and ((i - shift + 1) % offset == 0) and count < state_input.npart:
                 _tx = float(line.strip().split()[0])
                 _ty = float(line.strip().split()[1])
                 _tz = float(line.strip().split()[2])
@@ -637,7 +637,7 @@ class PosInitDLPOLYConfig(object):
 
                 count += 1
 
-        state_input.n = _n
+        state_input.npart_local = _n
 
         fh.close()
 
@@ -671,7 +671,7 @@ class VelInitNormDist(object):
         vel_in = state_input.velocities
 
         # Apply normal distro to velocities.
-        for ix in range(state_input.n):
+        for ix in range(state_input.npart_local):
             vel_in[ix,] = [random.gauss(self._mu, self._sig), random.gauss(self._mu, self._sig),
                            random.gauss(self._mu, self._sig)]
 
@@ -701,8 +701,8 @@ class VelInitTwoParticlesInABox(object):
         :arg state state_input: input state.
         """
 
-        if state_input.nt >= 2:
-            for ix in range(state_input.n):
+        if state_input.npart >= 2:
+            for ix in range(state_input.npart_local):
                 if state_input.global_ids[ix] == 0:
                     state_input.velocities[ix] = self._vx
                 elif state_input.global_ids[ix] == 1:
@@ -736,8 +736,8 @@ class VelInitPosBased(object):
         :arg state state_input: input state.
         """
 
-        if state_input.nt >= 2:
-            for ix in range(state_input.n):
+        if state_input.npart >= 2:
+            for ix in range(state_input.npart_local):
                 if state_input.global_ids[ix] == 0:
                     state_input.velocities[ix,0] = state_input.positions[ix,0] * 10
                     state_input.velocities[ix,1] = state_input.positions[ix,1] * 10
@@ -773,7 +773,7 @@ class VelInitOneParticleInABox(object):
         :arg state state_input: input state.
         """
 
-        if state_input.n >= 1:
+        if state_input.npart_local >= 1:
             state_input.velocities[0,] = self._vx
 
 
@@ -803,7 +803,7 @@ class VelInitMaxwellBoltzmannDist(object):
         """
 
         # Apply MB distro to velocities.
-        for ix in range(state_input.n):
+        for ix in range(state_input.npart_local):
             scale = math.sqrt(self._t / state_input.masses[state_input.types[ix]])
             stmp = scale * math.sqrt(-2.0 * math.log(random.uniform(0, 1)))
             V0 = 2. * math.pi * random.uniform(0, 1)
@@ -843,7 +843,7 @@ class VelInitDLPOLYConfig(object):
         _n = 0
 
         for i, line in enumerate(fh):
-            if (i > (shift - 2)) and ((i - shift + 1) % offset == 0) and count < state_input.nt:
+            if (i > (shift - 2)) and ((i - shift + 1) % offset == 0) and count < state_input.npart:
 
                 if state_input.global_ids[_n] == count:
                     state_input.velocities[_n, 0] = line.strip().split()[0]
@@ -877,14 +877,14 @@ class MassInitTwoAlternating(object):
         """
 
         '''
-        for ix in range(state.n):
+        for ix in range(state.npart_local):
             mass_input[ix] = self._m[(state.global_ids[ix] % 2)]
         '''
 
         state.mass[0,0] = self._m[0]
         state.mass[0,1] = self._m[1]
 
-        for ix in range(state.n):
+        for ix in range(state.npart_local):
             state.types[ix] = state.global_ids[ix] % 2
 
 
@@ -911,7 +911,7 @@ class MassInitIdentical(object):
         """
         state.mass[0] = self._m
 
-        for ix in range(state.n):
+        for ix in range(state.npart_local):
             state.types[ix] = 0
 
 
