@@ -73,7 +73,7 @@ class CellListUpdateController(object):
         :return:
         """
 
-        if self._velocity_dat.npart > 0:
+        if self._velocity_dat.npart_local > 0:
             return self._dt * self._velocity_dat.max()
         else:
             return 0.0
@@ -872,7 +872,7 @@ class DrawParticles(object):
         if _GRAPHICS:
 
             self._N = self._state.n
-            self._NT = self._state.npart
+            self._NT = self._state.npart_local
             self._extents = self._state.domain.extent
 
             '''Case where all particles are local'''
@@ -925,7 +925,7 @@ class DrawParticles(object):
 
                 plt.cla()
                 plt.ion()
-                for ix in range(self._pos.npart):
+                for ix in range(self._pos.npart_local):
                     self._ax.scatter(self._pos.data[ix, 0], self._pos.data[ix, 1], self._pos.data[ix, 2],
                                      color=self._key[self._gid[ix] % 2])
 
@@ -997,12 +997,12 @@ class EnergyStore(object):
         if self._state.n > 0:
             # print self._state.u[0], self._state.u[1]
 
-            _U_tmp = self._state.u.data[0]/self._state.npart
-            _U_tmp += 0.5*self._state.u.data[1]/self._state.npart
+            _U_tmp = self._state.u.data[0]/self._state.npart_local
+            _U_tmp += 0.5*self._state.u.data[1]/self._state.npart_local
             _u = _U_tmp
 
-            _k = self._state.k[0]/self._state.npart
-            _q = _U_tmp+(self._state.k[0])/self._state.npart
+            _k = self._state.k[0]/self._state.npart_local
+            _q = _U_tmp+(self._state.k[0])/self._state.npart_local
 
 
         self._k.append(_k)

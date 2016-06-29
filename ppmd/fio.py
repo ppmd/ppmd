@@ -57,7 +57,7 @@ def ParticleDat_to_xml(dat=None, filename=None):
     dtype.text = str(dat.dtype.__name__)
 
     npart = ET.SubElement(root,'npart')
-    npart.text = str(dat.npart)
+    npart.text = str(dat.npart_local)
 
     ncomp = ET.SubElement(root,'ncomp')
     ncomp.text = str(dat.ncomp)
@@ -73,7 +73,7 @@ def ParticleDat_to_xml(dat=None, filename=None):
     fh.close()
 
     fh = open(filename,'a')
-    dat.data[0:dat.npart:,::].tofile(fh)
+    dat.data[0:dat.npart_local:,::].tofile(fh)
     fh.close()
 
 
@@ -89,7 +89,7 @@ def MPIParticleDat_to_xml(dat=None, filename=None, order=None):
 
 
     _npart = np.zeros(1, dtype=ctypes.c_int)
-    mpi.MPI_HANDLE.comm.Reduce(np.array([dat.npart], dtype=ctypes.c_int), _npart, MPI.SUM)
+    mpi.MPI_HANDLE.comm.Reduce(np.array([dat.npart_local], dtype=ctypes.c_int), _npart, MPI.SUM)
 
 
     if mpi.MPI_HANDLE.rank == 0:
@@ -132,15 +132,15 @@ def MPIParticleDat_to_xml(dat=None, filename=None, order=None):
 
     if order is None:
         _start = np.zeros(1, dtype=ctypes.c_int)
-        mpi.MPI_HANDLE.comm.Scan(np.array([dat.npart], dtype=ctypes.c_int), _start, MPI.SUM)
-        _start = (_start[0] - dat.npart) * dat.ncomp * ctypes.sizeof(dat.dtype)
+        mpi.MPI_HANDLE.comm.Scan(np.array([dat.npart_local], dtype=ctypes.c_int), _start, MPI.SUM)
+        _start = (_start[0] - dat.npart_local) * dat.ncomp * ctypes.sizeof(dat.dtype)
         mpi_fh.Seek(end_of_xml + _start)
-        mpi_fh.Write(dat.data[0:dat.npart:,::])
+        mpi_fh.Write(dat.data[0:dat.npart_local:,::])
         mpi_fh.Close()
 
     else:
 
-        for px in range(dat.npart):
+        for px in range(dat.npart_local):
             gid = order[px]
             gloc = end_of_xml + gid * dat.ncomp * ctypes.sizeof(dat.dtype)
             mpi_fh.Seek(gloc)
@@ -197,8 +197,8 @@ def xml_to_ParticleDat(filename=None):
                            name=children['name'],
                            dtype=TYPE_MAP[children['dtype']])
 
-    dat.data = np.reshape(np.fromfile(fh, dtype=TYPE_MAP[children['dtype']], count=dat.ncomp * dat.npart),
-                         [dat.npart,dat.ncomp])
+    dat.data = np.reshape(np.fromfile(fh, dtype=TYPE_MAP[children['dtype']], count=dat.ncomp * dat.npart_local),
+                         [dat.npart_local,dat.ncomp])
 
     return dat
 

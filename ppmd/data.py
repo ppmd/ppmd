@@ -284,7 +284,7 @@ class ParticleDat(host.Matrix):
             self.max_npart = self.nrow
             """:return: The maximum number of particles which can be stored within this particle dat."""
 
-            self.npart = self.nrow
+            self.npart_local = self.nrow
             """:return: The number of particles with properties stored in the particle dat."""
 
             self.ncomp = self.ncol
@@ -295,11 +295,11 @@ class ParticleDat(host.Matrix):
                 max_npart = npart
             self._create_zeros(max_npart, ncomp, dtype)
             self.max_npart = self.nrow
-            self.npart = self.nrow
+            self.npart_local = self.nrow
             self.ncomp = self.ncol
 
 
-        self.halo_start = self.npart
+        self.halo_start = self.npart_local
         """:return: The starting index of the halo region of the particle dat. """
 
         self.npart_halo = 0
@@ -341,7 +341,7 @@ class ParticleDat(host.Matrix):
         """
         :return: Maximum of local particles
         """
-        return self._dat[0:self.npart:].max()
+        return self._dat[0:self.npart_local:].max()
 
     @property
     def npart_total(self):#
@@ -350,7 +350,7 @@ class ParticleDat(host.Matrix):
 
         :return:
         """
-        return self.npart + self.npart_halo
+        return self.npart_local + self.npart_local_halo
 
 
     def __getitem__(self, ix):
@@ -373,9 +373,9 @@ class ParticleDat(host.Matrix):
 
     def copy(self):
         #print "dat:", self._dat
-        return ParticleDat(initial_value=self._dat[0:self.npart:],
+        return ParticleDat(initial_value=self._dat[0:self.npart_local:],
                            ncomp=self.ncomp,
-                           npart=self.npart,
+                           npart=self.npart_local,
                            dtype=self.dtype)
 
 
@@ -400,7 +400,7 @@ class ParticleDat(host.Matrix):
         else:
 
 
-            counts = mpi.MPI_HANDLE.comm.gather(self.npart, root=rank)
+            counts = mpi.MPI_HANDLE.comm.gather(self.npart_local, root=rank)
 
             disp = None
 
@@ -413,7 +413,7 @@ class ParticleDat(host.Matrix):
                 counts = tuple([self.ncomp*c for c in counts])
 
 
-            mpi.MPI_HANDLE.comm.Gatherv(sendbuf=self._dat[:self.npart:,::],
+            mpi.MPI_HANDLE.comm.Gatherv(sendbuf=self._dat[:self.npart_local:,::],
                                         recvbuf=(self._dat, counts, disp, None),
                                         root=rank)
 
@@ -451,16 +451,16 @@ class ParticleDat(host.Matrix):
         """
 
         self.halo_start += shift
-        self.npart_halo = self.halo_start - self.npart
+        self.npart_local_halo = self.halo_start - self.npart_local
 
     def halo_start_set(self, index):
         """
         Set the start of the halo region in the particle dat to the specified
          index.
         """
-        if index < self.npart:
+        if index < self.npart_local:
             if index >= 0:
-                self.npart = index
+                self.npart_local = index
                 self.halo_start = index
 
         else:
@@ -473,7 +473,7 @@ class ParticleDat(host.Matrix):
         Reset the starting postion of the halo region in the particle dat to
          the end of the local particles.
         """
-        self.halo_start = self.npart
+        self.halo_start = self.npart_local
         self.npart_halo = 0
 
     def resize(self, n, _callback=True):
@@ -517,7 +517,7 @@ class ParticleDat(host.Matrix):
 
         # print "\t\tAFTER sizes exchange"
 
-        _size = self.npart + _sizes[0]
+        _size = self.npart_local + _sizes[0]
         self.resize(_size)
 
         sys.stdout.flush()
@@ -769,7 +769,7 @@ class ParticleDat(host.Matrix):
         # print "HALO_RECV", self.group._halo_manager.get_recv_ranks().data
 
         self._exchange_lib(self.ctypes_data,
-                           ctypes.c_int(self.npart),
+                           ctypes.c_int(self.npart_local),
                            self.group._halo_manager.get_position_shifts().ctypes_data,
                            ctypes.c_int(mpi.MPI_HANDLE.fortran_comm),
                            self.group._halo_manager.get_send_ranks().ctypes_data,

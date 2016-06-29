@@ -168,7 +168,7 @@ class Array(object):
 
         if self.version < array.version:
 
-            self._create_from_existing(array.dat, array.dtype)
+            self._create_from_existing(array.data, array.dtype)
 
 
 
@@ -348,7 +348,7 @@ class Matrix(object):
 
         if self.version < matrix.version:
 
-            self._create_from_existing(matrix.dat, matrix.dtype)
+            self._create_from_existing(matrix.data, matrix.dtype)
 
 
 

@@ -43,8 +43,6 @@ class BaseMDState(object):
     def __init__(self):
 
 
-        self._global_n = 0
-
         self._domain = None
 
         self._cell_to_particle_map = cell.CellList()
@@ -60,7 +58,7 @@ class BaseMDState(object):
         self.particle_dats = []
 
         # Local number of particles
-        self._n = 0
+        self._npart_local = 0
 
         # Global number of particles
         self._npart = 0
@@ -137,7 +135,7 @@ class BaseMDState(object):
         self._cell_particle_map_setup()
 
     def get_n_func(self):
-        return self.as_func('n')
+        return self.as_func('npart_local')
 
     def get_domain(self):
         return self._domain
@@ -224,7 +222,7 @@ class BaseMDState(object):
         self._n = int(value)
         for ix in self.particle_dats:
             _dat = getattr(self,ix)
-            _dat.npart = int(value)
+            _dat.npart_local = int(value)
             _dat.halo_start_reset()
         # print "N set:", value
 
@@ -261,7 +259,7 @@ class BaseMDState(object):
         assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
 
         if mpi.MPI_HANDLE.nproc == 1:
-            self.n = self.npart
+            self.n = self.npart_local
             return
         else:
             s = np.array([self.get_position_dat().data.shape[0]])

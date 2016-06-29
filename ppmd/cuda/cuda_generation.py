@@ -340,7 +340,7 @@ def generate_reduction_final_stage(symbol_external, symbol_internal, dat, access
 
     :arg string symbol_external: variable name for shared library
     :arg string symbol_internal: variable name for kernel.
-    :arg cuda_data.dat: :class:`~cuda_data.ParticleDat` or :class:`~cuda_data.ScalarArray` cuda_data.object in question.
+    :arg cuda_data.data: :class:`~cuda_data.ParticleDat` or :class:`~cuda_data.ScalarArray` cuda_data.object in question.
     :arg access access_type: Access being used.
 
     :return: string for initialisation code.

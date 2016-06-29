@@ -57,7 +57,7 @@ class BaseMDSimulation(object):
         """Simulation state, of type state.* """
 
         # Add integer attributes to state
-        self.state.n = n
+        self.state.npart_local = n
         self.state.npart = n
 
         if potential_in is not None:

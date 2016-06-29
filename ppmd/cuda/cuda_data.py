@@ -102,8 +102,8 @@ class ParticleDat(cuda_base.Matrix):
                 self._npart = ctypes.c_int(self._nrow.value)
 
             elif type(initial_value) is data.ParticleDat:
-                self._create_from_existing(initial_value.dat, initial_value.dtype)
-                self._npart = ctypes.c_int(initial_value.npart)
+                self._create_from_existing(initial_value.data, initial_value.dtype)
+                self._npart = ctypes.c_int(initial_value.npart_local)
 
             else:
                 self._create_from_existing(np.array([initial_value]),dtype)
@@ -136,7 +136,7 @@ class ParticleDat(cuda_base.Matrix):
         self._struct.ptr = self._ptr
         self._struct.nrow = ctypes.pointer(self._nrow)
         self._struct.ncol = ctypes.pointer(self._ncol)
-        self._struct.npart = ctypes.pointer(self._npart)
+        self._struct.npart_local = ctypes.pointer(self._npart)
         self._struct.ncomp = ctypes.pointer(self._ncol)
         return self._struct
 
@@ -175,10 +175,10 @@ class ParticleDat(cuda_base.Matrix):
 
         boundary_cell_groups = cuda_halo.HALOS.get_boundary_cell_groups[0]
         n = cuda_halo.HALOS.occ_matrix.layers_per_cell * boundary_cell_groups.ncomp
-        if self.max_npart < self.npart + n:
-            self.resize(self.npart + n)
+        if self.max_npart < self.npart_local + n:
+            self.resize(self.npart_local + n)
 
-        self._halo_start.value = self.npart
+        self._halo_start.value = self.npart_local
 
         n_tot = self.ncomp * n
         threads_per_block = 512
