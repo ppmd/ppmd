@@ -133,17 +133,17 @@ class Array(object):
 
             _ptr_new = ctypes.POINTER(self.idtype)()
             cuda_runtime.cuda_malloc(_ptr_new, length, self.idtype)
-            cuda_runtime.cuda_mem_cpy(_ptr_new,
-                                      self._ptr,
-                                      ctypes.c_size_t(length * ctypes.sizeof(self.idtype)),
-                                      'cudaMemcpyDeviceToDevice')
+
+            if self._ncomp.value > 0:
+                cuda_runtime.cuda_mem_cpy(_ptr_new,
+                                          self._ptr,
+                                          ctypes.c_size_t(self._ncomp.value * ctypes.sizeof(self.idtype)),
+                                          'cudaMemcpyDeviceToDevice')
 
             cuda_runtime.cuda_free(self._ptr)
             self._ptr = _ptr_new
 
         self._ncomp.value = length
-
-
 
 
 
@@ -370,10 +370,7 @@ class _ArrayMirror(object):
         self._h_array = ppmd.host.Array(ncomp=d_array.ncomp,
                                         dtype=d_array.dtype)
     def copy_to_device(self):
-        print self._d_array.ctypes_data
         self._d_array.realloc(self._h_array.ncomp)
-        print self._d_array.ctypes_data
-
         cuda_runtime.cuda_mem_cpy(self._d_array.ctypes_data,
                                   self._h_array.ctypes_data,
                                   ctypes.c_size_t(self._h_array.size),

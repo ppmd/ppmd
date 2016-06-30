@@ -2,7 +2,6 @@
 #include <iostream>
 
 int cudaErrorCheck(int err){
-    //checkCudaErrors((cudaError_t) err);
     if (err != 0) {
         std::cout << cudaGetErrorString((cudaError_t) err) << std::endl;
     }
