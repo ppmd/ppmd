@@ -8,6 +8,7 @@ import numpy as np
 
 #package level imports
 import ppmd.access
+import ppmd.host
 
 # cuda imports
 import cuda_runtime
@@ -125,15 +126,26 @@ class Array(object):
         """
         Re allocate memory for an array.
         """
+
         assert self._ptr is not None, "cuda_base.Array: realloc error: pointer type unknown."
 
-        if (self._ncomp.value != 0) and (self._ptr is not None):
-            cuda_runtime.cuda_free(self._ptr)
+        if (length != self._ncomp.value) and length > 0:
 
-        if length != self._ncomp.value:
-            cuda_runtime.cuda_malloc(self._ptr, length, self.idtype)
+            _ptr_new = ctypes.POINTER(self.idtype)()
+            cuda_runtime.cuda_malloc(_ptr_new, length, self.idtype)
+            cuda_runtime.cuda_mem_cpy(_ptr_new,
+                                      self._ptr,
+                                      ctypes.c_size_t(length * ctypes.sizeof(self.idtype)),
+                                      'cudaMemcpyDeviceToDevice')
+
+            cuda_runtime.cuda_free(self._ptr)
+            self._ptr = _ptr_new
 
         self._ncomp.value = length
+
+
+
+
 
     def zero(self):
         """
@@ -206,7 +218,7 @@ class Matrix(object):
         else:
             self._create_zeros(nrow, ncol, dtype)
 
-        self._version = 0
+        self._vid_int = 0
 
         self._struct = type('MatrixT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)),
                                                                           ('nrow', ctypes.POINTER(ctypes.c_int)),
@@ -226,14 +238,14 @@ class Matrix(object):
         Get the version of this array.
         :return int version:
         """
-        return self._version
+        return self._vid_int
 
     def inc_version(self, inc=1):
         """
         Increment the version by the specified amount
         :param int inc: amount to increment version by.
         """
-        self._version += int(inc)
+        self._vid_int += int(inc)
 
     def _create_zeros(self, nrow=1, ncol=1, dtype=ctypes.c_double):
         if dtype != self.dtype:
@@ -349,6 +361,69 @@ class Matrix(object):
         if self.version < matrix.version:
 
             self._create_from_existing(matrix.data, matrix.dtype)
+
+
+
+class _ArrayMirror(object):
+    def __init__(self, d_array):
+        self._d_array = d_array
+        self._h_array = ppmd.host.Array(ncomp=d_array.ncomp,
+                                        dtype=d_array.dtype)
+    def copy_to_device(self):
+        print self._d_array.ctypes_data
+        self._d_array.realloc(self._h_array.ncomp)
+        print self._d_array.ctypes_data
+
+        cuda_runtime.cuda_mem_cpy(self._d_array.ctypes_data,
+                                  self._h_array.ctypes_data,
+                                  ctypes.c_size_t(self._h_array.size),
+                                  'cudaMemcpyHostToDevice')
+
+    def copy_from_device(self):
+        self._h_array.realloc(self._d_array.ncomp)
+        cuda_runtime.cuda_mem_cpy(self._h_array.ctypes_data,
+                                  self._d_array.ctypes_data,
+                                  ctypes.c_size_t(self._h_array.size),
+                                  'cudaMemcpyDeviceToHost')
+
+    @property
+    def mirror(self):
+        return self._h_array
+
+
+class _MatrixMirror(object):
+    def __init__(self, d_matrix):
+        self._d_matrix = d_matrix
+        self._h_matrix = ppmd.host.Matrix(nrow=1,
+                                          ncol=d_matrix.ncol,
+                                          dtype=d_matrix.dtype)
+    def copy_to_device(self):
+        self._d_matrix.realloc(self._h_matrix.nrow, self._h_matrix.ncol)
+        cuda_runtime.cuda_mem_cpy(self._d_matrix.ctypes_data,
+                                  self._h_matrix.ctypes_data,
+                                  ctypes.c_size_t(self._h_matrix.size),
+                                  'cudaMemcpyHostToDevice')
+        self._h_matrix.data.fill(0)
+
+    def copy_from_device(self):
+        self._h_matrix.realloc(self._d_matrix.nrow, self._d_matrix.ncol)
+        cuda_runtime.cuda_mem_cpy(self._h_matrix.ctypes_data,
+                                  self._d_matrix.ctypes_data,
+                                  ctypes.c_size_t(self._h_matrix.size),
+                                  'cudaMemcpyDeviceToHost')
+
+    @property
+    def mirror(self):
+        return self._h_matrix
+
+
+
+
+
+
+
+
+
 
 
 

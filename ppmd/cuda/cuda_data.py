@@ -39,6 +39,21 @@ class ScalarArray(cuda_base.Array):
         self._version = 0
         self._struct = type('ScalarArrayT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)), ('ncomp', ctypes.POINTER(ctypes.c_int)))))()
 
+
+        self._h_mirror = cuda_base._ArrayMirror(self)
+
+    def __getitem__(self, key):
+        self._h_mirror.copy_from_device()
+        return self._h_mirror.mirror.data[key]
+
+    def __setitem__(self, key, value):
+        self._h_mirror.copy_from_device()
+        self._h_mirror.mirror.data[key] = value
+        self._h_mirror.copy_to_device()
+        self._version += 1
+
+    def __repr__(self):
+        return str(self.__getitem__(slice(None, None, None)))
     @property
     def struct(self):
         self._struct.ptr = self._ptr
@@ -119,19 +134,39 @@ class ParticleDat(cuda_base.Matrix):
             self._create_zeros(self._nrow.value, ncomp, dtype)
             self._npart = ctypes.c_int(npart)
 
-        self._version = 0
+        self._vid_int = 0
 
         self._halo_start = ctypes.c_int(self._npart.value)
         self._npart_halo = ctypes.c_int(0)
         self.npart_local = npart
 
-        self._struct = type('ParticleDatT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)),
-                                                                                ('nrow', ctypes.POINTER(ctypes.c_int)),
-                                                                                ('ncol', ctypes.POINTER(ctypes.c_int)),
-                                                                                ('npart', ctypes.POINTER(ctypes.c_int)),
-                                                                                ('ncomp', ctypes.POINTER(ctypes.c_int)))))()
+        self._struct = type('ParticleDatT', (ctypes.Structure,),
+                            dict(_fields_=(('ptr',
+                                            ctypes.POINTER(self.idtype)),
+                                            ('nrow', ctypes.POINTER(ctypes.c_int)),
+                                            ('ncol', ctypes.POINTER(ctypes.c_int)),
+                                            ('npart', ctypes.POINTER(ctypes.c_int)),
+                                            ('ncomp', ctypes.POINTER(ctypes.c_int)))
+                                )
+                            )()
 
         self._1p_halo_lib = None
+
+        self._h_mirror = cuda_base._MatrixMirror(self)
+
+    def __getitem__(self, key):
+        self._h_mirror.copy_from_device()
+        return self._h_mirror.mirror.data[key]
+
+    def __setitem__(self, key, value):
+        self._h_mirror.copy_from_device()
+        self._h_mirror.mirror.data[key] = value
+        self._h_mirror.copy_to_device()
+        self._vid_int += 1
+
+    def __repr__(self):
+        return str(self.__getitem__(slice(None, None, None)))
+
 
     @property
     def struct(self):
@@ -382,7 +417,7 @@ class TypedDat(cuda_base.Matrix):
         else:
             self._create_zeros(nrow, ncol, dtype)
 
-        self._version = 0
+        self._vid_int = 0
 
         self._struct = type('MatrixT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)),
                                                                           ('nrow', ctypes.POINTER(ctypes.c_int)),

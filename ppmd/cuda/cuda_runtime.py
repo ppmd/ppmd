@@ -86,7 +86,8 @@ def cuda_err_check(err_code):
     assert LIBHELPER is not None, "cuda_runtime error: No error checking library"
 
     if LIBHELPER is not None:
-        LIBHELPER['cudaErrorCheck'](err_code)
+        err = LIBHELPER['cudaErrorCheck'](err_code)
+        assert err == 0, "Non-zero CUDA error:" + str(err_code)
 
 
 #####################################################################################
@@ -149,7 +150,7 @@ def cuda_set_device(device=None):
         if runtime.VERBOSE.level > 0:
             pio.rprint("setting device ", _r)
 
-        LIBCUDART['cudaSetDevice'](ctypes.c_int(_r))
+        cuda_err_check( LIBCUDART['cudaSetDevice'](ctypes.c_int(_r)) )
         libcudart('cudaSetDeviceFlags',ctypes.c_uint(8))
         DEVICE.id = _r
     else:
@@ -157,7 +158,7 @@ def cuda_set_device(device=None):
 
     if (runtime.VERBOSE.level > 0) and (LIBCUDART is not None):
         _dev = ctypes.c_int()
-        LIBCUDART['cudaGetDevice'](ctypes.byref(_dev))
+        cuda_err_check( LIBCUDART['cudaGetDevice'](ctypes.byref(_dev)) )
         pio.rprint("cudaGetDevice returned device ", _dev.value)
 
 
@@ -272,14 +273,17 @@ def cuda_mem_cpy(d_ptr=None, s_ptr=None, size=None, cpy_type=None):
     assert cpy_type in ['cudaMemcpyHostToDevice', 'cudaMemcpyDeviceToHost', 'cudaMemcpyDeviceToDevice'], "cuda_runtime:cuda_mem_cpy error: No copy of that type."
 
 
+    print cpy_type, d_ptr, s_ptr, size
+
+
     if cpy_type == 'cudaMemcpyHostToDevice':
-        LIBHELPER['cudaCpyHostToDevice'](d_ptr, s_ptr, size)
+        cuda_err_check( LIBHELPER['cudaCpyHostToDevice'](d_ptr, s_ptr, size) )
 
     elif cpy_type == 'cudaMemcpyDeviceToHost':
-        LIBHELPER['cudaCpyDeviceToHost'](d_ptr, s_ptr, size)
+        cuda_err_check( LIBHELPER['cudaCpyDeviceToHost'](d_ptr, s_ptr, size) )
 
     elif cpy_type == 'cudaMemcpyDeviceToDevice':
-        LIBHELPER['cudaCpyDeviceToDevice'](d_ptr, s_ptr, size)
+        cuda_err_check( LIBHELPER['cudaCpyDeviceToDevice'](d_ptr, s_ptr, size) )
 
     else:
         print "cuda_mem_cpy error: Something failed.", cpy_type, d_ptr, s_ptr, size

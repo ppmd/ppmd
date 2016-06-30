@@ -271,8 +271,9 @@ class Matrix(object):
 
         assert ctypes.sizeof(self.dtype) * nrow * ncol < available_free_memory(), "host.Matrix realloc error: Not enough free memory."
 
-        self.data = np.resize(self.data,[nrow, ncol])
 
+        if self.ncol != ncol or self.nrow != nrow:
+            self.data = np.resize(self.data,[nrow, ncol])
 
 
 
