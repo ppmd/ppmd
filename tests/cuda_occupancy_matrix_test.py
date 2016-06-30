@@ -38,10 +38,10 @@ sim1 = simulation.BaseMDSimulation(domain_in=test_domain,
 COM = cuda_cell.CellOccupancyMatrix()
 
 # Create a particle dat with the positions in from the sim1.state
-sim1.state.d_positions = cuda_data.ParticleDat(initial_value=sim1.state.positions.dat)
+sim1.state.d_positions = cuda_data.ParticleDat(initial_value=sim1.state.positions.data)
 
 
-COM.setup(sim1.state.as_func('n'), sim1.state.d_positions, sim1.state.domain)
+COM.setup(sim1.state.as_func('npart_local'), sim1.state.d_positions, sim1.state.domain)
 
 COM.sort()
 
@@ -57,7 +57,7 @@ cell.cell_list.sort()
 # alias the cell list
 _cl = cell.cell_list.cell_list
 
-print gpu_occ.dat[86*COM.layers_per_cell]
+print gpu_occ.data[86*COM.layers_per_cell]
 
 _n = 0
 
@@ -76,7 +76,7 @@ for _c in range(sim1.state.domain.cell_count):
 
     gpu_cl = []
     for ix in range(len(host_cl)):
-        gpu_cl.append(gpu_occ.dat[COM.layers_per_cell*_c+ix])
+        gpu_cl.append(gpu_occ.data[COM.layers_per_cell*_c+ix])
 
 
 

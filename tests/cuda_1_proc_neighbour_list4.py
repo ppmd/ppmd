@@ -55,7 +55,7 @@ sim1.state.d_forces = cuda_data.ParticleDat(initial_value=sim1.state.forces, nam
 
 
 # This what the masses should end up being
-#sim1.state.d_mass = cuda_data.TypedDat(initial_value=sim1.state.mass.dat, name='mass')
+#sim1.state.d_mass = cuda_data.TypedDat(initial_value=sim1.state.mass.data, name='mass')
 
 
 sim1.state.d_mass = cuda_data.ParticleDat(initial_value=np.ones([N,1], dtype=ctypes.c_double), name='mass')
@@ -69,9 +69,9 @@ sim1.state.h_k = data.ScalarArray(ncomp=1, dtype=ctypes.c_double, name='ke')
 sim1.state.h_u = data.ScalarArray(ncomp=1, dtype=ctypes.c_double, name='potential_energy')
 
 
-# print sim1.state.positions.max_npart, sim1.state.positions.npart, sim1.state.positions.dat
+# print sim1.state.positions.max_npart, sim1.state.positions.npart_local, sim1.state.positions.data
 
-COM.setup(sim1.state.as_func('n'), sim1.state.d_positions, sim1.state.domain)
+COM.setup(sim1.state.as_func('npart_local'), sim1.state.d_positions, sim1.state.domain)
 
 COM.sort()
 cuda_halo.HALOS = cuda_halo.CartesianHalo(COM)
@@ -93,7 +93,7 @@ dat_map = {'P': sim1.state.d_positions(access.R), 'A': sim1.state.d_forces(acces
 pair_loop = cuda_pairloop.PairLoopNeighbourList(kernel_in=test_potential.kernel, #_gpu.kernel,
                                                 particle_dat_dict=dat_map,
                                                 neighbour_list=neighbour_list)
-print "n =", sim1.state.d_positions.npart
+print "n =", sim1.state.d_positions.npart_local
 
 
 # integration definitons -------------------------------------------
@@ -150,7 +150,7 @@ vv1_constants = [kernel.Constant('dt',dt), kernel.Constant('dht',0.5 * dt),]
 
 
 vv2_code = '''
-//self._V.Dat()[...,...]+= 0.5*self._dt*self._A.Dat
+//self._V.data()[...,...]+= 0.5*self._dt*self._A.data
 const double M_tmp = 1/M[0];
 //const double M_tmp = 1.0;
 V[0] += dht*A[0]*M_tmp;
@@ -305,7 +305,7 @@ ke = cuda_loop.ParticleLoop(kernel.Kernel('ke', ke_code), ke_map)
 
 
 _E = sim1.state.domain.extent
-#_one_process_pbc_lib.execute(n=sim1.state.d_positions.npart, static_args={'E0':ctypes.c_double(_E.dat[0]), 'E1':ctypes.c_double(_E.dat[1]), 'E2':ctypes.c_double(_E.dat[2])})
+#_one_process_pbc_lib.execute(n=sim1.state.d_positions.npart_local, static_args={'E0':ctypes.c_double(_E.data[0]), 'E1':ctypes.c_double(_E.data[1]), 'E2':ctypes.c_double(_E.data[2])})
 
 
 
@@ -315,25 +315,25 @@ timer = runtime.Timer(runtime.Level(1), 0)
 
 
 
-isnormal.execute(n=sim1.state.d_positions.npart)
+isnormal.execute(n=sim1.state.d_positions.npart_local)
 
-_one_process_pbc_lib.execute(n=sim1.state.d_positions.npart,
-                             static_args={'E0':ctypes.c_double(_E.dat[0]), 'E1':ctypes.c_double(_E.dat[1]), 'E2':ctypes.c_double(_E.dat[2])})
+_one_process_pbc_lib.execute(n=sim1.state.d_positions.npart_local,
+                             static_args={'E0':ctypes.c_double(_E.data[0]), 'E1':ctypes.c_double(_E.data[1]), 'E2':ctypes.c_double(_E.data[2])})
 
 
 print "START"
 
-pair_loop.execute(n=sim1.state.d_positions.npart)
+pair_loop.execute(n=sim1.state.d_positions.npart_local)
 
 timer.start()
 for ix in range(int(t / dt)):
 
-    vv1.execute(n=sim1.state.d_positions.npart)
+    vv1.execute(n=sim1.state.d_positions.npart_local)
 
 
     # boundary conditions here.
-    _one_process_pbc_lib.execute(n=sim1.state.d_positions.npart,
-                                 static_args={'E0':ctypes.c_double(_E.dat[0]), 'E1':ctypes.c_double(_E.dat[1]), 'E2':ctypes.c_double(_E.dat[2])})
+    _one_process_pbc_lib.execute(n=sim1.state.d_positions.npart_local,
+                                 static_args={'E0':ctypes.c_double(_E.data[0]), 'E1':ctypes.c_double(_E.data[1]), 'E2':ctypes.c_double(_E.data[2])})
 
     if ix % 10 == 0:
         COM.sort()
@@ -343,33 +343,33 @@ for ix in range(int(t / dt)):
 
 
     sim1.state.d_u.zero()
-    pair_loop.execute(n=sim1.state.d_positions.npart)
+    pair_loop.execute(n=sim1.state.d_positions.npart_local)
 
-    vv2.execute(n=sim1.state.d_positions.npart)
+    vv2.execute(n=sim1.state.d_positions.npart_local)
 
     if ix == 0:
         sim1.state.d_k.zero()
-        ke.execute(n=sim1.state.d_positions.npart)
+        ke.execute(n=sim1.state.d_positions.npart_local)
 
         cuda_runtime.cuda_mem_cpy(sim1.state.h_k.ctypes_data, sim1.state.d_k.ctypes_data, ctypes.c_size_t(ctypes.sizeof(ctypes.c_double)), 'cudaMemcpyDeviceToHost')
         cuda_runtime.cuda_mem_cpy(sim1.state.h_u.ctypes_data, sim1.state.d_u.ctypes_data, ctypes.c_size_t(ctypes.sizeof(ctypes.c_double)), 'cudaMemcpyDeviceToHost')
-        print sim1.state.h_k.dat[0], 0.5 * sim1.state.h_u.dat[0], sim1.state.h_k.dat[0] + 0.5 * sim1.state.h_u.dat[0]
+        print sim1.state.h_k.data[0], 0.5 * sim1.state.h_u.data[0], sim1.state.h_k.data[0] + 0.5 * sim1.state.h_u.data[0]
 
 
 
 sim1.state.d_k.zero()
-ke.execute(n=sim1.state.d_positions.npart)
+ke.execute(n=sim1.state.d_positions.npart_local)
 
 cuda_runtime.cuda_mem_cpy(sim1.state.h_k.ctypes_data, sim1.state.d_k.ctypes_data, ctypes.c_size_t(ctypes.sizeof(ctypes.c_double)), 'cudaMemcpyDeviceToHost')
 cuda_runtime.cuda_mem_cpy(sim1.state.h_u.ctypes_data, sim1.state.d_u.ctypes_data, ctypes.c_size_t(ctypes.sizeof(ctypes.c_double)), 'cudaMemcpyDeviceToHost')
-print sim1.state.h_k.dat[0], 0.5 * sim1.state.h_u.dat[0], sim1.state.h_k.dat[0] + 0.5 * sim1.state.h_u.dat[0]
+print sim1.state.h_k.data[0], 0.5 * sim1.state.h_u.data[0], sim1.state.h_k.data[0] + 0.5 * sim1.state.h_u.data[0]
 
 
 
 timer.stop("GPU time")
 
 print "END"
-isnormal.execute(n=sim1.state.d_positions.npart)
+isnormal.execute(n=sim1.state.d_positions.npart_local)
 
 # Comparisons ---------------------------------------------
 

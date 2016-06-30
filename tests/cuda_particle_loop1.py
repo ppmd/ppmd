@@ -38,11 +38,11 @@ sim1 = simulation.BaseMDSimulation(domain_in=test_domain,
 
 
 # Create a particle dat with the positions in from the sim1.state
-A = cuda_data.ParticleDat(initial_value=sim1.state.positions.dat)
+A = cuda_data.ParticleDat(initial_value=sim1.state.positions.data)
 
-C = cuda_data.ParticleDat(ncomp=A.ncomp, npart=A.npart, dtype=A.dtype)
+C = cuda_data.ParticleDat(ncomp=A.ncomp, npart=A.npart_local, dtype=A.dtype)
 # Create a host.Array to store the computed cell occupancy matrix.
-h_C = data.ParticleDat(ncomp=C.ncomp, npart=C.npart, dtype=C.dtype)
+h_C = data.ParticleDat(ncomp=C.ncomp, npart=C.npart_local, dtype=C.dtype)
 
 
 _kernel_code = '''
@@ -60,17 +60,17 @@ _lib.execute(n=N, static_args={'B':ctypes.c_double(4.0)})
 
 
 # Copy from device to host.
-cuda_runtime.cuda_mem_cpy(h_C.ctypes_data, C.ctypes_data, ctypes.c_size_t(C.ncomp * C.npart * ctypes.sizeof(C.dtype)), 'cudaMemcpyDeviceToHost')
+cuda_runtime.cuda_mem_cpy(h_C.ctypes_data, C.ctypes_data, ctypes.c_size_t(C.ncomp * C.npart_local * ctypes.sizeof(C.dtype)), 'cudaMemcpyDeviceToHost')
 
 _s = True
 
 for ix in range(N):
     for iy in range(h_C.ncomp):
 
-        _s &= abs(h_C[ix,iy] - (sim1.state.positions.dat[ix,iy] + 4.0)) < 10 ** -10
+        _s &= abs(h_C[ix,iy] - (sim1.state.positions.data[ix,iy] + 4.0)) < 10 ** -10
 
         if not _s:
-            print h_C[ix,iy], sim1.state.positions.dat[ix,iy] + 4.0, abs(h_C[ix,iy] - (sim1.state.positions.dat[ix,iy] + 4.0)), "(ix, iy) =", ix, iy
+            print h_C[ix,iy], sim1.state.positions.data[ix,iy] + 4.0, abs(h_C[ix,iy] - (sim1.state.positions.data[ix,iy] + 4.0)), "(ix, iy) =", ix, iy
             print "Test FAILED"
             quit()
 

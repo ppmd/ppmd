@@ -109,7 +109,7 @@ if __name__ == '__main__':
     '''
     test = fio.xml_to_ParticleDat(file_dir + 'ppmd_x0.xml')
     for ix in range(N):
-        assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
+        assert np.all(test.data[ix,0:3:] == sim1.state.positions.data[ix,0:3:])
 
 
     '''
@@ -131,7 +131,7 @@ if __name__ == '__main__':
     # check ParticleDat dump is correct.
     test = fio.xml_to_ParticleDat(file_dir + 'ppmd_x1.xml')
     for ix in range(N):
-        assert np.all(test.dat[ix,0:3:] == sim1.state.positions.dat[ix,0:3:])
+        assert np.all(test.data[ix,0:3:] == sim1.state.positions.data[ix,0:3:])
     '''
 
 

@@ -44,7 +44,7 @@ def ParticleDat_to_xml(dat=None, filename=None):
     """
 
 
-    assert type(dat) is data.ParticleDat, "No/incorrect ParticleDat type"
+    assert issubclass(type(dat), data.ParticleDat), "No/incorrect ParticleDat type"
     assert type(filename) is str, "No/incorrect filename type"
 
     root = ET.Element('ParticleDat')

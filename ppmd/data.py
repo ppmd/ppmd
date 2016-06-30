@@ -813,6 +813,20 @@ class ParticleDat(host.Matrix):
         int * RESTRICT b_tmp              // tmp space for sending
         '''
 
+    def remove_particles(self, index=None):
+        """
+        Remove particles based on host.Array index
+        :param index: host.Array with indices to remove
+        :return:
+        """
+
+        assert index is not None, "No index passed"
+
+
+
+
+
+
 #########################################################################
 # PositionDat.
 #########################################################################

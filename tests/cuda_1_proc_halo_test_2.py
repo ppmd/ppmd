@@ -39,9 +39,9 @@ COM = cuda_cell.CellOccupancyMatrix()
 
 # Create a particle dat with the positions in from the sim1.state
 sim1.state.d_positions = cuda_data.ParticleDat(initial_value=sim1.state.positions, name='positions')
-print sim1.state.positions.max_npart, sim1.state.positions.npart, sim1.state.positions.dat
+print sim1.state.positions.max_npart, sim1.state.positions.npart_local, sim1.state.positions.data
 
-COM.setup(sim1.state.as_func('n'), sim1.state.d_positions, sim1.state.domain)
+COM.setup(sim1.state.as_func('npart_local'), sim1.state.d_positions, sim1.state.domain)
 
 COM.sort()
 cuda_halo.HALOS = cuda_halo.CartesianHalo(COM)
@@ -52,14 +52,14 @@ gpu_occ = host.Array(ncomp=_s, dtype=ctypes.c_int)
 cuda_runtime.cuda_mem_cpy(gpu_occ.ctypes_data, COM.matrix.ctypes_data, ctypes.c_size_t(_s * ctypes.sizeof(ctypes.c_int)), 'cudaMemcpyDeviceToHost')
 
 
-print gpu_occ.dat[86 * COM.layers_per_cell], "layers per cell", COM.layers_per_cell
+print gpu_occ.data[86 * COM.layers_per_cell], "layers per cell", COM.layers_per_cell
 
 host_shifts = host.Array(ncomp=26*3, dtype=ctypes.c_double)
 cuda_runtime.cuda_mem_cpy(host_shifts.ctypes_data,
                           cuda_halo.HALOS.get_position_shifts.ctypes_data,
                           ctypes.c_size_t(ctypes.sizeof(ctypes.c_double) * 26 * 3),
                           'cudaMemcpyDeviceToHost')
-print "SHIFTS", host_shifts.dat
+print "SHIFTS", host_shifts.data
 
 print "DAT", sim1.state.d_positions.ctypes_data, sim1.state.d_positions.struct.ptr
 
@@ -94,16 +94,16 @@ print "AFTER TEST LIB"
 
 cell_contents_count = host.Array(ncomp=COM.cell_contents_count.ncomp, dtype=ctypes.c_int)
 cuda_runtime.cuda_mem_cpy(cell_contents_count.ctypes_data, COM.cell_contents_count.ctypes_data, ctypes.c_size_t(cell_contents_count.ncomp * ctypes.sizeof(ctypes.c_int)), 'cudaMemcpyDeviceToHost')
-print "CELL contents count BEFORE", cell_contents_count.dat
+print "CELL contents count BEFORE", cell_contents_count.data
 
 sim1.state.d_positions.halo_exchange()
 sim1.state.positions.resize(sim1.state.d_positions.nrow)
 cuda_runtime.cuda_mem_cpy(sim1.state.positions.ctypes_data, sim1.state.d_positions.ctypes_data, ctypes.c_size_t(sim1.state.d_positions.nrow * sim1.state.d_positions.ncol * ctypes.sizeof(ctypes.c_double)), 'cudaMemcpyDeviceToHost')
 
-print "DAT after halo exchange", sim1.state.positions.dat
+print "DAT after halo exchange", sim1.state.positions.data
 
 cuda_runtime.cuda_mem_cpy(cell_contents_count.ctypes_data, COM.cell_contents_count.ctypes_data, ctypes.c_size_t(cell_contents_count.ncomp * ctypes.sizeof(ctypes.c_int)), 'cudaMemcpyDeviceToHost')
-print "CELL contents count AFTER", cell_contents_count.dat
+print "CELL contents count AFTER", cell_contents_count.data
 
 
 

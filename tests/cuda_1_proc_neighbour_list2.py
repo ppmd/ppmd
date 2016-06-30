@@ -55,9 +55,9 @@ sim1.state.d_forces = cuda_data.ParticleDat(initial_value=sim1.state.forces, nam
 sim1.state.d_velocities = cuda_data.ParticleDat(initial_value=sim1.state.velocities, name='velocities')
 sim1.state.d_u = cuda_data.ScalarArray(ncomp=1, dtype=ctypes.c_double, name='potential_energy')
 
-# print sim1.state.positions.max_npart, sim1.state.positions.npart, sim1.state.positions.dat
+# print sim1.state.positions.max_npart, sim1.state.positions.npart_local, sim1.state.positions.data
 
-COM.setup(sim1.state.as_func('n'), sim1.state.d_positions, sim1.state.domain)
+COM.setup(sim1.state.as_func('npart_local'), sim1.state.d_positions, sim1.state.domain)
 
 COM.sort()
 cuda_halo.HALOS = cuda_halo.CartesianHalo(COM)
@@ -79,8 +79,8 @@ dat_map = {'P': sim1.state.d_positions(access.R), 'A': sim1.state.d_forces(acces
 pair_loop = cuda_pairloop.PairLoopNeighbourList(kernel_in=test_potential.kernel, #_gpu.kernel,
                                                 particle_dat_dict=dat_map,
                                                 neighbour_list=neighbour_list)
-print "n =", sim1.state.d_positions.npart
-pair_loop.execute(n=sim1.state.d_positions.npart)
+print "n =", sim1.state.d_positions.npart_local
+pair_loop.execute(n=sim1.state.d_positions.npart_local)
 
 # Comparisons ---------------------------------------------
 sim1.forces_update()
@@ -93,11 +93,11 @@ cuda_runtime.cuda_mem_cpy(sim1.state.h_forces.ctypes_data, sim1.state.d_forces.c
 passed = True
 
 for ix in range(N):
-    err = np.linalg.norm(sim1.state.h_forces.dat[ix,::] - sim1.state.forces.dat[ix,::])
+    err = np.linalg.norm(sim1.state.h_forces.data[ix,::] - sim1.state.forces.data[ix,::])
 
     if err > 10**(-13):
         passed = False
-        print err, sim1.state.h_forces.dat[ix,::], sim1.state.forces.dat[ix,::]
+        print err, sim1.state.h_forces.data[ix,::], sim1.state.forces.data[ix,::]
 
 if passed:
     print "Test PASSED"

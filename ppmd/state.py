@@ -184,6 +184,9 @@ class BaseMDState(object):
             # add self to dats group
             getattr(self, name).group = self
 
+            # set dat name to be attribute name
+            getattr(self, name).name = name
+
             # resize to Ntotal for time being
             getattr(self, name).resize(self._npart, _callback=False)
 
