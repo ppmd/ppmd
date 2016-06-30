@@ -95,6 +95,7 @@ class ParticleDat(cuda_base.Matrix):
         self._nrow = ctypes.c_int(0)
 
         self._ptr = ctypes.POINTER(self.idtype)()
+        self._resize_callback = None
 
         if initial_value is not None:
             if type(initial_value) is np.ndarray:
@@ -122,6 +123,7 @@ class ParticleDat(cuda_base.Matrix):
 
         self._halo_start = ctypes.c_int(self._npart.value)
         self._npart_halo = ctypes.c_int(0)
+        self.npart_local = npart
 
         self._struct = type('ParticleDatT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)),
                                                                                 ('nrow', ctypes.POINTER(ctypes.c_int)),
@@ -150,7 +152,11 @@ class ParticleDat(cuda_base.Matrix):
         return self._npart.value + self._npart_halo.value
 
 
-    def resize(self, n):
+    def resize(self, n, _callback=True):
+        if _callback and (self._resize_callback is not None):
+            self._resize_callback(n)
+            return
+
         if n > self.max_npart:
             self.realloc(n, self.ncol)
 
@@ -343,7 +349,12 @@ class ParticleDat(cuda_base.Matrix):
 
 
 
+#########################################################################
+# PositionDat.
+#########################################################################
 
+class PositionDat(ParticleDat):
+    pass
 
 
 

@@ -104,7 +104,6 @@ class CartesianHalo(object):
         self._boundary_groups_contents_array.inc_version(-1)
         self._exchange_sizes.inc_version(-1)
 
-        # self._setup()
 
     @property
     def occ_matrix(self):
@@ -113,85 +112,6 @@ class CartesianHalo(object):
         :return:
         """
         return self._occ_matrix
-
-
-
-    def _setup(self):
-        """
-        Internally setup the libraries for the calculation of exchange sizes.
-        """
-
-        p1_args = '''
-                  int max_layers,
-                  cuda_Matrix<int> COM, // cell occupancy matrix
-                  cuda_Array<int> CCC,  // cell contents count
-                  cuda_Array<int> BCG,  // Boundary cell groups
-                  cuda_Array<int> ES,   // Exchange sizes
-                  cuda_Array<int> BGCA  // Boundary groups cell arrays (sizes for each cell)
-                  '''
-
-        _p1_header_code = '''
-        //Header
-        #include <cuda_generic.h>
-        extern "C" int CartesianHaloL0_0(%(ARGS)s);
-        ''' %{'ARGS': p1_args}
-
-        _p1_code = '''
-        //source
-
-        int CartesianHaloL0_0(%(ARGS)s){
-            int err = 0;
-
-            err = *(BCG.ncomp);
-
-            return err;
-        }
-        ''' % {'ARGS':p1_args}
-
-        #self._p1_lib = cuda_build.simple_lib_creator(_p1_header_code, _p1_code, 'CartesianHaloL0')
-
-
-
-
-
-        # RUNNING
-
-        '''
-        self._boundary_cell_groups.sync_from_version(halo.HALOS.get_boundary_cell_groups()[0])
-
-        if self._boundary_groups_contents_array.ncomp < self._boundary_cell_groups.ncomp:
-            self._boundary_groups_contents_array.realloc(self._boundary_cell_groups.ncomp)
-
-        self._exchange_sizes.zero()
-
-
-
-
-
-
-        args = [
-                ctypes.c_int(self._occ_matrix.layers_per_cell),
-                self._occ_matrix.matrix.struct,
-                self._occ_matrix.cell_contents_count.struct,
-                self._boundary_cell_groups.struct,
-                self._exchange_sizes.struct,
-                self._boundary_groups_contents_array.struct
-                ]
-
-        #print self._p1_lib['CartesianHaloL0_0'](*args)
-        '''
-
-
-
-
-
-
-
-
-
-
-
-        self._init = True
 
 
     def _get_pairs(self):

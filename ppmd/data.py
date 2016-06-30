@@ -486,8 +486,6 @@ class ParticleDat(host.Matrix):
         if _callback and (self._resize_callback is not None):
             self._resize_callback(n)
             return
-            #pass
-
 
         if n > self.max_npart:
             self.max_npart = n

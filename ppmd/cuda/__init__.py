@@ -9,7 +9,8 @@ __all__ = [
     'cuda_cell',
     'cuda_halo',
     'cuda_loop',
-    'cuda_pairloop'
+    'cuda_pairloop',
+    'cuda_state'
 ]
 
 CUDA_IMPORT = False
@@ -23,6 +24,7 @@ try:
     import cuda_halo
     import cuda_loop
     import cuda_pairloop
+    import cuda_state
     CUDA_IMPORT = True
 except:
     pass

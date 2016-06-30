@@ -45,6 +45,86 @@ class CellOccupancyMatrix(object):
         self._positions = None
         self._n_layers = 0
 
+
+        self.update_required = True
+
+        self._update_set = False
+        self._update_func = None
+        self._update_func_pre = None
+        self._update_func_post = None
+
+
+    def trigger_update(self):
+        self.update_required = True
+
+
+    def setup_update_tracking(self, func):
+        """
+        Setup an automatic cell update.
+        :param func:
+        """
+        self._update_func = func
+        self._update_set = True
+
+    def setup_callback_on_update(self, func):
+        """
+        Setup a function to be ran after the cell list if updated.
+        :param func: Function to run.
+        :return:
+        """
+        self._update_func_post = func
+
+    def setup_pre_update(self, func):
+        self._update_func_pre = func
+
+    def _update_tracking(self):
+
+        if self._update_func is None:
+            return True
+
+        if self._update_set and self._update_func():
+            return True
+        else:
+            return False
+
+    def _pre_update(self):
+        """
+        Run a pre update function eg boundary conditions.
+        """
+        if self._update_func_pre is not None:
+            self._update_func_pre()
+            # pass
+
+    def create(self):
+        self._cell_sort_setup()
+
+
+    def check(self):
+        """
+        Check if the cell_list needs updating and update if required.
+        :return:
+        """
+
+        if not self._init:
+            self._cell_sort_setup()
+
+            if not self._init:
+                print "Initalisation failed"
+                return False
+
+
+        if (self.update_required is True) or self._update_tracking():
+
+            self._pre_update()
+
+            self.sort()
+            if self._update_func_post is not None:
+                self._update_func_post()
+            return True
+        else:
+            return False
+
+
     def setup(self, n_func=None, positions_in=None, domain_in=None):
         """
         Setup the cell occupancy matrix class
@@ -60,6 +140,8 @@ class CellOccupancyMatrix(object):
         self._n_func = n_func
         self._domain = domain_in
         self._positions = positions_in
+
+    def _cell_sort_setup(self):
 
         self.particle_layers = cuda_base.Array(ncomp=self._n_func(), dtype=ctypes.c_int)
         self.cell_reverse_lookup = cuda_base.Array(ncomp=self._n_func(), dtype=ctypes.c_int)
@@ -133,9 +215,9 @@ class CellOccupancyMatrix(object):
         const int _ix = threadIdx.x + blockIdx.x*blockDim.x;
         if (_ix < d_n){
 
-            const int C0 = (int)(( d_p[_ix*3]    - d_b[0] ) / d_cel[0]);
-            const int C1 = (int)(( d_p[_ix*3 +1]  - d_b[2] ) / d_cel[1]);
-            const int C2 = (int)(( d_p[_ix*3 +2]  - d_b[4] ) / d_cel[2]);
+            const int C0 = 1 + (int)(( d_p[_ix*3]    - d_b[0] ) / d_cel[0]);
+            const int C1 = 1 + (int)(( d_p[_ix*3 +1]  - d_b[2] ) / d_cel[1]);
+            const int C2 = 1 + (int)(( d_p[_ix*3 +2]  - d_b[4] ) / d_cel[2]);
 
             const int val = (C2*d_ca[1] + C1)*d_ca[0] + C0;
 
@@ -251,7 +333,7 @@ class CellOccupancyMatrix(object):
             self.matrix = cuda_base.Matrix(nrow=self._domain.cell_count, ncol=self.matrix.ncol)
 
         # Things that need to hold correct values.
-        self._boundary.sync_from_version(self._domain.boundary_outer)
+        self._boundary.sync_from_version(self._domain.boundary)
         self._cell_edge_lengths.sync_from_version(self._domain.cell_edge_lengths)
         self._cell_array.sync_from_version(self._domain.cell_array)
 

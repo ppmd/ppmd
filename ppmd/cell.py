@@ -77,16 +77,16 @@ class CellList(object):
         return self._n, self._positions, self._domain
 
 
-    def setup(self, n, positions, domain):
+    def setup(self, n_func, positions, domain):
         """
         Setup the cell list with a set of positions and a domain.
-        :param n: Function handle to get number of local particles.
+        :param n_func: Function handle to get number of local particles.
         :param positions: Positions to use to sort into cells using.
         :param domain: Domain to setup with cell array.
         :param cell_width: Cell width to use for domain partitioning.
         :return:
         """
-        self._n = n
+        self._n = n_func
         self._positions = positions
         self._domain = domain
 
