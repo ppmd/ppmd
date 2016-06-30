@@ -1,9 +1,8 @@
 #include "cudaHelperLib.h"
-#include <iostream>
 
 int cudaErrorCheck(int err){
     if (err != 0) {
-        std::cout << cudaGetErrorString((cudaError_t) err) << std::endl;
+        cout << cudaGetErrorString((cudaError_t) err) << endl;
     }
     return err;
 }
@@ -40,3 +39,9 @@ int cudaHostUnregisterWrapper(void* ptr){
     err = cudaHostUnregister(ptr);
     return (int) err;
 }
+
+int cudaGetDeviceCountWrapper(int *count){
+    return (int) cudaGetDeviceCount(count);
+}
+
+

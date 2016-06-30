@@ -154,6 +154,16 @@ class ParticleDat(cuda_base.Matrix):
 
         self._h_mirror = cuda_base._MatrixMirror(self)
 
+
+    def halo_start_reset(self):
+        """
+        Reset the starting postion of the halo region in the particle dat to
+         the end of the local particles.
+        """
+        self._halo_start.value = self.npart_local
+        self._npart_halo.value = 0
+
+
     def __getitem__(self, key):
         self._h_mirror.copy_from_device()
         return self._h_mirror.mirror.data[key]

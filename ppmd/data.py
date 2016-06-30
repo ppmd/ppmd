@@ -500,9 +500,6 @@ class ParticleDat(host.Matrix):
 
         self.timer_comm.start()
 
-
-
-
         # new start
         # can only exchage sizes if needed.
         #if self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:

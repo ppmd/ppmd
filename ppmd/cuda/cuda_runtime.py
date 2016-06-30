@@ -138,10 +138,18 @@ def cuda_set_device(device=None):
         if (_mv2r is not None) and (_ompr is not None):
             print("cuda_runtime warning: Found two local ranks, defaulting to device 0")
 
+
+        device_count = ctypes.c_int()
+        device_count.value = 0
+        cuda_err_check( LIBHELPER['cudaGetDeviceCountWrapper'](ctypes.byref(device_count)) )
+        assert device_count.value != 0, "Device count query returned zero!"
+
         if _mv2r is not None:
-            _r = int(_mv2r) % mpi.MPI_HANDLE.nproc
-        if _ompr is not None:
-            _r = int(_ompr) % mpi.MPI_HANDLE.nproc
+            _r = int(_mv2r) % device_count.value
+        elif _ompr is not None:
+            _r = int(_ompr) % device_count.value
+        else:
+            _r = mpi.MPI_HANDLE.nproc % device_count.value
 
     else:
         _r = int(device)
