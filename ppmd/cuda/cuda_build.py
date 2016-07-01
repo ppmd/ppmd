@@ -2,10 +2,16 @@ import hashlib
 import os
 import subprocess
 import ctypes
-import math
 
 import cuda_runtime
 from ppmd import build, mpi, runtime, host, access, pio
+
+try:
+    MPI_HOME = os.environ['MPI_HOME']
+except KeyError:
+    raise RuntimeError('cuda_build error: environment variable MPI_HOME not found.')
+    MPI_HOME = None
+
 
 #####################################################################################
 # NVCC Compiler
@@ -13,7 +19,7 @@ from ppmd import build, mpi, runtime, host, access, pio
 
 NVCC = build.Compiler(['nvcc_system_default'],
                       ['nvcc'],
-                      ['-Xcompiler', '"-fPIC"', '-arch=sm_35', '-m64', '-lineinfo'],
+                      ['-Xcompiler', '"-fPIC"', '-arch=sm_35', '-m64', '-lineinfo', '-I '+ MPI_HOME +'/include'],
                       ['-lm'],
                       ['-O3', '--ptxas-options=-v -dlcm=ca', '--maxrregcount=32', '-lineinfo'],  # '-O3', '-Xptxas', '"-v"', '-lineinfo'
                       ['-G', '-g', '-lineinfo' ,'--source-in-ptx', '--ptxas-options=-v'],

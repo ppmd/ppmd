@@ -265,7 +265,7 @@ class BaseMDState(object):
             self.npart_local = self.npart
             return
         else:
-            s = np.array([self.get_position_dat().data.shape[0]])
+            s = np.array([self.get_position_dat().nrow])
             mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
             self.npart_local = s[0]
             for px in self.particle_dats:

@@ -37,22 +37,32 @@ except KeyError:
     CUDA_INC_PATH = None
 
 try:
-    LIBCUDART = ctypes.cdll.LoadLibrary(CUDA_INC_PATH + "/lib64/libcudart.so")
+    LIB_CUDART = ctypes.cdll.LoadLibrary(CUDA_INC_PATH + "/lib64/libcudart.so")
 
 except:
     if ERROR_LEVEL.level > 2:
         raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA runtime not loaded')
-    LIBCUDART = None
+    LIB_CUDART = None
 
 # wrapper library for functions involving types.
 
 try:
-    LIBHELPER = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaHelperLib'))
+    LIB_HELPER = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaHelperLib'))
 except:
     raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA helper lib not loaded')
-    LIBHELPER = None
+    LIB_HELPER = None
 
-LIBHELPER['cudaErrorCheck'](ctypes.c_int(0))
+
+try:
+    LIB_CUDA_MPI = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaMPILib'))
+except:
+    raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA MPI lib not loaded')
+    LIB_CUDA_MPI = None
+
+
+
+
+LIB_HELPER['cudaErrorCheck'](ctypes.c_int(0))
 #####################################################################################
 # Device id of currently used device. Assuming model of one mpi process per gpu.
 #####################################################################################
@@ -83,10 +93,10 @@ def cuda_err_check(err_code):
     :return:
     """
 
-    assert LIBHELPER is not None, "cuda_runtime error: No error checking library"
+    assert LIB_HELPER is not None, "cuda_runtime error: No error checking library"
 
-    if LIBHELPER is not None:
-        err = LIBHELPER['cudaErrorCheck'](err_code)
+    if LIB_HELPER is not None:
+        err = LIB_HELPER['cudaErrorCheck'](err_code)
         assert err == 0, "Non-zero CUDA error:" + str(err_code)
 
 
@@ -101,12 +111,12 @@ def libcudart(*args):
     :return:
     """
 
-    assert LIBCUDART is not None, "cuda_runtime error: No CUDA Runtime library loaded"
+    assert LIB_CUDART is not None, "cuda_runtime error: No CUDA Runtime library loaded"
 
     if VERBOSE.level > 2:
         pio.rprint(args)
 
-    cuda_err_check(LIBCUDART[args[0]](*args[1::]))
+    cuda_err_check(LIB_CUDART[args[0]](*args[1::]))
 
 
 #####################################################################################
@@ -141,8 +151,9 @@ def cuda_set_device(device=None):
 
         device_count = ctypes.c_int()
         device_count.value = 0
-        cuda_err_check( LIBHELPER['cudaGetDeviceCountWrapper'](ctypes.byref(device_count)) )
-        assert device_count.value != 0, "Device count query returned zero!"
+        cuda_err_check(LIB_HELPER['cudaGetDeviceCountWrapper'](ctypes.byref(device_count)))
+        assert device_count.value != 0, "CUDA Device count query returned zero!"
+
 
         if _mv2r is not None:
             _r = int(_mv2r) % device_count.value
@@ -154,19 +165,19 @@ def cuda_set_device(device=None):
     else:
         _r = int(device)
 
-    if LIBCUDART is not None:
+    if LIB_CUDART is not None:
         if runtime.VERBOSE.level > 0:
             pio.rprint("setting device ", _r)
 
-        cuda_err_check( LIBCUDART['cudaSetDevice'](ctypes.c_int(_r)) )
+        cuda_err_check(LIB_CUDART['cudaSetDevice'](ctypes.c_int(_r)))
         libcudart('cudaSetDeviceFlags',ctypes.c_uint(8))
         DEVICE.id = _r
     else:
         pio.rprint("cuda_runtime warning: No device set")
 
-    if (runtime.VERBOSE.level > 0) and (LIBCUDART is not None):
+    if (runtime.VERBOSE.level > 0) and (LIB_CUDART is not None):
         _dev = ctypes.c_int()
-        cuda_err_check( LIBCUDART['cudaGetDevice'](ctypes.byref(_dev)) )
+        cuda_err_check(LIB_CUDART['cudaGetDevice'](ctypes.byref(_dev)))
         pio.rprint("cudaGetDevice returned device ", _dev.value)
 
 
@@ -181,7 +192,7 @@ def cuda_device_reset():
     :return:
     """
 
-    if (DEVICE.id is not None) and (LIBCUDART is not None):
+    if (DEVICE.id is not None) and (LIB_CUDART is not None):
         libcudart('cudaDeviceReset')
 
 
@@ -195,7 +206,7 @@ def INIT_STATUS():
     :return: True/False.
     """
 
-    if (LIBCUDART is not None) and (LIBHELPER is not None) and (DEVICE.id is not None) and runtime.CUDA_ENABLED.flag:
+    if (LIB_CUDART is not None) and (LIB_HELPER is not None) and (DEVICE.id is not None) and runtime.CUDA_ENABLED.flag:
         return True
     else:
         return False
@@ -282,13 +293,13 @@ def cuda_mem_cpy(d_ptr=None, s_ptr=None, size=None, cpy_type=None):
 
 
     if cpy_type == 'cudaMemcpyHostToDevice':
-        cuda_err_check( LIBHELPER['cudaCpyHostToDevice'](d_ptr, s_ptr, size) )
+        cuda_err_check(LIB_HELPER['cudaCpyHostToDevice'](d_ptr, s_ptr, size))
 
     elif cpy_type == 'cudaMemcpyDeviceToHost':
-        cuda_err_check( LIBHELPER['cudaCpyDeviceToHost'](d_ptr, s_ptr, size) )
+        cuda_err_check(LIB_HELPER['cudaCpyDeviceToHost'](d_ptr, s_ptr, size))
 
     elif cpy_type == 'cudaMemcpyDeviceToDevice':
-        cuda_err_check( LIBHELPER['cudaCpyDeviceToDevice'](d_ptr, s_ptr, size) )
+        cuda_err_check(LIB_HELPER['cudaCpyDeviceToDevice'](d_ptr, s_ptr, size))
 
     else:
         print "cuda_mem_cpy error: Something failed.", cpy_type, d_ptr, s_ptr, size

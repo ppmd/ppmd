@@ -155,6 +155,23 @@ class ParticleDat(cuda_base.Matrix):
         self._h_mirror = cuda_base._MatrixMirror(self)
 
 
+
+
+    def broadcast_data_from(self, rank=0, _resize_callback=True):
+
+        if mpi.MPI_HANDLE.nproc == 1:
+            return
+        else:
+            s = np.array([self._nrow.value], dtype=ctypes.c_int)
+            mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
+            self.resize(s[0], _callback=_resize_callback)
+
+            # put broadcast here
+
+
+
+
+
     def halo_start_reset(self):
         """
         Reset the starting postion of the halo region in the particle dat to
