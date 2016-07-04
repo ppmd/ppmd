@@ -27,6 +27,7 @@ int MPIErrorCheck_cuda(const int error_code){
 
 int MPI_Bcast_cuda(const int FCOMM, void* buffer, const int byte_count, const int root){
     MPI_Comm COMM = MPI_Comm_f2c(FCOMM);
+
     MPI_Errhandler_set(COMM, MPI_ERRORS_RETURN);
     const int err = MPI_Bcast( buffer,
                                byte_count,
@@ -34,6 +35,7 @@ int MPI_Bcast_cuda(const int FCOMM, void* buffer, const int byte_count, const in
                                root,
                                COMM
                              );
+
     return err;
 }
 

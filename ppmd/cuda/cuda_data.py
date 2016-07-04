@@ -16,7 +16,7 @@ import ppmd.data as data
 import cuda_base
 import cuda_halo
 import cuda_build
-
+import cuda_mpi
 
 class ScalarArray(cuda_base.Array):
 
@@ -166,7 +166,12 @@ class ParticleDat(cuda_base.Matrix):
             mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
             self.resize(s[0], _callback=_resize_callback)
 
+
+            print self.size
             # put broadcast here
+            cuda_mpi.MPI_Bcast(self.ctypes_data,
+                               ctypes.c_int(self.size),
+                               ctypes.c_int(rank))
 
 
 

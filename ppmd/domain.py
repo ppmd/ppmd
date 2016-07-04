@@ -174,6 +174,8 @@ class BaseDomainHalo(object):
                                     bool(self._periods[0])),
                                    True)
 
+
+
         self._init_decomp = True
 
         if self._init_extent:

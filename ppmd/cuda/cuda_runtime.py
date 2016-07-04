@@ -53,12 +53,6 @@ except:
     LIB_HELPER = None
 
 
-try:
-    LIB_CUDA_MPI = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaMPILib'))
-except:
-    raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA MPI lib not loaded')
-    LIB_CUDA_MPI = None
-
 
 
 
@@ -170,7 +164,7 @@ def cuda_set_device(device=None):
             pio.rprint("setting device ", _r)
 
         cuda_err_check(LIB_CUDART['cudaSetDevice'](ctypes.c_int(_r)))
-        libcudart('cudaSetDeviceFlags',ctypes.c_uint(8))
+        # libcudart('cudaSetDeviceFlags',ctypes.c_uint(8))
         DEVICE.id = _r
     else:
         pio.rprint("cuda_runtime warning: No device set")

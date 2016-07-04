@@ -17,9 +17,9 @@ except:
 
 
 
-#####################################################################################
+###############################################################################
 # CUDA_MPI_err_checking
-#####################################################################################
+###############################################################################
 
 def cuda_mpi_err_check(err_code):
     """
@@ -32,5 +32,70 @@ def cuda_mpi_err_check(err_code):
 
     err = LIB_CUDA_MPI['MPIErrorCheck_cuda'](err_code)
     assert err == 0, "Non-zero CUDA MPI error:" + str(err_code)
+
+
+
+
+###############################################################################
+# MPI_Bcast
+###############################################################################
+
+
+def MPI_Bcast(buffer, byte_count, root):
+    """
+    Perform MPI_Bcast with cuda pointers. All parameters are ctypes types.
+    :param buffer: ctypes pointer to data
+    :param byte_count: number of bytes to transfer
+    :param root: root mpi rank
+    """
+
+    assert type(byte_count) is ctypes.c_int, "byte_count has incorrect data type"
+    assert type(root) is ctypes.c_int, "root arg has incorrect data type"
+
+
+    print ctypes.c_int(mpi.MPI_HANDLE.comm.py2f())
+    cuda_mpi_err_check(LIB_CUDA_MPI['MPI_Bcast_cuda'](
+        ctypes.c_int(mpi.MPI_HANDLE.comm.py2f()),
+        buffer,
+        byte_count,
+        root
+    ))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

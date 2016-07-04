@@ -19,6 +19,7 @@ import ppmd.state
 import cuda_cell
 import cuda_halo
 import cuda_data
+import cuda_runtime
 
 _AsFunc = ppmd.state._AsFunc
 
@@ -35,7 +36,9 @@ class BaseMDState(object):
 
         self._domain = None
 
+
         self._cell_to_particle_map = cuda_cell.CellOccupancyMatrix()
+
         self._halo_manager = cuda_halo.CartesianHalo(self._cell_to_particle_map)
 
         self._position_dat = None
@@ -86,9 +89,14 @@ class BaseMDState(object):
     def domain(self, new_domain):
         self._domain = new_domain
 
+        print "before decomp"
         if ppmd.mpi.decomposition_method == ppmd.mpi.decomposition.spatial:
             self._domain.mpi_decompose()
 
+        cuda_runtime.cuda_device_reset()
+        cuda_runtime.cuda_set_device()
+
+        print "after decomp"
 
         self._cell_particle_map_setup()
 

@@ -150,13 +150,20 @@ def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR.dir, CC=NVCC, dst_dir=
                         p.communicate()
             except:
                 if cuda_runtime.ERROR_LEVEL.level > 2:
-                    raise RuntimeError('gpucuda error: helper library not built.')
+                    raise RuntimeError('cuda_build error: Shared library not built.')
                 elif cuda_runtime.VERBOSE.level > 2:
-                    print "gpucuda warning: Shared library not built:", lib
+                    print "cuda_build warning: Shared library not built:", lib
 
     mpi.MPI_HANDLE.barrier()
     if not os.path.exists(_lib_filename):
         pio.pprint("Critical CUDA Error: Library not built, " + str(lib) + ", rank:", mpi.MPI_HANDLE.rank)
+
+        if mpi.MPI_HANDLE.rank == 0:
+            with open(dst_dir + lib + str(_m) + '.err', 'r') as stderr:
+                print stderr.read()
+
+        mpi.MPI_HANDLE.comm.barrier()
+
 
         quit()
 

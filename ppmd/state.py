@@ -131,7 +131,6 @@ class BaseMDState(object):
         if mpi.decomposition_method == mpi.decomposition.spatial:
             self._domain.mpi_decompose()
 
-
         self._cell_particle_map_setup()
 
     def get_npart_local_func(self):

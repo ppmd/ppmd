@@ -40,8 +40,8 @@ except:
 # Module Init
 #####################################################################################
 
-if CUDA_IMPORT:
-    cuda_runtime.cuda_set_device()
+#if CUDA_IMPORT:
+#    cuda_runtime.cuda_set_device()
 
 
 
@@ -49,13 +49,15 @@ if CUDA_IMPORT:
 # Module cleanup
 #####################################################################################
 
+'''
 def gpucuda_cleanup():
     if CUDA_IMPORT:
+        print "CUDA CLEANUP"
         cuda_runtime.cuda_device_reset()
 
 if CUDA_IMPORT:
     atexit.register(gpucuda_cleanup)
-
+'''
 
 
 
