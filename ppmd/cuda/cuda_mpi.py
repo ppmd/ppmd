@@ -30,6 +30,10 @@ def cuda_mpi_err_check(err_code):
 
     assert LIB_CUDA_MPI is not None, "cuda_mpi error: No cudaMPILib"
 
+    if type(err_code) is not ctypes.c_int:
+        err_code = ctypes.c_int(err_code)
+
+
     err = LIB_CUDA_MPI['MPIErrorCheck_cuda'](err_code)
     assert err == 0, "Non-zero CUDA MPI error:" + str(err_code)
 
@@ -52,8 +56,6 @@ def MPI_Bcast(buffer, byte_count, root):
     assert type(byte_count) is ctypes.c_int, "byte_count has incorrect data type"
     assert type(root) is ctypes.c_int, "root arg has incorrect data type"
 
-
-    print ctypes.c_int(mpi.MPI_HANDLE.comm.py2f())
     cuda_mpi_err_check(LIB_CUDA_MPI['MPI_Bcast_cuda'](
         ctypes.c_int(mpi.MPI_HANDLE.comm.py2f()),
         buffer,

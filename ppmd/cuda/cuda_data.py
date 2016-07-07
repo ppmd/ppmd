@@ -167,8 +167,6 @@ class ParticleDat(cuda_base.Matrix):
             self.resize(s[0], _callback=_resize_callback)
 
 
-            print self.size
-            # put broadcast here
             cuda_mpi.MPI_Bcast(self.ctypes_data,
                                ctypes.c_int(self.size),
                                ctypes.c_int(rank))

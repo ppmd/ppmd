@@ -53,6 +53,11 @@ except:
     LIB_HELPER = None
 
 
+try:
+    LIB_CUDA_MISC = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaMisc'))
+except:
+    raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA Misc lib not loaded')
+    LIB_CUDA_MISC = None
 
 
 
