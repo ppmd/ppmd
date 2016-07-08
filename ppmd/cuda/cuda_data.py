@@ -177,7 +177,7 @@ class ParticleDat(cuda_base.Matrix):
 
     def halo_start_reset(self):
         """
-        Reset the starting postion of the halo region in the particle dat to
+        Reset the starting position of the halo region in the particle dat to
          the end of the local particles.
         """
         self._halo_start.value = self.npart_local

@@ -6,14 +6,13 @@ import ctypes
 
 # package level
 import ppmd.kernel
+import ppmd.access
+import ppmd.pio
 
 # cuda level
 import cuda_loop
 import cuda_data
-
-
-
-
+import cuda_runtime
 
 
 class FilterOnDomain(object):
@@ -52,13 +51,13 @@ class FilterOnDomain(object):
         if ((P(2) < B4) ||  (P(2) >= B5)) {
             _F = 1;
         }
-        F[0] = _F;
+        F(0) = _F;
 
         """
 
         kernel1_dict = {
-            'P': self._positions,
-            'F': self._per_particle_flag
+            'P': self._positions(ppmd.access.R),
+            'F': self._per_particle_flag(ppmd.access.W)
         }
 
         kernel1_statics = {
@@ -80,7 +79,7 @@ class FilterOnDomain(object):
 
     def apply(self):
 
-        self._per_particle_flag.resize(self._positions.npart_local+1)
+        self._per_particle_flag.resize(self._positions.group.npart+1)
         B = self._domain.boundary
 
         kernel1_statics = {
@@ -92,8 +91,16 @@ class FilterOnDomain(object):
             'B5': ctypes.c_double(B[5])
         }
 
-        self._loop1.execute(n=self._positions.group.npart_local,
+
+        self._per_particle_flag.zero()
+
+        print "nlocal", self._per_particle_flag.npart, self._per_particle_flag.ncol,self._positions.group.npart
+
+        self._loop1.execute(n=self._positions.group.npart,
                             static_args=kernel1_statics)
+
+        ppmd.pio.rprint( B, self._positions[:], self._per_particle_flag[:])
+
 
 
         return self._new_npart_local, \

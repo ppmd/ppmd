@@ -16,7 +16,7 @@ class double_prof {
 
     public:
         double v; // This is the only data storage 
-                  // otherwise there will be a size missmatch.
+                  // otherwise there will be a size mismatch.
         
         double_prof(){ this->v = 0; }
         double_prof(double v){ this->v = v; }

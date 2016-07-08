@@ -11,7 +11,8 @@ __all__ = [
     'cuda_loop',
     'cuda_pairloop',
     'cuda_state',
-    'cuda_mpi'
+    'cuda_mpi',
+    'cuda_domain'
 ]
 
 CUDA_IMPORT = False
@@ -27,6 +28,7 @@ try:
     import cuda_pairloop
     import cuda_state
     import cuda_mpi
+    import cuda_domain
     CUDA_IMPORT = True
 except:
     pass

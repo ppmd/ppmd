@@ -40,13 +40,12 @@ A.v[:] = np.random.normal(0, 2, [N,3])
 A.f[:] = np.zeros([N,3])
 
 
-N2 = 10000
-tmp = cuda_data.ScalarArray(ncomp=N2, dtype=ctypes.c_int)
-tmp[:] = (1+mpi.MPI_HANDLE.rank)*np.array(range(N2))
+A.broadcast_data_from(0)
+cuda_filter = cuda_domain.FilterOnDomain(A.domain, A.p)
+cuda_filter.apply()
 
-npscan = np.cumsum(tmp[:-1:])[-1]
-cuda_runtime.LIB_CUDA_MISC['cudaExclusiveScanInt'](tmp.ctypes_data, ctypes.c_int(N2))
-print tmp[-1] == npscan, tmp[-1], npscan
+
+
 
 
 quit()
@@ -60,7 +59,6 @@ for rk in range(mpi.MPI_HANDLE.nproc):
     mpi.MPI_HANDLE.comm.barrier()
 
 # A.scatter_data_from(0)
-A.broadcast_data_from(0)
 
 
 
