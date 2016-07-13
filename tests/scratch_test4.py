@@ -39,7 +39,23 @@ A.f[:] = np.zeros([N,3])
 A.gid[:,0] = np.arange(A.npart)
 
 
+
+
+for rk in range(mpi.MPI_HANDLE.nproc):
+    if mpi.MPI_HANDLE.rank == rk:
+        #print rk, A.gid[:]
+        sys.stdout.flush()
+    mpi.MPI_HANDLE.comm.barrier()
+
 A.scatter_data_from(0)
+
+
+for rk in range(mpi.MPI_HANDLE.nproc):
+    if mpi.MPI_HANDLE.rank == rk:
+        #print rk, A.gid[:A.npart_local:]
+        sys.stdout.flush()
+    mpi.MPI_HANDLE.comm.barrier()
+
 A.gather_data_on(0)
 
 
@@ -50,6 +66,8 @@ if mpi.MPI_HANDLE.rank == 0:
     ret_true = np.arange(A.npart)
 
     print " Test passed ==", A.npart == np.sum(ret==ret_true)
+
+
 
 
 

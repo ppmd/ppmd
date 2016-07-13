@@ -186,7 +186,6 @@ class ParticleDat(cuda_base.Matrix):
             if mpi.MPI_HANDLE.rank == rank:
 
                 _new_nloc = sum(counts)
-                print "new nloc", _new_nloc
 
                 self.resize(_new_nloc, _callback=False)
                 disp = [0] + counts[:-1:]
@@ -194,8 +193,8 @@ class ParticleDat(cuda_base.Matrix):
                 counts = tuple([self.ncomp*c for c in counts])
 
                 ln = mpi.MPI_HANDLE.nproc
-                disp_ = ScalarArray(dtype=ctypes.c_int, ncomp=ln)
-                counts_ = ScalarArray(dtype=ctypes.c_int, ncomp=ln)
+                disp_ = data.ScalarArray(dtype=ctypes.c_int, ncomp=ln)
+                counts_ = data.ScalarArray(dtype=ctypes.c_int, ncomp=ln)
 
                 disp_[:] = esize * np.array(disp)
                 counts_[:] = esize * np.array(counts)
@@ -204,22 +203,15 @@ class ParticleDat(cuda_base.Matrix):
                 counts = counts_
 
             else:
-                disp = ScalarArray(dtype=ctypes.c_int)
-                counts = ScalarArray(dtype=ctypes.c_int)
+                disp = data.ScalarArray(dtype=ctypes.c_int, ncomp=mpi.MPI_HANDLE.nproc)
+                counts = data.ScalarArray(dtype=ctypes.c_int, ncomp=mpi.MPI_HANDLE.nproc)
 
             send_count = ctypes.c_int(esize*self.npart_local*self.ncomp)
 
-            tmp = ParticleDat(dtype=self.dtype, ncomp=self.ncomp, npart=16)
 
-
-            pio.rprint(esize, " ", self.npart_local, " ", self.ncomp, " ", self.npart)
-            pio.rprint(counts[:], " ", disp[:])
-
-
-
-            cuda_mpi.MPI_Gatherv(self.ctypes_data,
+            cuda_mpi.MPI_Gatherv(ctypes.cast(self.ctypes_data, ctypes.c_void_p),
                                  send_count,
-                                 tmp.ctypes_data,
+                                 ctypes.cast(self.ctypes_data, ctypes.c_void_p),
                                  counts.ctypes_data,
                                  disp.ctypes_data,
                                  ctypes.c_int(rank)
@@ -227,9 +219,6 @@ class ParticleDat(cuda_base.Matrix):
 
             if mpi.MPI_HANDLE.rank == rank:
                 self.npart_local = _new_nloc
-
-
-            pio.rprint(self.name)
 
 
     def halo_start_reset(self):

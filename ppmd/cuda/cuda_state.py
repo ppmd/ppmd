@@ -104,14 +104,12 @@ class BaseMDState(object):
     def domain(self, new_domain):
         self._domain = new_domain
 
-        print "before decomp"
         if ppmd.mpi.decomposition_method == ppmd.mpi.decomposition.spatial:
             self._domain.mpi_decompose()
 
         cuda_runtime.cuda_device_reset()
         cuda_runtime.cuda_set_device()
 
-        print "after decomp"
 
         self._cell_particle_map_setup()
 
@@ -280,11 +278,11 @@ class BaseMDState(object):
         test = np.zeros([n+1, 2])
         test[:,0] = self._empty_per_particle_flag[:,0]
 
-        ppmd.pio.rprint('\n', test)
-        ppmd.pio.rprint('\n new_n, n2 ', new_n, " " , n2)
-        ppmd.pio.rprint(n - self._empty_per_particle_flag[n,0])
+        #ppmd.pio.rprint('\n', test)
+        #ppmd.pio.rprint('\n new_n, n2 ', new_n, " " , n2)
+        #ppmd.pio.rprint(n - self._empty_per_particle_flag[n,0])
 
-        ppmd.pio.rprint('\n E:', self._empty_slots[:])
+        #ppmd.pio.rprint('\n E:', self._empty_slots[:])
 
 
         self._replacement_slots = \
@@ -293,7 +291,7 @@ class BaseMDState(object):
                                                      self._new_npart,
                                                      self.npart-self._new_npart)
 
-        ppmd.pio.rprint('\n R:', self._replacement_slots[:])
+        #ppmd.pio.rprint('\n R:', self._replacement_slots[:])
 
         self._compression_lib = _CompressParticleDats(self, self.particle_dats)
         self._compression_lib.apply(self._num_slots_to_fill,
@@ -433,7 +431,6 @@ class _FilterOnDomain(object):
 
         self._per_particle_flag.zero()
 
-        print "nlocal", self._per_particle_flag.npart, self._per_particle_flag.ncol,self._positions.group.npart
 
         # find particles to remove
         self._loop1.execute(n=self._positions.group.npart,
