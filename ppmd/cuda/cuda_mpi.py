@@ -64,6 +64,34 @@ def MPI_Bcast(buffer, byte_count, root):
     ))
 
 
+###############################################################################
+# MPI_Gatherv
+###############################################################################
+
+
+def MPI_Gatherv(s_buffer, s_count, r_buffer, r_counts, r_disps, root):
+    """
+    Cuda aware MPI_Gatherv. All counts/sizes are in bytes not counts.
+    :param s_buffer: ctypes pointer to send buffer
+    :param s_count: ctypes.c_int of send count
+    :param r_buffer: ctypes pointer to recv buffer
+    :param r_counts: ctypes pointer to int array of recv counts
+    :param r_disps: ctypes pointer to int array of recv offsets
+    :param root: ctypes.c_int root process
+    :return:
+    """
+
+    cuda_mpi_err_check(LIB_CUDA_MPI['MPI_Gatherv_cuda'](
+        ctypes.c_int(mpi.MPI_HANDLE.comm.py2f()),
+        s_buffer,
+        s_count,
+        r_buffer,
+        r_counts,
+        r_disps,
+        root
+    ))
+
+
 
 
 

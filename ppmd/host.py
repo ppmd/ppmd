@@ -24,9 +24,9 @@ pointer_lookup = {ctypes.c_int: 'intpointer',
 
 mpi_type_map = {ctypes.c_double: 'MPI_DOUBLE', ctypes.c_int: 'MPI_INT', ctypes.c_long: 'MPI_LONG'}
 
-################################################################################################
+###############################################################################
 # Get available memory.
-################################################################################################
+###############################################################################
 def available_free_memory():
     """
     Get available free memory in bytes.
@@ -44,9 +44,27 @@ def available_free_memory():
     except:
         return (2 ** 64) - 1
 
-################################################################################################
+
+###############################################################################
+# Pointer arithmetic for ctypes
+###############################################################################
+
+
+def pointer_offset(ptr=None, offset=0):
+    """
+    Add offset number of bytes to pointer ptr, returns ctypes void ptr
+    :param ptr:     original pointer
+    :param offset:  offset in bytes
+    """
+
+    vpv = ctypes.cast(ptr, ctypes.c_void_p).value
+    vpv += offset
+    return ctypes.c_void_p(vpv)
+
+
+###############################################################################
 # Array.
-################################################################################################
+###############################################################################
 
 class Array(object):
     """

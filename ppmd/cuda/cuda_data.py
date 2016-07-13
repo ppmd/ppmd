@@ -11,6 +11,7 @@ import ppmd.access as access
 import ppmd.mpi as mpi
 import ppmd.host as host
 import ppmd.data as data
+import ppmd.pio as pio
 
 # cuda imports
 import cuda_base
@@ -165,14 +166,70 @@ class ParticleDat(cuda_base.Matrix):
             s = np.array([self._nrow.value], dtype=ctypes.c_int)
             mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
             self.resize(s[0], _callback=_resize_callback)
-
+            self.npart_local = s[0]
 
             cuda_mpi.MPI_Bcast(self.ctypes_data,
                                ctypes.c_int(self.size),
                                ctypes.c_int(rank))
 
 
+    def gather_data_on(self, rank=0):
+        assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
+        if mpi.MPI_HANDLE.nproc == 1:
+            return
+        else:
 
+            esize = ctypes.sizeof(self.idtype)
+
+            counts = mpi.MPI_HANDLE.comm.gather(self.npart_local, root=rank)
+
+            if mpi.MPI_HANDLE.rank == rank:
+
+                _new_nloc = sum(counts)
+                print "new nloc", _new_nloc
+
+                self.resize(_new_nloc, _callback=False)
+                disp = [0] + counts[:-1:]
+                disp = tuple(np.cumsum(self.ncomp * np.array(disp)))
+                counts = tuple([self.ncomp*c for c in counts])
+
+                ln = mpi.MPI_HANDLE.nproc
+                disp_ = ScalarArray(dtype=ctypes.c_int, ncomp=ln)
+                counts_ = ScalarArray(dtype=ctypes.c_int, ncomp=ln)
+
+                disp_[:] = esize * np.array(disp)
+                counts_[:] = esize * np.array(counts)
+
+                disp = disp_
+                counts = counts_
+
+            else:
+                disp = ScalarArray(dtype=ctypes.c_int)
+                counts = ScalarArray(dtype=ctypes.c_int)
+
+            send_count = ctypes.c_int(esize*self.npart_local*self.ncomp)
+
+            tmp = ParticleDat(dtype=self.dtype, ncomp=self.ncomp, npart=16)
+
+
+            pio.rprint(esize, " ", self.npart_local, " ", self.ncomp, " ", self.npart)
+            pio.rprint(counts[:], " ", disp[:])
+
+
+
+            cuda_mpi.MPI_Gatherv(self.ctypes_data,
+                                 send_count,
+                                 tmp.ctypes_data,
+                                 counts.ctypes_data,
+                                 disp.ctypes_data,
+                                 ctypes.c_int(rank)
+                                 )
+
+            if mpi.MPI_HANDLE.rank == rank:
+                self.npart_local = _new_nloc
+
+
+            pio.rprint(self.name)
 
 
     def halo_start_reset(self):

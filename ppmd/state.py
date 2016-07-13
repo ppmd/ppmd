@@ -270,6 +270,14 @@ class BaseMDState(object):
             for px in self.particle_dats:
                 getattr(self, px).broadcast_data_from(rank=rank, _resize_callback=False)
 
+    def gather_data_on(self, rank=0):
+        if mpi.MPI_HANDLE.nproc == 1:
+            return
+        else:
+            for px in self.particle_dats:
+                getattr(self, px).gather_data_on(rank)
+
+
 
     def filter_on_domain_boundary(self):
         """

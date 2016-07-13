@@ -4,6 +4,8 @@ Module to handle the cuda runtime environment.
 #system level imports
 import ctypes
 import os
+import math
+
 
 #package level imports
 from ppmd import runtime, pio, mpi
@@ -269,9 +271,9 @@ def cuda_free(d_ptr=None):
     libcudart('cudaFree', d_ptr)
 
 
-#####################################################################################
+###############################################################################
 # cuda_mem_cpy
-#####################################################################################
+###############################################################################
 
 def cuda_mem_cpy(d_ptr=None, s_ptr=None, size=None, cpy_type=None):
     """
@@ -302,6 +304,23 @@ def cuda_mem_cpy(d_ptr=None, s_ptr=None, size=None, cpy_type=None):
 
     else:
         print "cuda_mem_cpy error: Something failed.", cpy_type, d_ptr, s_ptr, size
+
+
+###############################################################################
+# Make cuda 1D threadblock
+###############################################################################
+def kernel_launch_args_1d(n=None, threads=512):
+    """
+    Given a n return cuda launch args for a kernel requiring at least n threads.
+    """
+    assert n is not None, "No target number of threads passed"
+
+    _blocksize = (ctypes.c_int * 3)(int(math.ceil(n / float(threads))), 1, 1)
+    _threadsize = (ctypes.c_int * 3)(threads, 1, 1)
+
+
+    return _blocksize, _threadsize
+
 
 
 

@@ -28,7 +28,10 @@ print "domain added"
 A.p = PositionDat(ncomp=3)
 A.v = ParticleDat(ncomp=3)
 A.f = ParticleDat(ncomp=3)
+A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
+
 A.u = ScalarArray(ncomp=2)
+
 
 print "dats added"
 
@@ -38,43 +41,35 @@ A.u.halo_aware = True
 A.p[:] = np.random.uniform(-1.*Eo2, Eo2, [N,3])
 A.v[:] = np.random.normal(0, 2, [N,3])
 A.f[:] = np.zeros([N,3])
+A.gid[:,0] = np.arange(A.npart)
 
 
-A.broadcast_data_from(0)
-cuda_filter = cuda_domain.FilterOnDomain(A.domain, A.p)
-cuda_filter.apply()
-
-
-
-
-
-quit()
 
 
 
 for rk in range(mpi.MPI_HANDLE.nproc):
     if mpi.MPI_HANDLE.rank == rk:
-        print rk, A.v[:]
+        print rk, A.gid[:]
         sys.stdout.flush()
     mpi.MPI_HANDLE.comm.barrier()
 
-# A.scatter_data_from(0)
+A.scatter_data_from(0)
 
 
-
-
-
-
-#A.p.broadcast_data_from(0)
-#cuda_mpi.cuda_mpi_err_check(0)
 
 for rk in range(mpi.MPI_HANDLE.nproc):
     if mpi.MPI_HANDLE.rank == rk:
-        print rk, A.v[:]
+        print rk, A.gid[:A.npart_local:]
         sys.stdout.flush()
     mpi.MPI_HANDLE.comm.barrier()
 
+A.gather_data_on(0)
 
+
+if mpi.MPI_HANDLE.rank == 0:
+    print rk, A.gid[:]
+    sys.stdout.flush()
+mpi.MPI_HANDLE.comm.barrier()
 
 
 
