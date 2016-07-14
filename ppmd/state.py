@@ -302,11 +302,11 @@ class BaseMDState(object):
 
     def _compress_empty_slots(self, slots):
         le = len(slots)
-        if le > 0:
-            self._resize_empty_slot_store(le)
-            self._move_empty_slots[0:le:] = slots
-            self.compressed = False
-            self._compress_particle_dats(le)
+        #if le > 0:
+        self._resize_empty_slot_store(le)
+        self._move_empty_slots[0:le:] = slots
+        self.compressed = False
+        self._compress_particle_dats(le)
 
     def _resize_empty_slot_store(self, new_size):
 

@@ -107,9 +107,7 @@ class BaseMDState(object):
         if ppmd.mpi.decomposition_method == ppmd.mpi.decomposition.spatial:
             self._domain.mpi_decompose()
 
-        cuda_runtime.cuda_device_reset()
         cuda_runtime.cuda_set_device()
-
 
         self._cell_particle_map_setup()
 
@@ -257,6 +255,9 @@ class BaseMDState(object):
             for px in self.particle_dats:
                 getattr(self, px).gather_data_on(rank)
 
+    def free_all(self):
+        for px in self.particle_dats:
+            getattr(self, px).free()
 
     def filter_on_domain_boundary(self):
         """
