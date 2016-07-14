@@ -28,6 +28,15 @@ if mdc.CUDA_IMPORT:
     ScalarArray = mdc.cuda_data.ScalarArray
     State = mdc.cuda_state.State
 
+
+h_PositionDat = md.data.PositionDat
+h_ParticleDat = md.data.ParticleDat
+h_ScalarArray = md.data.ScalarArray
+h_State = md.state.State
+
+
+
+
 @cuda
 @pytest.fixture
 def state(request):
@@ -35,55 +44,120 @@ def state(request):
     A.npart = N
     A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
     A.p = PositionDat(ncomp=3)
-    A.v = PositionDat(ncomp=3)
-    A.f = PositionDat(ncomp=3)
+    A.v = ParticleDat(ncomp=3)
+    A.f = ParticleDat(ncomp=3)
     A.u = ScalarArray(ncomp=2)
     A.u.halo_aware = True
+    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
 
-
-    #request.addfinalizer(A.free_all)
     return A
 
+
+
+
 @cuda
-def test_npart(state):
+@pytest.fixture
+def h_state(request):
+    A = h_State()
+    A.npart = N
+    A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
+    A.p = h_PositionDat(ncomp=3)
+    A.v = h_ParticleDat(ncomp=3)
+    A.f = h_ParticleDat(ncomp=3)
+    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
+    A.u = h_ScalarArray(ncomp=2)
+    A.u.halo_aware = True
+
+    return A
+
+
+
+@cuda
+def test_cuda_npart(state):
     assert state.npart == N
     assert state.npart_local == 0
 
 @cuda
-def test_broadcast_data_from(state):
+def test_cuda_broadcast_data_from(state):
+
+    base_rank = nproc-1
 
     state.p[:] = (rank+1)*np.ones([N,3])
     state.v[:] = (rank+1)*np.ones([N,3])
     state.f[:] = (rank+1)*np.ones([N,3])
 
-    state.broadcast_data_from(0)
+    state.broadcast_data_from(base_rank)
 
-    assert np.sum(np.ones([N,3]) == state.p[:]) == N*3
-    assert np.sum(np.ones([N,3]) == state.v[:]) == N*3
-    assert np.sum(np.ones([N,3]) == state.f[:]) == N*3
+    assert np.sum((base_rank+1)*np.ones([N,3]) == state.p[:]) == N*3
+    assert np.sum((base_rank+1)*np.ones([N,3]) == state.v[:]) == N*3
+    assert np.sum((base_rank+1)*np.ones([N,3]) == state.f[:]) == N*3
     assert state.npart_local == N
-    sys.stdout.flush()
-    sys.stderr.flush()
+
+
+
 
 
 @cuda
-def test_scatter_gather(state):
-    state.p[:] = np.random.uniform(-1*Eo2, Eo2, [N,3])
-    state.v[:] = np.random.normal(0, 2, [N,3])
-    state.f[:] = np.zeros([N,3])
+def test_cuda_check_scatter(state, h_state):
+    base_rank = nproc - 1
 
-    state.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
+    pi = np.random.uniform(-1*Eo2, Eo2, [N,3])
+    vi = np.random.normal(0, 2, [N,3])
+    fi = np.zeros([N,3])
+
+    state.p[:] = pi
+    state.v[:] = vi
+    state.f[:] = fi
+    state.gid[:,0] = np.arange(N)
+
+    h_state.p[:] = pi
+    h_state.v[:] = vi
+    h_state.f[:] = fi
+    h_state.gid[:,0] = np.arange(N)
+
+    assert np.sum(state.p[:] == h_state.p[:]) == N*3
+    assert np.sum(state.v[:] == h_state.v[:]) == N*3
+    assert np.sum(state.f[:] == h_state.f[:]) == N*3
+    assert np.sum(state.gid[:] == h_state.gid[:]) == N
+
+
+
+
+@cuda
+def test_cuda_scatter_gather(state):
+    base_rank = nproc - 1
+
+    pi = np.random.uniform(-1*Eo2, Eo2, [N,3])
+    vi = np.random.normal(0, 2, [N,3])
+    fi = np.zeros([N,3])
+
+    state.p[:] = pi
+    state.v[:] = vi
+    state.f[:] = fi
 
     state.gid[:,0] = np.arange(N)
 
-    state.scatter_data_from(0)
-    state.gather_data_on(0)
+    #state.broadcast_data_from(0)
+    #state.filter_on_domain_boundary()
+    state.scatter_data_from(base_rank)
 
-    if rank == 0:
-        ret = state.gid[:,0]
-        ret.sort()
-        ret_true = np.arange(state.npart)
-        assert state.npart == np.sum(ret==ret_true)
+    state.gather_data_on(base_rank)
+
+    if rank == base_rank:
+        inds = state.gid[:,0].argsort()
+
+        sgid = state.gid[inds]
+        sp = state.p[inds]
+        sv = state.v[inds]
+
+        # These equalities are floating point. No arithmetic should be done
+        # but it is conceivable that it may happen.
+        assert np.sum(sgid == np.arange(N)) == N
+        assert np.sum(sp == pi) == N*3
+        assert np.sum(sv == vi) == N*3
+
+
+
 
 
 

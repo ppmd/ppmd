@@ -399,24 +399,32 @@ class ParticleDat(host.Matrix):
             return
         else:
 
-
             counts = mpi.MPI_HANDLE.comm.gather(self.npart_local, root=rank)
 
             disp = None
+            tmp = np.zeros(1)
+
+            send_size = self.npart_local
 
             if mpi.MPI_HANDLE.rank == rank:
 
                 self.resize(sum(counts), _callback=_resize_callback)
+                self.npart_local = sum(counts)
                 disp = [0] + counts[:-1:]
                 disp = tuple(np.cumsum(self.ncomp * np.array(disp)))
 
                 counts = tuple([self.ncomp*c for c in counts])
 
 
-            mpi.MPI_HANDLE.comm.Gatherv(sendbuf=self._dat[:self.npart_local:,::],
-                                        recvbuf=(self._dat, counts, disp, None),
+                tmp = np.zeros([self.npart_local, self.ncomp], dtype=self.dtype)
+
+
+            mpi.MPI_HANDLE.comm.Gatherv(sendbuf=self._dat[:send_size:,::],
+                                        recvbuf=(tmp, counts, disp, None),
                                         root=rank)
 
+            if mpi.MPI_HANDLE.rank == rank:
+                self._dat = tmp
 
 
 

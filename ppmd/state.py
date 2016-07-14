@@ -264,7 +264,7 @@ class BaseMDState(object):
             self.npart_local = self.npart
             return
         else:
-            s = np.array([self.get_position_dat().nrow])
+            s = np.array([self.npart])
             mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
             self.npart_local = s[0]
             for px in self.particle_dats:
@@ -302,10 +302,12 @@ class BaseMDState(object):
 
     def _compress_empty_slots(self, slots):
         le = len(slots)
-        #if le > 0:
+        if le > 0:
+            self.compressed = False
+        else:
+            self.compressed = True
         self._resize_empty_slot_store(le)
         self._move_empty_slots[0:le:] = slots
-        self.compressed = False
         self._compress_particle_dats(le)
 
     def _resize_empty_slot_store(self, new_size):
