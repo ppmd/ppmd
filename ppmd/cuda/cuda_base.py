@@ -391,9 +391,13 @@ class _ArrayMirror(object):
 class _MatrixMirror(object):
     def __init__(self, d_matrix):
         self._d_matrix = d_matrix
+
         self._h_matrix = ppmd.host.Matrix(nrow=1,
                                           ncol=d_matrix.ncol,
                                           dtype=d_matrix.dtype)
+
+
+
     def copy_to_device(self):
         self._d_matrix.realloc(self._h_matrix.nrow, self._h_matrix.ncol)
         cuda_runtime.cuda_mem_cpy(self._d_matrix.ctypes_data,
@@ -403,6 +407,7 @@ class _MatrixMirror(object):
         self._h_matrix.data.fill(0)
 
     def copy_from_device(self):
+
         self._h_matrix.realloc(self._d_matrix.nrow, self._d_matrix.ncol)
         cuda_runtime.cuda_mem_cpy(self._h_matrix.ctypes_data,
                                   self._d_matrix.ctypes_data,

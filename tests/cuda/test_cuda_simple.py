@@ -64,7 +64,7 @@ def h_state(request):
     A.p = h_PositionDat(ncomp=3)
     A.v = h_ParticleDat(ncomp=3)
     A.f = h_ParticleDat(ncomp=3)
-    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
+    A.gid = h_ParticleDat(ncomp=1, dtype=ctypes.c_int)
     A.u = h_ScalarArray(ncomp=2)
     A.u.halo_aware = True
 
@@ -88,6 +88,7 @@ def test_cuda_broadcast_data_from(state):
 
     state.broadcast_data_from(base_rank)
 
+    # check device broadcast
     assert np.sum((base_rank+1)*np.ones([N,3]) == state.p[:]) == N*3
     assert np.sum((base_rank+1)*np.ones([N,3]) == state.v[:]) == N*3
     assert np.sum((base_rank+1)*np.ones([N,3]) == state.f[:]) == N*3
@@ -115,11 +116,21 @@ def test_cuda_check_scatter(state, h_state):
     h_state.f[:] = fi
     h_state.gid[:,0] = np.arange(N)
 
+    # check initialisation is the same
     assert np.sum(state.p[:] == h_state.p[:]) == N*3
     assert np.sum(state.v[:] == h_state.v[:]) == N*3
     assert np.sum(state.f[:] == h_state.f[:]) == N*3
     assert np.sum(state.gid[:] == h_state.gid[:]) == N
 
+    # broadcast host state and cuda state
+    state.broadcast_data_from(base_rank)
+    h_state.broadcast_data_from(base_rank)
+
+    # check scatter was identical
+    assert np.sum(state.p[:] == h_state.p[:]) == h_state.npart_local*3
+    assert np.sum(state.v[:] == h_state.v[:]) == h_state.npart_local*3
+    assert np.sum(state.f[:] == h_state.f[:]) == h_state.npart_local*3
+    assert np.sum(state.gid[:] == h_state.gid[:]) == h_state.npart_local
 
 
 
