@@ -13,7 +13,6 @@ Eo2 = E/2.
 rank = md.mpi.MPI_HANDLE.rank
 nproc = md.mpi.MPI_HANDLE.nproc
 
-
 PositionDat = md.data.PositionDat
 ParticleDat = md.data.ParticleDat
 ScalarArray = md.data.ScalarArray
@@ -34,15 +33,17 @@ def state():
 
     return A
 
+@pytest.fixture(scope="module", params=list({0, nproc-1}))
+def base_rank(request):
+    return request.param
+
 
 def test_host_npart(state):
     assert state.npart == N
     assert state.npart_local == 0
 
 
-def test_host_broadcast_data_from(state):
-
-    base_rank = nproc-1
+def test_host_broadcast_data_from(state, base_rank):
 
 
     state.p[:] = (rank+1)*np.ones([N,3])
@@ -57,8 +58,60 @@ def test_host_broadcast_data_from(state):
     assert state.npart_local == N
 
 
-def test_host_scatter_gather(state):
-    base_rank = nproc-1
+
+def test_host_particle_dat_copy(state):
+
+    pi = np.random.uniform(-1*Eo2, Eo2, [N,3])
+
+    #TODO automatically set local number of particles?
+    state.npart_local = N
+
+    state.p[:] = pi
+
+
+    pp = state.p.copy()
+
+    assert np.sum(pi[:] == state.p[:]) == N*3
+    assert np.sum(pp[:] == state.p[:]) == N*3
+    assert np.sum(pp[:] == pi[:]) == N*3
+
+
+def test_host_particle_dat_copy_distributed(state, base_rank):
+    """
+    As above but distributed with a gather
+    """
+
+    pi = np.random.uniform(-1*Eo2, Eo2, [N,3])
+    state.p[:] = pi
+    state.gid[:,0] = np.arange(N)
+
+
+    state.scatter_data_from(base_rank)
+
+
+    pp = state.p.copy()
+    gidp = state.gid.copy()
+
+    pp.gather_data_on(base_rank)
+    gidp.gather_data_on(base_rank)
+
+
+
+    if rank == base_rank:
+        inds = gidp[:,0].argsort()
+
+        #print pp[:]
+        #print 60*"-"
+
+        pp[:] = pp[inds]
+
+        assert np.sum(pp[:] == pi[:]) == N*3
+
+
+
+
+
+def test_host_scatter_gather(state, base_rank):
 
     pi = np.random.uniform(-1*Eo2, Eo2, [N,3])
     vi = np.random.normal(0, 2, [N,3])

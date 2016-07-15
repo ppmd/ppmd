@@ -23,7 +23,10 @@ class _Base(object):
     :arg bool DEBUG: Flag to enable debug flags.
     """
 
-    def __init__(self, n, types_map, kernel, particle_dat_dict):
+    def __init__(self, n=None, types_map=None, kernel=None, particle_dat_dict=None):
+
+        assert kernel is not None, "No kernel argument passed"
+        assert particle_dat_dict is not None, "no particle to symbol (particle_dat_dict) passed"
 
         self._cc = build.TMPCC
 
@@ -227,7 +230,9 @@ class _Base(object):
         '''Add pointer arguments to launch command'''
         for dat_orig in self._particle_dat_dict.values():
             if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
+                # this halo exchanges, why halo exchange on a particle loop?
+                # args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
+                args.append(dat_orig[0].ctypes_data)
             else:
                 args.append(dat_orig.ctypes_data)
 
@@ -252,7 +257,7 @@ class ParticleLoop(_Base):
 
         self._code = '''
 
-        void %(KERNEL_NAME)s_wrapper(const int _N, int* _RESTRICT _TYPE_MAP,%(ARGUMENTS)s) {
+        void %(KERNEL_NAME)s_wrapper(const int _N, %(ARGUMENTS)s) {
 
             %(LOOP_TIMER_PRE)s
 
@@ -284,7 +289,7 @@ class ParticleLoop(_Base):
 
         #define _RESTRICT %(RESTRICT)s
 
-        extern "C" void %(KERNEL_NAME)s_wrapper(const int _N, int* _RESTRICT _TYPE_MAP,%(ARGUMENTS)s);
+        extern "C" void %(KERNEL_NAME)s_wrapper(const int _N, %(ARGUMENTS)s);
         '''
 
         d = {'INCLUDED_HEADERS': self._included_headers(),

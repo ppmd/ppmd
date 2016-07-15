@@ -11,7 +11,6 @@ import ppmd as md
 import ppmd.cuda as mdc
 
 
-
 cuda = pytest.mark.skipif("mdc.CUDA_IMPORT is False")
 
 
@@ -54,7 +53,6 @@ def state(request):
 
 
 
-
 @cuda
 @pytest.fixture
 def h_state(request):
@@ -71,6 +69,10 @@ def h_state(request):
     return A
 
 
+@pytest.fixture(scope="module", params=list({0, nproc-1}))
+def base_rank(request):
+    return request.param
+
 
 @cuda
 def test_cuda_npart(state):
@@ -78,9 +80,7 @@ def test_cuda_npart(state):
     assert state.npart_local == 0
 
 @cuda
-def test_cuda_broadcast_data_from(state):
-
-    base_rank = nproc-1
+def test_cuda_broadcast_data_from(state, base_rank):
 
     state.p[:] = (rank+1)*np.ones([N,3])
     state.v[:] = (rank+1)*np.ones([N,3])
@@ -96,11 +96,8 @@ def test_cuda_broadcast_data_from(state):
 
 
 
-
-
 @cuda
-def test_cuda_check_scatter(state, h_state):
-    base_rank = nproc - 1
+def test_cuda_check_scatter(state, h_state, base_rank):
 
     pi = np.random.uniform(-1*Eo2, Eo2, [N,3])
     vi = np.random.normal(0, 2, [N,3])
@@ -135,8 +132,7 @@ def test_cuda_check_scatter(state, h_state):
 
 
 @cuda
-def test_cuda_scatter_gather(state):
-    base_rank = nproc - 1
+def test_cuda_scatter_gather(state, base_rank):
 
     pi = np.random.uniform(-1*Eo2, Eo2, [N,3])
     vi = np.random.normal(0, 2, [N,3])
