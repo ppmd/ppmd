@@ -3,14 +3,22 @@ import numpy as np
 import sys
 import ctypes
 
+
 from ppmd import *
+
+
 from ppmd.cuda import *
+
+rank = mpi.MPI_HANDLE.rank
+nproc = mpi.MPI_HANDLE.nproc
+barrier = mpi.MPI_HANDLE.comm.barrier
+
 
 PositionDat = cuda_data.PositionDat
 ParticleDat = cuda_data.ParticleDat
 ScalarArray = cuda_data.ScalarArray
 State = cuda_state.State
-N = 1000000
+N = 16
 E = 8.
 Eo2 = E/2.
 
@@ -39,21 +47,34 @@ A.f[:] = np.zeros([N,3])
 A.gid[:,0] = np.arange(A.npart)
 
 
-A.scatter_data_from(0)
-A.gather_data_on(0)
+base_rank = nproc-1
+
+if rank == base_rank:
+    print A.gid[:]
+    print 80*"-"
+
+sys.stdout.flush()
+barrier()
+
+A.scatter_data_from(base_rank)
+
+for rx in range(nproc):
+    if rank == rx:
+        print A.gid[:A.npart_local:]
+        print 80*"-"
+    sys.stdout.flush()
+    barrier()
 
 
-if mpi.MPI_HANDLE.rank == 0:
-    ret = A.gid[:,0]
-    ret.sort()
 
-    ret_true = np.arange(A.npart)
+A.gather_data_on(base_rank)
 
-    print " Test passed ==", A.npart == np.sum(ret==ret_true)
-
-
-
-
+if rank == base_rank:
+    print A.gid[:]
+    print 80*"-"
+sys.stdout.flush()
+barrier()
+quit()
 
 
 # 

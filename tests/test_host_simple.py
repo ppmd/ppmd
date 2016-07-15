@@ -4,7 +4,7 @@ import pytest
 import ctypes
 import numpy as np
 import ppmd as md
-
+from mpi4py import MPI
 
 N = 16
 E = 8.
@@ -71,10 +71,18 @@ def test_host_scatter_gather(state):
 
     state.gid[:,0] = np.arange(N)
 
-
     #state.broadcast_data_from(0)
     #state.filter_on_domain_boundary()
     state.scatter_data_from(base_rank)
+
+    s = np.array([state.npart_local])
+    r = np.array([0])
+    md.mpi.MPI_HANDLE.comm.Allreduce(s[0], r, MPI.SUM)
+
+    # globally we should still have N particles
+    assert r[0] == state.npart
+    assert r[0] == N
+
 
     state.gather_data_on(base_rank)
 

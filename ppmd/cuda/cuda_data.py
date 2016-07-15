@@ -18,6 +18,7 @@ import cuda_base
 import cuda_halo
 import cuda_build
 import cuda_mpi
+import cuda_runtime
 
 class ScalarArray(cuda_base.Array):
 
@@ -182,12 +183,19 @@ class ParticleDat(cuda_base.Matrix):
             esize = ctypes.sizeof(self.idtype)
 
             counts = mpi.MPI_HANDLE.comm.gather(self.npart_local, root=rank)
+            _ptr_new = ctypes.POINTER(self.idtype)()
 
             if mpi.MPI_HANDLE.rank == rank:
 
                 _new_nloc = sum(counts)
 
-                self.resize(_new_nloc, _callback=False)
+                # self.resize(_new_nloc, _callback=False)
+                cuda_runtime.cuda_malloc(_ptr_new,
+                                         _new_nloc * self.ncomp,
+                                         self.idtype)
+
+
+
                 disp = [0] + counts[:-1:]
                 disp = tuple(np.cumsum(self.ncomp * np.array(disp)))
                 counts = tuple([self.ncomp*c for c in counts])
@@ -211,7 +219,7 @@ class ParticleDat(cuda_base.Matrix):
 
             cuda_mpi.MPI_Gatherv(ctypes.cast(self.ctypes_data, ctypes.c_void_p),
                                  send_count,
-                                 ctypes.cast(self.ctypes_data, ctypes.c_void_p),
+                                 ctypes.cast(_ptr_new, ctypes.c_void_p),
                                  counts.ctypes_data,
                                  disp.ctypes_data,
                                  ctypes.c_int(rank)
@@ -219,7 +227,11 @@ class ParticleDat(cuda_base.Matrix):
 
             if mpi.MPI_HANDLE.rank == rank:
                 self.npart_local = _new_nloc
+                self._ncol.value = self.ncomp
+                self._nrow.value = _new_nloc
 
+                cuda_runtime.cuda_free(self._ptr)
+                self._ptr = _ptr_new
 
     def halo_start_reset(self):
         """
