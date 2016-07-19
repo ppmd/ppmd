@@ -170,6 +170,130 @@ int cudaFindNewSlots(const int blocksize2[3],
 
 
 
+cudaError_t cudaCreateLaunchArgs(
+        const int N,    // Total minimum number of threads.
+        const int Nt,   // Number of threads per block.
+        dim3* bs,       // RETURN: grid of thread blocks.
+        dim3* ts        // RETURN: grid of threads
+        ){
+
+    if ((N<0) || (Nt<0)){
+        cout << "cudaCreateLaunchArgs Error: Invalid desired number of total threads " << N << 
+            "or invalid number of threads per block " << Nt << endl;
+        return cudaErrorUnknown;
+    }
+    
+    const int Nb = ceil(((double) N) / ((double) Nt));
+
+    bs.x = blocksize2[0]; bs.y = blocksize2[1]; bs2.z = blocksize2[2];
+    ts.x = threadsize2[0]; ts.y = threadsize2[1]; ts2.z = threadsize2[2];
+
+    bs.x = Nb; bs.y = 1; bs.z = 1;
+    ts.x = Nb; ts.y = 1; ts.z = 1;
+
+    return cudaSuccess;
+}
+
+
+
+
+
+
+namespace _ExSizes
+{   
+
+    __global__ void GatherCellCounts(
+        const int n,                        // Number of cells to inspect
+        const int* __restrict__ D_b_ind,    // Starting indices for boundary cells
+        const int* __restrict__ D_b_arr,    // actual indices of boundary cells
+        int* D_b_tmp,                       // space to place boundary cell counts
+        int* D_tmp_count                    // reduce the count accross cells into here
+        ){
+
+
+
+
+
+
+        return;
+    }
+
+
+
+
+
+
+}
+
+int cudaExchangeCellCounts(
+        const int FCOMM,                        // Fortran communicator
+        const int* __restrict__ H_SEND_RANKS,   // send ranks
+        const int* __restrict__ H_RECV_RANKS,   // recv ranks 
+        const int* __restrict__ D_h_ind,        // The starting indices for the halo cells
+        const int* __restrict__ D_b_ind,        // The starting indices for the bound cellsi
+        const int* __restrict__ D_h_arr,        // The halo cell indices
+        const int* __restrict__ D_b_arr,        // The boundary cell indices
+        const int* __restrict__ D_CCC,          // Cell contents count array
+        int* __restrict__ H_halo_count,         // RETURN: Number of halo particles
+        int* __restrict__ H_tmp_count,          // RETURN: Amount of temporary space needed
+        int* __restrict__ D_h_tmp,              // Temp storage for halo counts
+        int* __restrict__ H_b_tmp,              // Temp storage for bundary counts
+        int* __restrict__ H_dir_counts          // RETURN: Total expected recv counts per dir
+        )
+{   
+
+    // var to use for errors
+    int err;
+
+    // vars for blocks and threads
+    dim3 bs, ts;
+
+    // MPI initialisations
+    MPI_Comm COMM = MPI_Comm_f2c(FCOMM);
+    int rank; MPI_Comm_rank(COMM, &rank);
+    MPI_Status MPI_STATUS;
+
+    
+    //reset the return counts
+    *H_tmp_count = 0;
+    *H_halo_count = 0;
+
+    int * D_tmp_count;
+    
+    // make a device tmp
+    err = (int) cudaMalloc(&D_tmp_count, sizeof(int)); 
+    if (err != 0) { return err; }
+    
+    // ensure is zero
+    err = (int) cudaMemcpy(D_tmp_count, H_tmp_count, sizeof(int), cudaMemcpyHostToDevice);
+    if (err != 0) { return err; }
+
+
+
+    for(int dir=0 ; dir<6 ; dir++ ){
+
+        // Here we want to collect the local cell counts for a direction on the device
+        // exchange these sizes and get the total for the direction
+    
+        
+
+
+
+
+
+
+    }
+
+
+    return 0;
+}
+
+
+
+
+
+
+
 
 
 

@@ -807,7 +807,7 @@ class BoundaryTypePeriodic(object):
                                     'BL': self._bin_to_lin,
                                     'ELL': self._escape_linked_list,
                                     'B': self.state.domain.boundary,
-                                    'P': self.state.positions}
+                                    'P': self.state.get_position_dat()}
 
                 _escape_kernel = kernel.Kernel('find_escaping_particles',
                                                _escape_guard_code,

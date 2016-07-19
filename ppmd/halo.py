@@ -383,23 +383,10 @@ class CartesianHaloSix(object):
                         b_tmp[ix] = ccc[b_arr[dir_s + ix]];    // copy into
                                                                // send buffer
 
-
-                        //cout << "\tcell: " << b_arr[dir_s + ix] << endl;
-                        //cout << "\t\tcount: " << b_tmp[ix] << endl;
-
-                        //if (b_tmp[ix] == 946) { cout << "946 ccc: " << ccc[946] << endl;}
-
                         tmp_count += ccc[b_arr[dir_s + ix]];
                     }
 
-                    //cout << "\tcount 1: " << tmp_count << endl;
-
-
                     *t_count = MAX(*t_count, tmp_count);
-
-                    // send b_tmp recv h_tmp
-
-                    //cout << "\tsendrecv " << dir_c << " " << dir_c_r << " " << SEND_RANKS[dir] << " " << RECV_RANKS[dir] << " " << rank << endl;
 
 
                     if(rank == RECV_RANKS[dir]){
@@ -415,8 +402,6 @@ class CartesianHaloSix(object):
                                   RECV_RANKS[dir], RECV_RANKS[dir],
                                   MPI_COMM, &MPI_STATUS);
                     }
-                    //cout << "\tsendrecv completed" << endl;
-                    // copy recieved values into correct places and sum;
 
                     tmp_count=0;
                     for( int ix=0 ; ix<dir_c_r ; ix++ ){
@@ -427,8 +412,6 @@ class CartesianHaloSix(object):
                     dir_counts[dir] = tmp_count;
                     *t_count = MAX(*t_count, tmp_count);
 
-
-                    //cout << "\tcount 2: " << tmp_count << endl;
                 }
 
                 return;
