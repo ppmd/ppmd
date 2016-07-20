@@ -46,8 +46,7 @@ class BaseMDState(object):
         self._domain = None
 
         self._cell_to_particle_map = cell.CellList()
-        self._halo_manager = halo.CartesianHaloSix(_AsFunc(self, '_domain'),
-                                                   self._cell_to_particle_map)
+        self._halo_manager = None
 
         self._position_dat = None
 
@@ -118,7 +117,8 @@ class BaseMDState(object):
                                              self.get_position_dat(),
                                              self.domain)
             self._cell_to_particle_map.trigger_update()
-
+            self._halo_manager = halo.CartesianHaloSix(_AsFunc(self, '_domain'),
+                                                       self._cell_to_particle_map)
 
     @property
     def domain(self):

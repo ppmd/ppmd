@@ -198,22 +198,36 @@ cudaError_t cudaCreateLaunchArgs(
 
 
 
-
+/*
 namespace _ExSizes
 {   
 
     __global__ void GatherCellCounts(
         const int n,                        // Number of cells to inspect
-        const int* __restrict__ D_b_ind,    // Starting indices for boundary cells
         const int* __restrict__ D_b_arr,    // actual indices of boundary cells
         int* D_b_tmp,                       // space to place boundary cell counts
         int* D_tmp_count                    // reduce the count accross cells into here
         ){
 
 
+        int _ix = threadIdx.x + blockIdx.x*blockDim.x;
+        int tt = 0;
 
 
+        if (_ix < n){
 
+            D_b_tmp[_ix] = D_b_arr[_ix];   // copy this cell count
+            tt = D_b_arr[_ix];             // set local tt to this cell count
+
+        }
+
+        // reduce tmp count accross warp
+        cc = warpReduceSum(cc);
+
+        // reduce into global mem
+        if (threadIdx.x == 0){
+            atomicAdd(D_tmp_count, cc);
+        }
 
         return;
     }
@@ -229,8 +243,8 @@ int cudaExchangeCellCounts(
         const int FCOMM,                        // Fortran communicator
         const int* __restrict__ H_SEND_RANKS,   // send ranks
         const int* __restrict__ H_RECV_RANKS,   // recv ranks 
-        const int* __restrict__ D_h_ind,        // The starting indices for the halo cells
-        const int* __restrict__ D_b_ind,        // The starting indices for the bound cellsi
+        const int* __restrict__ H_h_ind,        // The starting indices for the halo cells
+        const int* __restrict__ H_b_ind,        // The starting indices for the bound cellsi
         const int* __restrict__ D_h_arr,        // The halo cell indices
         const int* __restrict__ D_b_arr,        // The boundary cell indices
         const int* __restrict__ D_CCC,          // Cell contents count array
@@ -275,12 +289,17 @@ int cudaExchangeCellCounts(
         // Here we want to collect the local cell counts for a direction on the device
         // exchange these sizes and get the total for the direction
     
+        const int dir_cell_count = H_b_ind[dir+1] - H_b_ind[dir];
+        err = cudaCreateLaunchArgs(dir_cell_count, 256, &bs, &ts);
+        if (err != 0) { return err; }
         
-
-
-
-
-
+        _ExSizes::GatherCellCounts<<<bs,ts>>>(dir_cell_count,
+                                              D_b_arr+H_b_ind[dir],
+                                              D_b_tmp,
+                                              D_tmp_count);
+        
+        err = cudaDeviceSynchronize();
+        if (err != 0) { return err; }
 
     }
 
@@ -288,7 +307,7 @@ int cudaExchangeCellCounts(
     return 0;
 }
 
-
+*/
 
 
 

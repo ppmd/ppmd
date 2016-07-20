@@ -45,10 +45,7 @@ def generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None
     else:
         _n = 1
 
-    _c = build.Code()ymbol_external=dat[0] + '_ext',
-                                         symbol_internal=dat[0],
-                                         dat=dat[1],
-                                         access_type=_mode)
+    _c = build.Code()
     _c += '#undef ' + symbol_internal + _nl
 
     if type(dat) is data.TypedDat:
