@@ -38,8 +38,7 @@ class BaseMDState(object):
 
 
         self._cell_to_particle_map = cuda_cell.CellOccupancyMatrix()
-
-        self._halo_manager = cuda_halo.CartesianHalo(self._cell_to_particle_map)
+        self._halo_manager = None
 
         self._position_dat = None
 
@@ -95,6 +94,8 @@ class BaseMDState(object):
             self._filter_method = _FilterOnDomain(self._domain,
                                                   self.get_position_dat())
 
+            self._halo_manager = ppmd.halo.CartesianHaloSix(_AsFunc(self, '_domain'),
+                                                            self._cell_to_particle_map)
 
     @property
     def domain(self):

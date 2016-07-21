@@ -42,17 +42,7 @@ class ScalarArray(cuda_base.Array):
         self._struct = type('ScalarArrayT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)), ('ncomp', ctypes.POINTER(ctypes.c_int)))))()
 
 
-        self._h_mirror = cuda_base._ArrayMirror(self)
 
-    def __getitem__(self, key):
-        self._h_mirror.copy_from_device()
-        return self._h_mirror.mirror.data[key]
-
-    def __setitem__(self, key, value):
-        self._h_mirror.copy_from_device()
-        self._h_mirror.mirror.data[key] = value
-        self._h_mirror.copy_to_device()
-        self._version += 1
 
     def __repr__(self):
         return str(self.__getitem__(slice(None, None, None)))
@@ -154,10 +144,6 @@ class ParticleDat(cuda_base.Matrix):
 
         self._1p_halo_lib = None
 
-        self._h_mirror = cuda_base._MatrixMirror(self)
-
-
-
 
     def broadcast_data_from(self, rank=0, _resize_callback=True):
 
@@ -242,15 +228,7 @@ class ParticleDat(cuda_base.Matrix):
         self._npart_halo.value = 0
 
 
-    def __getitem__(self, key):
-        self._h_mirror.copy_from_device()
-        return self._h_mirror.mirror.data[key]
 
-    def __setitem__(self, key, value):
-        self._h_mirror.copy_from_device()
-        self._h_mirror.mirror.data[key] = value
-        self._h_mirror.copy_to_device()
-        self._vid_int += 1
 
     def __repr__(self):
         return str(self.__getitem__(slice(None, None, None)))
@@ -464,9 +442,6 @@ class ParticleDat(cuda_base.Matrix):
                'NCOMP': self.ncomp,
                'SHIFT_CODE': _shift_code,
                'OCC_CODE': _occ_code}
-
-
-
 
         self._1p_halo_lib = cuda_build.simple_lib_creator(_header, _src, _name)[_name]
 

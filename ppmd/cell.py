@@ -371,9 +371,6 @@ class CellList(object):
             cell_start = self._cell_list[self._cell_list.end]
             cell_end = self._cell_list.end
 
-            # print cell_count, cell_start, cell_end, self._cell_list.ncomp, total_size
-
-
             self._cell_list.realloc(total_size + cell_count + 1)
 
             self._cell_list.data[self._cell_list.end - cell_count: self._cell_list.end:] = self._cell_list.data[cell_start:cell_end:]
@@ -402,9 +399,6 @@ class CellList(object):
         if total_size + cell_count + 1 > self._cell_list.ncomp:
             cell_start = self._cell_list[self._cell_list.end]
             cell_end = self._cell_list.end
-
-            # print cell_count, cell_start, cell_end, self._cell_list.ncomp, total_size
-
 
             self._cell_list.realloc(total_size + cell_count + 1)
 

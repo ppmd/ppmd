@@ -56,6 +56,17 @@ class Array(object):
 
 
         self._version = 0
+        self._h_mirror = _ArrayMirror(self)
+
+    def __getitem__(self, key):
+        self._h_mirror.copy_from_device()
+        return self._h_mirror.mirror.data[key]
+
+    def __setitem__(self, key, value):
+        self._h_mirror.copy_from_device()
+        self._h_mirror.mirror.data[key] = value
+        self._h_mirror.copy_to_device()
+        self._version += 1
 
     @property
     def struct(self):
@@ -224,6 +235,7 @@ class Matrix(object):
                                                                           ('nrow', ctypes.POINTER(ctypes.c_int)),
                                                                           ('ncol', ctypes.POINTER(ctypes.c_int)))))()
 
+        self._h_mirror = _MatrixMirror(self)
 
     @property
     def struct(self):
@@ -362,6 +374,15 @@ class Matrix(object):
 
             self._create_from_existing(matrix.data, matrix.dtype)
 
+    def __getitem__(self, key):
+        self._h_mirror.copy_from_device()
+        return self._h_mirror.mirror.data[key]
+
+    def __setitem__(self, key, value):
+        self._h_mirror.copy_from_device()
+        self._h_mirror.mirror.data[key] = value
+        self._h_mirror.copy_to_device()
+        self._vid_int += 1
 
 
 class _ArrayMirror(object):

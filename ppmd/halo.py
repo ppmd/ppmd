@@ -101,13 +101,13 @@ def create_halo_pairs_slice_halo(domain_in, slicexyz, direction):
 
 class CartesianHaloSix(object):
 
-    def __init__(self, domain_func, cell_list):
+    def __init__(self, domain_func, cell_to_particle_map):
         self._timer = runtime.Timer(runtime.TIMER, 0, start=True)
         
         self._domain_func = domain_func
         self._domain = None
 
-        self._cell_list = cell_list
+        self._cell_to_particle_map = cell_to_particle_map
 
         self._ca_copy = [None, None, None]
 
@@ -149,6 +149,7 @@ class CartesianHaloSix(object):
 
 
         self._exchange_sizes_lib = None
+        self._cell_contents_count_tmp = None
 
 
     def _setup(self):
@@ -436,7 +437,24 @@ class CartesianHaloSix(object):
         if self._version < self._domain.cell_array.version:
             self._get_pairs()
 
-        # print str(mpi.MPI_HANDLE.rank) +  ' #' + ' before size exchange ' + 10*'#'
+
+        ccc = self._cell_to_particle_map.cell_contents_count
+
+        if type(ccc) is host.Array:
+            ccc_ptr = ccc.ctypes_data
+
+        else:
+            if self._cell_contents_count_tmp is None:
+                self._cell_contents_count_tmp = host.Array(ncomp=ccc.ncomp, dtype=ctypes.c_int)
+            elif self._cell_contents_count_tmp.ncomp < ccc.ncomp:
+                self._cell_contents_count_tmp.realloc(ccc.ncomp)
+
+            #make a local copy of the cell contents counts
+            self._cell_contents_count_tmp[:] = ccc[:]
+            ccc_ptr = self._cell_contents_count_tmp.ctypes_data
+
+
+        assert ccc_ptr is not None, "No valid Cell Contents Count pointer found."
 
         self._exchange_sizes_lib(ctypes.c_int(mpi.MPI_HANDLE.fortran_comm),
                                  self._send_ranks.ctypes_data,
@@ -445,16 +463,12 @@ class CartesianHaloSix(object):
                                  self._boundary_groups_start_end_indices.ctypes_data,
                                  self._halo_cell_groups.ctypes_data,
                                  self._boundary_cell_groups.ctypes_data,
-                                 self._cell_list.cell_contents_count.ctypes_data,
+                                 ccc_ptr,
                                  ctypes.byref(self._h_count),
                                  ctypes.byref(self._t_count),
                                  self._h_tmp.ctypes_data,
                                  self._b_tmp.ctypes_data,
                                  self.dir_counts.ctypes_data)
-
-        # print self.dir_counts.data
-
-        # print str(mpi.MPI_HANDLE.rank) +  10*' #' + ' after size exchange  ' + 10*'#'
 
         return self._h_count.value, self._t_count.value
 
