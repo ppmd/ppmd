@@ -97,7 +97,6 @@ def test_host_boundary_z0(state):
     
 
 
-
     pj = pi - offset
     pjc = pj + coffset
 
