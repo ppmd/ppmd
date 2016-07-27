@@ -42,7 +42,7 @@ class ScalarArray(cuda_base.Array):
         self._struct = type('ScalarArrayT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)), ('ncomp', ctypes.POINTER(ctypes.c_int)))))()
 
 
-
+        self._h_mirror = cuda_base._ArrayMirror(self)
 
     def __repr__(self):
         return str(self.__getitem__(slice(None, None, None)))
@@ -144,6 +144,7 @@ class ParticleDat(cuda_base.Matrix):
 
         self._1p_halo_lib = None
 
+        self._h_mirror = cuda_base._MatrixMirror(self)
 
     def broadcast_data_from(self, rank=0, _resize_callback=True):
 

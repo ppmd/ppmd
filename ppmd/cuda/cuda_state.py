@@ -108,7 +108,7 @@ class BaseMDState(object):
         if ppmd.mpi.decomposition_method == ppmd.mpi.decomposition.spatial:
             self._domain.mpi_decompose()
 
-        cuda_runtime.cuda_set_device()
+        #cuda_runtime.cuda_set_device()
 
         self._cell_particle_map_setup()
 

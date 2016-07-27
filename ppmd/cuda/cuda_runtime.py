@@ -6,9 +6,18 @@ import ctypes
 import os
 import math
 
+# pycuda imports
+#import pycuda.driver as cudadrv
 
 #package level imports
 from ppmd import runtime, pio, mpi
+
+
+#cudadrv.init()
+#DEVICE = cudadrv.Device(0)
+#DEVICE.make_context()
+
+
 
 OPT = runtime.Level(1)
 ERROR_LEVEL = runtime.Level(3)
@@ -23,7 +32,6 @@ LIB_DIR = runtime.Dir(os.path.join(os.path.dirname(os.path.realpath(__file__)), 
 
 #cuda level imports
 import cuda_build
-
 
 
 
@@ -64,23 +72,7 @@ except:
 
 
 LIB_HELPER['cudaErrorCheck'](ctypes.c_int(0))
-#####################################################################################
-# Device id of currently used device. Assuming model of one mpi process per gpu.
-#####################################################################################
 
-class Device(object):
-    def __init__(self):
-        self._dev_id = None
-
-    @property
-    def id(self):
-        return self._dev_id
-
-    @id.setter
-    def id(self, new_id):
-        self._dev_id = int(new_id)
-
-DEVICE = Device()
 
 
 #####################################################################################
@@ -186,7 +178,7 @@ def cuda_set_device(device=None):
 #####################################################################################
 # cuda_device_reset
 #####################################################################################
-
+'''
 def cuda_device_reset():
     """
     Reset the current cuda device.
@@ -195,7 +187,7 @@ def cuda_device_reset():
 
     if (DEVICE.id is not None) and (LIB_CUDART is not None):
         libcudart('cudaDeviceReset')
-
+'''
 
 #####################################################################################
 # Is module ready to use?

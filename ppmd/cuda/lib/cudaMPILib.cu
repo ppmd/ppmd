@@ -185,11 +185,8 @@ cudaError_t cudaCreateLaunchArgs(
     
     const int Nb = ceil(((double) N) / ((double) Nt));
 
-    bs.x = blocksize2[0]; bs.y = blocksize2[1]; bs2.z = blocksize2[2];
-    ts.x = threadsize2[0]; ts.y = threadsize2[1]; ts2.z = threadsize2[2];
-
-    bs.x = Nb; bs.y = 1; bs.z = 1;
-    ts.x = Nb; ts.y = 1; ts.z = 1;
+    bs->x = Nb; bs->y = 1; bs->z = 1;
+    ts->x = Nt; ts->y = 1; ts->z = 1;
 
     return cudaSuccess;
 }
