@@ -64,45 +64,43 @@ class ParticleDat(cuda_base.Matrix):
     """
     Cuda particle dat
     """
-    def __init__(self, npart=0, ncomp=0, initial_value=None, name=None, dtype=ctypes.c_double, max_npart=None):
+    def __init__(self, npart=1, ncomp=1, initial_value=None, name=None, dtype=ctypes.c_double):
 
         self.name = name
 
         self.idtype = dtype
         self._ncol = ctypes.c_int(0)
         self._nrow = ctypes.c_int(0)
+        self._npart_local = ctypes.c_int(0)
+        self._npart = ctypes.c_int(0)
 
         self._ptr = ctypes.POINTER(self.idtype)()
         self._resize_callback = None
 
-        if initial_value is not None:
-            if type(initial_value) is np.ndarray:
-                self._create_from_existing(initial_value, dtype)
-                self._npart = ctypes.c_int(self._nrow.value)
+        self._dat = cuda_base._make_gpu_array(initial_value=initial_value,
+                                    dtype=dtype,
+                                    nrow=npart,
+                                    ncol=ncomp)
 
-            elif type(initial_value) is data.ParticleDat:
-                self._create_from_existing(initial_value.data, initial_value.dtype)
-                self._npart = ctypes.c_int(initial_value.npart_local)
-
-            else:
-                self._create_from_existing(np.array([initial_value]),dtype)
-                self._npart = ctypes.c_int(self._nrow.value)
-
-        else:
-            if max_npart is not None:
-                self._nrow = ctypes.c_int(max_npart)
-            else:
-                self._nrow = ctypes.c_int(npart)
-
-            self._create_zeros(self._nrow.value, ncomp, dtype)
-            self._npart = ctypes.c_int(npart)
+        self._nrow.value = self._dat.shape[0]
+        self._ncol.value = self._dat.shape[1]
+        self._npart_local.value = 0
 
         self._vid_int = 0
 
         self._halo_start = ctypes.c_int(self._npart.value)
         self._npart_halo = ctypes.c_int(0)
-        self.npart_local = npart
+        self._npart_local.value = npart
+        self._npart.value = 0
 
+        self._struct = None
+        self._init_struct()
+
+        self._1p_halo_lib = None
+        self._h_mirror = cuda_base._MatrixMirror(self)
+
+
+    def _init_struct(self):
         self._struct = type('ParticleDatT', (ctypes.Structure,),
                             dict(_fields_=(('ptr',
                                             ctypes.POINTER(self.idtype)),
@@ -113,9 +111,7 @@ class ParticleDat(cuda_base.Matrix):
                                 )
                             )()
 
-        self._1p_halo_lib = None
 
-        self._h_mirror = cuda_base._MatrixMirror(self)
 
     def broadcast_data_from(self, rank=0, _resize_callback=True):
 
@@ -141,18 +137,18 @@ class ParticleDat(cuda_base.Matrix):
             esize = ctypes.sizeof(self.idtype)
 
             counts = mpi.MPI_HANDLE.comm.gather(self.npart_local, root=rank)
-            _ptr_new = ctypes.POINTER(self.idtype)()
+
+            _ptr_new = 0
 
             if mpi.MPI_HANDLE.rank == rank:
 
                 _new_nloc = sum(counts)
 
-                # self.resize(_new_nloc, _callback=False)
-                cuda_runtime.cuda_malloc(_ptr_new,
-                                         _new_nloc * self.ncomp,
-                                         self.idtype)
+                _new = cuda_base._create_zeros(nrow=_new_nloc,
+                                               ncol=self.ncomp,
+                                               dtype=self.idtype)
 
-
+                _ptr_new = _new.ptr
 
                 disp = [0] + counts[:-1:]
                 disp = tuple(np.cumsum(self.ncomp * np.array(disp)))
@@ -174,7 +170,6 @@ class ParticleDat(cuda_base.Matrix):
 
             send_count = ctypes.c_int(esize*self.npart_local*self.ncomp)
 
-
             cuda_mpi.MPI_Gatherv(ctypes.cast(self.ctypes_data, ctypes.c_void_p),
                                  send_count,
                                  ctypes.cast(_ptr_new, ctypes.c_void_p),
@@ -187,9 +182,7 @@ class ParticleDat(cuda_base.Matrix):
                 self.npart_local = _new_nloc
                 self._ncol.value = self.ncomp
                 self._nrow.value = _new_nloc
-
-                cuda_runtime.cuda_free(self._ptr)
-                self._ptr = _ptr_new
+                self._dat = _new
 
     def halo_start_reset(self):
         """
@@ -200,15 +193,9 @@ class ParticleDat(cuda_base.Matrix):
         self._npart_halo.value = 0
 
 
-
-
-    def __repr__(self):
-        return str(self.__getitem__(slice(None, None, None)))
-
-
     @property
     def struct(self):
-        self._struct.ptr = self._ptr
+        self._struct.ptr = self.ctypes_data
         self._struct.nrow = ctypes.pointer(self._nrow)
         self._struct.ncol = ctypes.pointer(self._ncol)
         self._struct.npart_local = ctypes.pointer(self._npart)
@@ -218,7 +205,6 @@ class ParticleDat(cuda_base.Matrix):
     @property
     def max_npart(self):
         return self._nrow.value
-
 
     @property
     def npart_total(self):

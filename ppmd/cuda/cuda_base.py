@@ -14,9 +14,9 @@ import ppmd.host
 # cuda imports
 import cuda_runtime
 
-################################################################################################
+###############################################################################
 # Get available memory.
-################################################################################################
+###############################################################################
 def available_free_memory():
     """
     Get available free memory in bytes.
@@ -41,7 +41,8 @@ def _make_gpu_array(initial_value=None, dtype=None, nrow=None, ncol=None):
         if type(initial_value) is np.ndarray:
             return _create_from_existing(initial_value, dtype)
         else:
-            return _create_from_existing(np.array([initial_value], dtype=dtype), dtype)
+            return _create_from_existing(np.array([initial_value],
+                                                  dtype=dtype), dtype)
     else:
         return _create_zeros(nrow=nrow, ncol=ncol, dtype=dtype)
 
@@ -60,9 +61,9 @@ def _create_from_existing(ndarray=None, dtype=ctypes.c_double):
     return gpuarray.to_gpu(ndarray)
 
 
-################################################################################################
+###############################################################################
 # Array.
-################################################################################################
+###############################################################################
 class Array(object):
     """
     Basic dynamic memory array on host, with some methods.
@@ -179,52 +180,46 @@ class Array(object):
 
 
 
-
-
-
-
-
-
-
-
-################################################################################################
+###############################################################################
 # Matrix.
-################################################################################################
+###############################################################################
 
 class Matrix(object):
     """
     Basic dynamic memory matrix on host, with some methods.
     """
-    def __init__(self, nrow=0, ncol=0, initial_value=None, dtype=ctypes.c_double):
+    def __init__(self, nrow=1, ncol=1, initial_value=None, dtype=ctypes.c_double):
 
         self.idtype = dtype
-
 
         self._ncol = ctypes.c_int(0)
         self._nrow = ctypes.c_int(0)
 
-        self._ptr = ctypes.POINTER(self.idtype)()
-
-        if initial_value is not None:
-            if type(initial_value) is np.ndarray:
-                self._create_from_existing(initial_value, dtype)
-            else:
-                self._create_from_existing(np.array([initial_value]),dtype)
-
-        else:
-            self._create_zeros(nrow, ncol, dtype)
+        self._dat = _make_gpu_array(initial_value=initial_value,
+                                    dtype=dtype,
+                                    nrow=nrow,
+                                    ncol=ncol)
+        self._nrow.value = self._dat.shape[0]
+        self._ncol.value = self._dat.shape[1]
 
         self._vid_int = 0
 
-        self._struct = type('MatrixT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)),
-                                                                          ('nrow', ctypes.POINTER(ctypes.c_int)),
-                                                                          ('ncol', ctypes.POINTER(ctypes.c_int)))))()
-
         self._h_mirror = _MatrixMirror(self)
+        self._struct = None
+        self._init_struct()
+
+
+    def _init_struct(self):
+        self._struct = type('MatrixT',
+                            (ctypes.Structure,),
+                            dict(_fields_=(('ptr',
+                            ctypes.POINTER(self.idtype)),
+                            ('nrow', ctypes.POINTER(ctypes.c_int)),
+                            ('ncol', ctypes.POINTER(ctypes.c_int)))))()
 
     @property
     def struct(self):
-        self._struct.ptr = self._ptr
+        self._struct.ptr = self.ctypes_data
         self._struct.nrow = ctypes.pointer(self._nrow)
         self._struct.ncol = ctypes.pointer(self._ncol)
         return self._struct
@@ -244,51 +239,14 @@ class Matrix(object):
         """
         self._vid_int += int(inc)
 
-    def _create_zeros(self, nrow=1, ncol=1, dtype=ctypes.c_double):
-        if dtype != self.dtype:
-            self.idtype = dtype
-
-        self.realloc(nrow, ncol)
-        self.zero()
-
-    def _create_from_existing(self, ndarray=None, dtype=ctypes.c_double):
-
-        print "Create start"
-
-        assert type(ndarray) is np.ndarray, "cuda_base::Matrix._create_from_existing error: passed array is not a numpy array."
-
-        self.idtype = dtype
-        if dtype != self.dtype:
-            self.idtype = dtype
-
-
-        print ctypes.c_size_t(ndarray.shape[0] * ndarray.shape[1] * ctypes.sizeof(dtype))
-
-        self.realloc(ndarray.shape[0], ndarray.shape[1])
-        cuda_runtime.cuda_mem_cpy(self._ptr,
-                                  ndarray.ctypes.data_as(ctypes.POINTER(dtype)),
-                                  ctypes.c_size_t(ndarray.shape[0] * ndarray.shape[1] * ctypes.sizeof(dtype)),
-                                  'cudaMemcpyHostToDevice')
-
-        print "Create end"
-
     def realloc(self, nrow=None, ncol=None):
         """
         Re allocate memory for a matrix.
         """
-        assert self._ptr is not None, "cuda_base.Matrix: realloc error: pointer type unknown."
-
         if (nrow != self._nrow.value) or (ncol != self._ncol.value):
-
-            _ptr_new = ctypes.POINTER(self.idtype)()
-            cuda_runtime.cuda_malloc(_ptr_new, nrow * ncol, self.idtype)
-            cuda_runtime.cuda_mem_cpy(_ptr_new,
-                                      self._ptr,
-                                      ctypes.c_size_t(self._ncol.value * self._nrow.value * ctypes.sizeof(self.idtype)),
-                                      'cudaMemcpyDeviceToDevice')
-
-            cuda_runtime.cuda_free(self._ptr)
-            self._ptr = _ptr_new
+            _new = _create_zeros(nrow=nrow, ncol=ncol, dtype=self.dtype)
+            _new[:self._nrow.value:, :self._ncol.value:] = self._dat[:,:]
+            self._dat = _new
 
         self._ncol.value = ncol
         self._nrow.value = nrow
@@ -296,22 +254,10 @@ class Matrix(object):
     @property
     def nrow(self):
         return self._nrow.value
-    
-    @nrow.setter
-    def nrow(self, val):
-        self._nrow.value = val
-        if cuda_runtime.VERBOSE.level > 2:
-            print "cuda_base.Matrix warning: nrow externally changed."
 
     @property
     def ncol(self):
         return self._ncol.value
-
-    @ncol.setter
-    def ncol(self, val):
-        self._ncol.value = val
-        if cuda_runtime.VERBOSE.level > 2:
-            print "cuda_base.Matrix warning: ncol externally changed."
 
     @property
     def size(self):
@@ -319,45 +265,27 @@ class Matrix(object):
 
     @property
     def ctypes_data(self):
-        return self._ptr
+        return ctypes.cast(self._dat.ptr, ctypes.c_void_p)
 
     def ctypes_data_access(self, mode=ppmd.access.RW):
         """
         :arg access mode: Access type required by the calling method.
         :return: The pointer to the data.
         """
-        return self._ptr
+        return self.ctypes_data
 
     def ctypes_data_post(self, mode=ppmd.access.RW):
         pass
 
     def zero(self):
         """
-        Set all the values in the matrix to zero.
+        Set all the values in the array to zero.
         """
-        assert self._ptr is not None, "cuda_base.Matrix: zero error: pointer type unknown."
-        #assert self._ncomp != 0, "cuda_base:zero error: length unknown."
-
-        cuda_runtime.libcudart('cudaMemset', self._ptr, ctypes.c_int(0), ctypes.c_size_t(self._ncol.value * self._nrow.value * ctypes.sizeof(self.idtype)))
+        self._dat.fill(np.array([0], dtype=self.dtype))
 
     @property
     def dtype(self):
         return self.idtype
-
-    def free(self):
-        if (self._ncol.value != 0) and (self._nrow.value != 0) and (self._ptr is not None):
-            cuda_runtime.cuda_free(self._ptr)
-
-
-    def sync_from_version(self, matrix=None):
-        """
-        Keep this array in sync with another array based on version.
-        """
-        assert matrix is not None, "cuda_base:Array.sync_from_version error. No array passed."
-
-        if self.version < matrix.version:
-
-            self._create_from_existing(matrix.data, matrix.dtype)
 
     def __getitem__(self, key):
         self._h_mirror.copy_from_device()
@@ -369,9 +297,8 @@ class Matrix(object):
         self._h_mirror.copy_to_device()
         self._vid_int += 1
 
-
-
-
+    def __repr__(self):
+        return str(self.__getitem__(slice(None, None, None)))
 
 
 

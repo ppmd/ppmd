@@ -130,7 +130,6 @@ def test_cuda_check_scatter(state, h_state, base_rank):
     assert np.sum(state.gid[:] == h_state.gid[:]) == h_state.npart_local
 
 
-
 @cuda
 def test_cuda_scatter_gather(state, base_rank):
 
@@ -162,7 +161,6 @@ def test_cuda_scatter_gather(state, base_rank):
         assert np.sum(sgid == np.arange(N)) == N
         assert np.sum(sp == pi) == N*3
         assert np.sum(sv == vi) == N*3
-
 
 
 
