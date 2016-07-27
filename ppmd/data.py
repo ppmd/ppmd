@@ -106,22 +106,9 @@ class ScalarArray(host.Array):
         """Name of ScalarArray instance."""
 
         self.idtype = dtype
-
-        if initial_value is not None:
-            if (type(initial_value) is np.ndarray) or \
-                    type(initial_value) is list or \
-                    type(initial_value) is tuple:
-                self._create_from_existing(initial_value, dtype)
-            else:
-                self._create_from_existing(np.array([initial_value]), dtype)
-        else:
-            self._create_zeros(ncomp, dtype)
-
-        self._A = False
-        self._Aarray = None
-
-        # TODO: remove
-        self._cuda_dat = None
+        self.data = host._make_array(initial_value=initial_value,
+                                     dtype=dtype,
+                                     ncol=ncomp)
 
         self._version = 0
 
@@ -130,10 +117,6 @@ class ScalarArray(host.Array):
 
     def __setitem__(self, ix, val):
         self.data[ix] = np.array([val], dtype=self.dtype)
-
-        if self._A is True:
-            self._Aarray[ix] = np.array([val], dtype=self.dtype)
-            self._Alength += 1
 
     def __str__(self):
         return str(self.data)
@@ -156,9 +139,6 @@ class ScalarArray(host.Array):
         :arg val: Coefficient to scale all elements by.
         """
         self.data = self.data * np.array([val], dtype=self.dtype)
-
-    def zero(self):
-        self.data.fill(0)
 
     @property
     def ctypes_value(self):
@@ -187,33 +167,7 @@ class ScalarArray(host.Array):
         """
         return self.data.sum()
 
-    @property
-    def average(self):
-        """:return: averages of recorded values since AverageReset was called."""
-        # assert self._A == True, "Run AverageReset to initialise or reset averaging"
-        if self._A is True:
-            return self._Aarray / self._Alength
 
-    def average_stop(self, clean=False):
-        """
-        Stops averaging values.
-        
-        :arg bool clean: Flag to free memory allocated to averaging, default False.
-        """
-        if self._A is True:
-            self._A = False
-            if clean is True:
-                del self._A
-
-    def average_update(self):
-        """Copy values from Dat into averaging array"""
-        if self._A is True:
-            self._Aarray += self.data
-            self._Alength += 1
-        else:
-            self.average_reset()
-            self._Aarray += self.data
-            self._Alength += 1
 
 
 
@@ -247,7 +201,7 @@ class ParticleDat(host.Matrix):
     :arg str name: Collective name of stored vars eg positions.
     """
 
-    def __init__(self, npart=0, ncomp=1, initial_value=None, name=None, dtype=ctypes.c_double, max_npart=None):
+    def __init__(self, npart=0, ncomp=1, initial_value=None, name=None, dtype=ctypes.c_double):
         # version ids. Internal then halo.
 
         assert ncomp > 0, "Negative number of components is not supported."
@@ -257,9 +211,6 @@ class ParticleDat(host.Matrix):
 
         self.group = None
 
-
-
-
         # Initialise timers
         self.timer_comm = runtime.Timer(runtime.TIMER, 0)
         self.timer_pack = runtime.Timer(runtime.TIMER, 0)
@@ -268,36 +219,26 @@ class ParticleDat(host.Matrix):
         self.timer_transfer_2 = runtime.Timer(runtime.TIMER, 0)
         self.timer_transfer_resize = runtime.Timer(runtime.TIMER, 0)
 
-
         self.name = name
         """:return: The name of the ParticleDat instance."""
 
 
         self.idtype = dtype
+        self._dat = host._make_array(initial_value=initial_value,
+                                      dtype=dtype,
+                                      nrow=npart,
+                                      ncol=ncomp)
 
-        if initial_value is not None:
-            if (type(initial_value) is np.ndarray) or type(initial_value) is list:
-                self._create_from_existing(initial_value, dtype)
-            else:
-                self._create_from_existing(np.array([initial_value]), dtype)
+        self.max_npart = self._dat.shape[0]
+        """:return: The maximum number of particles which can be stored within
+        this particle dat."""
 
-            self.max_npart = self.nrow
-            """:return: The maximum number of particles which can be stored within this particle dat."""
+        self.npart_local = self._dat.shape[0]
+        """:return: The number of particles with properties stored in the
+        particle dat."""
 
-            self.npart_local = self.nrow
-            """:return: The number of particles with properties stored in the particle dat."""
-
-            self.ncomp = self.ncol
-            """:return: The number of components stored for each particle."""
-
-        else:
-            if max_npart is None:
-                max_npart = npart
-            self._create_zeros(max_npart, ncomp, dtype)
-            self.max_npart = self.nrow
-            self.npart_local = self.nrow
-            self.ncomp = self.ncol
-
+        self.ncomp = self.ncol
+        """:return: The number of components stored for each particle."""
 
         self.halo_start = self.npart_local
         """:return: The starting index of the halo region of the particle dat. """

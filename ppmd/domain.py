@@ -193,7 +193,6 @@ class BaseDomainHalo(object):
         self._extent[2] = self._extent_global[2] / _dims[2]
 
 
-
         _boundary = (
             -0.5 * self._extent_global[0] + _top[0] * self._extent[0],
             -0.5 * self._extent_global[0] + (_top[0] + 1.) * self._extent[0],

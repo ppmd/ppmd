@@ -39,7 +39,7 @@ def _make_gpu_array(initial_value=None, dtype=None, nrow=None, ncol=None):
         if type(initial_value) is np.ndarray:
             return _create_from_existing(initial_value, dtype)
         else:
-            return _create_from_existing(np.array([initial_value],
+            return _create_from_existing(np.array(list(initial_value),
                                                   dtype=dtype), dtype)
     else:
         return _create_zeros(nrow=nrow, ncol=ncol, dtype=dtype)

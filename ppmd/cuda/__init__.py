@@ -16,20 +16,20 @@ __all__ = [
 
 CUDA_IMPORT = False
 
-#try:
-import cuda_runtime
-import cuda_build
-import cuda_base
-import cuda_data
-import cuda_cell
-import cuda_halo
-import cuda_loop
-import cuda_pairloop
-import cuda_state
-import cuda_mpi
-CUDA_IMPORT = True
-#except:
-#    pass
+try:
+    import cuda_runtime
+    import cuda_build
+    import cuda_base
+    import cuda_data
+    import cuda_cell
+    import cuda_halo
+    import cuda_loop
+    import cuda_pairloop
+    import cuda_state
+    import cuda_mpi
+    CUDA_IMPORT = True
+except:
+    pass
 
 
 
