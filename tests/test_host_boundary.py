@@ -61,9 +61,6 @@ def base_rank(request):
 
 
 
-
-
-'''
 def test_host_boundary_z0(state):
     
     # crN, Number of particles per coordinate direction
@@ -88,17 +85,15 @@ def test_host_boundary_z0(state):
     # pj sets particles to be outside the domain, they should be swapped
     # to the opposite side of the domain
     
-    
+
     offset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
-    offset[:,2] = 0.5*(E + tol)*np.ones([crN*crN], dtype=ctypes.c_double)
-    
+    offset[:,2] = -0.5*(E - tol)*np.ones([crN*crN], dtype=ctypes.c_double)
+
     coffset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
     coffset[:,2] = E*np.ones([crN*crN], dtype=ctypes.c_double)
-    
 
-
-    pj = pi - offset
-    pjc = pj + coffset
+    pj = pi + offset
+    pjc = pi - offset
 
     #setup positions outside the boundary
     state.p[:] = pj
@@ -108,30 +103,94 @@ def test_host_boundary_z0(state):
 
 
     state.scatter_data_from(0)
+
+
+    kernel_code = '''
+    P(2) -= %(TOL)s ;
+   ''' % {'TOL': str(tol)}
+
+    kernel = md.kernel.Kernel('test_host_boundary_z0',code=kernel_code)
+    kernel_map = {'P': state.p(md.access.RW)}
+
+    loop = md.loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop.execute(n=state.npart_local)
+
+
     state.domain.boundary_condition.apply()
     state.gather_data_on(0)
-    
 
     if rank == 0:
 
         inds = state.gid[:,0].argsort()
-        print "inds", inds
         pp = state.p[inds]
-        print "pp",pp, "pjc", pjc
 
         assert np.sum(np.abs(pp - pjc)) < 1.
-    
 
 
-    
+def test_host_boundary_z1(state):
 
-'''
-
-
-
-
+    # crN, Number of particles per coordinate direction
+    state.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    state.domain.boundary_condition.set_state(state)
 
 
+    a = np.linspace(-0.5*(E-tol), 0.5*(E-tol), crN)
+    grid = np.meshgrid(a,a)
+    d1 = grid[0]
+    d2 = grid[1]
+
+    pi = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+
+
+    for d1x in range(crN):
+        for d2x in range(crN):
+            i = d1x*crN + d2x
+            pi[i, ::] = np.array([d1[d1x, d2x], d2[d1x, d2x], 0 ])
+
+
+    # pj sets particles to be outside the domain, they should be swapped
+    # to the opposite side of the domain
+
+
+    offset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+    offset[:,2] = -0.5*(E - tol)*np.ones([crN*crN], dtype=ctypes.c_double)
+
+    coffset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+    coffset[:,2] = E*np.ones([crN*crN], dtype=ctypes.c_double)
+
+    pj = pi - offset
+    pjc = pi + offset
+
+    #setup positions outside the boundary
+    state.p[:] = pj
+    state.v[:] = np.zeros([N,3])
+    state.f[:] = np.zeros([N,3])
+    state.gid[:,0] = np.arange(N)
+
+
+    state.scatter_data_from(0)
+
+
+    kernel_code = '''
+    P(2) += %(TOL)s ;
+   ''' % {'TOL': str(tol)}
+
+    kernel = md.kernel.Kernel('test_host_boundary_z1',code=kernel_code)
+    kernel_map = {'P': state.p(md.access.RW)}
+
+    loop = md.loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop.execute(n=state.npart_local)
+
+
+    state.domain.boundary_condition.apply()
+    state.gather_data_on(0)
+
+    if rank == 0:
+
+        inds = state.gid[:,0].argsort()
+        pp = state.p[inds]
+
+        assert np.sum(np.abs(pp - pjc)) < 1.
 
 
 
@@ -139,11 +198,273 @@ def test_host_boundary_z0(state):
 
 
 
+def test_host_boundary_x0(state):
+
+    # crN, Number of particles per coordinate direction
+    state.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    state.domain.boundary_condition.set_state(state)
+
+
+    a = np.linspace(-0.5*(E-tol), 0.5*(E-tol), crN)
+    grid = np.meshgrid(a,a)
+    d1 = grid[0]
+    d2 = grid[1]
+
+    pi = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+
+
+    for d1x in range(crN):
+        for d2x in range(crN):
+            i = d1x*crN + d2x
+            pi[i, ::] = np.array([ 0, d2[d1x, d2x], d1[d1x, d2x] ])
+
+
+    # pj sets particles to be outside the domain, they should be swapped
+    # to the opposite side of the domain
+
+
+    offset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+    offset[:,0] = -0.5*(E - tol)*np.ones([crN*crN], dtype=ctypes.c_double)
+
+    coffset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+    coffset[:,0] = E*np.ones([crN*crN], dtype=ctypes.c_double)
+
+    pj = pi + offset
+    pjc = pi - offset
+
+    #setup positions outside the boundary
+    state.p[:] = pj
+    state.v[:] = np.zeros([N,3])
+    state.f[:] = np.zeros([N,3])
+    state.gid[:,0] = np.arange(N)
+
+
+    state.scatter_data_from(0)
+
+
+    kernel_code = '''
+    P(0) -= %(TOL)s ;
+   ''' % {'TOL': str(tol)}
+
+    kernel = md.kernel.Kernel('test_host_boundary_x0',code=kernel_code)
+    kernel_map = {'P': state.p(md.access.RW)}
+
+    loop = md.loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop.execute(n=state.npart_local)
+
+
+    state.domain.boundary_condition.apply()
+    state.gather_data_on(0)
+
+    if rank == 0:
+
+        inds = state.gid[:,0].argsort()
+        pp = state.p[inds]
+
+        assert np.sum(np.abs(pp - pjc)) < 1.
+
+
+def test_host_boundary_x1(state):
+
+    # crN, Number of particles per coordinate direction
+    state.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    state.domain.boundary_condition.set_state(state)
+
+
+    a = np.linspace(-0.5*(E-tol), 0.5*(E-tol), crN)
+    grid = np.meshgrid(a,a)
+    d1 = grid[0]
+    d2 = grid[1]
+
+    pi = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+
+
+    for d1x in range(crN):
+        for d2x in range(crN):
+            i = d1x*crN + d2x
+            pi[i, ::] = np.array([ 0, d2[d1x, d2x], d1[d1x, d2x] ])
+
+
+    # pj sets particles to be outside the domain, they should be swapped
+    # to the opposite side of the domain
+
+
+    offset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+    offset[:,0] = -0.5*(E - tol)*np.ones([crN*crN], dtype=ctypes.c_double)
+
+    coffset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+    coffset[:,0] = E*np.ones([crN*crN], dtype=ctypes.c_double)
+
+    pj = pi - offset
+    pjc = pi + offset
+
+    #setup positions outside the boundary
+    state.p[:] = pj
+    state.v[:] = np.zeros([N,3])
+    state.f[:] = np.zeros([N,3])
+    state.gid[:,0] = np.arange(N)
+
+
+    state.scatter_data_from(0)
+
+
+    kernel_code = '''
+    P(0) += %(TOL)s ;
+   ''' % {'TOL': str(tol)}
+
+    kernel = md.kernel.Kernel('test_host_boundary_x1',code=kernel_code)
+    kernel_map = {'P': state.p(md.access.RW)}
+
+    loop = md.loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop.execute(n=state.npart_local)
+
+
+    state.domain.boundary_condition.apply()
+    state.gather_data_on(0)
+
+    if rank == 0:
+
+        inds = state.gid[:,0].argsort()
+        pp = state.p[inds]
+
+        assert np.sum(np.abs(pp - pjc)) < 1.
 
 
 
 
 
+def test_host_boundary_y0(state):
+
+    # crN, Number of particles per coordinate direction
+    state.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    state.domain.boundary_condition.set_state(state)
+
+
+    a = np.linspace(-0.5*(E-tol), 0.5*(E-tol), crN)
+    grid = np.meshgrid(a,a)
+    d1 = grid[0]
+    d2 = grid[1]
+
+    pi = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+
+
+    for d1x in range(crN):
+        for d2x in range(crN):
+            i = d1x*crN + d2x
+            pi[i, ::] = np.array([d2[d1x, d2x], 0, d1[d1x, d2x] ])
+
+
+    # pj sets particles to be outside the domain, they should be swapped
+    # to the opposite side of the domain
+
+
+    offset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+    offset[:,1] = -0.5*(E - tol)*np.ones([crN*crN], dtype=ctypes.c_double)
+
+    coffset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+    coffset[:,1] = E*np.ones([crN*crN], dtype=ctypes.c_double)
+
+    pj = pi + offset
+    pjc = pi - offset
+
+    #setup positions outside the boundary
+    state.p[:] = pj
+    state.v[:] = np.zeros([N,3])
+    state.f[:] = np.zeros([N,3])
+    state.gid[:,0] = np.arange(N)
+
+
+    state.scatter_data_from(0)
+
+
+    kernel_code = '''
+    P(1) -= %(TOL)s ;
+   ''' % {'TOL': str(tol)}
+
+    kernel = md.kernel.Kernel('test_host_boundary_y0',code=kernel_code)
+    kernel_map = {'P': state.p(md.access.RW)}
+
+    loop = md.loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop.execute(n=state.npart_local)
+
+
+    state.domain.boundary_condition.apply()
+    state.gather_data_on(0)
+
+    if rank == 0:
+
+        inds = state.gid[:,0].argsort()
+        pp = state.p[inds]
+
+        assert np.sum(np.abs(pp - pjc)) < 1.
+
+
+
+
+def test_host_boundary_y1(state):
+
+    # crN, Number of particles per coordinate direction
+    state.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    state.domain.boundary_condition.set_state(state)
+
+
+    a = np.linspace(-0.5*(E-tol), 0.5*(E-tol), crN)
+    grid = np.meshgrid(a,a)
+    d1 = grid[0]
+    d2 = grid[1]
+
+    pi = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+
+
+    for d1x in range(crN):
+        for d2x in range(crN):
+            i = d1x*crN + d2x
+            pi[i, ::] = np.array([d2[d1x, d2x], 0, d1[d1x, d2x] ])
+
+
+    # pj sets particles to be outside the domain, they should be swapped
+    # to the opposite side of the domain
+
+
+    offset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+    offset[:,1] = -0.5*(E - tol)*np.ones([crN*crN], dtype=ctypes.c_double)
+
+    coffset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+    coffset[:,1] = E*np.ones([crN*crN], dtype=ctypes.c_double)
+
+    pj = pi - offset
+    pjc = pi + offset
+
+    #setup positions outside the boundary
+    state.p[:] = pj
+    state.v[:] = np.zeros([N,3])
+    state.f[:] = np.zeros([N,3])
+    state.gid[:,0] = np.arange(N)
+
+
+    state.scatter_data_from(0)
+
+
+    kernel_code = '''
+    P(1) += %(TOL)s ;
+   ''' % {'TOL': str(tol)}
+
+    kernel = md.kernel.Kernel('test_host_boundary_y1',code=kernel_code)
+    kernel_map = {'P': state.p(md.access.RW)}
+
+    loop = md.loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop.execute(n=state.npart_local)
+
+
+    state.domain.boundary_condition.apply()
+    state.gather_data_on(0)
+
+    if rank == 0:
+
+        inds = state.gid[:,0].argsort()
+        pp = state.p[inds]
+
+        assert np.sum(np.abs(pp - pjc)) < 1.
 
 
 

@@ -256,7 +256,6 @@ class BaseMDState(object):
         self.broadcast_data_from(rank)
         self.filter_on_domain_boundary()
 
-
     def broadcast_data_from(self, rank=0):
         assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
 

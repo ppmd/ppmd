@@ -683,6 +683,8 @@ class BoundaryTypePeriodic(object):
 
             self.timer_lib_overhead.pause()
 
+            print "npart_local", self.state.npart_local
+
             self.timer_move.start()
             self._one_process_pbc_lib.execute(static_args={'_end': ctypes.c_int(self.state.npart_local)})
             self.timer_move.pause()

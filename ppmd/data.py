@@ -295,6 +295,7 @@ class ParticleDat(host.Matrix):
 
 
     def __getitem__(self, ix):
+
         return self.data[ix]
 
     def __setitem__(self, ix, val):
@@ -318,6 +319,7 @@ class ParticleDat(host.Matrix):
                            ncomp=self.ncomp,
                            npart=self.npart_local,
                            dtype=self.dtype)
+
 
 
     def broadcast_data_from(self, rank=0, _resize_callback=True):
