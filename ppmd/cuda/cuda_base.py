@@ -5,6 +5,7 @@ CUDA equivalent of the "host" module at package level.
 # System level imports
 import ctypes
 import numpy as np
+import pycuda.gpuarray as gpuarray
 
 #package level imports
 import ppmd.access
@@ -28,6 +29,37 @@ def available_free_memory():
 class Struct(ctypes.Structure):
     _fields_ = (('ptr', ctypes.c_void_p), ('ncomp', ctypes.c_void_p))
 
+
+
+
+def _make_gpu_array(initial_value=None, dtype=None, nrow=None, ncol=None):
+    """
+    dat initialiser
+    """
+
+    if initial_value is not None:
+        if type(initial_value) is np.ndarray:
+            return _create_from_existing(initial_value, dtype)
+        else:
+            return _create_from_existing(np.array([initial_value], dtype=dtype), dtype)
+    else:
+        return _create_zeros(nrow=nrow, ncol=ncol, dtype=dtype)
+
+
+def _create_zeros(nrow=None, ncol=None, dtype=ctypes.c_double):
+    assert ncol is not None, "Make 1D arrays using ncol not nrow"
+    if nrow is not None:
+        return gpuarray.zeros([nrow, ncol], dtype=dtype)
+    else:
+        return gpuarray.zeros(ncol, dtype=dtype)
+
+
+def _create_from_existing(ndarray=None, dtype=ctypes.c_double):
+    if ndarray.dtype != dtype:
+        ndarray = ndarray.astype(dtype)
+    return gpuarray.to_gpu(ndarray)
+
+
 ################################################################################################
 # Array.
 ################################################################################################
@@ -35,28 +67,33 @@ class Array(object):
     """
     Basic dynamic memory array on host, with some methods.
     """
-    def __init__(self, initial_value=None, ncomp=0, dtype=ctypes.c_double):
+    def __init__(self, initial_value=None, name=None, ncomp=1, dtype=ctypes.c_double):
         """
         Creates scalar with given initial value.
         """
+        self._name = name
         self.idtype = dtype
         self._ncomp = ctypes.c_int(0)
 
-        self._ptr = ctypes.POINTER(self.idtype)()
+        self._dat = _make_gpu_array(initial_value=initial_value,
+                                    dtype=dtype,
+                                    ncol=ncomp)
 
-        if initial_value is not None:
-            if type(initial_value) is np.ndarray:
-                self._create_from_existing(initial_value, dtype)
-            else:
-                self._create_from_existing(np.array([initial_value], dtype=dtype), dtype)
-        else:
-            self._create_zeros(ncomp, dtype)
-
-        self._struct = type('ArrayT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)), ('ncomp', ctypes.POINTER(ctypes.c_int)))))()
-
+        self._ncomp.value = self._dat.shape[0]
 
         self._version = 0
         self._h_mirror = _ArrayMirror(self)
+
+        self._struct = None
+        self._init_struct()
+
+    def _init_struct(self):
+         self._struct = type('ArrayT',
+                            (ctypes.Structure,),
+                            dict(_fields_=(('ptr',
+                                            ctypes.POINTER(self.idtype)),
+                                           ('ncomp', ctypes.POINTER(ctypes.c_int)))))()
+
 
     def __getitem__(self, key):
         self._h_mirror.copy_from_device()
@@ -68,9 +105,12 @@ class Array(object):
         self._h_mirror.copy_to_device()
         self._version += 1
 
+    def __repr__(self):
+        return str(self.__getitem__(slice(None, None, None)))
+
     @property
     def struct(self):
-        self._struct.ptr = self._ptr
+        self._struct.ptr = self.ctypes_data
         self._struct.ncomp = ctypes.pointer(self._ncomp)
         return self._struct
 
@@ -90,31 +130,6 @@ class Array(object):
         """
         self._version += int(inc)
 
-    def _create_zeros(self, length=1, dtype=ctypes.c_double):
-        if dtype != self.dtype:
-            self.idtype = dtype
-
-        if length > 0:
-            self.realloc(length)
-            self.zero()
-
-    def _create_from_existing(self, ndarray=None, dtype=ctypes.c_double):
-
-        if dtype != ndarray.dtype:
-            print "cuda_base:Array._create_from_existing() data type miss matched.", dtype, ndarray.dtype
-
-        self.idtype = dtype
-        if dtype != self.dtype:
-            self.idtype = dtype
-
-
-        self.realloc(ndarray.size)
-        cuda_runtime.cuda_mem_cpy(self._ptr,
-                                  ndarray.ctypes.data_as(ctypes.POINTER(dtype)),
-                                  ctypes.c_size_t(ndarray.size * ctypes.sizeof(dtype)),
-                                  'cudaMemcpyHostToDevice')
-
-
     @property
     def ncomp(self):
         return self._ncomp.value
@@ -125,10 +140,10 @@ class Array(object):
 
     @property
     def ctypes_data(self):
-        return self._ptr
+        return ctypes.cast(self._dat.ptr, ctypes.c_void_p)
 
     def ctypes_data_access(self, mode=ppmd.access.RW):
-        return self._ptr
+        return self.ctypes_data
 
     def ctypes_data_post(self, mode=ppmd.access.RW):
         pass
@@ -137,35 +152,19 @@ class Array(object):
         """
         Re allocate memory for an array.
         """
+        assert length > 0, "Zero or negative length passed"
 
-        assert self._ptr is not None, "cuda_base.Array: realloc error: pointer type unknown."
-
-        if (length != self._ncomp.value) and length > 0:
-
-            _ptr_new = ctypes.POINTER(self.idtype)()
-            cuda_runtime.cuda_malloc(_ptr_new, length, self.idtype)
-
-            if self._ncomp.value > 0:
-                cuda_runtime.cuda_mem_cpy(_ptr_new,
-                                          self._ptr,
-                                          ctypes.c_size_t(self._ncomp.value * ctypes.sizeof(self.idtype)),
-                                          'cudaMemcpyDeviceToDevice')
-
-            cuda_runtime.cuda_free(self._ptr)
-            self._ptr = _ptr_new
-
-        self._ncomp.value = length
-
-
+        if length != self._ncomp.value:
+            _new = _create_zeros(ncol=length, dtype=self.idtype)
+            _new[:self._ncomp.value:] = self._dat[:]
+            self._dat = _new
+            self._ncomp.value = length
 
     def zero(self):
         """
         Set all the values in the array to zero.
         """
-        assert self._ptr is not None, "cuda_base:zero error: pointer type unknown."
-        #assert self._ncomp != 0, "cuda_base:zero error: length unknown."
-
-        cuda_runtime.libcudart('cudaMemset', self._ptr, ctypes.c_int(0), ctypes.c_size_t(self._ncomp.value * ctypes.sizeof(self.idtype)))
+        self._dat.fill(np.array([0], dtype=self.dtype))
 
     @property
     def dtype(self):
@@ -178,20 +177,6 @@ class Array(object):
         """
         return self.ncomp - 1
 
-    def free(self):
-        if (self._ncomp.value != 0) and (self._ptr is not None):
-            cuda_runtime.cuda_free(self._ptr)
-
-
-    def sync_from_version(self, array=None):
-        """
-        Keep this array in sync with another array based on version.
-        """
-        assert array is not None, "cuda_base:Array.sync_from_version error. No array passed."
-
-        if self.version < array.version:
-
-            self._create_from_existing(array.data, array.dtype)
 
 
 
@@ -383,6 +368,12 @@ class Matrix(object):
         self._h_mirror.mirror.data[key] = value
         self._h_mirror.copy_to_device()
         self._vid_int += 1
+
+
+
+
+
+
 
 
 class _ArrayMirror(object):

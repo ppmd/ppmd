@@ -22,43 +22,13 @@ import cuda_runtime
 
 class ScalarArray(cuda_base.Array):
 
-    def __init__(self, initial_value=None, name=None, ncomp=0, dtype=ctypes.c_double):
-
-        self.name = name
-
-        self.idtype = dtype
-        self._ncomp = ctypes.c_int(0)
-        self._ptr = ctypes.POINTER(self.idtype)()
-
-        if initial_value is not None:
-            if type(initial_value) is np.ndarray:
-                self._create_from_existing(initial_value, dtype)
-            else:
-                self._create_from_existing(np.array([initial_value]), dtype)
-        else:
-            self._create_zeros(ncomp, dtype)
-
-        self._version = 0
-        self._struct = type('ScalarArrayT', (ctypes.Structure,), dict(_fields_=(('ptr', ctypes.POINTER(self.idtype)), ('ncomp', ctypes.POINTER(ctypes.c_int)))))()
-
-
-        self._h_mirror = cuda_base._ArrayMirror(self)
-
-    def __repr__(self):
-        return str(self.__getitem__(slice(None, None, None)))
-    @property
-    def struct(self):
-        self._struct.ptr = self._ptr
-        self._struct.ncomp = ctypes.pointer(self._ncomp)
-        return self._struct
-
-    @property
-    def version(self):
-        """
-        Get the version of this array.
-        :return int version:
-        """
-        return self._version
+    def _init_struct(self):
+         self._struct = type('ScalarArrayT',
+                             (ctypes.Structure,),
+                             dict(_fields_=(('ptr',
+                                             ctypes.POINTER(self.idtype)),
+                                            ('ncomp',
+                                             ctypes.POINTER(ctypes.c_int)))))()
 
     def resize(self, new_length):
         """
@@ -70,6 +40,7 @@ class ScalarArray(cuda_base.Array):
 
     def __call__(self, mode=access.RW, halo=False):
         return self, mode, halo
+
 
 ###################################################################################################
 # Blank arrays.

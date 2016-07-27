@@ -5,17 +5,25 @@ Module to handle the cuda runtime environment.
 import ctypes
 import os
 import math
+import atexit
 
 # pycuda imports
-#import pycuda.driver as cudadrv
+import pycuda.driver as cudadrv
 
 #package level imports
 from ppmd import runtime, pio, mpi
 
 
-#cudadrv.init()
-#DEVICE = cudadrv.Device(0)
-#DEVICE.make_context()
+
+# Init cuda
+cudadrv.init()
+# Set device
+DEVICE = cudadrv.Device(0)
+# Make context
+CONTEXT = DEVICE.make_context()
+# Register destruction
+atexit.register(CONTEXT.pop)
+
 
 
 
