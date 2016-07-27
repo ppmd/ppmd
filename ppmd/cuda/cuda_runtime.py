@@ -14,19 +14,6 @@ import pycuda.driver as cudadrv
 from ppmd import runtime, pio, mpi
 
 
-
-# Init cuda
-cudadrv.init()
-# Set device
-DEVICE = cudadrv.Device(0)
-# Make context
-CONTEXT = DEVICE.make_context()
-# Register destruction
-atexit.register(CONTEXT.pop)
-
-
-
-
 OPT = runtime.Level(1)
 ERROR_LEVEL = runtime.Level(3)
 DEBUG = runtime.Level(0)
@@ -37,32 +24,10 @@ BUILD_DIR = runtime.BUILD_DIR
 
 LIB_DIR = runtime.Dir(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib/'))
 
+# Init cuda
+cudadrv.init()
 
-#cuda level imports
 import cuda_build
-
-
-
-#####################################################################################
-# load libraries
-#####################################################################################
-
-try:
-    CUDA_INC_PATH = os.environ['CUDA_INSTALL_PATH']
-except KeyError:
-    if ERROR_LEVEL.level > 2:
-        raise RuntimeError('cuda_runtime error: cuda toolkit environment path not found, expecting CUDA_INSTALL_PATH')
-    CUDA_INC_PATH = None
-
-try:
-    LIB_CUDART = ctypes.cdll.LoadLibrary(CUDA_INC_PATH + "/lib64/libcudart.so")
-
-except:
-    if ERROR_LEVEL.level > 2:
-        raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA runtime not loaded')
-    LIB_CUDART = None
-
-# wrapper library for functions involving types.
 
 try:
     LIB_HELPER = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaHelperLib'))
@@ -71,21 +36,10 @@ except:
     LIB_HELPER = None
 
 
-try:
-    LIB_CUDA_MISC = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaMisc'))
-except:
-    raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA Misc lib not loaded')
-    LIB_CUDA_MISC = None
 
-
-
-LIB_HELPER['cudaErrorCheck'](ctypes.c_int(0))
-
-
-
-#####################################################################################
+###############################################################################
 # cuda_err_checking
-#####################################################################################
+###############################################################################
 
 def cuda_err_check(err_code):
     """
@@ -99,30 +53,6 @@ def cuda_err_check(err_code):
     if LIB_HELPER is not None:
         err = LIB_HELPER['cudaErrorCheck'](err_code)
         assert err == 0, "Non-zero CUDA error:" + str(err_code)
-
-
-#####################################################################################
-# CUDA runtime handle
-#####################################################################################
-
-def libcudart(*args):
-    """
-    Wrapper to cuda runtime library with error code checking.
-    :param args: string <function name>, args.
-    :return:
-    """
-
-    assert LIB_CUDART is not None, "cuda_runtime error: No CUDA Runtime library loaded"
-
-    if VERBOSE.level > 2:
-        pio.rprint(args)
-
-    cuda_err_check(LIB_CUDART[args[0]](*args[1::]))
-
-
-#####################################################################################
-# cuda_set_device. Assuming model of one mpi process per gpu.
-#####################################################################################
 
 def cuda_set_device(device=None):
     """
@@ -153,8 +83,7 @@ def cuda_set_device(device=None):
         device_count = ctypes.c_int()
         device_count.value = 0
         cuda_err_check(LIB_HELPER['cudaGetDeviceCountWrapper'](ctypes.byref(device_count)))
-        assert device_count.value != 0, "CUDA Device count query returned zero!"
-
+        assert device_count != 0, "CUDA Device count query returned zero!"
 
         if _mv2r is not None:
             _r = int(_mv2r) % device_count.value
@@ -163,43 +92,71 @@ def cuda_set_device(device=None):
         else:
             _r = mpi.MPI_HANDLE.nproc % device_count.value
 
+        return cudadrv.Device(_r)
+
     else:
-        _r = int(device)
+        return cudadrv.Device(device)
 
-    if LIB_CUDART is not None:
-        if runtime.VERBOSE.level > 0:
-            pio.rprint("setting device ", _r)
-
-        cuda_err_check(LIB_CUDART['cudaSetDevice'](ctypes.c_int(_r)))
-        # libcudart('cudaSetDeviceFlags',ctypes.c_uint(8))
-        DEVICE.id = _r
-    else:
-        pio.rprint("cuda_runtime warning: No device set")
-
-    if (runtime.VERBOSE.level > 0) and (LIB_CUDART is not None):
-        _dev = ctypes.c_int()
-        cuda_err_check(LIB_CUDART['cudaGetDevice'](ctypes.byref(_dev)))
-        pio.rprint("cudaGetDevice returned device ", _dev.value)
+# Set device
+DEVICE = cuda_set_device()
+# Make context
+CONTEXT = DEVICE.make_context()
+# Register destruction
+atexit.register(CONTEXT.pop)
 
 
 
-#####################################################################################
-# cuda_device_reset
-#####################################################################################
-'''
-def cuda_device_reset():
+try:
+    CUDA_INC_PATH = os.environ['CUDA_INSTALL_PATH']
+except KeyError:
+    if ERROR_LEVEL.level > 2:
+        raise RuntimeError('cuda_runtime error: cuda toolkit environment path not found, expecting CUDA_INSTALL_PATH')
+    CUDA_INC_PATH = None
+
+try:
+    LIB_CUDART = ctypes.cdll.LoadLibrary(CUDA_INC_PATH + "/lib64/libcudart.so")
+
+except:
+    if ERROR_LEVEL.level > 2:
+        raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA runtime not loaded')
+    LIB_CUDART = None
+
+try:
+    LIB_CUDA_MISC = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaMisc'))
+except:
+    raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA Misc lib not loaded')
+    LIB_CUDA_MISC = None
+
+
+
+
+
+
+
+
+###############################################################################
+# CUDA runtime handle
+###############################################################################
+
+def libcudart(*args):
     """
-    Reset the current cuda device.
+    Wrapper to cuda runtime library with error code checking.
+    :param args: string <function name>, args.
     :return:
     """
 
-    if (DEVICE.id is not None) and (LIB_CUDART is not None):
-        libcudart('cudaDeviceReset')
-'''
+    assert LIB_CUDART is not None, "cuda_runtime error: No CUDA Runtime library loaded"
 
-#####################################################################################
+    if VERBOSE.level > 2:
+        pio.rprint(args)
+
+    cuda_err_check(LIB_CUDART[args[0]](*args[1::]))
+
+
+
+###############################################################################
 # Is module ready to use?
-#####################################################################################
+###############################################################################
 
 def INIT_STATUS():
     """
@@ -214,9 +171,9 @@ def INIT_STATUS():
 
 
 
-#####################################################################################
+###############################################################################
 #  cuMemGetInfo
-#####################################################################################
+###############################################################################
 
 def cuda_mem_get_info():
     """
@@ -234,9 +191,9 @@ def cuda_mem_get_info():
     return int(_total[0]), int(_free[0])
 
 
-#####################################################################################
+###############################################################################
 # cuda_malloc
-#####################################################################################
+###############################################################################
 
 def cuda_malloc(d_ptr=None, num=None, dtype=None):
     """
@@ -255,9 +212,9 @@ def cuda_malloc(d_ptr=None, num=None, dtype=None):
     libcudart('cudaMalloc', ctypes.byref(d_ptr), ctypes.c_size_t(num * ctypes.sizeof(dtype)))
 
 
-#####################################################################################
+###############################################################################
 # cuda_free
-#####################################################################################
+###############################################################################
 
 def cuda_free(d_ptr=None):
     """

@@ -30,8 +30,6 @@ class Struct(ctypes.Structure):
     _fields_ = (('ptr', ctypes.c_void_p), ('ncomp', ctypes.c_void_p))
 
 
-
-
 def _make_gpu_array(initial_value=None, dtype=None, nrow=None, ncol=None):
     """
     dat initialiser
