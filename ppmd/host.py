@@ -1,9 +1,12 @@
 
 
-
-import sys
+# system level
 import ctypes
 import numpy as np
+import collections
+
+
+# package level
 import access
 
 
@@ -69,6 +72,9 @@ def _make_array(initial_value=None, dtype=None, nrow=None, ncol=None):
     if initial_value is not None:
         if type(initial_value) is np.ndarray:
             return _create_from_existing(initial_value, dtype)
+        elif not isinstance(initial_value, collections.Iterable):
+            return _create_from_existing(np.array([initial_value],
+                                                  dtype=dtype), dtype)
         else:
             return _create_from_existing(np.array(list(initial_value),
                                                   dtype=dtype), dtype)

@@ -245,9 +245,3 @@ def test_host_halo_cube_3(state):
 
 
 
-
-
-
-
-
-
