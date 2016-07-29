@@ -146,9 +146,9 @@ class CellOccupancyMatrix(object):
         self.particle_layers = cuda_base.Array(ncomp=self._n_func(), dtype=ctypes.c_int)
         self.cell_reverse_lookup = cuda_base.Array(ncomp=self._n_func(), dtype=ctypes.c_int)
         self.cell_contents_count = cuda_base.Array(ncomp=self._domain.cell_count, dtype=ctypes.c_int)
-        self.matrix = cuda_base.Matrix(nrow=self._domain.cell_count,
-                                       ncol=self._n_func()/self._domain.cell_count,
-                                       dtype=ctypes.c_int)
+        self.matrix = cuda_base.device_buffer_2d(nrow=self._domain.cell_count,
+                                                 ncol=self._n_func()/self._domain.cell_count,
+                                                 dtype=ctypes.c_int)
 
         self._n_layers = self.matrix.ncol
         self._n_cells = self.matrix.nrow
@@ -215,13 +215,20 @@ class CellOccupancyMatrix(object):
         const int _ix = threadIdx.x + blockIdx.x*blockDim.x;
         if (_ix < d_n){
 
-            const int C0 = 1 + (int)(( d_p[_ix*3]    - d_b[0] ) / d_cel[0]);
-            const int C1 = 1 + (int)(( d_p[_ix*3 +1]  - d_b[2] ) / d_cel[1]);
-            const int C2 = 1 + (int)(( d_p[_ix*3 +2]  - d_b[4] ) / d_cel[2]);
+            const int C0 = 1 + __double2int_rz(( d_p[_ix*3]    - d_b[0] ) / d_cel[0]);
+            const int C1 = 1 + __double2int_rz(( d_p[_ix*3 +1]  - d_b[2] ) / d_cel[1]);
+            const int C2 = 1 + __double2int_rz(( d_p[_ix*3 +2]  - d_b[4] ) / d_cel[2]);
 
             const int val = (C2*d_ca[1] + C1)*d_ca[0] + C0;
 
-            //printf("COM ix=%%d, val=%%d\\n", _ix, val );
+            //printf("COM ix=%%d, val=%%d, %%f, %%f, %%f\\n %%f, %%f, %%f\\n",
+            //_ix, val, d_p[_ix*3], d_p[_ix*3+1], d_p[_ix*3+2], d_b[0], d_b[2], d_b[4] );
+
+
+
+
+
+
 
             d_crl[_ix] = val;
             //old=atomicAdd(address, new);
@@ -333,7 +340,11 @@ class CellOccupancyMatrix(object):
             self.matrix = cuda_base.Matrix(nrow=self._domain.cell_count, ncol=self.matrix.ncol)
 
         # Things that need to hold correct values.
-        self._boundary.sync_from_version(self._domain.boundary)
+
+        #self._boundary.sync_from_version(self._domain.boundary)
+
+        self._boundary[:] = self._domain.boundary[:]
+
         self._cell_edge_lengths.sync_from_version(self._domain.cell_edge_lengths)
         self._cell_array.sync_from_version(self._domain.cell_array)
 

@@ -199,7 +199,7 @@ def cuda_malloc(d_ptr=None, num=None, dtype=None):
     """
     Allocate memory on device.
     :arg ctypes.ctypes_data d_ptr: Device pointer.
-    :arg ctypes.c_int num: Number of elements.
+    :arg int num: Number of elements.
     :arg ctypes.dtype dtype: Data type.
     """
     # TODO: make return error code.

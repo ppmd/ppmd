@@ -308,3 +308,11 @@ def test_host_pair_loop_6(state):
     loop.execute()
     for ix in range(state.npart_local):
         assert state.nc[ix] == 26
+
+
+
+
+
+
+
+

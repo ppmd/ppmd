@@ -3,7 +3,14 @@
 import pytest
 import ctypes
 import numpy as np
+
+
+
 import ppmd as md
+import ppmd.cuda as mdc
+
+
+cuda = pytest.mark.skipif("mdc.CUDA_IMPORT is False")
 
 N = 1000
 crN = 10 #cubert(N)
@@ -17,40 +24,49 @@ rank = md.mpi.MPI_HANDLE.rank
 nproc = md.mpi.MPI_HANDLE.nproc
 
 
-PositionDat = md.data.PositionDat
-ParticleDat = md.data.ParticleDat
-ScalarArray = md.data.ScalarArray
-State = md.state.State
+if mdc.CUDA_IMPORT:
+    PositionDat = mdc.cuda_data.PositionDat
+    ParticleDat = mdc.cuda_data.ParticleDat
+    ScalarArray = mdc.cuda_data.ScalarArray
+    State = mdc.cuda_state.State
 
+
+h_PositionDat = md.data.PositionDat
+h_ParticleDat = md.data.ParticleDat
+h_ScalarArray = md.data.ScalarArray
+h_State = md.state.State
+
+
+
+
+@cuda
 @pytest.fixture
-def state():
+def state(request):
     A = State()
     A.npart = N
     A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
     A.p = PositionDat(ncomp=3)
     A.v = ParticleDat(ncomp=3)
     A.f = ParticleDat(ncomp=3)
-    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
-
     A.u = ScalarArray(ncomp=2)
     A.u.halo_aware = True
+    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
 
     return A
 
+
+
+@cuda
 @pytest.fixture
-def s_nd():
-    """
-    State with no domain, hence will not spatially decompose
-    """
-
-    A = State()
+def h_state(request):
+    A = h_State()
     A.npart = N
-    A.p = PositionDat(ncomp=3)
-    A.v = ParticleDat(ncomp=3)
-    A.f = ParticleDat(ncomp=3)
-    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
-
-    A.u = ScalarArray(ncomp=2)
+    A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
+    A.p = h_PositionDat(ncomp=3)
+    A.v = h_ParticleDat(ncomp=3)
+    A.f = h_ParticleDat(ncomp=3)
+    A.gid = h_ParticleDat(ncomp=1, dtype=ctypes.c_int)
+    A.u = h_ScalarArray(ncomp=2)
     A.u.halo_aware = True
 
     return A
@@ -87,13 +103,14 @@ def test_host_halo_cube_1(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
 
+
+    state.get_cell_to_particle_map().update_required = True
     state.get_cell_to_particle_map().check()
 
     ca = state.get_domain().cell_array
 
-    #np.set_printoptions(linewidth=24)
-    #print "cell counts \n", state.get_cell_to_particle_map().cell_contents_count[:]
-
+    np.set_printoptions(linewidth=24)
+    print "cell counts \n", state.get_cell_to_particle_map().cell_contents_count[:]
 
     for cx in xrange(ca[0]):
         for cy in xrange(ca[1]):
@@ -106,6 +123,7 @@ def test_host_halo_cube_1(state):
                 else:
                     assert state.get_cell_to_particle_map().cell_contents_count[ci] == 1
 
+
     state.p.halo_exchange()
 
     for cx in xrange(ca[0]):
@@ -116,7 +134,7 @@ def test_host_halo_cube_1(state):
 
 
 
-
+'''
 
 
 def test_host_halo_cube_2(state):
@@ -245,7 +263,7 @@ def test_host_halo_cube_3(state):
                             assert np.sum(np.abs(rcj - cval)) < 2.*(10.**(-15.))
 
 
-
+'''
 
 
 

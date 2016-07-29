@@ -35,6 +35,12 @@ def _make_gpu_array(initial_value=None, dtype=None, nrow=None, ncol=None):
     dat initialiser
     """
 
+    # pycuda does not take nicely to negative or zero length arrays
+    if nrow is not None:
+        nrow=max(nrow, 1)
+    ncol=max(ncol, 1)
+
+
     if initial_value is not None:
         if type(initial_value) is np.ndarray:
             return _create_from_existing(initial_value, dtype)
@@ -90,7 +96,7 @@ class Array(object):
          self._struct = type('ArrayT',
                             (ctypes.Structure,),
                             dict(_fields_=(('ptr',
-                                            ctypes.POINTER(self.idtype)),
+                                            ctypes.c_void_p),
                                            ('ncomp', ctypes.POINTER(ctypes.c_int)))))()
 
 
@@ -147,17 +153,18 @@ class Array(object):
     def ctypes_data_post(self, mode=ppmd.access.RW):
         pass
 
-    def realloc(self, length):
+    def realloc(self, ncomp):
         """
         Re allocate memory for an array.
         """
-        assert length > 0, "Zero or negative length passed"
+        assert ncomp > 0, "Zero or negative ncomp passed"
 
-        if length != self._ncomp.value:
-            _new = _create_zeros(ncol=length, dtype=self.idtype)
+        if ncomp != self._ncomp.value:
+            _new = _create_zeros(ncol=ncomp, dtype=self.idtype)
+
             _new[:self._ncomp.value:] = self._dat[:]
             self._dat = _new
-            self._ncomp.value = length
+            self._ncomp.value = ncomp
 
     def zero(self):
         """
@@ -176,7 +183,15 @@ class Array(object):
         """
         return self.ncomp - 1
 
+    def sync_from_version(self, array=None):
+        """
+        Keep this array in sync with another array based on version.
+        """
+        assert array is not None, "cuda_base:Array.sync_from_version error. " \
+                                  "No array passed."
 
+        if self.version < array.version:
+            self._dat = _create_from_existing(array.data, array.dtype)
 
 ###############################################################################
 # Matrix.
@@ -211,7 +226,7 @@ class Matrix(object):
         self._struct = type('MatrixT',
                             (ctypes.Structure,),
                             dict(_fields_=(('ptr',
-                            ctypes.POINTER(self.idtype)),
+                            ctypes.c_void_p),
                             ('nrow', ctypes.POINTER(ctypes.c_int)),
                             ('ncol', ctypes.POINTER(ctypes.c_int)))))()
 
@@ -298,6 +313,15 @@ class Matrix(object):
     def __repr__(self):
         return str(self.__getitem__(slice(None, None, None)))
 
+    def sync_from_version(self, matrix=None):
+        """
+        Keep this array in sync with another matrix based on version.
+        """
+        assert matrix is not None, "cuda_base:Matrix.sync_from_version error." \
+                                   " No matrix passed."
+
+        if self.version < matrix.version:
+            self._dat = _create_from_existing(matrix.data, matrix.dtype)
 
 
 
@@ -354,6 +378,101 @@ class _MatrixMirror(object):
     @property
     def mirror(self):
         return self._h_matrix
+
+
+
+class device_buffer_2d(object):
+    def __init__(self, nrow=1, ncol=1, dtype=ctypes.c_double):
+        """
+        This is a low level data structure for passing around a 2D cuda buffer.
+        The *only* purpose of this should be for libraries which may need to
+        realloc memory part way through an expensive operation. e.g. neighbour
+        matrix building.
+        """
+
+        self._nrow = ctypes.c_int(0)
+        self._ncol = ctypes.c_int(0)
+
+        self._ncol.value = 0
+        self._nrow.value = 0
+        self._alloced = False
+        self.dtype = dtype
+        self.ctypes_data = ctypes.c_void_p()
+        self.realloc(nrow=nrow, ncol=ncol)
+        self._struct = type('MatrixT',
+                            (ctypes.Structure,),
+                            dict(_fields_=(('ptr',
+                            ctypes.c_void_p),
+                            ('nrow', ctypes.POINTER(ctypes.c_int)),
+                            ('ncol', ctypes.POINTER(ctypes.c_int)))))()
+
+    @property
+    def nrow(self):
+        return self._nrow.value
+
+    @property
+    def ncol(self):
+        return self._ncol.value
+
+    @nrow.setter
+    def nrow(self, val):
+        self._nrow.value = val
+
+    @ncol.setter
+    def ncol(self, val):
+        self._ncol.value = val
+
+    def realloc(self, nrow=1, ncol=1):
+        """
+        Re allocate memory for a matrix. This will *not* copy th existing
+        contents and essentially is for initialisation purposes.
+        """
+        self.free()
+        cuda_runtime.cuda_malloc(self.ctypes_data,
+                                 nrow*ncol,
+                                 self.dtype)
+
+        self.ncol = ncol
+        self.nrow = nrow
+        self._alloced = True
+
+    def free(self):
+        """
+        Free the pointer currently held
+        """
+        if self._alloced:
+            cuda_runtime.cuda_free(self.ctypes_data)
+            self._alloced = False
+
+    @property
+    def struct(self):
+        self._struct.ptr = self.ctypes_data
+        self._struct.nrow = ctypes.pointer(self._nrow)
+        self._struct.ncol = ctypes.pointer(self._ncol)
+        return self._struct
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

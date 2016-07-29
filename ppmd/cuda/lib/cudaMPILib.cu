@@ -195,11 +195,11 @@ cudaError_t cudaCreateLaunchArgs(
 
 
 
-/*
 namespace _ExSizes
 {   
 
-    __global__ void GatherCellCounts(
+    __global__ void GatherBoundaryCellCounts(
+        const int* __restrict__ D_CCC,      // Cell contents count array
         const int n,                        // Number of cells to inspect
         const int* __restrict__ D_b_arr,    // actual indices of boundary cells
         int* D_b_tmp,                       // space to place boundary cell counts
@@ -208,14 +208,12 @@ namespace _ExSizes
 
 
         int _ix = threadIdx.x + blockIdx.x*blockDim.x;
-        int tt = 0;
-
+        int cc = 0;
 
         if (_ix < n){
-
-            D_b_tmp[_ix] = D_b_arr[_ix];   // copy this cell count
-            tt = D_b_arr[_ix];             // set local tt to this cell count
-
+            const int C = D_CCC[D_b_arr[_ix]];
+            D_b_tmp[_ix] = C;   // copy this cell count
+            cc = C;             // set local tt to this cell count
         }
 
         // reduce tmp count accross warp
@@ -231,6 +229,63 @@ namespace _ExSizes
 
 
 
+    __global__ void ScatterHaloCellCounts(
+        int* __restrict__ D_CCC,      // Cell contents count array
+        const int n,                        // Number of cells to inspect
+        const int* __restrict__ D_h_arr,    // actual indices of halo cells
+        int* D_h_tmp,                       // space to place halo cell counts
+        int* D_tmp_count                    // reduce the count across cells into here
+        ){
+
+
+        int _ix = threadIdx.x + blockIdx.x*blockDim.x;
+        int cc = 0;
+
+        if (_ix < n){
+            const int C = D_h_tmp[_ix];
+            D_CCC[D_h_arr[_ix]] = C;        // add the entry to the local cell counts
+            cc = C;                         // set local tt to this cell count
+        }
+
+        // reduce tmp count accross warp
+        cc = warpReduceSum(cc);
+
+        // reduce into global mem
+        if (threadIdx.x == 0){
+            atomicAdd(D_tmp_count, cc);
+        }
+
+        return;
+    }
+
+
+        __global__ void GatherScatterCellCounts(
+        int* __restrict__ D_CCC,            // Cell contents count array
+        const int n,                        // Number of cells to inspect
+        const int* __restrict__ D_h_arr,    // actual indices of halo cells
+        const int* __restrict__ D_b_arr,    // actual indices of boundary cells
+        int* D_tmp_count                    // reduce the count across cells into here
+        ){
+
+        int _ix = threadIdx.x + blockIdx.x*blockDim.x;
+        int cc = 0;
+
+        if (_ix < n){
+            const int C = D_CCC[D_b_arr[_ix]];
+            D_CCC[D_h_arr[_ix]] = C;        // add the entry to the local cell counts
+            cc = C;                         // set local tt to this cell count
+        }
+
+        // reduce tmp count accross warp
+        cc = warpReduceSum(cc);
+
+        // reduce into global mem
+        if (threadIdx.x == 0){
+            atomicAdd(D_tmp_count, cc);
+        }
+
+        return;
+    }
 
 
 
@@ -244,11 +299,11 @@ int cudaExchangeCellCounts(
         const int* __restrict__ H_b_ind,        // The starting indices for the bound cellsi
         const int* __restrict__ D_h_arr,        // The halo cell indices
         const int* __restrict__ D_b_arr,        // The boundary cell indices
-        const int* __restrict__ D_CCC,          // Cell contents count array
+        int* __restrict__ D_CCC,                // Cell contents count array
         int* __restrict__ H_halo_count,         // RETURN: Number of halo particles
         int* __restrict__ H_tmp_count,          // RETURN: Amount of temporary space needed
         int* __restrict__ D_h_tmp,              // Temp storage for halo counts
-        int* __restrict__ H_b_tmp,              // Temp storage for bundary counts
+        int* __restrict__ D_b_tmp,              // Temp storage for boundary counts
         int* __restrict__ H_dir_counts          // RETURN: Total expected recv counts per dir
         )
 {   
@@ -269,15 +324,18 @@ int cudaExchangeCellCounts(
     *H_tmp_count = 0;
     *H_halo_count = 0;
 
-    int * D_tmp_count;
+    const int const_0 = 0;
+
+    int* D_tmp_count;
+    int H_tmp_int;
     
     // make a device tmp
     err = (int) cudaMalloc(&D_tmp_count, sizeof(int)); 
-    if (err != 0) { return err; }
+    if (err != cudaSuccess) { return err; }
     
     // ensure is zero
-    err = (int) cudaMemcpy(D_tmp_count, H_tmp_count, sizeof(int), cudaMemcpyHostToDevice);
-    if (err != 0) { return err; }
+    err = (int) cudaMemcpy(D_tmp_count, &const_0, sizeof(int), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) { return err; }
 
 
 
@@ -285,18 +343,97 @@ int cudaExchangeCellCounts(
 
         // Here we want to collect the local cell counts for a direction on the device
         // exchange these sizes and get the total for the direction
-    
+
         const int dir_cell_count = H_b_ind[dir+1] - H_b_ind[dir];
-        err = cudaCreateLaunchArgs(dir_cell_count, 256, &bs, &ts);
-        if (err != 0) { return err; }
-        
-        _ExSizes::GatherCellCounts<<<bs,ts>>>(dir_cell_count,
-                                              D_b_arr+H_b_ind[dir],
-                                              D_b_tmp,
-                                              D_tmp_count);
-        
-        err = cudaDeviceSynchronize();
-        if (err != 0) { return err; }
+
+
+    
+        if (rank == H_RECV_RANKS[dir]){
+
+
+            err = cudaCreateLaunchArgs(dir_cell_count, 512, &bs, &ts);
+            if (err != cudaSuccess) { return err; }
+            _ExSizes::GatherScatterCellCounts<<<bs, ts>>>(D_CCC,
+                                                          dir_cell_count,
+                                                          D_h_arr+H_h_ind[dir],
+                                                          D_b_arr+H_b_ind[dir],
+                                                          D_tmp_count);
+
+            err = cudaDeviceSynchronize();
+            if (err != cudaSuccess) { return err; }
+
+            err = (int) cudaMemcpy(&H_tmp_int, D_tmp_count, sizeof(int), cudaMemcpyDeviceToHost);
+            if (err != cudaSuccess) { return err; }
+
+            // Update amount of packing space that will be needed
+            *H_tmp_count = MAX(*H_tmp_count, H_tmp_int);
+
+
+        } else {
+
+            const int dir_r_cell_count = H_h_ind[dir+1] - H_h_ind[dir];
+
+            err = cudaCreateLaunchArgs(dir_cell_count, 512, &bs, &ts);
+            if (err != cudaSuccess) { return err; }
+
+            // zero cell count for this dir
+            err = (int) cudaMemcpy(D_tmp_count, &const_0, sizeof(int), cudaMemcpyHostToDevice);
+            if (err != cudaSuccess) { return err; }
+
+            // Sum and pack cell counts
+
+            err = cudaCreateLaunchArgs(dir_cell_count, 512, &bs, &ts);
+            if (err != cudaSuccess) { return err; }
+            _ExSizes::GatherBoundaryCellCounts<<<bs,ts>>>(D_CCC,
+                                                          dir_cell_count,
+                                                          D_b_arr+H_b_ind[dir],
+                                                          D_b_tmp,
+                                                          D_tmp_count);
+            err = cudaDeviceSynchronize();
+            if (err != cudaSuccess) { return err; }
+
+            err = (int) cudaMemcpy(&H_tmp_int, D_tmp_count, sizeof(int), cudaMemcpyDeviceToHost);
+            if (err != cudaSuccess) { return err; }
+
+            // Update amount of packing space that will be needed
+            *H_tmp_count = MAX(*H_tmp_count, H_tmp_int);
+
+
+
+
+
+            MPI_Sendrecv (D_b_tmp, dir_cell_count, MPI_INT,
+                          H_SEND_RANKS[dir], rank,
+                          D_h_tmp, dir_r_cell_count, MPI_INT,
+                          H_RECV_RANKS[dir], H_RECV_RANKS[dir],
+                          COMM, &MPI_STATUS);
+
+
+
+
+
+            // zero cell count for this dir
+            err = (int) cudaMemcpy(D_tmp_count, &const_0, sizeof(int), cudaMemcpyHostToDevice);
+            if (err != cudaSuccess) { return err; }
+
+            // Sum and pack cell counts
+            err = cudaCreateLaunchArgs(dir_r_cell_count, 512, &bs, &ts);
+            if (err != cudaSuccess) { return err; }
+            _ExSizes::GatherBoundaryCellCounts<<<bs,ts>>>(D_CCC,
+                                                          dir_r_cell_count,
+                                                          D_h_arr+H_h_ind[dir],
+                                                          D_h_tmp,
+                                                          D_tmp_count);
+            err = cudaDeviceSynchronize();
+            if (err != cudaSuccess) { return err; }
+
+            err = (int) cudaMemcpy(&H_tmp_int, D_tmp_count, sizeof(int), cudaMemcpyDeviceToHost);
+            if (err != cudaSuccess) { return err; }
+
+            // Update amount of packing space that will be needed
+            *H_tmp_count = MAX(*H_tmp_count, H_tmp_int);
+
+        } // end of rank == H_RECV_RANK if
 
     }
 
@@ -304,7 +441,6 @@ int cudaExchangeCellCounts(
     return 0;
 }
 
-*/
 
 
 

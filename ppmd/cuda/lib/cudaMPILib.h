@@ -1,6 +1,7 @@
 #include <helper_cuda.h>
 #include <iostream>
 #include <mpi.h>
+#include "cuda_generic.h"
 
 using namespace std;
 

@@ -93,10 +93,11 @@ class BaseMDState(object):
             # initialise the filter method now we have a domain and positions
             self._filter_method = _FilterOnDomain(self._domain,
                                                   self.get_position_dat())
-
-            self._halo_manager = ppmd.halo.CartesianHaloSix(_AsFunc(self, '_domain'),
-                                                            self._cell_to_particle_map)
-
+            if ppmd.mpi.MPI_HANDLE.nproc == 1:
+                self._halo_manager = cuda_halo.CartesianHalo(self._cell_to_particle_map)
+            else:
+                self._halo_manager = ppmd.halo.CartesianHaloSix(_AsFunc(self, '_domain'),
+                                                                self._cell_to_particle_map)
     @property
     def domain(self):
         return self._domain

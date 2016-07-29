@@ -26,7 +26,7 @@ class ScalarArray(cuda_base.Array):
          self._struct = type('ScalarArrayT',
                              (ctypes.Structure,),
                              dict(_fields_=(('ptr',
-                                             ctypes.POINTER(self.idtype)),
+                                             ctypes.c_void_p),
                                             ('ncomp',
                                              ctypes.POINTER(ctypes.c_int)))))()
 
@@ -68,6 +68,8 @@ class ParticleDat(cuda_base.Matrix):
 
         self.name = name
 
+        self.group = None
+
         self.idtype = dtype
         self._ncol = ctypes.c_int(0)
         self._nrow = ctypes.c_int(0)
@@ -103,7 +105,7 @@ class ParticleDat(cuda_base.Matrix):
     def _init_struct(self):
         self._struct = type('ParticleDatT', (ctypes.Structure,),
                             dict(_fields_=(('ptr',
-                                            ctypes.POINTER(self.idtype)),
+                                            ctypes.c_void_p),
                                             ('nrow', ctypes.POINTER(ctypes.c_int)),
                                             ('ncol', ctypes.POINTER(ctypes.c_int)),
                                             ('npart', ctypes.POINTER(ctypes.c_int)),
@@ -233,13 +235,17 @@ class ParticleDat(cuda_base.Matrix):
     def halo_exchange(self):
         if mpi.MPI_HANDLE.nproc == 1:
             self._1p_halo_exchange()
+        else:
+            self.halo_start_reset()
+            _sizes = self.group._halo_manager.exchange_cell_counts()
+
 
     def _1p_halo_exchange(self):
         if self._1p_halo_lib is None:
             self._build_1p_halo_lib()
 
-        boundary_cell_groups = cuda_halo.HALOS.get_boundary_cell_groups[0]
-        n = cuda_halo.HALOS.occ_matrix.layers_per_cell * boundary_cell_groups.ncomp
+        boundary_cell_groups = self.group._halo_manager.get_boundary_cell_groups[0]
+        n = self.group._halo_manager.occ_matrix.layers_per_cell * boundary_cell_groups.ncomp
         if self.max_npart < self.npart_local + n:
             self.resize(self.npart_local + n)
 
@@ -254,24 +260,24 @@ class ParticleDat(cuda_base.Matrix):
         #if self.npart_total
         #self.resize(self.npart_total)
 
-        #print self.max_npart, self.npart, n, cuda_halo.HALOS.occ_matrix.layers_per_cell
+        #print self.max_npart, self.npart, n, self.group._halo_manager.occ_matrix.layers_per_cell
 
         args=[blocksize,
               threadsize,
               ctypes.byref(self._halo_start),
               ctypes.c_int(n),
-              ctypes.c_int(cuda_halo.HALOS.occ_matrix.layers_per_cell),
-              cuda_halo.HALOS.get_boundary_cell_groups[0].struct,
-              cuda_halo.HALOS.get_halo_cell_groups[0].struct,
-              cuda_halo.HALOS.get_boundary_cell_to_halo_map.struct,
-              cuda_halo.HALOS.occ_matrix.cell_contents_count.struct,
-              cuda_halo.HALOS.occ_matrix.matrix.struct,
+              ctypes.c_int(self.group._halo_manager.occ_matrix.layers_per_cell),
+              self.group._halo_manager.get_boundary_cell_groups[0].struct,
+              self.group._halo_manager.get_halo_cell_groups[0].struct,
+              self.group._halo_manager.get_boundary_cell_to_halo_map.struct,
+              self.group._halo_manager.occ_matrix.cell_contents_count.struct,
+              self.group._halo_manager.occ_matrix.matrix.struct,
               self.struct]
 
 
 
-        if self.name == 'positions':
-            args.append(cuda_halo.HALOS.get_position_shifts.struct)
+        if type(self) == PositionDat:
+            args.append(self.group._halo_manager.get_position_shifts.struct)
 
         self._1p_halo_lib(*args)
 
@@ -307,13 +313,13 @@ class ParticleDat(cuda_base.Matrix):
         _d_call_args = '''d_b, d_h, d_bhc_map, d_ccc, d_occ_matrix, d_dat'''
 
 
-        if self.name == 'positions':
+        if type(self) == PositionDat:
             _hargs += ''', const cuda_Array<double> d_shifts'''
             _dargs += ''', const cuda_Array<double> d_shifts'''
 
             _d_call_args += ''', d_shifts'''
 
-            # self._position_shifts = cuda_halo.HALOS.get_position_shifts()
+            # self._position_shifts = self.group._halo_manager.get_position_shifts()
             _shift_code = ''' + d_shifts.ptr[d_bhc_map.ptr[_cx]*3 + _comp]'''
             _occ_code = '''
             d_occ_matrix.ptr[ d_npc * d_h.ptr[_cx] + _pi ] = hpx;
@@ -362,7 +368,7 @@ class ParticleDat(cuda_base.Matrix):
                     //halo index of particle
                     const int hpx = d_n_total + idx;
 
-                    d_dat.ptr[hpx* %(NCOMP)s + _comp] = d_dat.ptr[px * %(NCOMP)s + _comp] + %(SHIFT_CODE)s ;
+                    d_dat.ptr[hpx* %(NCOMP)s + _comp] = d_dat.ptr[px * %(NCOMP)s + _comp] %(SHIFT_CODE)s ;
 
                     //printf("hpx %%d, px %%d, _cx %%d, _bc %%d halo %%d \\n", hpx, px, _cx, _bc, d_bhc_map.ptr[_cx]);
 
