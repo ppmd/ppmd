@@ -89,15 +89,15 @@ class BaseMDSimulation(object):
 
         # Add particle dats
         _factor = 1
-        self.state.positions = data.PositionDat(n, 3, name='positions', max_npart=_factor * n)
-        self.state.velocities = data.ParticleDat(n, 3, name='velocities', max_npart=_factor * n)
-        self.state.forces = data.ParticleDat(n, 3, name='forces', max_npart=_factor * n)
-        self.state.global_ids = data.ParticleDat(n, 1, dtype=ct.c_int, name='global_ids', max_npart=_factor * n)
-        self.state.types = data.ParticleDat(n, 1, dtype=ct.c_int, name='types', max_npart=_factor * n)
+        self.state.positions = data.PositionDat(n, 3, name='positions')
+        self.state.velocities = data.ParticleDat(n, 3, name='velocities')
+        self.state.forces = data.ParticleDat(n, 3, name='forces')
+        self.state.global_ids = data.ParticleDat(n, 1, dtype=ct.c_int, name='global_ids')
+        self.state.types = data.ParticleDat(n, 1, dtype=ct.c_int, name='types')
 
 
         # Add typed dats.
-        self.state.mass = data.TypedDat(1, n)
+        self.state.mass = data.TypedDat(1, n, key=self.state.types)
 
 
         # Add scalar dats.
@@ -212,7 +212,6 @@ class BaseMDSimulation(object):
             _constants_K = []
             _K_kernel = kernel.Kernel('K_kernel', _K_kernel_code, _constants_K)
             self._kinetic_energy_lib = loop.ParticleLoop(self.state.as_func('npart_local'),
-                                                         self.state.types,
                                                          _K_kernel,
                                                          {'V': self.state.velocities, 'k': self.state.k, 'M': self.state.mass})
 

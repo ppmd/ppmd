@@ -23,7 +23,7 @@ class _Base(object):
     :arg bool DEBUG: Flag to enable debug flags.
     """
 
-    def __init__(self, n=None, types_map=None, kernel=None, particle_dat_dict=None):
+    def __init__(self, n=None, kernel=None, particle_dat_dict=None):
 
         assert kernel is not None, "No kernel argument passed"
         assert particle_dat_dict is not None, "no particle to symbol (particle_dat_dict) passed"
@@ -31,7 +31,6 @@ class _Base(object):
         self._cc = build.TMPCC
 
         self._N = n
-        self._types_map = types_map
 
         self._kernel = kernel
 
@@ -53,9 +52,9 @@ class _Base(object):
         For each argument the kernel gets passed a pointer of type
         ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
         pointer to the data which contains the properties of particle i.
-        These properties are stored consecutively in memory, so for a 
+        These properties are stored consecutively in memory, so for a
         scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
-        property the vector entry j of particle i is accessed as 
+        property the vector entry j of particle i is accessed as
         ``loc_argXXX[i][j]``.
 
         This method generates the definitions of the ``loc_argXXX`` variables
@@ -97,9 +96,11 @@ class _Base(object):
                 _map += '#define ' + loc_argname + '(x) ' + argname + '[' + generation.get_first_index_symbol() + '*' + str(ncomp) + ' + (x)]' + _nl
 
             if type(dat[1]) == data.TypedDat:
+                map_name = argname + '_map'
+
                 ncomp = dat[1].ncol
                 _map += '#define ' + loc_argname + '(x) ' + argname + '[LINIDX_2D(' + str(
-                     ncomp) + ',' + '(x), ' + '_TYPE_MAP[' + generation.get_first_index_symbol() + '])]' + _nl
+                     ncomp) + ',' + '(x), ' + map_name + '[' + generation.get_first_index_symbol() + '])]' + _nl
 
         return _map
 
@@ -128,9 +129,14 @@ class _Base(object):
             if type(dat[1]) is tuple:
                 _dtype = dat[1][0].dtype
                 _mode = dat[1][1]
+                _type = type(dat[1][0])
             else:
                 _dtype = dat[1].dtype
                 _mode = access.RW
+                _type = type(dat[1])
+
+            if _type == data.TypedDat:
+                argnames += 'const int*' + dat[0] + '_ext_map, '
 
             if not _mode.write:
                 _const = 'const '
@@ -214,10 +220,6 @@ class _Base(object):
             _N = self._N()
 
         args = [ctypes.c_int(_N)]
-
-        if self._types_map is not None:
-            args.append(self._types_map.ctypes_data)
-
         args.append(self.loop_timer.get_python_parameters())
 
 
@@ -232,9 +234,16 @@ class _Base(object):
             if type(dat_orig) is tuple:
                 # this halo exchanges, why halo exchange on a particle loop?
                 # args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
-                args.append(dat_orig[0].ctypes_data)
+                dat = dat_orig[0]
             else:
-                args.append(dat_orig.ctypes_data)
+                dat = dat_orig
+
+
+            if type(dat) == data.TypedDat:
+                args.append(dat.key.ctypes_data)
+
+            args.append(dat.ctypes_data)
+
 
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
@@ -363,15 +372,6 @@ class LimitedParticleLoop(_Base):
 
         args = [ctypes.c_int(start), ctypes.c_int(end)]
 
-
-        if self._types_map is not None:
-            args.append(self._types_map.ctypes_data)
-        else:
-            _null_type_map = ctypes.c_int()
-            args.append(ctypes.byref(_null_type_map))
-
-
-        '''TODO IMPLEMENT/CHECK RESISTANCE TO ARG REORDERING'''
 
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:

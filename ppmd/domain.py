@@ -211,6 +211,7 @@ class BaseDomainHalo(object):
 
         if self._init_cells:
             print "WARNING: domain already decomposed into cells"
+
         assert cell_width is not None, "ERROR: No cell size passed."
 
         if not self._init_decomp:

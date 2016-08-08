@@ -797,20 +797,22 @@ class TypedDat(host.Matrix):
     :arg str name: Collective name of stored vars eg positions.
     """
 
-    def __init__(self, nrow=1, ncol=1, initial_value=None, name=None, dtype=ctypes.c_double):
+    def __init__(self, nrow=1, ncol=1, initial_value=None, name=None, dtype=ctypes.c_double, key=None):
+
+        assert key is not None, "No key passed to TypedDat"
+
+        self.key = key
 
         self.name = str(name)
         """:return: Name of TypedDat instance."""
         self.idtype = dtype
 
-        if initial_value is not None:
-            if (type(initial_value) is np.ndarray) or type(initial_value) is list:
-                self._create_from_existing(initial_value, dtype)
-            else:
-                self._create_from_existing(np.array([initial_value]),dtype)
+        self._dat = host._make_array(initial_value=initial_value,
+                                     dtype=dtype,
+                                     nrow=nrow,
+                                     ncol=ncol)
 
-        else:
-            self._create_zeros(nrow, ncol, dtype)
+        self._version = 0
 
 
     def __call__(self, mode=access.RW, halo=True):

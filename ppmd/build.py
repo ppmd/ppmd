@@ -678,6 +678,10 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
         pio.pprint("Critical build Error: Library not built,\n" +
                    _lib_filename + "\n rank:", mpi.MPI_HANDLE.rank)
 
+        if mpi.MPI_HANDLE.rank == 0:
+            with open(dst_dir + lib + str(_m) + '.err', 'r') as stderr:
+                print stderr.read()
+
         quit()
 
     return _lib_filename

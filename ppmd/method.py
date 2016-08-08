@@ -272,10 +272,10 @@ class VelocityVerlet(object):
         self._constants = [kernel.Constant('dt',self._dt), kernel.Constant('dht',0.5*self._dt),]
 
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-        self._p1 = loop.ParticleLoop(self._N, self._state.types,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
+        self._p1 = loop.ParticleLoop(self._N, self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
 
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-        self._p2 = loop.ParticleLoop(self._N, self._state.types,self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
+        self._p2 = loop.ParticleLoop(self._N, self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
 
 
         self._update_controller.execute_boundary_conditions()
@@ -346,7 +346,7 @@ class VelocityVerletAnderson(VelocityVerlet):
 
         self._constants1 = [kernel.Constant('dt',self._dt), kernel.Constant('dht',0.5*self._dt),]
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
-        self._p1 = loop.ParticleLoop(self._N, self._state.types ,self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
+        self._p1 = loop.ParticleLoop(self._N, self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
 
         self._kernel2_thermostat_code = '''
 
@@ -381,7 +381,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         self._constants2_thermostat = [kernel.Constant('rate',self._dt*self._nu), kernel.Constant('dt',self._dt), kernel.Constant('dht',0.5*self._dt), kernel.Constant('temperature',self._Temp),]
 
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
-        self._p2_thermostat = loop.ParticleLoop(self._N, self._state.types, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
+        self._p2_thermostat = loop.ParticleLoop(self._N, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
 
         _t = runtime.Timer(runtime.TIMER, 0, start=True)
         self._velocity_verlet_integration_thermostat()
@@ -484,7 +484,7 @@ class RadialDistributionPeriodicNVE(object):
         _grkernel = kernel.Kernel('radial_distro_periodic_static', _kernel, _constants, headers=_headers)
         _datdict = {'P':self._P, 'GR':self._gr}
 
-        self._p = pairloop.DoubleAllParticleLoop(self._N, self._state.types, kernel=_grkernel, particle_dat_dict=_datdict)
+        self._p = pairloop.DoubleAllParticleLoop(self._N, kernel=_grkernel, particle_dat_dict=_datdict)
 
         self.timer = runtime.Timer(runtime.TIMER, 0)
 

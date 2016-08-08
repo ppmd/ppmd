@@ -18,12 +18,11 @@ import opt
 
 class _Base(object):
 
-    def __init__(self, n, types_map, kernel, particle_dat_dict):
+    def __init__(self, n, kernel, particle_dat_dict):
 
         self._cc = build.TMPCC
 
         self._N = n
-        self._types_map = types_map
 
         self._kernel = kernel
 
@@ -37,56 +36,11 @@ class _Base(object):
                                              self._generate_impl_source(),
                                              self._kernel.name,
                                              CC=self._cc)
+    def _code_init(self):
+        pass
 
-    def _kernel_argument_declarations(self):
-        """Define and declare the kernel arguments.
-
-        For each argument the kernel gets passed a pointer of type
-        ``double* loc_argXXX[2]``. Here ``loc_arg[i]`` with i=0,1 is
-        pointer to the data which contains the properties of particle i.
-        These properties are stored consecutively in memory, so for a 
-        scalar property only ``loc_argXXX[i][0]`` is used, but for a vector
-        property the vector entry j of particle i is accessed as 
-        ``loc_argXXX[i][j]``.
-
-        This method generates the definitions of the ``loc_argXXX`` variables
-        and populates the data to ensure that ``loc_argXXX[i]`` points to
-        the correct address in the particle_dats.
-        """
-        s = '\n'
-        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
-
-            space = ' ' * 14
-
-            if type(dat_orig[1]) is tuple:
-                dat = dat_orig[0], dat_orig[1][0]
-                _mode = dat_orig[1][1]
-            else:
-                dat = dat_orig
-                _mode = access.RW
-
-            argname = dat[0] + '_ext'
-            loc_argname = dat[0]
-
-            if type(dat[1]) == data.ScalarArray:
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ' = ' + argname + ';\n'
-
-            elif type(dat[1]) == data.ParticleDat:
-                ncomp = dat[1].ncomp
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + '[2];\n'
-                s += space + loc_argname + '[0] = ' + argname + '+' + str(ncomp) + '*i;\n'
-                s += space + loc_argname + '[1] = ' + argname + '+' + str(ncomp) + '*j;\n'
-
-            elif type(dat[1]) == data.TypedDat:
-
-                ncomp = dat[1].ncomp
-                s += space + host.ctypes_map[dat[1].dtype] + ' *' + loc_argname + ';  \n'
-                s += space + loc_argname + '[0] = &' + argname + '[LINIDX_2D(' + str(
-                    ncomp) + ',' + '_TYPE_MAP[i]' + ',0)];\n'
-                s += space + loc_argname + '[1] = &' + argname + '[LINIDX_2D(' + str(
-                    ncomp) + ',' + '_TYPE_MAP[j]' + ',0)];\n'
-
-        return s
+    def _generate_header_source(self):
+        pass
 
     def _argnames(self):
         """Comma separated string of argument name declarations.
@@ -165,10 +119,6 @@ class _Base(object):
             _N = self._N()
 
         args = [ctypes.c_int(_N)]
-
-        if self._types_map is not None:
-            args.append(self._types_map.ctypes_data)
-
 
         args.append(self.loop_timer.get_python_parameters())
 

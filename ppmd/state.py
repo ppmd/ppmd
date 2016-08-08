@@ -296,7 +296,7 @@ class BaseMDState(object):
         )
 
         bx = np.logical_not(lo)
-
+        # self.npart_local = np.sum(lo)
         self._compress_empty_slots(np.nonzero(bx)[0])
 
     def _compress_empty_slots(self, slots):
@@ -779,7 +779,7 @@ class BaseMDState(object):
             # print "COMPRESSED"
             return
         else:
-            # print "NOT COMPRESSED", num_slots_to_fill
+             #print "NOT COMPRESSED", num_slots_to_fill
             # print "slots", self._move_empty_slots.data
 
             self._compressing_dyn_args['slots'] = self._move_empty_slots
