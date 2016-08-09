@@ -14,10 +14,9 @@ import access
 import cell
 import host
 import opt
-
+import logic
 
 class _Base(object):
-
     def __init__(self, n, kernel, particle_dat_dict):
 
         self._cc = build.TMPCC
@@ -408,6 +407,9 @@ class PairLoopRapaportHalo(_Base):
 ###############################################################################
 
 class PairLoopNeighbourList(_Base):
+
+    _neighbour_list_dict = {}
+
     def __init__(self, potential=None, dat_dict=None, kernel=None, shell_cutoff=None):
 
         self._potential = potential
@@ -431,8 +433,9 @@ class PairLoopNeighbourList(_Base):
         else:
             print "pairloop error, no kernel passed."
 
+        if type(shell_cutoff) is not logic.Distance:
+            shell_cutoff = logic.Distance(shell_cutoff)
         self._rn = shell_cutoff
-
 
         self.loop_timer = opt.LoopTimer()
         self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
@@ -456,20 +459,24 @@ class PairLoopNeighbourList(_Base):
         assert self._group is not None, "No cell to particle map found"
 
 
-        self._group.get_domain().cell_decompose(self._rn)
-        self._group.get_cell_to_particle_map().create()
+        new_decomp_flag = self._group.get_domain().cell_decompose(self._rn.value)
+
+        if new_decomp_flag:
+            self._group.get_cell_to_particle_map().create()
+
+        self._key = (self._rn, self._group.get_domain(), self._group.get_position_dat())
+
+        _nd = PairLoopNeighbourList._neighbour_list_dict
+        if not self._key in _nd.keys() or new_decomp_flag:
+            _nd[self._key] = cell.NeighbourListv2(self._group.get_cell_to_particle_map())
 
 
-        self.neighbour_list = cell.NeighbourListv2(self._group.get_cell_to_particle_map())
+            _nd[self._key].setup(self._group.get_npart_local_func(),
+                                 self._group.get_position_dat(),
+                                 self._group.get_domain(),
+                                 self._rn.value)
 
-        #print self._group.npart, self._group.npart_local
-
-
-        self.neighbour_list.setup(self._group.get_npart_local_func(),
-                                  self._group.get_position_dat(),
-                                  self._group.get_domain(),
-                                  self._rn)
-
+        self.neighbour_list = _nd[self._key]
 
         self._neighbourlist_count = 0
         self._invocations = 0
@@ -598,7 +605,6 @@ class PairLoopNeighbourList(_Base):
         self._invocations += 1
         if cell2part.version_id > self.neighbour_list.version_id:
             self.neighbour_list.update()
-
             #print "new list"
             #print self.neighbour_list.neighbour_starting_points.data[0:16]
             #print self.neighbour_list.list.data[0:10:]
@@ -812,5 +818,120 @@ class VectorPairLoopNeighbourList(PairLoopNeighbourList):
 
 
 
+
+class PairLoopNeighbourListNS(PairLoopNeighbourList):
+
+    _neighbour_list_dict = {}
+
+    def __init__(self, potential=None, dat_dict=None, kernel=None, shell_cutoff=None):
+
+        self._potential = potential
+        self._particle_dat_dict = dat_dict
+        self._cc = build.TMPCC
+        self.rc = None
+        # self.rn = None
+
+        ##########
+        # End of Rapaport initialisations.
+        ##########
+
+        self._temp_dir = runtime.BUILD_DIR.dir
+        if not os.path.exists(self._temp_dir):
+            os.mkdir(self._temp_dir)
+
+        if potential is not None:
+            self._kernel = self._potential.kernel
+        elif kernel is not None:
+            self._kernel = kernel
+        else:
+            print "pairloop error, no kernel passed."
+
+        if type(shell_cutoff) is not logic.Distance:
+            shell_cutoff = logic.Distance(shell_cutoff)
+        self._rn = shell_cutoff
+
+        self.loop_timer = opt.LoopTimer()
+        self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
+
+        # Init code
+        self._kernel_code = self._kernel.code
+        self._code_init()
+
+        self._lib = build.simple_lib_creator(self._generate_header_source(),
+                                             self._generate_impl_source(),
+                                             self._kernel.name,
+                                             CC=self._cc)
+
+        self._group = None
+
+        for pd in self._particle_dat_dict.items():
+            if issubclass(type(pd[1][0]), data.PositionDat):
+                self._group = pd[1][0].group
+                break
+
+        assert self._group is not None, "No cell to particle map found"
+
+
+        new_decomp_flag = self._group.get_domain().cell_decompose(self._rn.value)
+
+        if new_decomp_flag:
+            self._group.get_cell_to_particle_map().create()
+
+        self._key = (self._rn, self._group.get_domain(), self._group.get_position_dat())
+
+        _nd = PairLoopNeighbourList._neighbour_list_dict
+        if not self._key in _nd.keys() or new_decomp_flag:
+            _nd[self._key] = cell.NeighbourListNonN3(self._group.get_cell_to_particle_map())
+
+
+            _nd[self._key].setup(self._group.get_npart_local_func(),
+                                 self._group.get_position_dat(),
+                                 self._group.get_domain(),
+                                 self._rn.value)
+
+        self.neighbour_list = _nd[self._key]
+
+        self._neighbourlist_count = 0
+        self._invocations = 0
+
+    def _code_init(self):
+        self._kernel_code = self._kernel.code
+        self._code = '''
+        #include <stdio.h>
+
+        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const long* %(RESTRICT)s START_POINTS, const int* %(RESTRICT)s NLIST, %(ARGUMENTS)s) {
+
+
+
+            %(LOOP_TIMER_PRE)s
+
+
+            for(int _i = 0; _i < N_LOCAL; _i++){
+                for(long _k = START_POINTS[_i]; _k < START_POINTS[_i+1]; _k++){
+                    int _j = NLIST[_k];
+                    int _cpp_halo_flag;
+                    int _cp_halo_flag = 0;
+
+                    // set halo flag, TODO move all halo flags to be an if condition on particle index?
+                    //if (_i >= N_LOCAL) { _cp_halo_flag = 1; } else { _cp_halo_flag = 0; }
+                    if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
+
+                     %(KERNEL_ARGUMENT_DECL)s
+
+                     //KERNEL CODE START
+
+                     %(KERNEL)s
+
+                     //KERNEL CODE END
+
+                }
+            }
+
+            %(LOOP_TIMER_POST)s
+
+            return;
+        }
+
+        '''
 
 

@@ -1402,6 +1402,7 @@ class NeighbourMatrix(object):
         _n = self.cell_list.cell_list.end - self._domain.cell_count
         self._neighbour_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
 
+
         self.n_total = self._positions.npart_total
         self.n_local = self._n()
         self._last_n = self._n()
@@ -1845,7 +1846,7 @@ class NeighbourListNonN3(NeighbourList):
 
         # assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
 
-        self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_int)
+        self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_long)
 
         _initial_factor = math.ceil(27. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
 
@@ -1973,7 +1974,7 @@ class NeighbourListNonN3(NeighbourList):
             print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
 
 
-        _n = cell_list.cell_list.end - self._domain.cell_count
+        _n = self.cell_list.cell_list.end - self._domain.cell_count
         self._neighbour_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
 
         self.n_total = self._positions.npart_total

@@ -214,10 +214,15 @@ class _Base(object):
             self._particle_dat_dict = dat_dict
 
         '''Currently assume n is always needed'''
+        _N_found = True
         if n is not None:
             _N = n
-        else:
+        elif self._N is not None:
             _N = self._N()
+        else:
+            _N_found = False
+            _N = 0
+
 
         args = [ctypes.c_int(_N)]
         args.append(self.loop_timer.get_python_parameters())
@@ -238,6 +243,10 @@ class _Base(object):
             else:
                 dat = dat_orig
 
+            if not _N_found and issubclass(type(dat), data.ParticleDat):
+                args[0].value = dat.group.npart_local
+
+                _N_found = True
 
             if type(dat) == data.TypedDat:
                 args.append(dat.key.ctypes_data)

@@ -20,7 +20,8 @@ __all__ = [ 'access',
             'state',
             'fio',
             'opt',
-            'utility']
+            'utility',
+            'logic']
 
 
 
@@ -45,3 +46,4 @@ import state
 import fio
 import opt
 import utility
+import logic
