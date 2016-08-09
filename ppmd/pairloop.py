@@ -906,19 +906,19 @@ class PairLoopNeighbourListNS(object):
 
 
 
-
     def _generate(self):
         self._generate_lib_specific_args()
         self._generate_kernel_arg_decls()
         self._generate_kernel_func()
         self._generate_kernel_headers()
 
+        self._generate_kernel_gather()
+        self._generate_kernel_call()
+        self._generate_kernel_scatter()
+
         self._generate_lib_inner_loop_block()
         self._generate_lib_inner_loop()
 
-
-        self._generate_kernel_gather()
-        self._generate_kernel_scatter()
         self._generate_lib_outer_loop()
         self._generate_lib_func()
         self._generate_lib_src()
@@ -954,6 +954,7 @@ class PairLoopNeighbourListNS(object):
     def _generate_kernel_arg_decls(self):
 
         _kernel_arg_decls = []
+        _kernel_lib_arg_decls = []
 
         if self._kernel.static_args is not None:
 
@@ -966,15 +967,27 @@ class PairLoopNeighbourListNS(object):
 
             assert type(dat[1]) is tuple, "Access descriptors not found"
 
-            kernel_arg = cgen.Pointer(cgen.Value(host.ctypes_map[dat[1][0].dtype],
-                                                 Restrict(self._cc.restrict_keyword, dat[0]))
+            kernel_lib_arg = cgen.Pointer(cgen.Value(host.ctypes_map[dat[1][0].dtype],
+                                          Restrict(self._cc.restrict_keyword, dat[0]))
                                       )
+
+            kernel_arg = cgen.Pointer(cgen.Value(host.ctypes_map[dat[1][0].dtype],
+                                          Restrict(self._cc.restrict_keyword, dat[0]))
+                                      )
+
+            if issubclass(type(dat[1][0]), host.Matrix):
+                 kernel_arg = cgen.Pointer(kernel_arg)
+
+
             if not dat[1][1].write:
                 kernel_arg = cgen.Const(kernel_arg)
+                kernel_lib_arg = cgen.Const(kernel_lib_arg)
 
             _kernel_arg_decls.append(kernel_arg)
+            _kernel_lib_arg_decls.append(kernel_lib_arg)
 
         self._components['KERNEL_ARG_DECLS'] = _kernel_arg_decls
+        self._components['KERNEL_LIB_ARG_DECLS'] = _kernel_lib_arg_decls
 
 
 
@@ -1010,7 +1023,9 @@ class PairLoopNeighbourListNS(object):
     def _generate_lib_inner_loop_block(self):
         self._components['LIB_INNER_LOOP_BLOCK'] = \
             cgen.Block([cgen.Line('const int ' + self._components['LIB_PAIR_INDEX_1']
-                                  + ' = NLIST[_k];\n \n')])
+                                  + ' = NLIST[_k];\n \n'),
+                        self._components['LIB_KERNEL_CALL']
+                        ])
 
 
 
@@ -1025,12 +1040,131 @@ class PairLoopNeighbourListNS(object):
 
 
 
+
+
     def _generate_kernel_gather(self):
-        self._components['LIB_KERNEL_GATHER'] = cgen.Module([cgen.Line('')])
+
+        kernel_gather = cgen.Module([cgen.Line('')])
+
+
+        if self._kernel.static_args is not None:
+
+            for i, dat in enumerate(self._kernel.static_args.items()):
+                pass
+
+
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+
+            if issubclass(type(dat[1][0]), host.Array):
+                pass
+            elif issubclass(type(dat[1][0]), host.Matrix):
+
+
+                isym = dat[0]+'i'
+                nc = dat[1][0].ncomp
+                ncb = '['+str(nc)+']'
+                dtype = host.ctypes_map[dat[1][0].dtype]
+
+                t = '{'
+                for tx in range(nc):
+                    t+= '*(' + dat[0] + '+' + self._components['LIB_PAIR_INDEX_0']
+                    t+= '*' + str(nc) + '+' + str(tx) + '),'
+                t = t[:-1] + '}'
+
+                g = cgen.Value(dtype,isym+ncb)
+
+                if not dat[1][1].write:
+                    g = cgen.Const(g)
+                g = cgen.Initializer(g,t)
+
+
+
+                kernel_gather.append(g)
+
+
+            else:
+                print "ERROR: Type not known"
+
+
+
+        self._components['LIB_KERNEL_GATHER'] = kernel_gather
+
+
+
+
+    def _generate_kernel_call(self):
+
+        kernel_call = cgen.Module([cgen.Line('')])
+        kernel_call_symbols = []
+
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+            if issubclass(type(dat[1][0]), host.Array):
+                kernel_call_symbols.append(dat[0])
+            elif issubclass(type(dat[1][0]), host.Matrix):
+                call_symbol = dat[0] + '_c'
+                pair_symbol = dat[0] + '_p'
+
+                isym = dat[0]+'i'
+                nc = dat[1][0].ncomp
+                ncb = '['+str(nc)+']'
+                dtype = host.ctypes_map[dat[1][0].dtype]
+
+                jsym = dat[0] + '+' + self._components['LIB_PAIR_INDEX_1'] + '*' + str(nc)
+
+
+                g = cgen.Pointer(cgen.Value(dtype, call_symbol+'[2]'))
+
+                if not dat[1][1].write:
+                    g = cgen.Const(g)
+
+                g = cgen.Initializer(g,'{&'+isym+'[0], ' + jsym + '}' )
+
+
+                kernel_call.append(cgen.Module([g]))
+
+                g = cgen.Pointer(cgen.Pointer(cgen.Value(dtype, pair_symbol)))
+                if not dat[1][1].write:
+                    g = cgen.Const(g)
+
+                g = cgen.Initializer(
+                        g,
+                        '&'+call_symbol+'[0]'
+                   )
+
+
+
+                kernel_call.append(g)
+
+                kernel_call_symbols.append(pair_symbol)
+
+
+            else:
+                print "ERROR: Type not known"
+
+
+        kernel_call_symbols_s = ''
+        for sx in kernel_call_symbols:
+            kernel_call_symbols_s += sx +','
+        kernel_call_symbols_s=kernel_call_symbols_s[:-1]
+
+        kernel_call.append(cgen.Line(
+            'k_'+self._kernel.name+'(' + kernel_call_symbols_s + ');'
+        ))
+
+        self._components['LIB_KERNEL_CALL'] = kernel_call
+
+
+
+
 
 
     def _generate_kernel_scatter(self):
         self._components['LIB_KERNEL_SCATTER'] = cgen.Module([cgen.Line('')])
+
+
+
+
+
 
 
     def _generate_lib_outer_loop(self):
@@ -1061,7 +1195,7 @@ class PairLoopNeighbourListNS(object):
             cgen.FunctionDeclaration(
                 cgen.Value("void", self._components['LIB_NAME'])
             ,
-                self._components['LIB_ARG_DECLS'] + self._components['KERNEL_ARG_DECLS']
+                self._components['LIB_ARG_DECLS'] + self._components['KERNEL_LIB_ARG_DECLS']
             ),
                 block
             )
@@ -1074,17 +1208,14 @@ class PairLoopNeighbourListNS(object):
 
     def _generate_header_source(self):
         """Generate the source code of the header file.
-
         Returns the source code for the header file.
         """
         code = '''
-
         %(INCLUDED_HEADERS)s
 
         #include "%(LIB_DIR)s/generic.h"
 
         extern "C" %(FUNC_DEC)s
-
         '''
         d = {'INCLUDED_HEADERS': str(self._components['KERNEL_HEADERS']),
              'FUNC_DEC': str(self._components['LIB_FUNC'].fdecl),
@@ -1093,37 +1224,10 @@ class PairLoopNeighbourListNS(object):
 
 
 
-    def _kernel_argument_declarations(self):
-        s = build.Code()
-        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
-
-            if type(dat_orig[1]) is tuple:
-                dat = dat_orig[0], dat_orig[1][0]
-                _mode = dat_orig[1][1]
-            else:
-                dat = dat_orig
-                _mode = access.RW
-
-            if dat[1].name == 'forces':
-                _dd = [dat[1]]
-            else:
-                _dd = []
-
-
-            s += generation.generate_map(pair=True,
-                                         symbol_external=dat[0] + '_ext',
-                                         symbol_internal=dat[0],
-                                         dat=dat[1],
-                                         access_type=_mode)
-
-        return s.string
-
-
-
-
     def execute(self, n=None, dat_dict=None, static_args=None):
         """
-        C version of the pair_locate: Loop over all cells update forces and potential engery.
+        C version of the pair_locate: Loop over all cells update forces and
+         potential engery.
         """
 
         cell2part = self._group.get_cell_to_particle_map()
@@ -1169,18 +1273,14 @@ class PairLoopNeighbourListNS(object):
             self._neighbourlist_count += 1
 
 
-
         '''Create arg list'''
-        _N_TOTAL = ctypes.c_int(self.neighbour_list.n_total)
         _N_LOCAL = ctypes.c_int(self.neighbour_list.n_local)
         _STARTS = self.neighbour_list.neighbour_starting_points.ctypes_data
         _LIST = self.neighbour_list.list.ctypes_data
 
-        args2 = [_N_TOTAL,
-                 _N_LOCAL,
+        args2 = [_N_LOCAL,
                  _STARTS,
                  _LIST]
-
 
         args2.append(self.loop_timer.get_python_parameters())
 
