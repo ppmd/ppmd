@@ -9,6 +9,17 @@ import collections
 # package level
 import access
 
+int32 = ctypes.c_int32
+int32_str = 'int'
+
+int64 = ctypes.c_int64
+int64_str = 'long'
+
+double = ctypes.c_double
+double_str = 'double'
+
+
+
 
 ctypes_map = {ctypes.c_double: 'double',
               ctypes.c_int: 'int',

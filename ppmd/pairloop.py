@@ -1,9 +1,7 @@
 # system level
-import numpy as np
 import ctypes
 import os
-import hashlib
-import subprocess
+import cgen
 
 # package level
 import generation
@@ -815,11 +813,18 @@ class VectorPairLoopNeighbourList(PairLoopNeighbourList):
 
         '''
 
+# #############################################################################
+# --------------------------------- AST ---------------------------------------
+# #############################################################################
+
+def Restrict(keyword, symbol):
+    return str(keyword) + ' ' + str(symbol)
 
 
 
 
-class PairLoopNeighbourListNS(PairLoopNeighbourList):
+class PairLoopNeighbourListNS(object):
+
 
     _neighbour_list_dict = {}
 
@@ -853,12 +858,16 @@ class PairLoopNeighbourListNS(PairLoopNeighbourList):
         self.loop_timer = opt.LoopTimer()
         self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
 
-        # Init code
-        self._kernel_code = self._kernel.code
-        self._code_init()
+
+        self._components = {'LIB_PAIR_INDEX_0': '_i',
+                            'LIB_PAIR_INDEX_1': '_j',
+                            'LIB_NAME': str(self._kernel.name) + '_wrapper'}
+
+        self._generate()
+
 
         self._lib = build.simple_lib_creator(self._generate_header_source(),
-                                             self._generate_impl_source(),
+                                             self._components['LIB_SRC'],
                                              self._kernel.name,
                                              CC=self._cc)
 
@@ -894,44 +903,300 @@ class PairLoopNeighbourListNS(PairLoopNeighbourList):
         self._neighbourlist_count = 0
         self._invocations = 0
 
-    def _code_init(self):
-        self._kernel_code = self._kernel.code
-        self._code = '''
-        #include <stdio.h>
-
-        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const long* %(RESTRICT)s START_POINTS, const int* %(RESTRICT)s NLIST, %(ARGUMENTS)s) {
 
 
 
-            %(LOOP_TIMER_PRE)s
+
+    def _generate(self):
+        self._generate_lib_specific_args()
+        self._generate_kernel_arg_decls()
+        self._generate_kernel_func()
+        self._generate_kernel_headers()
+
+        self._generate_lib_inner_loop_block()
+        self._generate_lib_inner_loop()
 
 
-            for(int _i = 0; _i < N_LOCAL; _i++){
-                for(long _k = START_POINTS[_i]; _k < START_POINTS[_i+1]; _k++){
-                    int _j = NLIST[_k];
-                    int _cpp_halo_flag;
-                    int _cp_halo_flag = 0;
+        self._generate_kernel_gather()
+        self._generate_kernel_scatter()
+        self._generate_lib_outer_loop()
+        self._generate_lib_func()
+        self._generate_lib_src()
 
-                    // set halo flag, TODO move all halo flags to be an if condition on particle index?
-                    //if (_i >= N_LOCAL) { _cp_halo_flag = 1; } else { _cp_halo_flag = 0; }
-                    if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
+        print 60*"-"
+        print self._components['LIB_SRC']
+        print 60*"-"
 
-                     %(KERNEL_ARGUMENT_DECL)s
 
-                     //KERNEL CODE START
 
-                     %(KERNEL)s
 
-                     //KERNEL CODE END
+    def _generate_lib_specific_args(self):
+        self._components['LIB_ARG_DECLS'] = [
+            cgen.Const(cgen.Value(host.int32_str, 'N_LOCAL')),
+            cgen.Const(
+                cgen.Pointer(
+                    cgen.Value(host.int64_str,
+                               Restrict(self._cc.restrict_keyword,'START_POINTS'))
+                )
+            ),
+            cgen.Const(
+                cgen.Pointer(
+                    cgen.Value(host.int32_str,
+                               Restrict(self._cc.restrict_keyword, 'NLIST')),
+                )
+            ),
+            self.loop_timer.get_cpp_arguments_ast()
+        ]
 
-                }
-            }
 
-            %(LOOP_TIMER_POST)s
 
-            return;
-        }
+
+    def _generate_kernel_arg_decls(self):
+
+        _kernel_arg_decls = []
+
+        if self._kernel.static_args is not None:
+
+            for i, dat in enumerate(self._kernel.static_args.items()):
+                _kernel_arg_decls.append(
+                    cgen.Const(cgen.Value(host.ctypes_map[dat[1]], dat[0]))
+                )
+
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+
+            assert type(dat[1]) is tuple, "Access descriptors not found"
+
+            kernel_arg = cgen.Pointer(cgen.Value(host.ctypes_map[dat[1][0].dtype],
+                                                 Restrict(self._cc.restrict_keyword, dat[0]))
+                                      )
+            if not dat[1][1].write:
+                kernel_arg = cgen.Const(kernel_arg)
+
+            _kernel_arg_decls.append(kernel_arg)
+
+        self._components['KERNEL_ARG_DECLS'] = _kernel_arg_decls
+
+
+
+
+    def _generate_kernel_func(self):
+        self._components['KERNEL_FUNC'] = cgen.FunctionBody(
+            cgen.FunctionDeclaration(
+                cgen.DeclSpecifier(
+                    cgen.Value("void", 'k_' + self._kernel.name), 'inline'
+                ),
+                self._components['KERNEL_ARG_DECLS']
+            ),
+                cgen.Block([
+                    cgen.Line(self._kernel.code)
+                ])
+            )
+
+
+
+    def _generate_kernel_headers(self):
+        s = []
+        if self._kernel.headers is not None:
+            for x in self._kernel.headers:
+                s.append(cgen.Include(x, system=False))
+
+        s.append(self.loop_timer.get_cpp_headers_ast())
+        self._components['KERNEL_HEADERS'] = cgen.Module(s)
+
+
+
+
+
+    def _generate_lib_inner_loop_block(self):
+        self._components['LIB_INNER_LOOP_BLOCK'] = \
+            cgen.Block([cgen.Line('const int ' + self._components['LIB_PAIR_INDEX_1']
+                                  + ' = NLIST[_k];\n \n')])
+
+
+
+    def _generate_lib_inner_loop(self):
+        i = self._components['LIB_PAIR_INDEX_0']
+        b = self._components['LIB_INNER_LOOP_BLOCK']
+        self._components['LIB_INNER_LOOP'] = cgen.For('long _k=START_POINTS['+i+']',
+                                                      '_k<START_POINTS['+i+'+1]',
+                                                      '_k++',
+                                                      b
+                                                      )
+
+
+
+    def _generate_kernel_gather(self):
+        self._components['LIB_KERNEL_GATHER'] = cgen.Module([cgen.Line('')])
+
+
+    def _generate_kernel_scatter(self):
+        self._components['LIB_KERNEL_SCATTER'] = cgen.Module([cgen.Line('')])
+
+
+    def _generate_lib_outer_loop(self):
+
+        block = cgen.Block([self._components['LIB_KERNEL_GATHER'],
+                            self._components['LIB_INNER_LOOP'],
+                            self._components['LIB_KERNEL_SCATTER']])
+
+        i = self._components['LIB_PAIR_INDEX_0']
+
+        loop = cgen.For('int ' + i + '=0',
+                        i + '<N_LOCAL',
+                        i+'++',
+                        block)
+
+        self._components['LIB_OUTER_LOOP'] = loop
+
+
+    def _generate_lib_func(self):
+        block = cgen.Block([
+            self.loop_timer.get_cpp_pre_loop_code_ast(),
+            self._components['LIB_OUTER_LOOP'],
+            self.loop_timer.get_cpp_post_loop_code_ast()
+        ])
+
+
+        self._components['LIB_FUNC'] = cgen.FunctionBody(
+            cgen.FunctionDeclaration(
+                cgen.Value("void", self._components['LIB_NAME'])
+            ,
+                self._components['LIB_ARG_DECLS'] + self._components['KERNEL_ARG_DECLS']
+            ),
+                block
+            )
+
+    def _generate_lib_src(self):
+        self._components['LIB_SRC'] = cgen.Module([self._components['KERNEL_FUNC'],
+                                                   self._components['LIB_FUNC']])
+
+
+
+    def _generate_header_source(self):
+        """Generate the source code of the header file.
+
+        Returns the source code for the header file.
+        """
+        code = '''
+
+        %(INCLUDED_HEADERS)s
+
+        #include "%(LIB_DIR)s/generic.h"
+
+        extern "C" %(FUNC_DEC)s
 
         '''
+        d = {'INCLUDED_HEADERS': str(self._components['KERNEL_HEADERS']),
+             'FUNC_DEC': str(self._components['LIB_FUNC'].fdecl),
+             'LIB_DIR': runtime.LIB_DIR.dir}
+        return code % d
 
+
+
+    def _kernel_argument_declarations(self):
+        s = build.Code()
+        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+
+            if type(dat_orig[1]) is tuple:
+                dat = dat_orig[0], dat_orig[1][0]
+                _mode = dat_orig[1][1]
+            else:
+                dat = dat_orig
+                _mode = access.RW
+
+            if dat[1].name == 'forces':
+                _dd = [dat[1]]
+            else:
+                _dd = []
+
+
+            s += generation.generate_map(pair=True,
+                                         symbol_external=dat[0] + '_ext',
+                                         symbol_internal=dat[0],
+                                         dat=dat[1],
+                                         access_type=_mode)
+
+        return s.string
+
+
+
+
+    def execute(self, n=None, dat_dict=None, static_args=None):
+        """
+        C version of the pair_locate: Loop over all cells update forces and potential engery.
+        """
+
+        cell2part = self._group.get_cell_to_particle_map()
+        cell2part.check()
+
+        '''Allow alternative pointers'''
+        if dat_dict is not None:
+            self._particle_dat_dict = dat_dict
+
+
+        args = []
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+
+        '''Pass access descriptor to dat'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_access(dat_orig[1])
+
+
+        '''Add pointer arguments to launch command'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data)
+            else:
+                args.append(dat_orig.ctypes_data)
+
+
+        '''Rebuild neighbour list potentially'''
+        self._invocations += 1
+        if cell2part.version_id > self.neighbour_list.version_id:
+            self.neighbour_list.update()
+            #print "new list"
+            #print self.neighbour_list.neighbour_starting_points.data[0:16]
+            #print self.neighbour_list.list.data[0:10:]
+
+
+
+            self._neighbourlist_count += 1
+
+
+
+        '''Create arg list'''
+        _N_TOTAL = ctypes.c_int(self.neighbour_list.n_total)
+        _N_LOCAL = ctypes.c_int(self.neighbour_list.n_local)
+        _STARTS = self.neighbour_list.neighbour_starting_points.ctypes_data
+        _LIST = self.neighbour_list.list.ctypes_data
+
+        args2 = [_N_TOTAL,
+                 _N_LOCAL,
+                 _STARTS,
+                 _LIST]
+
+
+        args2.append(self.loop_timer.get_python_parameters())
+
+        args = args2 + args
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        self.wrapper_timer.start()
+        method(*args)
+        self.wrapper_timer.pause()
+
+        '''afterwards access descriptors'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()
 

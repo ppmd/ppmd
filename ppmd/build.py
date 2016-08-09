@@ -562,7 +562,7 @@ def source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir
     _fh.close()
 
     _fh = open(os.path.join(dst_dir, _filename + extensions[1]), 'w')
-    _fh.write('#include <' + _filename + extensions[0] + '>')
+    _fh.write('#include <' + _filename + extensions[0] + '>\n\n')
     _fh.write(str(src_code))
     _fh.close()
 
