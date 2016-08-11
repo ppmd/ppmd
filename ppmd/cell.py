@@ -1941,7 +1941,7 @@ class NeighbourListNonN3(NeighbourList):
             }
         }
         NEIGHBOUR_STARTS[end_ix] = m + 1;
-
+        //printf("Number of neighbours: %d\\n", m);
         RC[0] = 0;
         return;
         '''

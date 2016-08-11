@@ -649,7 +649,7 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
             try:
                 with open(stdout_filename, 'w') as stdout:
                     with open(stderr_filename, 'w') as stderr:
-                        stdout.write('Compilation command:\n')
+                        stdout.write('#Compilation command:\n')
                         stdout.write(' '.join(_c_cmd))
                         stdout.write('\n\n')
                         p = subprocess.Popen(_c_cmd,

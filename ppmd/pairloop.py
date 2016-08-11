@@ -862,7 +862,7 @@ class PairLoopNeighbourListNS(object):
         self._components = {'LIB_PAIR_INDEX_0': '_i',
                             'LIB_PAIR_INDEX_1': '_j',
                             'LIB_NAME': str(self._kernel.name) + '_wrapper'}
-
+        self._gather_size_limit = 4
         self._generate()
 
 
@@ -924,9 +924,9 @@ class PairLoopNeighbourListNS(object):
         self._generate_lib_func()
         self._generate_lib_src()
 
-        print 60*"-"
-        print self._components['LIB_SRC']
-        print 60*"-"
+        # print 60*"-"
+        # print self._components['LIB_SRC']
+        # print 60*"-"
 
 
 
@@ -956,7 +956,9 @@ class PairLoopNeighbourListNS(object):
 
         _kernel_arg_decls = []
         _kernel_lib_arg_decls = []
-        _kernel_structs = cgen.Module([cgen.Comment('Structs generated per ParticleDat')])
+        _kernel_structs = cgen.Module([
+            cgen.Comment('#### Structs generated per ParticleDat ####')
+        ])
 
         if self._kernel.static_args is not None:
 
@@ -1012,7 +1014,7 @@ class PairLoopNeighbourListNS(object):
 
     def _generate_map_macros(self):
 
-        g = cgen.Module([cgen.Comment('KERNEL_MAP_MACROS')])
+        g = cgen.Module([cgen.Comment('#### KERNEL_MAP_MACROS ####')])
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
             if issubclass(type(dat[1][0]), host.Array):
@@ -1079,7 +1081,7 @@ class PairLoopNeighbourListNS(object):
 
     def _generate_kernel_gather(self):
 
-        kernel_gather = cgen.Module([cgen.Line('')])
+        kernel_gather = cgen.Module([cgen.Comment('#### Pre kernel gather ####')])
 
 
         if self._kernel.static_args is not None:
@@ -1092,7 +1094,9 @@ class PairLoopNeighbourListNS(object):
 
             if issubclass(type(dat[1][0]), host.Array):
                 pass
-            elif issubclass(type(dat[1][0]), host.Matrix):
+            elif issubclass(type(dat[1][0]), host.Matrix) \
+                    and dat[1][1].write \
+                    and dat[1][0].ncomp <= self._gather_size_limit:
 
 
                 isym = dat[0]+'i'
@@ -1107,18 +1111,16 @@ class PairLoopNeighbourListNS(object):
                 t = t[:-1] + '}'
 
                 g = cgen.Value(dtype,isym+ncb)
-
+                '''
                 if not dat[1][1].write:
                     g = cgen.Const(g)
+                '''
                 g = cgen.Initializer(g,t)
 
 
 
                 kernel_gather.append(g)
 
-
-            else:
-                print "ERROR: Type not known"
 
 
         self._components['LIB_KERNEL_GATHER'] = kernel_gather
@@ -1128,7 +1130,7 @@ class PairLoopNeighbourListNS(object):
 
     def _generate_kernel_call(self):
 
-        kernel_call = cgen.Module([cgen.Line('')])
+        kernel_call = cgen.Module([cgen.Comment('#### Kernel call arguments ####')])
         kernel_call_symbols = []
 
         for i, dat in enumerate(self._particle_dat_dict.items()):
@@ -1138,11 +1140,17 @@ class PairLoopNeighbourListNS(object):
                 call_symbol = dat[0] + '_c'
                 kernel_call_symbols.append(call_symbol)
 
-                isym = dat[0]+'i'
                 nc = str(dat[1][0].ncomp)
+                _ishift = '+' + self._components['LIB_PAIR_INDEX_0'] + '*' + nc
                 _jshift = '+' + self._components['LIB_PAIR_INDEX_1'] + '*' + nc
+
+                if dat[1][1].write and dat[1][0].ncomp <= self._gather_size_limit:
+                    isym = '&'+ dat[0]+'i[0]'
+                else:
+                    isym = dat[0] + _ishift
+                jsym = dat[0] + _jshift
                 g = cgen.Value(dat[0]+'_t', call_symbol)
-                g = cgen.Initializer(g, '{ &' + isym + '[0], ' + dat[0] + _jshift + '}')
+                g = cgen.Initializer(g, '{ ' + isym + ', ' + jsym + '}')
 
                 kernel_call.append(g)
 
@@ -1151,6 +1159,7 @@ class PairLoopNeighbourListNS(object):
             else:
                 print "ERROR: Type not known"
 
+        kernel_call.append(cgen.Comment('#### Kernel call ####'))
 
         kernel_call_symbols_s = ''
         for sx in kernel_call_symbols:
@@ -1168,7 +1177,7 @@ class PairLoopNeighbourListNS(object):
 
     def _generate_kernel_scatter(self):
 
-        kernel_scatter = cgen.Module([cgen.Line('')])
+        kernel_scatter = cgen.Module([cgen.Comment('#### Post kernel scatter ####')])
 
 
         if self._kernel.static_args is not None:
@@ -1181,7 +1190,9 @@ class PairLoopNeighbourListNS(object):
 
             if issubclass(type(dat[1][0]), host.Array):
                 pass
-            elif issubclass(type(dat[1][0]), host.Matrix) and dat[1][1].write:
+            elif issubclass(type(dat[1][0]), host.Matrix)\
+                    and dat[1][1].write\
+                    and dat[1][0].ncomp <= self._gather_size_limit:
 
                 
                 isym = dat[0]+'i'
@@ -1242,7 +1253,9 @@ class PairLoopNeighbourListNS(object):
         self._components['LIB_SRC'] = cgen.Module([
             self._components['KERNEL_STRUCT_TYPEDEFS'],
             self._components['KERNEL_MAP_MACROS'],
+            cgen.Comment('#### Kernel function ####'),
             self._components['KERNEL_FUNC'],
+            cgen.Comment('#### Library function ####'),
             self._components['LIB_FUNC']
         ])
 
