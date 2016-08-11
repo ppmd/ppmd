@@ -910,6 +910,7 @@ class PairLoopNeighbourListNS(object):
         self._generate_lib_specific_args()
         self._generate_kernel_arg_decls()
         self._generate_kernel_func()
+        self._generate_map_macros()
         self._generate_kernel_headers()
 
         self._generate_kernel_gather()
@@ -955,6 +956,7 @@ class PairLoopNeighbourListNS(object):
 
         _kernel_arg_decls = []
         _kernel_lib_arg_decls = []
+        _kernel_structs = cgen.Module([cgen.Comment('Structs generated per ParticleDat')])
 
         if self._kernel.static_args is not None:
 
@@ -971,24 +973,57 @@ class PairLoopNeighbourListNS(object):
                                           Restrict(self._cc.restrict_keyword, dat[0]))
                                       )
 
-            kernel_arg = cgen.Pointer(cgen.Value(host.ctypes_map[dat[1][0].dtype],
-                                          Restrict(self._cc.restrict_keyword, dat[0]))
-                                      )
+            if issubclass(type(dat[1][0]), host.Array):
+                kernel_arg = cgen.Pointer(cgen.Value(host.ctypes_map[dat[1][0].dtype],
+                                              Restrict(self._cc.restrict_keyword, dat[0]))
+                                          )
+                if not dat[1][1].write:
+                    kernel_arg = cgen.Const(kernel_arg)
 
-            if issubclass(type(dat[1][0]), host.Matrix):
-                 kernel_arg = cgen.Pointer(kernel_arg)
+                _kernel_arg_decls.append(kernel_arg)
+
+            elif issubclass(type(dat[1][0]), host.Matrix):
+                # MAKE STRUCT TYPE
+                dtype = dat[1][0].dtype
+                ti = cgen.Pointer(cgen.Value(cgen.dtype_to_ctype(dtype),
+                                             Restrict(self._cc.restrict_keyword,'i')))
+                tj = cgen.Pointer(cgen.Value(cgen.dtype_to_ctype(dtype),
+                                             Restrict(self._cc.restrict_keyword,'j')))
+                if not dat[1][1].write:
+                    ti = cgen.Const(ti)
+                    tj = cgen.Const(tj)
+                typename = dat[0]+'_t'
+                _kernel_structs.append(cgen.Typedef(cgen.Struct('', [ti,tj], typename)))
+
+
+                # MAKE STRUCT ARG
+                _kernel_arg_decls.append(cgen.Value(typename, dat[0]))
 
 
             if not dat[1][1].write:
-                kernel_arg = cgen.Const(kernel_arg)
                 kernel_lib_arg = cgen.Const(kernel_lib_arg)
 
-            _kernel_arg_decls.append(kernel_arg)
             _kernel_lib_arg_decls.append(kernel_lib_arg)
 
         self._components['KERNEL_ARG_DECLS'] = _kernel_arg_decls
         self._components['KERNEL_LIB_ARG_DECLS'] = _kernel_lib_arg_decls
+        self._components['KERNEL_STRUCT_TYPEDEFS'] = _kernel_structs
 
+
+    def _generate_map_macros(self):
+
+        g = cgen.Module([cgen.Comment('KERNEL_MAP_MACROS')])
+
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+            if issubclass(type(dat[1][0]), host.Array):
+                g.append(cgen.Define(dat[0]+'(x)', '('+dat[0]+'[(x)])'))
+            if issubclass(type(dat[1][0]), host.Matrix):
+                g.append(cgen.Define(dat[0]+'(x,y)', dat[0]+'_##x(y)'))
+                g.append(cgen.Define(dat[0]+'_0(y)', dat[0]+'.i[(y)]'))
+                g.append(cgen.Define(dat[0]+'_1(y)', dat[0]+'.j[(y)]'))
+
+
+        self._components['KERNEL_MAP_MACROS'] = g
 
 
 
@@ -1086,7 +1121,6 @@ class PairLoopNeighbourListNS(object):
                 print "ERROR: Type not known"
 
 
-
         self._components['LIB_KERNEL_GATHER'] = kernel_gather
 
 
@@ -1102,40 +1136,16 @@ class PairLoopNeighbourListNS(object):
                 kernel_call_symbols.append(dat[0])
             elif issubclass(type(dat[1][0]), host.Matrix):
                 call_symbol = dat[0] + '_c'
-                pair_symbol = dat[0] + '_p'
+                kernel_call_symbols.append(call_symbol)
 
                 isym = dat[0]+'i'
-                nc = dat[1][0].ncomp
-                ncb = '['+str(nc)+']'
-                dtype = host.ctypes_map[dat[1][0].dtype]
-
-                jsym = dat[0] + '+' + self._components['LIB_PAIR_INDEX_1'] + '*' + str(nc)
-
-
-                g = cgen.Pointer(cgen.Value(dtype, call_symbol+'[2]'))
-
-                if not dat[1][1].write:
-                    g = cgen.Const(g)
-
-                g = cgen.Initializer(g,'{&'+isym+'[0], ' + jsym + '}' )
-
-
-                kernel_call.append(cgen.Module([g]))
-
-                g = cgen.Pointer(cgen.Pointer(cgen.Value(dtype, pair_symbol)))
-                if not dat[1][1].write:
-                    g = cgen.Const(g)
-
-                g = cgen.Initializer(
-                        g,
-                        '&'+call_symbol+'[0]'
-                   )
-
-
+                nc = str(dat[1][0].ncomp)
+                _jshift = '+' + self._components['LIB_PAIR_INDEX_1'] + '*' + nc
+                g = cgen.Value(dat[0]+'_t', call_symbol)
+                g = cgen.Initializer(g, '{ &' + isym + '[0], ' + dat[0] + _jshift + '}')
 
                 kernel_call.append(g)
 
-                kernel_call_symbols.append(pair_symbol)
 
 
             else:
@@ -1156,12 +1166,40 @@ class PairLoopNeighbourListNS(object):
 
 
 
-
-
     def _generate_kernel_scatter(self):
-        self._components['LIB_KERNEL_SCATTER'] = cgen.Module([cgen.Line('')])
+
+        kernel_scatter = cgen.Module([cgen.Line('')])
 
 
+        if self._kernel.static_args is not None:
+
+            for i, dat in enumerate(self._kernel.static_args.items()):
+                pass
+
+
+        for i, dat in enumerate(self._particle_dat_dict.items()):
+
+            if issubclass(type(dat[1][0]), host.Array):
+                pass
+            elif issubclass(type(dat[1][0]), host.Matrix) and dat[1][1].write:
+
+                
+                isym = dat[0]+'i'
+                nc = dat[1][0].ncomp
+                ncb = '['+str(nc)+']'
+                dtype = host.ctypes_map[dat[1][0].dtype]
+                ix =self._components['LIB_PAIR_INDEX_0']
+
+                b = cgen.Assign(dat[0]+'['+str(nc)+'*'+ix+'+tx]', isym+'[tx]')
+                g = cgen.For('int tx=0', 'tx<'+str(nc), 'tx++',
+                             cgen.Block([b]))
+
+
+                kernel_scatter.append(g)
+
+
+
+        self._components['LIB_KERNEL_SCATTER'] = kernel_scatter
 
 
 
@@ -1201,8 +1239,12 @@ class PairLoopNeighbourListNS(object):
             )
 
     def _generate_lib_src(self):
-        self._components['LIB_SRC'] = cgen.Module([self._components['KERNEL_FUNC'],
-                                                   self._components['LIB_FUNC']])
+        self._components['LIB_SRC'] = cgen.Module([
+            self._components['KERNEL_STRUCT_TYPEDEFS'],
+            self._components['KERNEL_MAP_MACROS'],
+            self._components['KERNEL_FUNC'],
+            self._components['LIB_FUNC']
+        ])
 
 
 

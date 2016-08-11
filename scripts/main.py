@@ -57,13 +57,15 @@ if __name__ == '__main__':
     t=0.1
     dt=0.0001
 
+    N3 = False
+
 
     if test_1000:
         # n=25 reasonable size
-        n = 20
+        n = 30
         N = n**3
         # n=860
-        rho = 2.0
+        rho = 1.5
         mu = 1.0
         nsig = 2.0
         rc = 2.5
@@ -72,11 +74,10 @@ if __name__ == '__main__':
         test_domain = domain.BaseDomainHalo()
 
         # Initialise LJ potential
-        test_potential = potential.LennardJones(sigma=1.0, epsilon=1.0, rc=rc)
-        #test_potential = potential.TestPotential2(sigma=1.0,epsilon=1.0, rc=7.5)
-        #test_potential = potential.TestPotential3(sigma=1.0,epsilon=1.0, rc=7.5)
-
-        # print kernel.analyse(test_potential.kernel, [])
+        if N3:
+            test_potential = potential.LennardJones(sigma=1.0, epsilon=1.0, rc=rc)
+        else:
+            test_potential = potential.VLennardJones(sigma=1.0, epsilon=1.0, rc=rc)
 
 
         # Place n particles in a lattice with given density.
@@ -135,12 +136,19 @@ if __name__ == '__main__':
 
     # Create simulation class from above initialisations.
 
+    if N3:
+        ploop = pairloop.PairLoopNeighbourList
+    else:
+        ploop = pairloop.PairLoopNeighbourListNS
+
+
     sim1 = simulation.BaseMDSimulation(domain_in=test_domain,
                                        potential_in=test_potential,
                                        particle_pos_init=test_pos_init,
                                        particle_vel_init=test_vel_init,
                                        particle_mass_init=test_mass_init,
-                                       n=N
+                                       n=N,
+                                       pairloop_in=ploop
                                        )
 
 
