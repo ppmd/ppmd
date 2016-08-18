@@ -332,7 +332,7 @@ def test_host_pair_loop_NS_6(state):
 
 
     kernel_code = '''
-    NC[0][0]+=1;
+    NC.i[0]+=1;
     '''
 
     kernel = md.kernel.Kernel('test_host_pair_loop_NS_1',code=kernel_code)

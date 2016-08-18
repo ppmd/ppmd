@@ -440,6 +440,7 @@ class CartesianHaloSix(object):
 
         ccc = self._cell_to_particle_map.cell_contents_count
 
+        # This if allows the host size exchnage code to be used for the gpu
         if type(ccc) is host.Array:
             ccc_ptr = ccc.ctypes_data
 
@@ -469,6 +470,10 @@ class CartesianHaloSix(object):
                                  self._h_tmp.ctypes_data,
                                  self._b_tmp.ctypes_data,
                                  self.dir_counts.ctypes_data)
+
+        # copy new sizes back to original array (eg for gpu)
+        if type(ccc) is not host.Array:
+            ccc[:] = self._cell_contents_count_tmp[:ccc.ncomp:]
 
         return self._h_count.value, self._t_count.value
 

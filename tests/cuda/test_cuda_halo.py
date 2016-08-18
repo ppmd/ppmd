@@ -109,8 +109,9 @@ def test_host_halo_cube_1(state):
 
     ca = state.get_domain().cell_array
 
-    np.set_printoptions(linewidth=24)
-    print "cell counts \n", state.get_cell_to_particle_map().cell_contents_count[:]
+    np.set_printoptions(linewidth=2*(ca[0]))
+
+
 
     for cx in xrange(ca[0]):
         for cy in xrange(ca[1]):
@@ -123,8 +124,13 @@ def test_host_halo_cube_1(state):
                 else:
                     assert state.get_cell_to_particle_map().cell_contents_count[ci] == 1
 
-
     state.p.halo_exchange()
+
+    for rx in range(nproc):
+        if rx == rank:
+            print "cell counts \n", state.get_cell_to_particle_map().cell_contents_count[:]
+            print 60*"-"
+        md.mpi.MPI_HANDLE.barrier()
 
     for cx in xrange(ca[0]):
         for cy in xrange(ca[1]):

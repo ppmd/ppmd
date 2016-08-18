@@ -55,17 +55,17 @@ if __name__ == '__main__':
 
 
     t=0.1
-    dt=0.0001
+    dt=0.001
 
     N3 = False
 
 
     if test_1000:
         # n=25 reasonable size
-        n = 30
+        n = 100
         N = n**3
         # n=860
-        rho = 1.5
+        rho = 0.8442
         mu = 1.0
         nsig = 2.0
         rc = 2.5

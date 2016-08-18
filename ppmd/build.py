@@ -11,7 +11,7 @@ import runtime
 import mpi
 
 
-_PER_PROC = False
+BUILD_PER_PROC = False
 
 ###############################################################################
 # COMPILERS START
@@ -125,7 +125,7 @@ ICC = Compiler(['ICC'],
                ['icc'],
                ['-fpic', '-std=c++0x'],
                ['-lm'],
-               ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=4'],
+               ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=5'],
                ['-g'],
                ['-c'],
                ['-shared'],
@@ -136,7 +136,7 @@ try:
                        ['icc'],
                        ['-fpic', '-std=c++0x'],
                        ['-lm'],
-                       ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=4', '-I' + os.environ["MPI_INCLUDE_DIR"]],
+                       ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=5', '-I' + os.environ["MPI_INCLUDE_DIR"]],
                        ['-lmpi'],
                        ['-c'],
                        ['-shared'],
@@ -544,7 +544,7 @@ def source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir
     _filename += '_' + md5(_filename + str(header_code) + str(src_code) +
                            str(name))
 
-    if _PER_PROC:
+    if BUILD_PER_PROC:
         _filename += '_' + str(mpi.MPI_HANDLE.rank)
 
     _fh = open(os.path.join(dst_dir, _filename + extensions[0]), 'w')
@@ -590,14 +590,14 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
     _filename += '_' + md5(_filename + str(header_code) + str(src_code) +
                            str(name))
 
-    if _PER_PROC:
+    if BUILD_PER_PROC:
         _filename += '_' + str(mpi.MPI_HANDLE.rank)
 
     _lib_filename = os.path.join(dst_dir, _filename + '.so')
 
     if not check_file_existance(_lib_filename):
 
-        if (mpi.MPI_HANDLE.rank == 0)  or _PER_PROC:
+        if (mpi.MPI_HANDLE.rank == 0)  or BUILD_PER_PROC:
             source_write(header_code, src_code, name, extensions=extensions, dst_dir=runtime.BUILD_DIR.dir)
         build_lib(_filename, extensions=extensions, CC=CC, hash=False)
 
@@ -626,7 +626,7 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
 
     #print mpi.MPI_HANDLE.rank, "building", _lib_filename
 
-    if (mpi.MPI_HANDLE.rank == 0) or _PER_PROC:
+    if (mpi.MPI_HANDLE.rank == 0) or BUILD_PER_PROC:
         if not os.path.exists(_lib_filename):
 
             _lib_src_filename = source_dir + lib + extensions[1]

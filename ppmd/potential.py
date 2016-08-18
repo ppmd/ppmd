@@ -678,9 +678,9 @@ class VLennardJones(LennardJones):
 
         kernel_code = '''
 
-        const double R0 = P(1, 0) - P(0, 0);
-        const double R1 = P(1, 1) - P(0, 1);
-        const double R2 = P(1, 2) - P(0, 2);
+        const double R0 = P.j[0] - P.i[0];
+        const double R1 = P.j[1] - P.i[1];
+        const double R2 = P.j[2] - P.i[2];
 
         const double r2 = R0*R0 + R1*R1 + R2*R2;
 
@@ -688,14 +688,14 @@ class VLennardJones(LennardJones):
         const double r_m4 = r_m2*r_m2;
         const double r_m6 = r_m4*r_m2;
 
-        u(0)+= (r2 < rc2) ? 0.5*CV*((r_m6-1.0)*r_m6 + internalshift) : 0.0;
+        u[0]+= (r2 < rc2) ? 0.5*CV*((r_m6-1.0)*r_m6 + internalshift) : 0.0;
 
         const double r_m8 = r_m4*r_m4;
         const double f_tmp = CF*(r_m6 - 0.5)*r_m8;
 
-        A(0, 0)+= (r2 < rc2) ? f_tmp*R0 : 0.0;
-        A(0, 1)+= (r2 < rc2) ? f_tmp*R1 : 0.0;
-        A(0, 2)+= (r2 < rc2) ? f_tmp*R2 : 0.0;
+        A.i[0]+= (r2 < rc2) ? f_tmp*R0 : 0.0;
+        A.i[1]+= (r2 < rc2) ? f_tmp*R1 : 0.0;
+        A.i[2]+= (r2 < rc2) ? f_tmp*R2 : 0.0;
 
         '''
         constants = (kernel.Constant('sigma2', self._sigma ** 2),
