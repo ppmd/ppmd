@@ -4,6 +4,7 @@
 
 #include <thrust/device_ptr.h>
 #include <thrust/scan.h>
+#include <thrust/extrema.h>
 #include "cuda_generic.h"
 
 using namespace std;
@@ -20,16 +21,30 @@ namespace _thrust {
 
         return 0;
     }
+
+    template <typename T>
+    T thrust_max_element(T* d_ptr, const int len){
+
+        thrust::device_ptr<T> td_ptr = thrust::device_pointer_cast(d_ptr);
+        return *(thrust::max_element(td_ptr, td_ptr + len));
+    }
+
 }
 
 
-extern "C" int cudaExclusiveScanDouble(double * d_ptr, const int len);
-extern "C" int cudaExclusiveScanInt(int * d_ptr, const int len);
+extern "C" int cudaExclusiveScanDouble(double * d_ptr, const int len){
+    _thrust::thrust_exclusive_scan<double>(d_ptr, len);
+    return 0;
+}
 
+extern "C" int cudaExclusiveScanInt(int * d_ptr, const int len){
+    _thrust::thrust_exclusive_scan<int>(d_ptr, len);
+    return 0;
+}
 
-
-
-
+extern "C" int cudaMaxElementInt(int * d_ptr, const int len){
+    return _thrust::thrust_max_element<int>(d_ptr, len);
+}
 
 
 

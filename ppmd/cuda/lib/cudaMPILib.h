@@ -2,6 +2,7 @@
 #include <iostream>
 #include <mpi.h>
 #include "cuda_generic.h"
+#include "cudaMisc.h"
 
 using namespace std;
 
@@ -49,9 +50,23 @@ extern "C" int cudaFindNewSlots(const int blocksize2[3],
                                 int * d_sources
                                 );
 
+extern "C" int cudaHaloArrayCopyScan(const int length,
+                                     const int* __restrict__ d_map,
+                                     const int* __restrict__ d_ccc,
+                                     int* __restrict__ d_scan,
+                                     int* __restrict__ h_max
+                                     );
 
-
-
+extern "C" int cudaHaloFillOccupancyMatrix(
+    const int length,
+    const int max_count,
+    const int occ_matrix_stride,
+    const int n_local,
+    const int* __restrict__ d_halo_indices,
+    const int* __restrict__ d_ccc,
+    const int* __restrict__ d_halo_scan,
+    int* __restrict__ d_occ_matrix
+);
 
 
 

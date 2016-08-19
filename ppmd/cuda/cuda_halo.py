@@ -12,7 +12,7 @@ import ppmd.host as host
 
 # cuda level imports
 import cuda_runtime
-import cuda_build
+import cuda_mpi
 import cuda_cell
 import cuda_base
 
@@ -284,8 +284,63 @@ HALOS = None
 
 
 
+def copy_h2d_exclusive_scan(in_array, out_array):
+    """
+    Copy an Array and compute an exclusive scan on the copy. Resizes out array
+    to length of in array plus 1.
+    :param in_array:
+    :param out_array:
+    """
+
+    assert type(in_array) is cuda_base.Array, "in_array as incorrect type"
+    assert type(out_array) is cuda_base.Array, "out_array as incorrect type"
+
+    if out_array.ncomp != (in_array.ncomp + 1):
+        out_array.realloc(in_array.ncomp + 1)
+
+    cuda_runtime.cuda_mem_cpy(d_ptr=out_array.ctypes_data,
+                              s_ptr=in_array.ctypes_data,
+                              size=in_array.ncomp * ctypes.sizeof(in_array.dtype),
+                              cpy_type="cudaMemcpyHostToDevice")
+
+    cuda_runtime.cuda_exclusive_scan(out_array, in_array.ncomp+1)
+
+    return
 
 
+'''
+const int length,
+const int max_count,
+const int occ_matrix_stride,
+const int n_local,
+const int* __restrict__ d_halo_indices,
+const int* __restrict__ d_ccc,
+const int* __restrict__ d_halo_scan,
+int* __restrict__ d_occ_matrix
+'''
+
+
+def update_cell_occ_matrix(
+    length,
+    max_count,
+    occ_matrix_stride,
+    n_local,
+    d_halo_indices,
+    d_ccc,
+    d_halo_scan,
+    d_occ_matrix
+    ):
+    cuda_mpi.LIB_CUDA_MPI['cudaHaloFillOccupancyMatrix'](
+        ctypes.c_int32(length),
+        ctypes.c_int32(max_count),
+        ctypes.c_int32(occ_matrix_stride),
+        ctypes.c_int32(n_local),
+        d_halo_indices.ctypes_data,
+        d_ccc.ctypes_data,
+        d_halo_scan.ctypes_data,
+        d_halo_scan.ctypes_data,
+        d_occ_matrix.ctypes_data
+    )
 
 
 

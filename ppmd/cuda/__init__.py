@@ -16,6 +16,8 @@ __all__ = [
 
 CUDA_IMPORT = False
 
+CUDA_IMPORT_ERROR = None
+
 try:
     import cuda_runtime
     import cuda_build
@@ -28,8 +30,8 @@ try:
     import cuda_state
     import cuda_mpi
     CUDA_IMPORT = True
-except:
-    pass
+except Exception as e:
+    CUDA_IMPORT_ERROR = e
 
 
 

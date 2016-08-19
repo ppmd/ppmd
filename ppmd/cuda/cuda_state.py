@@ -20,6 +20,7 @@ import cuda_runtime
 import cuda_mpi
 import cuda_loop
 import cuda_build
+import cuda_base
 
 _AsFunc = ppmd.state._AsFunc
 
@@ -38,7 +39,29 @@ class BaseMDState(object):
 
 
         self._cell_to_particle_map = cuda_cell.CellOccupancyMatrix()
+
+
+
         self._halo_manager = None
+        self._halo_device_version = -1
+
+        self._halo_sizes = None
+        self._halo_cell_max_b = 0
+        self._halo_cell_max_h = 0
+
+        self._halo_b_scan = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
+        self._halo_h_scan = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
+
+        self._halo_h_groups_se_indices = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
+        self._halo_b_groups_se_indices = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
+
+        self._halo_h_cell_indices = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
+        self._halo_b_cell_indices = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
+
+        self._halo_h_cell_counts = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
+        self._halo_b_cell_counts = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
+
+
 
         self._position_dat = None
 
@@ -76,6 +99,84 @@ class BaseMDState(object):
 
         self.invalidate_lists = False
         """If true, all cell lists/ neighbour lists should be rebuilt."""
+
+    def _halo_update_exchange_sizes(self):
+        # update boundary and halo cell layout if domain has changed
+        if self.domain.cell_array.version > self._halo_device_version:
+             self._halo_update_groups()
+        # update boundary and halo cell counts and exchange these
+        self._halo_sizes = self._halo_manager.exchange_cell_counts()
+
+        # scan of ccc of boundary cells.
+        self._halo_b_scan.realloc(self._halo_b_cell_indices.ncomp+1)
+        self._halo_cell_max_b = cuda_mpi.cuda_exclusive_scan_int(
+            length=self._halo_b_cell_indices.ncomp,
+            d_map=self._halo_b_cell_indices,
+            d_ccc=self._cell_to_particle_map.cell_contents_count,
+            d_scan=self._halo_b_scan
+        )
+
+        # scan of ccc of halo cells.
+        self._halo_h_scan.realloc(self._halo_h_cell_indices.ncomp+1)
+        self._halo_cell_max_h = cuda_mpi.cuda_exclusive_scan_int(
+            length=self._halo_h_cell_indices.ncomp,
+            d_map=self._halo_h_cell_indices,
+            d_ccc=self._cell_to_particle_map.cell_contents_count,
+            d_scan=self._halo_h_scan
+        )
+
+        # update the cell occupancy matrix to assign correct particle indices
+        # to correct cell and layer
+        self._halo_update_cell_to_particle_map()
+
+
+    def _halo_update_cell_to_particle_map(self):
+        cuda_halo.update_cell_occ_matrix(self._halo_h_cell_indices.ncomp,
+                                         self._halo_cell_max_h,
+                                         self._cell_to_particle_map.layers_per_cell,
+                                         self.npart_local,
+                                         self._halo_h_cell_indices,
+                                         self._cell_to_particle_map.cell_contents_count,
+                                         self._halo_h_scan,
+                                         self._cell_to_particle_map.matrix)
+
+
+
+
+
+    def _halo_update_groups(self):
+        hm = self._halo_manager
+        hmb = hm.get_boundary_cell_groups()
+        self._halo_b_cell_indices.realloc(hmb[0].ncomp)
+        cuda_runtime.cuda_mem_cpy(d_ptr=self._halo_b_cell_indices.ctypes_data,
+                                  s_ptr=hmb[0].ctypes_data,
+                                  size=ctypes.c_size_t(hmb[0].ncomp * ctypes.sizeof(ctypes.c_int)),
+                                  cpy_type="cudaMemcpyHostToDevice")
+
+        self._halo_b_groups_se_indices.realloc(hmb[1].ncomp)
+        cuda_runtime.cuda_mem_cpy(d_ptr=self._halo_b_groups_se_indices.ctypes_data,
+                                  s_ptr=hmb[1].ctypes_data,
+                                  size=ctypes.c_size_t(hmb[1].ncomp * ctypes.sizeof(ctypes.c_int)),
+                                  cpy_type="cudaMemcpyHostToDevice")
+
+        hmh = hm.get_halo_cell_groups()
+
+        self._halo_h_cell_indices.realloc(hmh[0].ncomp)
+
+        cuda_runtime.cuda_mem_cpy(d_ptr=self._halo_h_cell_indices.ctypes_data,
+                                  s_ptr=hmh[0].ctypes_data,
+                                  size=ctypes.c_size_t(hmh[0].ncomp * ctypes.sizeof(ctypes.c_int)),
+                                  cpy_type="cudaMemcpyHostToDevice")
+
+        self._halo_h_groups_se_indices.realloc(hmh[1].ncomp)
+        cuda_runtime.cuda_mem_cpy(d_ptr=self._halo_h_groups_se_indices.ctypes_data,
+                                  s_ptr=hmh[1].ctypes_data,
+                                  size=ctypes.c_size_t(hmh[1].ncomp * ctypes.sizeof(ctypes.c_int)),
+                                  cpy_type="cudaMemcpyHostToDevice")
+
+        self._halo_device_version = self.domain.cell_array.version
+
+
 
 
 

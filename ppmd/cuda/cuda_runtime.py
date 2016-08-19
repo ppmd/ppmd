@@ -17,7 +17,7 @@ from ppmd import runtime, pio, mpi
 OPT = runtime.Level(1)
 ERROR_LEVEL = runtime.Level(3)
 DEBUG = runtime.Level(0)
-VERBOSE = runtime.Level(0)
+VERBOSE = runtime.Level(2)
 BUILD_TIMER = runtime.Level(0)
 
 BUILD_DIR = runtime.BUILD_DIR
@@ -280,6 +280,16 @@ def kernel_launch_args_1d(n=None, threads=512):
 
 
 
-
+def cuda_exclusive_scan(array, length):
+    if type(array.dtype) is ctypes.c_int:
+        LIB_CUDA_MISC['cudaExclusiveScanInt'](array.ctypes_data,
+                                              ctypes.c_int(length))
+    elif type(array.dtype) is ctypes.c_double:
+        LIB_CUDA_MISC['cudaExclusiveScanDouble'](array.ctypes_data,
+                                                 ctypes.c_int(length))
+    else:
+        print "Fatal error: Array type does not have a corresponding exclusive" \
+              "scan. Type is:", array.dtype
+        quit()
 
 

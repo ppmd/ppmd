@@ -42,6 +42,9 @@ h_State = md.state.State
 @cuda
 @pytest.fixture
 def state(request):
+    if mdc.CUDA_IMPORT_ERROR is not None:
+        print mdc.CUDA_IMPORT_ERROR
+
     A = State()
     A.npart = N
     A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
@@ -126,11 +129,13 @@ def test_host_halo_cube_1(state):
 
     state.p.halo_exchange()
 
+    '''
     for rx in range(nproc):
         if rx == rank:
             print "cell counts \n", state.get_cell_to_particle_map().cell_contents_count[:]
             print 60*"-"
         md.mpi.MPI_HANDLE.barrier()
+    '''
 
     for cx in xrange(ca[0]):
         for cy in xrange(ca[1]):
@@ -140,7 +145,6 @@ def test_host_halo_cube_1(state):
 
 
 
-'''
 
 
 def test_host_halo_cube_2(state):
@@ -203,6 +207,7 @@ def test_host_halo_cube_2(state):
 
 
 
+'''
 
 def test_host_halo_cube_3(state):
     """

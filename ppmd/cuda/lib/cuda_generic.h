@@ -76,6 +76,14 @@
       return val;
     }
 
+    // Taken from http://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/
+    __inline__ __device__
+    int warpReduceMax(int val) {
+      for (int offset = warpSize/2; offset > 0; offset /= 2)
+        val = max(__shfl_down(val, offset), val);
+      return val;
+    }
+
     // atomic addition edited from Jon Cohen (NVIDIA)
     __device__ static double atomicAddDouble(double *addr, double val){
         double old=*addr, assumed;

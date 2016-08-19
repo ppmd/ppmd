@@ -442,6 +442,138 @@ int cudaExchangeCellCounts(
 }
 
 
+namespace _cudaHaloArrayCopyScan
+{
+
+    __global__ void masked_copy(
+        const int length,
+        const int* __restrict__ d_map,
+        const int* __restrict__ d_ccc,
+        int* __restrict__ d_scan
+    ){
+        const int ix = threadIdx.x + blockIdx.x*blockDim.x;
+        if (ix < length){
+             d_scan[ix] = d_ccc[d_map[ix]];
+        }
+        return;
+    }
+
+}
+
+
+
+int cudaHaloArrayCopyScan(
+    const int length,
+    const int* __restrict__ d_map,
+    const int* __restrict__ d_ccc,
+    int* __restrict__ d_scan,
+    int* __restrict__ h_max
+){
+
+
+    dim3 bs, ts;
+    cudaError_t err;
+
+    err = cudaCreateLaunchArgs(length, 1024, &bs, &ts);
+    if (err != cudaSuccess) { return err; }
+    _cudaHaloArrayCopyScan::masked_copy<<<bs,ts>>>(length, d_map, d_ccc, d_scan);
+    err = cudaDeviceSynchronize();
+    if (err != cudaSuccess) { return err; }
+
+    *h_max = cudaMaxElementInt(d_scan, length);
+    cudaExclusiveScanInt(d_scan, length+1);
+
+
+    return 0;
+}
+
+namespace _cudaHaloFillOccupancyMatrix
+{
+
+    __global__ void fill_occ_matrix(
+        const int length,
+        const int max_count,
+        const int occ_matrix_stride,
+        const int n_local,
+        const int* __restrict__ d_halo_indices,
+        const int* __restrict__ d_ccc,
+        const int* __restrict__ d_halo_scan,
+        int* __restrict__ d_occ_matrix
+    ){
+        const int ix = threadIdx.x + blockIdx.x*blockDim.x;
+        if (ix < length){
+
+            const int cx = ix/max_count;
+            const int lx = ix % max_count;
+            if (lx < d_ccc[cx]){
+                const int offset = d_halo_scan[cx];
+                d_occ_matrix[cx * occ_matrix_stride + lx] = n_local + ix;
+            }
+        }
+        return;
+    }
+
+}
+
+
+int cudaHaloFillOccupancyMatrix(
+    const int length,
+    const int max_count,
+    const int occ_matrix_stride,
+    const int n_local,
+    const int* __restrict__ d_halo_indices,
+    const int* __restrict__ d_ccc,
+    const int* __restrict__ d_halo_scan,
+    int* __restrict__ d_occ_matrix
+){
+    dim3 bs, ts;
+    cudaError_t err;
+
+    err = cudaCreateLaunchArgs(length, 1024, &bs, &ts);
+    if (err != cudaSuccess) { return err; }
+    _cudaHaloFillOccupancyMatrix::fill_occ_matrix<<<bs,ts>>>(length,
+                                                             max_count,
+                                                             occ_matrix_stride,
+                                                             n_local,
+                                                             d_halo_indices,
+                                                             d_ccc,
+                                                             d_halo_scan,
+                                                             d_occ_matrix);
+    err = cudaDeviceSynchronize();
+    if (err != cudaSuccess) { return err; }
+
+
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

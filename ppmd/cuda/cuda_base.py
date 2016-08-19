@@ -489,4 +489,3 @@ class device_buffer_2d(object):
 
 
 
-

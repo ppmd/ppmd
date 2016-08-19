@@ -12,8 +12,10 @@ import cuda_runtime
 
 try:
     LIB_CUDA_MPI = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaMPILib'))
-except:
-    raise RuntimeError('cuda_mpi error: Module is not initialised correctly, CUDA MPI lib not loaded')
+except Exception as e:
+    raise e
+    # raise RuntimeError('cuda_mpi error: Module is not initialised correctly,'
+    #                   ' CUDA MPI lib not loaded\n')
 
 
 
@@ -93,9 +95,22 @@ def MPI_Gatherv(s_buffer, s_count, r_buffer, r_counts, r_disps, root):
 
 
 
+# const int length,
+# const int* __restrict__ d_map,
+# const int* __restrict__ d_ccc,
+# int* __restrict__ d_scan,
+# int* __restrict__ h_max
 
-
-
+def cuda_exclusive_scan_int(length, d_map, d_ccc, d_scan):
+    m = ctypes.c_int32(0)
+    LIB_CUDA_MPI['cudaHaloArrayCopyScan'](
+        ctypes.c_int32(length),
+        d_map.ctypes_data,
+        d_ccc.ctypes_data,
+        d_scan.ctypes_data,
+        ctypes.byref(m)
+    )
+    return m.value
 
 
 

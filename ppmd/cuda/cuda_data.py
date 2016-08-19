@@ -64,6 +64,7 @@ class ParticleDat(cuda_base.Matrix):
     """
     Cuda particle dat
     """
+
     def __init__(self, npart=1, ncomp=1, initial_value=None, name=None, dtype=ctypes.c_double):
 
         self.name = name
@@ -91,7 +92,7 @@ class ParticleDat(cuda_base.Matrix):
         self._vid_int = 0
 
         self._halo_start = ctypes.c_int(self._npart.value)
-        self._npart_halo = ctypes.c_int(0)
+        self._npart_local_halo = ctypes.c_int(0)
         self._npart_local.value = npart
         self._npart.value = 0
 
@@ -192,7 +193,7 @@ class ParticleDat(cuda_base.Matrix):
          the end of the local particles.
         """
         self._halo_start.value = self.npart_local
-        self._npart_halo.value = 0
+        self._npart_local_halo.value = 0
 
 
     @property
@@ -210,7 +211,7 @@ class ParticleDat(cuda_base.Matrix):
 
     @property
     def npart_total(self):
-        return self._npart.value + self._npart_halo.value
+        return self._npart.value + self._npart_local_halo.value
 
 
     def resize(self, n, _callback=True):
@@ -232,12 +233,27 @@ class ParticleDat(cuda_base.Matrix):
     def npart(self):
         return self._npart.value
 
+    @property
+    def npart_local_halo(self):
+        return self._npart_local_halo.value
+
     def halo_exchange(self):
         if mpi.MPI_HANDLE.nproc == 1:
             self._1p_halo_exchange()
         else:
             self.halo_start_reset()
-            _sizes = self.group._halo_manager.exchange_cell_counts()
+
+            # this should be done on some state wide access descriptor
+            # style inteligence ( a write to positions should invalidate all
+            # halos).
+            if type(self) is PositionDat:
+                self.group._halo_update_exchange_sizes()
+
+
+            _total_size = self.npart_local + self.group._halo_sizes[0]
+            self.resize(_total_size)
+
+
 
 
     def _1p_halo_exchange(self):
@@ -282,7 +298,7 @@ class ParticleDat(cuda_base.Matrix):
         self._1p_halo_lib(*args)
 
         self._halo_start.value += n
-        self._npart_halo.value = n
+        self._npart_local_halo.value = n
 
 
     def _build_1p_halo_lib(self):
