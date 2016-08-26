@@ -12,6 +12,7 @@ import kernel
 import mpi
 import runtime
 import halo
+import opt
 
 
 
@@ -97,8 +98,8 @@ class BaseMDState(object):
         self._total_ncomp = None
 
         # Timers
-        self.move_timer = runtime.Timer(runtime.TIMER, 0)
-        self.compress_timer = runtime.Timer(runtime.TIMER, 0)
+        self.move_timer = opt.Timer(runtime.TIMER, 0)
+        self.compress_timer = opt.Timer(runtime.TIMER, 0)
 
         self._status = mpi.Status()
 

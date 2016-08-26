@@ -11,18 +11,23 @@ import atexit
 import pycuda.driver as cudadrv
 
 #package level imports
+import cuda_config
 from ppmd import runtime, pio, mpi
 
+CUDA_ENABLED = cuda_config.CUDA_CFG['enable-cuda'][1]
 
-OPT = runtime.Level(1)
-ERROR_LEVEL = runtime.Level(3)
-DEBUG = runtime.Level(0)
-VERBOSE = runtime.Level(2)
-BUILD_TIMER = runtime.Level(0)
+
+OPT = cuda_config.CUDA_CFG['opt-level'][1]
+DEBUG = cuda_config.CUDA_CFG['debug-level'][1]
+VERBOSE = cuda_config.CUDA_CFG['verbose-level'][1]
+TIMER = cuda_config.CUDA_CFG['timer-level'][1]
+BUILD_TIMER = cuda_config.CUDA_CFG['build-timer-level'][1]
+ERROR_LEVEL = cuda_config.CUDA_CFG['error-level'][1]
+
 
 BUILD_DIR = runtime.BUILD_DIR
 
-LIB_DIR = runtime.Dir(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib/'))
+LIB_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib/'))
 
 # Init cuda
 cudadrv.init()
@@ -31,9 +36,9 @@ import cuda_build
 
 try:
     LIB_HELPER = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaHelperLib'))
-except:
+except Exception as e:
+    print e
     raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA helper lib not loaded')
-    LIB_HELPER = None
 
 
 
@@ -109,7 +114,7 @@ atexit.register(CONTEXT.pop)
 try:
     CUDA_INC_PATH = os.environ['CUDA_INSTALL_PATH']
 except KeyError:
-    if ERROR_LEVEL.level > 2:
+    if ERROR_LEVEL > 2:
         raise RuntimeError('cuda_runtime error: cuda toolkit environment path not found, expecting CUDA_INSTALL_PATH')
     CUDA_INC_PATH = None
 
@@ -117,7 +122,7 @@ try:
     LIB_CUDART = ctypes.cdll.LoadLibrary(CUDA_INC_PATH + "/lib64/libcudart.so")
 
 except:
-    if ERROR_LEVEL.level > 2:
+    if ERROR_LEVEL > 2:
         raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA runtime not loaded')
     LIB_CUDART = None
 
@@ -125,7 +130,6 @@ try:
     LIB_CUDA_MISC = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaMisc'))
 except:
     raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA Misc lib not loaded')
-    LIB_CUDA_MISC = None
 
 
 
@@ -147,7 +151,7 @@ def libcudart(*args):
 
     assert LIB_CUDART is not None, "cuda_runtime error: No CUDA Runtime library loaded"
 
-    if VERBOSE.level > 2:
+    if VERBOSE > 2:
         pio.rprint(args)
 
     cuda_err_check(LIB_CUDART[args[0]](*args[1::]))
@@ -158,13 +162,17 @@ def libcudart(*args):
 # Is module ready to use?
 ###############################################################################
 
+
 def INIT_STATUS():
     """
     Function to determine if the module is correctly loaded and can be used.
     :return: True/False.
     """
 
-    if (LIB_CUDART is not None) and (LIB_HELPER is not None) and (DEVICE.id is not None) and runtime.CUDA_ENABLED.flag:
+    if (LIB_CUDART is not None) and\
+            (LIB_HELPER is not None) and\
+            (DEVICE.id is not None) and\
+            CUDA_ENABLED:
         return True
     else:
         return False

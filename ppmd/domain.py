@@ -13,6 +13,7 @@ import build
 import mpi
 import runtime
 import pio
+import opt
 
 
 
@@ -544,7 +545,7 @@ def _get_cell_distribution(global_cell_array=None, dims=None, top=None):
 
         _bs.append(_tmp)
 
-    if runtime.VERBOSE.level > 1:
+    if runtime.VERBOSE > 1:
         pio.pprint("Cell layout", _bs)
 
     # Get local cell array
@@ -592,10 +593,10 @@ class BoundaryTypePeriodic(object):
         self.state = state_in
 
         # Initialise timers
-        self.timer_apply = runtime.Timer(runtime.TIMER, 0)
-        self.timer_lib_overhead = runtime.Timer(runtime.TIMER, 0)
-        self.timer_search = runtime.Timer(runtime.TIMER, 0)
-        self.timer_move = runtime.Timer(runtime.TIMER, 0)
+        self.timer_apply = opt.Timer(runtime.TIMER, 0)
+        self.timer_lib_overhead = opt.Timer(runtime.TIMER, 0)
+        self.timer_search = opt.Timer(runtime.TIMER, 0)
+        self.timer_move = opt.Timer(runtime.TIMER, 0)
 
         # One proc PBC lib
         self._one_process_pbc_lib = None

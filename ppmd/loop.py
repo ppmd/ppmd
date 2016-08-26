@@ -175,7 +175,7 @@ class _Base(object):
         d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir,
+             'LIB_DIR': runtime.LIB_DIR,
              'RESTRICT':self._cc.restrict_keyword}
         return code % d
 
@@ -313,7 +313,7 @@ class ParticleLoop(_Base):
         d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir,
+             'LIB_DIR': runtime.LIB_DIR,
              'RESTRICT':self._cc.restrict_keyword}
         return code % d
 
@@ -368,7 +368,7 @@ class LimitedParticleLoop(_Base):
         d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir,
+             'LIB_DIR': runtime.LIB_DIR,
              'RESTRICT':self._cc.restrict_keyword}
         return code % d
 

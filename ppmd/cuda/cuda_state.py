@@ -49,8 +49,8 @@ class BaseMDState(object):
         self._halo_cell_max_b = 0
         self._halo_cell_max_h = 0
 
-        self._halo_b_scan = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
         self._halo_h_scan = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
+        self._halo_b_scan = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
 
         self._halo_h_groups_se_indices = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
         self._halo_b_groups_se_indices = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
@@ -61,6 +61,9 @@ class BaseMDState(object):
         self._halo_h_cell_counts = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
         self._halo_b_cell_counts = cuda_base.Array(ncomp=1, dtype=ctypes.c_int32)
 
+        self._halo_send_counts = ppmd.host.Array(ncomp=6, dtype=ctypes.c_int32)
+        self._halo_tmp_space = cuda_base.Array(ncomp=10, dtype=ctypes.c_double)
+        self._halo_position_shifts = cuda_base.Array(ncomp=18, dtype=ctypes.c_double)
 
 
         self._position_dat = None
@@ -130,6 +133,20 @@ class BaseMDState(object):
         self._halo_update_cell_to_particle_map()
 
 
+        # update array of send counts.
+
+        print self._halo_manager.get_boundary_cell_groups()[1][:]
+        cuda_halo.update_send_counts(self._halo_manager.get_boundary_cell_groups()[1],
+                                     self._halo_b_scan,
+                                     self._halo_send_counts)
+
+        # resize tmp space
+        s = max(self._move_ncomp)
+        if self._halo_tmp_space.ncomp < (s * self._halo_sizes[1]):
+            self._halo_tmp_space.realloc(s * 2 * self._halo_sizes[1])
+
+
+
     def _halo_update_cell_to_particle_map(self):
         cuda_halo.update_cell_occ_matrix(self._halo_h_cell_indices.ncomp,
                                          self._halo_cell_max_h,
@@ -174,7 +191,10 @@ class BaseMDState(object):
                                   size=ctypes.c_size_t(hmh[1].ncomp * ctypes.sizeof(ctypes.c_int)),
                                   cpy_type="cudaMemcpyHostToDevice")
 
+        self._halo_position_shifts[:] = hm.get_position_shifts()[:]
+
         self._halo_device_version = self.domain.cell_array.version
+
 
 
 

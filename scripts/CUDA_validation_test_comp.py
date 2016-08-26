@@ -294,7 +294,7 @@ if __name__ == '__main__':
 
 
 
-    timer = runtime.Timer(runtime.Level(1), 0)
+    timer = opt.Timer(runtime.Level(1), 0)
 
 
 

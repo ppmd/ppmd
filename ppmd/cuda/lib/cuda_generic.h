@@ -9,8 +9,9 @@
     #include <cuda_profiler_api.h>
     #include <device_functions.h>
     #include "cuda_counting_types.h"
+    #include <iostream>
 
-
+    using namespace std;
     /*
     // double shuffle down edited from nvidia example
     __device__ __inline__ double shfl_down_double(double x, int lane){
@@ -140,5 +141,33 @@ __device__ bool isnormal(double value)
 {
 	return !(isinf(value) || isnan(value));
 }
+
+
+
+cudaError_t cudaCreateLaunchArgs(
+        const int N,    // Total minimum number of threads.
+        const int Nt,   // Number of threads per block.
+        dim3* bs,       // RETURN: grid of thread blocks.
+        dim3* ts        // RETURN: grid of threads
+        ){
+
+    if ((N<0) || (Nt<0)){
+        cout << "cudaCreateLaunchArgs Error: Invalid desired number of total threads " << N <<
+            "or invalid number of threads per block " << Nt << endl;
+        return cudaErrorUnknown;
+    }
+
+    const int Nb = ceil(((double) N) / ((double) Nt));
+
+    bs->x = Nb; bs->y = 1; bs->z = 1;
+    ts->x = Nt; ts->y = 1; ts->z = 1;
+
+    return cudaSuccess;
+}
+
+
+
+
+
 
 #endif

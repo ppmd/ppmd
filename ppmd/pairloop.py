@@ -162,7 +162,7 @@ class PairLoopRapaportHalo(_Base):
         # End of Rapaport initialisations.
         ##########
 
-        self._temp_dir = runtime.BUILD_DIR.dir
+        self._temp_dir = runtime.BUILD_DIR
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
 
@@ -224,7 +224,7 @@ class PairLoopRapaportHalo(_Base):
         d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
     def _code_init(self):
@@ -420,7 +420,7 @@ class PairLoopNeighbourList(_Base):
         # End of Rapaport initialisations.
         ##########
 
-        self._temp_dir = runtime.BUILD_DIR.dir
+        self._temp_dir = runtime.BUILD_DIR
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
 
@@ -496,7 +496,7 @@ class PairLoopNeighbourList(_Base):
         d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir,
+             'LIB_DIR': runtime.LIB_DIR,
              'RESTRICT': self._cc.restrict_keyword}
         return code % d
 
@@ -840,7 +840,7 @@ class PairLoopNeighbourListNS(object):
         # End of Rapaport initialisations.
         ##########
 
-        self._temp_dir = runtime.BUILD_DIR.dir
+        self._temp_dir = runtime.BUILD_DIR
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
 
@@ -1274,7 +1274,7 @@ class PairLoopNeighbourListNS(object):
         '''
         d = {'INCLUDED_HEADERS': str(self._components['KERNEL_HEADERS']),
              'FUNC_DEC': str(self._components['LIB_FUNC'].fdecl),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
 

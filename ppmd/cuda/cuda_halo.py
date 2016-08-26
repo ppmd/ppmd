@@ -309,14 +309,14 @@ def copy_h2d_exclusive_scan(in_array, out_array):
 
 
 '''
-const int length,
-const int max_count,
-const int occ_matrix_stride,
-const int n_local,
-const int* __restrict__ d_halo_indices,
-const int* __restrict__ d_ccc,
-const int* __restrict__ d_halo_scan,
-int* __restrict__ d_occ_matrix
+    const int length,
+    const int max_count,
+    const int occ_matrix_stride,
+    const int n_local,
+    const int* __restrict__ d_halo_indices,
+    const int* __restrict__ d_ccc,
+    const int* __restrict__ d_halo_scan,
+    int* __restrict__ d_occ_matrix
 '''
 
 
@@ -330,6 +330,9 @@ def update_cell_occ_matrix(
     d_halo_scan,
     d_occ_matrix
     ):
+
+    print "occ halo pointer pre", d_occ_matrix.ctypes_data
+    cuda_runtime.cuda_err_check(
     cuda_mpi.LIB_CUDA_MPI['cudaHaloFillOccupancyMatrix'](
         ctypes.c_int32(length),
         ctypes.c_int32(max_count),
@@ -338,13 +341,32 @@ def update_cell_occ_matrix(
         d_halo_indices.ctypes_data,
         d_ccc.ctypes_data,
         d_halo_scan.ctypes_data,
-        d_halo_scan.ctypes_data,
         d_occ_matrix.ctypes_data
     )
+    )
+
+    print "occ halo pointer post", d_occ_matrix.ctypes_data
 
 
 
+'''
+const int * __restrict__ h_b_arr,
+const int * __restrict__ d_b_scan,
+int * __restrict__ h_p_count
+'''
 
+
+def update_send_counts(
+        host_b_se_indices,
+        device_b_scan,
+        host_send_counts):
+
+    cuda_runtime.cuda_err_check(
+    cuda_mpi.LIB_CUDA_MPI['cudaCopySendCounts'](
+        host_b_se_indices.ctypes_data,
+        device_b_scan.ctypes_data,
+        host_send_counts.ctypes_data
+    ))
 
 
 

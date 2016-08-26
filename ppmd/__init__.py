@@ -1,7 +1,8 @@
 
 
 
-__all__ = [ 'access',
+__all__ = [ 'config',
+            'access',
             'build',
             'cell',
             'data',
@@ -24,7 +25,7 @@ __all__ = [ 'access',
             'logic']
 
 
-
+import config
 import logic
 import access
 import build

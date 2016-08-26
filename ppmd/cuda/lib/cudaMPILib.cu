@@ -170,28 +170,6 @@ int cudaFindNewSlots(const int blocksize2[3],
 
 
 
-cudaError_t cudaCreateLaunchArgs(
-        const int N,    // Total minimum number of threads.
-        const int Nt,   // Number of threads per block.
-        dim3* bs,       // RETURN: grid of thread blocks.
-        dim3* ts        // RETURN: grid of threads
-        ){
-
-    if ((N<0) || (Nt<0)){
-        cout << "cudaCreateLaunchArgs Error: Invalid desired number of total threads " << N << 
-            "or invalid number of threads per block " << Nt << endl;
-        return cudaErrorUnknown;
-    }
-    
-    const int Nb = ceil(((double) N) / ((double) Nt));
-
-    bs->x = Nb; bs->y = 1; bs->z = 1;
-    ts->x = Nt; ts->y = 1; ts->z = 1;
-
-    return cudaSuccess;
-}
-
-
 
 
 
@@ -503,11 +481,20 @@ namespace _cudaHaloFillOccupancyMatrix
         const int ix = threadIdx.x + blockIdx.x*blockDim.x;
         if (ix < length){
 
-            const int cx = ix/max_count;
+            const int cid = ix/max_count;
+            const int cx = d_halo_indices[cid];
             const int lx = ix % max_count;
             if (lx < d_ccc[cx]){
-                const int offset = d_halo_scan[cx];
-                d_occ_matrix[cx * occ_matrix_stride + lx] = n_local + ix;
+
+                const int offset = d_halo_scan[cid];
+                d_occ_matrix[cx * occ_matrix_stride + lx] = n_local + offset + lx;
+
+                /*
+                if ( cx * occ_matrix_stride + lx == 511 ){ printf("\t\t 511: stride %d, lx %d, val %d\n",
+                occ_matrix_stride,
+                lx,
+                n_local + offset + lx); }
+                */
             }
         }
         return;
@@ -529,6 +516,15 @@ int cudaHaloFillOccupancyMatrix(
     dim3 bs, ts;
     cudaError_t err;
 
+    /*
+    int tmp;
+    err=cudaMemcpy(&tmp, &d_occ_matrix[511], sizeof(int), cudaMemcpyDeviceToHost);
+    cout << "err: " << err << endl;
+    cout << "511 BEFORE OCC: " << tmp << endl;
+    */
+
+
+
     err = cudaCreateLaunchArgs(length, 1024, &bs, &ts);
     if (err != cudaSuccess) { return err; }
     _cudaHaloFillOccupancyMatrix::fill_occ_matrix<<<bs,ts>>>(length,
@@ -543,8 +539,99 @@ int cudaHaloFillOccupancyMatrix(
     if (err != cudaSuccess) { return err; }
 
 
+    /*
+    err=cudaMemcpy(&tmp, &d_occ_matrix[511], sizeof(int), cudaMemcpyDeviceToHost);
+    cout << "ptr in occ fill: " << (long)d_occ_matrix << endl;
+    cout << "err: " << err << endl;
+    cout << "511 AFTER OCC: " << tmp << endl;
+    */
+
+
+    return err;
+}
+
+
+
+/*
+namespace _copysendcounts
+{
+    __global__ void _cudaCopySendCounts(
+        const int * __restrict__ d_b_arr,
+        const int * __restrict__ d_b_scan,
+        int * __restrict__ d_p_count
+    ){
+        const int ix = threadIdx.x + blockIdx.x*blockDim.x;
+        if (ix < 6){
+            d_p_count[ix] = d_b_scan[d_b_arr[ix+1]] - d_b_scan[d_b_arr[ix]];
+        }
+        return;
+    }
+}
+*/
+
+int cudaCopySendCounts(
+    const int * __restrict__ h_b_arr,
+    const int * __restrict__ d_b_scan,
+    int * __restrict__ h_p_count
+){
+    cudaError_t err;
+
+    int p_count_tmp[6] = {0};
+
+    err = cudaMemcpy(&p_count_tmp[0],
+                     &d_b_scan[h_b_arr[1]],
+                     sizeof(int),
+                     cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) { return err; }
+
+
+    err = cudaMemcpy(&p_count_tmp[1],
+                     &d_b_scan[h_b_arr[2]],
+                     sizeof(int),
+                     cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) { return err; }
+
+
+    err = cudaMemcpy(&p_count_tmp[2],
+                     &d_b_scan[h_b_arr[3]],
+                     sizeof(int),
+                     cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) { return err; }
+
+
+    err = cudaMemcpy(&p_count_tmp[3],
+                     &d_b_scan[h_b_arr[4]],
+                     sizeof(int),
+                     cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) { return err; }
+
+
+    err = cudaMemcpy(&p_count_tmp[4],
+                     &d_b_scan[h_b_arr[5]],
+                     sizeof(int),
+                     cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) { return err; }
+
+
+
+    err = cudaMemcpy(&p_count_tmp[5],
+                     &d_b_scan[h_b_arr[6]],
+                     sizeof(int),
+                     cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) { return err; }
+
+
+    h_p_count[0] = p_count_tmp[0];
+    h_p_count[1] = p_count_tmp[1] - p_count_tmp[0];
+    h_p_count[2] = p_count_tmp[2] - p_count_tmp[1];
+    h_p_count[3] = p_count_tmp[3] - p_count_tmp[2];
+    h_p_count[4] = p_count_tmp[4] - p_count_tmp[3];
+    h_p_count[5] = p_count_tmp[5] - p_count_tmp[4];
+
+
     return 0;
 }
+
 
 
 

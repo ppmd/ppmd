@@ -3,6 +3,7 @@
 import numpy as np
 import ctypes
 import os
+import hashlib
 
 # package level
 from ppmd import generation
@@ -26,7 +27,7 @@ class _Base(object):
         self._N = n
         self._types_map = types_map
 
-        self._temp_dir = runtime.BUILD_DIR.dir
+        self._temp_dir = runtime.BUILD_DIR
 
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
@@ -127,7 +128,7 @@ class _Base(object):
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
     def _argnames(self):
@@ -209,16 +210,16 @@ class _Base(object):
         object_filename = filename_base + '.o'
         library_filename = filename_base + '.so'
 
-        if runtime.VERBOSE.level > 2:
+        if runtime.VERBOSE > 2:
             print "Building", library_filename
 
         cflags = []
         cflags += self._cc.c_flags
 
-        if runtime.DEBUG.level > 0:
+        if runtime.DEBUG > 0:
             cflags += self._cc.dbg_flags
 
-        if runtime.OPT.level > 0:
+        if runtime.OPT > 0:
             cflags += self._cc.opt_flags
 
 
@@ -330,7 +331,7 @@ class PairLoopRapaport(_Base):
         # End of Rapaport initialisations.
         ##########
 
-        self._temp_dir = runtime.BUILD_DIR.dir
+        self._temp_dir = runtime.BUILD_DIR
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
 
@@ -571,7 +572,7 @@ class PairLoopRapaport(_Base):
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
     def execute(self, n=None, dat_dict=None, static_args=None):
@@ -727,7 +728,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
         self._compiler_set()
         self._N = n
         self._domain = domain
-        self._temp_dir = runtime.BUILD_DIR.dir
+        self._temp_dir = runtime.BUILD_DIR
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
         self._kernel = kernel
@@ -800,7 +801,7 @@ class DoubleAllParticleLoopPBC(DoubleAllParticleLoop):
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
     def _kernel_argument_declarations(self):
@@ -1363,7 +1364,7 @@ class PairLoopRapaportHaloOpenMP(PairLoopRapaport):
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
     def _code_init(self):
@@ -1553,7 +1554,7 @@ class PairLoopNeighbourList(_Base):
         # End of Rapaport initialisations.
         ##########
 
-        self._temp_dir = runtime.BUILD_DIR.dir
+        self._temp_dir = runtime.BUILD_DIR
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
 
@@ -1618,7 +1619,7 @@ class PairLoopNeighbourList(_Base):
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
     def _kernel_argument_declarations(self):
@@ -1777,7 +1778,7 @@ class PairLoopNeighbourListOpenMP(PairLoopNeighbourList):
         # End of Rapaport initialisations.
         ##########
 
-        self._temp_dir = runtime.BUILD_DIR.dir
+        self._temp_dir = runtime.BUILD_DIR
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
 
@@ -1840,7 +1841,7 @@ class PairLoopNeighbourListOpenMP(PairLoopNeighbourList):
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
     def _kernel_argument_declarations(self):
@@ -2037,7 +2038,7 @@ class PairLoopNeighbourListLayersHybrid(_Base):
         self._omp = openmp
         self._compiler_set()
 
-        self._temp_dir = runtime.BUILD_DIR.dir
+        self._temp_dir = runtime.BUILD_DIR
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
 
@@ -2106,7 +2107,7 @@ class PairLoopNeighbourListLayersHybrid(_Base):
              'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
     def _code_init(self):

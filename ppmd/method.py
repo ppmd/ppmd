@@ -62,7 +62,7 @@ class CellListUpdateController(object):
         self._test_count = 0
         self._step_counter = 0
 
-        self.boundary_method_timer = runtime.Timer(runtime.TIMER, 0)
+        self.boundary_method_timer = opt.Timer(runtime.TIMER, 0)
 
     def increment_step_count(self):
         self._step_counter += 1
@@ -383,7 +383,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
         self._p2_thermostat = loop.ParticleLoop(self._N, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
 
-        _t = runtime.Timer(runtime.TIMER, 0, start=True)
+        _t = opt.Timer(runtime.TIMER, 0, start=True)
         self._velocity_verlet_integration_thermostat()
         _t.stop("VelocityVerletAnderson")
     
@@ -486,7 +486,7 @@ class RadialDistributionPeriodicNVE(object):
 
         self._p = pairloop.DoubleAllParticleLoop(self._N, kernel=_grkernel, particle_dat_dict=_datdict)
 
-        self.timer = runtime.Timer(runtime.TIMER, 0)
+        self.timer = opt.Timer(runtime.TIMER, 0)
 
     def evaluate(self):
         """
@@ -595,7 +595,7 @@ class WriteTrajectoryXYZ(object):
             self._fh = open(os.path.join(self._dn, self._fn), 'w')
             self._fh.close()
 
-        self.timer = runtime.Timer(runtime.TIMER, 0)
+        self.timer = opt.Timer(runtime.TIMER, 0)
 
     def write(self):
         """
@@ -773,7 +773,7 @@ class VelocityAutoCorrelation(object):
 
         :arg double t: Time within block of integration.
         """
-        if runtime.TIMER.level > 0:
+        if runtime.TIMER > 0:
             start = time.time()
 
         _t = self._state.time
@@ -786,7 +786,7 @@ class VelocityAutoCorrelation(object):
         self._V.append(self._VAF[0])
         self._T.append(_t)
 
-        if runtime.TIMER.level > 0:
+        if runtime.TIMER > 0:
             end = time.time()
             pio.pprint("VAF time taken:", end - start, "s")
 
@@ -1139,7 +1139,7 @@ class PercentagePrinter(object):
         self._max_it = math.ceil(_t/_dt)
         self._count = 0
         self._curr_p = percent
-        self.timer = runtime.Timer(runtime.TIMER, 0, start=False)
+        self.timer = opt.Timer(runtime.TIMER, 0, start=False)
         self._timing = False
 
     def tick(self):
@@ -1147,14 +1147,14 @@ class PercentagePrinter(object):
         Method to call per iteration.
         """
 
-        if (self._timing is False) and (runtime.TIMER.level > 0):
+        if (self._timing is False) and (runtime.TIMER > 0):
             self.timer.start()
 
         self._count += 1
 
         if (float(self._count)/self._max_it)*100 > self._curr_p:
 
-            if runtime.TIMER.level > 0:
+            if runtime.TIMER > 0:
                 pio.pprint(self._curr_p, "%", self.timer.reset(), 's')
             else:
                 pio.pprint(self._curr_p, "%")

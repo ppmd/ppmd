@@ -1,14 +1,19 @@
-import sys
 
-import host
+
+# system level imports
 import ctypes
 import os
 import hashlib
 import subprocess
 import re
+
+# package level imports
+import config
+import host
 import pio
 import runtime
 import mpi
+import opt
 
 
 BUILD_PER_PROC = False
@@ -18,167 +23,9 @@ BUILD_PER_PROC = False
 ###############################################################################
 
 
-class Compiler(object):
-    """
-    Container to define different compilers.
-    
-    :arg str name: Compiler name, referance only.
-    :arg str binary: Name(+path) of Compiler binary.
-    :arg list c_flags: List of compile flags as strings.
-    :arg list l_flags: List of link flags as strings.
-    :arg list opt_flags: List of optimisation flags.
-    :arg list dbg_flags: List of runtime.DEBUG flags as strings.
-    :arg list compile_flag: List of compile flag as single string (eg ['-c']
-    for gcc).
-    :arg list shared_lib_flag: List of flags as strings to link as shared
-    library.
-    :arg string restrict_keyword: keyword to use for non aliased pointers
-    """
-
-    def __init__(self, name, binary, c_flags, l_flags, opt_flags, dbg_flags,
-                 compile_flag, shared_lib_flag, restrict_keyword=''):
-
-        self._name = name
-        self._binary = binary
-        self._cflags = c_flags
-        self._lflags = l_flags
-        self._optflags = opt_flags
-        self._dbgflags = dbg_flags
-        self._compileflag = compile_flag
-        self._sharedlibf = shared_lib_flag
-        self._restrictkeyword = restrict_keyword
-
-    @property
-    def restrict_keyword(self):
-        return self._restrictkeyword
-
-    @property
-    def name(self):
-        """Return Compiler name."""
-        return self._name
-
-    @property
-    def binary(self):
-        """Return Compiler binary."""
-        return self._binary
-
-    @property
-    def c_flags(self):
-        """Return Compiler compile flags"""
-        return self._cflags
-
-    @property
-    def l_flags(self):
-        """Return Compiler link flags"""
-        return self._lflags
-
-    @property
-    def opt_flags(self):
-        """Return Compiler runtime.DEBUG flags"""
-        return self._optflags
-
-    @property
-    def dbg_flags(self):
-        """Return Compiler runtime.DEBUG flags"""
-        return self._dbgflags
-
-    @property
-    def compile_flag(self):
-        """Return Compiler compile flag."""
-        return self._compileflag
-
-    @property
-    def shared_lib_flag(self):
-        """Return Compiler link as shared library flag."""
-        return self._sharedlibf
-
-
-
-GCC = Compiler(['GCC'],
-               ['g++'],
-               ['-fPIC', '-std=c++0x'],
-               ['-lm'],
-               ['-O3', '-march=native', '-m64', '-ftree-vectorizer-verbose=5', '-fassociative-math'],
-               ['-g'],
-               ['-c'],
-               ['-shared'],
-               '__restrict__')
-
-
-
-
-
-# Define system gcc version as OpenMP Compiler.
-GCC_OpenMP = Compiler(['GCC'],
-                      ['g++'],
-                      ['-fopenmp', '-fPIC', '-std=c++0x'],
-                      ['-lgomp', '-lrt', '-Wall'],
-                      ['-O3', '-march=native', '-m64','-ftree-vectorizer-verbose=5'],
-                      ['-g'],
-                      ['-c', '-Wall'],
-                      ['-shared'],
-                      '__restrict__')
-
-
-# Define system icc version as Compiler.
-ICC = Compiler(['ICC'],
-               ['icc'],
-               ['-fpic', '-std=c++0x'],
-               ['-lm'],
-               ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=5'],
-               ['-g'],
-               ['-c'],
-               ['-shared'],
-               'restrict')
-
-try:
-    ICC_MPI = Compiler(['ICC'],
-                       ['icc'],
-                       ['-fpic', '-std=c++0x'],
-                       ['-lm'],
-                       ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=5', '-I' + os.environ["MPI_INCLUDE_DIR"]],
-                       ['-lmpi'],
-                       ['-c'],
-                       ['-shared'],
-                       'restrict')
-except:
-    pass
-
-try:
-    GCC_MPI = Compiler(['GCC'],
-               ['mpic++'],
-               ['-fPIC', '-std=c++0x'],
-               ['-lm'],
-               ['-O3', '-march=native', '-m64', '-ftree-vectorizer-verbose=5', '-fassociative-math', '-I' + os.environ['MPI_HOME'] + '/include'],
-               ['-g'],
-               ['-c'],
-               ['-shared'],
-               '__restrict__')
-except:
-    pass
-# Define system icc version as OpenMP Compiler.
-ICC_OpenMP = Compiler(['ICC'],
-                      ['icc'],
-                      ['-fpic', '-openmp', '-std=c++0x'],
-                      ['-openmp', '-lgomp', '-lpthread', '-lc', '-lrt'],
-                      ['-O3', '-xHost', '-restrict', '-m64', '-qopt-report=4'],
-                      ['-g'],
-                      ['-c'],
-                      ['-shared'],
-                      'restrict')
-
-
-# Temporary Compiler flag
-ICC_LIST = ['mapc-4044']#, 'itd-ngpu-01', 'itd-ngpu-02']
-
-if os.uname()[1] in ICC_LIST:
-    TMPCC = ICC
-    TMPCC_OpenMP = ICC_OpenMP
-    MPI_CC = ICC_MPI
-else:
-    TMPCC = GCC
-    TMPCC_OpenMP = GCC_OpenMP
-    MPI_CC = GCC_MPI
+TMPCC = config.COMPILERS[config.MAIN_CFG['cc-main'][1]]
+TMPCC_OpenMP = config.COMPILERS[config.MAIN_CFG['cc-openmp'][1]]
+MPI_CC = config.COMPILERS[config.MAIN_CFG['cc-mpi'][1]]
 
 
 ###############################################################################
@@ -204,7 +51,7 @@ def load_library_exception(kernel_name='None supplied',
 
     # Try to open error file.
     try:
-        f = open(runtime.BUILD_DIR.dir + unique_name + '.err', 'r')
+        f = open(os.path.join(runtime.BUILD_DIR, unique_name + '.err'), 'r')
         err_msg = f.read()
         f.close()
         err_read = True
@@ -225,7 +72,7 @@ def load_library_exception(kernel_name='None supplied',
             pass
         if err_line > 0:
             try:
-                f = open(runtime.BUILD_DIR.dir + unique_name + '.c', 'r')
+                f = open(os.path.join(runtime.BUILD_DIR, unique_name + '.c'), 'r')
                 code_str = f.read()
                 f.close()
             except:
@@ -299,23 +146,23 @@ class SharedLib(object):
     def __init__(self, kernel, particle_dat_dict, openmp=False):
 
         # Timers
-        self.creation_timer = runtime.Timer(runtime.BUILD_TIMER, 2, start=True)
+        self.creation_timer = opt.Timer(runtime.BUILD_TIMER, 2, start=True)
         """Timer that times the creation of the shared library if
-        runtime.BUILD_TIMER.level > 2"""
+        runtime.BUILD_TIMER > 2"""
 
-        self.execute_timer = runtime.Timer(runtime.TIMER, 0, start=False)
+        self.execute_timer = opt.Timer(runtime.TIMER, 0, start=False)
         """Timer that times the execution time of the shared library if
-        runtime.BUILD_TIMER.level > 2"""
+        runtime.BUILD_TIMER > 2"""
 
-        self.execute_overhead_timer = runtime.Timer(runtime.BUILD_TIMER, 2,
+        self.execute_overhead_timer = opt.Timer(runtime.BUILD_TIMER, 2,
                                                     start=False)
         """Times the overhead required before the shared library is ran if
-        runtime.BUILD_TIMER.level > 2. """
+        runtime.BUILD_TIMER > 2. """
 
         self._omp = openmp
 
         self._compiler_set()
-        self._temp_dir = runtime.BUILD_DIR.dir
+        self._temp_dir = runtime.BUILD_DIR
 
         self._kernel = kernel
 
@@ -391,7 +238,7 @@ class SharedLib(object):
         d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
     def execute(self, dat_dict=None, static_args=None):
@@ -537,7 +384,7 @@ def md5(string):
     m.update(string)
     return m.hexdigest()
 
-def source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR.dir):
+def source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR):
 
 
     _filename = 'HOST_' + str(name)
@@ -581,7 +428,7 @@ def check_file_existance(abs_path=None):
                                  "No absolute path passed."
     return os.path.exists(abs_path)
 
-def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR.dir, CC=TMPCC):
+def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR, CC=TMPCC):
     if not os.path.exists(dst_dir) and mpi.MPI_HANDLE.rank == 0:
         os.mkdir(dst_dir)
 
@@ -598,20 +445,20 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
     if not check_file_existance(_lib_filename):
 
         if (mpi.MPI_HANDLE.rank == 0)  or BUILD_PER_PROC:
-            source_write(header_code, src_code, name, extensions=extensions, dst_dir=runtime.BUILD_DIR.dir)
+            source_write(header_code, src_code, name, extensions=extensions, dst_dir=runtime.BUILD_DIR)
         build_lib(_filename, extensions=extensions, CC=CC, hash=False)
 
     return load(_lib_filename)
 
-def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
-              CC=TMPCC, dst_dir=runtime.BUILD_DIR.dir, hash=True):
+def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
+              CC=TMPCC, dst_dir=runtime.BUILD_DIR, hash=True):
 
     mpi.MPI_HANDLE.barrier()
 
-    with open(source_dir + lib + extensions[1], "r") as fh:
+    with open(os.path.join(source_dir, lib + extensions[1]), "r") as fh:
         _code = fh.read()
         fh.close()
-    with open(source_dir + lib + extensions[0], "r") as fh:
+    with open(os.path.join(source_dir, lib + extensions[0]), "r") as fh:
         _code += fh.read()
         fh.close()
 
@@ -624,28 +471,30 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
 
     _lib_filename = os.path.join(dst_dir, lib + str(_m) + '.so')
 
-    #print mpi.MPI_HANDLE.rank, "building", _lib_filename
 
     if (mpi.MPI_HANDLE.rank == 0) or BUILD_PER_PROC:
         if not os.path.exists(_lib_filename):
 
-            _lib_src_filename = source_dir + lib + extensions[1]
+            _lib_src_filename = os.path.join(source_dir, lib + extensions[1])
 
-            _c_cmd = CC.binary + [_lib_src_filename] + ['-o'] + \
+            _c_cmd = [CC.binary] + [_lib_src_filename] + ['-o'] + \
                      [_lib_filename] + CC.c_flags  + CC.l_flags + \
-                     ['-I' + str(runtime.LIB_DIR.dir)] + ['-I' + str(source_dir)]
-            if runtime.DEBUG.level > 0:
+                     ['-I' + str(runtime.LIB_DIR)] +\
+                     ['-I' + str(source_dir)]
+
+            if runtime.DEBUG > 0:
                 _c_cmd += CC.dbg_flags
-            if runtime.OPT.level > 0:
+            if runtime.OPT > 0:
                 _c_cmd += CC.opt_flags
 
             _c_cmd += CC.shared_lib_flag
 
-            if runtime.VERBOSE.level > 2:
+
+            if runtime.VERBOSE > 2:
                 print "Building", _lib_filename, mpi.MPI_HANDLE.rank
 
-            stdout_filename = dst_dir + lib + str(_m) + '.log'
-            stderr_filename = dst_dir + lib + str(_m) + '.err'
+            stdout_filename = os.path.join(dst_dir, lib + str(_m) + '.log')
+            stderr_filename = os.path.join(dst_dir,  lib + str(_m) + '.err')
             try:
                 with open(stdout_filename, 'w') as stdout:
                     with open(stderr_filename, 'w') as stderr:
@@ -657,9 +506,9 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
                                              stderr=stderr)
                         p.communicate()
             except:
-                if runtime.ERROR_LEVEL.level > 2:
+                if runtime.ERROR_LEVEL > 2:
                     raise RuntimeError('build error: library not built.')
-                elif runtime.VERBOSE.level > 2:
+                elif runtime.VERBOSE > 2:
                     print "build error: Shared library not built:", lib
 
     #print "before barrier", mpi.MPI_HANDLE.rank
@@ -679,7 +528,7 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR.dir,
                    _lib_filename + "\n rank:", mpi.MPI_HANDLE.rank)
 
         if mpi.MPI_HANDLE.rank == 0:
-            with open(dst_dir + lib + str(_m) + '.err', 'r') as stderr:
+            with open(os.path.join(dst_dir, lib + str(_m) + '.err'), 'r') as stderr:
                 print stderr.read()
 
         quit()

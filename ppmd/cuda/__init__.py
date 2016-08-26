@@ -1,7 +1,6 @@
-import atexit
-
 
 __all__ = [
+    'cuda_config',
     'cuda_build',
     'cuda_runtime',
     'cuda_base',
@@ -15,8 +14,9 @@ __all__ = [
 ]
 
 CUDA_IMPORT = False
-
 CUDA_IMPORT_ERROR = None
+
+import cuda_config
 
 try:
     import cuda_runtime
@@ -32,33 +32,7 @@ try:
     CUDA_IMPORT = True
 except Exception as e:
     CUDA_IMPORT_ERROR = e
-
-
-
-
-
-#####################################################################################
-# Module Init
-#####################################################################################
-
-#if CUDA_IMPORT:
-#    cuda_runtime.cuda_set_device()
-
-
-
-#####################################################################################
-# Module cleanup
-#####################################################################################
-
-'''
-def gpucuda_cleanup():
-    if CUDA_IMPORT:
-        print "CUDA CLEANUP"
-        cuda_runtime.cuda_device_reset()
-
-if CUDA_IMPORT:
-    atexit.register(gpucuda_cleanup)
-'''
+    print e
 
 
 

@@ -74,10 +74,10 @@ class BaseMDSimulation(object):
 
 
         # Initilise timers
-        self.boundary_method_timer = runtime.Timer(runtime.TIMER, 0)
-        self.timer = runtime.Timer(runtime.TIMER, 0)
-        self.cpu_forces_timer = runtime.Timer(runtime.TIMER, 0)
-        self.kinetic_energy_timer = runtime.Timer(runtime.TIMER, 0)
+        self.boundary_method_timer = opt.Timer(runtime.TIMER, 0)
+        self.timer = opt.Timer(runtime.TIMER, 0)
+        self.cpu_forces_timer = opt.Timer(runtime.TIMER, 0)
+        self.kinetic_energy_timer = opt.Timer(runtime.TIMER, 0)
 
 
         if domain_boundary_condition is None:
@@ -169,7 +169,7 @@ class BaseMDSimulation(object):
 
 
 
-        if runtime.DEBUG.level > 0:
+        if runtime.DEBUG > 0:
             pio.pprint("DEBUG IS ON")
 
         self._kinetic_energy_lib = None

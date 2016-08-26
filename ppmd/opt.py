@@ -12,7 +12,6 @@ import cgen
 # package level imports
 import build
 import mpi
-import runtime
 import pio
 import host
 
@@ -36,6 +35,86 @@ def get_timer_accuracy():
         'opt_tick_test')['get_chrono_tick'](ctypes.byref(t))
 
     return t.value
+
+######################################################################
+# Timer class
+######################################################################
+
+
+class Timer(object):
+    """
+    Automatic timing class.
+    """
+    def __init__(self, level_object, level=0, start=False):
+        self._lo = level_object
+        self._l = level
+        self._ts = 0.0
+        self._tt = 0.0
+        self._running = False
+
+        if start:
+            self.start()
+
+    def start(self):
+        """
+        Start the timer.
+        """
+        if (self._lo > self._l) and (self._running is False):
+            self._ts = time.time()
+            self._running = True
+
+    def pause(self):
+        """
+        Pause the timer.
+        """
+        if (self._lo > self._l) and (self._running is True):
+            self._tt += time.time() - self._ts
+            self._ts = 0.0
+            self._running = False
+
+    def stop(self, str=''):
+        """
+        Stop timer and print time.
+        :arg string str: string to append after time. If None time printing will be suppressed.
+        """
+        if (self._lo > self._l) and (self._running is True):
+            self._tt += time.time() - self._ts
+
+        if self._lo > self._l:
+            pio.pprint(self._tt, "s :", str)
+
+        self._ts = 0.0
+        self._tt = 0.0
+
+        self._running = False
+
+    def time(self, str=None):
+        """
+        Return current total time.
+        :arg string str: string to append after time. If None time printing will be suppressed.
+        :return: Current total time as float.
+        """
+        if (str is not None) and (self._lo > self._l):
+            pio.pprint(self._tt, "s :", str)
+
+        return self._tt
+
+    def reset(self, str=None):
+        """
+        Resets the timer. Returns the time taken up until the reset.
+        :arg string str: If not None will print time followed by string.
+        """
+        _tt = self._tt + time.time() - self._ts
+        self._tt = 0.0
+        self._ts = time.time()
+
+        if (str is not None) and (self._lo > self._l):
+            pio.pprint(_tt, "s :", str)
+
+        return _tt
+
+
+
 
 
 
@@ -158,18 +237,14 @@ class LoopTimer(object):
 
 
 
-
-
-
-
-class SynchronizedTimer(runtime.Timer):
+class SynchronizedTimer(Timer):
 
     def start(self):
         """
         Start the timer.
         """
         mpi.MPI_HANDLE.barrier()
-        if (self._lo.level > self._l) and (self._running is False):
+        if (self._lo > self._l) and (self._running is False):
             self._ts = time.time()
             self._running = True
 
@@ -178,7 +253,7 @@ class SynchronizedTimer(runtime.Timer):
         Pause the timer.
         """
         mpi.MPI_HANDLE.barrier()
-        if (self._lo.level > self._l) and (self._running is True):
+        if (self._lo > self._l) and (self._running is True):
             self._tt += time.time() - self._ts
             self._ts = 0.0
             self._running = False
@@ -189,10 +264,10 @@ class SynchronizedTimer(runtime.Timer):
         :arg string str: string to append after time. If None time printing will be suppressed.
         """
         mpi.MPI_HANDLE.barrier()
-        if (self._lo.level > self._l) and (self._running is True):
+        if (self._lo > self._l) and (self._running is True):
             self._tt += time.time() - self._ts
 
-        if self._lo.level > self._l:
+        if self._lo > self._l:
             pio.pprint(self._tt, "s :", str)
 
         self._ts = 0.0

@@ -17,6 +17,7 @@ import kernel
 import build
 import runtime
 import host
+import opt
 
 np.set_printoptions(threshold=1000)
 
@@ -212,12 +213,12 @@ class ParticleDat(host.Matrix):
         self.group = None
 
         # Initialise timers
-        self.timer_comm = runtime.Timer(runtime.TIMER, 0)
-        self.timer_pack = runtime.Timer(runtime.TIMER, 0)
-        self.timer_transfer = runtime.Timer(runtime.TIMER, 0)
-        self.timer_transfer_1 = runtime.Timer(runtime.TIMER, 0)
-        self.timer_transfer_2 = runtime.Timer(runtime.TIMER, 0)
-        self.timer_transfer_resize = runtime.Timer(runtime.TIMER, 0)
+        self.timer_comm = opt.Timer(runtime.TIMER, 0)
+        self.timer_pack = opt.Timer(runtime.TIMER, 0)
+        self.timer_transfer = opt.Timer(runtime.TIMER, 0)
+        self.timer_transfer_1 = opt.Timer(runtime.TIMER, 0)
+        self.timer_transfer_2 = opt.Timer(runtime.TIMER, 0)
+        self.timer_transfer_resize = opt.Timer(runtime.TIMER, 0)
 
         self.name = name
         """:return: The name of the ParticleDat instance."""

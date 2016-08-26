@@ -81,7 +81,7 @@ class MDMPI(object):
         """
         self._COMM = MPI.COMM_WORLD.Create_cart(dims, periods, reorder_flag)
 
-        if runtime.VERBOSE.level > 1:
+        if runtime.VERBOSE > 1:
             pio.pprint("Processor count ", self.nproc, " Processor layout ", self.dims)
 
 

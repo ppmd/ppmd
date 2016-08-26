@@ -138,7 +138,7 @@ class _Base(object):
         d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
     def _included_headers(self):
@@ -264,7 +264,7 @@ class SingleAllParticleLoop(_Base):
         d = {'INCLUDED_HEADERS': self._included_headers(),
              'KERNEL_NAME': self._kernel.name,
              'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR.dir}
+             'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
     def _generate_impl_source(self):
@@ -279,7 +279,7 @@ class SingleAllParticleLoop(_Base):
              'OPENMP_INIT': self._ompinitstr,
              'OPENMP_DECLARATION': self._ompdecstr,
              'OPENMP_FINALISE': self._ompfinalstr,
-             'LIB_DIR': runtime.LIB_DIR.dir
+             'LIB_DIR': runtime.LIB_DIR
              }
 
         return self._code % d

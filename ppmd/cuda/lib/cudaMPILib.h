@@ -3,6 +3,7 @@
 #include <mpi.h>
 #include "cuda_generic.h"
 #include "cudaMisc.h"
+#include <stdio.h>
 
 using namespace std;
 
@@ -67,6 +68,16 @@ extern "C" int cudaHaloFillOccupancyMatrix(
     const int* __restrict__ d_halo_scan,
     int* __restrict__ d_occ_matrix
 );
+
+
+
+extern "C" int cudaCopySendCounts(
+    const int * __restrict__ h_b_arr,
+    const int * __restrict__ d_b_scan,
+    int * __restrict__ h_p_count
+);
+
+
 
 
 

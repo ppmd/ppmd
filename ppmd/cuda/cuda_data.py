@@ -100,6 +100,8 @@ class ParticleDat(cuda_base.Matrix):
         self._init_struct()
 
         self._1p_halo_lib = None
+        self._exchange_lib = None
+
         self._h_mirror = cuda_base._MatrixMirror(self)
 
 
@@ -252,6 +254,53 @@ class ParticleDat(cuda_base.Matrix):
 
             _total_size = self.npart_local + self.group._halo_sizes[0]
             self.resize(_total_size)
+
+            if self._exchange_lib is None:
+                self._exchange_lib = _build_exchange_lib(self)
+
+            self._np_halo_exchange()
+
+    def _np_halo_exchange(self):
+        if type(self) is PositionDat:
+            posdat = 1
+        else:
+            posdat = 0
+
+
+        print "SEND_COUNTS", self.group._halo_send_counts[:]
+        print "RECV_COUNTS", self.group._halo_manager.dir_counts[:]
+        print "TMP SIZE", self.group._halo_tmp_space.ncomp
+
+        #print "resizing?, sum:", sum(self.group._halo_manager.dir_counts[:]) + self.npart_local, self.nrow
+        if (sum(self.group._halo_manager.dir_counts[:]) + self.npart_local) > self.nrow:
+            self.resize(sum(self.group._halo_manager.dir_counts[:]) + self.npart_local+10)
+        self._npart_local_halo.value = sum(self.group._halo_manager.dir_counts[:])
+
+        self._exchange_lib(
+            ctypes.c_int32(mpi.MPI_HANDLE.fortran_comm),
+            ctypes.c_int32(self.npart_local),
+            ctypes.c_int32(posdat),
+            ctypes.c_int32(self.group._halo_cell_max_b),
+            ctypes.c_int32(self.group.get_cell_to_particle_map().layers_per_cell),
+            self.group._halo_manager.get_boundary_cell_groups()[1].ctypes_data,
+            self.group._halo_send_counts.ctypes_data,
+            self.group._halo_manager.dir_counts.ctypes_data,
+            self.group._halo_manager.get_send_ranks().ctypes_data,
+            self.group._halo_manager.get_recv_ranks().ctypes_data,
+            self.group._halo_b_cell_indices.ctypes_data,
+            self.group.get_cell_to_particle_map().matrix.ctypes_data,
+            self.group.get_cell_to_particle_map().cell_contents_count.ctypes_data,
+            self.group._halo_b_scan.ctypes_data,
+            self.group._halo_position_shifts.ctypes_data,
+            self.ctypes_data,
+            self.group._halo_tmp_space.ctypes_data
+        )
+
+
+
+
+
+
 
 
 
@@ -470,6 +519,51 @@ class TypedDat(cuda_base.Matrix):
 
     def __call__(self, mode=access.RW, halo=False):
         return self, mode, halo
+
+#########################################################################
+# Build library to halo exchange a particle dat
+#########################################################################
+
+
+def _build_exchange_lib(dat):
+    with open(str(cuda_runtime.LIB_DIR) + '/cudaHaloExchangeSource.cu','r') as fh:
+        code = fh.read()
+    with open(str(cuda_runtime.LIB_DIR) + '/cudaHaloExchangeSource.h','r') as fh:
+        hcode = fh.read()
+    assert code is not None, "Failure to read CUDA MPI packing code source"
+
+    d = dict()
+    d['DTYPE'] = host.ctypes_map[dat.dtype]
+    d['NCOMP'] = dat.ncomp
+    d['MPI_DTYPE'] = host.mpi_type_map[dat.dtype]
+
+    code = code % d
+    hcode = hcode % d
+
+    return cuda_build.simple_lib_creator(hcode, code, 'ParticleDat_exchange')['cudaHaloExchangePD']
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

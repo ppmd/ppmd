@@ -159,7 +159,7 @@ class ParticleLoop(object):
 
         self._gcode['HCODE_included_headers'].add(self._included_headers())
         self._gcode['HCODE_kernel_name'].add(self._kernel.name)
-        self._gcode['HCODE_lib_dir'].add(cuda_runtime.LIB_DIR.dir)
+        self._gcode['HCODE_lib_dir'].add(cuda_runtime.LIB_DIR)
         self._gcode['KCODE_gpu_kernel'].add(self._kernel.code)
 
     def _generate_impl_source(self):

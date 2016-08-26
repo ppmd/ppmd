@@ -80,7 +80,6 @@ def base_rank(request):
     return request.param
 
 
-
 @cuda
 def test_host_halo_cube_1(state):
     """
@@ -129,13 +128,6 @@ def test_host_halo_cube_1(state):
 
     state.p.halo_exchange()
 
-    '''
-    for rx in range(nproc):
-        if rx == rank:
-            print "cell counts \n", state.get_cell_to_particle_map().cell_contents_count[:]
-            print 60*"-"
-        md.mpi.MPI_HANDLE.barrier()
-    '''
 
     for cx in xrange(ca[0]):
         for cy in xrange(ca[1]):
@@ -145,8 +137,7 @@ def test_host_halo_cube_1(state):
 
 
 
-
-
+@cuda
 def test_host_halo_cube_2(state):
     """
     Check cell contents of a simple cube by value.
@@ -181,7 +172,7 @@ def test_host_halo_cube_2(state):
 
     ca = state.get_domain().cell_array
 
-
+    # print "rank, local, halo",rank, state.p.npart_local, state.p.npart_local_halo
 
     offsets = (-1, 0, 1)
     disp = float(E)/float(crN)
@@ -202,13 +193,12 @@ def test_host_halo_cube_2(state):
                             cj = (cz+oz)*(ca[0]*ca[1]) + (cy+oy)*ca[0] + (cx+ox)
                             cval = np.array((ox*disp, oy*disp, oz*disp)) + rci
 
-                            #print rank, rci, cval, (ox,oy,oz), cj, pj[cj], pj[cj] - cval
+                            # print rank, (ox,oy,oz), (cx,cy,cz)
                             assert np.sum(np.abs(pj[cj] - cval)) < 2.*(10.**(-15.))
 
 
 
 '''
-
 def test_host_halo_cube_3(state):
     """
     Check cell contents using a cell by cell inspection.
@@ -272,9 +262,8 @@ def test_host_halo_cube_3(state):
                             cval = np.array((ox*disp, oy*disp, oz*disp)) + rci
 
                             assert np.sum(np.abs(rcj - cval)) < 2.*(10.**(-15.))
-
-
 '''
+
 
 
 

@@ -298,7 +298,7 @@ _E = sim1.state.domain.extent
 
 
 
-timer = runtime.Timer(runtime.Level(1), 0)
+timer = opt.Timer(runtime.Level(1), 0)
 
 
 

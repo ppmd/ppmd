@@ -8,6 +8,7 @@ import build
 import runtime
 import mpi
 import host
+import opt
 
 ################################################################################################################
 # HALO DEFINITIONS
@@ -102,7 +103,7 @@ def create_halo_pairs_slice_halo(domain_in, slicexyz, direction):
 class CartesianHaloSix(object):
 
     def __init__(self, domain_func, cell_to_particle_map):
-        self._timer = runtime.Timer(runtime.TIMER, 0, start=True)
+        self._timer = opt.Timer(runtime.TIMER, 0, start=True)
         
         self._domain_func = domain_func
         self._domain = None
