@@ -317,7 +317,7 @@ class CellOccupancyMatrix(object):
             if ((*nl)*(*n_cells)>old_nl*(*n_cells)){
             //need to resize.
                 cudaFree(*d_M);
-                printf("new number of layers = %%d, number of cells %%d \\n", *nl, *n_cells);
+                //printf("new number of layers = %%d, number of cells %%d \\n", *nl, *n_cells);
                 checkCudaErrors(cudaMalloc((void**)d_M, (*nl)*(*n_cells)*sizeof(int)));
 
                 /*
@@ -449,7 +449,7 @@ class CellOccupancyMatrix(object):
 
         rval = self._p1_lib['LayerSort'](*args)
 
-        print "layersort out pointer", self.matrix.ctypes_data
+        # print "layersort out pointer", self.matrix.ctypes_data
 
 
         self._n_layers = _nl.value

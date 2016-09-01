@@ -267,9 +267,9 @@ class ParticleDat(cuda_base.Matrix):
             posdat = 0
 
 
-        print "SEND_COUNTS", self.group._halo_send_counts[:]
-        print "RECV_COUNTS", self.group._halo_manager.dir_counts[:]
-        print "TMP SIZE", self.group._halo_tmp_space.ncomp
+        #print "SEND_COUNTS", self.group._halo_send_counts[:]
+        #print "RECV_COUNTS", self.group._halo_manager.dir_counts[:]
+        #print "TMP SIZE", self.group._halo_tmp_space.ncomp
 
         #print "resizing?, sum:", sum(self.group._halo_manager.dir_counts[:]) + self.npart_local, self.nrow
         if (sum(self.group._halo_manager.dir_counts[:]) + self.npart_local) > self.nrow:

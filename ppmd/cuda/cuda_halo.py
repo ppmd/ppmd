@@ -331,7 +331,7 @@ def update_cell_occ_matrix(
     d_occ_matrix
     ):
 
-    print "occ halo pointer pre", d_occ_matrix.ctypes_data
+    #print "occ halo pointer pre", d_occ_matrix.ctypes_data
     cuda_runtime.cuda_err_check(
     cuda_mpi.LIB_CUDA_MPI['cudaHaloFillOccupancyMatrix'](
         ctypes.c_int32(length),
@@ -345,7 +345,7 @@ def update_cell_occ_matrix(
     )
     )
 
-    print "occ halo pointer post", d_occ_matrix.ctypes_data
+    #print "occ halo pointer post", d_occ_matrix.ctypes_data
 
 
 

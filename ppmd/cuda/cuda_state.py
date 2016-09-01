@@ -135,7 +135,7 @@ class BaseMDState(object):
 
         # update array of send counts.
 
-        print self._halo_manager.get_boundary_cell_groups()[1][:]
+        # print self._halo_manager.get_boundary_cell_groups()[1][:]
         cuda_halo.update_send_counts(self._halo_manager.get_boundary_cell_groups()[1],
                                      self._halo_b_scan,
                                      self._halo_send_counts)

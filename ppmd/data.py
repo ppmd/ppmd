@@ -470,7 +470,7 @@ class ParticleDat(host.Matrix):
 
         # print "\t\tAFTER dat resize"
         if self._tmp_halo_space.ncomp < (self.ncomp * _sizes[1]):
-            print "\t\t\tresizing temp halo space", _sizes[1]
+            #print "\t\t\tresizing temp halo space", _sizes[1]
             self._tmp_halo_space.realloc(int(1.1 * _sizes[1] * self.ncomp))
 
         # print "\t\tAFTER TMP resize"
