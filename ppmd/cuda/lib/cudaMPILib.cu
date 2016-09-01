@@ -525,9 +525,9 @@ int cudaHaloFillOccupancyMatrix(
 
 
 
-    err = cudaCreateLaunchArgs(length, 1024, &bs, &ts);
+    err = cudaCreateLaunchArgs(length*max_count, 1024, &bs, &ts);
     if (err != cudaSuccess) { return err; }
-    _cudaHaloFillOccupancyMatrix::fill_occ_matrix<<<bs,ts>>>(length,
+    _cudaHaloFillOccupancyMatrix::fill_occ_matrix<<<bs,ts>>>(length*max_count,
                                                              max_count,
                                                              occ_matrix_stride,
                                                              n_local,

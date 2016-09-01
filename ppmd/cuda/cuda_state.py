@@ -148,6 +148,9 @@ class BaseMDState(object):
 
 
     def _halo_update_cell_to_particle_map(self):
+
+        self._cell_to_particle_map.prepare_halo_sort(self._halo_cell_max_h)
+
         cuda_halo.update_cell_occ_matrix(self._halo_h_cell_indices.ncomp,
                                          self._halo_cell_max_h,
                                          self._cell_to_particle_map.layers_per_cell,

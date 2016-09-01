@@ -196,73 +196,81 @@ def test_host_halo_cube_2(state):
                             # print rank, (ox,oy,oz), (cx,cy,cz)
                             assert np.sum(np.abs(pj[cj] - cval)) < 2.*(10.**(-15.))
 
-
-
-'''
-def test_host_halo_cube_3(state):
+@cuda
+def test_host_halo_cube_3(state, h_state):
     """
     Check cell contents using a cell by cell inspection.
     """
-    cell_width = float(E)/float(crN)
-    state.get_domain().cell_decompose(cell_width)
-    state.get_cell_to_particle_map().create()
-    state.get_cell_to_particle_map().update_required = True
+
+    if nproc > 1:
+        cell_width = float(E)/float(crN)
+
+        state.get_domain().cell_decompose(cell_width)
+        state.get_cell_to_particle_map().create()
+        state.get_cell_to_particle_map().update_required = True
+
+        h_state.get_domain().cell_decompose(cell_width)
+        h_state.get_cell_to_particle_map().create()
+        h_state.get_cell_to_particle_map().update_required = True
 
 
-    pi = np.zeros([N,3], dtype=ctypes.c_double)
-    px = 0
 
-    # This is upsetting....
-    for ix in xrange(crN):
-        for iy in xrange(crN):
-            for iz in xrange(crN):
-                pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
-                px += 1
-
-    state.p[:] = pi
-    state.npart_local = N
-    state.filter_on_domain_boundary()
-
-    state.get_cell_to_particle_map().check()
+        pi = np.random.uniform(-0.5*E, 0.5*E, [N,3])
+        pi = np.array(pi, dtype=ctypes.c_double)
 
 
-    state.p.halo_exchange()
+        state.p[:] = pi
+        state.npart_local = N
+        state.filter_on_domain_boundary()
+        state.get_cell_to_particle_map().check()
 
-    pj = state.p[:state.p.npart_local+state.p.npart_local_halo:]
 
-    ca = state.get_domain().cell_array
+        h_state.p[:] = pi
+        h_state.npart_local = N
+        h_state.filter_on_domain_boundary()
+        h_state.get_cell_to_particle_map().check()
+
+        state.p.halo_exchange()
+        h_state.p.halo_exchange()
 
 
-    offsets = (-1, 0, 1)
-    disp = float(E)/float(crN)
+        assert h_state.p.npart_local == state.p.npart_local
+        assert h_state.p.npart_local_halo == state.p.npart_local_halo
 
-    cax = (1, ca[0]-2)
-    cay = (1, ca[0]-2)
-    caz = (1, ca[0]-2)
+        cl = h_state.p.npart_local
+        ch = h_state.p.npart_local_halo
 
-    cl = state.get_cell_to_particle_map().cell_list
-    end = state.get_cell_to_particle_map().offset.value
 
-    for cx in cax:
-        for cy in cay:
-            for cz in caz:
-                ci = cz*(ca[0]*ca[1]) + cy*ca[0] + cx
-                px = cl[end+ci]
-                rci = pj[px]
+        h_p = h_state.p[cl:cl+ch:, :]
+        d_p = state.p[cl:cl+ch:, :]
 
-                for ox in offsets:
-                    for oy in offsets:
-                        for oz in offsets:
 
-                            cj = (cz+oz)*(ca[0]*ca[1]) + (cy+oy)*ca[0] + (cx+ox)
+        h_p = h_p[np.lexsort((h_p[:, 0], h_p[:, 1], h_p[:,2]))]
+        d_p = d_p[np.lexsort((d_p[:, 0], d_p[:, 1], d_p[:,2]))]
 
-                            py = cl[end+cj]
-                            rcj = pj[py]
+        '''
+        print rank, h_p.shape, d_p.shape, ch
 
-                            cval = np.array((ox*disp, oy*disp, oz*disp)) + rci
+        np.set_printoptions(linewidth=60)
 
-                            assert np.sum(np.abs(rcj - cval)) < 2.*(10.**(-15.))
-'''
+        if rank == 0:
+            print rank, "DEV local"
+            print state.p[0:cl:,::]
+
+            print rank, "DEV halo"
+            print state.p[cl:cl+ch:,::]
+
+            print rank, "HOST halo"
+            print h_state.p[cl:cl+ch:,::]
+
+        '''
+
+        for ix in range(ch):
+            assert h_p[ix, 0] == d_p[ix, 0]
+            assert h_p[ix, 1] == d_p[ix, 1]
+            assert h_p[ix, 2] == d_p[ix, 2]
+
+
 
 
 

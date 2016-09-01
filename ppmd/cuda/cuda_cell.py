@@ -10,6 +10,7 @@ import math
 
 
 #cuda
+import cuda_runtime
 import cuda_base
 import cuda_build
 
@@ -34,7 +35,7 @@ class CellOccupancyMatrix(object):
         """The occupancy matrix."""
 
         # build vars
-        self._lib = None
+        self._p1_lib = None
         self._boundary = None
         self._cell_edge_lengths = None
         self._cell_array = None
@@ -192,7 +193,11 @@ class CellOccupancyMatrix(object):
         #include <cuda_generic.h>
 
         extern "C" int LayerSort(%(ARGS)s);
-
+        extern "C" int copy_matrix_cols(const int h_old_ncol,
+                                        const int h_new_ncol,
+                                        const int h_nrow,
+                                        const int * __restrict__ d_old_ptr,
+                                        int * __restrict__ d_new_ptr);
 
         ''' %{'ARGS': p1_args}
 
@@ -332,6 +337,54 @@ class CellOccupancyMatrix(object):
 
             return err;
         }
+
+
+        // ---------- realloc matrix code --------------
+
+        __global__ void copy_matrix_cols_kernel(
+            const int d_n,
+            const int d_old_ncol,
+            const int d_new_ncol,
+            const int d_nrow,
+            const int * __restrict__ d_old_ptr,
+            int * __restrict__ d_new_ptr
+        ){
+            const int ix = threadIdx.x + blockIdx.x * blockDim.x;
+            if (ix<d_n){
+                    const int row = ix/d_old_ncol;
+                    const int col = ix %% d_old_ncol;
+                    const int val = d_old_ptr[row*d_old_ncol + col];
+                    d_new_ptr[row*d_new_ncol + col] = val;
+            }
+            return;
+        }
+
+        int copy_matrix_cols(
+            const int h_old_ncol,
+            const int h_new_ncol,
+            const int h_nrow,
+            const int * __restrict__ d_old_ptr,
+            int * __restrict__ d_new_ptr
+        ){
+            cudaError_t err;
+            dim3 bs, ts;
+            const int h_n = h_old_ncol*h_nrow;
+            err = cudaCreateLaunchArgs(h_n, 1024, &bs, &ts);
+            if(err>0){return err;}
+            copy_matrix_cols_kernel<<<bs,ts>>>(h_n,
+                                               h_old_ncol,
+                                               h_new_ncol,
+                                               h_nrow,
+                                               d_old_ptr,
+                                               d_new_ptr);
+            err = cudaDeviceSynchronize();
+            return err;
+
+        }
+
+
+
+
         ''' % {'ARGS':p1_args}
 
         self._p1_lib = cuda_build.simple_lib_creator(_p1_header_code, _p1_code, 'CellOccupancyMatrix')
@@ -347,7 +400,8 @@ class CellOccupancyMatrix(object):
 
         if self.cell_contents_count.ncomp < self._domain.cell_count:
             self.cell_contents_count.realloc(self._domain.cell_count)
-            self.matrix = cuda_base.Matrix(nrow=self._domain.cell_count, ncol=self.matrix.ncol)
+            self.matrix.realloc(nrow=self._domain.cell_count,
+                                ncol=self.matrix.ncol)
 
         # Things that need to hold correct values.
 
@@ -412,6 +466,35 @@ class CellOccupancyMatrix(object):
     @property
     def positions(self):
         return self._positions
+
+    def prepare_halo_sort(self, max_halo_layers=None):
+        assert max_halo_layers is not None, "no size passed"
+
+        # Is a resize needed?
+        if max_halo_layers > self._n_layers:
+
+            new_matrix = cuda_base.device_buffer_2d(nrow=self.matrix.nrow,
+                                                    ncol=max_halo_layers,
+                                                    dtype=ctypes.c_int32)
+
+            cuda_runtime.cuda_err_check(
+            self._p1_lib['copy_matrix_cols'](
+                                             ctypes.c_int32(self.matrix.ncol),
+                                             ctypes.c_int32(new_matrix.ncol),
+                                             ctypes.c_int32(new_matrix.nrow),
+                                             self.matrix.ctypes_data,
+                                             new_matrix.ctypes_data
+                                            ))
+
+            self.matrix.free()
+            self.matrix = new_matrix
+
+
+            self._n_layers = max_halo_layers
+
+
+
+
 
 
 

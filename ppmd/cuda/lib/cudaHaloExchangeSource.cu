@@ -49,6 +49,9 @@ __global__ void cudaPackParticleDat(
             const int bid = ncomp * (d_b_scan[cio] - d_offset + pil) + comp;
             //const int bid = 0;
 
+            //printf("\t(bid, pid, val, shift, d_n*ncomp) %%d, %%d, %%f, %%f, %%d\n", bid, pid, d_ptr[pid], d_shift[comp], d_n*ncomp);
+
+
             //if (bid > 599){printf("\t\t\tbid exceeded tmp (upper) dim");}
             //if (bid < 0){printf("\t\t\tbid exceeded tmp (lower) dim");}
 
@@ -90,22 +93,8 @@ int cudaHaloExchangePD(
     %(DTYPE)s * __restrict__ d_buffer
 ){
 
-    /*
-    cout << f_MPI_COMM << endl;
-    cout << n_local << endl;
-    cout << h_pos_flag << endl;
-    cout << h_cccmax << endl;
-    cout << h_occ_m_stride << endl;
 
-    for( int dir=0 ; dir<6 ; dir++ ){
-    cout << "# " <<  dir << " ---- " << endl;
-    cout << h_b_ind[dir] << endl;
-    cout << SEND_RANKS[dir] << endl;
-    cout << RECV_RANKS[dir] << endl;
-    cout << h_send_counts[dir] << endl;
-    cout << h_recv_counts[dir] << endl;
-    }
-    */
+
 
 
 
@@ -128,29 +117,55 @@ int cudaHaloExchangePD(
     int tmp;
     int err2 = cudaMemcpy(&tmp, d_occ_matrix+511, sizeof(int), cudaMemcpyDeviceToHost);
     cout << "511 BEFORE RUN: " << tmp << " err " << err2 << endl;
+
+    if (rank==0){
+
+    cout << f_MPI_COMM << endl;
+    cout << n_local << endl;
+    cout << h_pos_flag << endl;
+    cout << h_cccmax << endl;
+    cout << h_occ_m_stride << endl;
+
+    for( int dir=0 ; dir<6 ; dir++ ){
+    cout << "# " <<  dir << " ---- " << endl;
+    cout << h_b_ind[dir] << endl;
+    cout << SEND_RANKS[dir] << endl;
+    cout << RECV_RANKS[dir] << endl;
+    cout << h_send_counts[dir] << endl;
+    cout << h_recv_counts[dir] << endl;
+    }
+
+
+    }
+
     */
-
-
-
 
     // ---
 
 
     for( int dir=0 ; dir<6 ; dir++ ){
 
-        const int b_s = h_b_ind[dir];
+        int b_s = h_b_ind[dir];
+        const int cell_count = h_b_ind[dir+1] - b_s;
+
 
         const int scount = h_send_counts[dir];
-        cout << "scount " << scount << endl;
 
 
-
-        err = cudaCreateLaunchArgs(   scount* %(NCOMP)s    , 256, &bs, &ts);
+        err = cudaCreateLaunchArgs(   cell_count*h_cccmax*%(NCOMP)s    , 256, &bs, &ts);
         if (err != cudaSuccess) { return err; }
+
+        /*
+        if (rank==0){
+        cout << "scount " << scount << " cell_count " << cell_count << endl;
+        cout << "bs.x " << bs.x << " ts.x " << ts.x << endl;
+        }
+        */
+
 
         cudaPackParticleDat<<<bs,ts>>>(
             h_pos_flag,
-            scount,
+            cell_count*h_cccmax,
             h_cccmax,
             h_occ_m_stride,
             offset,
@@ -191,8 +206,11 @@ int cudaHaloExchangePD(
         DAT_END += h_recv_counts[dir];
         offset += h_send_counts[dir];
 
+        /*
+        if (rank==0){
         cout << "IL " << h_recv_counts[dir] << " " << h_send_counts[dir] << endl;
-
+        }
+        */
 
     }
 

@@ -8,7 +8,7 @@ Move to pycuda
 Unbreak types
 cuda halo exchanges
 cuda bcs
-
+cuda kernel launches handle zero particles
 move cuda halo code to use only the host code
 
 
