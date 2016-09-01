@@ -1,3 +1,8 @@
+
+# system level
+import math
+
+# package level
 import kernel
 import data
 import ctypes
@@ -742,6 +747,148 @@ class VLennardJones2(LennardJones):
                      kernel.Constant('CV', self._C_V))
 
         return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'])
+
+
+
+class Buckingham(BasePotential):
+    """
+    """
+
+    def __init__(self, a=1.0, b=1.0, c=1.0, rc=2.5):
+
+
+        self.a = a
+        self.b = b
+        self.mb = -1.0 * b
+        self.c = c
+        self.ab = self.a * self.b
+
+        self.rc = rc
+        self._shift_internal = -1.0 * a * math.exp(b*(-1.0/rc)) + c*(-1.0/(rc**6.0))
+
+        self.rn = 1.2 * self.rc
+        self.rc2 = self.rc ** 2
+
+
+    @property
+    def kernel(self):
+        """
+        Returns a kernel class for the potential.
+        """
+
+        kernel_code = '''
+
+        const double R0 = P.j[0] - P.i[0];
+        const double R1 = P.j[1] - P.i[1];
+        const double R2 = P.j[2] - P.i[2];
+
+        const double r2 = R0*R0 + R1*R1 + R2*R2;
+
+        const double r = sqrt(r2);
+        // \\exp{-B*r}
+        const double exp_mbr = exp(_MB*r);
+
+        // r^{-2, -4, -6}
+        const double r_m1 = 1.0/r;
+        const double r_m2 = r_m1*r_m1;
+        const double r_m4 = r_m2*r_m2;
+        const double r_m6 = r_m4*r_m2;
+
+        // \\frac{C}{r^6}
+        const double crm6 = _C*r_m6;
+
+        // A \\exp{-Br} - \\frac{C}{r^6}
+        u[0]+= (r2 < rc2) ? 0.5*(_A*exp_mbr - crm6 + internalshift) : 0.0;
+
+        // = AB \\exp{-Br} - \\frac{C}{r^6}*\\frac{6}{r}
+        const double term2 = crm6*(-6.0)*r_m1;
+        const double f_tmp = _AB * exp_mbr + term2;
+
+        A.i[0]+= (r2 < rc2) ? f_tmp*R0 : 0.0;
+        A.i[1]+= (r2 < rc2) ? f_tmp*R1 : 0.0;
+        A.i[2]+= (r2 < rc2) ? f_tmp*R2 : 0.0;
+
+        '''
+        constants = (
+                     kernel.Constant('_A', self.a),
+                     kernel.Constant('_AB', self.ab),
+                     kernel.Constant('_B', self.b),
+                     kernel.Constant('_MB', self.mb),
+                     kernel.Constant('_C', self.c),
+                     kernel.Constant('rc2', self.rc ** 2),
+                     kernel.Constant('internalshift', self._shift_internal)
+                     )
+
+        return kernel.Kernel('BuckinghamV', kernel_code, constants, ['stdio.h', 'math.h'])
+
+    def datdict(self, input_state):
+        """
+        Map between state variables and kernel variables, returns required dictonary.
+
+        :arg state input_state: state with containing variables.
+        """
+
+        return {'P': input_state.positions(access.R), 'A': input_state.forces(access.INC0), 'u': input_state.u(access.INC)}
+
+    def get_data_map(self, positions=None, forces=None, potential_energy=None):
+         return {'P': positions(access.R), 'A': forces(access.INC0), 'u': potential_energy(access.INC)}
+
+class BuckinghamSymmetric(Buckingham):
+    @property
+    def kernel(self):
+        """
+        Returns a kernel class for the potential.
+        """
+
+        kernel_code = '''
+
+        const double R0 = P(1,0) - P(0,0);
+        const double R1 = P(1,1) - P(0,1);
+        const double R2 = P(1,2) - P(0,2);
+
+        const double r2 = R0*R0 + R1*R1 + R2*R2;
+
+        if (r2 < rc2) {
+            const double r = sqrt(r2);
+            // \\exp{-B*r}
+            const double exp_mbr = exp(_MB*r);
+
+            // r^{-2, -4, -6}
+            const double r_m1 = 1.0/r;
+            const double r_m2 = r_m1*r_m1;
+            const double r_m4 = r_m2*r_m2;
+            const double r_m6 = r_m4*r_m2;
+
+            // \\frac{C}{r^6}
+            const double crm6 = _C*r_m6;
+
+            // A \\exp{-Br} - \\frac{C}{r^6}
+            u(0)+= _A*exp_mbr - crm6 + internalshift;
+
+            // AB \\exp{-Br} - \\frac{C}{r^6}*\\frac{6}{r}
+            const double term2 = crm6*(-6.0)*r_m1;
+            const double f_tmp = _AB * exp_mbr + term2;
+
+            A(0,0)+=f_tmp*R0;
+            A(0,1)+=f_tmp*R1;
+            A(0,2)+=f_tmp*R2;
+
+            A(1,0)-=f_tmp*R0;
+            A(1,1)-=f_tmp*R1;
+            A(1,2)-=f_tmp*R2;
+        }
+        '''
+        constants = (
+                     kernel.Constant('_A', self.a),
+                     kernel.Constant('_AB', self.ab),
+                     kernel.Constant('_B', self.b),
+                     kernel.Constant('_MB', self.mb),
+                     kernel.Constant('_C', self.c),
+                     kernel.Constant('rc2', self.rc ** 2),
+                     kernel.Constant('internalshift', self._shift_internal)
+                     )
+
+        return kernel.Kernel('BuckinghamV', kernel_code, constants, ['stdio.h', 'math.h'])
 
 
 

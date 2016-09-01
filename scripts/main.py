@@ -4,22 +4,18 @@ from ppmd import *
 
 #import runtime
 # debug level
-runtime.DEBUG.level = 3
+runtime.DEBUG = 3
 #verbosity level
-runtime.OPT.level = 3
+runtime.OPT = 3
 
 
-runtime.VERBOSE.level = 3
+runtime.VERBOSE = 3
 #timer level
-runtime.TIMER.level = 3
+runtime.TIMER = 3
 #build timer level
-runtime.BUILD_TIMER.level = 3
+runtime.BUILD_TIMER = 3
 
 
-
-
-#cuda on/off
-runtime.CUDA_ENABLED.flag = False
 
 
 
@@ -58,6 +54,8 @@ if __name__ == '__main__':
     dt=0.001
 
     N3 = False
+    POT = 'B'
+    #POT = 'LJ'
 
 
     if test_1000:
@@ -74,11 +72,25 @@ if __name__ == '__main__':
         test_domain = domain.BaseDomainHalo()
 
         # Initialise LJ potential
-        if N3:
-            test_potential = potential.LennardJones(sigma=1.0, epsilon=1.0, rc=rc)
-        else:
-            test_potential = potential.VLennardJones(sigma=1.0, epsilon=1.0, rc=rc)
 
+
+
+        if N3:
+            if POT == 'LJ':
+                test_potential = potential.LennardJones(sigma=1.0, epsilon=1.0, rc=rc)
+            else:
+                test_potential = potential.BuckinghamSymmetric(a=1.69*10**-8.0,
+                                                               b=1.0/0.273,
+                                                               c=102*10**-12,
+                                                               rc=rc)
+        else:
+            if POT == 'LJ':
+                test_potential = potential.VLennardJones(sigma=1.0, epsilon=1.0, rc=rc)
+            else:
+                test_potential = potential.Buckingham(a=1.69*10**-8.0,
+                                                      b=1.0/0.273,
+                                                      c=102*10**-12,
+                                                      rc=rc)
 
         # Place n particles in a lattice with given density.
         # test_pos_init = state.PosInitLatticeNRho(n, rho, None)

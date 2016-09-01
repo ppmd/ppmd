@@ -9,15 +9,12 @@ import ConfigParser
 # package level imports
 import compiler
 
-
-def _cast_type(t , v):
-    return t(v)
-
-def _str_to_bool(s="0"):
+def str_to_bool(s="0"):
     return bool(int(s))
 
 COMPILERS = dict()
 MAIN_CFG = dict()
+
 
 # defaults and type defs for main options
 MAIN_CFG['opt-level'] = (int, 1)
@@ -40,19 +37,13 @@ def load_config(dir=None):
         CFG_DIR = os.path.abspath(dir)
 
 
-
-
-
     # parse main options
     main_parser = ConfigParser.SafeConfigParser(os.environ)
     main_parser.read(os.path.join(CFG_DIR, 'default.cfg'))
     for key in MAIN_CFG:
         try:
             t = MAIN_CFG[key][0]
-            MAIN_CFG[key] = (t,
-                             _cast_type(t,
-                                        main_parser.get('ppmd', key))
-                             )
+            MAIN_CFG[key] = (t, t(main_parser.get('ppmd', key)))
         except ConfigParser.InterpolationError:
             pass
         except ConfigParser.NoOptionError:
@@ -72,6 +63,7 @@ def load_config(dir=None):
               )
 
 
+    # parse all config files in the compilers dir.
     cc_parser = ConfigParser.SafeConfigParser()
     for cc_cfg in os.listdir(os.path.join(CFG_DIR, 'compilers')):
         cc_parser.read(os.path.join(os.path.join(CFG_DIR, 'compilers'), cc_cfg))

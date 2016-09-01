@@ -23,7 +23,6 @@ np.set_printoptions(threshold=1000)
 
 
 
-
 """
 rst_doc{
 
