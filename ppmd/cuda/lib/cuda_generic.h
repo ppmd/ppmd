@@ -8,7 +8,7 @@
     #include <builtin_types.h>
     #include <cuda_profiler_api.h>
     #include <device_functions.h>
-    #include "cuda_counting_types.h"
+    //#include "cuda_counting_types.h"
     #include <iostream>
 
     using namespace std;

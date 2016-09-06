@@ -154,10 +154,14 @@ class BaseDomainHalo(object):
 
         if mpi_grid is None:
             if self._init_extent:
-                _dims = _find_domain_decomp((int(self.extent[0]),
-                                             int(self.extent[1]),
-                                             int(self.extent[2])),
-                                            mpi.MPI_HANDLE.nproc)
+                sf = min(float(self.extent[0]),
+                         float(self.extent[1]),
+                         float(self.extent[2]))
+                sc = (int(self.extent[0]/sf)*1000,
+                      int(self.extent[1]/sf)*1000,
+                      int(self.extent[2]/sf)*1000)
+
+                _dims = _find_domain_decomp(sc, mpi.MPI_HANDLE.nproc)
             else:
                  _dims = _find_domain_decomp_no_extent(mpi.MPI_HANDLE.nproc)
 
@@ -253,7 +257,6 @@ class BaseDomainHalo(object):
 
         self._boundary_outer = data.ScalarArray(_boundary, dtype=ctypes.c_double)
 
-        print self._cell_array
 
         self._init_cells = True
         return True
@@ -563,6 +566,7 @@ def _create_domain_decomp(global_cell_array=None, periods=None):
     """
 
     _dims = _find_domain_decomp(global_cell_array, mpi.MPI_HANDLE.nproc)
+
 
      # Create cartesian communicator
     _dims = tuple(_dims)

@@ -449,6 +449,7 @@ class ParticleDat(host.Matrix):
         functional for positions.
         """
 
+
         self.timer_comm.start()
 
         # new start

@@ -180,7 +180,7 @@ class VelocityVerlet(object):
     :arg bool DEBUG: Flag to enable debug flags.
     """
     
-    def __init__(self, dt=0.0001, t=0.01, simulation=None, schedule=None, shell_tickness=0.0):
+    def __init__(self, dt=0.0001, t=0.01, simulation=None, schedule=None, shell_thickness=0.0):
     
         self._dt = dt
         self._T = t
@@ -188,7 +188,7 @@ class VelocityVerlet(object):
         self._sim = simulation
         self._state = self._sim.state
 
-        self._delta = shell_tickness
+        self._delta = shell_thickness
 
 
         self.timer = opt.SynchronizedTimer(runtime.TIMER)

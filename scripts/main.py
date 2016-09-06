@@ -215,7 +215,7 @@ if __name__ == '__main__':
 
     test_integrator = method.VelocityVerlet(simulation = sim1,
                                             schedule=schedule,
-                                            shell_tickness=0.1*rc)
+                                            shell_thickness=0.1 * rc)
 
 
 

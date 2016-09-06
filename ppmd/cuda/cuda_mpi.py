@@ -7,7 +7,6 @@ from ppmd import runtime, pio, mpi
 
 #cuda level imports
 import cuda_build
-import cuda_runtime
 
 
 try:

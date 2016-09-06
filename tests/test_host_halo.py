@@ -83,9 +83,13 @@ def test_host_halo_cube_1(state):
                 pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
                 px += 1
 
+
     state.p[:] = pi
     state.npart_local = N
+
+
     state.filter_on_domain_boundary()
+
 
     state.get_cell_to_particle_map().check()
 
@@ -95,9 +99,11 @@ def test_host_halo_cube_1(state):
     #print "cell counts \n", state.get_cell_to_particle_map().cell_contents_count[:]
 
 
+
     for cx in xrange(ca[0]):
         for cy in xrange(ca[1]):
             for cz in xrange(ca[2]):
+
                 ci = cz*(ca[0]*ca[1]) + cy*ca[0] + cx
                 if ( cx == 0 or cx == ca[0]-1 ) or \
                    ( cy == 0 or cy == ca[1]-1 ) or \

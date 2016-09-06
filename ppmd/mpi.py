@@ -270,6 +270,23 @@ class MDMPI(object):
 
         return _r[0] + _r[1] * self._dims[0] + _r[2] * self._dims[0] * self._dims[1]
 
+    def get_move_send_recv_ranks(self):
+        send_ranks = range(26)
+        recv_ranks = range(26)
+
+        for ix in range(26):
+            direction = recv_modifiers[ix]
+            send_ranks[ix] = self.shift(direction, ignore_periods=True)
+            recv_ranks[ix] = self.shift((-1 * direction[0],
+                                         -1 * direction[1],
+                                         -1 * direction[2]),
+                                         ignore_periods=True)
+
+        return send_ranks, recv_ranks
+
+
+
+
 ###########################################################################################################
 # MPI_HANDLE
 ###########################################################################################################

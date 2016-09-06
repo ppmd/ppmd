@@ -273,6 +273,9 @@ class BaseMDState(object):
             self._move_send_buffer = None
             self._move_recv_buffer = None
 
+            # force rebuild of compression lib
+            self._compression_lib = None
+
             # Re-create the move library.
             self._total_ncomp = 0
             self._move_ncomp = []
@@ -420,7 +423,8 @@ class BaseMDState(object):
 
         #ppmd.pio.rprint('\n R:', self._replacement_slots[:])
 
-        self._compression_lib = _CompressParticleDats(self, self.particle_dats)
+        if self._compression_lib is None:
+            self._compression_lib = _CompressParticleDats(self, self.particle_dats)
         self._compression_lib.apply(self._num_slots_to_fill,
                                     self._empty_slots,
                                     self._replacement_slots)
@@ -431,17 +435,96 @@ class BaseMDState(object):
 
 
 
-
-
-    def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None, shifts=None):
+    def move_to_neighbour(self, directions_matrix=None, dir_counts=None):
         """
-        Move particles using the linked list.
+        Move particles using the passed matrix where rows correspond to
+        directions.
 
-        :arg host.Array ids_directions_list(int): Linked list of ids from directions.
-        :arg host.Array dir_send_totals(int): 26 Element array of number of particles traveling in each direction.
-        :arg host.Array shifts(double): 73 element array of the shifts to apply when moving particles for the 26 directions.
         """
-        pass
+
+        # TODO move this to the init
+        self._move_send_ranks = None
+        self._move_recv_ranks = None
+        self._move_send_buffer = None
+        self._move_recv_buffer = None
+        self._move_lib = None
+        self._move_recv_counts = None
+
+
+
+
+        if self._move_lib is None:
+            self._move_lib = cuda_build.build_static_libs('cudaMoveLib')
+
+
+
+        self._move_send_ranks, self._move_recv_ranks = \
+            ppmd.mpi.MPI_HANDLE.get_move_send_recv_ranks()
+
+        self._move_send_ranks = ppmd.host.Array(initial_value=self._move_send_ranks,
+                                                dtype=ctypes.c_int32)
+        self._move_recv_ranks = ppmd.host.Array(initial_value=self._move_recv_ranks,
+                                                dtype=ctypes.c_int32)
+        self._move_recv_counts = ppmd.host.Array(ncomp=26,
+                                                 dtype=ctypes.c_int32)
+
+
+        ndats = len(self.particle_dats)
+        ptr_t = ndats*ctypes.c_void_p
+        byte_t = ndats*ctypes.c_int32
+        ptrs_a = []
+        byte_a = []
+        total_bytes = 0
+
+        for dat in self.particle_dats:
+            dath = getattr(self, dat)
+            ptrs_a.append(dath.ctypes_data)
+            be = ctypes.sizeof(dath.dtype)*dath.ncomp
+            byte_a.append(be)
+            total_bytes += be
+
+        # These are arrays len=ndat, of dat pointers and dat byte counts per
+        # particle
+        ptrs = ptr_t(*ptrs_a)
+        byte = byte_t(*byte_a)
+
+
+        cuda_mpi.cuda_mpi_err_check(
+            self._move_lib['cudaMoveStageOne'](
+                ctypes.c_int32(ppmd.mpi.MPI_HANDLE.fortran_comm),
+                self._move_send_ranks.ctypes_data,
+                self._move_recv_ranks.ctypes_data,
+                dir_counts.ctypes_data,
+                self._move_recv_counts.ctypes_data
+            )
+        )
+
+
+        total_particles = np.sum(dir_counts[:])
+        tl = total_particles*total_bytes
+
+        if self._move_send_buffer is None:
+            self._move_send_buffer = cuda_base.Array(ncomp=tl,
+                                                     dtype=ctypes.c_char)
+        elif self._move_send_buffer.ncomp < tl:
+            self._move_send_buffer.realloc(tl)
+
+        total_recv_count = np.sum(self._move_recv_counts[:])*total_bytes
+
+        if self._move_recv_buffer is None:
+            self._move_recv_buffer = cuda_base.Array(ncomp=total_recv_count,
+                                                     dtype=ctypes.c_char)
+        elif self._move_recv_buffer.ncomp < total_recv_count:
+            self._move_recv_buffer.realloc(total_recv_count)
+
+
+        # TODO MAIN SEND/RECV HERE
+
+
+
+
+
+
 
 
     def _move_build_unpacking_lib(self):

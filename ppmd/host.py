@@ -94,11 +94,14 @@ def _make_array(initial_value=None, dtype=None, nrow=None, ncol=None):
 
 
 def _create_zeros(nrow=None, ncol=None, dtype=ctypes.c_double):
+
+
+
     assert ncol is not None, "Make 1D arrays using ncol not nrow"
     if nrow is not None:
-        return np.zeros([nrow, ncol], dtype=dtype)
+        return np.zeros([int(nrow), int(ncol)], dtype=dtype)
     else:
-        return np.zeros(ncol, dtype=dtype)
+        return np.zeros(int(ncol), dtype=dtype)
 
 
 def _create_from_existing(ndarray=None, dtype=ctypes.c_double):
