@@ -104,7 +104,9 @@ class BoundaryTypePeriodic(object):
             if self._escape_guard_lib is None:
                 # build lib
                 self._escape_guard_lib = \
-                    cuda_build.build_static_libs('cudaNProcPBC')
+                    ctypes.cdll.LoadLibrary(
+                        cuda_build.build_static_libs('cudaNProcPBC')
+                    )
 
             # --- init escape count ----
             if self._escape_count is None:
@@ -133,43 +135,57 @@ class BoundaryTypePeriodic(object):
             # --- find escapees ---
 
             nl  = self.state.get_position_dat().npart_local
-            cuda_runtime.cuda_err_check(
-                self._escape_guard_lib['cudaNProcPBCStageOne'](
-                    ctypes.c_int32(nl),
-                    self.state.domain.boundary.ctypes_data,
-                    self.state.get_position_dat().ctypes_data,
-                    self.state.domain.get_shift().ctypes_data,
-                    self._escape_count.ctypes_data,
-                    self._escape_dir_count.ctypes_data,
-                    self._escape_list.ctypes_data
-                )
-            )
 
-            dir_max = np.max(self._escape_dir_count[:])
+            if nl > 0:
+                cuda_runtime.cuda_err_check(
+                    self._escape_guard_lib['cudaNProcPBCStageOne'](
+                        ctypes.c_int32(nl),
+                        self.state.domain.boundary.ctypes_data,
+                        self.state.get_position_dat().ctypes_data,
+                        self.state.domain.get_shift().ctypes_data,
+                        self._escape_count.ctypes_data,
+                        self._escape_dir_count.ctypes_data,
+                        self._escape_list.ctypes_data
+                    )
+                )
+
+
+
+            dir_max = np.max(self._escape_dir_count[:]) + 1
+
             if self._escape_matrix is None:
-                self._escape_matrix = host.Matrix(nrow=26,
-                                                  ncol=dir_max,
-                                                  dtype=ctypes.c_int32)
+                self._escape_matrix = cuda_base.Matrix(nrow=26,
+                                                       ncol=dir_max,
+                                                       dtype=ctypes.c_int32)
 
             elif self._escape_matrix.ncol < dir_max:
                 self._escape_matrix.realloc(nrow=26, ncol=dir_max)
 
 
+
             # --- Populate escape matrix (essentially sort by direction)
-            cuda_runtime.cuda_err_check(
-                self._escape_guard_lib['cudaNProcPBCStageTwo'](
-                    ctypes.c_int32(self._escape_count[0]),
-                    ctypes.c_int32(self._escape_matrix.ncol),
-                    self._escape_list.ctypes_data,
-                    self._escape_matrix.ctypes_data
+
+
+            if nl > 0:
+                cuda_runtime.cuda_err_check(
+                    self._escape_guard_lib['cudaNProcPBCStageTwo'](
+                        ctypes.c_int32(self._escape_count[0]),
+                        ctypes.c_int32(self._escape_matrix.ncol),
+                        self._escape_list.ctypes_data,
+                        self._escape_matrix.ctypes_data
+                    )
                 )
+
+            self.state.move_to_neighbour(
+                directions_matrix=self._escape_matrix,
+                dir_counts=self._escape_dir_count
             )
 
 
-            # TODO pass matrix and dir counts to a cuda_state
-
-
-
+            rk = mpi.MPI_HANDLE.rank
+            #print "BEFORE", rk, self.state.npart_local
+            self.state.filter_on_domain_boundary(self.state.npart_local)
+            #print "AFTER", rk, self.state.npart_local
 
 
 

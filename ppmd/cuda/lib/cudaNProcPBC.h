@@ -12,7 +12,8 @@ using namespace std;
 extern "C" int cudaNProcPBCStageOne(
     const int h_n,
     const double * __restrict__ h_B,
-    const double * __restrict__ d_P,
+    double * __restrict__ d_P,
+    const double * __restrict__ h_shifts,
     int * __restrict__ d_count,
     int * __restrict__ d_dir_count,
     int * __restrict__ d_escapees

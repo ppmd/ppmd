@@ -87,15 +87,19 @@ class BaseMDState(object):
         # compression vars
         self._filter_method = None
         self._comp_replacement_find_method = _FindCompressionIndices()
-        self._empty_per_particle_flag = None
-        self._empty_slots = None
-        self._replacement_slots = None
-        self._new_npart = None
-        self._num_slots_to_fill = None
         self._compression_lib = None
 
         # State version id
         self.version_id = 0
+
+        # move vars
+        self._move_send_ranks = None
+        self._move_recv_ranks = None
+        self._move_send_buffer = None
+        self._move_recv_buffer = None
+        self._move_lib = None
+        self._move_send_counts = None
+        self._move_recv_counts = None
 
 
         # move vars.
@@ -388,49 +392,46 @@ class BaseMDState(object):
         for px in self.particle_dats:
             getattr(self, px).free()
 
-    def filter_on_domain_boundary(self):
+    def filter_on_domain_boundary(self, n=None):
         """
         Remove particles that do not reside in this subdomain. State requires a
         domain and a PositionDat
         """
-
-        self._empty_per_particle_flag, \
-        self._empty_slots, \
-        self._num_slots_to_fill, \
-        self._new_npart = self._filter_method.apply()
+        if n is None:
+            n = self.npart
 
 
+        self._compress_dats(*self._filter_method.apply(n))
+
+
+    def _compress_dats(self,
+                       empty_per_particle_flag,
+                       empty_slots,
+                       num_slots_to_fill,
+                       new_npart):
 
         n = self.npart
-        n2 = n - self._new_npart
-        new_n = self._new_npart
+        n2 = n - new_npart
+        new_n = new_npart
 
         test = np.zeros([n+1, 2])
-        test[:,0] = self._empty_per_particle_flag[:,0]
-
-        #ppmd.pio.rprint('\n', test)
-        #ppmd.pio.rprint('\n new_n, n2 ', new_n, " " , n2)
-        #ppmd.pio.rprint(n - self._empty_per_particle_flag[n,0])
-
-        #ppmd.pio.rprint('\n E:', self._empty_slots[:])
+        test[:,0] = empty_per_particle_flag[:,0]
 
 
-        self._replacement_slots = \
-            self._comp_replacement_find_method.apply(self._empty_per_particle_flag,
-                                                     self._num_slots_to_fill,
-                                                     self._new_npart,
-                                                     self.npart-self._new_npart)
+        replacement_slots = \
+            self._comp_replacement_find_method.apply(empty_per_particle_flag,
+                                                     num_slots_to_fill,
+                                                     new_npart,
+                                                     self.npart-new_npart)
 
-        #ppmd.pio.rprint('\n R:', self._replacement_slots[:])
 
         if self._compression_lib is None:
             self._compression_lib = _CompressParticleDats(self, self.particle_dats)
-        self._compression_lib.apply(self._num_slots_to_fill,
-                                    self._empty_slots,
-                                    self._replacement_slots)
+        self._compression_lib.apply(num_slots_to_fill,
+                                    empty_slots,
+                                    replacement_slots)
 
-
-        self.npart_local = self._new_npart
+        self.npart_local = new_npart
 
 
 
@@ -442,19 +443,11 @@ class BaseMDState(object):
 
         """
 
-        # TODO move this to the init
-        self._move_send_ranks = None
-        self._move_recv_ranks = None
-        self._move_send_buffer = None
-        self._move_recv_buffer = None
-        self._move_lib = None
-        self._move_recv_counts = None
-
-
-
 
         if self._move_lib is None:
-            self._move_lib = cuda_build.build_static_libs('cudaMoveLib')
+            self._move_lib = ctypes.cdll.LoadLibrary(
+                cuda_build.build_static_libs('cudaMoveLib')
+            )
 
 
 
@@ -466,6 +459,8 @@ class BaseMDState(object):
         self._move_recv_ranks = ppmd.host.Array(initial_value=self._move_recv_ranks,
                                                 dtype=ctypes.c_int32)
         self._move_recv_counts = ppmd.host.Array(ncomp=26,
+                                                 dtype=ctypes.c_int32)
+        self._move_send_counts = ppmd.host.Array(initial_value=dir_counts[:],
                                                  dtype=ctypes.c_int32)
 
 
@@ -494,7 +489,7 @@ class BaseMDState(object):
                 ctypes.c_int32(ppmd.mpi.MPI_HANDLE.fortran_comm),
                 self._move_send_ranks.ctypes_data,
                 self._move_recv_ranks.ctypes_data,
-                dir_counts.ctypes_data,
+                self._move_send_counts.ctypes_data,
                 self._move_recv_counts.ctypes_data
             )
         )
@@ -505,24 +500,56 @@ class BaseMDState(object):
 
         if self._move_send_buffer is None:
             self._move_send_buffer = cuda_base.Array(ncomp=tl,
-                                                     dtype=ctypes.c_char)
+                                                     dtype=ctypes.c_int8)
         elif self._move_send_buffer.ncomp < tl:
             self._move_send_buffer.realloc(tl)
 
+
+        # resize tmp buffers
         total_recv_count = np.sum(self._move_recv_counts[:])*total_bytes
+        recv_count = np.sum(self._move_recv_counts[:])
 
         if self._move_recv_buffer is None:
             self._move_recv_buffer = cuda_base.Array(ncomp=total_recv_count,
-                                                     dtype=ctypes.c_char)
+                                                     dtype=ctypes.c_int8)
         elif self._move_recv_buffer.ncomp < total_recv_count:
             self._move_recv_buffer.realloc(total_recv_count)
 
 
-        # TODO MAIN SEND/RECV HERE
+        # resize dats
+        self._empty_per_particle_flag = cuda_base.Array(
+            ncomp=self.get_position_dat().npart_total + recv_count,
+            dtype=ctypes.c_int32
+        )
 
 
+        self._empty_per_particle_flag.zero()
+
+        self._resize_callback(self.npart_local + recv_count)
 
 
+        # pack -> S/R unpack
+        cuda_mpi.cuda_mpi_err_check(
+            self._move_lib['cudaMoveStageTwo'](
+                ctypes.c_int32(ppmd.mpi.MPI_HANDLE.fortran_comm),
+                ctypes.c_int32(self.npart_local),
+                ctypes.c_int32(total_bytes),
+                ctypes.c_int32(ndats),
+                self._move_send_counts.ctypes_data,
+                self._move_recv_counts.ctypes_data,
+                self._move_send_ranks.ctypes_data,
+                self._move_recv_ranks.ctypes_data,
+                directions_matrix.ctypes_data,
+                ctypes.c_int32(directions_matrix.ncol),
+                self._move_send_buffer.ctypes_data,
+                self._move_recv_buffer.ctypes_data,
+                ctypes.byref(ptrs),
+                ctypes.byref(byte),
+                self._empty_per_particle_flag.ctypes_data
+            )
+        )
+
+        self.npart_local = self.npart_local + recv_count
 
 
 
@@ -622,9 +649,7 @@ class _FilterOnDomain(object):
         self._find_indices_method = _FindCompressionIndices()
 
 
-    def apply(self):
-
-        n = self._positions.group.npart
+    def apply(self, n):
 
         self._per_particle_flag.resize(n+1)
         B = self._domain.boundary

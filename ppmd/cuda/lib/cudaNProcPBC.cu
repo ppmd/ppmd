@@ -1,7 +1,7 @@
 
 
 
-#include "cudaNProcPBCSource.h"
+#include "cudaNProcPBC.h"
 
 
 __constant__ int d_bin_to_dir[57];
@@ -47,9 +47,9 @@ __global__ void d_find_escapees(
 
             const int dir = d_bin_to_dir[b];
 
-            d_P[3*_ix] += d_shifts[3*dir];
-            d_P[3*_ix+1] += d_shifts[3*dir+1];
-            d_P[3*_ix+2] += d_shifts[3*dir+2];
+            P[3*_ix] += d_shifts[3*dir];
+            P[3*_ix+1] += d_shifts[3*dir+1];
+            P[3*_ix+2] += d_shifts[3*dir+2];
 
             const int jx = 3 * atomicAdd(d_count, (int)1);
             const int dx = atomicAdd(&d_dir_count[dir], (int)1);
@@ -70,7 +70,7 @@ int cudaNProcPBCStageOne(
     const int h_n,
     const double * __restrict__ h_B,
     double * __restrict__ d_P,
-    const * __restrict__ h_shifts,
+    const double * __restrict__ h_shifts,
     int * __restrict__ d_count,
     int * __restrict__ d_dir_count,
     int * __restrict__ d_escapees
@@ -118,6 +118,13 @@ int cudaNProcPBCStageOne(
     err = cudaCreateLaunchArgs(h_n, 256, &bs, &ts);
     if(err>0){return err;}
 
+    /*
+    cout << "attempt: " << h_n << endl;
+    cout << "config x: " << bs.x << ", " << ts.x << endl;
+    cout << "config y: " << bs.y << ", " << ts.y << endl;
+    cout << "config z: " << bs.z << ", " << ts.z << endl;
+    */
+
     d_find_escapees<<<bs, ts>>>(h_n, d_P, d_count, d_dir_count, d_escapees);
     err = cudaDeviceSynchronize();
     if(err>0){return err;}
@@ -158,6 +165,8 @@ int cudaNProcPBCStageTwo(
 
     err = cudaCreateLaunchArgs(h_n, 256, &bs, &ts);
     if(err>0){return err;}
+
+
 
     d_PopulateEscapeMatrix<<<bs, ts>>>(h_n,
                                        d_ncol,

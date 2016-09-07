@@ -39,7 +39,7 @@ int cudaMoveStageOne(
                              h_send_ranks[dir],
                              rank,
                              COMM,
-                             &SR[src])
+                             &SR[src]);
 
 
             err |= MPI_Irecv(&h_recv_counts[dir],
@@ -48,8 +48,8 @@ int cudaMoveStageOne(
                              h_recv_rank[dir],
                              h_recv_rank[dir],
                              COMM,
-                             &RR[src])
-            src++
+                             &RR[src]);
+            src++;
         }
     }
 
@@ -73,7 +73,7 @@ __global__ void d_pack(
     const int num_dats,
     const int * __restrict__ d_byte_counts,
     const int * __restrict__ d_move_matrix,
-    const void ** d_ptrs,
+    void ** d_ptrs,
     char * __restrict__ d_buffer,
     int * __restrict__ d_empty_flag
 ){
@@ -89,8 +89,8 @@ __global__ void d_pack(
         for(int dat=0 ; dat<num_dats ; dat++){
 
             memcpy(d_buffer+offset+loffset,
-                   d_ptrs[dat]+px*d_byte_counts[dir],
-                   d_byte_counts[dir]
+                   ((char*) d_ptrs[dat])+px*d_byte_counts[dat],
+                   d_byte_counts[dat]
                    );
 
             loffset += d_byte_counts[dat];
@@ -101,14 +101,47 @@ __global__ void d_pack(
     return;
 }
 
+__global__ void d_unpack(
+    const int d_n,
+    const int thread_count,
+    const int total_bytes,
+    const int num_dats,
+    const int * __restrict__ d_byte_counts,
+    void ** d_ptrs,
+    const char * __restrict__ d_buffer
+){
+    const int tx = threadIdx.x + blockIdx.x*blockDim.x;
+    if( tx<thread_count ){
+        // buffer particle index
+        const int pxn = tx/total_bytes;
+        // dat index to copy into
+        const int pxd = pxn+d_n;
 
+        int buf_off = 0;
+        for( int dx=0 ; dx<num_dats; dx++){
+            const int bc = d_byte_counts[dx];
+            memcpy(
+                ((char*)d_ptrs[dx]) + pxd*bc,
+                d_buffer + total_bytes*pxn + buf_off,
+                bc
+            );
+
+            buf_off += bc;
+        }
+    }
+
+    return;
+}
 
 int cudaMoveStageTwo(
     const int FCOMM,
+    const int n_local,
     const int total_bytes,
     const int num_dats,
     const int * __restrict__ h_send_counts,
     const int * __restrict__ h_recv_counts,
+    const int * __restrict__ h_send_ranks,
+    const int * __restrict__ h_recv_ranks,
     const int * __restrict__ d_move_matrix,
     const int move_matrix_stride,
     char * __restrict__ d_send_buf,
@@ -157,7 +190,7 @@ int cudaMoveStageTwo(
     // PACKING ---------------------------------------
     int s_buffer_offset = 0;
     for(int dir=0 ; dir<26 ; dir++ ){
-        if ( ! ((rank == h_send_ranks[dir]) && (rank == h_recv_rank[dir])) ){
+        if ( ! ((rank == h_send_ranks[dir]) && (rank == h_recv_ranks[dir])) ){
 
             err = cudaCreateLaunchArgs(h_send_counts[dir], 256, &bs, &ts);
             if(err>0){return err;}
@@ -171,7 +204,7 @@ int cudaMoveStageTwo(
                 d_ptrs,
                 d_send_buf + s_buffer_offset,
                 d_empty_flag
-            )
+            );
 
             s_buffer_offset += h_send_counts[dir]*total_bytes;
         }
@@ -183,47 +216,59 @@ int cudaMoveStageTwo(
 
 
     // SENDING ---------------------------------------
-    s_buffer_offset = 0
+    s_buffer_offset = 0;
     int r_buffer_offset = 0;
     int src = 0;
 
 
     for(int dir=0 ; dir<26 ; dir++){
 
-        if ( ! ((rank == h_send_ranks[dir]) && (rank == h_recv_rank[dir])) ){
-            err |= MPI_Isend(d_send_buf+s_buffer_offset,
+        if ( ! ((rank == h_send_ranks[dir]) && (rank == h_recv_ranks[dir])) ){
+            err_mpi = err_mpi | MPI_Isend(d_send_buf+s_buffer_offset,
                              h_send_counts[dir]*total_bytes,
                              MPI_BYTE,
                              h_send_ranks[dir],
                              rank,
                              COMM,
-                             &SR[src])
+                             &SR[src]);
 
 
-            err |= MPI_Irecv(d_recv_buf+r_buffer_offset,
+            err_mpi = err_mpi | MPI_Irecv(d_recv_buf+r_buffer_offset,
                              h_recv_counts[dir]*total_bytes,
                              MPI_BYTE,
-                             h_recv_rank[dir],
-                             h_recv_rank[dir],
+                             h_recv_ranks[dir],
+                             h_recv_ranks[dir],
                              COMM,
-                             &RR[src])
-            src++
+                             &RR[src]);
+            src++;
             s_buffer_offset += h_send_counts[dir]*total_bytes;
             r_buffer_offset += h_recv_counts[dir]*total_bytes;
         }
     }
 
-    if (err>0) {return err;}
+    if (err_mpi>0) {return err_mpi;}
 
 
-    err = MPI_Waitall(src, SR, SS);
-    if (err>0) {return err;}
-    err = MPI_Waitall(src, RR, RS);
-
+    err_mpi = MPI_Waitall(src, SR, SS);
+    if (err_mpi>0) {return err_mpi;}
+    err_mpi = MPI_Waitall(src, RR, RS);
+    if (err_mpi>0) {return err_mpi;}
 
     //UNPACKING ---------------------------------------
 
+    err = cudaCreateLaunchArgs(r_buffer_offset, 256, &bs, &ts);
+    if(err>0){return err;}
 
+    d_unpack<<<bs,ts>>>(
+        n_local,
+        r_buffer_offset,
+        total_bytes,
+        num_dats,
+        d_byte_counts,
+        d_ptrs,
+        d_recv_buf
+    );
+    err = cudaDeviceSynchronize();
 
     return err;
 }
