@@ -54,6 +54,8 @@ class CellOccupancyMatrix(object):
         self._update_func_pre = None
         self._update_func_post = None
 
+        self.version_id = 0
+
 
     def trigger_update(self):
         self.update_required = True
@@ -455,6 +457,8 @@ class CellOccupancyMatrix(object):
         self._n_layers = _nl.value
         self.matrix.ncol = self._n_layers
 
+        self.version_id += 1
+
     @property
     def layers_per_cell(self):
         return self._n_layers
@@ -510,7 +514,7 @@ class NeighbourListLayerBased(object):
         self._rc = cutoff
 
         self.max_neigbours_per_particle = None
-
+        self.version_id = 0
 
         self.list = cuda_base.Matrix(nrow=1, ncol=1, dtype=ctypes.c_int)
 
@@ -723,6 +727,8 @@ class NeighbourListLayerBased(object):
 
         self._lib(*args)
         self.max_neigbours_per_particle = 8 * self._occ_matrix.layers_per_cell + 1
+
+        self.version_id = self._occ_matrix.version_id
 
 
 

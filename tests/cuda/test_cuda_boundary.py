@@ -80,7 +80,7 @@ def base_rank(request):
     return request.param
 
 @cuda
-def test_host_boundary_z0(state):
+def test_cuda_boundary_z0(state):
 
     # crN, Number of particles per coordinate direction
     state.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
@@ -128,7 +128,7 @@ def test_host_boundary_z0(state):
     P(2) -= %(TOL)s ;
    ''' % {'TOL': str(tol)}
 
-    kernel = md.kernel.Kernel('test_host_boundary_z0',code=kernel_code)
+    kernel = md.kernel.Kernel('test_cuda_boundary_z0',code=kernel_code)
     kernel_map = {'P': state.p(md.access.RW)}
 
     loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
@@ -169,8 +169,8 @@ def test_host_boundary_z0(state):
 
 
 
-
-def test_host_boundary_z1(state):
+@cuda
+def test_cuda_boundary_z1(state):
     # crN, Number of particles per coordinate direction
     state.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
     state.domain.boundary_condition.set_state(state)
@@ -217,7 +217,7 @@ def test_host_boundary_z1(state):
     P(2) += %(TOL)s ;
    ''' % {'TOL': str(tol)}
 
-    kernel = md.kernel.Kernel('test_host_boundary_z1',code=kernel_code)
+    kernel = md.kernel.Kernel('test_cuda_boundary_z1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.RW)}
 
     loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
@@ -257,8 +257,8 @@ def test_host_boundary_z1(state):
 
 
 
-
-def test_host_boundary_x0(state):
+@cuda
+def test_cuda_boundary_x0(state):
     # crN, Number of particles per coordinate direction
     state.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
     state.domain.boundary_condition.set_state(state)
@@ -305,7 +305,7 @@ def test_host_boundary_x0(state):
     P(0) -= %(TOL)s ;
    ''' % {'TOL': str(tol)}
 
-    kernel = md.kernel.Kernel('test_host_boundary_x0',code=kernel_code)
+    kernel = md.kernel.Kernel('test_cuda_boundary_x0',code=kernel_code)
     kernel_map = {'P': state.p(md.access.RW)}
 
     loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
@@ -342,8 +342,8 @@ def test_host_boundary_x0(state):
 
         assert np.sum(np.abs(pp - pjc)) < 1.
 
-
-def test_host_boundary_x1(state):
+@cuda
+def test_cuda_boundary_x1(state):
     # crN, Number of particles per coordinate direction
     state.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
     state.domain.boundary_condition.set_state(state)
@@ -390,7 +390,7 @@ def test_host_boundary_x1(state):
     P(0) += %(TOL)s ;
    ''' % {'TOL': str(tol)}
 
-    kernel = md.kernel.Kernel('test_host_boundary_x1',code=kernel_code)
+    kernel = md.kernel.Kernel('test_cuda_boundary_x1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.RW)}
 
     loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
@@ -430,8 +430,8 @@ def test_host_boundary_x1(state):
 
 
 
-
-def test_host_boundary_y0(state):
+@cuda
+def test_cuda_boundary_y0(state):
     # crN, Number of particles per coordinate direction
     state.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
     state.domain.boundary_condition.set_state(state)
@@ -478,7 +478,7 @@ def test_host_boundary_y0(state):
     P(1) -= %(TOL)s ;
    ''' % {'TOL': str(tol)}
 
-    kernel = md.kernel.Kernel('test_host_boundary_y0',code=kernel_code)
+    kernel = md.kernel.Kernel('test_cuda_boundary_y0',code=kernel_code)
     kernel_map = {'P': state.p(md.access.RW)}
 
     loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
@@ -517,8 +517,8 @@ def test_host_boundary_y0(state):
 
 
 
-
-def test_host_boundary_y1(state):
+@cuda
+def test_cuda_boundary_y1(state):
     # crN, Number of particles per coordinate direction
     state.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
     state.domain.boundary_condition.set_state(state)
@@ -565,7 +565,7 @@ def test_host_boundary_y1(state):
     P(1) += %(TOL)s ;
    ''' % {'TOL': str(tol)}
 
-    kernel = md.kernel.Kernel('test_host_boundary_y1',code=kernel_code)
+    kernel = md.kernel.Kernel('test_cuda_boundary_y1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.RW)}
 
     loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)

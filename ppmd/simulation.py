@@ -153,21 +153,31 @@ class BaseMDSimulation(object):
             if type(self.state.domain) is domain.BaseDomainHalo:
 
                 if pairloop_in is None:
-                    self._forces_update_lib = pairloop.PairLoopNeighbourList(potential=self.potential,dat_dict=_potential_dat_dict, shell_cutoff = self._cell_width)
+                    self._forces_update_lib = pairloop.PairLoopNeighbourList(
+                        kernel=self.potential.kernel,
+                        dat_dict=_potential_dat_dict,
+                        shell_cutoff = self._cell_width)
                 elif pairloop_in is pairloop.PairLoopRapaportHalo:
-                    self._forces_update_lib = pairloop.PairLoopRapaportHalo(potential=self.potential,dat_dict=_potential_dat_dict, domain=domain_in)
+                    self._forces_update_lib = pairloop.PairLoopRapaportHalo(
+                        kernel=self.potential.kernel,
+                        dat_dict=_potential_dat_dict,
+                        domain=domain_in)
                 else:
-                    self._forces_update_lib = pairloop_in(potential=self.potential,dat_dict=_potential_dat_dict, shell_cutoff=self._cell_width)
+                    self._forces_update_lib = pairloop_in(
+                        kernel=self.potential.kernel,
+                        dat_dict=_potential_dat_dict,
+                        shell_cutoff=self._cell_width)
 
 
         # If no cell structure was created
         elif self.potential is not None and not setup_only:
             print "Warning check looping method!"
-            self._forces_update_lib = pairloop.DoubleAllParticleLoopPBC(n=self.state.as_func('npart_local'),
-                                                                        domain=self.state.domain,
-                                                                        kernel=self.potential.kernel,
-                                                                        particle_dat_dict=_potential_dat_dict)
-
+            self._forces_update_lib = pairloop.DoubleAllParticleLoopPBC(
+                n=self.state.as_func('npart_local'),
+                domain=self.state.domain,
+                kernel=self.potential.kernel,
+                particle_dat_dict=_potential_dat_dict
+            )
 
 
         if runtime.DEBUG > 0:

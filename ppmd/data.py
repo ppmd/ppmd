@@ -378,7 +378,8 @@ class ParticleDat(host.Matrix):
         :return: The pointer to the data.
         """
         if mode.read:
-            if (self._vid_int > self._vid_halo) and self.group._cell_to_particle_map.halos_exist is True:
+            if (self._vid_int > self._vid_halo) and \
+                self.group._cell_to_particle_map.halos_exist is True:
                 #print "halo exchangeing", self.name
                 self.halo_exchange()
 

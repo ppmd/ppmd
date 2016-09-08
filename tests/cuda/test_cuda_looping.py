@@ -81,7 +81,7 @@ def base_rank(request):
 
 
 @cuda
-def test_host_looping_2(state):
+def test_cuda_looping_2(state):
     """
     looping on spatially decomposed state
     """
@@ -110,7 +110,7 @@ def test_host_looping_2(state):
     F(2) += 3.0;
     '''
 
-    kernel = md.kernel.Kernel('test_host_looping_1',code=kernel_code)
+    kernel = md.kernel.Kernel('test_cuda_looping_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.RW),
                   'V': state.v(md.access.W),
                   'F': state.f(md.access.RW),
@@ -134,8 +134,8 @@ def test_host_looping_2(state):
     # check gids are unaltered
     assert np.sum(state.gid[:,0] == gidi) == N
 
-
-def test_host_looping_3(state, base_rank):
+@cuda
+def test_cuda_looping_3(state, base_rank):
     """
     Distributed looping
     """
@@ -168,7 +168,7 @@ def test_host_looping_3(state, base_rank):
     F(2) += 3.0;
     '''
 
-    kernel = md.kernel.Kernel('test_host_looping_1',code=kernel_code)
+    kernel = md.kernel.Kernel('test_cuda_looping_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.RW),
                   'V': state.v(md.access.W),
                   'F': state.f(md.access.RW),
@@ -203,7 +203,8 @@ def test_host_looping_3(state, base_rank):
         # check gids are unaltered
         assert np.sum(state.gid[:,0] == gidi) == N
 
-def test_host_looping_4(state, base_rank):
+@cuda
+def test_cuda_looping_4(state, base_rank):
     """
     Distributed looping applied twice
     """
@@ -235,7 +236,7 @@ def test_host_looping_4(state, base_rank):
     F(2) += 3.0;
     '''
 
-    kernel = md.kernel.Kernel('test_host_looping_1',code=kernel_code)
+    kernel = md.kernel.Kernel('test_cuda_looping_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.RW),
                   'V': state.v(md.access.W),
                   'F': state.f(md.access.RW),
@@ -274,8 +275,8 @@ def test_host_looping_4(state, base_rank):
         # check gids are unaltered
         assert np.sum(state.gid[:,0] == gidi) == N
 
-
-def test_host_looping_5(state, base_rank):
+@cuda
+def test_cuda_looping_5(state, base_rank):
     """
     Distributed looping without gather
     """
@@ -307,7 +308,7 @@ def test_host_looping_5(state, base_rank):
     F(2) += 3.0;
     '''
 
-    kernel = md.kernel.Kernel('test_host_looping_1',code=kernel_code)
+    kernel = md.kernel.Kernel('test_cuda_looping_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.RW),
                   'V': state.v(md.access.W),
                   'F': state.f(md.access.RW),

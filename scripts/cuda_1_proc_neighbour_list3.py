@@ -84,8 +84,8 @@ neighbour_list.update()
 
 dat_map = {'P': sim1.state.d_positions(access.R), 'A': sim1.state.d_forces(access.INC0), 'u': sim1.state.d_u(access.INC)}
 
-pair_loop = cuda_pairloop.PairLoopNeighbourList(kernel_in=test_potential.kernel, #_gpu.kernel,
-                                                particle_dat_dict=dat_map,
+pair_loop = cuda_pairloop.PairLoopNeighbourList(kernel=test_potential.kernel,  #_gpu.kernel,
+                                                dat_dict=dat_map,
                                                 neighbour_list=neighbour_list)
 print "n =", sim1.state.d_positions.npart_local
 

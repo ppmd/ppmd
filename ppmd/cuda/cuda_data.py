@@ -11,11 +11,9 @@ import ppmd.access as access
 import ppmd.mpi as mpi
 import ppmd.host as host
 import ppmd.data as data
-import ppmd.pio as pio
 
 # cuda imports
 import cuda_base
-import cuda_halo
 import cuda_build
 import cuda_mpi
 import cuda_runtime
@@ -90,6 +88,7 @@ class ParticleDat(cuda_base.Matrix):
         self._npart_local.value = 0
 
         self._vid_int = 0
+        self._vid_halo = -1
 
         self._halo_start = ctypes.c_int(self._npart.value)
         self._npart_local_halo = ctypes.c_int(0)
@@ -104,6 +103,26 @@ class ParticleDat(cuda_base.Matrix):
 
         self._h_mirror = cuda_base._MatrixMirror(self)
 
+
+    def ctypes_data_access(self, mode=access.RW):
+        """
+        :arg access mode: Access type required by the calling method.
+        :return: The pointer to the data.
+        """
+        if mode.read:
+            if self._vid_int > self._vid_halo:
+                self.halo_exchange()
+                self._vid_halo = self._vid_int
+
+        return self.ctypes_data
+
+    def ctypes_data_post(self, mode=access.RW):
+        """
+        Call after excuting a method on the data.
+        :arg access mode: Access type required by the calling method.
+        """
+        if mode.write:
+            self._vid_int += 1
 
     def _init_struct(self):
         self._struct = type('ParticleDatT', (ctypes.Structure,),

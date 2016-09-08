@@ -9,24 +9,62 @@ import math
 # package level
 import ppmd.access as access
 import ppmd.host as host
+import ppmd.logic as logic
+
 
 # CUDA level
 import cuda_build
 import cuda_runtime
 import cuda_generation
-
+import cuda_data
+import cuda_cell
 
 
 
 class PairLoopNeighbourList(object):
-    def __init__(self, kernel_in=None, particle_dat_dict=None, neighbour_list=None):
-        assert neighbour_list is not None, "No neighbour list passed"
-        assert kernel_in is not None, "no kernel passed"
-        assert particle_dat_dict is not None, "No particle dat dict passed"
 
-        self._nl = neighbour_list
-        self._kernel = kernel_in
-        self._particle_dat_dict = particle_dat_dict
+    _neighbour_list_dict = {}
+
+    def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
+        assert kernel is not None, "no kernel passed"
+        assert dat_dict is not None, "No particle dat dict passed"
+
+        self._kernel = kernel
+        self._particle_dat_dict = dat_dict
+
+
+
+
+
+        if type(shell_cutoff) is not logic.Distance:
+            shell_cutoff = logic.Distance(shell_cutoff)
+        self._rn = shell_cutoff
+
+        self._group = None
+
+        for pd in self._particle_dat_dict.items():
+            if issubclass(type(pd[1][0]), cuda_data.PositionDat):
+                self._group = pd[1][0].group
+                break
+
+        assert self._group is not None, "No cell to particle map found"
+        new_decomp_flag = self._group.get_domain().cell_decompose(self._rn.value)
+
+        if new_decomp_flag:
+            self._group.get_cell_to_particle_map().create()
+
+        self._key = (self._rn, self._group.get_domain(), self._group.get_position_dat())
+
+        _nd = PairLoopNeighbourList._neighbour_list_dict
+        if not self._key in _nd.keys() or new_decomp_flag:
+            _nd[self._key] = cuda_cell.NeighbourListLayerBased(
+                occ_matrix=self._group.get_cell_to_particle_map(),
+                cutoff=self._rn.value
+            )
+
+
+        self._nl = _nd[self._key]
+
 
         self._gcode = None
 
@@ -191,40 +229,57 @@ class PairLoopNeighbourList(object):
                 _dd = []
 
 
-            self._gcode['KCODE_pre_if'] += cuda_generation.create_local_reduction_vars_arrays(symbol_external='d_' + dat[0],
-                                                                                              symbol_internal=dat[0],
-                                                                                              dat=dat[1],
-                                                                                              access_type=_mode)
+            self._gcode['KCODE_pre_if'] +=\
+                cuda_generation.create_local_reduction_vars_arrays(
+                    symbol_external='d_' + dat[0],
+                    symbol_internal=dat[0],
+                    dat=dat[1],
+                    access_type=_mode
+                )
 
-            self._gcode['KCODE_pre_loop'] += cuda_generation.create_pre_loop_map_matrices(pair=True,
-                                                                                          symbol_external='d_' + dat[0],
-                                                                                          symbol_internal=dat[0],
-                                                                                          dat=dat[1],
-                                                                                          access_type=_mode)
+            self._gcode['KCODE_pre_loop'] +=\
+                cuda_generation.create_pre_loop_map_matrices(
+                    pair=True,
+                    symbol_external='d_' + dat[0],
+                    symbol_internal=dat[0],
+                    dat=dat[1],
+                    access_type=_mode
+                )
 
-            self._gcode['KCODE_gpu_pointer'] += cuda_generation.generate_map(pair=True,
-                                                                             symbol_external='d_' + dat[0],
-                                                                             symbol_internal=dat[0],
-                                                                             dat=dat[1],
-                                                                             access_type=_mode,
-                                                                             n3_disable_dats=_dd)
+            self._gcode['KCODE_gpu_pointer'] +=\
+                cuda_generation.generate_map(
+                    pair=True,
+                    symbol_external='d_' + dat[0],
+                    symbol_internal=dat[0],
+                    dat=dat[1],
+                    access_type=_mode,
+                    n3_disable_dats=_dd
+                )
 
-            self._gcode['KCODE_post_loop'] += cuda_generation.create_post_loop_map_matrices(pair=True,
-                                                                                            symbol_external='d_' + dat[0],
-                                                                                            symbol_internal=dat[0],
-                                                                                            dat=dat[1],
-                                                                                            access_type=_mode)
+            self._gcode['KCODE_post_loop'] += \
+                cuda_generation.create_post_loop_map_matrices(
+                    pair=True,
+                    symbol_external='d_' + dat[0],
+                    symbol_internal=dat[0],
+                    dat=dat[1],
+                    access_type=_mode
+                )
 
-            self._gcode['KCODE_post_if'] += cuda_generation.generate_reduction_final_stage(symbol_external='d_' + dat[0],
-                                                                                           symbol_internal=dat[0],
-                                                                                           dat=dat[1],
-                                                                                           access_type=_mode)
+            self._gcode['KCODE_post_if'] += \
+                cuda_generation.generate_reduction_final_stage(
+                    symbol_external='d_' + dat[0],
+                    symbol_internal=dat[0],
+                    dat=dat[1],
+                    access_type=_mode
+                )
 
-            host_args += cuda_generation.create_host_function_argument_decleration(symbol='d_' + dat[0],
-                                                                                   dat=dat[1],
-                                                                                   mode=_mode,
-                                                                                   cc=self._cc
-                                                                                   ) + ','
+            host_args += \
+                cuda_generation.create_host_function_argument_decleration(
+                    symbol='d_' + dat[0],
+                    dat=dat[1],
+                    mode=_mode,
+                    cc=self._cc
+                ) + ','
 
             host_k_call_args += 'd_' + dat[0] + ','
 
@@ -235,12 +290,17 @@ class PairLoopNeighbourList(object):
 
     def execute(self, n=None, dat_dict=None, static_args=None, threads=256):
 
+
+        cell2part = self._group.get_cell_to_particle_map()
+        cell2part.check()
+
+
         """Allow alternative pointers"""
         if dat_dict is not None:
             self._particle_dat_dict = dat_dict
 
-        assert n is not None, "No number of particles passed"
-
+        if n is None:
+            n = self._group.npart_local
 
         if n <= threads:
 
@@ -252,20 +312,36 @@ class PairLoopNeighbourList(object):
             _threadsize = (ctypes.c_int * 3)(threads, 1, 1)
 
 
-        args = [_blocksize, _threadsize, ctypes.c_int(n), ctypes.c_int(self._nl.max_neigbours_per_particle), self._nl.list.struct]
 
+        dargs = []
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not passed to loop."
             for dat in static_args.values():
-                args.append(dat)
+                dargs.append(dat)
+
+
+        '''Pass access descriptor to dat'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_access(dat_orig[1])
 
         '''Add pointer arguments to launch command'''
         for dat in self._particle_dat_dict.values():
             if type(dat) is tuple:
-                args.append(dat[0].ctypes_data)
+                dargs.append(dat[0].ctypes_data)
             else:
-                args.append(dat.ctypes_data)
+                dargs.append(dat.ctypes_data)
+
+
+        if cell2part.version_id > self._nl.version_id:
+            self._nl.update()
+
+
+        args2 = [_blocksize, _threadsize, ctypes.c_int(n), ctypes.c_int(self._nl.max_neigbours_per_particle), self._nl.list.struct]
+
+
+        args = args2 + dargs
 
         '''Execute the kernel over all particle pairs.'''
         self._lib(*args)

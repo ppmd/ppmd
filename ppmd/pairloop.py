@@ -408,9 +408,8 @@ class PairLoopNeighbourList(_Base):
 
     _neighbour_list_dict = {}
 
-    def __init__(self, potential=None, dat_dict=None, kernel=None, shell_cutoff=None):
+    def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
 
-        self._potential = potential
         self._particle_dat_dict = dat_dict
         self._cc = build.TMPCC
         self.rc = None
@@ -424,12 +423,9 @@ class PairLoopNeighbourList(_Base):
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
 
-        if potential is not None:
-            self._kernel = self._potential.kernel
-        elif kernel is not None:
-            self._kernel = kernel
-        else:
-            print "pairloop error, no kernel passed."
+
+        self._kernel = kernel
+
 
         if type(shell_cutoff) is not logic.Distance:
             shell_cutoff = logic.Distance(shell_cutoff)
@@ -828,9 +824,8 @@ class PairLoopNeighbourListNS(object):
 
     _neighbour_list_dict = {}
 
-    def __init__(self, potential=None, dat_dict=None, kernel=None, shell_cutoff=None):
+    def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
 
-        self._potential = potential
         self._particle_dat_dict = dat_dict
         self._cc = build.TMPCC
         self.rc = None
@@ -844,12 +839,7 @@ class PairLoopNeighbourListNS(object):
         if not os.path.exists(self._temp_dir):
             os.mkdir(self._temp_dir)
 
-        if potential is not None:
-            self._kernel = self._potential.kernel
-        elif kernel is not None:
-            self._kernel = kernel
-        else:
-            print "pairloop error, no kernel passed."
+        self._kernel = kernel
 
         if type(shell_cutoff) is not logic.Distance:
             shell_cutoff = logic.Distance(shell_cutoff)
