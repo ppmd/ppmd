@@ -135,7 +135,29 @@ def test_host_boundary_z0(state):
     loop.execute(n=state.npart_local)
 
 
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
     state.domain.boundary_condition.apply()
+
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
+
+    # avoid excessive copying
+    ps = state.p[:]
+    b = state.domain.boundary[:]
+    for px in range(state.npart_local):
+        assert  b[0] < ps[px,0] < b[1]
+        assert  b[2] < ps[px,1] < b[3]
+        assert  b[4] < ps[px,2] < b[5]
+
+
+
     state.gather_data_on(0)
 
     if rank == 0:
@@ -202,7 +224,27 @@ def test_host_boundary_z1(state):
     loop.execute(n=state.npart_local)
 
 
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
     state.domain.boundary_condition.apply()
+
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
+
+    # avoid excessive copying
+    ps = state.p[:]
+    b = state.domain.boundary[:]
+    for px in range(state.npart_local):
+        assert  b[0] < ps[px,0] < b[1]
+        assert  b[2] < ps[px,1] < b[3]
+        assert  b[4] < ps[px,2] < b[5]
+
     state.gather_data_on(0)
 
     if rank == 0:
@@ -270,7 +312,27 @@ def test_host_boundary_x0(state):
     loop.execute(n=state.npart_local)
 
 
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
     state.domain.boundary_condition.apply()
+
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
+    # avoid excessive copying
+    ps = state.p[:]
+    b = state.domain.boundary[:]
+    for px in range(state.npart_local):
+        assert  b[0] < ps[px,0] < b[1]
+        assert  b[2] < ps[px,1] < b[3]
+        assert  b[4] < ps[px,2] < b[5]
+
+
     state.gather_data_on(0)
 
     if rank == 0:
@@ -335,7 +397,27 @@ def test_host_boundary_x1(state):
     loop.execute(n=state.npart_local)
 
 
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
     state.domain.boundary_condition.apply()
+
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
+    # avoid excessive copying
+    ps = state.p[:]
+    b = state.domain.boundary[:]
+    for px in range(state.npart_local):
+        assert  b[0] < ps[px,0] < b[1]
+        assert  b[2] < ps[px,1] < b[3]
+        assert  b[4] < ps[px,2] < b[5]
+
+
     state.gather_data_on(0)
 
     if rank == 0:
@@ -403,7 +485,27 @@ def test_host_boundary_y0(state):
     loop.execute(n=state.npart_local)
 
 
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
     state.domain.boundary_condition.apply()
+
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
+    # avoid excessive copying
+    ps = state.p[:]
+    b = state.domain.boundary[:]
+    for px in range(state.npart_local):
+        assert  b[0] < ps[px,0] < b[1]
+        assert  b[2] < ps[px,1] < b[3]
+        assert  b[4] < ps[px,2] < b[5]
+
+
     state.gather_data_on(0)
 
     if rank == 0:
@@ -470,7 +572,28 @@ def test_host_boundary_y1(state):
     loop.execute(n=state.npart_local)
 
 
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
     state.domain.boundary_condition.apply()
+
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
+    # avoid excessive copying
+    ps = state.p[:]
+    b = state.domain.boundary[:]
+    for px in range(state.npart_local):
+        assert  b[0] < ps[px,0] < b[1]
+        assert  b[2] < ps[px,1] < b[3]
+        assert  b[4] < ps[px,2] < b[5]
+
+
+
     state.gather_data_on(0)
 
     if rank == 0:
