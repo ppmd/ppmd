@@ -828,7 +828,6 @@ class PairLoopNeighbourListNS(object):
 
         self._particle_dat_dict = dat_dict
         self._cc = build.TMPCC
-        self.rc = None
         # self.rn = None
 
         ##########
@@ -843,7 +842,7 @@ class PairLoopNeighbourListNS(object):
 
         if type(shell_cutoff) is not logic.Distance:
             shell_cutoff = logic.Distance(shell_cutoff)
-        self._rn = shell_cutoff
+        self.shell_cutoff = shell_cutoff
 
         self.loop_timer = opt.LoopTimer()
         self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
@@ -871,12 +870,12 @@ class PairLoopNeighbourListNS(object):
         assert self._group is not None, "No cell to particle map found"
 
 
-        new_decomp_flag = self._group.get_domain().cell_decompose(self._rn.value)
+        new_decomp_flag = self._group.get_domain().cell_decompose(self.shell_cutoff.value)
 
         if new_decomp_flag:
             self._group.get_cell_to_particle_map().create()
 
-        self._key = (self._rn, self._group.get_domain(), self._group.get_position_dat())
+        self._key = (self.shell_cutoff, self._group.get_domain(), self._group.get_position_dat())
 
         _nd = PairLoopNeighbourList._neighbour_list_dict
         if not self._key in _nd.keys() or new_decomp_flag:
@@ -886,7 +885,7 @@ class PairLoopNeighbourListNS(object):
             _nd[self._key].setup(self._group.get_npart_local_func(),
                                  self._group.get_position_dat(),
                                  self._group.get_domain(),
-                                 self._rn.value)
+                                 self.shell_cutoff.value)
 
         self.neighbour_list = _nd[self._key]
 

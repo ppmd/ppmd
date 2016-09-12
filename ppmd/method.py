@@ -38,7 +38,7 @@ np.set_printoptions(threshold='nan')
 ###############################################################################
 # Cell to Particle map handler for MD integrators
 ###############################################################################
-class CellListUpdateController(object):
+class ListUpdateController(object):
     """
     The framework does not assume that it is employed in a MD simulation
     situation. This class implements cell list updating at a specific number of
@@ -63,6 +63,10 @@ class CellListUpdateController(object):
         self._step_counter = 0
 
         self.boundary_method_timer = opt.Timer(runtime.TIMER, 0)
+
+    def set_timestep(self, val):
+        self._dt = val
+
 
     def increment_step_count(self):
         self._step_counter += 1
@@ -152,11 +156,121 @@ class CellListUpdateController(object):
             print "WARNING NO BOUNDARY CONDITION TO APPLY"
 
 
+###############################################################################
+# New Velocity Verlet Method
+###############################################################################
+
+class IntegratorVelocityVerlet(object):
+    def __init__(
+            self,
+            positions,
+            forces,
+            velocities,
+            masses,
+            force_updater,
+            interaction_cutoff,
+            list_reuse_count,
+            looping_method=None
+        ):
+
+        self._p = positions
+        self._f = forces
+        self._v = velocities
+        self._m = masses
+        self._f_updater = force_updater
+
+        self._delta = float(self._f_updater.shell_cutoff.value) - \
+                      float(interaction_cutoff)
+
+        self._g = positions.group
+
+        self._update_controller = ListUpdateController(
+            self._g,
+            step_count=list_reuse_count,
+            velocity_dat=self._v,
+            timestep=None,
+            shell_thickness=self._delta
+        )
+
+        self._p1 = None
+        self._p2 = None
+
+        if looping_method is None:
+            self._looping_method = loop.ParticleLoop
+
+
+        _suc = self._update_controller
+        self._g.get_cell_to_particle_map().setup_pre_update(
+            _suc.pre_update
+        )
+
+        self._g.get_cell_to_particle_map().setup_update_tracking(
+            _suc.determine_update_status
+        )
+
+        self._g.get_cell_to_particle_map().setup_callback_on_update(
+            _suc.post_update
+        )
 
 
 
+    def _build_libs(self, dt):
+        kernel1_code = '''
+        const double M_tmp = 1.0/M(0);
+        V(0) += dht*F(0)*M_tmp;
+        V(1) += dht*F(1)*M_tmp;
+        V(2) += dht*F(2)*M_tmp;
+        P(0) += dt*V(0);
+        P(1) += dt*V(1);
+        P(2) += dt*V(2);
+        '''
+
+        kernel2_code = '''
+        const double M_tmp = 1.0/M(0);
+        V(0) += dht*F(0)*M_tmp;
+        V(1) += dht*F(1)*M_tmp;
+        V(2) += dht*F(2)*M_tmp;
+        '''
+        constants = [
+            kernel.Constant('dt', dt),
+            kernel.Constant('dht',0.5*dt),
+        ]
+
+        kernel1 = kernel.Kernel('vv1', kernel1_code, constants)
+        self._p1 = self._looping_method(
+            self._g.as_func('npart_local'),
+            kernel1,
+            {'P': self._p, 'V': self._v, 'F': self._f, 'M': self._m}
+        )
+
+        kernel2 = kernel.Kernel('vv2', kernel2_code, constants)
+        self._p2 = self._looping_method(
+            self._g.as_func('npart_local'),
+            kernel2,
+            {'V': self._v, 'F': self._f, 'M': self._m}
+        )
 
 
+    def integrate(self, dt, t, schedule=None):
+
+        self._update_controller.set_timestep(dt)
+        self._build_libs(dt)
+
+
+        self._f.zero(self._g.npart_local)
+        self._f_updater.execute()
+
+        for i in range( int( math.ceil( float(t) / float(dt) ) ) ):
+
+            self._p1.execute(self._g.npart_local)
+            self._f.zero(self._g.npart_local)
+            self._f_updater.execute()
+            self._p2.execute(self._g.npart_local)
+
+            self._update_controller.increment_step_count()
+
+            if schedule is not None:
+                schedule.tick()
 
 
 
@@ -226,12 +340,13 @@ class VelocityVerlet(object):
 
         #### NEW
 
-        self._update_controller = CellListUpdateController(self._state,
-                                                           step_count=10,
-                                                           velocity_dat=self._state.velocities,
-                                                           timestep=self._dt,
-                                                           shell_thickness=self._delta
-                                                           )
+        self._update_controller = ListUpdateController(
+            self._state,
+            step_count=10,
+            velocity_dat=self._state.velocities,
+            timestep=self._dt,
+            shell_thickness=self._delta
+        )
 
         _suc = self._update_controller
 
@@ -411,7 +526,82 @@ class VelocityVerletAnderson(VelocityVerlet):
             if self._schedule is not None:
                 self._schedule.tick()
 
-                
+
+
+
+###############################################################################
+# KE
+###############################################################################
+
+class KineticEnergyTracker(object):
+    def __init__(
+            self,
+            velocities=None,
+            masses=None,
+            looping_method=None
+        ):
+
+        self.k = data.ScalarArray(ncomp=1, dtype=ctypes.c_double)
+        self._v = velocities
+
+        if looping_method is None:
+            looping_method = loop.ParticleLoop
+
+        _K_kernel_code = '''
+        k(0) += (V(0)*V(0) + V(1)*V(1) + V(2)*V(2))*0.5*M(0);
+        '''
+        _constants_K = []
+        _K_kernel = kernel.Kernel('K_kernel', _K_kernel_code, _constants_K)
+        self._kinetic_energy_lib = looping_method(
+            velocities.group.as_func('npart_local'),
+            _K_kernel,
+            {'V': velocities, 'k': self.k, 'M': masses}
+        )
+
+        self._ke_store = []
+
+    def execute(self):
+        self.k[0] = 0.0
+        self._kinetic_energy_lib.execute(n=self._v.group.npart_local)
+        self._ke_store.append(self.k[0])
+
+    def get_kinetic_energy_array(self):
+        arr = np.array(self._ke_store, dtype=ctypes.c_double)
+        rarr = np.zeros_like(arr)
+        mpi.MPI_HANDLE.comm.Allreduce(
+            arr,
+            rarr
+        )
+        return rarr
+
+###############################################################################
+# PE
+###############################################################################
+
+class PotentialEnergyTracker(object):
+    def __init__(
+            self,
+            potential_energy_dat
+        ):
+
+        self._u = potential_energy_dat
+        self._u_store = []
+
+    def execute(self):
+        self._u_store.append(self._u[0])
+
+
+    def get_potential_energy_array(self):
+        arr = np.array(self._u_store, dtype=ctypes.c_double)
+        rarr = np.zeros_like(arr)
+        mpi.MPI_HANDLE.comm.Allreduce(
+            arr,
+            rarr
+        )
+        return rarr
+
+
+
 ###############################################################################
 # G(R)
 ###############################################################################
