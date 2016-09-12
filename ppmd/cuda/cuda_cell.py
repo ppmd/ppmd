@@ -118,6 +118,7 @@ class CellOccupancyMatrix(object):
 
         if (self.update_required is True) or self._update_tracking():
 
+
             self._pre_update()
 
             self.sort()
@@ -458,6 +459,7 @@ class CellOccupancyMatrix(object):
         self.matrix.ncol = self._n_layers
 
         self.version_id += 1
+        self.update_required = False
 
     @property
     def layers_per_cell(self):

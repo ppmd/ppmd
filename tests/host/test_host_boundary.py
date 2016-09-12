@@ -26,6 +26,7 @@ def state():
     A = State()
     A.npart = N
     A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
     A.p = PositionDat(ncomp=3)
     A.v = ParticleDat(ncomp=3)
     A.f = ParticleDat(ncomp=3)

@@ -48,6 +48,8 @@ def state(request):
     A = State()
     A.npart = N
     A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
+
     A.p = PositionDat(ncomp=3)
     A.v = ParticleDat(ncomp=3)
     A.f = ParticleDat(ncomp=3)
@@ -65,6 +67,7 @@ def h_state(request):
     A = h_State()
     A.npart = N
     A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
     A.p = h_PositionDat(ncomp=3)
     A.v = h_ParticleDat(ncomp=3)
     A.f = h_ParticleDat(ncomp=3)

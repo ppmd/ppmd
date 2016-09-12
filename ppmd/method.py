@@ -33,6 +33,7 @@ import runtime
 import pio
 import mpi
 import opt
+import access
 np.set_printoptions(threshold='nan')
 
 ###############################################################################
@@ -127,6 +128,8 @@ class ListUpdateController(object):
         if _ret_old == 1 and _ret != 1:
             print "update status reductypes.on error, rank:", mpi.MPI_HANDLE.rank
 
+        # print "_ret", _ret, self._delta, self._step_counter, self._step_count
+
 
         return bool(_ret)
 
@@ -167,6 +170,7 @@ class IntegratorVelocityVerlet(object):
             forces,
             velocities,
             masses,
+            potential_energy,
             force_updater,
             interaction_cutoff,
             list_reuse_count,
@@ -177,6 +181,7 @@ class IntegratorVelocityVerlet(object):
         self._f = forces
         self._v = velocities
         self._m = masses
+        self._pe = potential_energy
         self._f_updater = force_updater
 
         self._delta = float(self._f_updater.shell_cutoff.value) - \
@@ -197,7 +202,8 @@ class IntegratorVelocityVerlet(object):
 
         if looping_method is None:
             self._looping_method = loop.ParticleLoop
-
+        else:
+            self._looping_method = looping_method
 
         _suc = self._update_controller
         self._g.get_cell_to_particle_map().setup_pre_update(
@@ -238,16 +244,21 @@ class IntegratorVelocityVerlet(object):
 
         kernel1 = kernel.Kernel('vv1', kernel1_code, constants)
         self._p1 = self._looping_method(
-            self._g.as_func('npart_local'),
-            kernel1,
-            {'P': self._p, 'V': self._v, 'F': self._f, 'M': self._m}
+            n=self._g.as_func('npart_local'),
+            kernel=kernel1,
+            particle_dat_dict={'P': self._p(access.W),
+                               'V': self._v(access.W),
+                               'F': self._f(access.R),
+                               'M': self._m(access.R)}
         )
 
         kernel2 = kernel.Kernel('vv2', kernel2_code, constants)
         self._p2 = self._looping_method(
-            self._g.as_func('npart_local'),
-            kernel2,
-            {'V': self._v, 'F': self._f, 'M': self._m}
+            n=self._g.as_func('npart_local'),
+            kernel=kernel2,
+            particle_dat_dict={'V': self._v(access.W),
+                               'F': self._f(access.R),
+                               'M': self._m(access.R)}
         )
 
 
@@ -263,7 +274,8 @@ class IntegratorVelocityVerlet(object):
         for i in range( int( math.ceil( float(t) / float(dt) ) ) ):
 
             self._p1.execute(self._g.npart_local)
-            self._f.zero(self._g.npart_local)
+            self._f.zero()
+            self._pe.zero()
             self._f_updater.execute()
             self._p2.execute(self._g.npart_local)
 
@@ -271,6 +283,10 @@ class IntegratorVelocityVerlet(object):
 
             if schedule is not None:
                 schedule.tick()
+
+            #print 60*'-'
+            #print np.max(self._f[0:self._g.npart_local:,:]), np.min(self._f[0:self._g.npart_local:,:])
+            #print np.max(self._v[0:self._g.npart_local:,:]), np.min(self._v[0:self._g.npart_local:,:])
 
 
 
@@ -538,10 +554,17 @@ class KineticEnergyTracker(object):
             self,
             velocities=None,
             masses=None,
+            kinetic_energy_dat=None,
             looping_method=None
         ):
 
-        self.k = data.ScalarArray(ncomp=1, dtype=ctypes.c_double)
+        if looping_method is None:
+            looping_method = loop.ParticleLoop
+        if kinetic_energy_dat is None:
+            self.k = data.ScalarArray(ncomp=1, dtype=ctypes.c_double)
+        else:
+            self.k = kinetic_energy_dat
+
         self._v = velocities
 
         if looping_method is None:
@@ -553,9 +576,11 @@ class KineticEnergyTracker(object):
         _constants_K = []
         _K_kernel = kernel.Kernel('K_kernel', _K_kernel_code, _constants_K)
         self._kinetic_energy_lib = looping_method(
-            velocities.group.as_func('npart_local'),
-            _K_kernel,
-            {'V': velocities, 'k': self.k, 'M': masses}
+            n=velocities.group.as_func('npart_local'),
+            kernel=_K_kernel,
+            particle_dat_dict={'V': velocities(access.R),
+                               'k': self.k(access.INC),
+                               'M': masses(access.R)}
         )
 
         self._ke_store = []

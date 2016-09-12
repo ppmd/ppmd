@@ -212,6 +212,10 @@ class BaseMDState(object):
         # Can only setup a cell to particle map after a domain and a position
         # dat is set
         if (self._domain is not None) and (self._position_dat is not None):
+
+            if self._domain.boundary_condition is not None:
+                self._domain.boundary_condition.set_state(self)
+
             #print "setting up cell list"
             self._cell_to_particle_map.setup(self.as_func('npart_local'),
                                              self.get_position_dat(),

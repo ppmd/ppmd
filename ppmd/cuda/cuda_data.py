@@ -5,6 +5,7 @@ CUDA version of the package level data.py
 import ctypes
 import numpy as np
 import math
+import pycuda.gpuarray as gpuarray
 
 #package level imports
 import ppmd.access as access
@@ -103,6 +104,15 @@ class ParticleDat(cuda_base.Matrix):
 
         self._h_mirror = cuda_base._MatrixMirror(self)
 
+    def zero(self, n=None):
+        if n is None:
+            self._dat.fill(0)
+        else:
+            self[:n:,:] = 0
+
+    def max(self):
+        t = gpuarray.max(self._dat[0:self.npart_local:,:])
+        return t.get()
 
     def ctypes_data_access(self, mode=access.RW):
         """
