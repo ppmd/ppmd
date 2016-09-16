@@ -80,6 +80,12 @@ class CellOccupancyMatrix(object):
     def setup_pre_update(self, func):
         self._update_func_pre = func
 
+    def reset_callbacks(self):
+        self._update_func = None
+        self._update_func_pre = None
+        self._update_func_post = None
+
+
     def _update_tracking(self):
 
         if self._update_func is None:

@@ -372,15 +372,18 @@ class ParticleDat(host.Matrix):
 
 
 
-    def ctypes_data_access(self, mode=access.RW):
+    def ctypes_data_access(self, mode=access.RW, pair=True):
         """
         :arg access mode: Access type required by the calling method.
         :return: The pointer to the data.
         """
-        if mode.read:
+        if mode is access.INC0:
+            self.zero(self.npart_local)
+
+
+        if mode.read and pair:
             if (self._vid_int > self._vid_halo) and \
                 self.group._cell_to_particle_map.halos_exist is True:
-                #print "halo exchangeing", self.name
                 self.halo_exchange()
 
                 self._vid_halo = self._vid_int

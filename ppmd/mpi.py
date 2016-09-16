@@ -3,6 +3,7 @@
 from mpi4py import MPI
 import sys
 import ctypes as ct
+import numpy as np
 
 #package level
 import runtime
@@ -302,3 +303,28 @@ reset_mpi()
 
 
 Status = MPI.Status
+
+
+def all_reduce(array):
+    rarr = np.zeros_like(array)
+    MPI_HANDLE.comm.Allreduce(
+        array,
+        rarr
+    )
+    return rarr
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

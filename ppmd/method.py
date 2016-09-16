@@ -157,6 +157,58 @@ class ListUpdateController(object):
 
         else:
             print "WARNING NO BOUNDARY CONDITION TO APPLY"
+###############################################################################
+# New Velocity Verlet Method
+###############################################################################
+
+class IntegratorRange(object):
+    def __init__ (self,
+            n,
+            dt,
+            velocities,
+            list_reuse_count=1,
+            list_reuse_distance=0.1
+            ):
+        self._g = velocities.group
+        self._update_controller = ListUpdateController(
+            self._g,
+            step_count=int(list_reuse_count),
+            velocity_dat=velocities,
+            timestep=float(dt),
+            shell_thickness=float(list_reuse_distance)
+        )
+
+        _suc = self._update_controller
+        self._g.get_cell_to_particle_map().setup_pre_update(
+            _suc.pre_update
+        )
+
+        self._g.get_cell_to_particle_map().setup_update_tracking(
+            _suc.determine_update_status
+        )
+
+        self._g.get_cell_to_particle_map().setup_callback_on_update(
+            _suc.post_update
+        )
+
+        self._ix = -1
+        self._nm1 = n-1
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+
+        if self._ix < self._nm1:
+            self._update_controller.increment_step_count()
+            self._ix += 1
+            return self._ix
+        else:
+            self._g.get_cell_to_particle_map().reset_callbacks()
+            raise StopIteration
+
+
+
 
 
 ###############################################################################
@@ -170,7 +222,6 @@ class IntegratorVelocityVerlet(object):
             forces,
             velocities,
             masses,
-            potential_energy,
             force_updater,
             interaction_cutoff,
             list_reuse_count,
@@ -181,7 +232,6 @@ class IntegratorVelocityVerlet(object):
         self._f = forces
         self._v = velocities
         self._m = masses
-        self._pe = potential_energy
         self._f_updater = force_updater
 
         self._delta = float(self._f_updater.shell_cutoff.value) - \
@@ -268,14 +318,17 @@ class IntegratorVelocityVerlet(object):
         self._build_libs(dt)
 
 
-        self._f.zero(self._g.npart_local)
+        #self._f.zero(self._g.npart_local)
         self._f_updater.execute()
+
+        #print self._g.u[0]
 
         for i in range( int( math.ceil( float(t) / float(dt) ) ) ):
 
+            #print self._g.u[0]
+
             self._p1.execute(self._g.npart_local)
-            self._f.zero()
-            self._pe.zero()
+            #self._f.zero()
             self._f_updater.execute()
             self._p2.execute(self._g.npart_local)
 
@@ -614,7 +667,6 @@ class PotentialEnergyTracker(object):
 
     def execute(self):
         self._u_store.append(self._u[0])
-
 
     def get_potential_energy_array(self):
         arr = np.array(self._u_store, dtype=ctypes.c_double)

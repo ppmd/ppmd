@@ -145,7 +145,10 @@ class Array(object):
     def ctypes_data(self):
         return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
 
-    def ctypes_data_access(self, mode=access.RW):
+    def ctypes_data_access(self, mode=access.RW, pair=True):
+        if mode is access.INC0:
+            self.zero()
+
         return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def ctypes_data_post(self, mode=access.RW):

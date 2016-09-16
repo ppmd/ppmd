@@ -71,6 +71,11 @@ class CellList(object):
         self._update_func_pre = None
         self._update_func_post = None
 
+    def reset_callbacks(self):
+        self._update_func = None
+        self._update_func_pre = None
+        self._update_func_post = None
+
     def get_setup_parameters(self):
         """
         Get the values/function handles used to setup the cell list.

@@ -234,6 +234,11 @@ class _Base(object):
             for dat in static_args.values():
                 args.append(dat)
 
+        '''Pass access descriptor to dat'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_access(dat_orig[1], pair=False)
+
         '''Add pointer arguments to launch command'''
         for dat_orig in self._particle_dat_dict.values():
             if type(dat_orig) is tuple:

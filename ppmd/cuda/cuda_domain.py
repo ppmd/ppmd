@@ -165,11 +165,11 @@ class BoundaryTypePeriodic(object):
 
             # --- Populate escape matrix (essentially sort by direction)
 
-
-            if nl > 0:
+            escape_count = self._escape_count[0]
+            if (nl > 0) and (escape_count > 0):
                 cuda_runtime.cuda_err_check(
                     self._escape_guard_lib['cudaNProcPBCStageTwo'](
-                        ctypes.c_int32(self._escape_count[0]),
+                        ctypes.c_int32(escape_count),
                         ctypes.c_int32(self._escape_matrix.ncol),
                         self._escape_list.ctypes_data,
                         self._escape_matrix.ctypes_data

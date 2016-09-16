@@ -167,7 +167,6 @@ int cudaNProcPBCStageTwo(
     if(err>0){return err;}
 
 
-
     d_PopulateEscapeMatrix<<<bs, ts>>>(h_n,
                                        d_ncol,
                                        d_escape_list,

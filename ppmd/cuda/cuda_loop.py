@@ -207,6 +207,16 @@ class ParticleLoop(object):
 
         method(*args)
 
+        '''afterwards access descriptors'''
+        for dat_orig in self._particle_dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()
+
+
+
+
     def _generate_dynamics(self):
 
         host_args = ''

@@ -10,7 +10,10 @@ import ppmd as md
 import ppmd.cuda as mdc
 
 
+
+SKIP = True
 cuda = pytest.mark.skipif("mdc.CUDA_IMPORT is False")
+skip = pytest.mark.skipif("SKIP is True")
 
 N = 1000
 crN = 10 #cubert(N)
@@ -31,7 +34,7 @@ if mdc.CUDA_IMPORT:
     State = mdc.cuda_state.State
 
 
-
+@skip
 @cuda
 @pytest.fixture
 def state(request):
@@ -156,10 +159,9 @@ def test_host_sim_1():
         forces=A.f,
         velocities=A.v,
         masses=A.mass,
-        potential_energy=A.u,
         force_updater=potaa_force_updater,
         interaction_cutoff=potaa_rc,
-        list_reuse_count=1,
+        list_reuse_count=10,
         looping_method=mdc.cuda_loop.ParticleLoop
     )
 

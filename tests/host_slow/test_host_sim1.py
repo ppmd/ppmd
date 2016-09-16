@@ -88,7 +88,7 @@ def test_host_sim_1():
     A.p[:] = md.utility.dl_poly.read_positions(CONFIG)
     A.v[:] = md.utility.dl_poly.read_velocities(CONFIG)
     A.f[:] = md.utility.dl_poly.read_forces(CONFIG)
-
+    A.u[0] = 0.0
 
     A.mass[:,0] = np.ones(A.npart) * \
                 float(md.utility.dl_poly.get_field_value(
@@ -137,13 +137,12 @@ def test_host_sim_1():
         forces=A.f,
         velocities=A.v,
         masses=A.mass,
-        potential_energy=A.u,
         force_updater=potaa_force_updater,
         interaction_cutoff=potaa_rc,
-        list_reuse_count=1
+        list_reuse_count=10
     )
 
-    potaa_integrator.integrate(0.0001, 0.1, potaa_schedule)
+    potaa_integrator.integrate(0.0001, .1, potaa_schedule)
 
     print potaa_kinetic_energy_updater.get_kinetic_energy_array()[0] , \
         potaa_potential_energy.get_potential_energy_array()[0], \

@@ -107,7 +107,7 @@ class LennardJonesShifted(BasePotential):
         return {'P': input_state.positions(access.R), 'A': input_state.forces(access.INC0), 'u': input_state.u(access.INC)}
 
     def get_data_map(self, positions=None, forces=None, potential_energy=None):
-         return {'P': positions(access.R), 'A': forces(access.INC0), 'u': potential_energy(access.INC)}
+         return {'P': positions(access.R), 'A': forces(access.INC0), 'u': potential_energy(access.INC0)}
 
 ################################################################################################################
 # LJ 2.5 sigma
@@ -247,7 +247,7 @@ class NULL(object):
         
         :arg state input_state: state with containing variables.
         """
-        return {'P': input_state.positions(access.R), 'A': input_state.forces(access.INC), 'u': input_state.u(access.INC)}
+        return {'P': input_state.positions(access.R), 'A': input_state.forces(access.INC0), 'u': input_state.u(access.INC0)}
 
 
 class LennardJonesCounter(LennardJones):
@@ -343,7 +343,7 @@ class LennardJonesCounter(LennardJones):
         
         :arg state input_state: state with containing variables.
         """
-        return {'P': input_state.positions(access.R), 'A': input_state.forces(access.INC), 'u': input_state.u(access.INC), 'COUNT': self._counter(access.INC),
+        return {'P': input_state.positions(access.R), 'A': input_state.forces(access.INC0), 'u': input_state.u(access.INC0), 'COUNT': self._counter(access.INC),
                 'OUTCOUNT': self._counter_outer(access.INC)}
 
 class TestPotential1(LennardJones):
@@ -828,10 +828,10 @@ class Buckingham(BasePotential):
         :arg state input_state: state with containing variables.
         """
 
-        return {'P': input_state.positions(access.R), 'A': input_state.forces(access.INC0), 'u': input_state.u(access.INC)}
+        return {'P': input_state.positions(access.R), 'A': input_state.forces(access.INC0), 'u': input_state.u(access.INC0)}
 
     def get_data_map(self, positions=None, forces=None, potential_energy=None):
-         return {'P': positions(access.R), 'A': forces(access.INC0), 'u': potential_energy(access.INC)}
+         return {'P': positions(access.R), 'A': forces(access.INC0), 'u': potential_energy(access.INC0)}
 
 class BuckinghamSymmetric(Buckingham):
     @property

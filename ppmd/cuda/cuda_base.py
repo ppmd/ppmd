@@ -148,6 +148,8 @@ class Array(object):
         return ctypes.cast(self._dat.ptr, ctypes.c_void_p)
 
     def ctypes_data_access(self, mode=ppmd.access.RW):
+        if mode is ppmd.access.INC0:
+            self.zero()
         return self.ctypes_data
 
     def ctypes_data_post(self, mode=ppmd.access.RW):

@@ -1308,7 +1308,7 @@ class PairLoopNeighbourListNS(object):
         self._invocations += 1
         if cell2part.version_id > self.neighbour_list.version_id:
             self.neighbour_list.update()
-            #print "new list"
+            # print "new list"
             #print self.neighbour_list.neighbour_starting_points.data[0:16]
             #print self.neighbour_list.list.data[0:10:]
 
