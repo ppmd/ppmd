@@ -4,7 +4,6 @@ import os
 import cgen
 
 # package level
-import generation
 import data
 import build
 import runtime
@@ -149,7 +148,68 @@ class _Base(object):
 ###############################################################################
 # RAPAPORT LOOP SERIAL FOR HALO DOMAINS
 ###############################################################################
+def get_type_map_symbol():
+    return '_TYPE_MAP'
 
+def get_first_index_symbol():
+    return '_i'
+
+def get_second_index_symbol():
+    return '_j'
+
+def get_first_cell_is_halo_symbol():
+    return '_cp_halo_flag'
+
+def get_second_cell_is_halo_symbol():
+    return '_cpp_halo_flag'
+
+_nl = '\n'
+
+def _generate_map(pair=True, symbol_external=None, symbol_internal=None, dat=None, access_type=None):
+    """
+    Create pointer map.
+
+    :param pair:
+    :param symbol_external:
+    :param symbol_internal:
+    :param dat:
+    :param access_type:
+    :param n3_disable_dats:
+    :return:
+    """
+
+    assert symbol_external is not None, "generate_map error: No symbol_external"
+    assert symbol_internal is not None, "generate_map error: No symbol_internal"
+    assert dat is not None, "generate_map error: No dat"
+    assert access_type is not None, "generate_map error: No access_type"
+
+    _space = ' ' * 14
+
+    if pair:
+        _n = 2
+    else:
+        _n = 1
+
+    _c = build.Code()
+    _c += '#undef ' + symbol_internal + _nl
+
+    if type(dat) is data.TypedDat:
+        #case for typed dat
+        _ncomp = dat.ncol
+
+        # Define the entry point into the map
+        _c += '#define ' + symbol_internal + '(x,y) ' + symbol_internal + '_##x(y)' + _nl
+
+        # define the first particle map
+        _c += '#define ' + symbol_internal + '_0(y) ' + symbol_external + \
+              '[LINIDX_2D(' + str(_ncomp) + ',' + get_first_index_symbol() + \
+              ',' + '(y)]' + _nl
+        # second particle map
+        _c += '#define ' + symbol_internal + '_1(y) ' + symbol_external + \
+              '[LINIDX_2D(' + str(_ncomp) + ',' + get_second_index_symbol() + \
+              ',' + '(y)]' + _nl
+
+        return _c
 
 class PairLoopRapaportHalo(_Base):
     def __init__(self, domain, potential=None, dat_dict=None, kernel=None):
@@ -198,8 +258,7 @@ class PairLoopRapaportHalo(_Base):
             else:
                 _dd = []
 
-
-            s += generation.generate_map(pair=True,
+            s += _generate_map(pair=True,
                                          symbol_external=dat[0] + '_ext',
                                          symbol_internal=dat[0],
                                          dat=dat[1],
@@ -400,415 +459,6 @@ class PairLoopRapaportHalo(_Base):
                 dat_orig.ctypes_data_post()
 
 
-###############################################################################
-# Neighbour list looping using NIII
-###############################################################################
-
-class PairLoopNeighbourList(_Base):
-
-    _neighbour_list_dict = {}
-
-    def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
-
-        self._particle_dat_dict = dat_dict
-        self._cc = build.TMPCC
-        self.rc = None
-        # self.rn = None
-
-        ##########
-        # End of Rapaport initialisations.
-        ##########
-
-        self._temp_dir = runtime.BUILD_DIR
-        if not os.path.exists(self._temp_dir):
-            os.mkdir(self._temp_dir)
-
-
-        self._kernel = kernel
-
-
-        if type(shell_cutoff) is not logic.Distance:
-            shell_cutoff = logic.Distance(shell_cutoff)
-        self._rn = shell_cutoff
-
-        self.loop_timer = opt.LoopTimer()
-        self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
-
-        # Init code
-        self._kernel_code = self._kernel.code
-        self._code_init()
-
-        self._lib = build.simple_lib_creator(self._generate_header_source(),
-                                             self._generate_impl_source(),
-                                             self._kernel.name,
-                                             CC=self._cc)
-
-        self._group = None
-
-        for pd in self._particle_dat_dict.items():
-            if issubclass(type(pd[1][0]), data.PositionDat):
-                self._group = pd[1][0].group
-                break
-
-        assert self._group is not None, "No cell to particle map found"
-
-
-        new_decomp_flag = self._group.get_domain().cell_decompose(self._rn.value)
-
-        if new_decomp_flag:
-            self._group.get_cell_to_particle_map().create()
-
-        self._key = (self._rn, self._group.get_domain(), self._group.get_position_dat())
-
-        _nd = PairLoopNeighbourList._neighbour_list_dict
-        if not self._key in _nd.keys() or new_decomp_flag:
-            _nd[self._key] = cell.NeighbourListv2(self._group.get_cell_to_particle_map())
-
-
-            _nd[self._key].setup(self._group.get_npart_local_func(),
-                                 self._group.get_position_dat(),
-                                 self._group.get_domain(),
-                                 self._rn.value)
-
-        self.neighbour_list = _nd[self._key]
-
-        self._neighbourlist_count = 0
-        self._invocations = 0
-
-    def _generate_header_source(self):
-        """Generate the source code of the header file.
-
-        Returns the source code for the header file.
-        """
-        code = '''
-
-        %(INCLUDED_HEADERS)s
-
-        #include "%(LIB_DIR)s/generic.h"
-
-        extern "C" void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const long* %(RESTRICT)s START_POINTS, const int* %(RESTRICT)s NLIST, %(ARGUMENTS)s);
-
-        '''
-        d = {'INCLUDED_HEADERS': self._included_headers(),
-             'KERNEL_NAME': self._kernel.name,
-             'ARGUMENTS': self._argnames(),
-             'LIB_DIR': runtime.LIB_DIR,
-             'RESTRICT': self._cc.restrict_keyword}
-        return code % d
-
-    def _kernel_argument_declarations(self):
-        s = build.Code()
-        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
-
-            if type(dat_orig[1]) is tuple:
-                dat = dat_orig[0], dat_orig[1][0]
-                _mode = dat_orig[1][1]
-            else:
-                dat = dat_orig
-                _mode = access.RW
-
-            if dat[1].name == 'forces':
-                _dd = [dat[1]]
-            else:
-                _dd = []
-
-
-            s += generation.generate_map(pair=True,
-                                         symbol_external=dat[0] + '_ext',
-                                         symbol_internal=dat[0],
-                                         dat=dat[1],
-                                         access_type=_mode)
-
-        return s.string
-
-    def _code_init(self):
-        self._kernel_code = self._kernel.code
-        self._code = '''
-        #include <stdio.h>
-
-        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const long* %(RESTRICT)s START_POINTS, const int* %(RESTRICT)s NLIST, %(ARGUMENTS)s) {
-
-
-            %(LOOP_TIMER_PRE)s
-
-
-            for(int _i = 0; _i < N_LOCAL; _i++){
-                for(long _k = START_POINTS[_i]; _k < START_POINTS[_i+1]; _k++){
-                    int _j = NLIST[_k];
-                    int _cpp_halo_flag;
-                    int _cp_halo_flag = 0;
-
-                    // set halo flag, TODO move all halo flags to be an if condition on particle index?
-                    //if (_i >= N_LOCAL) { _cp_halo_flag = 1; } else { _cp_halo_flag = 0; }
-                    if (_j >= N_LOCAL) { _cpp_halo_flag = 1; } else { _cpp_halo_flag = 0; }
-
-                     %(KERNEL_ARGUMENT_DECL)s
-
-                     //KERNEL CODE START
-
-                     %(KERNEL)s
-
-                     //KERNEL CODE END
-
-                }
-            }
-
-            %(LOOP_TIMER_POST)s
-
-            return;
-        }
-
-        '''
-
-    def execute(self, n=None, dat_dict=None, static_args=None):
-        """
-        C version of the pair_locate: Loop over all cells update forces and potential engery.
-        """
-
-        cell2part = self._group.get_cell_to_particle_map()
-        cell2part.check()
-
-        '''Allow alternative pointers'''
-        if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
-
-
-        args = []
-        '''Add static arguments to launch command'''
-        if self._kernel.static_args is not None:
-            assert static_args is not None, "Error: static arguments not passed to loop."
-            for dat in static_args.values():
-                args.append(dat)
-
-
-        '''Pass access descriptor to dat'''
-        for dat_orig in self._particle_dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_access(dat_orig[1])
-
-
-        '''Add pointer arguments to launch command'''
-        for dat_orig in self._particle_dat_dict.values():
-            if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data)
-            else:
-                args.append(dat_orig.ctypes_data)
-
-
-        '''Rebuild neighbour list potentially'''
-        self._invocations += 1
-        if cell2part.version_id > self.neighbour_list.version_id:
-            self.neighbour_list.update()
-            #print "new list"
-            #print self.neighbour_list.neighbour_starting_points.data[0:16]
-            #print self.neighbour_list.list.data[0:10:]
-
-
-
-            self._neighbourlist_count += 1
-
-
-
-        '''Create arg list'''
-        _N_TOTAL = ctypes.c_int(self.neighbour_list.n_total)
-        _N_LOCAL = ctypes.c_int(self.neighbour_list.n_local)
-        _STARTS = self.neighbour_list.neighbour_starting_points.ctypes_data
-        _LIST = self.neighbour_list.list.ctypes_data
-
-        args2 = [_N_TOTAL,
-                 _N_LOCAL,
-                 _STARTS,
-                 _LIST]
-
-
-        args2.append(self.loop_timer.get_python_parameters())
-
-        args = args2 + args
-
-        '''Execute the kernel over all particle pairs.'''
-        method = self._lib[self._kernel.name + '_wrapper']
-
-        self.wrapper_timer.start()
-        method(*args)
-        self.wrapper_timer.pause()
-
-        '''afterwards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_post(dat_orig[1])
-            else:
-                dat_orig.ctypes_data_post()
-
-
-###############################################################################
-# Neighbour list that should vectorise based on PairLoopNeighbourList
-###############################################################################
-
-
-class VectorPairLoopNeighbourList(PairLoopNeighbourList):
-    def _code_init(self):
-        self._cc = build.ICC
-
-        self._kernel_code = self._kernel.code
-        self._code = '''
-        #include <stdio.h>
-
-        #define _BLOCK_SIZE 8
-
-
-        void %(KERNEL_NAME)s_wrapper(const int N_TOTAL, const int N_LOCAL, const int* %(RESTRICT)s START_POINTS, const int* %(RESTRICT)s NLIST, %(ARGUMENTS)s) {
-
-            START_POINTS = (const int*) __builtin_assume_aligned(START_POINTS, 16);
-            NLIST = (const int*) __builtin_assume_aligned(NLIST, 16);
-            A_ext = (double *) __builtin_assume_aligned(A_ext, 16);
-            P_ext = (const double *) __builtin_assume_aligned(P_ext, 16);
-            u_ext = (double *) __builtin_assume_aligned(u_ext, 16);
-
-
-
-            //these essentially become the reduction code to be generated.
-            double Ai_tmp[_BLOCK_SIZE*3] __attribute__((aligned(16)));
-            double Aj_tmp[_BLOCK_SIZE*3] __attribute__((aligned(16)));
-            double u_tmp[_BLOCK_SIZE] __attribute__((aligned(16)));
-
-
-
-            %(LOOP_TIMER_PRE)s
-
-
-            #define P(x,y) P_##x(y)
-            #define P_0(y) P_ext[_i*3 + (y)]
-            #define P_1(y) P_ext[_j*3 + (y)]
-
-            #define A(x,y) A_##x(y)
-            #define A_0(y) Ai_tmp[_pxi + _BLOCK_SIZE * (y)]
-            #define A_1(y) Aj_tmp[_pxi + _BLOCK_SIZE * (y)]
-
-            #define u(x) u_##x
-            #define u_0 u_tmp[_pxi]
-
-
-
-
-            for(int _i = 0; _i < N_LOCAL; _i++){
-
-                //printf("%%d \\n", _i);
-
-                const int _NBLOCKS = (START_POINTS[_i+1] - START_POINTS[_i])/_BLOCK_SIZE;
-                const int S0 = START_POINTS[_i];
-
-                //zero the _i accel stores
-                for(int _ti = 0; _ti < _BLOCK_SIZE*3; _ti++){ Ai_tmp[_ti] = 0.0; }
-
-
-
-                //loop over the blocks
-                for(int _bx = 0; _bx < _NBLOCKS; _bx++){
-
-
-                    // zero the stores for this block
-                    for(int _ti = 0; _ti < _BLOCK_SIZE*3; _ti++){ Aj_tmp[_ti] = 0.0; }
-                    for(int _ti = 0; _ti < _BLOCK_SIZE; _ti++){ u_tmp[_ti] = 0.0; }
-
-
-
-                    // apply kernel to this block (This should vectorise nicely)
-                    #pragma simd
-                    for(int _pxi = 0; _pxi < _BLOCK_SIZE; _pxi++){
-                         const int _j = NLIST[_bx*_BLOCK_SIZE + _pxi + S0];
-
-                         //printf("%%d \\n", _j);
-
-
-                         //KERNEL CODE START
-
-                         %(KERNEL)s
-
-                         //KERNEL CODE END
-
-                    }
-
-
-                    //cleanup potential energy
-                    double _u_red = 0.0, _u_red_h = 0.0;
-                    for(int _ti=0; _ti < _BLOCK_SIZE; _ti++) {
-                        ( ( NLIST[_bx*_BLOCK_SIZE + _ti + S0] < N_LOCAL ) ? _u_red : _u_red_h ) += u_tmp[_ti];
-                    }
-                    u_ext[0] += _u_red;
-                    u_ext[1] += _u_red_h;
-
-
-                    //cleanup _j accelerations
-                    #pragma ivdep
-                    for(int _pxi = 0; _pxi < _BLOCK_SIZE; _pxi++){
-                        const int _j = NLIST[_bx*_BLOCK_SIZE + _pxi + S0];
-                        if( _j < N_LOCAL ){
-
-                            A_ext[_j*3]     += A(1, 0);
-                            A_ext[_j*3 + 1] += A(1, 1);
-                            A_ext[_j*3 + 2] += A(1, 2);
-
-                        }
-                    }
-
-
-
-
-                    //end of all blocks for this particle
-                }
-
-                //reduce the _i accelerations
-
-
-                double _A_red[3] __attribute__((aligned(16)));
-                for(int _tx = 0; _tx < 3; _tx++){ _A_red[_tx] = 0.0; }
-
-                #pragma ivdep
-                for(int _tx = 0; _tx < 3; _tx++){
-                    for(int _pxi = 0; _pxi < _BLOCK_SIZE; _pxi++){
-                        _A_red[_tx] += A(0, _tx);
-                    }
-                }
-
-                A_ext[_i*3]     += _A_red[0];
-                A_ext[_i*3 + 1] += _A_red[1];
-                A_ext[_i*3 + 2] += _A_red[2];
-
-
-
-
-                #undef A_0
-                #define A_0(y) A_ext[_i*3 + (y)]
-
-                #undef A_1
-                #define A_1(y) ( (_j < N_LOCAL) ? A_ext[_j*3 + (y)] : _null )
-
-                #undef u_0
-                #define u_0 ( (_j < N_LOCAL) ? u_ext[0] : u_ext[1] )
-
-                for(int _k = START_POINTS[_i] + _NBLOCKS*_BLOCK_SIZE; _k < START_POINTS[_i+1]; _k++){
-                    const int _j = NLIST[_k];
-
-                     double _null;
-
-                     //KERNEL CODE START
-
-                     %(KERNEL)s
-
-                     //KERNEL CODE END
-
-                }
-
-            }
-
-
-            %(LOOP_TIMER_POST)s
-
-            return;
-        }
-
-        '''
-
 # #############################################################################
 # --------------------------------- AST ---------------------------------------
 # #############################################################################
@@ -822,7 +472,7 @@ def Restrict(keyword, symbol):
 class PairLoopNeighbourListNS(object):
 
 
-    _neighbour_list_dict = {}
+    _neighbour_list_dict_PNLNS = {}
 
     def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
 
@@ -870,16 +520,22 @@ class PairLoopNeighbourListNS(object):
         assert self._group is not None, "No cell to particle map found"
 
 
-        new_decomp_flag = self._group.get_domain().cell_decompose(self.shell_cutoff.value)
+        new_decomp_flag = self._group.get_domain().cell_decompose(
+            self.shell_cutoff.value
+        )
 
         if new_decomp_flag:
             self._group.get_cell_to_particle_map().create()
 
-        self._key = (self.shell_cutoff, self._group.get_domain(), self._group.get_position_dat())
+        self._key = (self.shell_cutoff,
+                     self._group.get_domain(),
+                     self._group.get_position_dat())
 
-        _nd = PairLoopNeighbourList._neighbour_list_dict
+        _nd = PairLoopNeighbourList._neighbour_list_dict_PNL
         if not self._key in _nd.keys() or new_decomp_flag:
-            _nd[self._key] = cell.NeighbourListNonN3(self._group.get_cell_to_particle_map())
+            _nd[self._key] = cell.NeighbourListNonN3(
+                self._group.get_cell_to_particle_map()
+            )
 
 
             _nd[self._key].setup(self._group.get_npart_local_func(),
@@ -926,7 +582,10 @@ class PairLoopNeighbourListNS(object):
             cgen.Const(
                 cgen.Pointer(
                     cgen.Value(host.int64_str,
-                               Restrict(self._cc.restrict_keyword,'START_POINTS'))
+                               Restrict(
+                                   self._cc.restrict_keyword,'START_POINTS'
+                               )
+                               )
                 )
             ),
             cgen.Const(
@@ -1063,8 +722,6 @@ class PairLoopNeighbourListNS(object):
                                                       '_k++',
                                                       b
                                                       )
-
-
 
 
 
@@ -1285,7 +942,8 @@ class PairLoopNeighbourListNS(object):
         args = []
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:
-            assert static_args is not None, "Error: static arguments not passed to loop."
+            assert static_args is not None, "Error: static arguments not " \
+                                            "passed to loop."
             for dat in static_args.values():
                 args.append(dat)
 
@@ -1308,9 +966,6 @@ class PairLoopNeighbourListNS(object):
         self._invocations += 1
         if cell2part.version_id > self.neighbour_list.version_id:
             self.neighbour_list.update()
-            # print "new list"
-            #print self.neighbour_list.neighbour_starting_points.data[0:16]
-            #print self.neighbour_list.list.data[0:10:]
 
 
 
@@ -1343,4 +998,100 @@ class PairLoopNeighbourListNS(object):
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
                 dat_orig.ctypes_data_post()
+
+
+
+
+
+###############################################################################
+# Neighbour list looping using NIII
+###############################################################################
+
+class PairLoopNeighbourList(PairLoopNeighbourListNS):
+
+    _neighbour_list_dict_PNL = {}
+
+    def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
+
+        self._particle_dat_dict = dat_dict
+        self._cc = build.TMPCC
+        # self.rn = None
+
+        ##########
+        # End of Rapaport initialisations.
+        ##########
+
+        self._temp_dir = runtime.BUILD_DIR
+        if not os.path.exists(self._temp_dir):
+            os.mkdir(self._temp_dir)
+
+        self._kernel = kernel
+
+        if type(shell_cutoff) is not logic.Distance:
+            shell_cutoff = logic.Distance(shell_cutoff)
+        self.shell_cutoff = shell_cutoff
+
+        self.loop_timer = opt.LoopTimer()
+        self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
+
+
+        self._components = {'LIB_PAIR_INDEX_0': '_i',
+                            'LIB_PAIR_INDEX_1': '_j',
+                            'LIB_NAME': str(self._kernel.name) + '_wrapper'}
+        self._gather_size_limit = 4
+        self._generate()
+
+
+        self._lib = build.simple_lib_creator(self._generate_header_source(),
+                                             self._components['LIB_SRC'],
+                                             self._kernel.name,
+                                             CC=self._cc)
+
+        self._group = None
+
+        for pd in self._particle_dat_dict.items():
+            if issubclass(type(pd[1][0]), data.PositionDat):
+                self._group = pd[1][0].group
+                break
+
+        assert self._group is not None, "No cell to particle map found"
+
+
+        new_decomp_flag = self._group.get_domain().cell_decompose(
+            self.shell_cutoff.value
+        )
+
+        if new_decomp_flag:
+            self._group.get_cell_to_particle_map().create()
+
+        self._key = (
+            self.shell_cutoff, self._group.get_domain(),
+            self._group.get_position_dat()
+            )
+
+        _nd = PairLoopNeighbourList._neighbour_list_dict_PNL
+        if not self._key in _nd.keys() or new_decomp_flag:
+            _nd[self._key] = cell.NeighbourListv2(
+                self._group.get_cell_to_particle_map()
+            )
+
+
+            _nd[self._key].setup(self._group.get_npart_local_func(),
+                                 self._group.get_position_dat(),
+                                 self._group.get_domain(),
+                                 self.shell_cutoff.value)
+
+        self.neighbour_list = _nd[self._key]
+
+        self._neighbourlist_count = 0
+        self._invocations = 0
+
+
+
+
+
+
+
+
+
 

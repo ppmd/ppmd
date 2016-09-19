@@ -181,7 +181,6 @@ def test_host_looping_3(state, base_rank):
 
     state.scatter_data_from(base_rank)
 
-
     kernel_code = '''
     V(0) = P(0);
     V(1) = P(1);
@@ -361,7 +360,58 @@ def test_host_looping_5(state, base_rank):
 
 
 
+def test_host_looping_6(state, base_rank):
+    """
+    Distributed looping without gather, using structs not macros
+    """
 
+    pi = np.random.uniform(-1*Eo2, Eo2, [N,3])
+    vi = np.random.normal(0, 2, [N,3])
+    fi = np.zeros([N,3])
+    gidi = np.arange(N)
+
+    state.p[:] = pi
+    state.v[:] = vi
+    state.f[:] = fi
+    state.gid[:,0] = gidi
+
+    state.scatter_data_from(base_rank)
+
+
+    kernel_code = '''
+    V.i[0] = P.i[0];
+    V.i[1] = P.i[1];
+    V.i[2] = P.i[2];
+
+    P.i[0] = (double) G.i[0];
+    P.i[1] = (double) G.i[0];
+    P.i[2] = (double) G.i[0];
+
+    F.i[0] += 1.0;
+    F.i[1] += 2.0;
+    F.i[2] += 3.0;
+    '''
+
+    kernel = md.kernel.Kernel('test_host_looping_6',code=kernel_code)
+    kernel_map = {'P': state.p(md.access.RW),
+                  'V': state.v(md.access.W),
+                  'F': state.f(md.access.RW),
+                  'G': state.gid(md.access.R)}
+
+    loop = md.loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop.execute()
+
+    M = state.npart_local
+
+    # relies on floating point equality
+    assert np.sum(state.p[:M:,0] == np.array(state.gid[:M:], dtype=ctypes.c_double)) == M
+    assert np.sum(state.p[:M:,1] == np.array(state.gid[:M:], dtype=ctypes.c_double)) == M
+    assert np.sum(state.p[:M:,2] == np.array(state.gid[:M:], dtype=ctypes.c_double)) == M
+
+    # relies on floating point equality
+    assert np.sum(state.f[:M:,0] == np.ones([M]) ) == M
+    assert np.sum(state.f[:M:,1] == 2.0*np.ones([M]) ) == M
+    assert np.sum(state.f[:M:,2] == 3.0*np.ones([M]) ) == M
 
 
 

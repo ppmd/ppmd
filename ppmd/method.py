@@ -294,7 +294,6 @@ class IntegratorVelocityVerlet(object):
 
         kernel1 = kernel.Kernel('vv1', kernel1_code, constants)
         self._p1 = self._looping_method(
-            n=self._g.as_func('npart_local'),
             kernel=kernel1,
             particle_dat_dict={'P': self._p(access.W),
                                'V': self._v(access.W),
@@ -304,7 +303,6 @@ class IntegratorVelocityVerlet(object):
 
         kernel2 = kernel.Kernel('vv2', kernel2_code, constants)
         self._p2 = self._looping_method(
-            n=self._g.as_func('npart_local'),
             kernel=kernel2,
             particle_dat_dict={'V': self._v(access.W),
                                'F': self._f(access.R),
@@ -456,10 +454,10 @@ class VelocityVerlet(object):
         self._constants = [kernel.Constant('dt',self._dt), kernel.Constant('dht',0.5*self._dt),]
 
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-        self._p1 = loop.ParticleLoop(self._N, self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
+        self._p1 = loop.ParticleLoop(self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
 
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-        self._p2 = loop.ParticleLoop(self._N, self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
+        self._p2 = loop.ParticleLoop(self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
 
 
         self._update_controller.execute_boundary_conditions()
@@ -530,7 +528,7 @@ class VelocityVerletAnderson(VelocityVerlet):
 
         self._constants1 = [kernel.Constant('dt',self._dt), kernel.Constant('dht',0.5*self._dt),]
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants1)
-        self._p1 = loop.ParticleLoop(self._N, self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
+        self._p1 = loop.ParticleLoop(self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
 
         self._kernel2_thermostat_code = '''
 
@@ -565,7 +563,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         self._constants2_thermostat = [kernel.Constant('rate',self._dt*self._nu), kernel.Constant('dt',self._dt), kernel.Constant('dht',0.5*self._dt), kernel.Constant('temperature',self._Temp),]
 
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
-        self._p2_thermostat = loop.ParticleLoop(self._N, self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
+        self._p2_thermostat = loop.ParticleLoop(self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
 
         _t = opt.Timer(runtime.TIMER, 0, start=True)
         self._velocity_verlet_integration_thermostat()
@@ -629,7 +627,6 @@ class KineticEnergyTracker(object):
         _constants_K = []
         _K_kernel = kernel.Kernel('K_kernel', _K_kernel_code, _constants_K)
         self._kinetic_energy_lib = looping_method(
-            n=velocities.group.as_func('npart_local'),
             kernel=_K_kernel,
             particle_dat_dict={'V': velocities(access.R),
                                'k': self.k(access.INC),
