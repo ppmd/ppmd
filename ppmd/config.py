@@ -50,6 +50,18 @@ def load_config(dir=None):
             pass
 
 
+    build_dir = os.path.abspath(MAIN_CFG['build-dir'][1])
+    if not os.path.exists(build_dir):
+        os.mkdir(build_dir)
+
+
+
+
+
+
+
+
+
     CC_KEYS = (
                 'name',
                 'binary',

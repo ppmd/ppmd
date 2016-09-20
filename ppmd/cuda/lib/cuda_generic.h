@@ -11,6 +11,10 @@
     //#include "cuda_counting_types.h"
     #include <iostream>
 
+__device__ bool isnormal(double value)
+{
+	return !(isinf(value) || isnan(value));
+}
     using namespace std;
     /*
     // double shuffle down edited from nvidia example
@@ -137,10 +141,7 @@ struct const_cuda_ParticleDat {
 };
 
 
-__device__ bool isnormal(double value)
-{
-	return !(isinf(value) || isnan(value));
-}
+
 
 
 

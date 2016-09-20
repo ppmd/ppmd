@@ -531,7 +531,7 @@ class PairLoopNeighbourListNS(object):
                      self._group.get_domain(),
                      self._group.get_position_dat())
 
-        _nd = PairLoopNeighbourList._neighbour_list_dict_PNL
+        _nd = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS
         if not self._key in _nd.keys() or new_decomp_flag:
             _nd[self._key] = cell.NeighbourListNonN3(
                 self._group.get_cell_to_particle_map()
@@ -977,9 +977,7 @@ class PairLoopNeighbourListNS(object):
         _STARTS = self.neighbour_list.neighbour_starting_points.ctypes_data
         _LIST = self.neighbour_list.list.ctypes_data
 
-        args2 = [_N_LOCAL,
-                 _STARTS,
-                 _LIST]
+        args2 = [_N_LOCAL, _STARTS, _LIST]
 
         args2.append(self.loop_timer.get_python_parameters())
 

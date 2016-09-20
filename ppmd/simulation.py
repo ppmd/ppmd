@@ -85,7 +85,9 @@ class BaseMDSimulation(object):
             self._boundary_method = domain.BoundaryTypePeriodic()
 
         self._boundary_method.set_state(self.state)
+        self.state.domain = domain_in
 
+        self.state.domain.boundary_condition = self._boundary_method
 
 
         # Add particle dats
@@ -109,9 +111,7 @@ class BaseMDSimulation(object):
         # Kinetic energy
         self.state.k = data.ScalarArray()
 
-        self.state.domain = domain_in
 
-        self.state.domain.boundary_condition = self._boundary_method
 
 
         # Initialise domain extent

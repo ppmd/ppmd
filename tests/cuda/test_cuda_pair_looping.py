@@ -112,9 +112,9 @@ def test_cuda_pair_loop_1(state):
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
-    loop = mdc.cuda_pairloop.PairLoopNeighbourList(kernel=kernel,
-                                             dat_dict=kernel_map,
-                                             shell_cutoff=cell_width-tol)
+    loop = mdc.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
+                                                     dat_dict=kernel_map,
+                                                     shell_cutoff=cell_width-tol)
 
     state.nc.zero()
 
@@ -152,9 +152,9 @@ def test_cuda_pair_loop_2(state):
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
-    loop = mdc.cuda_pairloop.PairLoopNeighbourList(kernel=kernel,
-                                             dat_dict=kernel_map,
-                                             shell_cutoff=cell_width+tol)
+    loop = mdc.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
+                                                     dat_dict=kernel_map,
+                                                     shell_cutoff=cell_width+tol)
 
     state.nc.zero()
 
@@ -192,9 +192,9 @@ def test_cuda_pair_loop_3(state):
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
-    loop = mdc.cuda_pairloop.PairLoopNeighbourList(kernel=kernel,
-                                             dat_dict=kernel_map,
-                                             shell_cutoff=math.sqrt(2.)*cell_width-tol)
+    loop = mdc.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
+                                                     dat_dict=kernel_map,
+                                                     shell_cutoff=math.sqrt(2.)*cell_width-tol)
 
     state.nc.zero()
 
@@ -232,9 +232,9 @@ def test_cuda_pair_loop_4(state):
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
-    loop = mdc.cuda_pairloop.PairLoopNeighbourList(kernel=kernel,
-                                             dat_dict=kernel_map,
-                                             shell_cutoff=math.sqrt(2.)*cell_width+tol)
+    loop = mdc.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
+                                                     dat_dict=kernel_map,
+                                                     shell_cutoff=math.sqrt(2.)*cell_width+tol)
 
     state.nc.zero()
 
@@ -274,9 +274,9 @@ def test_cuda_pair_loop_5(state):
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
-    loop = mdc.cuda_pairloop.PairLoopNeighbourList(kernel=kernel,
-                                             dat_dict=kernel_map,
-                                             shell_cutoff=math.sqrt(3.)*cell_width-tol)
+    loop = mdc.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
+                                                     dat_dict=kernel_map,
+                                                     shell_cutoff=math.sqrt(3.)*cell_width-tol)
 
     state.nc.zero()
 
@@ -316,9 +316,9 @@ def test_cuda_pair_loop_ns_1(state):
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
-    loop = mdc.cuda_pairloop.PairLoopNeighbourList(kernel=kernel,
-                                               dat_dict=kernel_map,
-                                               shell_cutoff=math.sqrt(3.)*cell_width+tol)
+    loop = mdc.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
+                                                     dat_dict=kernel_map,
+                                                     shell_cutoff=math.sqrt(3.)*cell_width+tol)
 
     state.nc.zero()
 

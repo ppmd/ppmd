@@ -126,7 +126,7 @@ def test_host_sim_1():
         rc=potaa_rc
     )
 
-    potaa_force_updater = mdc.cuda_pairloop.PairLoopNeighbourList(
+    potaa_force_updater = mdc.cuda_pairloop.PairLoopNeighbourListNS(
         kernel = potaa.kernel,
         dat_dict= potaa.get_data_map(
             positions=A.p,

@@ -454,10 +454,21 @@ class VelocityVerlet(object):
         self._constants = [kernel.Constant('dt',self._dt), kernel.Constant('dht',0.5*self._dt),]
 
         self._kernel1 = kernel.Kernel('vv1',self._kernel1_code,self._constants)
-        self._p1 = loop.ParticleLoop(self._kernel1,{'P':self._P,'V':self._V,'A':self._A, 'M':self._M})
+        self._p1 = loop.ParticleLoop(
+            self._kernel1,
+            {'P':self._P(access.W),
+            'V':self._V(access.W),
+            'A':self._A(access.R), 
+            'M':self._M(access.R)}
+        )
 
         self._kernel2 = kernel.Kernel('vv2',self._kernel2_code,self._constants)
-        self._p2 = loop.ParticleLoop(self._kernel2,{'V':self._V,'A':self._A, 'M':self._M})
+        self._p2 = loop.ParticleLoop(
+            self._kernel2,
+            {'V':self._V(access.W),
+            'A':self._A(access.R), 
+            'M':self._M(access.R)}
+        )
 
 
         self._update_controller.execute_boundary_conditions()
