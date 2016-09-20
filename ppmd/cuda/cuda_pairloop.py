@@ -598,9 +598,10 @@ class PairLoopNeighbourListNS(object):
                 ktype = datt[1]
 
                 # Add to kernel args
-                self._components['KERNEL_ARG_DECLS'].append(
-                    cgen.Const(cgen.Value(host.ctypes_map[ktype], ksym))
-                )
+
+                g = cgen.Const(cgen.Value(host.ctypes_map[ktype], ksym))
+                self._components['KERNEL_ARG_DECLS'].append(g)
+                self._components['KERNEL_LIB_ARG_DECLS'].append(g)
                 kernel_call_symbols.append(ksym)
 
 
@@ -767,7 +768,7 @@ class PairLoopNeighbourListNS(object):
             'k_'+self._kernel.name+'<<<_B,_T>>>(' + kernel_call_symbols_s + ');'
         ))
         self._components['LIB_KERNEL_CALL'].append(cgen.Line(
-            'cudaDeviceSynchronize();'
+            'checkCudaErrors(cudaDeviceSynchronize());'
         ))
 
 

@@ -81,7 +81,7 @@ class BoundaryTypePeriodic(object):
                 self._one_process_pbc_lib = cuda_loop.ParticleLoop(
                     _one_proc_pbc_kernel,
                     {'P': self.state.get_position_dat()(access.RW),
-                     'BCFLAG':self._flag}
+                     'BCFLAG':self._flag(access.W)}
                 )
 
 

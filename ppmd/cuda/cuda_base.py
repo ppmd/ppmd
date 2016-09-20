@@ -99,6 +99,8 @@ class Array(object):
                                             ctypes.c_void_p),
                                            ('ncomp', ctypes.POINTER(ctypes.c_int)))))()
 
+    def __call__(self, mode):
+        return self, mode
 
     def __getitem__(self, key):
         self._h_mirror.copy_from_device()
@@ -238,6 +240,9 @@ class Matrix(object):
         self._struct.nrow = ctypes.pointer(self._nrow)
         self._struct.ncol = ctypes.pointer(self._ncol)
         return self._struct
+
+    def __call__(self, mode):
+        return self, mode
 
     @property
     def version(self):
