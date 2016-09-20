@@ -329,11 +329,11 @@ def Restrict(keyword, symbol):
 
 class ParticleLoop(object):
 
-    def __init__(self, kernel, particle_dat_dict, n=None ,types_map=None):
+    def __init__(self, kernel, dat_dict, n=None, types_map=None):
 
         self._types_map = types_map
         self._kernel = kernel
-        self._particle_dat_dict = particle_dat_dict
+        self._particle_dat_dict = dat_dict
 
         # set compiler as NVCC default
         self._cc = cuda_build.NVCC

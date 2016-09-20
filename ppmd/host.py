@@ -27,7 +27,7 @@ ctypes_map = {ctypes.c_double: 'double',
               'float64': 'double',
               'int32': 'int',
               'doublepointerpointer': 'double **',
-              ctypes.c_longlong: 'long long',
+              # ctypes.c_longlong: 'long long',
               'doublepointer': 'double *',
               'intpointer': 'int *',
               'longpointer': 'long *'}

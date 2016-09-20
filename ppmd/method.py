@@ -1023,7 +1023,7 @@ class VelocityAutoCorrelation(object):
 
         self._datdict = {'VAF': self._VAF, 'v0': self._V0, 'VT': self._VT}
 
-        self._loop = loop.ParticleLoop(self._state.as_func('npart_local'), None, kernel=_kernel, particle_dat_dict=self._datdict)
+        self._loop = loop.ParticleLoop(self._state.as_func('npart_local'), None, kernel=_kernel, dat_dict=self._datdict)
 
     def set_v0(self, v0=None, state=None):
         """

@@ -253,7 +253,6 @@ class ParticleDat(host.Matrix):
         self._exchange_lib = None
         self._tmp_halo_space = host.Array(ncomp=1, dtype=self.dtype)
 
-
     @property
     def data(self):
         self._vid_int += 1

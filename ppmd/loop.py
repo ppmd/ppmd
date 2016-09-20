@@ -18,9 +18,9 @@ def Restrict(keyword, symbol):
 class ParticleLoop(object):
 
 
-    def __init__(self, kernel=None, particle_dat_dict=None):
+    def __init__(self, kernel=None, dat_dict=None):
 
-        self._particle_dat_dict = particle_dat_dict
+        self._particle_dat_dict = dat_dict
         self._cc = build.TMPCC
 
 

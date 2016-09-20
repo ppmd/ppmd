@@ -91,7 +91,7 @@ def test_host_looping_1(s_nd):
                   'F': s_nd.f(md.access.RW),
                   'G': s_nd.gid(md.access.R)}
 
-    loop = md.loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop = md.loop.ParticleLoop(kernel=kernel, dat_dict=kernel_map)
     loop.execute(n=N)
 
     assert np.sum(s_nd.v[:] == pi) == N*3
@@ -144,7 +144,7 @@ def test_host_looping_2(state):
                   'F': state.f(md.access.RW),
                   'G': state.gid(md.access.R)}
 
-    loop = md.loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop = md.loop.ParticleLoop(kernel=kernel, dat_dict=kernel_map)
     loop.execute(n=N)
 
     assert np.sum(state.v[:] == pi) == N*3
@@ -201,7 +201,7 @@ def test_host_looping_3(state, base_rank):
                   'F': state.f(md.access.RW),
                   'G': state.gid(md.access.R)}
 
-    loop = md.loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop = md.loop.ParticleLoop(kernel=kernel, dat_dict=kernel_map)
     loop.execute(n=state.npart_local)
 
     state.gather_data_on(base_rank)
@@ -270,7 +270,7 @@ def test_host_looping_4(state, base_rank):
                   'F': state.f(md.access.RW),
                   'G': state.gid(md.access.R)}
 
-    loop = md.loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop = md.loop.ParticleLoop(kernel=kernel, dat_dict=kernel_map)
     loop.execute(n=state.npart_local)
     loop.execute(n=state.npart_local)
 
@@ -342,7 +342,7 @@ def test_host_looping_5(state, base_rank):
                   'F': state.f(md.access.RW),
                   'G': state.gid(md.access.R)}
 
-    loop = md.loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop = md.loop.ParticleLoop(kernel=kernel, dat_dict=kernel_map)
     loop.execute(n=state.npart_local)
 
     M = state.npart_local
@@ -398,7 +398,7 @@ def test_host_looping_6(state, base_rank):
                   'F': state.f(md.access.RW),
                   'G': state.gid(md.access.R)}
 
-    loop = md.loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop = md.loop.ParticleLoop(kernel=kernel, dat_dict=kernel_map)
     loop.execute()
 
     M = state.npart_local

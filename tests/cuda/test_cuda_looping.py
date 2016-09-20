@@ -118,7 +118,7 @@ def test_cuda_looping_2(state):
                   'F': state.f(md.access.RW),
                   'G': state.gid(md.access.R)}
 
-    loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, dat_dict=kernel_map)
     loop.execute(n=N)
 
     assert np.sum(state.v[:] == pi) == N*3
@@ -176,7 +176,7 @@ def test_cuda_looping_3(state, base_rank):
                   'F': state.f(md.access.RW),
                   'G': state.gid(md.access.R)}
 
-    loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, dat_dict=kernel_map)
     loop.execute(n=state.npart_local)
 
     state.gather_data_on(base_rank)
@@ -244,7 +244,7 @@ def test_cuda_looping_4(state, base_rank):
                   'F': state.f(md.access.RW),
                   'G': state.gid(md.access.R)}
 
-    loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, dat_dict=kernel_map)
     loop.execute(n=state.npart_local)
     loop.execute(n=state.npart_local)
 
@@ -316,7 +316,7 @@ def test_cuda_looping_5(state, base_rank):
                   'F': state.f(md.access.RW),
                   'G': state.gid(md.access.R)}
 
-    loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, particle_dat_dict=kernel_map)
+    loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, dat_dict=kernel_map)
     loop.execute(n=state.npart_local)
 
     M = state.npart_local
