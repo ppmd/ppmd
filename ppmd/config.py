@@ -5,9 +5,9 @@ Configuration handling for package
 # system level imports
 import os
 import ConfigParser
+from mpi4py import MPI
 
 # package level imports
-import mpi
 import compiler
 
 def str_to_bool(s="0"):
@@ -52,11 +52,9 @@ def load_config(dir=None):
 
 
     build_dir = os.path.abspath(MAIN_CFG['build-dir'][1])
-    if not os.path.exists(build_dir) and mpi.MPI_HANDLE.rank == 0:
+    if not os.path.exists(build_dir) and MPI.COMM_WORLD.rank == 0:
         os.mkdir(build_dir)
-    mpi.MPI_HANDLE.barrier()
-
-
+    MPI.COMM_WORLD.Barrier()
 
 
 

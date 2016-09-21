@@ -1,23 +1,14 @@
 #!/usr/bin/python
 
-import pytest
 import ctypes
 import numpy as np
-import math
 
 
 import ppmd as md
 
 N = 1000
-crN = 10 #cubert(N)
-E = 8.
-
-Eo2 = E/2.
-
-tol = 10.**(-14)
 
 rank = md.mpi.MPI_HANDLE.rank
-nproc = md.mpi.MPI_HANDLE.nproc
 
 
 PositionDat = md.data.PositionDat
