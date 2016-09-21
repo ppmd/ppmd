@@ -31,7 +31,7 @@ class ParticleLoop(object):
         self._kernel = kernel
 
         self.loop_timer = opt.LoopTimer()
-        self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
+        self.wrapper_timer = opt.Timer(runtime.TIMER)
 
 
         self._components = {
@@ -80,7 +80,7 @@ class ParticleLoop(object):
 
     def _generate_lib_specific_args(self):
         self._components['LIB_ARG_DECLS'] = [
-            cgen.Const(cgen.Value(host.int32_str, 'N_LOCAL')),
+            cgen.Const(cgen.Value(host.int32_str, '_N_LOCAL')),
             self.loop_timer.get_cpp_arguments_ast()
         ]
 
@@ -223,7 +223,7 @@ class ParticleLoop(object):
         i = self._components['LIB_PAIR_INDEX_0']
 
         loop = cgen.For('int ' + i + '=0',
-                        i + '<N_LOCAL',
+                        i + '<_N_LOCAL',
                         i+'++',
                         block)
 

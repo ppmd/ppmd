@@ -79,9 +79,6 @@ class PairLoopNeighbourListNSOld(object):
 
 
 
-
-
-
     def _generate_header_source(self):
         return '''
         #include "%(HCODE_lib_dir)s/cuda_generic.h"

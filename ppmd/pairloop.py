@@ -494,7 +494,7 @@ class PairLoopNeighbourListNS(object):
         self.shell_cutoff = shell_cutoff
 
         self.loop_timer = opt.LoopTimer()
-        self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
+        self.wrapper_timer = opt.Timer(runtime.TIMER)
 
 
         self._components = {'LIB_PAIR_INDEX_0': '_i',
@@ -577,12 +577,12 @@ class PairLoopNeighbourListNS(object):
 
     def _generate_lib_specific_args(self):
         self._components['LIB_ARG_DECLS'] = [
-            cgen.Const(cgen.Value(host.int32_str, 'N_LOCAL')),
+            cgen.Const(cgen.Value(host.int32_str, '_N_LOCAL')),
             cgen.Const(
                 cgen.Pointer(
                     cgen.Value(host.int64_str,
                                Restrict(
-                                   self._cc.restrict_keyword,'START_POINTS'
+                                   self._cc.restrict_keyword,'_START_POINTS'
                                )
                                )
                 )
@@ -590,7 +590,7 @@ class PairLoopNeighbourListNS(object):
             cgen.Const(
                 cgen.Pointer(
                     cgen.Value(host.int32_str,
-                               Restrict(self._cc.restrict_keyword, 'NLIST')),
+                               Restrict(self._cc.restrict_keyword, '_NLIST')),
                 )
             ),
             self.loop_timer.get_cpp_arguments_ast()
@@ -707,7 +707,7 @@ class PairLoopNeighbourListNS(object):
     def _generate_lib_inner_loop_block(self):
         self._components['LIB_INNER_LOOP_BLOCK'] = \
             cgen.Block([cgen.Line('const int ' + self._components['LIB_PAIR_INDEX_1']
-                                  + ' = NLIST[_k];\n \n'),
+                                  + ' = _NLIST[_k];\n \n'),
                         self._components['LIB_KERNEL_CALL']
                         ])
 
@@ -716,8 +716,8 @@ class PairLoopNeighbourListNS(object):
     def _generate_lib_inner_loop(self):
         i = self._components['LIB_PAIR_INDEX_0']
         b = self._components['LIB_INNER_LOOP_BLOCK']
-        self._components['LIB_INNER_LOOP'] = cgen.For('long _k=START_POINTS['+i+']',
-                                                      '_k<START_POINTS['+i+'+1]',
+        self._components['LIB_INNER_LOOP'] = cgen.For('long _k=_START_POINTS['+i+']',
+                                                      '_k<_START_POINTS['+i+'+1]',
                                                       '_k++',
                                                       b
                                                       )
@@ -846,8 +846,8 @@ class PairLoopNeighbourListNS(object):
                 dtype = host.ctypes_map[dat[1][0].dtype]
                 ix =self._components['LIB_PAIR_INDEX_0']
 
-                b = cgen.Assign(dat[0]+'['+str(nc)+'*'+ix+'+tx]', isym+'[tx]')
-                g = cgen.For('int tx=0', 'tx<'+str(nc), 'tx++',
+                b = cgen.Assign(dat[0]+'['+str(nc)+'*'+ix+'+_tx]', isym+'[_tx]')
+                g = cgen.For('int _tx=0', '_tx<'+str(nc), '_tx++',
                              cgen.Block([b]))
 
 
@@ -870,7 +870,7 @@ class PairLoopNeighbourListNS(object):
         i = self._components['LIB_PAIR_INDEX_0']
 
         loop = cgen.For('int ' + i + '=0',
-                        i + '<N_LOCAL',
+                        i + '<_N_LOCAL',
                         i+'++',
                         block)
 
@@ -1029,7 +1029,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
         self.shell_cutoff = shell_cutoff
 
         self.loop_timer = opt.LoopTimer()
-        self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
+        self.wrapper_timer = opt.Timer(runtime.TIMER)
 
 
         self._components = {'LIB_PAIR_INDEX_0': '_i',
@@ -1110,7 +1110,7 @@ class AllToAllNS(object):
 
 
         self.loop_timer = opt.LoopTimer()
-        self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
+        self.wrapper_timer = opt.Timer(runtime.TIMER)
 
 
         self._components = {'LIB_PAIR_INDEX_0': '_i',
@@ -1118,7 +1118,9 @@ class AllToAllNS(object):
                             'LIB_NAME': str(self._kernel.name) + '_wrapper'}
 
         self._gather_size_limit = 4
+
         self._generate()
+
 
         self._group = None
 
@@ -1152,16 +1154,16 @@ class AllToAllNS(object):
         self._generate_lib_func()
         self._generate_lib_src()
 
-        print 60*"-"
-        print self._components['LIB_SRC']
-        print 60*"-"
+        #print 60*"-"
+        #print self._components['LIB_SRC']
+        #print 60*"-"
 
 
 
 
     def _generate_lib_specific_args(self):
         self._components['LIB_ARG_DECLS'] = [
-            cgen.Const(cgen.Value(host.int32_str, 'N_LOCAL')),
+            cgen.Const(cgen.Value(host.int32_str, '_N_LOCAL')),
             self.loop_timer.get_cpp_arguments_ast()
         ]
 
@@ -1298,7 +1300,7 @@ class AllToAllNS(object):
 
             cgen.For(
                 'int ' + j + '=1+' + i,
-                j + '< N_LOCAL',
+                j + '< _N_LOCAL',
                 j + '++',
                 b
                 ),
@@ -1424,8 +1426,8 @@ class AllToAllNS(object):
                 dtype = host.ctypes_map[dat[1][0].dtype]
                 ix =self._components['LIB_PAIR_INDEX_0']
 
-                b = cgen.Assign(dat[0]+'['+str(nc)+'*'+ix+'+tx]', isym+'[tx]')
-                g = cgen.For('int tx=0', 'tx<'+str(nc), 'tx++',
+                b = cgen.Assign(dat[0]+'['+str(nc)+'*'+ix+'+_tx]', isym+'[_tx]')
+                g = cgen.For('int _tx=0', '_tx<'+str(nc), '_tx++',
                              cgen.Block([b]))
 
 
@@ -1448,7 +1450,7 @@ class AllToAllNS(object):
         i = self._components['LIB_PAIR_INDEX_0']
 
         loop = cgen.For('int ' + i + '=0',
-                        i + '<N_LOCAL',
+                        i + '<_N_LOCAL',
                         i+'++',
                         block)
 
@@ -1563,6 +1565,39 @@ class AllToAllNS(object):
         if self._group is not None:
             for dat_orig in self._particle_dat_dict.values():
                 dat_orig[0].ctypes_data_post(dat_orig[1])
+
+
+
+###############################################################################
+# All To All looping Symmetric
+###############################################################################
+
+
+
+class AllToAll(AllToAllNS):
+    def _generate_lib_inner_loop(self):
+        i = self._components['LIB_PAIR_INDEX_0']
+        j = self._components['LIB_PAIR_INDEX_1']
+        b = self._components['LIB_INNER_LOOP_BLOCK']
+        self._components['LIB_INNER_LOOP'] = cgen.Module([
+            cgen.For(
+                'int ' + j + '=1+' + i,
+                j + '< _N_LOCAL',
+                j + '++',
+                b
+                )
+        ])
+
+
+
+
+
+
+
+
+
+
+
 
 
 

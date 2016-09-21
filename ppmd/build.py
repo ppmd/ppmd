@@ -10,13 +10,12 @@ import re
 # package level imports
 import config
 import host
-import pio
 import runtime
 import mpi
 import opt
 
 
-BUILD_PER_PROC = False
+BUILD_PER_PROC = True
 
 ###############################################################################
 # COMPILERS START
@@ -138,7 +137,7 @@ class SharedLib(object):
     
     :arg int n: Number of elements to loop over.
     :arg kernel kernel:  Kernel to apply at each element.
-    :arg dict particle_dat_dict: Dictonary storing map between kernel variables
+    :arg dict dat_dict: Dictonary storing map between kernel variables
     and state variables.
     :arg bool runtime.DEBUG: Flag to enable runtime.DEBUG flags.
     """
@@ -453,7 +452,9 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
 def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
               CC=TMPCC, dst_dir=runtime.BUILD_DIR, hash=True):
 
-    mpi.MPI_HANDLE.barrier()
+
+    if not BUILD_PER_PROC:
+        mpi.MPI_HANDLE.barrier()
 
     with open(os.path.join(source_dir, lib + extensions[1]), "r") as fh:
         _code = fh.read()
@@ -514,7 +515,8 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
     #print "before barrier", mpi.MPI_HANDLE.rank
     #sys.stdout.flush()
 
-    mpi.MPI_HANDLE.barrier()
+    if not BUILD_PER_PROC:
+        mpi.MPI_HANDLE.barrier()
 
 
     #print "after barrier", mpi.MPI_HANDLE.rank
@@ -524,8 +526,8 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
 
 
     if not os.path.exists(_lib_filename):
-        pio.pprint("Critical build Error: Library not built,\n" +
-                   _lib_filename + "\n rank:", mpi.MPI_HANDLE.rank)
+        print "Critical build Error: Library not built,\n" + \
+                   _lib_filename + "\n rank:", mpi.MPI_HANDLE.rank
 
         if mpi.MPI_HANDLE.rank == 0:
             with open(os.path.join(dst_dir, lib + str(_m) + '.err'), 'r') as stderr:

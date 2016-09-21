@@ -185,6 +185,7 @@ class MDMPI(object):
 
         self.barrier()
 
+
     def _check_comm(self):
         self._top = self._COMM.Get_topo()[2][::-1]
         self._per = self._COMM.Get_topo()[1][::-1]
