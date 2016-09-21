@@ -18,7 +18,7 @@ ScalarArray = md.data.ScalarArray
 
 
 def test_host_all_to_all_NS():
-    if rank == 4:
+    if rank == 0:
         A = ParticleDat(
             npart=1000,
             ncomp=1,
