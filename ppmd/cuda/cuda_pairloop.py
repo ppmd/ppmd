@@ -34,7 +34,7 @@ class PairLoopNeighbourListNSOld(object):
         assert dat_dict is not None, "No particle dat dict passed"
 
         self._kernel = kernel
-        self._particle_dat_dict = dat_dict
+        self._dat_dict = dat_dict
 
 
         if type(shell_cutoff) is not logic.Distance:
@@ -43,7 +43,7 @@ class PairLoopNeighbourListNSOld(object):
 
         self._group = None
 
-        for pd in self._particle_dat_dict.items():
+        for pd in self._dat_dict.items():
             if issubclass(type(pd[1][0]), cuda_data.PositionDat):
                 self._group = pd[1][0].group
                 break
@@ -219,7 +219,7 @@ class PairLoopNeighbourListNSOld(object):
         host_args = ''
         host_k_call_args = ''
 
-        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+        for i, dat_orig in enumerate(self._dat_dict.items()):
 
             if type(dat_orig[1]) is tuple:
                 dat = dat_orig[0], dat_orig[1][0]
@@ -305,7 +305,7 @@ class PairLoopNeighbourListNSOld(object):
 
         """Allow alternative pointers"""
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
+            self._dat_dict = dat_dict
 
         if n is None:
             n = self._group.npart_local
@@ -329,12 +329,12 @@ class PairLoopNeighbourListNSOld(object):
 
 
         '''Pass access descriptor to dat'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_access(dat_orig[1])
 
         '''Add pointer arguments to launch command'''
-        for dat in self._particle_dat_dict.values():
+        for dat in self._dat_dict.values():
             if type(dat) is tuple:
                 dargs.append(dat[0].ctypes_data)
             else:
@@ -357,7 +357,7 @@ class PairLoopNeighbourListNSOld(object):
 
 
         '''afterwards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
@@ -425,7 +425,7 @@ class PairLoopNeighbourListNS(object):
 
     def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
 
-        self._particle_dat_dict = dat_dict
+        self._dat_dict = dat_dict
         self._cc = cuda_build.NVCC
 
 
@@ -454,7 +454,7 @@ class PairLoopNeighbourListNS(object):
 
         self._group = None
 
-        for pd in self._particle_dat_dict.items():
+        for pd in self._dat_dict.items():
             if issubclass(type(pd[1][0]), cuda_data.PositionDat):
                 self._group = pd[1][0].group
                 break
@@ -603,7 +603,7 @@ class PairLoopNeighbourListNS(object):
 
 
         # =================== Dynamic Args ===============================
-        for i, datt in enumerate(self._particle_dat_dict.items()):
+        for i, datt in enumerate(self._dat_dict.items()):
             assert type(datt[1]) is tuple, "Access descriptors not found"
 
             dati = datt[1][0]
@@ -778,7 +778,7 @@ class PairLoopNeighbourListNS(object):
 
     def _generate_map_macros(self):
         g = cgen.Module([cgen.Comment('#### KERNEL_MAP_MACROS ####')])
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
             if issubclass(type(dat[1][0]), cuda_base.Array):
                 g.append(cgen.Define(dat[0]+'(x)', '('+dat[0]+'[(x)])'))
             if issubclass(type(dat[1][0]), cuda_base.Matrix):
@@ -920,7 +920,7 @@ class PairLoopNeighbourListNS(object):
 
         """Allow alternative pointers"""
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
+            self._dat_dict = dat_dict
 
         if n is None:
             n = self._group.npart_local
@@ -944,12 +944,12 @@ class PairLoopNeighbourListNS(object):
 
 
         '''Pass access descriptor to dat'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_access(dat_orig[1])
 
         '''Add pointer arguments to launch command'''
-        for dat in self._particle_dat_dict.values():
+        for dat in self._dat_dict.values():
             if type(dat) is tuple:
                 dargs.append(dat[0].ctypes_data)
             else:
@@ -977,7 +977,7 @@ class PairLoopNeighbourListNS(object):
 
 
         '''afterwards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:

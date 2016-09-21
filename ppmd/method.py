@@ -295,7 +295,7 @@ class IntegratorVelocityVerlet(object):
         kernel1 = kernel.Kernel('vv1', kernel1_code, constants)
         self._p1 = self._looping_method(
             kernel=kernel1,
-            particle_dat_dict={'P': self._p(access.W),
+            dat_dict={'P': self._p(access.W),
                                'V': self._v(access.W),
                                'F': self._f(access.R),
                                'M': self._m(access.R)}
@@ -304,7 +304,7 @@ class IntegratorVelocityVerlet(object):
         kernel2 = kernel.Kernel('vv2', kernel2_code, constants)
         self._p2 = self._looping_method(
             kernel=kernel2,
-            particle_dat_dict={'V': self._v(access.W),
+            dat_dict={'V': self._v(access.W),
                                'F': self._f(access.R),
                                'M': self._m(access.R)}
         )
@@ -639,7 +639,7 @@ class KineticEnergyTracker(object):
         _K_kernel = kernel.Kernel('K_kernel', _K_kernel_code, _constants_K)
         self._kinetic_energy_lib = looping_method(
             kernel=_K_kernel,
-            particle_dat_dict={'V': velocities(access.R),
+            dat_dict={'V': velocities(access.R),
                                'k': self.k(access.INC),
                                'M': masses(access.R)}
         )
@@ -759,7 +759,7 @@ class RadialDistributionPeriodicNVE(object):
         _grkernel = kernel.Kernel('radial_distro_periodic_static', _kernel, _constants, headers=_headers)
         _datdict = {'P':self._P, 'GR':self._gr}
 
-        self._p = pairloop.DoubleAllParticleLoop(self._N, kernel=_grkernel, particle_dat_dict=_datdict)
+        self._p = pairloop.DoubleAllParticleLoop(self._N, kernel=_grkernel, dat_dict=_datdict)
 
         self.timer = opt.Timer(runtime.TIMER, 0)
 

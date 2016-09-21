@@ -142,7 +142,7 @@ class SharedLib(object):
     :arg bool runtime.DEBUG: Flag to enable runtime.DEBUG flags.
     """
 
-    def __init__(self, kernel, particle_dat_dict, openmp=False):
+    def __init__(self, kernel, dat_dict, openmp=False):
 
         # Timers
         self.creation_timer = opt.Timer(runtime.BUILD_TIMER, 2, start=True)
@@ -165,8 +165,8 @@ class SharedLib(object):
 
         self._kernel = kernel
 
-        self._particle_dat_dict = particle_dat_dict
-        self._nargs = len(self._particle_dat_dict)
+        self._dat_dict = dat_dict
+        self._nargs = len(self._dat_dict)
 
         self._code_init()
 
@@ -202,7 +202,7 @@ class SharedLib(object):
         """
         s = '\n'
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
 
             space = ' ' * 14
             argname = dat[0]  # +'_ext'
@@ -248,8 +248,8 @@ class SharedLib(object):
         """Allow alternative pointers"""
         if dat_dict is not None:
 
-            for key in self._particle_dat_dict:
-                self._particle_dat_dict[key] = dat_dict[key]
+            for key in self._dat_dict:
+                self._dat_dict[key] = dat_dict[key]
 
         args = []
 
@@ -264,7 +264,7 @@ class SharedLib(object):
 
 
         '''Add pointer arguments to launch command'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
             else:
@@ -286,7 +286,7 @@ class SharedLib(object):
         self.execute_overhead_timer.start()
 
         '''afterwards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
@@ -330,7 +330,7 @@ class SharedLib(object):
                 #self._argtypes.append(dat[1])
 
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
             if type(dat[1]) is not tuple:
                 argnames += host.ctypes_map[dat[1].dtype] + ' * ' + \
                             self._cc.restrict_keyword + ' ' + dat[0] + ','
@@ -344,7 +344,7 @@ class SharedLib(object):
         """Comma separated string of local argument names.
         """
         argnames = ''
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
             # dat[0] is always the name, even with access descriptiors.
             argnames += dat[0] + ','
         return argnames[:-1]

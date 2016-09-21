@@ -21,10 +21,10 @@ import cuda_base
 
 
 class _ParticleLoopOLD(object):
-    def __init__(self, kernel, particle_dat_dict, n=None ,types_map=None):
+    def __init__(self, kernel, dat_dict, n=None ,types_map=None):
         self._types_map = types_map
         self._kernel = kernel
-        self._particle_dat_dict = particle_dat_dict
+        self._dat_dict = dat_dict
 
         # set compiler as NVCC default
         self._cc = cuda_build.NVCC
@@ -63,7 +63,7 @@ class _ParticleLoopOLD(object):
         Comma separated string of argument names to be passed to kernel launch.
         """
         args = ''
-        for arg in self._particle_dat_dict.items():
+        for arg in self._dat_dict.items():
             args += 'd_' + arg[0] + ','
         return args[:-1]
 
@@ -178,7 +178,7 @@ class _ParticleLoopOLD(object):
 
         """Allow alternative pointers"""
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
+            self._dat_dict = dat_dict
 
         assert n is not None, "No number of particles passed"
 
@@ -202,7 +202,7 @@ class _ParticleLoopOLD(object):
                 args.append(dat)
 
         '''Add pointer arguments to launch command'''
-        for dat in self._particle_dat_dict.values():
+        for dat in self._dat_dict.values():
             if type(dat) is tuple:
                 args.append(dat[0].ctypes_data)
             else:
@@ -214,7 +214,7 @@ class _ParticleLoopOLD(object):
         method(*args)
 
         '''afterwards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
@@ -228,7 +228,7 @@ class _ParticleLoopOLD(object):
         host_args = ''
         host_k_call_args = ''
 
-        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+        for i, dat_orig in enumerate(self._dat_dict.items()):
 
             if type(dat_orig[1]) is tuple:
                 dat = dat_orig[0], dat_orig[1][0]
@@ -333,7 +333,7 @@ class ParticleLoop(object):
 
         self._types_map = types_map
         self._kernel = kernel
-        self._particle_dat_dict = dat_dict
+        self._dat_dict = dat_dict
 
         # set compiler as NVCC default
         self._cc = cuda_build.NVCC
@@ -443,7 +443,7 @@ class ParticleLoop(object):
                 kernel_call_symbols.append(ksym)
 
         # =================== Dynamic Args ===============================
-        for i, datt in enumerate(self._particle_dat_dict.items()):
+        for i, datt in enumerate(self._dat_dict.items()):
             assert type(datt[1]) is tuple, "Access descriptors not found"
 
             dati = datt[1][0]
@@ -598,7 +598,7 @@ class ParticleLoop(object):
 
     def _generate_map_macros(self):
         g = cgen.Module([cgen.Comment('#### KERNEL_MAP_MACROS ####')])
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
             if issubclass(type(dat[1][0]), cuda_base.Array):
                 g.append(cgen.Define(dat[0]+'(x)', '('+dat[0]+'[(x)])'))
             if issubclass(type(dat[1][0]), cuda_base.Matrix):
@@ -718,7 +718,7 @@ class ParticleLoop(object):
 
         """Allow alternative pointers"""
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
+            self._dat_dict = dat_dict
 
         assert n is not None, "No number of particles passed"
 
@@ -746,7 +746,7 @@ class ParticleLoop(object):
                 args.append(dat)
 
         '''Add pointer arguments to launch command'''
-        for dat in self._particle_dat_dict.values():
+        for dat in self._dat_dict.values():
             if type(dat) is tuple:
                 args.append(dat[0].ctypes_data)
             else:
@@ -758,7 +758,7 @@ class ParticleLoop(object):
         method(*args)
 
         '''afterwards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:

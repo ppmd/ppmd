@@ -20,7 +20,7 @@ class ParticleLoop(object):
 
     def __init__(self, kernel=None, dat_dict=None):
 
-        self._particle_dat_dict = dat_dict
+        self._dat_dict = dat_dict
         self._cc = build.TMPCC
 
 
@@ -48,7 +48,7 @@ class ParticleLoop(object):
 
         self._group = None
 
-        for pd in self._particle_dat_dict.items():
+        for pd in self._dat_dict.items():
 
             if issubclass(type(pd[1][0]), data.ParticleDat):
                 if pd[1][0].group is not None:
@@ -100,7 +100,7 @@ class ParticleLoop(object):
                     cgen.Const(cgen.Value(host.ctypes_map[dat[1]], dat[0]))
                 )
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
 
             assert type(dat[1]) is tuple, "Access descriptors not found"
 
@@ -145,7 +145,7 @@ class ParticleLoop(object):
 
         g = cgen.Module([cgen.Comment('#### KERNEL_MAP_MACROS ####')])
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
             if issubclass(type(dat[1][0]), host.Array):
                 g.append(cgen.Define(dat[0]+'(x)', '('+dat[0]+'[(x)])'))
             if issubclass(type(dat[1][0]), host.Matrix):
@@ -183,7 +183,7 @@ class ParticleLoop(object):
         kernel_call = cgen.Module([cgen.Comment('#### Kernel call arguments ####')])
         kernel_call_symbols = []
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
             if issubclass(type(dat[1][0]), host.Array):
                 kernel_call_symbols.append(dat[0])
             elif issubclass(type(dat[1][0]), host.Matrix):
@@ -286,7 +286,7 @@ class ParticleLoop(object):
 
         '''Allow alternative pointers'''
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
+            self._dat_dict = dat_dict
 
         args = []
         '''Add static arguments to launch command'''
@@ -298,13 +298,13 @@ class ParticleLoop(object):
 
 
         '''Pass access descriptor to dat'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_access(dat_orig[1], pair=False)
 
 
         '''Add pointer arguments to launch command'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 args.append(dat_orig[0].ctypes_data)
             else:
@@ -331,7 +331,7 @@ class ParticleLoop(object):
         self.wrapper_timer.pause()
 
         '''afterwards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:

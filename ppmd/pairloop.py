@@ -14,7 +14,7 @@ import opt
 import logic
 
 class _Base(object):
-    def __init__(self, n, kernel, particle_dat_dict):
+    def __init__(self, n, kernel, dat_dict):
 
         self._cc = build.TMPCC
 
@@ -22,7 +22,7 @@ class _Base(object):
 
         self._kernel = kernel
 
-        self._particle_dat_dict = particle_dat_dict
+        self._dat_dict = dat_dict
 
         self.loop_timer = opt.LoopTimer()
 
@@ -59,7 +59,7 @@ class _Base(object):
                 self._static_arg_order.append(dat[0])
 
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
 
 
 
@@ -105,7 +105,7 @@ class _Base(object):
 
         """Allow alternative pointers"""
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
+            self._dat_dict = dat_dict
 
         '''Currently assume n is always needed'''
         if n is not None:
@@ -127,7 +127,7 @@ class _Base(object):
                 args.append(dat)
 
         '''Add pointer arguments to launch command'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
             else:
@@ -138,7 +138,7 @@ class _Base(object):
         method(*args)
 
         '''after wards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_post(dat_orig[1])
 
@@ -214,7 +214,7 @@ class PairLoopRapaportHalo(_Base):
     def __init__(self, domain, potential=None, dat_dict=None, kernel=None):
         self._domain = domain
         self._potential = potential
-        self._particle_dat_dict = dat_dict
+        self._dat_dict = dat_dict
         self._cc = build.TMPCC
 
         ##########
@@ -243,7 +243,7 @@ class PairLoopRapaportHalo(_Base):
 
     def _kernel_argument_declarations(self):
         s = build.Code()
-        for i, dat_orig in enumerate(self._particle_dat_dict.items()):
+        for i, dat_orig in enumerate(self._dat_dict.items()):
 
             if type(dat_orig[1]) is tuple:
                 dat = dat_orig[0], dat_orig[1][0]
@@ -409,7 +409,7 @@ class PairLoopRapaportHalo(_Base):
         cell.cell_list.check()
         '''Allow alternative pointers'''
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
+            self._dat_dict = dat_dict
 
         if n is not None:
             print "warning option depreciated"
@@ -420,7 +420,7 @@ class PairLoopRapaportHalo(_Base):
 
 
         '''Pass access descriptor to dat'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_access(dat_orig[1])
 
@@ -438,7 +438,7 @@ class PairLoopRapaportHalo(_Base):
                 args.append(dat)
 
         '''Add pointer arguments to launch command'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 args.append(dat_orig[0].ctypes_data)
             else:
@@ -451,7 +451,7 @@ class PairLoopRapaportHalo(_Base):
         method(*args)
 
         '''afterwards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
@@ -475,7 +475,7 @@ class PairLoopNeighbourListNS(object):
 
     def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
 
-        self._particle_dat_dict = dat_dict
+        self._dat_dict = dat_dict
         self._cc = build.TMPCC
         # self.rn = None
 
@@ -511,7 +511,7 @@ class PairLoopNeighbourListNS(object):
 
         self._group = None
 
-        for pd in self._particle_dat_dict.items():
+        for pd in self._dat_dict.items():
             if issubclass(type(pd[1][0]), data.PositionDat):
                 self._group = pd[1][0].group
                 break
@@ -614,7 +614,7 @@ class PairLoopNeighbourListNS(object):
                     cgen.Const(cgen.Value(host.ctypes_map[dat[1]], dat[0]))
                 )
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
 
             assert type(dat[1]) is tuple, "Access descriptors not found"
 
@@ -663,7 +663,7 @@ class PairLoopNeighbourListNS(object):
 
         g = cgen.Module([cgen.Comment('#### KERNEL_MAP_MACROS ####')])
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
             if issubclass(type(dat[1][0]), host.Array):
                 g.append(cgen.Define(dat[0]+'(x)', '('+dat[0]+'[(x)])'))
             if issubclass(type(dat[1][0]), host.Matrix):
@@ -735,7 +735,7 @@ class PairLoopNeighbourListNS(object):
                 pass
 
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
 
             if issubclass(type(dat[1][0]), host.Array):
                 pass
@@ -778,7 +778,7 @@ class PairLoopNeighbourListNS(object):
         kernel_call = cgen.Module([cgen.Comment('#### Kernel call arguments ####')])
         kernel_call_symbols = []
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
             if issubclass(type(dat[1][0]), host.Array):
                 kernel_call_symbols.append(dat[0])
             elif issubclass(type(dat[1][0]), host.Matrix):
@@ -831,7 +831,7 @@ class PairLoopNeighbourListNS(object):
                 pass
 
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
 
             if issubclass(type(dat[1][0]), host.Array):
                 pass
@@ -935,7 +935,7 @@ class PairLoopNeighbourListNS(object):
 
         '''Allow alternative pointers'''
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
+            self._dat_dict = dat_dict
 
 
         args = []
@@ -948,13 +948,13 @@ class PairLoopNeighbourListNS(object):
 
 
         '''Pass access descriptor to dat'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_access(dat_orig[1])
 
 
         '''Add pointer arguments to launch command'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 args.append(dat_orig[0].ctypes_data)
             else:
@@ -990,7 +990,7 @@ class PairLoopNeighbourListNS(object):
         self.wrapper_timer.pause()
 
         '''afterwards access descriptors'''
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
@@ -1010,7 +1010,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
 
     def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
 
-        self._particle_dat_dict = dat_dict
+        self._dat_dict = dat_dict
         self._cc = build.TMPCC
         # self.rn = None
 
@@ -1046,7 +1046,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
 
         self._group = None
 
-        for pd in self._particle_dat_dict.items():
+        for pd in self._dat_dict.items():
             if issubclass(type(pd[1][0]), data.PositionDat):
                 self._group = pd[1][0].group
                 break
@@ -1098,7 +1098,7 @@ class AllToAllNS(object):
 
     def __init__(self, kernel=None, dat_dict=None):
 
-        self._particle_dat_dict = dat_dict
+        self._dat_dict = dat_dict
         self._cc = build.TMPCC
 
 
@@ -1124,7 +1124,7 @@ class AllToAllNS(object):
 
         self._group = None
 
-        for pd in self._particle_dat_dict.items():
+        for pd in self._dat_dict.items():
             if issubclass(type(pd[1][0]), data.PositionDat):
                 self._group = pd[1][0].group
                 break
@@ -1185,7 +1185,7 @@ class AllToAllNS(object):
                     cgen.Const(cgen.Value(host.ctypes_map[dat[1]], dat[0]))
                 )
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
 
             assert type(dat[1]) is tuple, "Access descriptors not found"
 
@@ -1236,7 +1236,7 @@ class AllToAllNS(object):
 
         g = cgen.Module([cgen.Comment('#### KERNEL_MAP_MACROS ####')])
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
             if issubclass(type(dat[1][0]), host.Array):
                 g.append(cgen.Define(dat[0]+'(x)', '('+dat[0]+'[(x)])'))
             if issubclass(type(dat[1][0]), host.Matrix):
@@ -1318,7 +1318,7 @@ class AllToAllNS(object):
                 pass
 
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
 
             if issubclass(type(dat[1][0]), host.Array):
                 pass
@@ -1358,7 +1358,7 @@ class AllToAllNS(object):
         kernel_call = cgen.Module([cgen.Comment('#### Kernel call arguments ####')])
         kernel_call_symbols = []
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
             if issubclass(type(dat[1][0]), host.Array):
                 kernel_call_symbols.append(dat[0])
             elif issubclass(type(dat[1][0]), host.Matrix):
@@ -1411,7 +1411,7 @@ class AllToAllNS(object):
                 pass
 
 
-        for i, dat in enumerate(self._particle_dat_dict.items()):
+        for i, dat in enumerate(self._dat_dict.items()):
 
             if issubclass(type(dat[1][0]), host.Array):
                 pass
@@ -1516,7 +1516,7 @@ class AllToAllNS(object):
 
         '''Allow alternative pointers'''
         if dat_dict is not None:
-            self._particle_dat_dict = dat_dict
+            self._dat_dict = dat_dict
 
 
         args = []
@@ -1530,14 +1530,14 @@ class AllToAllNS(object):
         '''Pass access descriptor to dat'''
 
         if self._group is not None:
-            for dat_orig in self._particle_dat_dict.values():
+            for dat_orig in self._dat_dict.values():
                 if type(dat_orig) is tuple:
                     dat_orig[0].ctypes_data_access(dat_orig[1])
 
 
         '''Add pointer arguments to launch command'''
         _N = 0
-        for dat_orig in self._particle_dat_dict.values():
+        for dat_orig in self._dat_dict.values():
             args.append(dat_orig[0].ctypes_data)
             _N = dat_orig[0].npart_local
 
@@ -1563,7 +1563,7 @@ class AllToAllNS(object):
 
         '''afterwards access descriptors'''
         if self._group is not None:
-            for dat_orig in self._particle_dat_dict.values():
+            for dat_orig in self._dat_dict.values():
                 dat_orig[0].ctypes_data_post(dat_orig[1])
 
 

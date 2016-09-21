@@ -176,7 +176,7 @@ class BaseMDSimulation(object):
                 n=self.state.as_func('npart_local'),
                 domain=self.state.domain,
                 kernel=self.potential.kernel,
-                particle_dat_dict=_potential_dat_dict
+                dat_dict=_potential_dat_dict
             )
 
 
