@@ -946,7 +946,7 @@ class PairLoopNeighbourListNS(object):
         '''Pass access descriptor to dat'''
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_access(dat_orig[1])
+                dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
 
         '''Add pointer arguments to launch command'''
         for dat in self._dat_dict.values():

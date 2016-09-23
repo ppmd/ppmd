@@ -18,7 +18,6 @@ import opt
 
 
 
-
 ##############################################################################################################
 # BASE DOMAIN HALO
 ##############################################################################################################
@@ -581,7 +580,6 @@ def _create_domain_decomp(global_cell_array=None, periods=None):
     _cell_distro = _get_cell_distribution(global_cell_array, _dims, _top)
 
     return _cell_distro[0:2:]
-
 
 
 

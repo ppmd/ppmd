@@ -1,355 +1,222 @@
 .. contents::
 .. highlight:: python
+
 Examples
 ========
-
-High-level Argon Example
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Domain
-......
-
-A domain is the physical space in which a simulation takes place. An instance of a domain class contains the extent of the cuboid enclosing all the particles. We initalise an empty periodic domain to contain our Argon atoms: ::
-    
-    periodic_domain = domain.BaseDomainHalo()
-
-
-
-Position, Velocity and Mass
-...........................
-
-Various methods are available to set the initial properties of the particles. DLPOLY config files may also be used to set the inital configuration. ::
-
-    position_init = simulation.PosInitLatticeNRhoRand(N, rho=0.2, dev=0.)
-    velocity_init = simulation.VelInitNormDist(mu=0., sig=5.)
-    mass_init = simulation.MassInitIdentical(m=39.948)
-
-Potential
-.........
-
-An interaction between particles is an example of a pairwise operation. The following creates a Lennard-Jones potential with the parameters to describe an Argon system. ::
-    
-    ar_potential = potential.LennardJones(sigma=3.405, epsilon=0.9661, rc=8.5)
-
-
-Combining into a simulation
-...........................
-
-A simulation can then be constructed using the above initalisation methods. If a potential is specified an instance of a simulation provides a method to update the forces particle dat.  ::
-
-    sim = simulation.BaseMDSimulation(domain_in=periodic_nve_domain,
-                                      potential_in=ar_potential,
-                                      particle_pos_init=position_init,
-                                      particle_vel_init=velocity_init,
-                                      particle_mass_init=mass_init,
-                                      n=N)
-
-
-xyz Writer
-..........
-
-The :class:`~method.WriteTrajectoryXYZ` is an example of a method class. Method classes perform operations on state classes. This particluar method writes the current state to a xyz file using the current positions, velocities and forces when the :class:`~method.WriteTrajectoryXYZ.write` method is called. ::
-
-    xyz_writer = method.WriteTrajectoryXYZ(state=sim.state, 
-                                           dir_name='./', 
-                                           file_name='out.xyz')
-
-
-.. _high-level-schedule:
-
-schedule
-........
-
-A schedule is list of pairs. Each pair consists of an argument free function and an integer number of steps. When passed to one of the integrator methods the function is called every defined number of steps. ::
-
-    schedule = method.Schedule([5], [xyz_writer.write])
-
-
-Create and run an integrator
-............................
-In this example we wish to integrate our inital state forward in time. This can be achieved with an integrator method. Here we use a velocity verlet integration scheme. The schedule instance as in :ref:`high-level-schedule` allows user interaction with the state between integration steps. ::
-
-    integrator = method.VelocityVerlet(simulation = sim, schedule=schedule)
-
-Calling integrate with a time step and a final time. ::
-
-    integrator.integrate(dt=0.0001, t=0.1)
-
-Overall code
-............
-
-All the above blocks of code together ::
-    
-    from ppmd import *
-
-    # choose a domain.
-    periodic_domain = domain.BaseDomainHalo()
-
-    # set potential between particles.
-    ar_potential = potential.LennardJones(sigma=3.405, epsilon=0.9661, rc=8.5)
-
-    # N: Number of particles.
-    n = 10
-    N = n ** 3
-
-    # position initialisation method
-    position_init = simulation.PosInitLatticeNRhoRand(N, rho=0.2, dev=0.)
-
-    # velocity initialisation method
-    velocity_init = simulation.VelInitNormDist(mu=0., sig=5.)
-
-    # mass initialisation method
-    mass_init = simulation.MassInitIdentical(m=39.948)
-
-    # Combine the existing intialisations into a simulation.
-    sim = simulation.BaseMDSimulation(domain_in=periodic_domain,
-                                      potential_in=ar_potential,
-                                      particle_pos_init=position_init,
-                                      particle_vel_init=velocity_init,
-                                      particle_mass_init=mass_init,
-                                      n=N
-                                      )
-
-    # Create a xyz writer.
-    xyz_writer = method.WriteTrajectoryXYZ(state=sim.state, 
-                                           dir_name='./', 
-                                           file_name='out.xyz')
-
-    # Write xyz trajectory every 5 timesteps.
-    schedule = method.Schedule([5], [xyz_writer.write])
-
-    # create an integrator instance.
-    integrator = method.VelocityVerlet(simulation = sim, schedule=schedule)
-
-    # integrate forward in time.
-    integrator.integrate(dt=0.0001, t=0.1)
-
 
 
 Low-level Argon Example
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Setup
-.....
+We start by importing required modules and the package under the name ``md``. We create aliases to certain classes that may need to be altered to run on CUDA capable GPUs.
+::
 
-In the high level example the required potential is predefined in the package. The code below demonstrates how to recreate the Lennard-Jones potential using a kernel and pairloop combination.
-
-The initial setup procedure is similar to the high-level example. We create an instance of the simulation class with a domain and methods to initialise the individual particles. ::
-
-    from ppmd import *
-
-    # choose a domain.
-    periodic_domain = domain.BaseDomainHalo()
-
-    # N: Number of particles.
-    n = 10
-    N = n ** 3
-
-    # position initialisation method
-    position_init = simulation.PosInitLatticeNRhoRand(N, rho=0.2, dev=0.)
-
-    # velocity initialisation method
-    velocity_init = simulation.VelInitNormDist(mu=0., sig=5.)
-
-    # mass initialisation method
-    mass_init = simulation.MassInitIdentical(m=39.948)
-
-    # Combine the existing intialisations into a simulation. We do not pass a potential, 
-    # the cell structure is setup with a passed cutoff.
-
-    sim = simulation.BaseMDSimulation(domain_in=periodic_domain,
-                                      particle_pos_init=position_init,
-                                      particle_vel_init=velocity_init,
-                                      particle_mass_init=mass_init,
-                                      n=N,
-                                      cutoff=8.5
-                                      )
-
-Pairloop example: Custom potential
-..................................
-
-Here we define the Lennard-Jones interaction used in the high-level example as a custom pairwise operation. In principle a kernel is a block of code that is combined with a looping method to produce code that either loops over particle pairs or individual particles.
-
-A kernel consists of a block of code describing the interaction and a map between the variables used in the kernel and the particle dats to loop over. Named constants can be replaced with their numerical values as an optimisation.
-
-The kernel code is constructed as a string. For a pairwise interaction such as a potential the particle dats are presented to the kernel as pointer arrays with two elements. Such that for particle pair (i,j) and a particle dat labeled "P", the kernel would expect P[0] to point to the data for particle i and P[1] to point to the data for particle j.
-
-.. code-block:: c
-
-    kernel_code = '''
-    const double R0 = P[1][0] - P[0][0]; // Distance in x direction between particles.
-    const double R1 = P[1][1] - P[0][1]; // Distance in y direction between particles.
-    const double R2 = P[1][2] - P[0][2]; // Distance in z direction between particles.
-
-    const double r2 = R0*R0 + R1*R1 + R2*R2;
-
-    if (r2 < rc2){
-
-        const double r_m2 = sigma2/r2;
-        const double r_m4 = r_m2*r_m2;
-        const double r_m6 = r_m4*r_m2;
-        
-        u[0]+= CV*((r_m6-1.0)*r_m6 + 0.25);
-        
-        const double r_m8 = r_m4*r_m4;
-        const double f_tmp = CF*(r_m6 - 0.5)*r_m8;
-
-        
-        A[0][0]+=f_tmp*R0;
-        A[0][1]+=f_tmp*R1;
-        A[0][2]+=f_tmp*R2;
-        
-        A[1][0]-=f_tmp*R0;
-        A[1][1]-=f_tmp*R1;
-        A[1][2]-=f_tmp*R2;
-
-    }
-    '''
-
-Constants can be hardcoded into generated code by declaring values when constructing the kernel. All instances of the constants in the kernel code are replaced by the numerical values of the constants.
-
-.. code-block:: python
-
-    sigma = 3.405
-    epsilon = 0.9661
-    cutoff = 8.5
-
-    kernel_constants = (kernel.Constant('sigma2', sigma ** 2),
-                        kernel.Constant('rc2', cutoff ** 2),
-                        kernel.Constant('CF', -48 * epsilon / sigma ** 2),
-                        kernel.Constant('CV', 4. * epsilon))
-
-The kernel code is combined with the kernel constants to create a :class:`~kernel.Kernel` instance. User defined header files along with non pointer arguments may also be included in the creation of a kernel.
-
-.. code-block:: python
-
-    LJ_kernel = kernel.Kernel('custom_lennard_jones', 
-                              kernel_code, 
-                              kernel_constants)
-
-The final part of the kernel is the map between the variables used in the kernel code and the particle dats in the simulation state. These are defined as a python dictonary and are passed with the kernel to a looping method. The access descriptors declare to the looping method the access type required by the kernel to the data.
-
-.. code-block:: python
-
-    kernel_dat_dict = {'P': sim.state.positions(access.R), # Read only access
-                       'A': sim.state.forces(access.W),    # Write only access
-                       'u': sim.state.u(access.INC)}       # Incremental access
-
-After passing the kernel to a looping method the C code is generated based on the user kernel. Here a cell based looping method is chosen for this potential interaction.
-
-.. code-block:: python
-
-    force_update_pairloop = pairloop.PairLoopRapaportHalo(domain=periodic_domain,
-                                                          kernel=LJ_kernel,
-                                                          dat_dict=kernel_dat_dict)
-
-The pair loop can be executed by calling: ::
+    #!/usr/bin/python
     
-    force_update_pairloop.execute()
+    import ctypes
+    import numpy as np
+    import math
+    import os
+
+    import ppmd as md
+    
+
+    rank = md.mpi.MPI_HANDLE.rank
+
+    PositionDat = md.data.PositionDat
+    ParticleDat = md.data.ParticleDat
+    ScalarArray = md.data.ScalarArray
+    State = md.state.State
+    ParticleLoop = md.loop.ParticleLoop
+    Pairloop = md.pairloop.PairLoopNeighbourListNS
 
 
-Paricle loop example: Velocity-Verlet integrator
-................................................
 
-The kernel is created in the same way as a pair loop kernel. The kernel and particle dat dictonary is passed to a looping method that loops over all particles once. A pointer is created to the position of the current particle in each of the particle dats. 
+In this example we will create random positions and velocities on rank 0 then distribute these across the available processes.
+::
 
-.. code-block:: python
+    N = 1000
 
-    vv_kernel1_code = '''
-    const double M_tmp = 1/M[0];
-    V[0] += dht*A[0]*M_tmp;
-    V[1] += dht*A[1]*M_tmp;
-    V[2] += dht*A[2]*M_tmp;
-    P[0] += dt*V[0];
-    P[1] += dt*V[1];
-    P[2] += dt*V[2];
+    # create a state called A
+    A = State()
+    
+    # set the number of particles in the system to be N
+    A.npart = N
+
+    # Initialise a domain with extents 8x8x8 with periodic boundaries.
+    A.domain = md.domain.BaseDomainHalo(extent=np.array([8., 8., 8.]))
+    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+
+    
+    # In our system each particle has a position, velocity, mass and acceleration, 
+    # we indicate these properties by adding appropriate ParticleDats to the state
+    # A
+    
+    # We indicate to the framework which property contains our positions with a
+    # specific data type called PositionDat.
+    
+    A.p = PositionDat(ncomp=3)
+    A.v = ParticleDat(ncomp=3)
+    A.f = ParticleDat(ncomp=3)
+    A.mass = ParticleDat(ncomp=1)
+
+    # As ParticleDats default to containing double values, when we want a dat that
+    # stores a golbal id we add an additional parameter to indicate that this dat
+    # contains int type values.
+    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
+
+    # We add global properties to our state through ScalarArray objects. Values in
+    # these structures are not tied to any particular particle. Here we add a 
+    # ScalarArray for the potential energy `u`.
+    
+    A.u = ScalarArray(ncomp=1, name='u')
+
+    # Initialise the data structures with random values.
+    # we will later use the values which were assigned on rank 0
+    
+    # sequential global ids.
+    A.gid[:, 0] = np.arange(A.npart)
+    A.p[:] = np.random.uniform(-4.0, 4.0, [N,3])
+    A.v[:] = np.random.normal(size=[10,3])
+    A.mass[:] = 1.0
+
+    A.u[0] = 0.0
+
+
+    # distribute the data on rank 0 to the reset of the system.
+    A.scatter_data_from(0)
+
+
+
+For this example we recreate the Buckingham potential and set constants suitable for modelling Argon.
+::
+    
+    kernel_code = '''
+    const double R0 = P.j[0] - P.i[0];
+    const double R1 = P.j[1] - P.i[1];
+    const double R2 = P.j[2] - P.i[2];
+    
+    const double r2 = R0*R0 + R1*R1 + R2*R2;
+    
+    const double r = sqrt(r2);
+    // \\exp{-B*r}
+    const double exp_mbr = exp(_MB*r);
+    
+    // r^{-2, -4, -6}
+    const double r_m1 = 1.0/r;
+    const double r_m2 = r_m1*r_m1;
+    const double r_m4 = r_m2*r_m2;
+    const double r_m6 = r_m4*r_m2;
+    
+    // \\frac{C}{r^6}
+    const double crm6 = _C*r_m6;
+    
+    // A \\exp{-Br} - \\frac{C}{r^6}
+    u[0]+= (r2 < rc2) ? 0.5*(_A*exp_mbr - crm6 + internalshift) : 0.0;
+    
+    // = AB \\exp{-Br} - \\frac{C}{r^6}*\\frac{6}{r}
+    const double term2 = crm6*(-6.0)*r_m1;
+    const double f_tmp = _AB * exp_mbr + term2;
+    
+    F.i[0]+= (r2 < rc2) ? f_tmp*R0 : 0.0;
+    F.i[1]+= (r2 < rc2) ? f_tmp*R1 : 0.0;
+    F.i[2]+= (r2 < rc2) ? f_tmp*R2 : 0.0;
     '''
-            
-    vv_kernel2_code = '''
-    const double M_tmp = 1/M[0];
-    V[0] += dht*A[0]*M_tmp;
-    V[1] += dht*A[1]*M_tmp;
-    V[2] += dht*A[2]*M_tmp;
-    '''
+    
+    a=1.69*10**-8.0,
+    b=1.0/0.273,
+    c=102*10**-12,
+
+    rc = 2.5
+    rn = 1.1 * rc
+
+    shift_internal = -1.0 * a * math.exp(b*(-1.0/rc)) + c*(-1.0/(rc**6.0))
+    
+    kernel_constants = (
+        kernel.Constant('_A', a),
+        kernel.Constant('_AB', a*b),
+        kernel.Constant('_B', b),
+        kernel.Constant('_MB', -1.0*b),
+        kernel.Constant('_C', c),
+        kernel.Constant('rc2', rc ** 2),
+        kernel.Constant('internalshift', shift_internal)
+    )
+    
+    B_kernel = md.kernel.Kernel('Buckingham', kernel_code, kernel_constants, ['math.h'])
+    
+    
+    # pairloop to update forces and potential energy
+    force_updater = Pairloop(
+        kernel=B_kernel,
+        dat_dict={
+            'P': A.p(md.access.R),
+            'F': A.f(md.access.INC0),
+            'u': A.u(md.access.INC0)
+        },
+        shell_cutoff=rn
+    )
+
+To integrate the system forward in time we will define a Velocity Verlet integrator using two `ParticleLoop` instances.
+::
 
     dt = 0.0001
-    vv_constants = (kernel.Constant('dt', dt), 
-                    kernel.Constant('dht',0.5 * dt))
-                    
-    vv_dat_dict = {'P':sim.state.positions(access.RW),
-                   'V':sim.state.velocities(access.RW),
-                   'A':sim.state.forces(access.R),
-                   'M':sim.state.mass(access.R)}
 
-    vv_kernel1 = kernel.Kernel('vv1', vv_kernel1_code, vv_constants)
-    vv_kernel2 = kernel.Kernel('vv2', vv_kernel2_code, vv_constants)
+    vv_kernel1_code = '''
+    const double M_tmp = 1.0 / M.i[0];
+    V.i[0] += dht * F.i[0] * M_tmp;
+    V.i[1] += dht * F.i[1] * M_tmp;
+    V.i[2] += dht * F.i[2] * M_tmp;
+    P.i[0] += dt * V.i[0];
+    P.i[1] += dt * V.i[1];
+    P.i[2] += dt * V.i[2];
+    '''
 
-    vv_part1_loop = loop.SingleAllParticleLoop(sim.state.as_func('n'), 
-                                               sim.state.types,
-                                               vv_kernel1,
-                                               vv_dat_dict)
+    vv_kernel2_code = '''
+    const double M_tmp = 1.0 / M.i[0];
+    V.i[0] += dht * F.i[0] * M_tmp;
+    V.i[1] += dht * F.i[1] * M_tmp;
+    V.i[2] += dht * F.i[2] * M_tmp;
+    '''
+    constants = [
+        md.kernel.Constant('dt', dt),
+        md.kernel.Constant('dht', 0.5*dt),
+    ]
 
-    vv_part2_loop = loop.SingleAllParticleLoop(sim.state.as_func('n'),
-                                               sim.state.types,
-                                               vv_kernel2,
-                                               vv_dat_dict)
+    vv_kernel1 = md.kernel.Kernel('vv1', vv_kernel1_code, constants)
+    vv_p1 = ParticleLoop(
+        kernel=vv_kernel1,
+        dat_dict={'P': A.p(md.access.W),
+                  'V': A.v(md.access.W),
+                  'F': A.f(md.access.R),
+                  'M': A.mass(md.access.R)}
+    )
+
+    vv_kernel2 = md.kernel.Kernel('vv2', vv_kernel2_code, constants)
+    vv_p2 = ParticleLoop(
+        kernel=vv_kernel2,
+        dat_dict={'V': A.v(md.access.W),
+                  'F': A.f(md.access.R),
+                  'M': A.mass(md.access.R)}
+    )
 
 
+By using a custom Python iterator `IntegratorRange` the framework internally controls when intermediate lists are rebuilt. By passing our velocity dat and a timestep the framework is able to monitor maximum velocities to ensure particles do not move too far between list updates. The penultimate parameter defines the maximum number of iterations to keep internal lists for and the last parameter declares the distance between the cutoff used by the pairloop and the cutoff used by the potential.
+::
 
-Resulting simulation
-....................
-
-Using the pair loop to update the forces on each particle and the two particle loops to implement a time stepping method the system can be integrated forward in time.
-
-.. code-block:: python
-
-    for ix in range(100):
-
-        # first part of velocity verlet.
-        vv_part1_loop.execute()
-        
-        # To be handled by access descriptiors in future.
-        periodic_domain.bc_execute()
-        
-        
-        # update forces using custom potential.
-        
-        # To be handled by access descriptiors in future.
-        cell.cell_list.sort()
-        sim.state.positions.halo_exchange()
-        
-        
-        # update forces and potential energy using custom pairloop.
-        force_update_pairloop.execute()
-
-        
-        # second part of velocity verlet.
-        vv_part2_loop.execute()
-        
+    u_list = []    
     
+    for it in md.method.IntegratorRange(1000, dt, A.v, 10, 0.25):
+
+        vv_p1.execute()
+        force_updater.execute()
+        vv_p2.execute()
+
+        if it % 10 == 0:
+            u_list.append(A.u[0])
     
-    
-    
-    
-    
-    
-    
-    
+    u_array = md.mpi.all_reduce(np.array(u_list))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Boundary conditions are automatically applied by the framework using the domain and boundary condition declared earlier.
 
 
 

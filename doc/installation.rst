@@ -14,13 +14,18 @@ Required tools:
 
 * Python 2.7
 * mpi4py compatible MPI
-* A C compiler
+* A C compiler, preferably intel
+* CUDA Toolkit if targeting CUDA.
+
 
 Required Python Packages
 
 * NumPy
 * MPI4Py
 * ctypes
+* cgen
+* PyCUDA (If targeting CUDA)
+
 
 Optional Python Packages
 
@@ -30,15 +35,18 @@ To generate gpu code PPMD requires that the CUDA Toolkit is installed see furthe
 
 
 
-Build Directory
-~~~~~~~~~~~~~~~
+Environment Variables
+---------------------
 
-By default generated code is created and compiled in ``./build`` directory. This can be changed by setting the environment variable ``BUILD_DIR``.
+* ``MPI_HOME``: Used by the default CUDA and MPI compiler configurations to locate the desired MPI implementation.
+* ``BUILD_DIR``: The directory used as a storage location for generated libraries, default ``/tmp/build``.
+
 
 Compilers
 ~~~~~~~~~
 
-The system version of GCC is the compiler configured by default. Other compilers may be configured with the :class:`~build.Compiler` class.
+Compliers are defined in the ``compilers`` sub-directory of the ``config_dir`` directory found in the main library directory. Future versions will support loading configurations from alternative directories. Each complier is defined in a separate file and is identified by name in the main configuration file.
+
 
 
 .. _cuda:

@@ -149,12 +149,17 @@ class Array(object):
     def ctypes_data(self):
         return ctypes.cast(self._dat.ptr, ctypes.c_void_p)
 
-    def ctypes_data_access(self, mode=ppmd.access.RW):
+    def ctypes_data_access(self, mode=ppmd.access.RW, pair=False):
+
+        #print "pre", mode, self[0]
         if mode is ppmd.access.INC0:
+            #print self[0], mode
             self.zero()
         return self.ctypes_data
 
     def ctypes_data_post(self, mode=ppmd.access.RW):
+
+        #print self[0]
         pass
 
     def realloc(self, ncomp):
@@ -175,6 +180,7 @@ class Array(object):
         Set all the values in the array to zero.
         """
         self._dat.fill(np.array([0], dtype=self.dtype))
+        #print self[0]
 
     @property
     def dtype(self):

@@ -114,20 +114,23 @@ class ParticleDat(cuda_base.Matrix):
         t = gpuarray.max(self._dat[0:self.npart_local:,:])
         return t.get()
 
-    def ctypes_data_access(self, mode=access.RW):
+    def ctypes_data_access(self, mode=access.RW, pair=True):
         """
         :arg access mode: Access type required by the calling method.
         :return: The pointer to the data.
         """
+
+        #print pair, self._vid_int, self._vid_halo
 
         if mode is access.INC0:
             self.zero(self.npart_local)
 
         if mode.read:
             if self._vid_int > self._vid_halo:
-                #print "cuda HE"
-                self.halo_exchange()
-                self._vid_halo = self._vid_int
+                if pair:
+                    #print "cuda HE"
+                    self.halo_exchange()
+                    self._vid_halo = self._vid_int
 
 
         return self.ctypes_data

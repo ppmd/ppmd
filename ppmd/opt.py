@@ -14,6 +14,7 @@ import build
 import mpi
 import pio
 import host
+import runtime
 
 def get_timer_accuracy():
 
@@ -41,11 +42,12 @@ def get_timer_accuracy():
 ######################################################################
 
 
+
 class Timer(object):
     """
     Automatic timing class.
     """
-    def __init__(self, level_object, level=0, start=False):
+    def __init__(self, level_object=1, level=0, start=False):
         self._lo = level_object
         self._l = level
         self._ts = 0.0
@@ -80,7 +82,7 @@ class Timer(object):
         if (self._lo > self._l) and (self._running is True):
             self._tt += time.time() - self._ts
 
-        if self._lo > self._l:
+        if (self._lo > self._l) and str is not None:
             pio.pprint(self._tt, "s :", str)
 
         self._ts = 0.0
@@ -267,7 +269,7 @@ class SynchronizedTimer(Timer):
         if (self._lo > self._l) and (self._running is True):
             self._tt += time.time() - self._ts
 
-        if self._lo > self._l:
+        if (self._lo > self._l) and str is not None:
             pio.pprint(self._tt, "s :", str)
 
         self._ts = 0.0

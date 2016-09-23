@@ -167,8 +167,10 @@ class IntegratorRange(object):
             dt,
             velocities,
             list_reuse_count=1,
-            list_reuse_distance=0.1
+            list_reuse_distance=0.1,
+            verbose=False
             ):
+        self.verbose = verbose
         self._g = velocities.group
         self._update_controller = ListUpdateController(
             self._g,
@@ -194,7 +196,13 @@ class IntegratorRange(object):
         self._ix = -1
         self._nm1 = n-1
 
+        self.timer = opt.SynchronizedTimer()
+
+
+
     def __iter__(self):
+
+        self.timer.start()
         return self
 
     def next(self):
@@ -205,6 +213,11 @@ class IntegratorRange(object):
             return self._ix
         else:
             self._g.get_cell_to_particle_map().reset_callbacks()
+            self.timer.pause()
+            if self.verbose:
+                 self.timer.stop(str='Integration time:')
+
+
             raise StopIteration
 
 
