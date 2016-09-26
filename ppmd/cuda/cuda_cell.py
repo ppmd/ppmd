@@ -7,7 +7,7 @@ import ctypes
 import math
 
 #package
-
+import ppmd.mpi as mpi
 
 #cuda
 import cuda_runtime
@@ -127,10 +127,14 @@ class CellOccupancyMatrix(object):
 
             self._pre_update()
 
+
             self.sort()
             if self._update_func_post is not None:
                 self._update_func_post()
-            return True
+
+
+
+                return True
         else:
             return False
 
@@ -169,8 +173,11 @@ class CellOccupancyMatrix(object):
         self._cell_edge_lengths = cuda_base.Array(initial_value=self._domain.cell_edge_lengths)
         self._cell_array = cuda_base.Array(initial_value=self._domain.cell_array, dtype=ctypes.c_int)
 
+
+
         self._setup = True
         self._build()
+
 
     def _build(self):
         """
@@ -402,6 +409,7 @@ class CellOccupancyMatrix(object):
 
     def sort(self):
 
+
         # Things that need to vary in size.
         if self.particle_layers.ncomp < self._n_func():
             self.particle_layers.realloc(self._n_func())
@@ -484,6 +492,7 @@ class CellOccupancyMatrix(object):
 
         # Is a resize needed?
         if max_halo_layers > self._n_layers:
+
 
             new_matrix = cuda_base.device_buffer_2d(nrow=self.matrix.nrow,
                                                     ncol=max_halo_layers,

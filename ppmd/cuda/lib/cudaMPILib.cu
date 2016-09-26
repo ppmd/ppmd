@@ -536,7 +536,9 @@ int cudaHaloFillOccupancyMatrix(
                                                              d_halo_scan,
                                                              d_occ_matrix);
     err = cudaDeviceSynchronize();
-    if (err != cudaSuccess) { return err; }
+    if (err != cudaSuccess) {
+        return err;
+        }
 
 
     /*

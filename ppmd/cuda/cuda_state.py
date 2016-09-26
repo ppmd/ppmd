@@ -25,7 +25,6 @@ import cuda_base
 _AsFunc = ppmd.state._AsFunc
 
 
-
 class BaseMDState(object):
     """
     Create an empty state to which particle properties such as position, velocities are added as
@@ -401,9 +400,9 @@ class BaseMDState(object):
         Remove particles that do not reside in this subdomain. State requires a
         domain and a PositionDat
         """
+
         if n is None:
             n = self.npart
-
 
         self._compress_dats(*self._filter_method.apply(n))
 
@@ -413,7 +412,6 @@ class BaseMDState(object):
                        empty_slots,
                        num_slots_to_fill,
                        new_npart):
-
         n = self.npart
         n2 = n - new_npart
         new_n = new_npart
@@ -429,11 +427,18 @@ class BaseMDState(object):
                                                      self.npart-new_npart)
 
 
+
         if self._compression_lib is None:
             self._compression_lib = _CompressParticleDats(self, self.particle_dats)
-        self._compression_lib.apply(num_slots_to_fill,
-                                    empty_slots,
-                                    replacement_slots)
+
+
+
+        if replacement_slots is not None:
+            self._compression_lib.apply(num_slots_to_fill,
+                                        empty_slots,
+                                        replacement_slots)
+
+
 
         self.npart_local = new_npart
 
@@ -724,7 +729,6 @@ class _FilterOnDomain(object):
             )
 
 
-
         return self._per_particle_flag, self._empty_slots, n_to_fill, new_n
 
 
@@ -734,6 +738,9 @@ class _FindCompressionIndices(object):
         self._replacement_slots = cuda_data.ScalarArray(ncomp=1, dtype=ctypes.c_int)
 
     def apply(self, per_particle_flag, n_to_fill, new_n, search_n):
+        if n_to_fill == 0:
+            return None
+
 
         self._replacement_slots.resize(n_to_fill)
         self._replacement_slots.zero()
@@ -744,10 +751,12 @@ class _FindCompressionIndices(object):
                 ctypes.c_int(search_n),
                 self._replacement_slots.ctypes_data]
 
+
         cuda_runtime.cuda_err_check(cuda_mpi.LIB_CUDA_MPI['cudaFindNewSlots'](
             *args
             )
         )
+
 
         return self._replacement_slots
 

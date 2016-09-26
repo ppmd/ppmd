@@ -101,6 +101,8 @@ class BoundaryTypePeriodic(object):
 
         ############ ----- MULTIPROC -------
         else:
+
+
             if self._escape_guard_lib is None:
                 # build lib
                 self._escape_guard_lib = \
@@ -162,7 +164,6 @@ class BoundaryTypePeriodic(object):
                 self._escape_matrix.realloc(nrow=26, ncol=dir_max)
 
 
-
             # --- Populate escape matrix (essentially sort by direction)
 
             escape_count = self._escape_count[0]
@@ -176,17 +177,15 @@ class BoundaryTypePeriodic(object):
                     )
                 )
 
+
             self.state.move_to_neighbour(
                 directions_matrix=self._escape_matrix,
                 dir_counts=self._escape_dir_count
             )
 
 
-            rk = mpi.MPI_HANDLE.rank
-            #print "BEFORE", rk, self.state.npart_local
-            self.state.filter_on_domain_boundary(self.state.npart_local)
-            #print "AFTER", rk, self.state.npart_local
 
+            self.state.filter_on_domain_boundary(self.state.npart_local)
 
 
 

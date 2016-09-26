@@ -112,6 +112,8 @@ int cudaHaloExchangePD(
     cudaError_t err;
 
 
+    //cout << "rank " << rank << endl;
+
     // ---
     /*
     int tmp;
@@ -179,7 +181,10 @@ int cudaHaloExchangePD(
         );
 
         err = cudaDeviceSynchronize();
-        if (err != cudaSuccess) { return err; }
+        if (err != cudaSuccess) {
+            //cout << "Error on cudaSync: " << rank << endl;
+            return err;
+         }
 
 
         if (( SEND_RANKS[dir] > -1 ) && ( h_send_counts[dir] > 0 ) ){

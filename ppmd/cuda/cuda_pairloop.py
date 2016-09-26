@@ -13,6 +13,7 @@ import ppmd.host as host
 import ppmd.logic as logic
 import ppmd.opt as opt
 import ppmd.runtime as runtime
+import ppmd.mpi as mpi
 
 
 # CUDA level
@@ -913,9 +914,10 @@ class PairLoopNeighbourListNS(object):
 
     def execute(self, n=None, dat_dict=None, static_args=None, threads=256):
 
-
         cell2part = self._group.get_cell_to_particle_map()
+
         cell2part.check()
+
 
 
         """Allow alternative pointers"""
