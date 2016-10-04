@@ -10,8 +10,6 @@
 using namespace std;
 
 
-
-
 namespace _thrust {
     template <typename T>
     int thrust_exclusive_scan(T* d_ptr, const int len){
@@ -45,6 +43,26 @@ extern "C" int cudaExclusiveScanInt(int * d_ptr, const int len){
 extern "C" int cudaMaxElementInt(int * d_ptr, const int len){
     return _thrust::thrust_max_element<int>(d_ptr, len);
 }
+
+
+
+
+
+
+extern "C" int cudaMemSetZero(
+     	void *devPtr,
+		int value,
+		size_t count){
+    return cudaMemset(
+     	devPtr,
+		value,
+		count
+	);
+}
+
+
+
+
 
 
 

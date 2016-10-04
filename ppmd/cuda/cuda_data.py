@@ -104,15 +104,42 @@ class ParticleDat(cuda_base.Matrix):
 
         self._h_mirror = cuda_base._MatrixMirror(self)
 
+        self._norm_linf_lib = None
+
+
     def zero(self, n=None):
         if n is None:
             self._dat.fill(0)
         else:
-            self[:n:,:] = 0
+            cuda_runtime.LIB_CUDA_MISC['cudaMemSetZero'](
+                self.ctypes_data,
+                ctypes.c_int(0),
+                ctypes.c_size_t(n*self.ncomp)
+            )
+            #self[:n:,:] = 0
+        self._vid_int += 1
 
     def max(self):
         t = gpuarray.max(self._dat[0:self.npart_local:,:])
         return t.get()
+
+    def norm_linf(self):
+        """
+        return the L1 norm of the array
+        """
+        val = ctypes.c_double(0)
+
+        if self._norm_linf_lib is None:
+            self._norm_linf_lib = _build_norm_linf_lib(self.dtype)
+
+        self._norm_linf_lib(
+            self.ctypes_data,
+            ctypes.c_int(self.npart_local * self.ncomp),
+            ctypes.byref(val)
+        )
+
+        return val.value
+
 
     def ctypes_data_access(self, mode=access.RW, pair=True):
         """
@@ -124,6 +151,7 @@ class ParticleDat(cuda_base.Matrix):
 
         if mode is access.INC0:
             self.zero(self.npart_local)
+            #self.zero()
 
         if mode.read:
             if self._vid_int > self._vid_halo:
@@ -579,6 +607,32 @@ def _build_exchange_lib(dat):
     hcode = hcode % d
 
     return cuda_build.simple_lib_creator(hcode, code, 'ParticleDat_exchange')['cudaHaloExchangePD']
+
+
+#########################################################################
+# L1 Norm Lib
+#########################################################################
+
+def _build_norm_linf_lib(dtype):
+    """
+    Build the L1 norm lib for a ParticleDat
+    """
+
+
+    with open(str(cuda_runtime.LIB_DIR) + '/cudaLInfNormSource.cu','r') as fh:
+        code = fh.read()
+    with open(str(cuda_runtime.LIB_DIR) + '/cudaLInfNormSource.h','r') as fh:
+        hcode = fh.read()
+    assert code is not None, "Failure to read CUDA L inf NORM packing code source"
+
+    d = dict()
+
+    d['TYPENAME'] = host.ctypes_map[dtype]
+
+    code = code % d
+    hcode = hcode % d
+
+    return cuda_build.simple_lib_creator(hcode, code, 'ParticleDat_Linf_Norm')['cudaLInfNorm']
 
 
 

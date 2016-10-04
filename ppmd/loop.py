@@ -55,7 +55,7 @@ class ParticleLoop(object):
                     self._group = pd[1][0].group
                     break
 
-        assert self._group is not None, "No cell to particle map found"
+        # assert self._group is not None, "No cell to particle map found"
 
 
 
@@ -307,13 +307,17 @@ class ParticleLoop(object):
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 args.append(dat_orig[0].ctypes_data)
+                if issubclass(type(dat_orig[0]), data.ParticleDat):
+                    _N_LOCAL = dat_orig[0].npart_local
             else:
                 args.append(dat_orig.ctypes_data)
 
 
         '''Create arg list'''
         if n is None:
-            _N_LOCAL = ctypes.c_int(self._group.npart_local)
+            if self._group is not None:
+                _N_LOCAL = ctypes.c_int(self._group.npart_local)
+
         else:
             _N_LOCAL = ctypes.c_int(n)
 

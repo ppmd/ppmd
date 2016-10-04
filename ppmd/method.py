@@ -79,7 +79,7 @@ class ListUpdateController(object):
         """
 
         if self._velocity_dat.npart_local > 0:
-            return self._dt * self._velocity_dat.max()
+            return self._dt * self._velocity_dat.norm_linf()
         else:
             return 0.0
 

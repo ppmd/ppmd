@@ -167,3 +167,21 @@ def test_host_scatter_gather(state, base_rank):
         assert np.sum(sv == vi) == N*3
 
 
+def test_host_1_norm():
+    N2 = 1000
+    a = np.random.uniform(size=[N2,3])
+
+    ap = ParticleDat(initial_value=a, dtype=ctypes.c_double)
+    ap.npart_local = N2
+
+
+    for ix in range(N2):
+        assert a[ix, 0] == ap[ix, 0]
+        assert a[ix, 1] == ap[ix, 1]
+        assert a[ix, 2] == ap[ix, 2]
+
+
+    an = np.linalg.norm(a.reshape([N2*3,1]), np.inf)
+    apn = ap.norm_linf()
+
+    assert abs(an - apn) < 10.** (-15)

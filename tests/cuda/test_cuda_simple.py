@@ -164,6 +164,35 @@ def test_cuda_scatter_gather(state, base_rank):
         assert np.sum(sp == pi) == N*3
         assert np.sum(sv == vi) == N*3
 
+@cuda
+def test_cuda_1_norm():
+    a = np.random.uniform(size=[N,3])
+
+    ap = ParticleDat(initial_value=a, dtype=ctypes.c_double)
+    ap.npart_local = N
+
+
+    for ix in range(N):
+        assert a[ix, 0] == ap[ix, 0]
+        assert a[ix, 1] == ap[ix, 1]
+        assert a[ix, 2] == ap[ix, 2]
+
+
+    an = np.linalg.norm(a.reshape([N*3,1]), np.inf)
+    apn = ap.norm_linf()
+
+
+    assert abs(an - apn) < 10.** (-15)
+
+
+
+
+
+
+
+
+
+
 
 
 

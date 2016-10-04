@@ -81,6 +81,30 @@ __device__ bool isnormal(double value)
       return val;
     }
 
+    __inline__ __device__
+    double warpReduceMaxDouble(double val) {
+      for (int offset = warpSize/2; offset > 0; offset /= 2)
+        val = max(shfl_down_double(val, offset), val);
+      return val;
+    }
+
+
+
+    __inline__ __device__ double atomicMaxDouble(double *address, double val){
+        union
+        {
+            unsigned long long int dint;
+            double d;
+        } uval_t;
+
+        uval_t.d = val;
+        uval_t.dint = atomicMax((unsigned long long int*) address, uval_t.dint);
+
+        return uval_t.d;
+    }
+
+
+
     // Taken from http://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/
     __inline__ __device__
     int warpReduceMax(int val) {

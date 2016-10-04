@@ -1117,7 +1117,7 @@ class AllToAllNS(object):
                             'LIB_PAIR_INDEX_1': '_j',
                             'LIB_NAME': str(self._kernel.name) + '_wrapper'}
 
-        self._gather_size_limit = 4
+        self._gather_size_limit = 8
 
         self._generate()
 

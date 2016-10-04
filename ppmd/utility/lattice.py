@@ -48,3 +48,35 @@ def cubic_lattice(n, e):
         arr[p] = t
 
     return arr.reshape([np.product(n), ndim])
+
+
+def fcc(n, e):
+    """
+    Create an FCC lattice, centred on the origin. Dimension is fixed at three.
+    This function generates a lattice by using a base image consisting of a
+    corner atom and three atoms in the centres of the adjacent faces.
+
+    :param n: (n0, n1, n2) Number of unit images in each dimension.
+    :param e: (e0, e1, e2) Extent of domain in each dimension.
+    :return: Numpy array of points.
+    """
+
+    assert len(n) == 3, "n should be length 3"
+    assert len(e) == 3, "e should be length 3"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

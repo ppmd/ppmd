@@ -145,4 +145,4 @@ class Constant(object):
         forbiddenchars = '[\W]'
         regex = '(?<=' + forbiddenchars + ')(' + self._name + ')(?=' + forbiddenchars + ')'
 
-        return re.sub(regex, str(self._value), s)
+        return re.sub(regex, str(repr(self._value)), s)

@@ -275,8 +275,20 @@ class ParticleDat(host.Matrix):
         if n is None:
             self.data.fill(0)
         else:
-            self.data[:n:, ::] = self.idtype(0.0)
-            
+            # self.data[:n:, ::] = self.idtype(0.0)
+            self.data[:n:, ::] = 0
+
+    def norm_linf(self):
+        """
+        return the L1 norm of the array
+        """
+
+        return np.linalg.norm(
+            self.data[:self.npart_local:,:].reshape([self.npart_local*self.ncomp,1]),
+            np.inf
+        )
+
+
     def max(self):
         """
         :return: Maximum of local particles
