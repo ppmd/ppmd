@@ -293,10 +293,10 @@ class BaseMDState(object):
 
         lo = np.logical_and(
             np.logical_and(
-                np.logical_and((b[0] < p[::,0]), (p[::,0] <= b[1])),
-                np.logical_and((b[2] < p[::,1]), (p[::,1] <= b[3]))
+                np.logical_and((b[0] <= p[::,0]), (p[::,0] < b[1])),
+                np.logical_and((b[2] <= p[::,1]), (p[::,1] < b[3]))
             ),
-            np.logical_and((b[4] < p[::,2]), (p[::,2] <= b[5]))
+            np.logical_and((b[4] <= p[::,2]), (p[::,2] < b[5]))
         )
 
         bx = np.logical_not(lo)
