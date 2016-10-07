@@ -97,7 +97,7 @@ def cuda_set_device(device=None):
         else:
             _r = mpi.MPI_HANDLE.nproc % device_count.value
 
-        print _r, device_count.value, mpi.MPI_HANDLE.rank
+        print _r, device_count.value, mpi.MPI_HANDLE.rank, mpi.MPI_HANDLE.nproc
         return cudadrv.Device(_r)
 
     else:

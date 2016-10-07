@@ -245,6 +245,9 @@ class BaseDomainHalo(object):
         self._cell_array[1] += 2
         self._cell_array[2] += 2
 
+        #print self._cell_array[:]
+        #print self._extent[:]
+
         _boundary = (
             self._boundary[0] - self._cell_edge_lengths[0],
             self._boundary[1] + self._cell_edge_lengths[0],

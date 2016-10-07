@@ -1,5 +1,7 @@
 
 
+#include <chrono>
+
 __global__ void cudaPackParticleDat(
     const int d_pos_flag,
     const int d_n,
@@ -11,7 +13,7 @@ __global__ void cudaPackParticleDat(
     const int * __restrict__ d_ccc,
     const int * __restrict__ d_b_scan,
     const double* __restrict__ d_shift,
-    const %(DTYPE)s * __restrict__ d_ptr,
+    %(DTYPE)s * __restrict__ d_ptr,
     %(DTYPE)s * __restrict__ d_buffer
 ){
 
@@ -93,8 +95,9 @@ int cudaHaloExchangePD(
     %(DTYPE)s * __restrict__ d_buffer
 ){
 
-
-
+    double _loop_timer_return = 0.0;
+    chrono::high_resolution_clock::time_point _loop_timer_t0;
+    chrono::high_resolution_clock::time_point _loop_timer_t1;
 
 
 
@@ -102,8 +105,6 @@ int cudaHaloExchangePD(
     MPI_Comm MPI_COMM = MPI_Comm_f2c(f_MPI_COMM);
     int rank = -1; MPI_Comm_rank( MPI_COMM, &rank );
     MPI_Status MPI_STATUS;
-    MPI_Request sr;
-    MPI_Request rr;
 
     int DAT_END = n_local;
     int offset = 0;
@@ -157,67 +158,102 @@ int cudaHaloExchangePD(
         err = cudaCreateLaunchArgs(   cell_count*h_cccmax*%(NCOMP)s    , 256, &bs, &ts);
         if (err != cudaSuccess) { return err; }
 
-        /*
-        if (rank==0){
-        cout << "scount " << scount << " cell_count " << cell_count << endl;
-        cout << "bs.x " << bs.x << " ts.x " << ts.x << endl;
+
+        const int SR = SEND_RANKS[dir];
+        const int RR = RECV_RANKS[dir];
+        const int SC = h_send_counts[dir];
+        const int RC = h_recv_counts[dir];
+
+        const int SF = (int) (( SR > -1 ) && ( SC > 0 ));
+        const int RF = (int) (( RR > -1 ) && ( RC > 0 ));
+        const int STS = (int) (SF) && (SR == rank);
+
+        if (STS){
+            cudaPackParticleDat<<<bs,ts>>>(
+                h_pos_flag,
+                cell_count*h_cccmax,
+                h_cccmax,
+                h_occ_m_stride,
+                offset,
+                d_b_indices + b_s,
+                d_occ_matrix,
+                d_ccc,
+                d_b_scan + b_s,
+                d_shift + dir*3,
+                d_ptr,
+                &d_ptr[DAT_END * %(NCOMP)s]
+            );
+        } else {
+            cudaPackParticleDat<<<bs,ts>>>(
+                h_pos_flag,
+                cell_count*h_cccmax,
+                h_cccmax,
+                h_occ_m_stride,
+                offset,
+                d_b_indices + b_s,
+                d_occ_matrix,
+                d_ccc,
+                d_b_scan + b_s,
+                d_shift + dir*3,
+                d_ptr,
+                d_buffer
+            );
         }
-        */
 
-
-        cudaPackParticleDat<<<bs,ts>>>(
-            h_pos_flag,
-            cell_count*h_cccmax,
-            h_cccmax,
-            h_occ_m_stride,
-            offset,
-            d_b_indices + b_s,
-            d_occ_matrix,
-            d_ccc,
-            d_b_scan + b_s,
-            d_shift + dir*3,
-            d_ptr,
-            d_buffer
-        );
 
         err = cudaDeviceSynchronize();
+
         if (err != cudaSuccess) {
             //cout << "Error on cudaSync: " << rank << endl;
             return err;
          }
 
 
-        if (( SEND_RANKS[dir] > -1 ) && ( h_send_counts[dir] > 0 ) ){
-        MPI_Isend((void *) d_buffer, h_send_counts[dir] * %(NCOMP)s, %(MPI_DTYPE)s,
-                 SEND_RANKS[dir], rank, MPI_COMM, &sr);
+        //_loop_timer_t0 = std::chrono::high_resolution_clock::now();
+
+
+        if ((SF && RF) && !STS ){
+
+            MPI_Sendrecv(
+                (void*) d_buffer,
+                SC * %(NCOMP)s,
+                %(MPI_DTYPE)s,
+                SR,
+                rank,
+                (void *) &d_ptr[DAT_END * %(NCOMP)s],
+                RC * %(NCOMP)s,
+                %(MPI_DTYPE)s,
+                RR,
+                RR,
+                MPI_COMM,
+                &MPI_STATUS
+            );
+
+        } else if (SF && !STS) {
+
+            MPI_Send((void *) d_buffer, SC * %(NCOMP)s, %(MPI_DTYPE)s,
+                     SR, rank, MPI_COMM);
+
+        } else if (RF && !STS) {
+
+            MPI_Recv((void *) &d_ptr[DAT_END * %(NCOMP)s], %(NCOMP)s * RC,
+                      %(MPI_DTYPE)s, RR, RR, MPI_COMM, &MPI_STATUS);
+
         }
 
-        if (( RECV_RANKS[dir] > -1 ) && ( h_recv_counts[dir] > 0 ) ){
-        MPI_Irecv((void *) &d_ptr[DAT_END * %(NCOMP)s], %(NCOMP)s * h_recv_counts[dir],
-                  %(MPI_DTYPE)s, RECV_RANKS[dir], RECV_RANKS[dir], MPI_COMM, &rr);
-        }
+        //_loop_timer_t1 = std::chrono::high_resolution_clock::now();
+        //chrono::duration<double> _loop_timer_res = _loop_timer_t1 - _loop_timer_t0;
+        //_loop_timer_return += (double) _loop_timer_res.count();
 
 
-        // after send has completed move to next direction.
-        if (( SEND_RANKS[dir] > -1 ) && ( h_send_counts[dir] > 0 ) ){
-            MPI_Wait(&sr, &MPI_STATUS);
-        }
+        DAT_END += RC;
+        offset += SC;
 
-        if (( RECV_RANKS[dir] > -1 ) && ( h_recv_counts[dir] > 0 ) ){
-            MPI_Wait(&rr, &MPI_STATUS);
-        }
-
-        MPI_Barrier(MPI_COMM);
-        DAT_END += h_recv_counts[dir];
-        offset += h_send_counts[dir];
-
-        /*
-        if (rank==0){
-        cout << "IL " << h_recv_counts[dir] << " " << h_send_counts[dir] << endl;
-        }
-        */
 
     }
+    //cout << _loop_timer_return << endl;
 
     return err;
 }
+
+

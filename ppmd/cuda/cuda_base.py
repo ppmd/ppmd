@@ -175,6 +175,18 @@ class Array(object):
             self._dat = _new
             self._ncomp.value = ncomp
 
+    def realloc_zeros(self, ncomp):
+        """
+        Re allocate memory for an array without copying existing values.
+        """
+        assert ncomp > 0, "Zero or negative ncomp passed"
+
+        if ncomp != self._ncomp.value:
+            self._dat = _create_zeros(ncol=ncomp, dtype=self.idtype)
+        else:
+            self.zero()
+
+
     def zero(self):
         """
         Set all the values in the array to zero.

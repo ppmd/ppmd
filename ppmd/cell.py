@@ -202,29 +202,49 @@ class CellList(object):
 
         for (ix=0; ix<end_ix; ix++) {
 
-        const int C0 = 1 + (int)((P[ix*3]     - _b0)*_icel0);
-        const int C1 = 1 + (int)((P[ix*3 + 1] - _b2)*_icel1);
-        const int C2 = 1 + (int)((P[ix*3 + 2] - _b4)*_icel2);
+        int C0 = 1 + (int)((P[ix*3]     - _b0)*_icel0);
+        int C1 = 1 + (int)((P[ix*3 + 1] - _b2)*_icel1);
+        int C2 = 1 + (int)((P[ix*3 + 2] - _b4)*_icel2);
 
-        const int val = (C2*CA[1] + C1)*CA[0] + C0;
-        
+
         if ((C0 < 1) || (C0 > (CA[0]-2))) {
-            cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C0 " << C0 << endl;
-            cout << "B[0] " << B[0] << " B[1] " << B[1] << " Px " << P[ix*3+0] << endl;
+
+            if ( (C0 > (CA[0]-2)) && (P[ix*3] < B[1]  )) {
+
+                C0 = CA[0]-2;
+
+            } else {
+                cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C0 " << C0 << endl;
+                cout << "B[0] " << B[0] << " B[1] " << B[1] << " Px " << P[ix*3+0] << " " << (P[ix*3]-_b0)*_icel0 << endl;
+            }
         }
         if ((C1 < 1) || (C1 > (CA[1]-2))) {
-            cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C1 " << C1 << endl;
-            cout << "B[2] " << B[2] << " B[3] " << B[3] << " Py " << P[ix*3+1] << endl;
+
+            if ( (C1 > (CA[1]-2)) && (P[ix*3+1] < B[3]  )) {
+
+                C1 = CA[1]-2;
+
+            } else {
+
+                cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C1 " << C1 << endl;
+                cout << "B[2] " << B[2] << " B[3] " << B[3] << " Py " << P[ix*3+1]<< " " << (P[ix*3+1]-_b2)*_icel1 << endl;
+            }
         }
         if ((C2 < 1) || (C2 > (CA[2]-2))) {
-            cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C2 " << C2 << endl;
-            cout << "B[4] " << B[4] << " B[5] " << B[5] << " Pz " << P[ix*3+2] << endl;
+
+            if ( (C2 > (CA[2]-2)) && (P[ix*3+2] < B[5]  )) {
+
+                C2 = CA[2]-2;
+
+            } else {
+
+                cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C2 " << C2 << endl;
+                cout << "B[4] " << B[4] << " B[5] " << B[5] << " Pz " << P[ix*3+2]<< " " << (P[ix*3 + 2]-_b4)*_icel2 << endl;
+            }
         }
 
-        //printf("ix %d c0 %d c1 %d c2 %d val %d \\n", ix, C0, C1, C2, val);
 
-
-        //needed, may improve halo exchange times
+        const int val = (C2*CA[1] + C1)*CA[0] + C0;
         CCC[val]++;
         CRL[ix] = val;
         

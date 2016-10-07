@@ -99,7 +99,7 @@ class BaseMDState(object):
         self._move_lib = None
         self._move_send_counts = None
         self._move_recv_counts = None
-
+        self._empty_per_particle_flag = None
 
         # move vars.
 
@@ -511,7 +511,7 @@ class BaseMDState(object):
             self._move_send_buffer = cuda_base.Array(ncomp=tl,
                                                      dtype=ctypes.c_int8)
         elif self._move_send_buffer.ncomp < tl:
-            self._move_send_buffer.realloc(tl)
+            self._move_send_buffer.realloc_zeros(tl)
 
 
         # resize tmp buffers
@@ -522,17 +522,21 @@ class BaseMDState(object):
             self._move_recv_buffer = cuda_base.Array(ncomp=total_recv_count,
                                                      dtype=ctypes.c_int8)
         elif self._move_recv_buffer.ncomp < total_recv_count:
-            self._move_recv_buffer.realloc(total_recv_count)
+            self._move_recv_buffer.realloc_zeros(total_recv_count)
 
 
         # resize dats
-        self._empty_per_particle_flag = cuda_base.Array(
-            ncomp=self.get_position_dat().npart_total + recv_count,
-            dtype=ctypes.c_int32
-        )
+        new_ncomp = self.get_position_dat().npart_total + recv_count
+        if self._empty_per_particle_flag is None:
+            self._empty_per_particle_flag = cuda_base.Array(
+                ncomp=new_ncomp,
+                dtype=ctypes.c_int32
+            )
+        elif self._empty_per_particle_flag.ncomp < new_ncomp:
+            self._empty_per_particle_flag.realloc_zeros(new_ncomp)
+        else:
+            self._empty_per_particle_flag.zero()
 
-
-        self._empty_per_particle_flag.zero()
 
         self._resize_callback(self.npart_local + recv_count)
 
