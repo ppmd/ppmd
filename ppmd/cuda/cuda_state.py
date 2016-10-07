@@ -566,7 +566,6 @@ class BaseMDState(object):
 
 
 
-
     def _move_build_unpacking_lib(self):
         pass
 

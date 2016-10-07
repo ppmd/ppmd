@@ -23,6 +23,7 @@ import re
 import datetime
 import inspect
 from mpi4py import MPI
+import cProfile
 
 # package level
 import kernel
@@ -168,7 +169,8 @@ class IntegratorRange(object):
             velocities,
             list_reuse_count=1,
             list_reuse_distance=0.1,
-            verbose=False
+            verbose=False,
+            cprofile_dump=None
             ):
         self.verbose = verbose
         self._g = velocities.group
@@ -198,10 +200,22 @@ class IntegratorRange(object):
 
         self.timer = opt.SynchronizedTimer()
 
+        if cprofile_dump is not None:
+            self._cprof_dump = os.path.abspath(
+                os.path.join(
+                    os.getcwd(),
+                    cprofile_dump
+                )
+            )
+            self._pr = cProfile.Profile()
+        else:
+            self._cprof_dump = None
+            self._pr = None
 
 
     def __iter__(self):
-
+        if self._pr is not None:
+            self._pr.enable()
         self.timer.start()
         return self
 
@@ -214,6 +228,14 @@ class IntegratorRange(object):
         else:
             self._g.get_cell_to_particle_map().reset_callbacks()
             self.timer.pause()
+            if self._pr is not None:
+                self._pr.disable()
+                self._pr.dump_stats(
+                    self._cprof_dump + '.' + str(
+                        mpi.MPI_HANDLE.rank
+                    )
+                )
+
             if self.verbose:
                  self.timer.stop(str='Integration time:')
 
