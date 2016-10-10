@@ -209,7 +209,7 @@ class CellList(object):
 
         if ((C0 < 1) || (C0 > (CA[0]-2))) {
 
-            if ( (C0 > (CA[0]-2)) && (P[ix*3] < B[1]  )) {
+            if ( (C0 > (CA[0]-2)) && (P[ix*3] <= B[1]  )) {
 
                 C0 = CA[0]-2;
 
@@ -220,7 +220,7 @@ class CellList(object):
         }
         if ((C1 < 1) || (C1 > (CA[1]-2))) {
 
-            if ( (C1 > (CA[1]-2)) && (P[ix*3+1] < B[3]  )) {
+            if ( (C1 > (CA[1]-2)) && (P[ix*3+1] <= B[3]  )) {
 
                 C1 = CA[1]-2;
 
@@ -232,7 +232,7 @@ class CellList(object):
         }
         if ((C2 < 1) || (C2 > (CA[2]-2))) {
 
-            if ( (C2 > (CA[2]-2)) && (P[ix*3+2] < B[5]  )) {
+            if ( (C2 > (CA[2]-2)) && (P[ix*3+2] <= B[5]  )) {
 
                 C2 = CA[2]-2;
 

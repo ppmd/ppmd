@@ -107,10 +107,22 @@ class Array(object):
         return self._h_mirror.mirror.data[key]
 
     def __setitem__(self, key, value):
-        self._h_mirror.copy_from_device()
-        self._h_mirror.mirror.data[key] = value
+        if type(key) is tuple or type(key) is slice:
+            if type(key) is slice and key == slice(None):
+                self._h_mirror.realloc(self.ncomp)
+                self._h_mirror.mirror.data[key] = value
+            elif len(key) > 1 and all(k == slice(None) for k in key):
+                self._h_mirror.realloc(self.ncomp)
+                self._h_mirror.mirror.data[key] = value
+            else:
+                self._h_mirror.copy_from_device()
+                self._h_mirror.mirror.data[key] = value
+        else:
+            self._h_mirror.copy_from_device()
+            self._h_mirror.mirror.data[key] = value
+
+
         self._h_mirror.copy_to_device()
-        self._version += 1
 
     def __repr__(self):
         return str(self.__getitem__(slice(None, None, None)))
@@ -330,8 +342,10 @@ class Matrix(object):
         return self._h_mirror.mirror.data[key]
 
     def __setitem__(self, key, value):
+
         self._h_mirror.copy_from_device()
         self._h_mirror.mirror.data[key] = value
+
         self._h_mirror.copy_to_device()
         self._vid_int += 1
 
@@ -355,6 +369,11 @@ class _ArrayMirror(object):
         self._d_array = d_array
         self._h_array = ppmd.host.Array(ncomp=d_array.ncomp,
                                         dtype=d_array.dtype)
+
+    def realloc(self, len):
+        self._h_array.realloc(len)
+
+
     def copy_to_device(self):
         self._d_array.realloc(self._h_array.ncomp)
         cuda_runtime.cuda_mem_cpy(self._d_array.ctypes_data,

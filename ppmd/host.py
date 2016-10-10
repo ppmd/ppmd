@@ -156,9 +156,14 @@ class Array(object):
 
     def realloc(self, length):
 
-        assert ctypes.sizeof(self.dtype) * length < available_free_memory(), "host.Array realloc error: Not enough free memory. Requested: " + str(ctypes.sizeof(self.dtype) * length) + " have: " + str(available_free_memory())
+        if length != self.ncomp:
 
-        self.data = np.resize(self.data, length)
+            assert ctypes.sizeof(self.dtype) * length < available_free_memory(),\
+                "host.Array realloc error: Not enough free memory. Requested: " +\
+                str(ctypes.sizeof(self.dtype) * length) + " have: " +\
+                str(available_free_memory())
+
+            self.data = np.resize(self.data, length)
 
     def zero(self):
         self.data.fill(0)

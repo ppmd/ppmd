@@ -99,11 +99,20 @@ def fcc(n, e):
                 i = iz*(n[0]*n[1]) + iy*n[0] + ix
                 tmp.fill(0.0)
 
-                tmp[:,0] = starts[0] + w[0]*ix + unit[:,0]
-                tmp[:,1] = starts[1] + w[1]*iy + unit[:,1]
-                tmp[:,2] = starts[2] + w[2]*iz + unit[:,2]
+                tmp[:,0] = w[0]*ix + unit[:,0] + starts[0]
+                tmp[:,1] = w[1]*iy + unit[:,1] + starts[1]
+                tmp[:,2] = w[2]*iz + unit[:,2] + starts[2]
 
                 arr[i*4:(i+1)*4:, :] = tmp
+
+
+    for ix in range(nt*4):
+        if arr[ix, 0] >= 0.5*e[0]:
+            arr[ix, 0 ] = -0.5*e[0]
+        if arr[ix, 1] >= 0.5*e[1]:
+            arr[ix, 1 ] = -0.5*e[1]
+        if arr[ix, 2] >= 0.5*e[2]:
+            arr[ix, 2 ] = -0.5*e[2]
 
     return arr
 

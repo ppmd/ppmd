@@ -555,6 +555,51 @@ def test_host_pair_loop_NS_6(state):
 
 
 
+def test_host_pair_loop_NS_FCC():
+    """
+    Set a cutoff slightly larger than the 3rd nearest neighbour distance in
+    the grid
+    """
+    A = State()
+
+    crN2 = 10
+
+    A.npart = (crN2**3)*4
+
+    A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+
+    A.P = PositionDat(ncomp=3)
+    A.nc = ParticleDat(ncomp=1, dtype=ctypes.c_int)
+
+
+    cell_width = (0.5*float(E))/float(crN2)
+
+    A.P = PositionDat(ncomp=3)
+    A.P[:] = md.utility.lattice.fcc((crN2, crN2, crN2), (E, E, E))
+
+    A.npart_local = (crN2**3)*4
+    A.filter_on_domain_boundary()
+
+
+    kernel_code = '''
+    NC.i[0]+=1;
+    '''
+
+    kernel = md.kernel.Kernel('test_host_pair_loop_NS_1',code=kernel_code)
+    kernel_map = {'P': A.P(md.access.R),
+                  'NC': A.nc(md.access.INC0)}
+
+    loop = md.pairloop.PairLoopNeighbourListNS(kernel=kernel,
+                                               dat_dict=kernel_map,
+                                               shell_cutoff=math.sqrt(2.)*cell_width+tol)
+
+    A.nc.zero()
+
+    loop.execute()
+    for ix in range(A.npart_local):
+        assert A.nc[ix] == 12
+
 
 
 
