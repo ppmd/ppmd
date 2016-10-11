@@ -1,11 +1,13 @@
 
 __all__ = [
     'dl_poly',
-    'lattice'
+    'lattice',
+    'xyz'
 ]
 
 import dl_poly
 import lattice
+import xyz
 
 
 

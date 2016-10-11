@@ -18,6 +18,7 @@ import cuda_build
 import cuda_runtime
 import cuda_generation
 import cuda_base
+import cuda_data
 
 
 class _ParticleLoopOLD(object):
@@ -342,6 +343,15 @@ class ParticleLoop(object):
 
         self._components = {'LIB_PAIR_INDEX_0': '_i',
                             'LIB_NAME': str(self._kernel.name) + '_wrapper'}
+
+        self._group = None
+
+        for pd in self._dat_dict.items():
+
+            if issubclass(type(pd[1][0]), cuda_data.ParticleDat):
+                if pd[1][0].group is not None:
+                    self._group = pd[1][0].group
+                    break
 
         #start code creation
         self._generate()
@@ -720,8 +730,12 @@ class ParticleLoop(object):
         if dat_dict is not None:
             self._dat_dict = dat_dict
 
-        assert n is not None, "No number of particles passed"
 
+        if n is None:
+            if self._group is not None:
+                n = self._group.npart_local
+
+        assert n is not None, "No n found"
 
         if n <= threads:
 
