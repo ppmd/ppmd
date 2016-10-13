@@ -50,7 +50,7 @@ class PairLoopNeighbourListNSOld(object):
                 break
 
         assert self._group is not None, "No cell to particle map found"
-        new_decomp_flag = self._group.get_domain().cell_decompose(self.shell_cutoff.value)
+        new_decomp_flag = self._group.get_domain().cell_decompose(self.shell_cutoff)
 
         if new_decomp_flag:
             self._group.get_cell_to_particle_map().create()
@@ -61,7 +61,7 @@ class PairLoopNeighbourListNSOld(object):
         if not self._key in _nd.keys() or new_decomp_flag:
             _nd[self._key] = cuda_cell.NeighbourListLayerBased(
                 occ_matrix=self._group.get_cell_to_particle_map(),
-                cutoff=self.shell_cutoff.value
+                cutoff=self.shell_cutoff
             )
 
 
@@ -356,7 +356,6 @@ class PairLoopNeighbourListNSOld(object):
         self._lib(*args)
 
 
-
         '''afterwards access descriptors'''
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
@@ -431,9 +430,10 @@ class PairLoopNeighbourListNS(object):
 
 
         self._kernel = kernel
-
+        '''
         if type(shell_cutoff) is not logic.Distance:
             shell_cutoff = logic.Distance(shell_cutoff)
+        '''
         self.shell_cutoff = shell_cutoff
 
         self.loop_timer = opt.LoopTimer()
@@ -464,7 +464,7 @@ class PairLoopNeighbourListNS(object):
 
 
         new_decomp_flag = self._group.get_domain().cell_decompose(
-            self.shell_cutoff.value
+            self.shell_cutoff
         )
 
         if new_decomp_flag:
@@ -478,7 +478,7 @@ class PairLoopNeighbourListNS(object):
         if not self._key in _nd.keys() or new_decomp_flag:
             _nd[self._key] = cuda_cell.NeighbourListLayerBased(
                 occ_matrix=self._group.get_cell_to_particle_map(),
-                cutoff=self.shell_cutoff.value
+                cutoff=self.shell_cutoff
             )
 
         self.neighbour_list = _nd[self._key]

@@ -489,9 +489,13 @@ class PairLoopNeighbourListNS(object):
 
         self._kernel = kernel
 
+        '''
         if type(shell_cutoff) is not logic.Distance:
             shell_cutoff = logic.Distance(shell_cutoff)
         self.shell_cutoff = shell_cutoff
+        '''
+        self.shell_cutoff = shell_cutoff
+
 
         self.loop_timer = opt.LoopTimer()
         self.wrapper_timer = opt.Timer(runtime.TIMER)
@@ -520,7 +524,7 @@ class PairLoopNeighbourListNS(object):
 
 
         new_decomp_flag = self._group.get_domain().cell_decompose(
-            self.shell_cutoff.value
+            self.shell_cutoff
         )
 
         if new_decomp_flag:
@@ -529,6 +533,7 @@ class PairLoopNeighbourListNS(object):
         self._key = (self.shell_cutoff,
                      self._group.get_domain(),
                      self._group.get_position_dat())
+
 
         _nd = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS
         if not self._key in _nd.keys() or new_decomp_flag:
@@ -540,14 +545,12 @@ class PairLoopNeighbourListNS(object):
             _nd[self._key].setup(self._group.get_npart_local_func(),
                                  self._group.get_position_dat(),
                                  self._group.get_domain(),
-                                 self.shell_cutoff.value)
+                                 self.shell_cutoff)
 
         self.neighbour_list = _nd[self._key]
 
         self._neighbourlist_count = 0
         self._invocations = 0
-
-
 
 
     def _generate(self):
@@ -571,8 +574,6 @@ class PairLoopNeighbourListNS(object):
         # print 60*"-"
         # print self._components['LIB_SRC']
         # print 60*"-"
-
-
 
 
     def _generate_lib_specific_args(self):
@@ -1023,9 +1024,10 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
             os.mkdir(self._temp_dir)
 
         self._kernel = kernel
-
+        '''
         if type(shell_cutoff) is not logic.Distance:
             shell_cutoff = logic.Distance(shell_cutoff)
+        '''
         self.shell_cutoff = shell_cutoff
 
         self.loop_timer = opt.LoopTimer()
@@ -1055,7 +1057,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
 
 
         new_decomp_flag = self._group.get_domain().cell_decompose(
-            self.shell_cutoff.value
+            self.shell_cutoff
         )
 
         if new_decomp_flag:
@@ -1076,7 +1078,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
             _nd[self._key].setup(self._group.get_npart_local_func(),
                                  self._group.get_position_dat(),
                                  self._group.get_domain(),
-                                 self.shell_cutoff.value)
+                                 self.shell_cutoff)
 
         self.neighbour_list = _nd[self._key]
 

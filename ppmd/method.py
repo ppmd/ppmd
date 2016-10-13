@@ -52,7 +52,8 @@ class ListUpdateController(object):
                  step_count=1,
                  velocity_dat=None,
                  timestep=None,
-                 shell_thickness=0.0):
+                 shell_thickness=0.0,
+                 step_index_func=None):
 
         self._state = state_in
         self._step_count = step_count
@@ -63,6 +64,9 @@ class ListUpdateController(object):
         self._moved_distance = 0.0
         self._test_count = 0
         self._step_counter = 0
+        self._step_index = -10
+
+        self._step_index_func = step_index_func
 
         self.boundary_method_timer = opt.Timer(runtime.TIMER, 0)
 
@@ -100,6 +104,17 @@ class ListUpdateController(object):
         Return true if update of cell list is needed.
         :return:
         """
+
+
+        if self._step_index_func is not None:
+            tmp = self._step_index_func()
+            if tmp == self._step_index:
+                #print "no update needed"
+                return False
+            else:
+                #print "update possibly needed"
+                self._step_index = tmp
+
 
         self._test_count += 1
         self._moved_distance += self._get_max_moved_distance()
@@ -179,7 +194,8 @@ class IntegratorRange(object):
             step_count=int(list_reuse_count),
             velocity_dat=velocities,
             timestep=float(dt),
-            shell_thickness=float(list_reuse_distance)
+            shell_thickness=float(list_reuse_distance),
+            step_index_func=self._get_loop_index
         )
 
         _suc = self._update_controller
@@ -211,6 +227,9 @@ class IntegratorRange(object):
         else:
             self._cprof_dump = None
             self._pr = None
+
+    def _get_loop_index(self):
+        return self._ix
 
 
     def __iter__(self):
@@ -269,7 +288,7 @@ class IntegratorVelocityVerlet(object):
         self._m = masses
         self._f_updater = force_updater
 
-        self._delta = float(self._f_updater.shell_cutoff.value) - \
+        self._delta = float(self._f_updater.shell_cutoff) - \
                       float(interaction_cutoff)
 
         self._g = positions.group
