@@ -1843,16 +1843,6 @@ class NeighbourListHaloAware(object):
 
 
 
-
-
-
-
-
-
-
-
-
-
 ################################################################################################################
 # NeighbourList definition 27 cell version
 ################################################################################################################
@@ -1930,44 +1920,15 @@ class NeighbourListNonN3(NeighbourList):
             tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * CA[0] + _h_map[ix][2] * CA[0]* CA[1];
         }
 
-        const double _b0 = B[0];
-        const double _b2 = B[2];
-        const double _b4 = B[4];
-
-        const double _icel0 = 1.0/CEL[0];
-        const double _icel1 = 1.0/CEL[1];
-        const double _icel2 = 1.0/CEL[2];
-
 
         // loop over particles
         int m = -1;
         for (int ix=0; ix<end_ix; ix++) {
 
-            const int C0 = 1 + (int)((P[ix*3]     - _b0)*_icel0);
-            const int C1 = 1 + (int)((P[ix*3 + 1] - _b2)*_icel1);
-            const int C2 = 1 + (int)((P[ix*3 + 2] - _b4)*_icel2);
-
-
-
-            if ((C0 < 1) || (C0 > (CA[0]-2))) {
-                cout << "!! PARTICLE OUTSIDE DOMAIN IN NEIGHBOUR LIST REBUILD !! " << ix << " C0 " << C0 << endl;
-                cout << "B[0] " << B[0] << " B[1] " << B[1] << " Px " << P[ix*3+0] << " " << (P[ix*3]-_b0)*_icel0 << endl;
-            }
-
-            if ((C1 < 1) || (C1 > (CA[1]-2))) {
-                cout << "!! PARTICLE OUTSIDE DOMAIN IN NEIGHBOUR LIST REBUILD !! " << ix << " C1 " << C1 << endl;
-                cout << "B[2] " << B[2] << " B[3] " << B[3] << " Py " << P[ix*3+1]<< " " << (P[ix*3+1]-_b2)*_icel1 << endl;
-            }
-            if ((C2 < 1) || (C2 > (CA[2]-2))) {
-                cout << "!! PARTICLE OUTSIDE DOMAIN IN NEIGHBOUR LIST REBUILD !! " << ix << " C2 " << C2 << endl;
-                cout << "B[4] " << B[4] << " B[5] " << B[5] << " Pz " << P[ix*3+2]<< " " << (P[ix*3 + 2]-_b4)*_icel2 << endl;
-            }
-
-
-
-            const int val = (C2*CA[1] + C1)*CA[0] + C0;
+            const int val = CRL[ix];
 
             NEIGHBOUR_STARTS[ix] = m + 1;
+
 
             for(int k = 0; k < 27; k++){
 
@@ -2006,6 +1967,7 @@ class NeighbourListNonN3(NeighbourList):
                      'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
                      'CA': self._domain.cell_array,           # local domain cell array
                      'q': self.cell_list.cell_list,           # cell list
+                     'CRL': self.cell_list.cell_reverse_lookup,
                      'CUTOFF': self.cell_width_squared,
                      'NEIGHBOUR_STARTS': self.neighbour_starting_points,
                      'NEIGHBOUR_LIST': self.list,
