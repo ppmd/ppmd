@@ -355,7 +355,7 @@ class SharedLib(object):
         if self._kernel.headers is not None:
             s += '\n'
             for x in self._kernel.headers:
-                s += '#include \"' + x + '\" \n'
+                s += '#include \"' + str(x) + '\" \n'
         return s
 
     def _generate_impl_source(self):
@@ -539,8 +539,21 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###############################################################################
-# block of code class
+# block of code class to be phased out
 ###############################################################################
 
 class Code(object):

@@ -694,7 +694,7 @@ class PairLoopNeighbourListNS(object):
                 if not kacc.write:
                     ti = cgen.Const(ti)
                     tj = cgen.Const(tj)
-                typename = ksym+'_t'
+                typename = '_'+ksym+'_t'
                 self._components['KERNEL_STRUCT_TYPEDEFS'].append(
                     cgen.Typedef(cgen.Struct('', [ti,tj], typename))
                 )
@@ -723,7 +723,7 @@ class PairLoopNeighbourListNS(object):
 
                 isym = dsym + _ishift
                 jsym = dsym + _jshift
-                g = cgen.Value(ksym+'_t', ksym)
+                g = cgen.Value(typename, ksym)
                 g = cgen.Initializer(g, '{ ' + isym + ', ' + jsym + '}')
 
                 self._components['KERNEL_MAPPING'].append(g)
@@ -854,11 +854,10 @@ class PairLoopNeighbourListNS(object):
 
         if self._kernel.headers is not None:
             for x in self._kernel.headers:
-                s.append(cgen.Include(x, system=False))
+                s.append(x.ast)
 
         s.append(self.loop_timer.get_cpp_headers_ast())
         self._components['KERNEL_HEADERS'] = cgen.Module(s)
-
 
 
     def _generate_lib_func(self):

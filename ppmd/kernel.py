@@ -1,5 +1,6 @@
 import hashlib
 import re
+import cgen
 
 def analyse(kernel_in=None, dat_dict=None):
     """
@@ -146,3 +147,21 @@ class Constant(object):
         regex = '(?<=' + forbiddenchars + ')(' + self._name + ')(?=' + forbiddenchars + ')'
 
         return re.sub(regex, str(repr(self._value)), s)
+
+
+
+
+class Header(object):
+    def __init__(self, name, system=True):
+        """
+        :param str name: Name of header file to include.
+        :param bool system: True if header is a system header
+        """
+        self._name = name
+        self.ast = cgen.Include(name, system)
+
+    def __str__(self):
+        return self._name
+
+
+

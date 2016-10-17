@@ -124,7 +124,7 @@ class ParticleLoop(object):
                                              Restrict(self._cc.restrict_keyword,'i')))
                 if not dat[1][1].write:
                     ti = cgen.Const(ti)
-                typename = dat[0]+'_t'
+                typename = '_'+dat[0]+'_t'
                 _kernel_structs.append(cgen.Typedef(cgen.Struct('', [ti], typename)))
 
                 # MAKE STRUCT ARG
@@ -172,7 +172,7 @@ class ParticleLoop(object):
         s = []
         if self._kernel.headers is not None:
             for x in self._kernel.headers:
-                s.append(cgen.Include(x, system=False))
+                s.append(x.ast)
 
         s.append(self.loop_timer.get_cpp_headers_ast())
         self._components['KERNEL_HEADERS'] = cgen.Module(s)
@@ -194,7 +194,7 @@ class ParticleLoop(object):
                 _ishift = '+' + self._components['LIB_PAIR_INDEX_0'] + '*' + nc
 
                 isym = dat[0] + _ishift
-                g = cgen.Value(dat[0]+'_t', call_symbol)
+                g = cgen.Value('_'+dat[0]+'_t', call_symbol)
                 g = cgen.Initializer(g, '{ ' + isym + '}')
 
                 kernel_call.append(g)

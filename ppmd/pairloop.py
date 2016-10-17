@@ -81,7 +81,7 @@ class _Base(object):
         if self._kernel.headers is not None:
             s += '\n'
             for x in self._kernel.headers:
-                s += '#include \"' + x + '\" \n'
+                s += '#include \"' + str(x) + '\" \n'
 
         s += str(self.loop_timer.get_cpp_headers())
 
@@ -642,7 +642,7 @@ class PairLoopNeighbourListNS(object):
                 if not dat[1][1].write:
                     ti = cgen.Const(ti)
                     tj = cgen.Const(tj)
-                typename = dat[0]+'_t'
+                typename = '_'+dat[0]+'_t'
                 _kernel_structs.append(cgen.Typedef(cgen.Struct('', [ti,tj], typename)))
 
 
@@ -676,7 +676,6 @@ class PairLoopNeighbourListNS(object):
         self._components['KERNEL_MAP_MACROS'] = g
 
 
-
     def _generate_kernel_func(self):
         self._components['KERNEL_FUNC'] = cgen.FunctionBody(
             cgen.FunctionDeclaration(
@@ -696,12 +695,10 @@ class PairLoopNeighbourListNS(object):
         s = []
         if self._kernel.headers is not None:
             for x in self._kernel.headers:
-                s.append(cgen.Include(x, system=False))
+                s.append(x.ast)
 
         s.append(self.loop_timer.get_cpp_headers_ast())
         self._components['KERNEL_HEADERS'] = cgen.Module(s)
-
-
 
 
 
@@ -795,7 +792,7 @@ class PairLoopNeighbourListNS(object):
                 else:
                     isym = dat[0] + _ishift
                 jsym = dat[0] + _jshift
-                g = cgen.Value(dat[0]+'_t', call_symbol)
+                g = cgen.Value('_'+dat[0]+'_t', call_symbol)
                 g = cgen.Initializer(g, '{ ' + isym + ', ' + jsym + '}')
 
                 kernel_call.append(g)
@@ -1216,7 +1213,7 @@ class AllToAllNS(object):
                 if not dat[1][1].write:
                     ti = cgen.Const(ti)
                     tj = cgen.Const(tj)
-                typename = dat[0]+'_t'
+                typename = '_'+dat[0]+'_t'
                 _kernel_structs.append(cgen.Typedef(cgen.Struct('', [ti,tj], typename)))
 
 
@@ -1265,12 +1262,11 @@ class AllToAllNS(object):
             )
 
 
-
     def _generate_kernel_headers(self):
         s = []
         if self._kernel.headers is not None:
             for x in self._kernel.headers:
-                s.append(cgen.Include(x, system=False))
+                s.append(x.ast)
 
         s.append(self.loop_timer.get_cpp_headers_ast())
         self._components['KERNEL_HEADERS'] = cgen.Module(s)
@@ -1376,7 +1372,7 @@ class AllToAllNS(object):
                 else:
                     isym = dat[0] + _ishift
                 jsym = dat[0] + _jshift
-                g = cgen.Value(dat[0]+'_t', call_symbol)
+                g = cgen.Value('_'+dat[0]+'_t', call_symbol)
                 g = cgen.Initializer(g, '{ ' + isym + ', ' + jsym + '}')
 
                 kernel_call.append(g)

@@ -95,7 +95,7 @@ class LennardJonesShifted(BasePotential):
                      kernel.Constant('CF', self._C_F),
                      kernel.Constant('CV', self._C_V))
 
-        return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'])
+        return kernel.Kernel('LJ_accel_U', kernel_code, constants, [kernel.Header('stdio.h')])
 
     def datdict(self, input_state):
         """
@@ -185,7 +185,10 @@ class LennardJones(LennardJonesShifted):
                      kernel.Constant('CF', self._C_F),
                      kernel.Constant('CV', self._C_V))
 
-        return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'])
+        return kernel.Kernel('LJ_accel_U',
+                             kernel_code,
+                             constants,
+                             [kernel.Header('stdio.h')])
 
 
 
@@ -335,7 +338,7 @@ class LennardJonesCounter(LennardJones):
 
         reductions = (kernel.Reduction('u', 'u[0]', '+'),)
 
-        return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'], reductions)
+        return kernel.Kernel('LJ_accel_U', kernel_code, constants, [kernel.Header('stdio.h')], reductions)
 
     def datdict(self, input_state):
         """
@@ -671,7 +674,11 @@ class TestPotential4p(LennardJones):
 
         reductions = (kernel.Reduction('u', 'u[0]', '+'),)
 
-        return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'], reductions)
+        return kernel.Kernel('LJ_accel_U',
+                             kernel_code,
+                             constants,
+                             [kernel.Header('stdio.h')],
+                             reductions)
 
 
 class VLennardJones(LennardJones):
@@ -709,7 +716,10 @@ class VLennardJones(LennardJones):
                      kernel.Constant('CF', self._C_F),
                      kernel.Constant('CV', self._C_V))
 
-        return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'])
+        return kernel.Kernel('LJ_accel_U',
+                             kernel_code,
+                             constants,
+                             [kernel.Header('stdio.h')])
 
 class VLennardJones2(LennardJones):
     @property
@@ -746,7 +756,9 @@ class VLennardJones2(LennardJones):
                      kernel.Constant('CF', self._C_F),
                      kernel.Constant('CV', self._C_V))
 
-        return kernel.Kernel('LJ_accel_U', kernel_code, constants, ['stdio.h'])
+        return kernel.Kernel('LJ_accel_U',
+                             kernel_code,
+                             constants, [kernel.Header('stdio.h')])
 
 
 
@@ -819,7 +831,10 @@ class Buckingham(BasePotential):
                      kernel.Constant('internalshift', self._shift_internal)
                      )
 
-        return kernel.Kernel('BuckinghamV', kernel_code, constants, ['stdio.h', 'math.h'])
+        return kernel.Kernel('BuckinghamV',
+                             kernel_code,
+                             constants,
+                             [kernel.Header('stdio.h'), kernel.Header('math.h')])
 
     def datdict(self, input_state):
         """
@@ -888,7 +903,11 @@ class BuckinghamSymmetric(Buckingham):
                      kernel.Constant('internalshift', self._shift_internal)
                      )
 
-        return kernel.Kernel('BuckinghamV', kernel_code, constants, ['stdio.h', 'math.h'])
+        return kernel.Kernel('BuckinghamV',
+                             kernel_code,
+                             constants,
+                             [kernel.Header('stdio.h'),
+                              kernel.Header('math.h')])
 
 
 

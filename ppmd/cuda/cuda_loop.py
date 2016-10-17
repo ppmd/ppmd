@@ -534,7 +534,7 @@ class ParticleLoop(object):
                                              Restrict(self._cc.restrict_keyword,'i')))
                 if not kacc.write:
                     ti = cgen.Const(ti)
-                typename = ksym+'_t'
+                typename = '_'+ksym+'_t'
                 self._components['KERNEL_STRUCT_TYPEDEFS'].append(
                     cgen.Typedef(cgen.Struct('', [ti], typename))
                 )
@@ -559,7 +559,7 @@ class ParticleLoop(object):
                 _ishift = '+' + self._components['LIB_PAIR_INDEX_0'] + '*' + nc
 
                 isym = dsym + _ishift
-                g = cgen.Value(ksym+'_t', ksym)
+                g = cgen.Value(typename, ksym)
                 g = cgen.Initializer(g, '{ ' + isym + '}')
 
                 self._components['KERNEL_MAPPING'].append(g)
@@ -667,7 +667,7 @@ class ParticleLoop(object):
 
         if self._kernel.headers is not None:
             for x in self._kernel.headers:
-                s.append(cgen.Include(x, system=False))
+                s.append(x.ast)
 
         s.append(self.loop_timer.get_cpp_headers_ast())
         self._components['KERNEL_HEADERS'] = cgen.Module(s)
