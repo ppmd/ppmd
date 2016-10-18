@@ -169,9 +169,9 @@ class CellOccupancyMatrix(object):
         self._n_cells = self.matrix.nrow
         
 
-        self._boundary = cuda_base.Array(initial_value=self._domain.boundary_outer)
-        self._cell_edge_lengths = cuda_base.Array(initial_value=self._domain.cell_edge_lengths)
-        self._cell_array = cuda_base.Array(initial_value=self._domain.cell_array, dtype=ctypes.c_int)
+        #self._boundary = cuda_base.Array(initial_value=self._domain.boundary_outer)
+        #self._cell_edge_lengths = cuda_base.Array(initial_value=self._domain.cell_edge_lengths)
+        #self._cell_array = cuda_base.Array(initial_value=self._domain.cell_array, dtype=ctypes.c_int)
 
 
 
@@ -186,7 +186,9 @@ class CellOccupancyMatrix(object):
         """
         assert self._setup is not False, "Run CellOccupancyMatrix.setup() first."
 
-        p1_args = '''const int blocksize[3],
+        p1_args = '''const int f_MPI_COMM,
+                     const int MPI_FLAG,
+                     const int blocksize[3],
                      const int threadsize[3],
                      const int blocksize2[3],
                      const int threadsize2[3],
@@ -198,15 +200,16 @@ class CellOccupancyMatrix(object):
                      int* __restrict__ d_crl,
                      int* __restrict__ d_ccc,
                      int** __restrict__ d_M,
-                     const int* __restrict__ d_ca,
-                     const double* __restrict__ d_b,
-                     const double* __restrict__ d_cel,
+                     const int* __restrict__ h_ca,
+                     const double* __restrict__ h_b,
+                     const double* __restrict__ h_cel,
                      const double* __restrict__ d_p
                      '''
 
         _p1_header_code = '''
         //Header
         #include <cuda_generic.h>
+        #include <mpi.h>
 
         extern "C" int LayerSort(%(ARGS)s);
         extern "C" int copy_matrix_cols(const int h_old_ncol,
@@ -224,40 +227,44 @@ class CellOccupancyMatrix(object):
         //__constant__ int d_nl;
         __constant__ int d_nc;
 
+        __constant__ double _icel0;
+        __constant__ double _icel1;
+        __constant__ double _icel2;
+
+        __constant__ double _b0;
+        __constant__ double _b2;
+        __constant__ double _b4;
+        __constant__ double _b1;
+        __constant__ double _b3;
+        __constant__ double _b5;
+
+        __constant__ double _ca0;
+        __constant__ double _ca1;
+        __constant__ double _ca2;
 
         __global__ void d_LayerSort(int* __restrict__ d_pl,
                                     int* __restrict__ d_crl,
                                     int* __restrict__ d_ccc,
-                                    const int* __restrict__ d_ca,
-                                    const double* __restrict__ d_b,
-                                    const double* __restrict__ d_cel,
                                     const double* __restrict__ d_p
         ){
 
         const int _ix = threadIdx.x + blockIdx.x*blockDim.x;
         if (_ix < d_n){
 
-            const int C0 = 1 + __double2int_rz(( d_p[_ix*3]    - d_b[0] ) / d_cel[0]);
-            const int C1 = 1 + __double2int_rz(( d_p[_ix*3 +1]  - d_b[2] ) / d_cel[1]);
-            const int C2 = 1 + __double2int_rz(( d_p[_ix*3 +2]  - d_b[4] ) / d_cel[2]);
+            int C0 = 1 + __double2int_rz(( d_p[_ix*3]    - _b0 )*_icel0);
+            int C1 = 1 + __double2int_rz(( d_p[_ix*3+1]  - _b2 )*_icel1);
+            int C2 = 1 + __double2int_rz(( d_p[_ix*3+2]  - _b4 )*_icel2);
 
-            const int val = (C2*d_ca[1] + C1)*d_ca[0] + C0;
+            if ( (C0 > (_ca0-2)) && (d_p[_ix*3]   <= _b1 )) {C0 = _ca0-2;}
+            if ( (C1 > (_ca1-2)) && (d_p[_ix*3+1] <= _b3 )) {C1 = _ca1-2;}
+            if ( (C2 > (_ca2-2)) && (d_p[_ix*3+2] <= _b5 )) {C2 = _ca2-2;}
 
-            //printf("COM ix=%%d, val=%%d, %%f, %%f, %%f\\n %%f, %%f, %%f\\n",
-            //_ix, val, d_p[_ix*3], d_p[_ix*3+1], d_p[_ix*3+2], d_b[0], d_b[2], d_b[4] );
-
-
-
-
-
-
+            const int val = (C2*_ca1 + C1)*_ca0 + C0;
 
             d_crl[_ix] = val;
             //old=atomicAdd(address, new);
 
-
             d_pl[_ix] = atomicAdd(&d_ccc[val], (int)1);
-
 
         }
         return;
@@ -304,6 +311,43 @@ class CellOccupancyMatrix(object):
 
         int LayerSort(%(ARGS)s){
             int err = 0;
+
+            MPI_Comm MPI_COMM;
+            if (MPI_FLAG > 0){
+                MPI_COMM = MPI_Comm_f2c(f_MPI_COMM);
+            }
+
+            const double _hicel0 = 1.0/h_cel[0];
+            const double _hicel1 = 1.0/h_cel[1];
+            const double _hicel2 = 1.0/h_cel[2];
+
+            const double _hb0 = h_b[0];
+            const double _hb2 = h_b[2];
+            const double _hb4 = h_b[4];
+            const double _hb1 = h_b[1];
+            const double _hb3 = h_b[3];
+            const double _hb5 = h_b[5];
+
+            const double _hca0 = h_ca[0];
+            const double _hca1 = h_ca[1];
+            const double _hca2 = h_ca[2];
+
+            checkCudaErrors(cudaMemcpyToSymbol(_icel0, &_hicel0, sizeof(double)));
+            checkCudaErrors(cudaMemcpyToSymbol(_icel1, &_hicel1, sizeof(double)));
+            checkCudaErrors(cudaMemcpyToSymbol(_icel2, &_hicel2, sizeof(double)));
+
+            checkCudaErrors(cudaMemcpyToSymbol(_b0, &_hb0, sizeof(double)));
+            checkCudaErrors(cudaMemcpyToSymbol(_b2, &_hb2, sizeof(double)));
+            checkCudaErrors(cudaMemcpyToSymbol(_b4, &_hb4, sizeof(double)));
+            checkCudaErrors(cudaMemcpyToSymbol(_b1, &_hb1, sizeof(double)));
+            checkCudaErrors(cudaMemcpyToSymbol(_b3, &_hb3, sizeof(double)));
+            checkCudaErrors(cudaMemcpyToSymbol(_b5, &_hb5, sizeof(double)));
+
+            checkCudaErrors(cudaMemcpyToSymbol(_ca0, &_hca0, sizeof(double)));
+            checkCudaErrors(cudaMemcpyToSymbol(_ca1, &_hca1, sizeof(double)));
+            checkCudaErrors(cudaMemcpyToSymbol(_ca2, &_hca2, sizeof(double)));
+
+
             checkCudaErrors(cudaMemcpyToSymbol(d_n, &n, sizeof(n)));
             checkCudaErrors(cudaMemcpyToSymbol(d_nc, &nc, sizeof(nc)));
             //checkCudaErrors(cudaMemcpyToSymbol(d_nl, nl, sizeof(*nl)));
@@ -312,7 +356,7 @@ class CellOccupancyMatrix(object):
             dim3 ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
 
 
-            d_LayerSort<<<bs,ts>>>(d_pl, d_crl, d_ccc, d_ca, d_b, d_cel, d_p);
+            d_LayerSort<<<bs,ts>>>(d_pl, d_crl, d_ccc, d_p);
             checkCudaErrors(cudaDeviceSynchronize());
             getLastCudaError(" d_LayerSort Execution failed. \\n");
             
@@ -328,7 +372,15 @@ class CellOccupancyMatrix(object):
             int old_nl = *nl;
             checkCudaErrors(cudaDeviceSynchronize());
             getLastCudaError(" d_MaxLayers Execution failed. \\n");
-            cudaMemcpy(nl, d_nl, sizeof(int), cudaMemcpyDeviceToHost);
+
+            int tnl = 0;
+            cudaMemcpy(&tnl, d_nl, sizeof(int), cudaMemcpyDeviceToHost);
+
+            if(MPI_FLAG > 0){
+                MPI_Allreduce(&tnl, nl, 1, MPI_INT, MPI_MAX, MPI_COMM);
+            } else {
+                *nl = tnl;
+            }
 
             if ((*nl)*(*n_cells)>old_nl*(*n_cells)){
             //need to resize.
@@ -342,7 +394,6 @@ class CellOccupancyMatrix(object):
                 int err=cudaMemcpy(&tmp, *d_M + 511, sizeof(int), cudaMemcpyDeviceToHost);
                 printf("err %%d, tmp %%d \\n", err, tmp);
                 */
-
 
             }
 
@@ -403,7 +454,8 @@ class CellOccupancyMatrix(object):
 
         ''' % {'ARGS':p1_args}
 
-        self._p1_lib = cuda_build.simple_lib_creator(_p1_header_code, _p1_code, 'CellOccupancyMatrix')
+        self._p1_lib = cuda_build.simple_lib_creator(
+            _p1_header_code, _p1_code, 'CellOccupancyMatrix')
 
         self._init = True
 
@@ -424,10 +476,10 @@ class CellOccupancyMatrix(object):
 
         #self._boundary.sync_from_version(self._domain.boundary)
 
-        self._boundary[:] = self._domain.boundary[:]
+        #self._boundary[:] = self._domain.boundary[:]
 
-        self._cell_edge_lengths.sync_from_version(self._domain.cell_edge_lengths)
-        self._cell_array.sync_from_version(self._domain.cell_array)
+        #self._cell_edge_lengths.sync_from_version(self._domain.cell_edge_lengths)
+        #self._cell_array.sync_from_version(self._domain.cell_array)
 
         self.cell_contents_count.zero()
 
@@ -446,7 +498,9 @@ class CellOccupancyMatrix(object):
         _nl = ctypes.c_int(self._n_layers)
         _n_cells = ctypes.c_int(self._n_cells)
 
-        args = [_blocksize,
+        args = [ctypes.c_int32(mpi.MPI_HANDLE.fortran_comm),
+                ctypes.c_int(1),
+                _blocksize,
                 _threadsize,
                 _blocksize2,
                 _threadsize2,
@@ -458,9 +512,9 @@ class CellOccupancyMatrix(object):
                 self.cell_reverse_lookup.ctypes_data,
                 self.cell_contents_count.ctypes_data,
                 ctypes.byref(self.matrix.ctypes_data),
-                self._cell_array.ctypes_data,
-                self._boundary.ctypes_data,
-                self._cell_edge_lengths.ctypes_data,
+                self._domain.cell_array.ctypes_data,
+                self._domain.boundary.ctypes_data,
+                self._domain.cell_edge_lengths.ctypes_data,
                 self._positions.ctypes_data
                 ]
 
