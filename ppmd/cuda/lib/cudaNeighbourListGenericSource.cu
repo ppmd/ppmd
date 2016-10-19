@@ -90,27 +90,17 @@
                             // work out new index
                             m++;
 
-
-                            //printf("NL ix=%d : d_W[%d] = %d \n", idx, idx + d_npart * m, idy);
-                            d_W[idx + d_npart * m] = idy;
-
-                            //experiment to swap order, appears to be faster by
-                            // about 10%
-                            //d_W[idx*d_nmax + m] = idy;
-                            //d_W[idx] = idy + m;
+                            if (m < d_nmax){
+                                d_W[idx + d_npart * m] = idy;
+                            }
 
                         }
-
-
                     } //ix==iy check
                 }//layers
-
-
             } //directions
-
             //Number of neighbours for this particle
-            d_W[idx] = m;
 
+            d_W[idx] = (m<d_nmax) ? m : -1*m;
         } //threads
 
         return;
@@ -151,8 +141,11 @@
 
         CreateNeighbourList<<<bs,ts>>>(d_W.ptr, d_positions.ptr, d_CRL.ptr, d_OM.ptr, d_ccc.ptr);
         checkCudaErrors(cudaDeviceSynchronize());
+
+        int minfound = cudaMinElementInt(d_W.ptr, h_npart);
+
         getLastCudaError("NeighbourListLayerBased library failed \n");
 
-        return 0;
+        return minfound;
     }
         

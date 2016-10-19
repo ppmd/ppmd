@@ -27,6 +27,14 @@ namespace _thrust {
         return *(thrust::max_element(td_ptr, td_ptr + len));
     }
 
+    template <typename T>
+    T thrust_min_element(T* d_ptr, const int len){
+
+        thrust::device_ptr<T> td_ptr = thrust::device_pointer_cast(d_ptr);
+        return *(thrust::min_element(td_ptr, td_ptr + len));
+    }
+
+
 }
 
 
@@ -43,7 +51,9 @@ extern "C" int cudaExclusiveScanInt(int * d_ptr, const int len){
 extern "C" int cudaMaxElementInt(int * d_ptr, const int len){
     return _thrust::thrust_max_element<int>(d_ptr, len);
 }
-
+extern "C" int cudaMinElementInt(int * d_ptr, const int len){
+    return _thrust::thrust_min_element<int>(d_ptr, len);
+}
 
 
 

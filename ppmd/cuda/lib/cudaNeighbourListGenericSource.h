@@ -1,8 +1,8 @@
 
-        #ifndef CUDA_NeighbourList
-        #define CUDA_NeighbourList CUDA_NeighbourList
-        
+
             #include <cuda_generic.h>
+            #include <cudaMisc.h>
+
 
             extern "C" int NeighbourList(
             const int blocksize[3],
@@ -20,5 +20,3 @@
             );
 
 
-        #endif
-        

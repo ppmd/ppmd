@@ -345,7 +345,6 @@ class NeighbourListLayerBased(object):
 
         self.list = cuda_base.Matrix(nrow=1, ncol=1, dtype=ctypes.c_int)
 
-
         with open(str(cuda_runtime.LIB_DIR) + '/cudaNeighbourListGenericSource.cu','r') as fh:
             _code = fh.read()
         with open(str(cuda_runtime.LIB_DIR) + '/cudaNeighbourListGenericSource.h','r') as fh:
@@ -356,19 +355,24 @@ class NeighbourListLayerBased(object):
 
     def update(self):
 
-        if (self.list.ncol < self._occ_matrix.positions.npart_local) or (self.list.nrow < (8 * self._occ_matrix.layers_per_cell + 1)):
-            self.list.realloc(nrow=8 * self._occ_matrix.layers_per_cell + 1,
+        limit = 8 * self._occ_matrix.layers_per_cell + 1
+
+        if (self.list.ncol < self._occ_matrix.positions.npart_local) or \
+                (self.list.nrow < limit):
+            self.list.realloc(nrow=limit,
                               ncol=self._occ_matrix.positions.npart_local)
 
         _tpb = 256
-        _blocksize = (ctypes.c_int * 3)(int(math.ceil(self._occ_matrix.positions.npart_local / float(_tpb))), 1, 1)
+        _blocksize = (ctypes.c_int * 3)(int(math.ceil(
+            self._occ_matrix.positions.npart_local / float(_tpb)
+        )), 1, 1)
         _threadsize = (ctypes.c_int * 3)(_tpb, 1, 1)
 
 
         args = (
             _blocksize,
             _threadsize,
-            ctypes.c_int(8 * self._occ_matrix.layers_per_cell + 1), # nmax
+            ctypes.c_int(limit), # nmax
             ctypes.c_int(self._occ_matrix.positions.npart_local),      # npart
             ctypes.c_int(self._occ_matrix.layers_per_cell),      # nlayers max
             ctypes.c_double(self._rc ** 2),                      # cutoff squared
@@ -380,18 +384,188 @@ class NeighbourListLayerBased(object):
             self.list.struct
         )
 
-        self._lib(*args)
-        self.max_neigbours_per_particle = 8 * self._occ_matrix.layers_per_cell + 1
+        e = self._lib(*args)
 
+        if e < 0:
+            print "warning reallocing neighbour matrix"
+            limit = -1*e + 1
+            self.list.realloc(nrow=limit, ncol=self._occ_matrix.positions.npart_local)
+
+            args = (
+                _blocksize,
+                _threadsize,
+                ctypes.c_int(limit), # nmax
+                ctypes.c_int(self._occ_matrix.positions.npart_local),      # npart
+                ctypes.c_int(self._occ_matrix.layers_per_cell),      # nlayers max
+                ctypes.c_double(self._rc ** 2),                      # cutoff squared
+                self._occ_matrix.domain.cell_array.ctypes_data,
+                self._occ_matrix.positions.struct,
+                self._occ_matrix.cell_reverse_lookup.struct,
+                self._occ_matrix.matrix.struct,
+                self._occ_matrix.cell_contents_count.struct,
+                self.list.struct
+            )
+
+            e = self._lib(*args)
+
+        if e < 0:
+            raise Exception
+
+        self.max_neigbours_per_particle = limit
         self.version_id = self._occ_matrix.version_id
 
 
+class NeighbourListLayerSplit(object):
+
+    def __init__(self, occ_matrix=OCCUPANCY_MATRIX, cutoff=None):
+
+        self._occ_matrix = occ_matrix
+        assert cutoff is not None, "cuda_cell::NeighbourListLayerBased.setup error: No cutoff passed."
+        self._rc = cutoff
+
+        self.max_neigbours_per_particle = None
+        self.version_id_1 = 0
+        self.version_id_2 = 0
+
+        self.list1 = cuda_base.Matrix(nrow=1, ncol=1, dtype=ctypes.c_int)
+        self.list2 = cuda_base.Matrix(nrow=1, ncol=1, dtype=ctypes.c_int)
+
+        with open(str(cuda_runtime.LIB_DIR) + '/cudaNeighbourListSplitSource.cu','r') as fh:
+            _code = fh.read()
+        with open(str(cuda_runtime.LIB_DIR) + '/cudaNeighbourListSplitSource.h','r') as fh:
+            _header = fh.read()
+        _name1 = 'NeighbourList'
+        _name2 = 'NeighbourList2'
+        _lib = cuda_build.simple_lib_creator(_header, _code, _name1)
+        self._lib1 = _lib[_name1]
+        self._lib2 = _lib[_name2]
 
 
+    def update1(self):
+
+        limit = 8 * self._occ_matrix.layers_per_cell + 1
+
+        if (self.list1.ncol < self._occ_matrix.positions.npart_local) or \
+                (self.list1.nrow < limit):
+            self.list1.realloc(nrow=limit,
+                               ncol=self._occ_matrix.positions.npart_local)
+
+        _tpb = 256
+        _blocksize = (ctypes.c_int * 3)(int(math.ceil(
+            self._occ_matrix.positions.npart_local / float(_tpb)
+        )), 1, 1)
+        _threadsize = (ctypes.c_int * 3)(_tpb, 1, 1)
 
 
+        args = (
+            _blocksize,
+            _threadsize,
+            ctypes.c_int(limit), # nmax
+            ctypes.c_int(self._occ_matrix.positions.npart_local),# npart
+            ctypes.c_int(self._occ_matrix.layers_per_cell),      # nlayers max
+            ctypes.c_double(self._rc ** 2),                      # cutoff squared
+            self._occ_matrix.domain.cell_array.ctypes_data,
+            self._occ_matrix.cell_in_halo_flag.struct,
+            self._occ_matrix.positions.struct,
+            self._occ_matrix.cell_reverse_lookup.struct,
+            self._occ_matrix.matrix.struct,
+            self._occ_matrix.cell_contents_count.struct,
+            self.list1.struct
+        )
+
+        e = self._lib1(*args)
+
+        if e < 0:
+            print "warning reallocing neighbour matrix"
+            limit = -1*e + 1
+            self.list1.realloc(nrow=limit, ncol=self._occ_matrix.positions.npart_local)
+
+            args = (
+                _blocksize,
+                _threadsize,
+                ctypes.c_int(limit), # nmax
+                ctypes.c_int(self._occ_matrix.positions.npart_local),      # npart
+                ctypes.c_int(self._occ_matrix.layers_per_cell),      # nlayers max
+                ctypes.c_double(self._rc ** 2),                      # cutoff squared
+                self._occ_matrix.domain.cell_array.ctypes_data,
+                self._occ_matrix.positions.struct,
+                self._occ_matrix.cell_reverse_lookup.struct,
+                self._occ_matrix.matrix.struct,
+                self._occ_matrix.cell_contents_count.struct,
+                self.list1.struct
+            )
+
+            e = self._lib1(*args)
+
+        if e < 0:
+            raise Exception
+
+        self.max_neigbours_per_particle = limit
+
+        self.version_id_1 = self._occ_matrix.version_id
 
 
+    def update2(self):
+
+        limit = 8 * self._occ_matrix.layers_per_cell + 1
+
+        if (self.list2.ncol < self._occ_matrix.positions.npart_local) or \
+            (self.list2.nrow < limit):
+            self.list2.realloc(nrow=limit,
+                               ncol=self._occ_matrix.positions.npart_local)
+
+        _tpb = 256
+        _blocksize = (ctypes.c_int * 3)(int(math.ceil(
+            self._occ_matrix.positions.npart_local / float(_tpb)
+        )), 1, 1)
+        _threadsize = (ctypes.c_int * 3)(_tpb, 1, 1)
+
+
+        args = (
+            _blocksize,
+            _threadsize,
+            ctypes.c_int(limit), # nmax
+            ctypes.c_int(self._occ_matrix.positions.npart_local),# npart
+            ctypes.c_int(self._occ_matrix.layers_per_cell),      # nlayers max
+            ctypes.c_double(self._rc ** 2),                      # cutoff squared
+            self._occ_matrix.domain.cell_array.ctypes_data,
+            self._occ_matrix.cell_in_halo_flag.struct,
+            self._occ_matrix.positions.struct,
+            self._occ_matrix.cell_reverse_lookup.struct,
+            self._occ_matrix.matrix.struct,
+            self._occ_matrix.cell_contents_count.struct,
+            self.list2.struct
+        )
+
+        e = self._lib2(*args)
+
+        if e < 0:
+            print "warning reallocing neighbour matrix"
+            limit = -1*e + 1
+            self.list2.realloc(nrow=limit, ncol=self._occ_matrix.positions.npart_local)
+
+            args = (
+                _blocksize,
+                _threadsize,
+                ctypes.c_int(limit), # nmax
+                ctypes.c_int(self._occ_matrix.positions.npart_local),      # npart
+                ctypes.c_int(self._occ_matrix.layers_per_cell),      # nlayers max
+                ctypes.c_double(self._rc ** 2),                      # cutoff squared
+                self._occ_matrix.domain.cell_array.ctypes_data,
+                self._occ_matrix.positions.struct,
+                self._occ_matrix.cell_reverse_lookup.struct,
+                self._occ_matrix.matrix.struct,
+                self._occ_matrix.cell_contents_count.struct,
+                self.list2.struct
+            )
+
+            e = self._lib2(*args)
+
+        if e < 0:
+            raise Exception
+        self.max_neigbours_per_particle = limit
+
+        self.version_id_2 = self._occ_matrix.version_id
 
 
 

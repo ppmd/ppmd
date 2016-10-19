@@ -985,10 +985,149 @@ class PairLoopNeighbourListNS(object):
                 dat_orig.ctypes_data_post()
 
 
+class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):
+
+    _neighbour_list_dict_PNLNS_split = {}
+
+    def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
+
+        self._dat_dict = dat_dict
+        self._cc = cuda_build.NVCC
 
 
+        self._kernel = kernel
+        '''
+        if type(shell_cutoff) is not logic.Distance:
+            shell_cutoff = logic.Distance(shell_cutoff)
+        '''
+        self.shell_cutoff = shell_cutoff
+
+        self.loop_timer = opt.LoopTimer()
+        self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
 
 
+        self._components = {'LIB_PAIR_INDEX_0': '_i',
+                            'LIB_PAIR_INDEX_1': '_j',
+                            'LIB_NAME': str(self._kernel.name) + '_wrapper'}
+        self._gather_size_limit = 4
+        self._generate()
+
+
+        self._lib = cuda_build.simple_lib_creator(
+            self._generate_header_source(),
+            self._components['LIB_SRC'],
+            self._kernel.name,
+        )[self._components['LIB_NAME']]
+
+        self._group = None
+
+        for pd in self._dat_dict.items():
+            if issubclass(type(pd[1][0]), cuda_data.PositionDat):
+                self._group = pd[1][0].group
+                break
+
+        assert self._group is not None, "No cell to particle map found"
+
+
+        new_decomp_flag = self._group.get_domain().cell_decompose(
+            self.shell_cutoff
+        )
+
+        if new_decomp_flag:
+            self._group.get_cell_to_particle_map().create()
+
+        self._key = (self.shell_cutoff,
+                     self._group.get_domain(),
+                     self._group.get_position_dat())
+
+        _nd = PairLoopNeighbourListNSSplit._neighbour_list_dict_PNLNS_split
+        if not self._key in _nd.keys() or new_decomp_flag:
+            _nd[self._key] = cuda_cell.NeighbourListLayerSplit(
+                occ_matrix=self._group.get_cell_to_particle_map(),
+                cutoff=self.shell_cutoff
+            )
+
+        self.neighbour_list = _nd[self._key]
+
+        self._neighbourlist_count = 0
+        self._invocations = 0
+
+
+    def execute(self, n=None, dat_dict=None, static_args=None, threads=256):
+
+        cell2part = self._group.get_cell_to_particle_map()
+
+        cell2part.check()
+
+        """Allow alternative pointers"""
+        if dat_dict is not None:
+            self._dat_dict = dat_dict
+
+        if n is None:
+            n = self._group.npart_local
+
+        if n <= threads:
+
+            _blocksize = (ctypes.c_int * 3)(1, 1, 1)
+            _threadsize = (ctypes.c_int * 3)(threads, 1, 1)
+
+        else:
+            _blocksize = (ctypes.c_int * 3)(int(math.ceil(n / float(threads))), 1, 1)
+            _threadsize = (ctypes.c_int * 3)(threads, 1, 1)
+
+
+        dargs = []
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not passed to loop."
+            for dat in static_args.values():
+                dargs.append(dat)
+
+
+        '''Pass access descriptor to dat'''
+        for dat_orig in self._dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
+
+        '''Add pointer arguments to launch command'''
+        for dat in self._dat_dict.values():
+            if type(dat) is tuple:
+                dargs.append(dat[0].ctypes_data)
+            else:
+                dargs.append(dat.ctypes_data)
+
+
+        if cell2part.version_id > self.neighbour_list.version_id_1:
+            #print "CUDA rebuild NL"
+            self.neighbour_list.update1()
+            self.neighbour_list.update2()
+
+
+        args2 = [ctypes.byref(_blocksize),
+                 ctypes.byref(_threadsize),
+                 ctypes.c_int(n),
+                 ctypes.c_int(self.neighbour_list.max_neigbours_per_particle),
+                 self.neighbour_list.list1.ctypes_data,
+                 self.loop_timer.get_python_parameters()
+                 ]
+
+        args = args2 + dargs
+
+        '''Execute the kernel over all particle pairs.'''
+
+        self._lib(*args)
+
+        args2[4] = self.neighbour_list.list2.ctypes_data
+
+        args = args2 + dargs
+        self._lib(*args)
+
+        '''afterwards access descriptors'''
+        for dat_orig in self._dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()
 
 
 
