@@ -475,35 +475,29 @@ class ParticleDat(host.Matrix):
         # 1 index contains the required size of tmp arrays
 
         self.halo_start_reset()
-        _sizes = self.group._halo_manager.exchange_cell_counts()
+
+        idi = self.group._cell_to_particle_map.version_id
+        idh = self.group._cell_to_particle_map.halo_version_id
+
+        _halo_sizes = self.group._halo_update_exchange_sizes()
 
         # print "\t\tAFTER sizes exchange"
 
-        _size = self.npart_local + _sizes[0]
-        self.resize(_size)
+        _size = self.npart_local + _halo_sizes[0]
+        #self.resize(_size)
 
-        sys.stdout.flush()
 
         # print "\t\tAFTER dat resize"
-        if self._tmp_halo_space.ncomp < (self.ncomp * _sizes[1]):
-            #print "\t\t\tresizing temp halo space", _sizes[1]
-            self._tmp_halo_space.realloc(int(1.1 * _sizes[1] * self.ncomp))
-
-        # print "\t\tAFTER TMP resize"
+        if self._tmp_halo_space.ncomp < (self.ncomp * _halo_sizes[1]):
+            #print "\t\t\tresizing temp halo space", _halo_sizes[1]
+            self._tmp_halo_space.realloc(int(1.1 * _halo_sizes[1] * self.ncomp))
 
 
-        if (type(self) is PositionDat) and self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
-            self.group._cell_to_particle_map.prepare_halo_sort(_size)
-
-        # print "\t\tAFTER cell resize"
 
         self._transfer_unpack()
-        self.halo_start_shift(_sizes[0])
+        self.halo_start_shift(_halo_sizes[0])
 
-        if (type(self) is PositionDat) and self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
-            self.group._cell_to_particle_map.post_halo_exchange()
-
-
+        self.group._halo_update_post_exchange()
 
         self._vid_halo = self._vid_int
         self.timer_comm.pause()
@@ -686,11 +680,7 @@ class ParticleDat(host.Matrix):
             }
             '''
 
-            if type(self) is PositionDat:
-                _pos_enable = '#define POS'
-            else:
-                _pos_enable = ''
-
+            _pos_enable = '#define POS'
 
             _ex_dict = {'ARGS': _ex_args,
                         'RESTRICT': build.MPI_CC.restrict_keyword,
@@ -716,7 +706,7 @@ class ParticleDat(host.Matrix):
         _h = self.group._halo_manager.get_halo_cell_groups()
         _b = self.group._halo_manager.get_boundary_cell_groups()
 
-        if (type(self) is PositionDat) and self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
+        if self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
             _sort_flag = ctypes.c_int(1)
         else:
             _sort_flag = ctypes.c_int(-1)

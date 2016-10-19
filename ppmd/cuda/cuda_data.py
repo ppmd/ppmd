@@ -314,8 +314,8 @@ class ParticleDat(cuda_base.Matrix):
             # this should be done on some state wide access descriptor
             # style inteligence ( a write to positions should invalidate all
             # halos).
-            if type(self) is PositionDat:
-                self.group._halo_update_exchange_sizes()
+            # if type(self) is PositionDat:
+            self.group._halo_update_exchange_sizes()
 
 
             _total_size = self.npart_local + self.group._halo_sizes[0]
@@ -361,12 +361,6 @@ class ParticleDat(cuda_base.Matrix):
             self.ctypes_data,
             self.group._halo_tmp_space.ctypes_data
         )
-
-
-
-
-
-
 
 
 

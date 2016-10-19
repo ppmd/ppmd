@@ -64,6 +64,7 @@ def base_rank(request):
 
 
 
+
 def test_host_halo_cube_1(state):
     """
     Check cell counts before and after halo exchange.

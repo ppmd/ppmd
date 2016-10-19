@@ -107,46 +107,50 @@ class BaseMDState(object):
         """If true, all cell lists/ neighbour lists should be rebuilt."""
 
     def _halo_update_exchange_sizes(self):
-        # update boundary and halo cell layout if domain has changed
-        if self.domain.cell_array.version > self._halo_device_version:
-             self._halo_update_groups()
-        # update boundary and halo cell counts and exchange these
-        self._halo_sizes = self._halo_manager.exchange_cell_counts()
+        idi = self._cell_to_particle_map.version_id
+        idh = self._cell_to_particle_map.version_id_halo
 
-        # scan of ccc of boundary cells.
-        self._halo_b_scan.realloc(self._halo_b_cell_indices.ncomp+1)
-        self._halo_cell_max_b = cuda_mpi.cuda_exclusive_scan_int(
-            length=self._halo_b_cell_indices.ncomp,
-            d_map=self._halo_b_cell_indices,
-            d_ccc=self._cell_to_particle_map.cell_contents_count,
-            d_scan=self._halo_b_scan
-        )
+        if idi > idh:
+            # update boundary and halo cell layout if domain has changed
+            if self.domain.cell_array.version > self._halo_device_version:
+                 self._halo_update_groups()
+            # update boundary and halo cell counts and exchange these
+            self._halo_sizes = self._halo_manager.exchange_cell_counts()
 
-        # scan of ccc of halo cells.
-        self._halo_h_scan.realloc(self._halo_h_cell_indices.ncomp+1)
-        self._halo_cell_max_h = cuda_mpi.cuda_exclusive_scan_int(
-            length=self._halo_h_cell_indices.ncomp,
-            d_map=self._halo_h_cell_indices,
-            d_ccc=self._cell_to_particle_map.cell_contents_count,
-            d_scan=self._halo_h_scan
-        )
+            # scan of ccc of boundary cells.
+            self._halo_b_scan.realloc(self._halo_b_cell_indices.ncomp+1)
+            self._halo_cell_max_b = cuda_mpi.cuda_exclusive_scan_int(
+                length=self._halo_b_cell_indices.ncomp,
+                d_map=self._halo_b_cell_indices,
+                d_ccc=self._cell_to_particle_map.cell_contents_count,
+                d_scan=self._halo_b_scan
+            )
 
-        # update the cell occupancy matrix to assign correct particle indices
-        # to correct cell and layer
-        self._halo_update_cell_to_particle_map()
+            # scan of ccc of halo cells.
+            self._halo_h_scan.realloc(self._halo_h_cell_indices.ncomp+1)
+            self._halo_cell_max_h = cuda_mpi.cuda_exclusive_scan_int(
+                length=self._halo_h_cell_indices.ncomp,
+                d_map=self._halo_h_cell_indices,
+                d_ccc=self._cell_to_particle_map.cell_contents_count,
+                d_scan=self._halo_h_scan
+            )
+
+            # update the cell occupancy matrix to assign correct particle indices
+            # to correct cell and layer
+            self._halo_update_cell_to_particle_map()
 
 
-        # update array of send counts.
+            # update array of send counts.
 
-        # print self._halo_manager.get_boundary_cell_groups()[1][:]
-        cuda_halo.update_send_counts(self._halo_manager.get_boundary_cell_groups()[1],
-                                     self._halo_b_scan,
-                                     self._halo_send_counts)
+            # print self._halo_manager.get_boundary_cell_groups()[1][:]
+            cuda_halo.update_send_counts(self._halo_manager.get_boundary_cell_groups()[1],
+                                         self._halo_b_scan,
+                                         self._halo_send_counts)
 
-        # resize tmp space
-        s = max(self._move_ncomp)
-        if self._halo_tmp_space.ncomp < (s * self._halo_sizes[1]):
-            self._halo_tmp_space.realloc(s * 2 * self._halo_sizes[1])
+            # resize tmp space
+            s = max(self._move_ncomp)
+            if self._halo_tmp_space.ncomp < (s * self._halo_sizes[1]):
+                self._halo_tmp_space.realloc(s * 2 * self._halo_sizes[1])
 
 
 
@@ -162,6 +166,8 @@ class BaseMDState(object):
                                          self._cell_to_particle_map.cell_contents_count,
                                          self._halo_h_scan,
                                          self._cell_to_particle_map.matrix)
+
+        self._cell_to_particle_map.version_id_halo += 1
 
 
 

@@ -167,8 +167,10 @@ def test_host_sim_1():
 
     potaa_integrator.integrate(0.0001, 0.1, potaa_schedule)
 
-    print potaa_kinetic_energy_updater.get_kinetic_energy_array()[0] , \
-        potaa_potential_energy.get_potential_energy_array()[0], \
-        potaa_kinetic_energy_updater.get_kinetic_energy_array()[-1] , \
-        potaa_potential_energy.get_potential_energy_array()[-1]
+    eng_err = abs(potaa_kinetic_energy_updater.get_kinetic_energy_array()[0] + \
+        potaa_potential_energy.get_potential_energy_array()[0] - \
+        potaa_kinetic_energy_updater.get_kinetic_energy_array()[-1] - \
+        potaa_potential_energy.get_potential_energy_array()[-1])
+
+    print "err:", eng_err
 

@@ -108,6 +108,11 @@ class BaseMDState(object):
         self._compressing_dyn_args = None
 
 
+
+        #halo vars
+        self._halo_exchange_sizes = None
+
+
     def _cell_particle_map_setup(self):
 
         # Can only setup a cell to particle map after a domain and a position
@@ -801,6 +806,28 @@ class BaseMDState(object):
             self.compressed = True
             # self._move_empty_slots = []
             self.compress_timer.pause()
+
+
+    def _halo_update_exchange_sizes(self):
+
+        idi = self._cell_to_particle_map.version_id
+        idh = self._cell_to_particle_map.halo_version_id
+        if idi > idh:
+            self._halo_exchange_sizes = self._halo_manager.exchange_cell_counts()
+            new_size = self.npart_local + self._halo_exchange_sizes[0]
+            self._resize_callback(new_size)
+            self._cell_to_particle_map.prepare_halo_sort(new_size)
+
+        return self._halo_exchange_sizes
+
+    def _halo_update_post_exchange(self):
+        idi = self._cell_to_particle_map.version_id
+        idh = self._cell_to_particle_map.halo_version_id
+        if idi > idh:
+            self._cell_to_particle_map.post_halo_exchange()
+
+
+
 
 
 class State(BaseMDState):

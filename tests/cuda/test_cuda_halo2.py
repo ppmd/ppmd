@@ -81,6 +81,41 @@ def h_state(request):
 def base_rank(request):
     return request.param
 
+def bool_in_halo(x,y,z,cx,cy,cz):
+    if x==0 or y==0 or z==0:
+        return 1
+    elif x==cx-1 or y==cy-1 or z==cz-1:
+        return 1
+    if x==1 or y==1 or z==1:
+        return 0
+    elif x==cx-2 or y==cy-2 or z==cz-2:
+        return 0
+    else:
+        return -1
+
+
+
+def test_cuda_halo_cell_check(state):
+    """
+    Check cell counts before and after halo exchange.
+    """
+    C0 = 7
+    C1 = 6
+    C2 = 5
+
+    state.domain.cell_array[:] = np.array((C0,C1,C2))
+    state.get_cell_to_particle_map()._update_cell_in_halo()
+
+    flags = state.get_cell_to_particle_map().cell_in_halo_flag[:]
+
+    for cz in xrange(C2):
+        for cy in xrange(C1):
+            for cx in xrange(C0):
+
+                cv = cx + C0*(cy + cz*C1)
+                assert bool_in_halo(cx,cy,cz,C0,C1,C2) == flags[cv]
+
+
 
 @cuda
 def test_host_halo_cube_4(state, h_state):
