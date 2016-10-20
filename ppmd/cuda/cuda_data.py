@@ -40,6 +40,13 @@ class ScalarArray(cuda_base.Array):
     def __call__(self, mode=access.RW, halo=False):
         return self, mode, halo
 
+    def ctypes_data_access(self, mode=access.RW, pair=False, exchange=False):
+
+        #print "pre", mode, self[0]
+        if mode is access.INC0:
+            #print self[0], mode
+            self.zero()
+        return self.ctypes_data
 
 ###################################################################################################
 # Blank arrays.
@@ -141,7 +148,7 @@ class ParticleDat(cuda_base.Matrix):
         return val.value
 
 
-    def ctypes_data_access(self, mode=access.RW, pair=True):
+    def ctypes_data_access(self, mode=access.RW, pair=True, exchange=True):
         """
         :arg access mode: Access type required by the calling method.
         :return: The pointer to the data.
@@ -154,11 +161,11 @@ class ParticleDat(cuda_base.Matrix):
             #self.zero()
 
         if mode.read:
-            if self._vid_int > self._vid_halo:
-                if pair:
-                    #print "cuda HE"
-                    self.halo_exchange()
-                    self._vid_halo = self._vid_int
+            if (self._vid_int > self._vid_halo) and pair:
+
+                self._halo_exchange_prepare()
+                if exchange:
+                    self.halo_exchange(_prepare=False)
 
 
         return self.ctypes_data
@@ -305,26 +312,46 @@ class ParticleDat(cuda_base.Matrix):
     def npart_local_halo(self):
         return self._npart_local_halo.value
 
-    def halo_exchange(self):
+    def _halo_exchange_prepare(self):
+        nproc = mpi.MPI_HANDLE.nproc
+        if nproc == 1:
+            boundary_cell_groups = self.group._halo_manager.get_boundary_cell_groups[0]
+            n = self.group._halo_manager.occ_matrix.layers_per_cell * boundary_cell_groups.ncomp
+            if self.max_npart < self.npart_local + n:
+                self.resize(self.npart_local + n)
+        else:
+            self.group._halo_update_exchange_sizes()
+            _total_size = self.npart_local + self.group._halo_sizes[0]
+            self.resize(_total_size)
+
+
+
+    def halo_exchange_async(self, mode=access.RW, pair=True):
+        """
+        Assumes ctypes_data_access has been called
+        """
+        if mode.read:
+            if (self._vid_int > self._vid_halo) and pair:
+                self.halo_exchange(_prepare=False)
+
+    def halo_exchange(self, _prepare=True):
+
+        if _prepare:
+            self._halo_exchange_prepare()
+
         if mpi.MPI_HANDLE.nproc == 1:
             self._1p_halo_exchange()
         else:
             self.halo_start_reset()
 
-            # this should be done on some state wide access descriptor
-            # style inteligence ( a write to positions should invalidate all
-            # halos).
-            # if type(self) is PositionDat:
-            self.group._halo_update_exchange_sizes()
-
-
-            _total_size = self.npart_local + self.group._halo_sizes[0]
-            self.resize(_total_size)
-
             if self._exchange_lib is None:
                 self._exchange_lib = _build_exchange_lib(self)
 
             self._np_halo_exchange()
+
+        self._vid_halo = self._vid_int
+
+
 
     def _np_halo_exchange(self):
         if type(self) is PositionDat:
@@ -363,16 +390,10 @@ class ParticleDat(cuda_base.Matrix):
         )
 
 
-
-
     def _1p_halo_exchange(self):
         if self._1p_halo_lib is None:
             self._build_1p_halo_lib()
 
-        boundary_cell_groups = self.group._halo_manager.get_boundary_cell_groups[0]
-        n = self.group._halo_manager.occ_matrix.layers_per_cell * boundary_cell_groups.ncomp
-        if self.max_npart < self.npart_local + n:
-            self.resize(self.npart_local + n)
 
         self._halo_start.value = self.npart_local
 

@@ -481,17 +481,9 @@ class ParticleDat(host.Matrix):
 
         _halo_sizes = self.group._halo_update_exchange_sizes()
 
-        # print "\t\tAFTER sizes exchange"
-
-        _size = self.npart_local + _halo_sizes[0]
-        #self.resize(_size)
-
-
-        # print "\t\tAFTER dat resize"
         if self._tmp_halo_space.ncomp < (self.ncomp * _halo_sizes[1]):
             #print "\t\t\tresizing temp halo space", _halo_sizes[1]
             self._tmp_halo_space.realloc(int(1.1 * _halo_sizes[1] * self.ncomp))
-
 
 
         self._transfer_unpack()

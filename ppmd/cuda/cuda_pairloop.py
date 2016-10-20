@@ -6,6 +6,8 @@ Contains the code to generate cuda pairloops
 import ctypes
 import math
 import cgen
+import threading
+
 
 # package level
 import ppmd.access as access
@@ -1087,7 +1089,9 @@ class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):
         '''Pass access descriptor to dat'''
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
+                dat_orig[0].ctypes_data_access(dat_orig[1],
+                                               pair=True,
+                                               exchange=False)
 
         '''Add pointer arguments to launch command'''
         for dat in self._dat_dict.values():
@@ -1098,9 +1102,7 @@ class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):
 
 
         if cell2part.version_id > self.neighbour_list.version_id_1:
-            #print "CUDA rebuild NL"
             self.neighbour_list.update1()
-            self.neighbour_list.update2()
 
 
         args2 = [ctypes.byref(_blocksize),
@@ -1115,8 +1117,25 @@ class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):
 
         '''Execute the kernel over all particle pairs.'''
 
-        self._lib(*args)
+        #self._lib(*args)
 
+        proc = threading.Thread(target=self._lib,
+                                args=args)
+
+        proc.start()
+
+        # exchange dats
+        for dat_orig in self._dat_dict.values():
+            if type(dat_orig) is tuple and \
+                    issubclass(type(dat_orig[0]), cuda_data.ParticleDat):
+                dat_orig[0].halo_exchange_async(dat_orig[1],
+                                                pair=True)
+
+
+        if cell2part.version_id > self.neighbour_list.version_id_2:
+            self.neighbour_list.update2()
+
+        proc.join()
         args2[4] = self.neighbour_list.list2.ctypes_data
 
         args = args2 + dargs

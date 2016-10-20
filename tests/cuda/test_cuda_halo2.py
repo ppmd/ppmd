@@ -94,7 +94,7 @@ def bool_in_halo(x,y,z,cx,cy,cz):
         return -1
 
 
-
+@cuda
 def test_cuda_halo_cell_check(state):
     """
     Check cell counts before and after halo exchange.
