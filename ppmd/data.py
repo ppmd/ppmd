@@ -619,7 +619,7 @@ class ParticleDat(host.Matrix):
 
                     // build halo part of cell list whilst exchange occuring.
 
-                    #ifdef POS
+                    //#ifdef POS
                     if (sort_flag > 0){
 
                         for( int hxi=h_s ; hxi<h_e ; hxi++ ){
@@ -650,7 +650,7 @@ class ParticleDat(host.Matrix):
                         }
 
                     }
-                    #endif
+                    //#endif
 
                     // after send has completed move to next direction.
                     if (( SEND_RANKS[dir] > -1 ) && ( p_index > -1 ) ){
@@ -672,7 +672,10 @@ class ParticleDat(host.Matrix):
             }
             '''
 
-            _pos_enable = '#define POS'
+            if type(self) is PositionDat:
+                _pos_enable = '#define POS'
+            else:
+                _pos_enable = ''
 
             _ex_dict = {'ARGS': _ex_args,
                         'RESTRICT': build.MPI_CC.restrict_keyword,
