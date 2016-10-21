@@ -36,7 +36,7 @@ try:
     CUDA_IMPORT = True
 except Exception as e:
     CUDA_IMPORT_ERROR = e
-    print e
+    #print e
 
 
 

@@ -24,9 +24,7 @@ class CellList(object):
         self._init = False
 
         # Timer inits
-        self.timer_sort = opt.Timer(runtime.TIMER, 0)
-
-
+        self.timer_sort = opt.Timer()
 
         # container for cell list.
         self._cell_list = None
@@ -302,9 +300,13 @@ class CellList(object):
 
             self.timer_sort.pause()
 
+            opt.PROFILE[
+                self.__class__.__name__+':sort'
+            ] = (self.timer_sort.time())
+
+
         else:
             print "CELL LIST NOT INITIALISED"
-
 
 
     @property
@@ -655,7 +657,7 @@ class NeighbourList(object):
     def __init__(self, list=None):
 
         # timer inits
-        self.timer_update = opt.Timer(runtime.TIMER, 0)
+        self.timer_update = opt.Timer()
 
         self.cell_list = list
         self.max_len = None
@@ -1982,7 +1984,10 @@ class NeighbourListNonN3(NeighbourList):
         self._neighbour_lib = build.SharedLib(_kernel, _dat_dict)
 
 
+
     def update(self, _attempt=1):
+
+        self.timer_update.start()
 
         assert self.max_len is not None and self.list is not None and self._neighbour_lib is not None, "Neighbourlist setup not ran, or failed."
 
@@ -2012,6 +2017,10 @@ class NeighbourListNonN3(NeighbourList):
 
         self.version_id += 1
 
+        self.timer_update.pause()
+        opt.PROFILE[
+            self.__class__.__name__+':update'
+        ] = (self.timer_update.time())
 
 ################################################################################################################
 # CPU CelllayerSort

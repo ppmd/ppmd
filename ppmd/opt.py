@@ -276,3 +276,33 @@ class SynchronizedTimer(Timer):
         self._tt = 0.0
 
         self._running = False
+
+
+PROFILE = {}
+"""
+Dict available module wide for profiling. Recommended format along lines of:
+
+{
+    'description'
+:
+    (
+        total_time_taken
+    )
+}
+"""
+
+
+def print_profile():
+    for key, value in sorted(PROFILE.items()):
+        print key
+        print '\t',value
+
+
+
+
+
+
+
+
+
+

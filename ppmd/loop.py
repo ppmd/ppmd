@@ -334,6 +334,10 @@ class ParticleLoop(object):
         method(*args)
         self.wrapper_timer.pause()
 
+        opt.PROFILE[
+            self.__class__.__name__+':'+self._kernel.name+':execute_internal'
+        ] = (self.loop_timer.time)
+
         '''afterwards access descriptors'''
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:

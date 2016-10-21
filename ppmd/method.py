@@ -68,7 +68,7 @@ class ListUpdateController(object):
 
         self._step_index_func = step_index_func
 
-        self.boundary_method_timer = opt.Timer(runtime.TIMER, 0)
+        self.boundary_method_timer = opt.Timer()
 
     def set_timestep(self, val):
         self._dt = val
@@ -170,6 +170,9 @@ class ListUpdateController(object):
                 self._state.invalidate_lists = True
 
             self.boundary_method_timer.pause()
+            opt.PROFILE[
+                self.__class__.__name__+':execute_boundary_conditions'
+            ] = (self.boundary_method_timer.time())
 
         else:
             print "WARNING NO BOUNDARY CONDITION TO APPLY"
@@ -184,7 +187,7 @@ class IntegratorRange(object):
             velocities,
             list_reuse_count=1,
             list_reuse_distance=0.1,
-            verbose=False,
+            verbose=True,
             cprofile_dump=None
             ):
         self.verbose = verbose
@@ -256,8 +259,13 @@ class IntegratorRange(object):
                 )
 
             if self.verbose:
-                 self.timer.stop(str='Integration time:')
-
+                if mpi.MPI_HANDLE.rank == 0:
+                    print 60*'='
+                self.timer.stop(str='Integration time:')
+                if mpi.MPI_HANDLE.rank == 0:
+                    print 60*'-'
+                    opt.print_profile()
+                    print 60*'='
 
             raise StopIteration
 

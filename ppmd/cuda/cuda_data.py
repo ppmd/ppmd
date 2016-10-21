@@ -397,6 +397,8 @@ class ParticleDat(cuda_base.Matrix):
 
         self._halo_start.value = self.npart_local
 
+        boundary_cell_groups = self.group._halo_manager.get_boundary_cell_groups[0]
+        n = self.group._halo_manager.occ_matrix.layers_per_cell * boundary_cell_groups.ncomp
         n_tot = self.ncomp * n
         threads_per_block = 512
         blocksize = (ctypes.c_int * 3)(int(math.ceil(n_tot / float(threads_per_block))), 1, 1)
