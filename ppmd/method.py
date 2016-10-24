@@ -69,6 +69,7 @@ class ListUpdateController(object):
         self._step_index_func = step_index_func
 
         self.boundary_method_timer = opt.Timer()
+        self.check_status_timer = opt.Timer()
 
     def set_timestep(self, val):
         self._dt = val
@@ -82,7 +83,6 @@ class ListUpdateController(object):
         Get the maxium distance moved by a particle.
         :return:
         """
-
         if self._velocity_dat.npart_local > 0:
             return self._dt * self._velocity_dat.norm_linf()
         else:
@@ -104,12 +104,16 @@ class ListUpdateController(object):
         Return true if update of cell list is needed.
         :return:
         """
-
+        self.check_status_timer.start()
 
         if self._step_index_func is not None:
             tmp = self._step_index_func()
             if tmp == self._step_index:
                 #print "no update needed"
+                self.check_status_timer.pause()
+                opt.PROFILE[
+                    self.__class__.__name__+':determine_update_status'
+                ] = (self.check_status_timer.time())
                 return False
             else:
                 #print "update possibly needed"
@@ -145,9 +149,15 @@ class ListUpdateController(object):
             print "update status reductypes.on error, rank:", mpi.MPI_HANDLE.rank
 
         # print "_ret", _ret, self._delta, self._step_counter, self._step_count
-
+        self.check_status_timer.pause()
+        opt.PROFILE[
+            self.__class__.__name__+':determine_update_status'
+        ] = (self.check_status_timer.time())
 
         return bool(_ret)
+
+
+
 
     def _reset_moved_distance(self):
         self._test_count = 0

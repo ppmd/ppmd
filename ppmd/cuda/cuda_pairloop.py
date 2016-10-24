@@ -985,6 +985,18 @@ class PairLoopNeighbourListNS(object):
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
                 dat_orig.ctypes_data_post()
+        opt.PROFILE[
+            self.__class__.__name__+':'+self._kernel.name+':execute_internal'
+        ] = (self.loop_timer.time)
+
+
+
+
+
+
+
+
+
 
 
 class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):

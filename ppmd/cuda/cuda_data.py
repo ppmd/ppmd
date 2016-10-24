@@ -12,6 +12,7 @@ import ppmd.access as access
 import ppmd.mpi as mpi
 import ppmd.host as host
 import ppmd.data as data
+import ppmd.opt as opt
 
 # cuda imports
 import cuda_base
@@ -112,6 +113,8 @@ class ParticleDat(cuda_base.Matrix):
         self._h_mirror = cuda_base._MatrixMirror(self)
 
         self._norm_linf_lib = None
+
+        self._halo_timer = opt.Timer()
 
 
     def zero(self, n=None):
@@ -311,6 +314,8 @@ class ParticleDat(cuda_base.Matrix):
         return self._npart_local_halo.value
 
     def _halo_exchange_prepare(self):
+        self._halo_timer.start()
+
         nproc = mpi.MPI_HANDLE.nproc
         if nproc == 1:
             boundary_cell_groups = self.group._halo_manager.get_boundary_cell_groups[0]
@@ -323,17 +328,22 @@ class ParticleDat(cuda_base.Matrix):
             self.resize(_total_size)
 
 
+        self._halo_timer.pause()
 
     def halo_exchange_async(self, mode=access.RW, pair=True):
         """
         Assumes ctypes_data_access has been called
         """
+
+        self._halo_timer.start()
         if mode.read:
             if (self._vid_int > self._vid_halo) and pair:
                 self.halo_exchange(_prepare=False)
 
+        self._halo_timer.pause()
     def halo_exchange(self, _prepare=True):
 
+        self._halo_timer.start()
         if _prepare:
             self._halo_exchange_prepare()
 
@@ -349,6 +359,10 @@ class ParticleDat(cuda_base.Matrix):
 
         self._vid_halo = self._vid_int
 
+        self._halo_timer.pause()
+        opt.PROFILE[
+            'CUDA:'+self.__class__.__name__+':'+ self.name +':halo_exchange'
+        ] = (self._halo_timer.time())
 
 
     def _np_halo_exchange(self):

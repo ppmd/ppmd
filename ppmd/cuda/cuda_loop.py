@@ -777,7 +777,9 @@ class ParticleLoop(object):
         for dat_orig in self._dat_dict.values():
             dat_orig[0].ctypes_data_post(dat_orig[1])
 
-
+        opt.PROFILE[
+            self.__class__.__name__+':'+self._kernel.name+':execute_internal'
+        ] = self.loop_timer.time
 
 
 

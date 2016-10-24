@@ -253,6 +253,11 @@ class ParticleDat(host.Matrix):
         self._exchange_lib = None
         self._tmp_halo_space = host.Array(ncomp=1, dtype=self.dtype)
 
+        # tmp space for norms/maxes etc
+        self._norm_tmp = ScalarArray(ncomp=1, dtype=self.dtype)
+        self._linf_norm_lib = None
+
+
     @property
     def data(self):
         self._vid_int += 1
@@ -283,10 +288,12 @@ class ParticleDat(host.Matrix):
         return the L1 norm of the array
         """
 
-        return np.linalg.norm(
-            self.data[:self.npart_local:,:].reshape([self.npart_local*self.ncomp,1]),
+        tmp = np.linalg.norm(
+            self.data[:self.npart_local:,:].ravel(),
             np.inf
         )
+        return tmp
+
 
 
     def max(self):
@@ -711,7 +718,7 @@ class ParticleDat(host.Matrix):
         else:
             _sort_flag = ctypes.c_int(-1)
 
-        # print "SORT FLAG:", _sort_flag.value, "cell vid:", self.group._cell_to_particle_map.version_id, "halo vid:", self.group._cell_to_particle_map.halo_version_id
+        #print "SORT FLAG:", _sort_flag.value, "cell vid:", self.group._cell_to_particle_map.version_id, "halo vid:", self.group._cell_to_particle_map.halo_version_id
 
         # print str(mpi.MPI_HANDLE.rank) + " -------------- before exchange lib ------------------"
         # sys.stdout.flush()

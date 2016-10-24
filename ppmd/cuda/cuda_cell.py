@@ -9,6 +9,7 @@ import numpy as np
 
 #package
 import ppmd.mpi as mpi
+import ppmd.opt as opt
 
 #cuda
 import cuda_runtime
@@ -59,6 +60,9 @@ class CellOccupancyMatrix(object):
 
         self.version_id = 0
         self.version_id_halo = 0
+
+
+        self._timer = opt.Timer()
 
 
     def trigger_update(self):
@@ -203,6 +207,7 @@ class CellOccupancyMatrix(object):
 
     def sort(self):
 
+        self._timer.start()
 
         # Things that need to vary in size.
         if self.particle_layers.ncomp < self._n_func():
@@ -263,6 +268,11 @@ class CellOccupancyMatrix(object):
 
         self.version_id += 1
         self.update_required = False
+
+        self._timer.pause()
+        opt.PROFILE[
+            self.__class__.__name__+':sort'
+        ] = (self._timer.time())
 
     @property
     def layers_per_cell(self):
@@ -352,8 +362,11 @@ class NeighbourListLayerBased(object):
         _name = 'NeighbourList'
         self._lib = cuda_build.simple_lib_creator(_header, _code, _name)[_name]
 
+        self._timer = opt.Timer()
+
 
     def update(self):
+        self._timer.start()
 
         limit = 8 * self._occ_matrix.layers_per_cell + 1
 
@@ -414,6 +427,10 @@ class NeighbourListLayerBased(object):
         self.max_neigbours_per_particle = limit
         self.version_id = self._occ_matrix.version_id
 
+        self._timer.pause()
+        opt.PROFILE[
+            self.__class__.__name__+':update'
+        ] = (self._timer.time())
 
 class NeighbourListLayerSplit(object):
 
