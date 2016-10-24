@@ -746,7 +746,6 @@ class ParticleLoop(object):
             _blocksize = (ctypes.c_int * 3)(int(math.ceil(n / float(threads))), 1, 1)
             _threadsize = (ctypes.c_int * 3)(threads, 1, 1)
 
-
         args = [ctypes.byref(_blocksize),
                 ctypes.byref(_threadsize),
                 ctypes.c_int(n),

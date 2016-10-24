@@ -121,7 +121,7 @@ class ParticleDat(cuda_base.Matrix):
             cuda_runtime.LIB_CUDA_MISC['cudaMemSetZero'](
                 self.ctypes_data,
                 ctypes.c_int(0),
-                ctypes.c_size_t(n*self.ncomp)
+                ctypes.c_size_t(n*self.ncomp*ctypes.sizeof(self.dtype))
             )
             #self[:n:,:] = 0
         self._vid_int += 1
@@ -135,7 +135,6 @@ class ParticleDat(cuda_base.Matrix):
         return the L1 norm of the array
         """
         val = ctypes.c_double(0)
-
         if self._norm_linf_lib is None:
             self._norm_linf_lib = _build_norm_linf_lib(self.dtype)
 
@@ -144,7 +143,6 @@ class ParticleDat(cuda_base.Matrix):
             ctypes.c_int(self.npart_local * self.ncomp),
             ctypes.byref(val)
         )
-
         return val.value
 
 
