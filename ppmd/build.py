@@ -417,10 +417,11 @@ def source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir
 def load(filename):
     try:
         return ctypes.cdll.LoadLibrary(str(filename))
-    except:
+    except Exception as e:
         print "build:load error. Could not load following library,", \
             str(filename)
-        quit()
+        print e
+        raise RuntimeError
 
 def check_file_existance(abs_path=None):
     assert abs_path is not None, "build:check_file_existance error. " \
@@ -506,11 +507,10 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
                                              stdout=stdout,
                                              stderr=stderr)
                         p.communicate()
-            except:
-                if runtime.ERROR_LEVEL > 2:
-                    raise RuntimeError('build error: library not built.')
-                elif runtime.VERBOSE > 2:
-                    print "build error: Shared library not built:", lib
+            except Exception as e:
+                print e
+                raise RuntimeError('build error: library not built.')
+
 
     #print "before barrier", mpi.MPI_HANDLE.rank
     #sys.stdout.flush()

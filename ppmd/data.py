@@ -242,7 +242,7 @@ class ParticleDat(host.Matrix):
 
         self.halo_start = self.npart_local
         """:return: The starting index of the halo region of the particle dat. """
-
+        self.npart_halo = 0
         self.npart_local_halo = 0
         """:return: The number of particles currently stored within the halo region of the particle dat."""
 
@@ -295,7 +295,6 @@ class ParticleDat(host.Matrix):
         return tmp
 
 
-
     def max(self):
         """
         :return: Maximum of local particles
@@ -303,7 +302,7 @@ class ParticleDat(host.Matrix):
         return self._dat[0:self.npart_local:].max()
 
     @property
-    def npart_total(self):#
+    def npart_total(self):
         """
         Get the total number of particles in the dat including halo particles.
 
@@ -313,7 +312,6 @@ class ParticleDat(host.Matrix):
 
 
     def __getitem__(self, ix):
-
         return self.data[ix]
 
     def __setitem__(self, ix, val):

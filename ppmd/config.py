@@ -52,12 +52,11 @@ def load_config(dir=None):
 
 
     build_dir = os.path.abspath(MAIN_CFG['build-dir'][1])
-    if not os.path.exists(build_dir) and MPI.COMM_WORLD.rank == 0:
-        os.mkdir(build_dir)
-    MPI.COMM_WORLD.Barrier()
 
-
-
+    for nx in xrange(MPI.COMM_WORLD.size):
+        if not os.path.exists(build_dir) and MPI.COMM_WORLD.rank == nx:
+            os.mkdir(build_dir)
+        MPI.COMM_WORLD.Barrier()
 
 
 
