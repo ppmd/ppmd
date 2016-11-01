@@ -115,7 +115,8 @@ INC0 = AccessType("INC0")
 NULL = AccessType("NULL")
 """NULL access descriptor for data. """
 
-
+READ = R
+WRITE = W
 
 
  

@@ -93,12 +93,12 @@ __device__ bool isnormal(double value)
     __inline__ __device__ double atomicMaxDouble(double *address, double val){
         union
         {
-            unsigned long long int dint;
+            signed long long int dint;
             double d;
         } uval_t;
 
         uval_t.d = val;
-        uval_t.dint = atomicMax((unsigned long long int*) address, uval_t.dint);
+        uval_t.dint = atomicMax((signed long long int*) address, uval_t.dint);
 
         return uval_t.d;
     }

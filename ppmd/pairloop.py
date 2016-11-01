@@ -550,6 +550,7 @@ class PairLoopNeighbourListNS(object):
         self.neighbour_list = _nd[self._key]
 
         self._neighbourlist_count = 0
+        self._kernel_execution_count = 0
         self._invocations = 0
 
 
@@ -986,9 +987,16 @@ class PairLoopNeighbourListNS(object):
         method(*args)
         self.wrapper_timer.pause()
 
+
         opt.PROFILE[
             self.__class__.__name__+':'+self._kernel.name+':execute_internal'
         ] = (self.loop_timer.time)
+
+        self._kernel_execution_count += self.neighbour_list.neighbour_starting_points[self.neighbour_list.n_local]
+
+        opt.PROFILE[
+            self.__class__.__name__+':'+self._kernel.name+':kernel_execution_count'
+        ] =  self._kernel_execution_count
 
 
 
@@ -1086,7 +1094,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
 
         self._neighbourlist_count = 0
         self._invocations = 0
-
+        self._kernel_execution_count = 0
 
 
 

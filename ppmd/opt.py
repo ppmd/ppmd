@@ -85,10 +85,13 @@ class Timer(object):
         if (self._lo > self._l) and str is not None:
             pio.pprint(self._tt, "s :", str)
 
+
+        t_tmp = self._tt
         self._ts = 0.0
         self._tt = 0.0
 
         self._running = False
+        return t_tmp
 
     def time(self, str=None):
         """
@@ -273,9 +276,12 @@ class SynchronizedTimer(Timer):
             pio.pprint(self._tt, "s :", str)
 
         self._ts = 0.0
+
+        tt = self._tt
         self._tt = 0.0
 
         self._running = False
+        return tt
 
 
 PROFILE = {}

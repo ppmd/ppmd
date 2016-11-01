@@ -271,7 +271,12 @@ class IntegratorRange(object):
             if self.verbose:
                 if mpi.MPI_HANDLE.rank == 0:
                     print 60*'='
-                self.timer.stop(str='Integration time:')
+                tt = self.timer.stop(str='Integration time:')
+                opt.PROFILE[
+                    self.__class__.__name__+':loop_time'
+                ] = tt
+
+
                 if mpi.MPI_HANDLE.rank == 0:
                     print 60*'-'
                     opt.print_profile()
