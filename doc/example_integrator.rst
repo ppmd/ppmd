@@ -31,6 +31,7 @@ Between stage one described above and the second stage a PairLoop will typically
 
 We write a kernel for each stage as a portion of C code in a Python string:
 ::
+
     # -- Stage 1 --
     vv_kernel1_code = '''
     const double M_tmp = 1.0 / M.i[0];
@@ -55,22 +56,22 @@ In the two C kernels above we use values (:code:`dt` = :math:`\delta t` and :cod
 
     dt = 0.0001
     constants = [
-        md.kernel.Constant('dt', dt),
-        md.kernel.Constant('dht', 0.5*dt),
+        kernel.Constant('dt', dt),
+        kernel.Constant('dht', 0.5*dt),
     ]
 
 We may then combine the strings containing the kernel code with the declared constants to create a :class:`kernel.Kernel` instance that describes the operations that we wish to perform in a container that can be passed to a looping method. For a first argument we pass a user specified name to aid profiling, names are user chosen and are not required to contain any information:
 ::
 
-    vv_kernel1 = md.kernel.Kernel('vv1', vv_kernel1_code, constants)
-    vv_kernel2 = md.kernel.Kernel('vv2', vv_kernel2_code, constants)
+    vv_kernel1 = kernel.Kernel('vv1', vv_kernel1_code, constants)
+    vv_kernel2 = kernel.Kernel('vv2', vv_kernel2_code, constants)
 
 
-Final
+
+The final step is to create two :class:`ParticleLoop` instances, one for each kernel. Each ParticleLoop is constructed with a kernel and a Python dictionary refered to as the :code:`dat_dict`. The dictionary matches the symbols used in the C kernel with the corresponding data structure, the data structures are called as show below with an access descriptor. By using access descriptors we indicate to the ParticleLoop how the kernel will access data.
 ::
 
-    vv_kernel1 = md.kernel.Kernel('vv1', vv_kernel1_code, constants)
-    vv_p1 = ParticleLoop(
+    loop1 = ParticleLoop(
         kernel=vv_kernel1,
         dat_dict={'P': A.P(md.access.W),
                   'V': A.V(md.access.W),
@@ -78,12 +79,25 @@ Final
                   'M': A.M(md.access.R)}
     )
 
-    vv_kernel2 = md.kernel.Kernel('vv2', vv_kernel2_code, constants)
-    vv_p2 = ParticleLoop(
+    loop2 = ParticleLoop(
         kernel=vv_kernel2,
         dat_dict={'V': A.V(md.access.W),
                   'F': A.F(md.access.R),
                   'M': A.M(md.access.R),
                   'k': A.KE(md.access.INC0)}
     )
+
+
+
+To execute our two kernels over all particles we call the :code:`execute` method on each ParticleLoop instance:
+::
+
+    # Execute kernel 1
+    loop1.execute()
+
+    # -- update forces using a pairloop --
+
+    # Execute kernel 2
+    loop2.execute()
+
 

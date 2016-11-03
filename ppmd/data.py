@@ -664,14 +664,14 @@ class ParticleDat(host.Matrix):
 
                     // after send has completed move to next direction.
                     if (( SEND_RANKS[dir] > -1 ) && ( p_index > -1 ) ){
-                        MPI_Wait(&sr, &MPI_STATUS);
+                        MPI_Wait(&sr, MPI_STATUS_IGNORE);
                     }
 
                     if (( RECV_RANKS[dir] > -1 ) && ( dir_counts[dir] > 0 ) ){
-                        MPI_Wait(&rr, &MPI_STATUS);
+                        MPI_Wait(&rr, MPI_STATUS_IGNORE);
                     }
 
-                    MPI_Barrier(MPI_COMM);
+                    //MPI_Barrier(MPI_COMM);
 
 
                 //cout << "dir end " << dir << " -----------" << endl;

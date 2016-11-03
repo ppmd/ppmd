@@ -214,11 +214,17 @@ class BaseDomainHalo(object):
     def cell_decompose(self, cell_width=None):
 
         if self._init_cells:
-            print "WARNING: domain already decomposed into cells"
+            if mpi.MPI_HANDLE.rank == 0:
+                print "WARNING: domain already decomposed into cells"
             if np.sum(cell_width > self.cell_edge_lengths[:]) > 0:
-                print "WARNING: recreating cell decomposition"
+
+                if mpi.MPI_HANDLE.rank == 0:
+                    print "WARNING: recreating cell decomposition"
+
+
             else:
-                print "WARNING: NOT recreating cell decomposition"
+                if mpi.MPI_HANDLE.rank == 0:
+                    print "WARNING: NOT recreating cell decomposition"
                 return False
 
         assert cell_width is not None, "ERROR: No cell size passed."

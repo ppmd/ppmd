@@ -7,8 +7,9 @@ Examples
 .. toctree::
     :maxdepth: 2
 
-    example_argon
+    example_kernel
     example_integrator
+    example_argon
 
 
 

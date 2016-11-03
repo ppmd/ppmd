@@ -680,7 +680,6 @@ class TestPotential4p(LennardJones):
                              [kernel.Header('stdio.h')],
                              reductions)
 
-
 class VLennardJones(LennardJones):
     @property
     def kernel(self):
@@ -720,6 +719,49 @@ class VLennardJones(LennardJones):
                              kernel_code,
                              constants,
                              [kernel.Header('stdio.h')])
+
+
+class VLennardJonesNoU(LennardJones):
+    @property
+    def kernel(self):
+        """
+        Returns a kernel class for the potential.
+        """
+
+        kernel_code = '''
+
+        const double R0 = P.j[0] - P.i[0];
+        const double R1 = P.j[1] - P.i[1];
+        const double R2 = P.j[2] - P.i[2];
+
+        const double r2 = R0*R0 + R1*R1 + R2*R2;
+
+        const double r_m2 = sigma2/r2;
+        const double r_m4 = r_m2*r_m2;
+
+        const double f_tmp = CF*(r_m4*r_m2 - 0.5)*r_m4*r_m4;
+
+        A.i[0]+= (r2 < rc2) ? f_tmp*R0 : 0.0;
+        A.i[1]+= (r2 < rc2) ? f_tmp*R1 : 0.0;
+        A.i[2]+= (r2 < rc2) ? f_tmp*R2 : 0.0;
+
+        '''
+        constants = (kernel.Constant('sigma2', self._sigma ** 2),
+                     kernel.Constant('rc2', self._rc ** 2),
+                     kernel.Constant('internalshift', self._shift_internal),
+                     kernel.Constant('CF', self._C_F),
+                     kernel.Constant('CV', self._C_V))
+
+        return kernel.Kernel('LJ_accel_U',
+                             kernel_code,
+                             constants,
+                             [kernel.Header('stdio.h')])
+
+    def get_data_map(self, positions=None, forces=None, potential_energy=None):
+        if potential_energy is not None:
+            print "warning, kernel does not compute potential energy"
+        return {'P': positions(access.R), 'A': forces(access.INC0)}
+
 
 class VLennardJones2(LennardJones):
     @property
