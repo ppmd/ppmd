@@ -70,7 +70,7 @@ def numpy_to_xyz(arr, filename, symbol='A'):
         fh.writelines('Written by numpy_to_xyz.\n')
         for ix in xrange(arr.shape[0]):
             fh.writelines(
-                symbol + '        {:f}        {:f}        {:f}\n'.format(arr[ix,0], arr[ix,1], arr[ix,2])
+                symbol + '        {:.16f}        {:.16f}        {:.16f}\n'.format(arr[ix,0], arr[ix,1], arr[ix,2])
             )
 
 

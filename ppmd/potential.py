@@ -752,7 +752,7 @@ class VLennardJonesNoU(LennardJones):
                      kernel.Constant('CF', self._C_F),
                      kernel.Constant('CV', self._C_V))
 
-        return kernel.Kernel('LJ_accel_U',
+        return kernel.Kernel('LJ_accel',
                              kernel_code,
                              constants,
                              [kernel.Header('stdio.h')])

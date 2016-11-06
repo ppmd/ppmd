@@ -421,9 +421,7 @@ def _find_domain_decomp_no_extent(nproc):
 
     '''Try to match avaible processor dimensions to phyiscal cells'''
 
-    _dims = _NP
-
-    return _dims
+    return _NP
 
 
 
