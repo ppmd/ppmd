@@ -11,7 +11,7 @@ import access
 import cell
 import host
 import opt
-import logic
+import mpi
 
 class _Base(object):
     def __init__(self, n, kernel, dat_dict):
@@ -962,9 +962,10 @@ class PairLoopNeighbourListNS(object):
 
         '''Rebuild neighbour list potentially'''
         self._invocations += 1
-        if cell2part.version_id > self.neighbour_list.version_id:
-            self.neighbour_list.update()
 
+        if cell2part.version_id > self.neighbour_list.version_id:
+
+            self.neighbour_list.update()
 
             self._neighbourlist_count += 1
 

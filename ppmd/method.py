@@ -174,10 +174,13 @@ class ListUpdateController(object):
 
             self.boundary_method_timer.start()
 
+
             flag = self._state.domain.boundary_condition.apply()
+
             if flag > 0:
-                # print "invalidating lists on BCs"
+                print "invalidating lists on BCs"
                 self._state.invalidate_lists = True
+
 
             self.boundary_method_timer.pause()
             opt.PROFILE[

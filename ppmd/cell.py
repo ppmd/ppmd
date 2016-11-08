@@ -880,6 +880,7 @@ class NeighbourList(object):
             assert _attempt < 20, "Tried to create neighbour list too many times."
 
             self.update(_attempt + 1)
+            return
 
         self.version_id = self.cell_list.version_id
 
@@ -1448,6 +1449,7 @@ class NeighbourMatrix(object):
             assert _attempt < 20, "Tried to create neighbour list too many times."
 
             self.update(_attempt + 1)
+            return
 
         self.version_id += 1
 
@@ -1781,12 +1783,6 @@ class NeighbourListHaloAware(object):
 
 
 
-
-
-
-
-
-
     def update(self, _attempt=1, _hattempt=1):
 
         assert self.max_len is not None and self.list is not None and self._neighbour_lib is not None, "Neighbourlist setup not ran, or failed."
@@ -1816,7 +1812,7 @@ class NeighbourListHaloAware(object):
             assert _attempt < 20, "Tried to create neighbour list too many times."
 
             self.update(_attempt=_attempt + 1)
-
+            return
 
         self.version_id += 1
 
@@ -1984,36 +1980,16 @@ class NeighbourListNonN3(NeighbourList):
         self._neighbour_lib = build.SharedLib(_kernel, _dat_dict)
 
 
+    def update(self):
+        assert self.max_len is not None and \
+               self.list is not None and \
+               self._neighbour_lib is not None, \
+            "Neighbourlist setup not ran, or failed."
 
-    def update(self, _attempt=1):
 
         self.timer_update.start()
 
-        assert self.max_len is not None and self.list is not None and self._neighbour_lib is not None, "Neighbourlist setup not ran, or failed."
-
-        if self.neighbour_starting_points.ncomp < self._n() + 1:
-            self.neighbour_starting_points.realloc(self._n() + 1)
-        if runtime.VERBOSE > 3:
-            print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
-
-
-        _n = self.cell_list.cell_list.end - self._domain.cell_count
-        self._neighbour_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
-
-        self.n_total = self._positions.npart_total
-        self.n_local = self._n()
-        self._last_n = self._n()
-
-
-        if self._return_code[0] < 0:
-            if runtime.VERBOSE > 2:
-                print "rank:", mpi.MPI_HANDLE.rank, "neighbour list resizing", "old", self.max_len[0], "new", 2 * self.max_len[0]
-            self.max_len[0] *= 2
-            self.list.realloc(self.max_len[0])
-
-            assert _attempt < 20, "Tried to create neighbour list too many times."
-
-            self.update(_attempt + 1)
+        self._update()
 
         self.version_id += 1
 
@@ -2021,6 +1997,46 @@ class NeighbourListNonN3(NeighbourList):
         opt.PROFILE[
             self.__class__.__name__+':update'
         ] = (self.timer_update.time())
+
+
+    def _update(self, attempt=1):
+
+        if self.neighbour_starting_points.ncomp < self._n() + 1:
+            self.neighbour_starting_points.realloc(self._n() + 1)
+        if runtime.VERBOSE > 3:
+            print "rank:", mpi.MPI_HANDLE.rank, "rebuilding neighbour list"
+
+        _n = self.cell_list.cell_list.end - self._domain.cell_count
+        self._neighbour_lib.execute(
+            static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)}
+        )
+
+        self.n_total = self._positions.npart_total
+        self.n_local = self._n()
+        self._last_n = self._n()
+
+        if self._return_code[0] < 0:
+
+            if runtime.VERBOSE > 2:
+                print "rank:",\
+                    mpi.MPI_HANDLE.rank,\
+                    "neighbour list resizing",\
+                    "old",\
+                    self.max_len[0],\
+                    "new",\
+                    2 * self.max_len[0]
+
+            self.max_len[0] *= 2
+            self.list.realloc(self.max_len[0])
+
+            assert attempt < 20, "Tried to create neighbour list too many times."
+
+            self._update(attempt + 1)
+
+
+
+
+
 
 ################################################################################################################
 # CPU CelllayerSort
@@ -2317,9 +2333,7 @@ class NeighbourListLayerBased(object):
 
         self._lib.execute(static_args=_statics)
         self.version_id += 1
-        #print "Nn", _Nn
-        #print "0", self.neighbour_matrix.data[0:_tnn:]
-        #print "1", self.neighbour_matrix.data[_tnn:2*_tnn:]
+
 
 
 
