@@ -688,7 +688,7 @@ class VLennardJones(LennardJones):
         """
 
         kernel_code = '''
-
+        //N_f = 27
         const double R0 = P.j[0] - P.i[0];
         const double R1 = P.j[1] - P.i[1];
         const double R2 = P.j[2] - P.i[2];

@@ -458,7 +458,7 @@ class ParticleDat(host.Matrix):
             self._resize_callback(n)
             return
 
-        if n > self.max_npart:
+        if n > self._dat.shape[0]:
             self.max_npart = n
             self.realloc(n, self.ncol)
 

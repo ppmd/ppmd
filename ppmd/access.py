@@ -98,10 +98,8 @@ class AccessType(object):
 
 
 R = AccessType("R")
-"""Access descriptor for read only data. """
-
 W = AccessType("W")
-"""Access descriptor for write only data. """
+INC0 = AccessType("INC0")
 
 RW = AccessType("RW")
 """Descriptor for data that has accessed for both read and write. """
@@ -109,15 +107,18 @@ RW = AccessType("RW")
 INC = AccessType("INC")
 """Access descriptor for data that is incremented. """
 
-INC0 = AccessType("INC0")
-"""Access descriptor for data that is incremented from zero. """
-
 NULL = AccessType("NULL")
 """NULL access descriptor for data. """
 
-READ = R
-WRITE = W
 
+
+
+READ = R
+"""Access descriptor for read only data. """
+WRITE = W
+"""Access descriptor for write only data. """
+INC_ZERO = INC0
+"""Access descriptor for data that is incremented from zero. """
 
  
 

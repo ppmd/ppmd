@@ -124,7 +124,7 @@ class ListUpdateController(object):
         self._moved_distance += self._get_max_moved_distance()
 
         if self._moved_distance >= 0.5 * self._delta:
-            print "RANK %(RK)s  WARNING PARTICLE MOVED TOO FAR, rank:" % \
+            print "RANK %(RK)s  WARNING: Max velocity triggered list rebuild |" % \
                   {'RK':mpi.MPI_HANDLE.rank}, mpi.MPI_HANDLE.rank, "distance",\
                   self._moved_distance, "times reused", self._test_count, \
                   "dist:", 0.5 * self._delta

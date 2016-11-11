@@ -34,7 +34,6 @@ class _AsFunc(object):
 
 
 
-
 class BaseMDState(object):
     """
     Create an empty state to which particle properties such as position, velocities are added as
