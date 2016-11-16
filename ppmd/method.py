@@ -178,7 +178,7 @@ class ListUpdateController(object):
             flag = self._state.domain.boundary_condition.apply()
 
             if flag > 0:
-                print "invalidating lists on BCs"
+                # print "invalidating lists on BCs"
                 self._state.invalidate_lists = True
 
 

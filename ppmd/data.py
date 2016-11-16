@@ -424,6 +424,7 @@ class ParticleDat(host.Matrix):
         self.halo_start += shift
         self.npart_local_halo = self.halo_start - self.npart_local
 
+
     def halo_start_set(self, index):
         """
         Set the start of the halo region in the particle dat to the specified

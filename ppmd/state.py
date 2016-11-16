@@ -40,8 +40,7 @@ class BaseMDState(object):
     attributes.
     """
 
-    def __init__(self):
-
+    def __init__(self, *args, **kwargs):
 
         self._domain = None
 
@@ -69,13 +68,9 @@ class BaseMDState(object):
 
         self.uncompressed_n = False
 
-
         # State time
         self._time = 0.0
         self.version_id = 0
-
-
-        # move vars.
 
         self.invalidate_lists = False
         """If true, all cell lists/ neighbour lists should be rebuilt."""
@@ -194,8 +189,11 @@ class BaseMDState(object):
             # set dat name to be attribute name
             getattr(self, name).name = name
 
-            # resize to Ntotal for time being
-            getattr(self, name).resize(self._npart, _callback=False)
+            if self._npart_local > 0:
+                getattr(self, name).resize(self._npart_local, _callback=False)
+            else:
+                getattr(self, name).resize(self._npart, _callback=False)
+
 
 
             if type(value) is data.PositionDat:
@@ -306,6 +304,10 @@ class BaseMDState(object):
         bx = np.logical_not(lo)
         # self.npart_local = np.sum(lo)
         self._compress_empty_slots(np.nonzero(bx)[0])
+
+        for px in self.particle_dats:
+            getattr(self, px).npart_local = self.npart_local
+
 
     def _compress_empty_slots(self, slots):
         le = len(slots)
