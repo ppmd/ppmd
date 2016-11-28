@@ -183,7 +183,7 @@ def test_host_halo_cube_2(state):
                             cval = np.array((ox*disp, oy*disp, oz*disp)) + rci
 
                             #print rank, rci, cval, (ox,oy,oz), cj, pj[cj], pj[cj] - cval
-                            assert np.sum(np.abs(pj[cj] - cval)) < 2.*(10.**(-15.))
+                            assert np.max(np.abs(pj[cj] - cval)) < 2.*(10.**(-15.))
 
 
 
@@ -250,7 +250,7 @@ def test_host_halo_cube_3(state):
 
                             cval = np.array((ox*disp, oy*disp, oz*disp)) + rci
 
-                            assert np.sum(np.abs(rcj - cval)) < 2.*(10.**(-15.))
+                            assert np.max(np.abs(rcj - cval)) < 2.*(10.**(-15.))
 
 
 

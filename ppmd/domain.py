@@ -631,7 +631,7 @@ class BoundaryTypePeriodic(object):
 
         if mpi.MPI_HANDLE.nproc == 1:
             """
-            BC code for one proc. porbably removable when restricting to large parallel systems.
+            BC code for one proc. probably removable when restricting to large parallel systems.
             """
 
             self.timer_lib_overhead.start()

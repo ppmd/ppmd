@@ -15,7 +15,7 @@ import mpi
 import opt
 
 
-BUILD_PER_PROC = True
+BUILD_PER_PROC = False
 
 ###############################################################################
 # COMPILERS START

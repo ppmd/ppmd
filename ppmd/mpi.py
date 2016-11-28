@@ -200,7 +200,6 @@ class MDMPI(object):
         Xl 0, Xu 1
         Yl 2, Yu 3
         Zl 4, Zu 5
-
         """
 
         self._check_comm()
