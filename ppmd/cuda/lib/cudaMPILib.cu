@@ -100,8 +100,10 @@ namespace _cudaFindNewSlots
     }
 
 
-    __global__ void cudaFindNewSlots_kernel2(const int * __restrict__ d_scan,
-                                             int * __restrict__ d_sources){
+    __global__ void cudaFindNewSlots_kernel2(
+        const int * __restrict__ d_scan,
+        int * __restrict__ d_sources
+    ){
 
         int _ix = threadIdx.x + blockIdx.x*blockDim.x;
 

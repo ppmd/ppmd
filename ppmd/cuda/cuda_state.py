@@ -418,24 +418,28 @@ class BaseMDState(object):
                        empty_slots,
                        num_slots_to_fill,
                        new_npart):
-        n = self.npart
-        n2 = n - new_npart
-        new_n = new_npart
 
-        test = np.zeros([n+1, 2])
-        test[:,0] = empty_per_particle_flag[:,0]
+        #n = self.npart
+        #n2 = n - new_npart
+        #new_n = new_npart
+
+        #test = np.zeros([n+1, 2])
+        #test[:,0] = empty_per_particle_flag[:,0]
 
 
         replacement_slots = \
-            self._comp_replacement_find_method.apply(empty_per_particle_flag,
-                                                     num_slots_to_fill,
-                                                     new_npart,
-                                                     self.npart-new_npart)
-
+            self._comp_replacement_find_method.apply(
+                empty_per_particle_flag,
+                num_slots_to_fill,
+                new_npart,
+                self.npart_local-new_npart
+            )
 
 
         if self._compression_lib is None:
-            self._compression_lib = _CompressParticleDats(self, self.particle_dats)
+            self._compression_lib = _CompressParticleDats(
+                self, self.particle_dats
+            )
 
 
 
@@ -532,7 +536,7 @@ class BaseMDState(object):
 
 
         # resize dats
-        new_ncomp = self.get_position_dat().npart_total + recv_count
+        new_ncomp = self.get_position_dat().npart_local + recv_count
         if self._empty_per_particle_flag is None:
             self._empty_per_particle_flag = cuda_base.Array(
                 ncomp=new_ncomp,
@@ -686,7 +690,7 @@ class _FilterOnDomain(object):
 
 
         # find particles to remove
-        self._loop1.execute(n=self._positions.group.npart,
+        self._loop1.execute(n=self._positions.group.npart_local,
                             static_args=kernel1_statics)
 
 
@@ -750,6 +754,8 @@ class _FindCompressionIndices(object):
         if n_to_fill == 0:
             return None
 
+        #print ppmd.mpi.MPI_HANDLE.rank, n_to_fill, new_n, search_n
+
 
         self._replacement_slots.resize(n_to_fill)
         self._replacement_slots.zero()
@@ -761,9 +767,8 @@ class _FindCompressionIndices(object):
                 self._replacement_slots.ctypes_data]
 
 
-        cuda_runtime.cuda_err_check(cuda_mpi.LIB_CUDA_MPI['cudaFindNewSlots'](
-            *args
-            )
+        cuda_runtime.cuda_err_check(
+            cuda_mpi.LIB_CUDA_MPI['cudaFindNewSlots'](*args)
         )
 
 

@@ -289,13 +289,28 @@ class Matrix(object):
         """
         self._vid_int += int(inc)
 
-    def realloc(self, nrow=None, ncol=None):
+    def realloc(self, nrow=None, ncol=None, copy=True):
         """
         Re allocate memory for a matrix.
         """
+
+        assert (nrow>=self._nrow.value and ncol >= self._ncol.value) or \
+               (copy is False), "resizing to a smaller size in any dimension not supported with copy=True"
+
         if (nrow != self._nrow.value) or (ncol != self._ncol.value):
             _new = _create_zeros(nrow=nrow, ncol=ncol, dtype=self.dtype)
-            _new[:self._nrow.value:, :self._ncol.value:] = self._dat[:,:]
+
+            #print self._nrow.value, nrow, self._ncol.value, ncol, _new[:self._nrow.value:, :self._ncol.value:].shape, self._dat.shape
+
+            if copy:
+                OR = self._nrow.value
+                OC = self._ncol.value
+                NR = nrow
+                NC = ncol
+
+                _new[:self._nrow.value:, :self._ncol.value:] = self._dat[:,:]
+
+
             self._dat = _new
 
         self._ncol.value = ncol
@@ -338,13 +353,19 @@ class Matrix(object):
         return self.idtype
 
     def __getitem__(self, key):
+        #print "__getitem__"
         self._h_mirror.copy_from_device()
         return self._h_mirror.mirror.data[key]
 
     def __setitem__(self, key, value):
 
+        #print "__setitem__"
         self._h_mirror.copy_from_device()
+
         self._h_mirror.mirror.data[key] = value
+
+        #print '\t', self._h_mirror.mirror.data[key], value
+
 
         self._h_mirror.copy_to_device()
         self._vid_int += 1
@@ -404,6 +425,7 @@ class _MatrixMirror(object):
 
 
     def copy_to_device(self):
+
         self._d_matrix.realloc(self._h_matrix.nrow, self._h_matrix.ncol)
         cuda_runtime.cuda_mem_cpy(self._d_matrix.ctypes_data,
                                   self._h_matrix.ctypes_data,

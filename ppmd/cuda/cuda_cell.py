@@ -373,7 +373,8 @@ class NeighbourListLayerBased(object):
         if (self.list.ncol < self._occ_matrix.positions.npart_local) or \
                 (self.list.nrow < limit):
             self.list.realloc(nrow=limit,
-                              ncol=self._occ_matrix.positions.npart_local)
+                              ncol=self._occ_matrix.positions.npart_local,
+                              copy=False)
 
         _tpb = 256
         _blocksize = (ctypes.c_int * 3)(int(math.ceil(

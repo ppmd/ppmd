@@ -961,7 +961,7 @@ class PairLoopNeighbourListNS(object):
 
         if cell2part.version_id > self.neighbour_list.version_id:
             #print "CUDA rebuild NL"
-            # print cell2part.version_id, self.neighbour_list.version_id
+            #print cell2part.version_id, self.neighbour_list.version_id
             self.neighbour_list.update()
 
 

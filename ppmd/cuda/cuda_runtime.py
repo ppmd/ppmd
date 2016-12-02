@@ -57,7 +57,7 @@ def cuda_err_check(err_code):
 
     if LIB_HELPER is not None:
         err = LIB_HELPER['cudaErrorCheck'](err_code)
-        assert err == 0, "Non-zero CUDA error:" + str(err_code)
+        assert err == 0, "Non-zero CUDA error:" + str(err_code) + 'rank: ' + str(mpi.MPI_HANDLE.rank)
 
 def cuda_set_device(device=None):
     """
