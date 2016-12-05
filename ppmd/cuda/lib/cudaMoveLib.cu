@@ -101,6 +101,14 @@ __global__ void d_pack(
     return;
 }
 
+
+
+
+
+
+
+
+
 __global__ void d_unpack(
     const int d_n,
     const int thread_count,
@@ -212,7 +220,10 @@ int cudaMoveStageTwo(
 
 
     err = cudaDeviceSynchronize();
-    if(err>0){return err;}
+    if(err>0){
+        cout << "Error in CUDA-MPI packing" << endl;
+        return err;
+    }
 
 
     // SENDING ---------------------------------------
@@ -246,7 +257,10 @@ int cudaMoveStageTwo(
         }
     }
 
-    if (err_mpi>0) {return err_mpi;}
+    if (err_mpi>0) {
+        cout << "Error in CUDA-MPI Send/Recv" << endl;
+        return err_mpi;
+    }
 
 
     err_mpi = MPI_Waitall(src, SR, SS);
@@ -269,6 +283,10 @@ int cudaMoveStageTwo(
         d_recv_buf
     );
     err = cudaDeviceSynchronize();
+
+    if (err_mpi>0) {
+        cout << "Error in CUDA-MPI unpack" << endl;
+    }
 
     return err;
 }

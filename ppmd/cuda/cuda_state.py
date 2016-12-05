@@ -306,8 +306,11 @@ class BaseMDState(object):
             # set dat name to be attribute name
             getattr(self, name).name = name
 
-            # resize to Ntotal for time being
-            getattr(self, name).resize(self._npart, _callback=False)
+
+            if self._npart_local > 0:
+                getattr(self, name).resize(self._npart_local, _callback=False)
+            else:
+                getattr(self, name).resize(self._npart, _callback=False)
 
 
             if type(value) is cuda_data.PositionDat:
@@ -408,7 +411,10 @@ class BaseMDState(object):
         """
 
         if n is None:
-            n = self.npart
+            if self.npart_local > 0:
+                n = self.npart_local
+            else:
+                n = self.npart
 
         self._compress_dats(*self._filter_method.apply(n))
 
@@ -418,6 +424,7 @@ class BaseMDState(object):
                        empty_slots,
                        num_slots_to_fill,
                        new_npart):
+
 
         #n = self.npart
         #n2 = n - new_npart
@@ -552,6 +559,10 @@ class BaseMDState(object):
 
 
         # pack -> S/R unpack
+
+        #print ppmd.mpi.MPI_HANDLE.rank, self.domain.boundary[:]
+        #print self.npart_local, total_particles, recv_count
+
         cuda_mpi.cuda_mpi_err_check(
             self._move_lib['cudaMoveStageTwo'](
                 ctypes.c_int32(ppmd.mpi.MPI_HANDLE.fortran_comm),
