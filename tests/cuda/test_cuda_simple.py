@@ -187,7 +187,7 @@ def test_cuda_1_norm():
 
 @cuda
 def test_cuda_plus_equal_1():
-    A = ParticleDat(npart=1, ncomp=1)
+    A = ParticleDat(npart=1, ncomp=1, dtype=ctypes.c_int)
 
     A[0, 0] = 0
     rx = 0
@@ -199,7 +199,6 @@ def test_cuda_plus_equal_1():
 
 @cuda
 def test_cuda_plus_equal_2():
-    print "="*60
 
     A = ParticleDat(npart=1, ncomp=3, dtype=ctypes.c_int)
 
