@@ -185,8 +185,34 @@ def test_cuda_1_norm():
     assert abs(an - apn) < 10.** (-15)
 
 
+@cuda
+def test_cuda_plus_equal_1():
+    A = ParticleDat(npart=1, ncomp=1)
 
+    A[0, 0] = 0
+    rx = 0
 
+    for ix in range(10):
+        rx += ix
+        A[0, 0] += ix
+        assert rx == A[0, 0]
+
+@cuda
+def test_cuda_plus_equal_2():
+    print "="*60
+
+    A = ParticleDat(npart=1, ncomp=3, dtype=ctypes.c_int)
+
+    A[0, :] = 1
+    rx = 1
+
+    for ix in range(4, 10):
+        rx += ix
+        A[0, :] += ix
+
+        assert rx == A[0, 0]
+        assert rx == A[0, 1]
+        assert rx == A[0, 2]
 
 
 

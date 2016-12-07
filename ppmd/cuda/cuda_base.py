@@ -353,19 +353,16 @@ class Matrix(object):
         return self.idtype
 
     def __getitem__(self, key):
-        #print "__getitem__"
         self._h_mirror.copy_from_device()
+
         return self._h_mirror.mirror.data[key]
 
     def __setitem__(self, key, value):
 
-        #print "__setitem__"
+        value = np.array(value, dtype=self.dtype)
         self._h_mirror.copy_from_device()
 
         self._h_mirror.mirror.data[key] = value
-
-        #print '\t', self._h_mirror.mirror.data[key], value
-
 
         self._h_mirror.copy_to_device()
         self._vid_int += 1
@@ -436,10 +433,12 @@ class _MatrixMirror(object):
     def copy_from_device(self):
 
         self._h_matrix.realloc(self._d_matrix.nrow, self._d_matrix.ncol)
+
         cuda_runtime.cuda_mem_cpy(self._h_matrix.ctypes_data,
                                   self._d_matrix.ctypes_data,
                                   ctypes.c_size_t(self._h_matrix.size),
                                   'cudaMemcpyDeviceToHost')
+
 
     @property
     def mirror(self):
