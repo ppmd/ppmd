@@ -2,6 +2,7 @@
 # system level
 import ctypes
 import numpy as np
+import math
 
 # package level
 import ppmd.mpi
@@ -119,7 +120,7 @@ class BaseMDState(object):
 
             # scan of ccc of boundary cells.
             self._halo_b_scan.realloc(self._halo_b_cell_indices.ncomp+1)
-            self._halo_cell_max_b = cuda_mpi.cuda_exclusive_scan_int(
+            self._halo_cell_max_b = cuda_mpi.cuda_exclusive_scan_int_masked_copy(
                 length=self._halo_b_cell_indices.ncomp,
                 d_map=self._halo_b_cell_indices,
                 d_ccc=self._cell_to_particle_map.cell_contents_count,
@@ -128,7 +129,7 @@ class BaseMDState(object):
 
             # scan of ccc of halo cells.
             self._halo_h_scan.realloc(self._halo_h_cell_indices.ncomp+1)
-            self._halo_cell_max_h = cuda_mpi.cuda_exclusive_scan_int(
+            self._halo_cell_max_h = cuda_mpi.cuda_exclusive_scan_int_masked_copy(
                 length=self._halo_h_cell_indices.ncomp,
                 d_map=self._halo_h_cell_indices,
                 d_ccc=self._cell_to_particle_map.cell_contents_count,
@@ -889,6 +890,243 @@ class _CompressParticleDats(object):
             args.append(getattr(self._state, ix).ctypes_data)
 
         cuda_runtime.cuda_err_check(self._lib(*args))
+
+
+class _SortParticlesOnCell(object):
+    def __init__(self, state, tmp_space):
+        self._state = state
+        self._tmp_space  = tmp_space
+
+        dat_max_bytes = 0
+
+        for ixi, ix in enumerate(self._state.particle_dats):
+            dat = getattr(self._state, ix)
+            dat_max_bytes = max(dat_max_bytes,
+                int(
+                    dat.ncomp*ctypes.sizeof(dat.dtype)
+                )
+            )
+
+        self._max_bytes = dat_max_bytes
+        self._lib = None
+
+
+    def apply(self):
+
+        occ_matrix = self._state.get_cell_to_particle_map()
+        ccc_scan = occ_matrix.cell_contents_count_scan()
+        crl_array = occ_matrix.cell_reverse_lookup
+        pl_array = occ_matrix.particle_layers
+
+        bytes_needed = self._state.npart_local * self._max_bytes
+
+        if self._tmp_space.ncomp * ctypes.sizeof(self._tmp_space.dtype) < bytes_needed:
+            new_ncomp = math.ceil(float(bytes_needed)/ctypes.sizeof(self._tmp_space.dtype))
+            self._tmp_space.realloc_zeros(new_ncomp)
+
+        if self._lib is None:
+            self._build_lib()
+
+
+    def _build_lib(self):
+
+
+        call_template = '''
+        bs; bs.x = %(NCOMP)s * blocksize[0]; bs.y = blocksize[1]; bs.z = blocksize[2];
+        ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
+        copy_to_tmp<%(DTYPE)s><<<bs,ts>>>(%(PTR_NAME)s, d_tmp, %(NCOMP)s);
+
+        err = (int) cudaDeviceSynchronize();
+        if (err > 0) {
+            cout << "Error: copy_to_tmp %(PTR_NAME)s << endl;
+            return err;
+        }
+
+        copy_from_tmp<%(DTYPE)s><<<bs,ts>>>(%(PTR_NAME)s, d_tmp, %(NCOMP)s);
+
+        err = (int) cudaDeviceSynchronize();
+        if (err > 0) {
+            cout << "Error: copy_from_tmp %(PTR_NAME)s << endl;
+            return err;
+        }
+
+        '''
+
+        extra_params = ''
+        kernel_calls = '''
+        '''
+
+        for ix in self._state.particle_dats:
+            dat = getattr(self._state, ix)
+            sdtype = ppmd.host.ctypes_map[dat.dtype]
+
+            extra_params += ', ' + sdtype + '* ' + ix
+            kernel_calls += call_template % {'DTYPE': sdtype,
+                                             'PTR_NAME': ix,
+                                             'NCOMP': dat.ncomp}
+
+
+        name = 'SortParticlesOnCellLib'
+
+        header_code = '''
+        #include "cuda_generic.h"
+
+        __constant__ int d_npart_local;
+        __constant__ int *d_ccc_scan;
+        __constant__ int *d_crl_array;
+        __constant__ int *d_pl_array;
+
+
+        // ----------------------------------------------------
+
+        template <typename T>
+        __global__ void copy_to_tmp(
+            const T* __restrict__ d_ptr,
+            T* __restrict__ d_tmp,
+            const int ncomp
+        ){
+
+            const int ix = threadIdx.x + blockIdx.x*blockDim.x;
+            if (ix < d_npart_local * ncomp){
+
+                d_tmp[ix] = d_ptr[ix];
+
+            }
+            return;
+        }
+
+        // ----------------------------------------------------
+
+        template <typename T>
+        __global__ void copy_from_tmp(
+            T* __restrict__ d_ptr,
+            const T* __restrict__ d_tmp,
+            const int ncomp
+        ){
+
+            const int ix = threadIdx.x + blockIdx.x*blockDim.x;
+            if (ix < d_npart_local * ncomp){
+
+                const int sx = ix / ncomp;
+                const int comp = ix %% ncomp;
+
+                // get cell index
+                const int cx = d_crl_array[sx];
+                // get cell layer
+                const int cl = d_pl_array[sx];
+                // calculate new index
+                const int new_slot = d_ccc_scan[cx] + cl;
+
+                d_ptr[new_slot*ncomp + comp] = d_tmp[sx*ncomp + comp];
+
+            }
+            return;
+        }
+
+        // ----------------------------------------------------
+
+        __global__ void correct_occ_matrix(
+            const int d_num_layers,
+            int * __restrict__ d_occ_matrix
+        ){
+            const int ix = threadIdx.x + blockIdx.x*blockDim.x;
+            if (ix < d_npart_local){
+                // get cell index
+                const int cx = d_crl_array[sx];
+                // get cell layer
+                const int cl = d_pl_array[sx];
+
+                d_occ_matrix[cx*d_num_layers + cl] = ix;
+
+            }
+
+            return;
+        }
+
+
+        // ----------------------------------------------------
+
+
+        extern "C" int %(NAME)s(const int blocksize[3],
+                                const int threadsize[3],
+                                const int h_npart_local,
+                                const int* d_ccc_scanp,
+                                const int* d_crl_arrayp,
+                                const int* d_pl_arrayp,
+                                int *d_tmp,
+                                int *d_occ_matrix,
+                                const int h_num_layers,
+                                %(EXTRA_PARAMS)s
+        );
+
+        ''' % {'EXTRA_PARAMS': extra_params, 'NAME':name}
+
+
+        src_code = '''
+
+        int %(NAME)s(const int blocksize[3],
+                     const int threadsize[3],
+                     const int h_npart_local,
+                     const int* d_ccc_scanp,
+                     const int* d_crl_arrayp,
+                     const int* d_pl_arrayp,
+                     int *d_tmp,
+                     int *d_occ_matrix,
+                     const int h_num_layers,
+                     %(EXTRA_PARAMS)s
+        ){
+            int err = 0;
+
+            dim3 bs;
+            dim3 ts;
+            checkCudaErrors(cudaMemcpyToSymbol(d_npart_local, &h_npart_local, sizeof(int)));
+            checkCudaErrors(cudaMemcpyToSymbol(d_ccc_scan, &d_ccc_scanp, sizeof(int*)));
+            checkCudaErrors(cudaMemcpyToSymbol(d_crl_array, &d_crl_arrayp, sizeof(int*)));
+            checkCudaErrors(cudaMemcpyToSymbol(d_pl_array, &d_pl_arrayp, sizeof(int*)));
+
+
+            %(KERNEL_CALLS)s
+
+
+            bs; bs.x = blocksize[0]; bs.y = blocksize[1]; bs.z = blocksize[2];
+            ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
+            correct_occ_matrix<<<bs,ts>>>(h_num_layers, d_occ_matrix);
+
+
+            err = (int) cudaDeviceSynchronize();
+            if (err > 0) {
+                cout << "Error: correct_occ_matrix << endl;
+                return err;
+            }
+
+
+            return err;
+
+        }
+        ''' % {'KERNEL_CALLS': kernel_calls,
+               'EXTRA_PARAMS': extra_params,
+               'NAME': name}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

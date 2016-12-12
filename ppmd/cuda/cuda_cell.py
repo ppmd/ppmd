@@ -16,6 +16,7 @@ import cuda_runtime
 import cuda_base
 import cuda_build
 
+
 class CellOccupancyMatrix(object):
     """
     Class to compute and store a cell occupancy matrix for a domain and a set of positions
@@ -63,6 +64,35 @@ class CellOccupancyMatrix(object):
 
 
         self._timer = opt.Timer()
+
+        # scan vars
+        self._ccc_scan = cuda_base.Array(ncomp=1, dtype=ctypes.c_int)
+
+    def cell_contents_count_scan(self):
+        """
+        Get the exclusive scan of the cell contents counts array
+        :return:
+        """
+
+        self._ccc_scan.realloc_zeros(self._domain.cell_count)
+
+        cuda_runtime.cuda_mem_cpy(
+            self._ccc_scan.ctypes_data,
+            self.cell_contents_count.ctypes_data,
+            ctypes.c_size_t(
+                self._domain.cell_count*ctypes.sizeof(
+                    self.cell_contents_count.dtype
+                )
+            ),
+            'cudaMemcpyDeviceToDevice'
+        )
+
+        cuda_runtime.LIB_CUDA_MISC['cudaExclusiveScanInt'](
+            self._ccc_scan.ctypes_data,
+            ctypes.c_int(self._ccc_scan.ncomp)
+        )
+
+        return self._ccc_scan
 
 
     def trigger_update(self):

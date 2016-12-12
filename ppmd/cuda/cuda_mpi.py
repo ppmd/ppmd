@@ -100,7 +100,7 @@ def MPI_Gatherv(s_buffer, s_count, r_buffer, r_counts, r_disps, root):
 # int* __restrict__ d_scan,
 # int* __restrict__ h_max
 
-def cuda_exclusive_scan_int(length, d_map, d_ccc, d_scan):
+def cuda_exclusive_scan_int_masked_copy(length, d_map, d_ccc, d_scan):
     m = ctypes.c_int32(0)
     LIB_CUDA_MPI['cudaHaloArrayCopyScan'](
         ctypes.c_int32(length),

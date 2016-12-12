@@ -1,6 +1,9 @@
 import hashlib
 import re
 import cgen
+import ctypes
+import host
+import numpy as np
 
 def analyse(kernel_in=None, dat_dict=None):
     """
@@ -132,7 +135,7 @@ class Constant(object):
         self._value = value
 
     def replace(self, s):
-        """Replace all occurances in a string and return result
+        """Replace all occurrences in a string and return result
 
         Ignores the constant if it is not a C-variable. For example,
         if the name of the constant is ``mass``, then it would not replace
@@ -167,6 +170,86 @@ class Header(object):
 
 
 
+class Module(object):
+
+    def get_cpp_headers_ast(self):
+        """
+        Return the code to include the required header file(s).
+        """
+        pass
+
+    def get_cpp_arguments_ast(self):
+        """
+        Return the code to define arguments to add to the library.
+        """
+        pass
+
+    def get_cpp_pre_loop_code_ast(self):
+        """
+        Return the code to place before the loop.
+        """
+        pass
+
+    def get_cpp_post_loop_code_ast(self):
+        """
+        Return the code to place after the loop.
+        """
+        pass
+
+    def get_python_parameters(self):
+        """
+        Return the parameters to add to the launch of the shared library.
+        """
+        pass
+
+
+
+
+class Cpp11MT19937(Module):
+
+    def __init__(self):
+        pass
+
+
+    def get_cpp_headers_ast(self):
+        """
+        Return the code to include the required header file(s).
+        """
+        return cgen.Include('chrono')
+
+
+    def get_cpp_arguments_ast(self):
+        """
+        Return the code to define arguments to add to the library.
+        """
+        return cgen.Pointer(cgen.Value(host.double_str, '_loop_timer_return'))
+
+    def get_cpp_pre_loop_code_ast(self):
+        """
+        Return the code to place before the loop.
+        """
+        _s = 'std::chrono::high_resolution_clock::time_point _loop_timer_t0 ='\
+             ' std::chrono::high_resolution_clock::now(); \n'
+        return cgen.Module([cgen.Line(_s)])
+
+
+    def get_cpp_post_loop_code_ast(self):
+        """
+        Return the code to place after the loop.
+        """
+        _s = 'std::chrono::high_resolution_clock::time_point _loop_timer_t1 ='\
+             ' std::chrono::high_resolution_clock::now(); \n' \
+             ' std::chrono::duration<double> _loop_timer_res = _loop_timer_t1'\
+             ' - _loop_timer_t0; \n' \
+             '*_loop_timer_return += (double) _loop_timer_res.count(); \n'
+        return cgen.Module([cgen.Line(_s)])
+
+
+    def get_python_parameters(self):
+        """
+        Return the parameters to add to the launch of the shared library.
+        """
+        return ctypes.byref(self._time)
 
 
 

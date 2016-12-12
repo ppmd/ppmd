@@ -7,6 +7,13 @@ Installation
 
 PPMD is developed to run on Linux 64bit machines. Other operating systems may work but are not actively developed upon at this time. 
 
+
+Git Repository
+~~~~~~~~~~~~~~
+
+https://bitbucket.org/wrs20/ppmd/src
+
+
 Dependencies
 ~~~~~~~~~~~~
 
