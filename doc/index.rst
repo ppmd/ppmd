@@ -14,6 +14,11 @@ Contents:
     concept
     installation
     examples
+
+
+.. toctree::
+    :maxdepth: 4
+
     modules
 
 
