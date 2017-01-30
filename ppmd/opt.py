@@ -8,6 +8,10 @@ from mpi4py.MPI import SUM
 import numpy as np
 import time
 import cgen
+import pickle
+import os
+import datetime
+import glob
 
 # package level imports
 import build
@@ -297,6 +301,8 @@ Dict available module wide for profiling. Recommended format along lines of:
 }
 """
 
+PROFILE['MPI:rank'] = mpi.MPI_HANDLE.rank
+
 
 def print_profile():
     for key, value in sorted(PROFILE.items()):
@@ -304,9 +310,43 @@ def print_profile():
         print '\t',value
 
 
+def dump_profile():
+
+    rank = mpi.MPI_HANDLE.rank
+    cwd = os.getcwd()
+    prof_dir = os.path.join(cwd, 'PROFILE')
+    this_dump = os.path.join(prof_dir, datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+
+    if rank == 0:
+        if not os.path.exists(prof_dir):
+            os.mkdir(prof_dir)
+        if not os.path.exists(this_dump):
+            os.mkdir(this_dump)
+    mpi.MPI_HANDLE.barrier()
+
+    with open(
+            os.path.join(this_dump, 'profile_dict.' + str(rank) + '.pkl'), 'wb'
+    ) as fh:
+        pickle.dump(PROFILE, fh, pickle.HIGHEST_PROTOCOL)
 
 
 
+
+def load_profiles(dir):
+    prof_dir = os.path.abspath(dir)
+    files = glob.glob(os.path.join(prof_dir, './*'))
+    profs = []
+    for file in files:
+        with open(file, 'r') as fh:
+            profs.append(pickle.load(fh))
+    return profs
+
+
+def load_last_profiles():
+    prof_dirs = os.path.abspath('./PROFILE/*')
+    last_dir = max(glob.iglob(prof_dirs), key=os.path.getctime)
+
+    return load_profiles(last_dir)
 
 
 

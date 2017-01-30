@@ -991,7 +991,7 @@ class PairLoopNeighbourListNS(object):
 
         opt.PROFILE[
             self.__class__.__name__+':'+self._kernel.name+':execute_internal'
-        ] = (self.loop_timer.time)
+        ] = self.loop_timer.time
 
         self._kernel_execution_count += self.neighbour_list.neighbour_starting_points[self.neighbour_list.n_local]
 
