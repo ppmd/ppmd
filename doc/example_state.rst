@@ -48,6 +48,7 @@ Initialise Data Scatter Example
 
 In this example we will create initial data on rank 0 then scatter that data across available MPI ranks. When scattering data from a rank the total number of particles ``State.npart`` should be set on the state object prior to scattering.
 ::
+
     import numpy as np
     import ctypes
     from ppmd import *

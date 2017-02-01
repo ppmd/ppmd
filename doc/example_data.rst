@@ -34,6 +34,7 @@ These data structures are specialised wrappers around Numpy objects and the unde
 
 To create a ``CUDA`` ParticleDat use the ParticleDat from ``ppmd.cuda``:
 ::
+
     from ppmd.cuda import *
     ParticleDat = cuda_data.ParticleDat
     vel = ParticleDat(npart=N, ncomp=3)
