@@ -700,12 +700,13 @@ class BaseMDState(object):
 
             for ixi, ix in enumerate(self.particle_dats):
                 _dat = getattr(self, ix)
+                var_name = '_' + ix
                 if _dat.ncomp > 1:
                     _dyn_dat_case += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP': _dat.ncomp}
-                    _dyn_dat_case += _space + '%(NAME)s[(slot_to_fill*%(NCOMP)s)+ni] = %(NAME)s[found_index*%(NCOMP)s+ni]; \n' % {'NCOMP':_dat.ncomp, 'NAME':str(ix)}
+                    _dyn_dat_case += _space + '%(NAME)s[(slot_to_fill*%(NCOMP)s)+ni] = %(NAME)s[found_index*%(NCOMP)s+ni]; \n' % {'NCOMP':_dat.ncomp, 'NAME':str(var_name)}
                     _dyn_dat_case += _space + '} \n'
                 else:
-                    _dyn_dat_case += _space + '%(NAME)s[slot_to_fill] = %(NAME)s[found_index]; \n' % {'NAME':str(ix)}
+                    _dyn_dat_case += _space + '%(NAME)s[slot_to_fill] = %(NAME)s[found_index]; \n' % {'NAME':str(var_name)}
 
 
             _static_args = {
@@ -778,7 +779,7 @@ class BaseMDState(object):
 
             # Add ParticleDats to pointer arguments.
             for idx, ix in enumerate(self.particle_dats):
-                self._compressing_dyn_args['%(NAME)s' % {'NAME':ix}] = getattr(self, ix)
+                self._compressing_dyn_args['_' + ix] = getattr(self, ix)
 
             _compressing_kernel = kernel.Kernel('ParticleDat_compressing_lib', _compressing_code, headers=['stdio.h'], static_args=_static_args)
 

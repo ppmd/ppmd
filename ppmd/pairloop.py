@@ -11,7 +11,6 @@ import access
 import cell
 import host
 import opt
-import mpi
 
 class _Base(object):
     def __init__(self, n, kernel, dat_dict):
@@ -464,8 +463,6 @@ class PairLoopRapaportHalo(_Base):
 
 def Restrict(keyword, symbol):
     return str(keyword) + ' ' + str(symbol)
-
-
 
 
 class PairLoopNeighbourListNS(object):
