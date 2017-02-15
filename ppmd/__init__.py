@@ -22,7 +22,8 @@ __all__ = [ 'config',
             'fio',
             'opt',
             'utility',
-            'logic']
+            'logic',
+            'module']
 
 
 import config
@@ -47,5 +48,5 @@ import state
 import fio
 import opt
 import utility
-
+import module
 
