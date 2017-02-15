@@ -208,8 +208,13 @@ class Module(object):
 class Cpp11MT19937(Module):
 
     def __init__(self):
+    
         pass
-
+        #lib = build.simple_lib_creator(_ex_header,
+        #    _ex_code,
+        #    'HALO_EXCHANGE_PD',
+        #    CC=build.MPI_CC
+        #)['HALO_EXCHANGE_PD']
 
     def get_cpp_headers_ast(self):
         """
