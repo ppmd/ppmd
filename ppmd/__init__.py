@@ -23,7 +23,8 @@ __all__ = [ 'config',
             'opt',
             'utility',
             'logic',
-            'module']
+            'module',
+            'coulomb']
 
 
 import config
@@ -49,4 +50,5 @@ import fio
 import opt
 import utility
 import module
+import coulomb
 
