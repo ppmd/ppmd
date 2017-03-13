@@ -2,6 +2,10 @@
 Methods for Coulombic forces and energies.
 """
 
+__author__ = "W.R.Saunders"
+__copyright__ = "Copyright 2016, W.R.Saunders"
+__license__ = "GPL"
+
 from math import sqrt, log, ceil, pi, exp
 import numpy as np
 import ctypes

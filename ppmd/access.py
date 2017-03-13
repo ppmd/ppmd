@@ -2,6 +2,10 @@
 This module contains the access descriptor class and the pre-defined access descriptors to use when passing
 instances of ParticleDat and ScalarArray to the build system.
 """
+__author__ = "W.R.Saunders"
+__copyright__ = "Copyright 2016, W.R.Saunders"
+__license__ = "GPL"
+
 
 """
 rst_doc{
