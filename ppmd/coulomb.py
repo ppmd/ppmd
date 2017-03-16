@@ -106,6 +106,24 @@ class CoulombicEnergy(object):
         self._lib = build.simple_lib_creator(header, source, 'CoulombicEnergyOrth')
 
 
+    def evaluate_python(self, positions):
+        # python version for sanity
+
+        N_LOCAL = positions.npart
+
+        for lx in range(N_LOCAL):
+
+            print positions[lx, :]
+
+
+
+
+
+
+
+
+
+
 
 
 
