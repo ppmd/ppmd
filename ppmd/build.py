@@ -385,7 +385,7 @@ def md5(string):
     m.update(string)
     return m.hexdigest()
 
-def source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR):
+def source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR, CC=TMPCC):
 
 
     _filename = 'HOST_' + str(name)
@@ -396,10 +396,12 @@ def source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir
         _filename += '_' + str(mpi.MPI_HANDLE.rank)
 
     _fh = open(os.path.join(dst_dir, _filename + extensions[0]), 'w')
+
     _fh.write('''
         #ifndef %(UNIQUENAME)s_H
         #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        ''' % {'UNIQUENAME':_filename})
+        #define RESTRICT %(RESTRICT_FLAG)s
+        ''' % {'UNIQUENAME':_filename, 'RESTRICT_FLAG':str(CC.restrict_keyword)})
 
     _fh.write(str(header_code))
 
@@ -447,7 +449,7 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
     if not check_file_existance(_lib_filename):
 
         if (mpi.MPI_HANDLE.rank == 0)  or BUILD_PER_PROC:
-            source_write(header_code, src_code, name, extensions=extensions, dst_dir=runtime.BUILD_DIR)
+            source_write(header_code, src_code, name, extensions=extensions, dst_dir=runtime.BUILD_DIR, CC=CC)
         build_lib(_filename, extensions=extensions, CC=CC, hash=False)
 
     return load(_lib_filename)
@@ -490,7 +492,7 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
                 _c_cmd += CC.dbg_flags
             if runtime.OPT > 0:
                 _c_cmd += CC.opt_flags
-
+            
             _c_cmd += CC.shared_lib_flag
 
 

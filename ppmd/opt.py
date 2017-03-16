@@ -23,7 +23,7 @@ import build
 import mpi
 import pio
 import host
-import kernel
+import module
 
 def get_timer_accuracy():
 
@@ -132,7 +132,7 @@ class Timer(object):
 
 
 
-class LoopTimer(kernel.Module):
+class LoopTimer(module.Module):
     """
     Object to time the runtime of loops. Provides C++ code to be added to the
     generated code.
