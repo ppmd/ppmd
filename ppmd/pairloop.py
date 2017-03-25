@@ -1,4 +1,10 @@
 # system level
+
+__author__ = "W.R.Saunders"
+__copyright__ = "Copyright 2016, W.R.Saunders"
+__license__ = "GPL"
+
+
 import ctypes
 import os
 import cgen
@@ -989,8 +995,11 @@ class PairLoopNeighbourListNS(object):
         opt.PROFILE[
             self.__class__.__name__+':'+self._kernel.name+':execute_internal'
         ] = self.loop_timer.time
+        
+
 
         self._kernel_execution_count += self.neighbour_list.neighbour_starting_points[self.neighbour_list.n_local]
+        
 
         opt.PROFILE[
             self.__class__.__name__+':'+self._kernel.name+':kernel_execution_count'

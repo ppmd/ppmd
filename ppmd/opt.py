@@ -2,6 +2,11 @@
 Optimisation and profiling tools
 """
 
+__author__ = "W.R.Saunders"
+__copyright__ = "Copyright 2016, W.R.Saunders"
+__license__ = "GPL"
+
+
 # system level imports
 import ctypes
 from mpi4py.MPI import SUM

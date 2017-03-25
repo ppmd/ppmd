@@ -2,6 +2,11 @@
 This module contains high level arrays and matrices.
 """
 
+__author__ = "W.R.Saunders"
+__copyright__ = "Copyright 2016, W.R.Saunders"
+__license__ = "GPL"
+
+
 # system level
 from mpi4py import MPI
 import sys
