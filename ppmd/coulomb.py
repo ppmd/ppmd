@@ -53,6 +53,9 @@ class CoulombicEnergy(object):
         nmax_y = int(ceil(tau1))*1
         nmax_z = int(ceil(tau1))*1
 
+        nmax_x = 2
+        nmax_y = 2
+        nmax_z = 2
         print 'nmax:', nmax_x, nmax_y, nmax_z
         
         # find shortest nmax_i * gi
@@ -96,7 +99,7 @@ class CoulombicEnergy(object):
         self._vars['recip_axis'] = np.zeros((2,2*nmax_t+1,3), dtype=ctypes.c_double)
         # recpirocal space
         self._vars['recip_space'] = np.zeros((2, 2*nmax_x+1, 2*nmax_y+1, 2*nmax_z+1), dtype=ctypes.c_double)
-
+        self._vars['coeff_space'] = np.zeros((nmax_x+1, nmax_y+1, nmax_z+1), dtype=ctypes.c_double)
 
 
         with open(str(runtime.LIB_DIR) + '/CoulombicEnergyOrthSource.h','r') as fh:
@@ -131,7 +134,7 @@ class CoulombicEnergy(object):
     def evaluate_python(self, positions):
         # python version for sanity
 
-        np.set_printoptions(linewidth=180)
+        np.set_printoptions(linewidth=400)
 
         N_LOCAL = positions.npart_local
 
@@ -140,6 +143,10 @@ class CoulombicEnergy(object):
         recip_axis_len = self._vars['recip_axis_len'].value
         nmax_vec = self._vars['nmax_vec']
         recip_space = self._vars['recip_space']
+
+        coeff_space = self._vars['coeff_space']
+        max_recip = self._vars['max_recip'].value
+        alpha = self._vars['alpha'].value
 
         print "recip_axis_len", recip_axis_len
 
@@ -151,7 +158,7 @@ class CoulombicEnergy(object):
 
             for dx in range(3):
 
-                gi = recip_vec[dx,dx]
+                gi = -1.0 * recip_vec[dx,dx]
                 ri = positions[lx, dx]*gi
 
                 # unit at middle as exp(0) = 1+0i
@@ -168,7 +175,6 @@ class CoulombicEnergy(object):
                 base_el = recip_axis[:, recip_axis_len+1, dx]
                 recip_axis[0, recip_axis_len-1, dx] = base_el[0]
                 recip_axis[1, recip_axis_len-1, dx] = -1. * base_el[1]
-
 
 
                 # +ve part
@@ -200,11 +206,74 @@ class CoulombicEnergy(object):
                         )
                         recip_space[:,rx,ry,rz] += tmp[:]
 
-
-
-
         print 60*"="
-        print recip_space[:]
+        print "re"
+        print recip_space[0,:,:,:]
+        print "im"
+        print recip_space[1,:,:,:]
+        # evaluate coefficient space
+
+        max_recip2 = max_recip**2.
+        base_coeff1 = 4.*pi
+        base_coeff2 = -1./(4.*alpha)
+
+        for rz in xrange(nmax_vec[2]+1):
+            for ry in xrange(nmax_vec[1]+1):
+                for rx in xrange(nmax_vec[0]+1):
+                    if not (rx == 0 and ry == 0 and rz == 0):
+
+                        rlen2 = (rx*recip_vec[0,0])**2. + (ry*recip_vec[1,1])**2. + (rz*recip_vec[2,2])**2.
+
+                        if rlen2 > max_recip2:
+                            coeff_space[rx,ry,rz] = 0.0
+                        else:
+                            coeff_space[rx,ry,rz] = (base_coeff1/rlen2)*exp(rlen2*base_coeff2)
+
+        print 60*'='
+
+        for rz in range(nmax_vec[2]+1):
+            print coeff_space[:,:,rz]
+
+
+        # evaluate total long range contribution loop over each particle then
+        # over the reciprocal space
+
+        eng = 0.
+        eng_im = 0.
+
+        for px in range(N_LOCAL):
+
+            rx = positions[px, 0]
+            ry = positions[px, 1]
+            rz = positions[px, 2]
+
+            for kz in xrange(2*nmax_vec[2]+1):
+                rzkz = rz*recip_vec[2,2]*(kz-nmax_vec[2])
+                for ky in xrange(2*nmax_vec[1]+1):
+                    ryky = ry*recip_vec[1,1]*(ky-nmax_vec[1])
+                    for kx in xrange(2*nmax_vec[0]+1):
+                        rxkx = rx*recip_vec[0,0]*(kx-nmax_vec[0])
+
+                        coeff = coeff_space[
+                            abs(kx-nmax_vec[0]),
+                            abs(ky-nmax_vec[1]),
+                            abs(kz-nmax_vec[2])
+                        ]
+
+                        re_coeff = cos(rzkz+ryky+rxkx)*coeff
+                        im_coeff = sin(rzkz+ryky+rxkx)*coeff
+
+                        re_con = recip_space[0, kx,ky,kz]
+                        im_con = recip_space[1, kx,ky,kz]
+
+                        eng += re_coeff*re_con - im_coeff*im_con
+                        eng_im += re_coeff*im_con + im_coeff*re_con
+
+                        print re_coeff, im_coeff, re_con, im_con
+
+
+        print "ENG", eng
+        print "iENG", eng_im
 
 
 
