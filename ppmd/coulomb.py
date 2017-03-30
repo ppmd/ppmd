@@ -6,7 +6,7 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
-from math import sqrt, log, ceil, pi, exp, cos, sin
+from math import sqrt, log, ceil, pi, exp, cos, sin, erfc
 import numpy as np
 import ctypes
 import  build
@@ -131,7 +131,7 @@ class CoulombicEnergy(object):
         gh[1] = axmby*k[1] + xbpay*k[0]
 
 
-    def evaluate_python(self, positions):
+    def evaluate_python_lr(self, positions, charges):
         # python version for sanity
 
         np.set_printoptions(linewidth=400)
@@ -193,6 +193,7 @@ class CoulombicEnergy(object):
                 print "\t", ri,2*"\n","re", recip_axis[0,:,dx], "\nim", recip_axis[1,:,dx]
 
             # now calculate the contributions to all of recip space
+            qx = charges[lx, 0]
             tmp = np.zeros(2, dtype=ctypes.c_double)
             for rz in xrange(2*nmax_vec[2]+1):
                 for ry in xrange(2*nmax_vec[1]+1):
@@ -204,7 +205,7 @@ class CoulombicEnergy(object):
                             recip_axis[:,rz,2],
                             tmp[:]
                         )
-                        recip_space[:,rx,ry,rz] += tmp[:]
+                        recip_space[:,rx,ry,rz] += tmp[:]*qx
 
         print 60*"="
         print "re"
@@ -263,31 +264,68 @@ class CoulombicEnergy(object):
                         re_coeff = cos(rzkz+ryky+rxkx)*coeff
                         im_coeff = sin(rzkz+ryky+rxkx)*coeff
 
-                        re_con = recip_space[0, kx,ky,kz]
-                        im_con = recip_space[1, kx,ky,kz]
+                        re_con = recip_space[0,kx,ky,kz]
+                        im_con = recip_space[1,kx,ky,kz]
 
                         eng += re_coeff*re_con - im_coeff*im_con
                         eng_im += re_coeff*im_con + im_coeff*re_con
 
                         print re_coeff, im_coeff, re_con, im_con
 
-
         print "ENG", eng
         print "iENG", eng_im
 
+        return eng
+
+
+    def evaluate_python_self(self, charges):
+
+        alpha = self._vars['alpha'].value
+        N_LOCAL = charges.npart_local
+
+        eng_self = 0.0
+        for px in xrange(N_LOCAL):
+            eng_self += charges[px, 0]**2.
+
+        eng_self *= sqrt(alpha/pi)
+
+        return eng_self
 
 
 
+    def evaluate_python_sr(self, positions, charges):
+        extent = self.domain.extent
+        N_LOCAL = positions.npart_local
+        alpha = self._vars['alpha'].value
+        cutoff2 = self.real_cutoff**2.
+        sqrt_alpha = sqrt(alpha)
 
+        # N^2 way for checking.....
+        eng = 0.0
+        for ix in xrange(N_LOCAL):
+            for jx in xrange(N_LOCAL):
+                if ix != jx:
+                    ri = positions[ix,:]
+                    rj = positions[jx,:]
+                    qi = charges[ix, 0]
+                    qj = charges[jx, 0]
 
+                    rij = rj - ri
 
+                    if rij[0] > extent[0]/2:
+                        rij[0] = extent[0] - rij[0]
+                    if rij[1] > extent[1]/2:
+                        rij[1] = extent[1] - rij[1]
+                    if rij[2] > extent[2]/2:
+                        rij[2] = extent[2] - rij[2]
 
+                    r2 = rij[0]**2. * rij[1]**2. * rij[2]**2.
+                    if r2 < cutoff2:
+                        len_rij = sqrt(r2)
+                        eng += qi*qj*erfc(sqrt_alpha*len_rij)/len_rij
 
-
-
-
-
-
+        eng *= 0.5
+        return eng
 
 
 
