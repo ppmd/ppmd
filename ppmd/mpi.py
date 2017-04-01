@@ -356,7 +356,7 @@ class MPISHM(object):
             self.init = True
 
     def _print_comm_info(self):
-
+        self._init_comms()
         print self.intra_comm.Get_rank(), self.intra_comm.Get_size()
         if self.intra_comm.Get_rank() == 0:
             print self.inter_comm.Get_rank(), self.inter_comm.Get_size()
