@@ -291,9 +291,9 @@ class MDMPI(object):
 
 
 
-###########################################################################################################
+###############################################################################
 # MPI_HANDLE
-###########################################################################################################
+###############################################################################
 
 # Main MPI communicatior used by program.
 
@@ -315,6 +315,76 @@ def all_reduce(array):
         rarr
     )
     return rarr
+
+###############################################################################
+# shared memory mpi handle
+###############################################################################
+
+class MPISHM(object):
+    """
+    This class controls two mpi communicators (assuming MPI3 or higher). 
+
+    The first communicator from:
+        MPI_Comm_split_type(..., MPI_COMM_TYPE_SHARED,...).
+    
+    The second a communicator between rank 0 of the shared memory regions.
+    """
+
+    def __init__(self):
+        self.init = False
+        self.inter_comm = None
+        self.intra_comm = None
+
+    def _init_comms(self):
+        """
+        Initialise the communicators.
+        """
+
+        if not self.init:
+            assert MPI.VERSION >= 3, "MPI ERROR: mpi4py is not built against"\
+                + " a MPI3 or higher MPI distribution."
+
+            self.intra_comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
+
+            if self.intra_comm.Get_rank() == 0:
+                colour = 0
+            else:
+                colour = MPI.UNDEFINED
+
+            self.inter_comm = MPI.COMM_WORLD.Split(color=colour)
+
+            self.init = True
+
+    def _print_comm_info(self):
+
+        print self.intra_comm.Get_rank(), self.intra_comm.Get_size()
+        if self.intra_comm.Get_rank() == 0:
+            print self.inter_comm.Get_rank(), self.inter_comm.Get_size()
+
+    def get_intra_comm(self):
+        """
+        get communicator for shared memory region.
+        """
+        self._init_comms()
+        return self.intra_comm
+
+    def get_inter_comm(self):
+        """
+        get communicator between shared memory regions.
+        """
+        self._init_comms()
+        if self.intra_comm.Get_rank() != 0:
+            print "warning this MPI comm is undefined on this rank"
+        return self.inter_comm
+
+
+
+
+
+
+
+
+
 
 
 
