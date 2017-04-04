@@ -11,6 +11,7 @@ import numpy as np
 #package level
 import runtime
 import pio
+import os
 
 
 mpi_map = {ct.c_double: MPI.DOUBLE, ct.c_int: MPI.INT, int: MPI.INT}
@@ -377,23 +378,82 @@ class MPISHM(object):
             print "warning this MPI comm is undefined on this rank"
         return self.inter_comm
 
+###############################################################################
+# sared memory default
+###############################################################################
+
+SHMMPI_HANDLE = MPISHM()
+
+
+###############################################################################
+# shared memory mpi handle
+###############################################################################
 
 
 
+class SHMWIN(object):
+    """
+    Create a shared memory window in each shared memory region
+    """
+    def __init__(self, size=None):
+        """
+        Allocate a shared memory region.
+        :param size: Number of bytes per process.
+        """
+        assert size is not None, "No size passed"
+        self._swin = MPI.Win()
+        """temp window object."""
+        self.win = self._swin.Allocate_shared(size=size, comm=SHMMPI_HANDLE.get_intra_comm())
+        """Win instance with shared memory allocated"""
 
 
+        rank = SHMMPI_HANDLE.get_intra_comm().Get_rank()
+        size = SHMMPI_HANDLE.get_intra_comm().Get_size()
+        print rank, self.win.memory, self.win.model == MPI.WIN_UNIFIED
+
+        lib = ct.cdll.LoadLibrary("/home/wrs20/md_workspace/test1.so")
+
+        self.win.Fence()
+        MPI.COMM_WORLD.Barrier()
+
+        ptr = ct.c_void_p(self.win.Get_attr(MPI.WIN_BASE))
+
+        print "\t", rank, ptr
+
+        self.win.Fence()
+        MPI.COMM_WORLD.Barrier()
+
+        lib['test1'](
+            ptr,
+            ct.c_int(size),
+            ct.c_int(rank)
+        )
 
 
+        self.win.Fence()
+        MPI.COMM_WORLD.Barrier()
+        lib['test2'](
+            ptr,
+            ct.c_int(size),
+            ct.c_int(rank)
+        )
 
+        self.win.Fence()
+        MPI.COMM_WORLD.Barrier()
+        lib['test3'](
+            ptr,
+            ct.c_int(size),
+            ct.c_int(rank)
+        )
 
+        self.win.Fence()
+        MPI.COMM_WORLD.Barrier()
 
-
-
-
-
-
-
-
+        lib['test1'](
+            ptr,
+            ct.c_int(size),
+            ct.c_int(rank)
+        )
 
 
 
