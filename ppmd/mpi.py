@@ -429,7 +429,6 @@ class SHMWIN(object):
             ct.c_int(rank)
         )
 
-
         self.win.Fence()
         MPI.COMM_WORLD.Barrier()
         lib['test2'](
