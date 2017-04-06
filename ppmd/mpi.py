@@ -395,22 +395,30 @@ class SHMWIN(object):
     """
     Create a shared memory window in each shared memory region
     """
-    def __init__(self, size=None):
+    def __init__(self, size=None, intracomm=None):
         """
         Allocate a shared memory region.
         :param size: Number of bytes per process.
+        :param intracomm: Intracomm to use.
         """
         assert size is not None, "No size passed"
+        assert intracomm is not None, "No intracomm passed"
         self._swin = MPI.Win()
         """temp window object."""
-        self.win = self._swin.Allocate_shared(size=size, comm=SHMMPI_HANDLE.get_intra_comm())
+        self.win = self._swin.Allocate_shared(size=size, comm=intracomm)
         """Win instance with shared memory allocated"""
 
+        assert self.win.model == MPI.WIN_UNIFIED, "Memory model is not MPI_WIN_UNIFIED"
 
-        rank = SHMMPI_HANDLE.get_intra_comm().Get_rank()
-        size = SHMMPI_HANDLE.get_intra_comm().Get_size()
-        print rank, self.win.memory, self.win.model == MPI.WIN_UNIFIED
+        self.size = size
+        """Size in allocated per process in intercomm"""
+        self.intercomm = intracomm
+        """Intercomm for RMA shared memory window"""
+        self.base = ct.c_void_p(self.win.Get_attr(MPI.WIN_BASE))
+        """base pointer for calling rank in shared memory window"""
 
+
+    def _test(self):
         lib = ct.cdll.LoadLibrary("/home/wrs20/md_workspace/test1.so")
 
         self.win.Fence()
