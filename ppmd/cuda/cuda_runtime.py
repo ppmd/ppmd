@@ -6,6 +6,7 @@ import ctypes
 import os
 import math
 import atexit
+import sys
 
 # pycuda imports
 import pycuda.driver as cudadrv
@@ -103,12 +104,17 @@ def cuda_set_device(device=None):
     else:
         return cudadrv.Device(device)
 
+
+
+
+
 # Set device
 DEVICE = cuda_set_device()
 # Make context
 CONTEXT = DEVICE.make_context()
+
 # Register destruction
-atexit.register(CONTEXT.pop)
+atexit.register(CONTEXT.detach)
 
 
 

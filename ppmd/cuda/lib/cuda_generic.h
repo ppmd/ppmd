@@ -1,3 +1,14 @@
+/*
+
+Certain portions of this file are copied/adapted from:
+
+https://github.com/parallel-forall/code-samples
+
+And fall under a BSD license. These lines of code are found in the later
+lines of this file with a copy of the license included.
+
+*/
+
 #ifndef __CUDA_GENERIC__
 #define __CUDA_GENERIC__
 
@@ -11,51 +22,108 @@
     //#include "cuda_counting_types.h"
     #include <iostream>
 
-__device__ bool isnormal(double value)
-{
-	return !(isinf(value) || isnan(value));
+
+
+    //using namespace std;
+
+
+    template <typename T>
+    struct cuda_Array {
+        T* __restrict__ ptr;
+        int *ncomp;
+    };
+
+    template <typename T>
+    struct cuda_Matrix {
+        T* __restrict__ ptr;
+        int *nrow;
+        int *ncol;
+    };
+
+    template <typename T>
+    struct cuda_ParticleDat {
+        T* __restrict__ ptr;
+        int* nrow;
+        int* ncol;
+        int* npart;
+        int* ncomp;
+    };
+
+
+    template <typename T>
+    struct const_cuda_ParticleDat {
+        const T* __restrict__ ptr;
+        const int* nrow;
+        const int* ncol;
+        const int* npart;
+        const int* ncomp;
+    };
+
+
+    cudaError_t cudaCreateLaunchArgs(
+        const int N,    // Total minimum number of threads.
+        const int Nt,   // Number of threads per block.
+        dim3* bs,       // RETURN: grid of thread blocks.
+        dim3* ts        // RETURN: grid of threads
+        ){
+
+    if ((N<0) || (Nt<0)){
+        std::cout << "cudaCreateLaunchArgs Error: Invalid desired number of total threads " << N <<
+            "or invalid number of threads per block " << Nt << std::endl;
+        return cudaErrorUnknown;
+    }
+
+    const int Nb = ceil(((double) N) / ((double) Nt));
+
+    bs->x = Nb; bs->y = 1; bs->z = 1;
+    ts->x = Nt; ts->y = 1; ts->z = 1;
+
+    return cudaSuccess;
 }
-    using namespace std;
-    /*
-    // double shuffle down edited from nvidia example
-    __device__ __inline__ double shfl_down_double(double x, int lane){
 
-        int lo, hi;
-
-        //split into parts
-        asm volatile("mov.b32 {%0,%1}, %2;" : "=r"(lo), "=r"(hi) : "d"(x) );
-
-        // everyone do the shuffle. (32b registers)
-        lo = __shfl_down(lo, lane);
-        hi = __shfl_down(hi, lane);
-
-        //recreate 64bits
-        asm volatile( "mov.b64 %0, {%1,%2};" : "=d"(x) : "r"(lo) : "r"(hi) );
-
-
-        return x;
+    __device__ bool isnormal(double value)
+    {
+        return !(isinf(value) || isnan(value));
     }
 
-    //double shuffle edited from nvidia example
-    __device__ __inline__ double shfl_double(double x, int lane){
-
-        int lo, hi;
-
-        //split into parts
-        asm volatile("mov.b32 {%0,%1}, %2;" : "=r"(lo), "=r"(hi) : "d"(x) );
-
-        // everyone do the shuffle. (32b registers)
-        lo = __shfl(lo, lane);
-        hi = __shfl(hi, lane);
 
 
-        //recreate 64bits
-        asm volatile( "mov.b64 %0, {%1,%2};" : "=d"(x) : "r"(lo) : "r"(hi) );
 
-        return x;
-    }
-    */
-    
+
+/*
+Lines below this point are subject to the following license.
+
+
+# Copyright (c) 1993-2015, NVIDIA CORPORATION. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#  * Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#  * Neither the name of NVIDIA CORPORATION nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+*/
+
     __device__ inline
     double shfl_down_double(double var, unsigned int srcLane, int width=32) {
       int2 a = *reinterpret_cast<int2*>(&var);
@@ -87,7 +155,6 @@ __device__ bool isnormal(double value)
         val = max(shfl_down_double(val, offset), val);
       return val;
     }
-
 
 
     __inline__ __device__ double atomicMaxDouble(double *address, double val){
@@ -131,64 +198,6 @@ __device__ bool isnormal(double value)
         return old;
     }
 
-
-template <typename T>
-struct cuda_Array {
-    T* __restrict__ ptr;
-    int *ncomp;
-};
-
-template <typename T>
-struct cuda_Matrix {
-    T* __restrict__ ptr;
-    int *nrow;
-    int *ncol;
-};
-
-template <typename T>
-struct cuda_ParticleDat {
-    T* __restrict__ ptr;
-    int* nrow;
-    int* ncol;
-    int* npart;
-    int* ncomp;
-};
-
-
-template <typename T>
-struct const_cuda_ParticleDat {
-    const T* __restrict__ ptr;
-    const int* nrow;
-    const int* ncol;
-    const int* npart;
-    const int* ncomp;
-};
-
-
-
-
-
-
-cudaError_t cudaCreateLaunchArgs(
-        const int N,    // Total minimum number of threads.
-        const int Nt,   // Number of threads per block.
-        dim3* bs,       // RETURN: grid of thread blocks.
-        dim3* ts        // RETURN: grid of threads
-        ){
-
-    if ((N<0) || (Nt<0)){
-        cout << "cudaCreateLaunchArgs Error: Invalid desired number of total threads " << N <<
-            "or invalid number of threads per block " << Nt << endl;
-        return cudaErrorUnknown;
-    }
-
-    const int Nb = ceil(((double) N) / ((double) Nt));
-
-    bs->x = Nb; bs->y = 1; bs->z = 1;
-    ts->x = Nt; ts->y = 1; ts->z = 1;
-
-    return cudaSuccess;
-}
 
 
 
