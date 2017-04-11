@@ -275,15 +275,6 @@ class CartesianHalo(object):
 
 
 
-
-HALOS = None
-
-
-
-
-
-
-
 def copy_h2d_exclusive_scan(in_array, out_array):
     """
     Copy an Array and compute an exclusive scan on the copy. Resizes out array

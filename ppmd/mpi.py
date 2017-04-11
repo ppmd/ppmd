@@ -90,17 +90,15 @@ class MDMPI(object):
             pio.pprint("Processor count ", self.nproc, " Processor layout ", self.dims)
 
 
+    def free_comm(self):
+        if self._COMM is not None and self._COMM is not MPI.COMM_WORLD:
+            self._COMM.Free()
+
+
     @property
     def fortran_comm(self):
         return self._COMM.py2f()
 
-    @comm.setter
-    def comm(self, new_comm=None):
-        """
-        Set the current communicator.
-        """
-        assert new_comm is not None, "MDMPI error: no new communicator assigned."
-        self._COMM = new_comm
 
     def __call__(self):
         """
@@ -170,7 +168,7 @@ class MDMPI(object):
         alias to comm barrier method.
         """
 
-        # MPI.COMM_WORLD.Barrier()
+        #MPI.COMM_WORLD.Barrier()
         if self._COMM is not None:
             self._COMM.Barrier()
 
@@ -300,7 +298,11 @@ class MDMPI(object):
 
 MPI_HANDLE = None
 def reset_mpi():
+
     global MPI_HANDLE
+    if MPI_HANDLE is not None:
+        del MPI_HANDLE
+
     MPI_HANDLE = MDMPI()
 
 reset_mpi()

@@ -52,8 +52,9 @@ def source_write(header_code, src_code, name, extensions=('.h', '.cu'), dst_dir=
 def load(filename):
     try:
         return ctypes.cdll.LoadLibrary(str(filename))
-    except:
+    except Exception as e:
         print "cuda_build:load error. Could not load following library,", str(filename)
+        print e
         quit()
 
 def check_file_existance(abs_path=None):
