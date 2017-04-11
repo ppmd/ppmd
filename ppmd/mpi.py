@@ -287,7 +287,23 @@ class MDMPI(object):
 
         return send_ranks, recv_ranks
 
+###############################################################################
+# MPI_HANDLE
+###############################################################################
 
+def print_str_on_0(comm, *args):
+    """
+    Method to print on rank 0 to stdout
+    """
+
+    if comm.Get_rank() == 0:
+        _s = ''
+        for ix in args:
+            _s += str(ix) + ' '
+        print _s
+        sys.stdout.flush()
+
+    comm.Barrier()
 
 
 ###############################################################################

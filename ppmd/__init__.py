@@ -21,9 +21,7 @@ __all__ = [ 'config',
             'pio',
             'potential',
             'runtime',
-            'simulation',
             'state',
-            'fio',
             'opt',
             'utility',
             'logic',
@@ -48,9 +46,7 @@ import pairloop
 import pio
 import potential
 import runtime
-import simulation
 import state
-import fio
 import opt
 import utility
 import module

@@ -61,7 +61,7 @@ class BaseDomainHalo(object):
         self._boundary_cells = None
 
 
-
+        self.comm = mpi.MPI_HANDLE.comm
 
 
 

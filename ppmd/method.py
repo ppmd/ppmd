@@ -27,7 +27,6 @@ import os
 import re
 import datetime
 import inspect
-from mpi4py import MPI
 import cProfile
 
 # package level
@@ -41,6 +40,13 @@ import mpi
 import opt
 import access
 np.set_printoptions(threshold='nan')
+
+_MPI = mpi.MPI
+_MPIWORLD = mpi.MPI.COMM_WORLD
+_MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
+_MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
+_MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
+
 
 ###############################################################################
 # Cell to Particle map handler for MD integrators
@@ -130,7 +136,7 @@ class ListUpdateController(object):
 
         if self._moved_distance >= 0.5 * self._delta:
             print "RANK %(RK)s  WARNING: Max velocity triggered list rebuild |" % \
-                  {'RK':mpi.MPI_HANDLE.rank}, mpi.MPI_HANDLE.rank, "distance",\
+                  {'RK':_MPIRANK}, _MPIRANK, "distance",\
                   self._moved_distance, "times reused", self._test_count, \
                   "dist:", 0.5 * self._delta
 
@@ -147,11 +153,11 @@ class ListUpdateController(object):
         _ret_old = _ret
 
         _tmp = np.array([_ret], dtype=ctypes.c_int)
-        mpi.MPI_HANDLE.comm.Allreduce(_tmp, _tmp, op=MPI.LOR)
+        _MPI.COMM_WORLD.Allreduce(_tmp, _tmp, op=_MPI.LOR)
         _ret = _tmp[0]
 
         if _ret_old == 1 and _ret != 1:
-            print "update status reductypes.on error, rank:", mpi.MPI_HANDLE.rank
+            print "update status reductypes.on error, rank:", _MPIRANK
 
         # print "_ret", _ret, self._delta, self._step_counter, self._step_count
         self.check_status_timer.pause()
@@ -272,12 +278,12 @@ class IntegratorRange(object):
                 self._pr.disable()
                 self._pr.dump_stats(
                     self._cprof_dump + '.' + str(
-                        mpi.MPI_HANDLE.rank
+                        _MPIRANK
                     )
                 )
 
             if self.verbose:
-                if mpi.MPI_HANDLE.rank == 0:
+                if _MPIRANK == 0:
                     print 60*'='
                 tt = self.timer.stop(str='Integration time:')
                 opt.PROFILE[
@@ -285,7 +291,7 @@ class IntegratorRange(object):
                 ] = tt
 
 
-                if mpi.MPI_HANDLE.rank == 0:
+                if _MPIRANK == 0:
                     print 60*'-'
                     opt.print_profile()
                     print 60*'='
@@ -577,7 +583,7 @@ class VelocityVerlet(object):
         #self._sim.forces_update()
 
         for i in range(self._max_it):
-            # print mpi.MPI_HANDLE.rank, "-------", i , self._state.npart_local
+            # print _MPIRANK, "-------", i , self._state.npart_local
 
             self._p1.execute(self._state.npart_local)
 
@@ -739,7 +745,7 @@ class KineticEnergyTracker(object):
     def get_kinetic_energy_array(self):
         arr = np.array(self._ke_store, dtype=ctypes.c_double)
         rarr = np.zeros_like(arr)
-        mpi.MPI_HANDLE.comm.Allreduce(
+        _MPI.COMM_WORLD.Allreduce(
             arr,
             rarr
         )
@@ -764,7 +770,7 @@ class PotentialEnergyTracker(object):
     def get_potential_energy_array(self):
         arr = np.array(self._u_store, dtype=ctypes.c_double)
         rarr = np.zeros_like(arr)
-        mpi.MPI_HANDLE.comm.Allreduce(
+        _MPI.COMM_WORLD.Allreduce(
             arr,
             rarr
         )
@@ -951,7 +957,7 @@ class WriteTrajectoryXYZ(object):
         self._dn = dir_name
         self._fh = None
 
-        if mpi.MPI_HANDLE.rank == 0:
+        if _MPIRANK == 0:
             self._fh = open(os.path.join(self._dn, self._fn), 'w')
             self._fh.close()
 
@@ -967,16 +973,16 @@ class WriteTrajectoryXYZ(object):
 
         space = ' '
 
-        if mpi.MPI_HANDLE.rank == 0:
+        if _MPIRANK == 0:
             self._fh = open(os.path.join(self._dn, self._fn), 'a')
             self._fh.write(str(self._s.npart) + '\n')
             self._fh.write(str(self._title) + '\n')
             self._fh.flush()
-        mpi.MPI_HANDLE.barrier()
+        _MPIBARRIER()
 
         if self._ordered is False:
-            for iz in range(mpi.MPI_HANDLE.nproc):
-                if mpi.MPI_HANDLE.rank == iz:
+            for iz in range(_MPISIZE):
+                if _MPIRANK == iz:
                     self._fh = open(os.path.join(self._dn, self._fn), 'a')
                     for ix in range(self._s.npart):
                         self._fh.write(str(self._symbol).rjust(3))
@@ -987,7 +993,7 @@ class WriteTrajectoryXYZ(object):
                     self._fh.flush()
                     self._fh.close()
 
-                mpi.MPI_HANDLE.barrier()
+                _MPIBARRIER()
 
         self.timer.pause()
 
@@ -1162,7 +1168,7 @@ class VelocityAutoCorrelation(object):
 
             print _Vloc
 
-            mpi.MPI_HANDLE.comm.Reduce(_Vloc, _V, data.MPI.SUM, 0)
+            _MPI.COMM_WORLD.Reduce(_Vloc, _V, _MPI.SUM, 0)
 
             if len(self._T) > 0:
                 plt.ion()
@@ -1199,8 +1205,6 @@ class DrawParticles(object):
 
         self._state = state
 
-        self._Mh = mpi.MPI_HANDLE
-
         self._Dat = None
         self._gids = None
         self._pos = None
@@ -1210,7 +1214,7 @@ class DrawParticles(object):
         self._NT = None
         self._extents = None
 
-        if (mpi.MPI_HANDLE.rank == 0) and _GRAPHICS:
+        if (_MPIRANK == 0) and _GRAPHICS:
             plt.ion()
             self._fig = plt.figure()
             self._ax = self._fig.add_subplot(111, projection='3d')
@@ -1236,13 +1240,12 @@ class DrawParticles(object):
             self._extents = self._state.domain.extent
 
             '''Case where all particles are local'''
-            if self._Mh is None:
+            if _MPISIZE == 1:
                 self._pos = self._state.positions
                 self._gid = self._state.global_ids
 
             else:
                 '''Need an mpi handle if not all particles are local'''
-                assert self._Mh is not None, "Error: Not all particles are local but mpi.MPI_HANDLE = None."
 
                 '''Allocate if needed'''
                 if self._Dat is None:
@@ -1257,7 +1260,7 @@ class DrawParticles(object):
 
                 _MS = mpi.Status()
 
-                if self._Mh.rank == 0:
+                if _MPIRANK == 0:
 
                     '''Copy the local data.'''
                     self._Dat.data[0:self._N:, ::] = self._state.positions.data[0:self._N:, ::]
@@ -1266,21 +1269,21 @@ class DrawParticles(object):
                     _i = self._N  # starting point pos
                     _ig = self._N  # starting point gids
 
-                    for ix in range(1, self._Mh.nproc):
-                        self._Mh.comm.Recv(self._Dat.data[_i::, ::], ix, ix, _MS)
+                    for ix in range(1, _MPISIZE):
+                        _MPIWORLD.Recv(self._Dat.data[_i::, ::], ix, ix, _MS)
                         _i += _MS.Get_count(mpi.mpi_map[self._Dat.dtype]) / 3
 
-                        self._Mh.comm.Recv(self._gids.data[_ig::], ix, ix, _MS)
+                        _MPIWORLD.Recv(self._gids.data[_ig::], ix, ix, _MS)
                         _ig += _MS.Get_count(mpi.mpi_map[self._gids.dtype])
 
                     self._pos = self._Dat
                     self._gid = self._gids
                 else:
 
-                    self._Mh.comm.Send(self._state.positions.data[0:self._N:, ::], 0, self._Mh.rank)
-                    self._Mh.comm.Send(self._state.global_ids.data[0:self._N:], 0, self._Mh.rank)
+                    _MPIWORLD.Send(self._state.positions.data[0:self._N:, ::], 0, _MPIRANK)
+                    _MPIWORLD.Send(self._state.global_ids.data[0:self._N:], 0, _MPIRANK)
 
-            if self._Mh.rank == 0:
+            if _MPIRANK == 0:
 
 
                 plt.cla()
@@ -1289,7 +1292,7 @@ class DrawParticles(object):
                     self._ax.scatter(self._pos.data[ix, 0], self._pos.data[ix, 1], self._pos.data[ix, 2],
                                      color=self._key[self._gid[ix] % 2])
 
-                    if mpi.MPI_HANDLE.nproc == 1:
+                    if _MPISIZE == 1:
 
                         self._ax.plot((self._pos.data[ix, 0], self._pos.data[ix, 0] + self.norm_vec(self._state.forces.data[ix, 0])),
                                       (self._pos.data[ix, 1], self._pos.data[ix, 1] + self.norm_vec(self._state.forces.data[ix, 1])),
@@ -1335,7 +1338,6 @@ class EnergyStore(object):
         assert state is not None, "EnergyStore error, no state passed."
 
         self._state = state
-        self._Mh = mpi.MPI_HANDLE
 
         self._t = []
         self._k = []
@@ -1389,13 +1391,13 @@ class EnergyStore(object):
 
         '''REPLACE THIS WITH AN MPI4PY REDUCE CALL'''
 
-        if (self._Mh is not None) and (self._Mh.nproc > 1):
+        if _MPISIZE > 1:
 
             # data to collect
             _d = [self._Q_store.data, self._U_store.data, self._K_store.data]
 
             # make a temporary buffer.
-            if self._Mh.rank == 0:
+            if _MPIRANK == 0:
                 _buff = data.ScalarArray(ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
                 _T = self._T_store.data
                 _Q = data.ScalarArray( ncomp=self._T_store.ncomp, dtype=ctypes.c_double)
@@ -1412,16 +1414,16 @@ class EnergyStore(object):
 
             for _di, _dj in zip(_d, _dl):
 
-                if self._Mh.rank == 0:
+                if _MPIRANK == 0:
                     _MS = mpi.Status()
-                    for ix in range(1, self._Mh.nproc):
-                        self._Mh.comm.Recv(_buff.data[::], ix, ix, _MS)
+                    for ix in range(1, _MPISIZE):
+                        _MPIWORLD.Recv(_buff.data[::], ix, ix, _MS)
                         _dj[::] += _buff.data[::]
 
                 else:
-                    self._Mh.comm.Send(_di[::], 0, self._Mh.rank)
+                    _MPIWORLD.Send(_di[::], 0, _MPIRANK)
 
-            if self._Mh.rank == 0:
+            if _MPIRANK == 0:
                 _Q = _Q.data
                 _U = _U.data
                 _K = _K.data
@@ -1434,7 +1436,7 @@ class EnergyStore(object):
 
 
 
-        if (mpi.MPI_HANDLE.rank == 0) and _GRAPHICS:
+        if (_MPIRANK == 0) and _GRAPHICS:
             print "last total", _Q[-1]
             print "last kinetic", _K[-1]
             print "last potential", _U[-1]
@@ -1460,7 +1462,7 @@ class EnergyStore(object):
                 fig2.canvas.draw()
                 plt.show(block=False)
 
-        if mpi.MPI_HANDLE.rank == 0:
+        if _MPIRANK == 0:
             if not os.path.exists(os.path.join(os.getcwd(),'./output')):
                 os.system('mkdir ./output')
 
@@ -1471,7 +1473,7 @@ class EnergyStore(object):
                 _fh.write("%(T)s %(K)s %(P)s %(Q)s\n" % {'T':_T[ix], 'K':_K[ix], 'P':_U[ix], 'Q':_Q[ix]})
             _fh.close()
 
-        if (mpi.MPI_HANDLE.rank == 0) and not _GRAPHICS:
+        if (_MPIRANK == 0) and not _GRAPHICS:
             print "last total", _Q[-1]
             print "last kinetic", _K[-1]
             print "last potential", _U[-1]

@@ -14,6 +14,11 @@ import sys
 import datetime
 import os
 
+_MPI = mpi.MPI
+_MPIWORLD = mpi.MPI.COMM_WORLD
+_MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
+_MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
+_MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
 
 ##########################################################################
 # pprint
@@ -26,7 +31,7 @@ def pprint(*args):
     :param string:
     :return:
     """
-    mpi.MPI_HANDLE.print_str(*args)
+    mpi.print_str_on_0(_MPIWORLD, *args)
 
 
 def rprint(*args):
@@ -40,12 +45,12 @@ def rprint(*args):
     for ix in args:
         _s += str(ix)
 
-    for ix in range(mpi.MPI_HANDLE.nproc):
-        if mpi.MPI_HANDLE.rank == ix:
-            print "rank", mpi.MPI_HANDLE.rank, ":", _s
+    for ix in range(_MPISIZE):
+        if _MPIRANK == ix:
+            print "rank", _MPIRANK, ":", _s
             sys.stdout.flush()
 
-        mpi.MPI_HANDLE.barrier()
+        _MPIBARRIER()
 
 
 class pfprint(object):
@@ -54,13 +59,13 @@ class pfprint(object):
     """
     def __init__(self, dirname='./', filename=None):
 
-        if (mpi.MPI_HANDLE.rank == 0) and (not os.path.exists(dirname)):
+        if (_MPIRANK == 0) and (not os.path.exists(dirname)):
             os.mkdir(dirname)
 
         if filename is None:
             _filename = None
 
-            _tf = 'pfprint_' + str(mpi.MPI_HANDLE.nproc) + \
+            _tf = 'pfprint_' + str(_MPISIZE) + \
                   datetime.datetime.now().strftime("_%H%M%S_%d%m%y")
 
             if not os.path.exists(os.path.join(dirname, _tf)):
@@ -81,13 +86,13 @@ class pfprint(object):
 
         self._fh = None
 
-        if mpi.MPI_HANDLE.rank == 0:
+        if _MPIRANK == 0:
             assert _filename is not None, "No suitable file name found."
             self._fh = open(_filename, 'w')
 
     def pprint(self, *args):
 
-        if mpi.MPI_HANDLE.rank == 0:
+        if _MPIRANK == 0:
 
             assert self._fh is not None, "No open file to write to."
 
@@ -102,7 +107,7 @@ class pfprint(object):
 
     def pwrite(self, *args):
 
-        if mpi.MPI_HANDLE.rank == 0:
+        if _MPIRANK == 0:
 
             assert self._fh is not None, "No open file to write to."
 
@@ -125,7 +130,7 @@ class pfprint(object):
         Close the open file.
         """
 
-        if mpi.MPI_HANDLE.rank == 0:
+        if _MPIRANK == 0:
             self._fh.close()
 
 
