@@ -64,7 +64,6 @@ class BaseDomainHalo(object):
         self.comm = mpi.MPI_HANDLE.comm
 
 
-
     def get_boundary_cells(self):
         """
         Return a host.Array containing the boundary cell indices of the domain.

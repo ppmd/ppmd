@@ -6,9 +6,7 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
-
 # system level
-from mpi4py import MPI
 import sys
 import ctypes
 import numpy as np
@@ -26,6 +24,12 @@ import opt
 
 np.set_printoptions(threshold=1000)
 
+_MPI = mpi.MPI
+SUM = _MPI.SUM
+_MPIWORLD = mpi.MPI.COMM_WORLD
+_MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
+_MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
+_MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
 
 
 """
@@ -344,33 +348,34 @@ class ParticleDat(host.Matrix):
 
 
     def broadcast_data_from(self, rank=0, _resize_callback=True):
-        assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
+        # in terms of MPI_COMM_WORLD
+        assert (rank>-1) and (rank<_MPISIZE), "Invalid mpi rank"
 
-        if mpi.MPI_HANDLE.nproc == 1:
+        if _MPISIZE == 1:
             return
         else:
             s = np.array([self._dat.shape[0]], dtype=ctypes.c_int)
-            mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
+            _MPIWORLD.Bcast(s, root=rank)
             self.resize(s[0], _callback=_resize_callback)
-            mpi.MPI_HANDLE.comm.Bcast(self._dat, root=rank)
-
-
+            _MPIWORLD.Bcast(self._dat, root=rank)
 
 
     def gather_data_on(self, rank=0, _resize_callback=False):
-        assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
-        if mpi.MPI_HANDLE.nproc == 1:
+
+        # in terms of MPI_COMM_WORLD
+        assert (rank>-1) and (rank<_MPISIZE), "Invalid mpi rank"
+        if _MPISIZE == 1:
             return
         else:
 
-            counts = mpi.MPI_HANDLE.comm.gather(self.npart_local, root=rank)
+            counts = _MPIWORLD.gather(self.npart_local, root=rank)
 
             disp = None
             tmp = np.zeros(1)
 
             send_size = self.npart_local
 
-            if mpi.MPI_HANDLE.rank == rank:
+            if _MPIRANK == rank:
 
                 self.resize(sum(counts), _callback=_resize_callback)
                 self.npart_local = sum(counts)
@@ -383,13 +388,12 @@ class ParticleDat(host.Matrix):
                 tmp = np.zeros([self.npart_local, self.ncomp], dtype=self.dtype)
 
 
-            mpi.MPI_HANDLE.comm.Gatherv(sendbuf=self._dat[:send_size:,::],
-                                        recvbuf=(tmp, counts, disp, None),
-                                        root=rank)
+            _MPIWORLD.Gatherv(sendbuf=self._dat[:send_size:,::],
+                             recvbuf=(tmp, counts, disp, None),
+                             root=rank)
 
-            if mpi.MPI_HANDLE.rank == rank:
+            if _MPIRANK == rank:
                 self._dat = tmp
-
 
 
 
@@ -400,7 +404,6 @@ class ParticleDat(host.Matrix):
         """
         if mode is access.INC0:
             self.zero(self.npart_local)
-
 
         if mode.read and pair:
             if (self._vid_int > self._vid_halo) and \
@@ -714,6 +717,7 @@ class ParticleDat(host.Matrix):
 
         # print "~~~~~~~~~~~~~~~~~~~preparing exxchange"
 
+        comm = self.group.domain.comm
         _h = self.group._halo_manager.get_halo_cell_groups()
         _b = self.group._halo_manager.get_boundary_cell_groups()
 
@@ -734,7 +738,7 @@ class ParticleDat(host.Matrix):
         self._exchange_lib(self.ctypes_data,
                            ctypes.c_int(self.npart_local),
                            self.group._halo_manager.get_position_shifts().ctypes_data,
-                           ctypes.c_int(mpi.MPI_HANDLE.fortran_comm),
+                           ctypes.c_int(comm.py2f()),
                            self.group._halo_manager.get_send_ranks().ctypes_data,
                            self.group._halo_manager.get_recv_ranks().ctypes_data,
                            _h[1].ctypes_data,

@@ -156,12 +156,6 @@ class MDMPI(object):
         else:
             return self._p
 
-    def set_periods(self, p=None):
-        """
-        set periods (if for some reason mpi4py does not set these this prives a soln.
-        """
-        assert p is not None, "Error no periods passed"
-        self._p = p
 
     def barrier(self):
         """
@@ -173,77 +167,6 @@ class MDMPI(object):
             self._COMM.Barrier()
 
 
-    def print_str(self, *args):
-        """
-        Method to print on rank 0 to stdout
-        """
-
-        if self.rank == 0:
-            _s = ''
-            for ix in args:
-                _s += str(ix) + ' '
-            print _s
-            sys.stdout.flush()
-
-        self.barrier()
-
-
-    def _check_comm(self):
-        self._top = self._COMM.Get_topo()[2][::-1]
-        self._per = self._COMM.Get_topo()[1][::-1]
-        self._dims = self._COMM.Get_topo()[0][::-1]
-
-    @property
-    def query_boundary_exist(self):
-        """
-        Return for each direction:
-        Flag if process is a boundary edge or interior edge 1 or 0.
-
-        Xl 0, Xu 1
-        Yl 2, Yu 3
-        Zl 4, Zu 5
-        """
-
-        self._check_comm()
-
-        _sf = range(6)
-        for ix in range(3):
-            if self._top[ix] == 0:
-                _sf[2 * ix] = 1
-            else:
-                _sf[2 * ix] = 0
-            if self._top[ix] == self._dims[ix] - 1:
-                _sf[2 * ix + 1] = 1
-            else:
-                _sf[2 * ix + 1] = 0
-        return _sf
-
-    @property
-    def query_halo_exist(self):
-        """
-        Return for each direction:
-        Flag if process has a halo on each face.
-
-        Xl 0, Xu 1
-        Yl 2, Yu 3
-        Zl 4, Zu 5
-
-        """
-
-        self._check_comm()
-
-        _sf = range(6)
-        for ix in range(3):
-            if self._top[ix] == 0:
-                _sf[2 * ix] = self._per[ix]
-            else:
-                _sf[2 * ix] = 1
-            if self._top[ix] == self._dims[ix] - 1:
-                _sf[2 * ix + 1] = self._per[ix]
-            else:
-                _sf[2 * ix + 1] = 1
-        return _sf
-
     def shift(self, offset=(0, 0, 0), ignore_periods=False):
         """
         Returns rank of process found at a given offset, will return -1 if no process exists.
@@ -254,24 +177,27 @@ class MDMPI(object):
         if type(offset) is int:
             offset = recv_modifiers[offset]
 
-        self._check_comm()
+        _top = self._COMM.Get_topo()[2][::-1]
+        _per = self._COMM.Get_topo()[1][::-1]
+        _dims = self._COMM.Get_topo()[0][::-1]
 
-        _x = self._top[0] + offset[0]
-        _y = self._top[1] + offset[1]
-        _z = self._top[2] + offset[2]
+        _x = _top[0] + offset[0]
+        _y = _top[1] + offset[1]
+        _z = _top[2] + offset[2]
 
-        _r = [_x % self._dims[0], _y % self._dims[1], _z % self._dims[2]]
+        _r = [_x % _dims[0], _y % _dims[1], _z % _dims[2]]
 
         if not ignore_periods:
 
-            if (_r[0] != _x) and self._per[0] == 0:
+            if (_r[0] != _x) and _per[0] == 0:
                 return -1
-            if (_r[1] != _y) and self._per[1] == 0:
+            if (_r[1] != _y) and _per[1] == 0:
                 return -1
-            if (_r[2] != _z) and self._per[2] == 0:
+            if (_r[2] != _z) and _per[2] == 0:
                 return -1
 
-        return _r[0] + _r[1] * self._dims[0] + _r[2] * self._dims[0] * self._dims[1]
+        return _r[0] + _r[1] * _dims[0] + _r[2] * _dims[0] * _dims[1]
+
 
     def get_move_send_recv_ranks(self):
         send_ranks = range(26)
@@ -287,23 +213,7 @@ class MDMPI(object):
 
         return send_ranks, recv_ranks
 
-###############################################################################
-# MPI_HANDLE
-###############################################################################
 
-def print_str_on_0(comm, *args):
-    """
-    Method to print on rank 0 to stdout
-    """
-
-    if comm.Get_rank() == 0:
-        _s = ''
-        for ix in args:
-            _s += str(ix) + ' '
-        print _s
-        sys.stdout.flush()
-
-    comm.Barrier()
 
 
 ###############################################################################
@@ -444,45 +354,100 @@ class SHMWIN(object):
 
         ptr = ct.c_void_p(self.win.Get_attr(MPI.WIN_BASE))
 
-        print "\t", rank, ptr
+###############################################################################
+# MPI_HANDLE
+###############################################################################
 
-        self.win.Fence()
-        MPI.COMM_WORLD.Barrier()
+def print_str_on_0(comm, *args):
+    """
+    Method to print on rank 0 to stdout
+    """
 
-        lib['test1'](
-            ptr,
-            ct.c_int(size),
-            ct.c_int(rank)
-        )
+    if comm.Get_rank() == 0:
+        _s = ''
+        for ix in args:
+            _s += str(ix) + ' '
+        print _s
+        sys.stdout.flush()
 
-        self.win.Fence()
-        MPI.COMM_WORLD.Barrier()
-        lib['test2'](
-            ptr,
-            ct.c_int(size),
-            ct.c_int(rank)
-        )
+    comm.Barrier()
 
-        self.win.Fence()
-        MPI.COMM_WORLD.Barrier()
-        lib['test3'](
-            ptr,
-            ct.c_int(size),
-            ct.c_int(rank)
-        )
+###############################################################################
+# cartcomm functions
+###############################################################################
 
-        self.win.Fence()
-        MPI.COMM_WORLD.Barrier()
+def cartcomm_get_move_send_recv_ranks(comm):
+    send_ranks = range(26)
+    recv_ranks = range(26)
 
-        lib['test1'](
-            ptr,
-            ct.c_int(size),
-            ct.c_int(rank)
-        )
-
-
+    for ix in range(26):
+        direction = recv_modifiers[ix]
+        send_ranks[ix] = cartcomm_shift(comm, direction, ignore_periods=True)
+        recv_ranks[ix] = cartcomm_shift(comm,
+                                        (-1 * direction[0],
+                                        -1 * direction[1],
+                                        -1 * direction[2]),
+                                        ignore_periods=True)
+    return send_ranks, recv_ranks
 
 
 
 
+def cartcomm_shift(comm, offset=(0, 0, 0), ignore_periods=False):
+    """
+    Returns rank of process found at a given offset, will return -1 if no process exists.
 
+    :arg tuple offset: 3-tuple offset from current process.
+    """
+
+    if type(offset) is int:
+        offset = recv_modifiers[offset]
+
+    _top = comm.Get_topo()[2][::-1]
+    _per = comm.Get_topo()[1][::-1]
+    _dims = comm.Get_topo()[0][::-1]
+
+    _x = _top[0] + offset[0]
+    _y = _top[1] + offset[1]
+    _z = _top[2] + offset[2]
+
+    _r = [_x % _dims[0], _y % _dims[1], _z % _dims[2]]
+
+    if not ignore_periods:
+
+        if (_r[0] != _x) and _per[0] == 0:
+            return -1
+        if (_r[1] != _y) and _per[1] == 0:
+            return -1
+        if (_r[2] != _z) and _per[2] == 0:
+            return -1
+
+    return _r[0] + _r[1] * _dims[0] + _r[2] * _dims[0] * _dims[1]
+
+
+def cartcomm_top(comm):
+    """
+    Return the current topology.
+    """
+    if comm is not None:
+        return comm.Get_topo()[2][::-1]
+    else:
+        return 0, 0, 0
+
+def cartcomm_dims(comm):
+    """
+    Return the current dimensions.
+    """
+    if comm is not None:
+        return comm.Get_topo()[0][::-1]
+    else:
+        return 1, 1, 1
+
+def cartcomm_periods(comm):
+    """
+    Return the current periods.
+    """
+    if comm is not None:
+        return comm.Get_topo()[1][::-1]
+    else:
+        return 1,1,1
