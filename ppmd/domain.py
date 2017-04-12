@@ -173,7 +173,7 @@ class BaseDomainHalo(object):
          # Create cartesian communicator
         _dims = tuple(_dims)
 
-        mpi.MPI_HANDLE.create_cart(_dims[::-1],
+        self.comm = mpi.MPI_HANDLE.create_cart(_dims[::-1],
                                    (bool(self._periods[2]),
                                     bool(self._periods[1]),
                                     bool(self._periods[0])),

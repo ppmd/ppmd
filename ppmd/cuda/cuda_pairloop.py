@@ -8,15 +8,12 @@ import math
 import cgen
 import threading
 
-
 # package level
 import ppmd.access as access
 import ppmd.host as host
 import ppmd.logic as logic
 import ppmd.opt as opt
 import ppmd.runtime as runtime
-import ppmd.mpi as mpi
-
 
 # CUDA level
 import cuda_build

@@ -496,5 +496,3 @@ class CartesianHaloSix(object):
 
 
 
-
-

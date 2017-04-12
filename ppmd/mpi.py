@@ -11,7 +11,6 @@ import numpy as np
 #package level
 import runtime
 import pio
-import os
 
 
 mpi_map = {ct.c_double: MPI.DOUBLE, ct.c_int: MPI.INT, int: MPI.INT}
@@ -88,6 +87,8 @@ class MDMPI(object):
 
         if runtime.VERBOSE > 1:
             pio.pprint("Processor count ", self.nproc, " Processor layout ", self.dims)
+
+        return self._COMM
 
 
     def free_comm(self):
@@ -377,6 +378,7 @@ def print_str_on_0(comm, *args):
 ###############################################################################
 
 def cartcomm_get_move_send_recv_ranks(comm):
+
     send_ranks = range(26)
     recv_ranks = range(26)
 

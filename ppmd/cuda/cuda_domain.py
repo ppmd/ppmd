@@ -5,7 +5,7 @@ import numpy as np
 import ctypes
 
 # package level
-from ppmd import opt, host, mpi, kernel, access
+from ppmd import opt, kernel, access
 
 
 # cuda level
@@ -52,11 +52,13 @@ class BoundaryTypePeriodic(object):
         Enforce the boundary conditions on the held state.
         """
 
+        comm = self.state.domain.comm
+
         self.timer_apply.start()
 
         self._flag[0] = 0
 
-        if mpi.MPI_HANDLE.nproc == 1:
+        if comm.Get_size() == 1:
             """
             BC code for one proc. porbably removable when restricting to large
              parallel systems.

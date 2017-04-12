@@ -46,17 +46,12 @@ def state(request):
     if mdc.CUDA_IMPORT_ERROR is not None:
         print mdc.CUDA_IMPORT_ERROR
 
-    print "\tFCOMM=", md.mpi.MPI_HANDLE.fortran_comm
     A = State()
     A.npart = N
 
-    print "\tFCOMM=", md.mpi.MPI_HANDLE.fortran_comm
     A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
 
-    print "\tFCOMM=", md.mpi.MPI_HANDLE.fortran_comm
     A.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
-
-    print "\tFCOMM=", md.mpi.MPI_HANDLE.fortran_comm
 
     A.p = PositionDat(ncomp=3)
     A.v = ParticleDat(ncomp=3)
@@ -65,7 +60,6 @@ def state(request):
     A.u.halo_aware = True
     A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
 
-    print "FCOMM=", md.mpi.MPI_HANDLE.fortran_comm
     return A
 
 
