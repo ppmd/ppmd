@@ -21,6 +21,7 @@ BUILD_PER_PROC = False
 
 _MPIWORLD = mpi.MPI.COMM_WORLD
 _MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
+_MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
 _MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
 
 ###############################################################################
@@ -36,6 +37,15 @@ MPI_CC = config.COMPILERS[config.MAIN_CFG['cc-mpi'][1]]
 ###############################################################################
 # AUTOCODE TOOLS START
 ###############################################################################
+
+
+build_dir = os.path.abspath(config.MAIN_CFG['build-dir'][1])
+
+for nx in xrange(_MPISIZE):
+    if not os.path.exists(build_dir) and _MPIRANK == nx:
+        os.mkdir(build_dir)
+    _MPIBARRIER()
+
 
 
 def load_library_exception(kernel_name='None supplied',

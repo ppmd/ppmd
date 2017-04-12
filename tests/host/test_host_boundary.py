@@ -12,8 +12,8 @@ Eo2 = E/2.
 tol = 0.1
 
 
-rank = md.mpi.MPI_HANDLE.rank
-nproc = md.mpi.MPI_HANDLE.nproc
+rank = md.mpi.MPI.COMM_WORLD.Get_rank()
+nproc = md.mpi.MPI.COMM_WORLD.Get_size()
 
 
 PositionDat = md.data.PositionDat
@@ -185,14 +185,14 @@ def test_host_boundary_z1(state):
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     state.domain.boundary_condition.apply()
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     # avoid excessive copying
@@ -274,14 +274,14 @@ def test_host_boundary_x0(state):
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     state.domain.boundary_condition.apply()
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     # avoid excessive copying
@@ -358,14 +358,14 @@ def test_host_boundary_x1(state):
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     state.domain.boundary_condition.apply()
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     # avoid excessive copying
@@ -445,14 +445,14 @@ def test_host_boundary_y0(state):
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     state.domain.boundary_condition.apply()
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     # avoid excessive copying
@@ -531,14 +531,14 @@ def test_host_boundary_y1(state):
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     state.domain.boundary_condition.apply()
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     # avoid excessive copying

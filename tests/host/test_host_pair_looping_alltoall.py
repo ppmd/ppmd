@@ -8,7 +8,7 @@ import ppmd as md
 
 N = 1000
 
-rank = md.mpi.MPI_HANDLE.rank
+rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 
 
 PositionDat = md.data.PositionDat

@@ -10,8 +10,8 @@ N = 16
 E = 8.
 Eo2 = E/2.
 
-rank = md.mpi.MPI_HANDLE.rank
-nproc = md.mpi.MPI_HANDLE.nproc
+rank = md.mpi.MPI.COMM_WORLD.Get_rank()
+nproc = md.mpi.MPI.COMM_WORLD.Get_size()
 
 PositionDat = md.data.PositionDat
 ParticleDat = md.data.ParticleDat
@@ -131,7 +131,7 @@ def test_host_scatter_gather(state, base_rank):
 
     s = np.array([state.npart_local])
     r = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(s[0], r, MPI.SUM)
+    md.mpi.MPI.COMM_WORLD.Allreduce(s[0], r, MPI.SUM)
 
     # globally we should still have N particles
     assert r[0] == state.npart

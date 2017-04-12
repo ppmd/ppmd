@@ -13,8 +13,8 @@ Eo2 = E/2.
 tol = 0.1
 
 
-rank = md.mpi.MPI_HANDLE.rank
-nproc = md.mpi.MPI_HANDLE.nproc
+rank = md.mpi.MPI.COMM_WORLD.Get_rank()
+nproc = md.mpi.MPI.COMM_WORLD.Get_size()
 
 
 PositionDat = md.data.PositionDat
@@ -61,7 +61,7 @@ def s_nd():
 def base_rank(request):
     return request.param
 
-one_proc = pytest.mark.skipif("md.mpi.MPI_HANDLE.nproc > 1")
+one_proc = pytest.mark.skipif("md.mpi.MPI.COMM_WORLD.Get_size() > 1")
 
 @one_proc
 def test_host_halo_1_cell(state):

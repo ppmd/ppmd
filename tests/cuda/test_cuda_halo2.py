@@ -20,8 +20,8 @@ Eo2 = E/2.
 tol = 0.1
 
 
-rank = md.mpi.MPI_HANDLE.rank
-nproc = md.mpi.MPI_HANDLE.nproc
+rank = md.mpi.MPI.COMM_WORLD.Get_rank()
+nproc = md.mpi.MPI.COMM_WORLD.Get_size()
 
 
 if mdc.CUDA_IMPORT:

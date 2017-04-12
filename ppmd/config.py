@@ -9,7 +9,6 @@ __license__ = "GPL"
 # system level imports
 import os
 import ConfigParser
-from mpi4py import MPI
 
 # package level imports
 import compiler
@@ -53,15 +52,6 @@ def load_config(dir=None):
             pass
         except ConfigParser.NoOptionError:
             pass
-
-
-    build_dir = os.path.abspath(MAIN_CFG['build-dir'][1])
-
-    for nx in xrange(MPI.COMM_WORLD.size):
-        if not os.path.exists(build_dir) and MPI.COMM_WORLD.rank == nx:
-            os.mkdir(build_dir)
-        MPI.COMM_WORLD.Barrier()
-
 
 
     CC_KEYS = (
