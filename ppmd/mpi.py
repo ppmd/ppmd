@@ -377,6 +377,15 @@ def print_str_on_0(comm, *args):
 # cartcomm functions
 ###############################################################################
 
+
+def create_cartcomm(comm, dims, periods, reorder_flag):
+    """
+    Create an mpi cart on the current comm
+    """
+    COMM = comm.Create_cart(dims, periods, reorder_flag)
+    return COMM
+
+
 def cartcomm_get_move_send_recv_ranks(comm):
 
     send_ranks = range(26)
