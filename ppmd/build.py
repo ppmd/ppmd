@@ -41,10 +41,9 @@ MPI_CC = config.COMPILERS[config.MAIN_CFG['cc-mpi'][1]]
 
 build_dir = os.path.abspath(config.MAIN_CFG['build-dir'][1])
 
-for nx in xrange(_MPISIZE):
-    if not os.path.exists(build_dir) and _MPIRANK == nx:
-        os.mkdir(build_dir)
-    _MPIBARRIER()
+if not os.path.exists(build_dir) and _MPIRANK == 0:
+    os.mkdir(build_dir)
+_MPIBARRIER()
 
 
 

@@ -5,8 +5,6 @@ Module to handle the cuda runtime environment.
 import ctypes
 import os
 import math
-import atexit
-import sys
 
 # pycuda imports
 import pycuda.driver as cudadrv
