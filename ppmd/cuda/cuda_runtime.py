@@ -116,8 +116,6 @@ def cuda_set_device(device=None):
 # Set device
 DEVICE = cuda_set_device()
 
-print "running", _MPIRANK
-
 # Make context
 global CONTEXT
 CONTEXT = DEVICE.make_context()
