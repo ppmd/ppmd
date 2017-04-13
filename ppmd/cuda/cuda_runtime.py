@@ -11,6 +11,7 @@ import sys
 # pycuda imports
 import pycuda.driver as cudadrv
 
+
 #package level imports
 import cuda_config
 from ppmd import runtime, pio, mpi
@@ -112,16 +113,27 @@ def cuda_set_device(device=None):
 
 
 
-
-
 # Set device
 DEVICE = cuda_set_device()
+
+print "running", _MPIRANK
+
 # Make context
+global CONTEXT
 CONTEXT = DEVICE.make_context()
 
-# Register destruction
-atexit.register(CONTEXT.detach)
 
+def context_cleanup():
+    global CONTEXT
+    CONTEXT.synchronize()
+    CONTEXT.pop()
+    CONTEXT = None
+
+    from pycuda.tools import clear_context_caches
+    clear_context_caches()
+
+# Register destruction, MPI_FINALIZE must be called before pycuda cleanup.
+mpi._CLEANUP_QUEUE.put((51,context_cleanup))
 
 
 try:

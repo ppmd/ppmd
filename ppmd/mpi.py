@@ -7,10 +7,24 @@ from mpi4py import MPI
 import sys
 import ctypes as ct
 import numpy as np
+import atexit
+import Queue
 
 #package level
 import runtime
 import pio
+
+# priority queue for module cleanup.
+_CLEANUP_QUEUE = Queue.PriorityQueue()
+_CLEANUP_QUEUE.put((50, MPI.Finalize))
+
+def _atexit_queue():
+    while not _CLEANUP_QUEUE.empty():
+        item = _CLEANUP_QUEUE.get()
+        item[1]()
+
+
+atexit.register(_atexit_queue)
 
 
 mpi_map = {ct.c_double: MPI.DOUBLE, ct.c_int: MPI.INT, int: MPI.INT}

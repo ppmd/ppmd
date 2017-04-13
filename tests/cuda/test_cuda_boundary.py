@@ -437,7 +437,6 @@ def test_cuda_boundary_x01(state):
 
 @cuda
 def test_cuda_boundary_x1(state):
-    print "x1 start"
     # crN, Number of particles per coordinate direction
     state.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
     state.domain.boundary_condition.set_state(state)
@@ -476,7 +475,6 @@ def test_cuda_boundary_x1(state):
     state.f[:] = np.zeros([N,3])
     state.gid[:,0] = np.arange(N)
 
-    print "x0 scatter"
     state.scatter_data_from(0)
 
 
@@ -521,19 +519,16 @@ def test_cuda_boundary_x1(state):
 
         assert np.sum(np.abs(pp - pjc)) < 1.
 
-    print "x1 end"
 
 
 
 @cuda
 def test_cuda_boundary_y0(state):
-    print "y0 start"
 
     # crN, Number of particles per coordinate direction
     state.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
     state.domain.boundary_condition.set_state(state)
 
-    print "y0 bc set"
 
     a = np.linspace(-0.5*(E-tol), 0.5*(E-tol), crN)
     grid = np.meshgrid(a,a)
@@ -568,9 +563,7 @@ def test_cuda_boundary_y0(state):
     state.f[:] = np.zeros([N,3])
     state.gid[:,0] = np.arange(N)
 
-    print "y0 pre scatter"
     state.scatter_data_from(0)
-    print "y0 post scatter"
 
     kernel_code = '''
     P(1) -= %(TOL)s ;
@@ -579,11 +572,8 @@ def test_cuda_boundary_y0(state):
     kernel = md.kernel.Kernel('test_cuda_boundary_y0',code=kernel_code)
     kernel_map = {'P': state.p(md.access.RW)}
 
-    print "loop start"
     loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, dat_dict=kernel_map)
-    print "loop made"
     loop.execute(n=state.npart_local)
-    print "loop ran"
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
@@ -615,7 +605,6 @@ def test_cuda_boundary_y0(state):
 
         assert np.sum(np.abs(pp - pjc)) < 1.
 
-    print "y0 end"
 
 
 
