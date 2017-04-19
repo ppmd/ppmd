@@ -25,6 +25,7 @@ class CoulombicEnergy(object):
         self.domain = domain
         self.eps = float(eps)
         self.real_cutoff = float(real_cutoff)
+        """Real space cutoff"""
 
         ss = cmath.sqrt(scipy.special.lambertw(1000000)).real
 
@@ -71,6 +72,15 @@ class CoulombicEnergy(object):
         nmax_t = max(nmax_x, nmax_y, nmax_z)
         print "nmax_t", nmax_t
 
+        self.kmax = (nmax_x, nmax_y, nmax_z)
+        """Number of reciporcal vectors taken in each direction."""
+        self.recip_cutoff = max_len
+        """Reciprocal space cutoff."""
+        self.recip_vectors = (gx,gy,gz)
+        """Reciprocal lattice vectors"""
+
+
+
         # define persistent vars
         self._vars = {}
         self._vars['alpha']           = ctypes.c_double(alpha)
@@ -101,6 +111,9 @@ class CoulombicEnergy(object):
             source = fh.read()
 
         self._lib = build.simple_lib_creator(header, source, 'CoulombicEnergyOrth')
+
+
+
 
     @staticmethod
     def _COMP_EXP_PACKED(x, gh):
@@ -144,8 +157,6 @@ class CoulombicEnergy(object):
         recip_space[:] = 0.0
 
         for lx in range(N_LOCAL):
-            print 60*'-'
-            print positions[lx, :]
 
             for dx in range(3):
 
@@ -181,7 +192,6 @@ class CoulombicEnergy(object):
                     recip_axis[0,recip_axis_len-2-ex,dx] = recip_axis[0,recip_axis_len+2+ex,dx]
                     recip_axis[1,recip_axis_len-2-ex,dx] = -1. * recip_axis[1,recip_axis_len+2+ex,dx]
 
-                print "\t", ri,2*"\n","re", recip_axis[0,:,dx], "\nim", recip_axis[1,:,dx]
 
             # now calculate the contributions to all of recip space
             qx = charges[lx, 0]
@@ -198,11 +208,11 @@ class CoulombicEnergy(object):
                         )
                         recip_space[:,rx,ry,rz] += tmp[:]*qx
 
-        print 60*"="
-        print "re"
-        print recip_space[0,:,:,:]
-        print "im"
-        print recip_space[1,:,:,:]
+        # print 60*"="
+        # print "re"
+        # print recip_space[0,:,:,:]
+        # print "im"
+        # print recip_space[1,:,:,:]
         # evaluate coefficient space
 
         max_recip2 = max_recip**2.
@@ -221,10 +231,9 @@ class CoulombicEnergy(object):
                         else:
                             coeff_space[rx,ry,rz] = (base_coeff1/rlen2)*exp(rlen2*base_coeff2)
 
-        print 60*'='
-
-        for rz in range(nmax_vec[2]+1):
-            print coeff_space[:,:,rz]
+        # print 60*'='
+        # for rz in range(nmax_vec[2]+1):
+        #     print coeff_space[:,:,rz]
 
 
         # evaluate total long range contribution loop over each particle then
@@ -261,7 +270,7 @@ class CoulombicEnergy(object):
                         eng += re_coeff*re_con - im_coeff*im_con
                         eng_im += re_coeff*im_con + im_coeff*re_con
 
-                        print re_coeff, im_coeff, re_con, im_con
+                        # print re_coeff, im_coeff, re_con, im_con
 
         print "ENG", eng
         print "iENG", eng_im
@@ -309,7 +318,8 @@ class CoulombicEnergy(object):
                     if rij[2] > extent[2]/2:
                         rij[2] = extent[2] - rij[2]
 
-                    r2 = rij[0]**2. * rij[1]**2. * rij[2]**2.
+                    r2 = rij[0]**2. + rij[1]**2. + rij[2]**2.
+
                     if r2 < cutoff2:
                         len_rij = sqrt(r2)
                         eng += qi*qj*erfc(sqrt_alpha*len_rij)/len_rij
