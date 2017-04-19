@@ -9,6 +9,7 @@ __license__ = "GPL"
 # system level imports
 import os
 import ConfigParser
+import mpi4py
 
 # package level imports
 import compiler
@@ -30,7 +31,7 @@ MAIN_CFG['error-level'] = (int, 3)
 MAIN_CFG['build-dir'] = (str, os.path.join(os.getcwd(), 'build'))
 MAIN_CFG['cc-main'] = (str, 'ICC')
 MAIN_CFG['cc-openmp'] = (str, 'ICC')
-MAIN_CFG['cc-mpi'] = (str, 'OPENMPI')
+MAIN_CFG['cc-mpi'] = (str, 'MPI4PY')
 
 
 
@@ -83,11 +84,24 @@ def load_config(dir=None):
         COMPILERS[args[0]] = compiler.Compiler(*args)
 
 
+    # create the mpi4py compiler
+    tm = COMPILERS['MPI4PY']
+    COMPILERS['MPI4PY'] = compiler.Compiler(
+        name='MPI4PY',
+        binary=mpi4py.get_config()['mpicxx'],
+        c_flags=tm.c_flags,
+        l_flags=tm.l_flags,
+        opt_flags=tm.opt_flags,
+        dbg_flags=tm.dbg_flags,
+        compile_flag=tm.compile_flag,
+        shared_lib_flag=tm.shared_lib_flag,
+        restrict_keyword=tm.restrict_keyword
+    )
+
+
     assert MAIN_CFG['cc-main'][1] in COMPILERS.keys(), "cc-main compiler config not found"
     assert MAIN_CFG['cc-openmp'][1] in COMPILERS.keys(), "cc-openmp compiler config not found"
     assert MAIN_CFG['cc-mpi'][1] in COMPILERS.keys(), "cc-mpi compiler config not found"
-
-
 
 
 load_config()

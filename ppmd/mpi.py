@@ -11,8 +11,12 @@ import atexit
 import Queue
 
 #package level
-import runtime
-import pio
+import compiler
+
+
+if not MPI.Is_initialized():
+    MPI.Init()
+
 
 # priority queue for module cleanup.
 _CLEANUP_QUEUE = Queue.PriorityQueue()
@@ -25,6 +29,8 @@ def _atexit_queue():
 
 
 atexit.register(_atexit_queue)
+
+
 
 
 mpi_map = {ct.c_double: MPI.DOUBLE, ct.c_int: MPI.INT, int: MPI.INT}

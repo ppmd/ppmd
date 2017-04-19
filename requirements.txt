@@ -3,4 +3,3 @@ cgen
 scipy
 mpi4py
 pytest
-pycuda

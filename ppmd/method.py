@@ -153,8 +153,9 @@ class ListUpdateController(object):
         _ret_old = _ret
 
         _tmp = np.array([_ret], dtype=ctypes.c_int)
-        _MPI.COMM_WORLD.Allreduce(_tmp, _tmp, op=_MPI.LOR)
-        _ret = _tmp[0]
+        _tmpr = np.array([-1], dtype=ctypes.c_int)
+        _MPI.COMM_WORLD.Allreduce(_tmp, _tmpr, op=_MPI.LOR)
+        _ret = _tmpr[0]
 
         if _ret_old == 1 and _ret != 1:
             print "update status reductypes.on error, rank:", _MPIRANK
