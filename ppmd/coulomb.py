@@ -307,6 +307,16 @@ class CoulombicEnergy(object):
 
         return eng_self
 
+    @staticmethod
+    def internal_to_ev():
+        """
+        Multiply by this constant to convert from internal units to eV.
+        """
+        epsilon_0 = scipy.constants.epsilon_0
+        pi = scipy.constants.pi
+        c0 = scipy.constants.physical_constants['atomic unit of charge'][0]
+        l0 = 10.**-10
+        return c0 / (4.*pi*epsilon_0*l0)
 
     def evaluate_python_sr(self, positions, charges):
         extent = self.domain.extent

@@ -34,12 +34,8 @@ def test_ewald_energy_python_nacl_1():
     domain = md.domain.BaseDomainHalo(extent=(e,e,e))
     c = md.coulomb.CoulombicEnergy(domain=domain, real_cutoff=rc, alpha=alpha)
 
-    # !! This is out
-    assert abs(c.real_cutoff - 12.) < 1.0, "real space cutoff"
-
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
-
 
     data = np.load('../res/coulomb/NACL.npy')
 
@@ -52,30 +48,38 @@ def test_ewald_energy_python_nacl_1():
     charges[:, 0] = data[:,3]
     assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
 
-
     rs = c.evaluate_python_sr(positions=positions, charges=charges)
+    selfinteraction = c.evaluate_python_self(charges)
 
-    epsilon_0 = scipy.constants.epsilon_0
-    pi = scipy.constants.pi
-    c0 = scipy.constants.physical_constants['atomic unit of charge'][0]
-    l0 = 10.**-10
+    localsr = rs * c.internal_to_ev()
+    selfij = selfinteraction * c.internal_to_ev()
 
-    EkJ =  rs * (1./(4. * pi * epsilon_0 * l0)) * ( c0 ** 2. ) / 1000.
-
-    localsr = 1000. * EkJ / c0
-    #print "EeV", localsr
-
-    selfinteraction = np.sum(np.square(charges[:,0]))
-    selfinteraction2 = selfinteraction * -1. * sqrt(alpha/pi) / (4.*pi*epsilon_0*l0)
-    selfij = selfinteraction2 * (c0**2.) / c0
-
-    #print "self", selfij
-    #print "real", selfij + localsr
-
-    print selfij + localsr
+    #print selfij + localsr
 
     # the tolerance here is about 6 decimal places
     assert abs(selfij + localsr + 0.4194069853E+04)< 10.**-2, "real + self error"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
