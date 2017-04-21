@@ -15,24 +15,42 @@ import runtime
 import cmath
 import scipy
 import scipy.special
+from scipy.constants import epsilon_0
 
 from ppmd import data
 
+_charge_coulomb = scipy.constants.physical_constants['atomic unit of charge'][0]
+
+
+
 class CoulombicEnergy(object):
 
-    def __init__(self, domain, eps=10.**-6, real_cutoff=10., alpha=None):
+    def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None):
 
         self.domain = domain
         self.eps = float(eps)
-        self.real_cutoff = float(real_cutoff)
-        """Real space cutoff"""
 
-        ss = cmath.sqrt(scipy.special.lambertw(1000000)).real
 
-        if alpha is None:
+        ss = cmath.sqrt(scipy.special.lambertw(1./eps)).real
+
+        if alpha is None and real_cutoff is None:
+            real_cutoff = 10.
+            alpha = ss/real_cutoff
+        elif alpha is not None and real_cutoff is not None:
+            ss = real_cutoff * alpha
+
+        elif alpha is None:
             alpha = ss/real_cutoff
         else:
             self.real_cutoff = ss/alpha
+
+        self.real_cutoff = float(real_cutoff)
+        """Real space cutoff"""
+        self.alpha = float(alpha)
+        """alpha"""
+
+
+        print ss, 2*alpha*ss, 2*(pi**2)/(self.domain.extent[0]**2 *ss*alpha)
 
         # these parts are specific to the orthongonal box
         extent = self.domain.extent
@@ -44,6 +62,7 @@ class CoulombicEnergy(object):
         gx = np.cross(ly,lz)*ivolume
         gy = np.cross(lz,lx)*ivolume
         gz = np.cross(lx,ly)*ivolume
+
 
         nmax_x = ceil(ss*extent[0]*alpha/pi)
         nmax_y = ceil(ss*extent[1]*alpha/pi)
@@ -283,11 +302,8 @@ class CoulombicEnergy(object):
         alpha = self._vars['alpha'].value
         N_LOCAL = charges.npart_local
 
-        eng_self = 0.0
-        for px in xrange(N_LOCAL):
-            eng_self += charges[px, 0]**2.
-
-        eng_self *= sqrt(alpha/pi)
+        eng_self = np.sum(np.square(charges[:,0]))
+        eng_self *= -1. * sqrt(alpha/pi)
 
         return eng_self
 
@@ -300,31 +316,42 @@ class CoulombicEnergy(object):
         sqrt_alpha = sqrt(alpha)
 
         # N^2 way for checking.....
+
+        print N_LOCAL, cutoff2, epsilon_0, extent, alpha
+
         eng = 0.0
+        count = 0
+
+        mind = 10000.
+
         for ix in xrange(N_LOCAL):
-            for jx in xrange(N_LOCAL):
-                if ix != jx:
-                    ri = positions[ix,:]
-                    rj = positions[jx,:]
-                    qi = charges[ix, 0]
+            ri = positions[ix,:]
+            qi = charges[ix, 0]
+
+            for jx in xrange(ix+1, N_LOCAL):
+
+                rj = positions[jx,:]
+
+                rij = rj - ri
+
+                if abs(rij[0]) > (extent[0]/2.):
+                    rij[0] = extent[0] - abs(rij[0])
+                if abs(rij[1]) > (extent[1]/2.):
+                    rij[1] = extent[1] - abs(rij[1])
+                if abs(rij[2]) > (extent[2]/2.):
+                    rij[2] = extent[2] - abs(rij[2])
+
+                r2 = rij[0]*rij[0] + rij[1]*rij[1] + rij[2]*rij[2]
+
+                if r2 < cutoff2:
+                    len_rij = sqrt(r2)
                     qj = charges[jx, 0]
+                    mind = min(mind, len_rij)
+                    eng += (qi*qj*erfc(sqrt_alpha*len_rij)/len_rij)
+                    #eng += (qi*qj/len_rij)
+                    count += 2
 
-                    rij = rj - ri
-
-                    if rij[0] > extent[0]/2:
-                        rij[0] = extent[0] - rij[0]
-                    if rij[1] > extent[1]/2:
-                        rij[1] = extent[1] - rij[1]
-                    if rij[2] > extent[2]/2:
-                        rij[2] = extent[2] - rij[2]
-
-                    r2 = rij[0]**2. + rij[1]**2. + rij[2]**2.
-
-                    if r2 < cutoff2:
-                        len_rij = sqrt(r2)
-                        eng += qi*qj*erfc(sqrt_alpha*len_rij)/len_rij
-
-        eng *= 0.5
+        print count, mind
         return eng
 
 
