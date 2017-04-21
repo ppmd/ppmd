@@ -60,31 +60,6 @@ def test_ewald_energy_python_nacl_1():
     assert abs(selfij + localsr + 0.4194069853E+04)< 10.**-2, "real + self error"
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-@pytest.mark.skipif('True')
 def test_ewald_energy_python_co2_1():
     """
     Test that the python implementation of ewald calculates the correct 
@@ -94,26 +69,20 @@ def test_ewald_energy_python_co2_1():
     if mpi_rank > 0:
         return
 
-    e = 24.4750735
+    eta = 0.26506
+    alpha = eta**2.
+    rc = 12.
+
+    e = 24.47507
     domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    c = md.coulomb.CoulombicEnergy(domain=domain, alpha=0.26506)
-    assert abs(c.recip_cutoff - 0.28601) < 10.**-5, "recip space cutoff"
-    assert abs(c.real_cutoff - 12.) < 1.0, "real space cutoff"
-    assert c.kmax[0] == 7, "kmax_x"
-    assert c.kmax[1] == 7, "kmax_y"
-    assert c.kmax[2] == 7, "kmax_z"
-    assert abs(c.recip_vectors[0][0] - 0.0408579) < 10.**-5, "xrecip vector"
-    assert abs(c.recip_vectors[1][1] - 0.0408579) < 10.**-5, "yrecip vector"
-    assert abs(c.recip_vectors[2][2] - 0.0408579) < 10.**-5, "zrecip vector"
+    c = md.coulomb.CoulombicEnergy(domain=domain, real_cutoff=rc, alpha=alpha)
+
+    assert c.alpha == alpha, "unexpected alpha"
+    assert c.real_cutoff == rc, "unexpected rc"
 
     data = np.load('../res/coulomb/CO2.npy')
 
-
     N = data.shape[0]
-    N0 = data[data[:, 3] > 0.0].shape[0]
-    N1 = data[data[:, 3] < 0.0].shape[0]
-
-
 
     positions = ParticleDat(npart=N, ncomp=3)
     charges = ParticleDat(npart=N, ncomp=1)
@@ -122,30 +91,26 @@ def test_ewald_energy_python_co2_1():
     charges[:, 0] = data[:,3]
     assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
 
-
     rs = c.evaluate_python_sr(positions=positions, charges=charges)
-    print "self", c.evaluate_python_self(charges=charges)
-    print "rs", rs, 'rsdl', '%E' % Decimal(str(rs*9648.530821))
-    #print "recip space", c.evaluate_python_lr(positions=positions, charges=charges)
+    selfinteraction = c.evaluate_python_self(charges)
+
+    localsr = rs * c.internal_to_ev()
+    selfij = selfinteraction * c.internal_to_ev()
+
+    #print selfij + localsr
+
+    # the tolerance here is about 6 decimal places
+    assert abs(selfij + localsr + 0.110417414E5)< 10.**-2, "real + self error"
 
 
-    N0 = data[data[:, 3] > 0.0].shape[0]
-    N1 = data[data[:, 3] < 0.0].shape[0]
 
 
-    Na = scipy.constants.Avogadro
-    epsilon_0 = scipy.constants.epsilon_0
-    pi = scipy.constants.pi
-    c0 = scipy.constants.physical_constants['atomic unit of charge'][0]
-    l0 = 10.**-10
 
 
-    nmol = (N0*28. + N1*16.)/Na
-    print "nmol", nmol
-    EkJ =  rs * (1./(4. * pi * epsilon_0 * l0)) * ( c0 ** 2. ) / 1000.
-    print "EkJ", EkJ
-    EkJpmol = EkJ / nmol
-    print "kJ mol^-1", EkJpmol
+
+
+
+
 
 
 
