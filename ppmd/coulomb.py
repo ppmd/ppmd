@@ -35,22 +35,20 @@ class CoulombicEnergy(object):
 
         if alpha is None and real_cutoff is None:
             real_cutoff = 10.
-            alpha = ss/real_cutoff
+            alpha = (ss/real_cutoff)**2.
         elif alpha is not None and real_cutoff is not None:
-            ss = real_cutoff * alpha
+            ss = real_cutoff * sqrt(alpha)
 
         elif alpha is None:
-            alpha = ss/real_cutoff
+            alpha = (ss/real_cutoff)**2.
         else:
-            self.real_cutoff = ss/alpha
+            self.real_cutoff = ss/sqrt(alpha)
 
         self.real_cutoff = float(real_cutoff)
         """Real space cutoff"""
         self.alpha = float(alpha)
         """alpha"""
 
-
-        print ss, 2*alpha*ss, 2*(pi**2)/(self.domain.extent[0]**2 *ss*alpha)
 
         # these parts are specific to the orthongonal box
         extent = self.domain.extent
@@ -63,10 +61,11 @@ class CoulombicEnergy(object):
         gy = np.cross(lz,lx)*ivolume
         gz = np.cross(lx,ly)*ivolume
 
+        sqrtalpha = sqrt(alpha)
 
-        nmax_x = ceil(ss*extent[0]*alpha/pi)
-        nmax_y = ceil(ss*extent[1]*alpha/pi)
-        nmax_z = ceil(ss*extent[2]*alpha/pi)
+        nmax_x = round(ss*extent[0]*sqrtalpha/pi)
+        nmax_y = round(ss*extent[1]*sqrtalpha/pi)
+        nmax_z = round(ss*extent[2]*sqrtalpha/pi)
 
         print gx, gy, gz
         print 'nmax:', nmax_x, nmax_y, nmax_z
@@ -97,7 +96,6 @@ class CoulombicEnergy(object):
         """Reciprocal space cutoff."""
         self.recip_vectors = (gx,gy,gz)
         """Reciprocal lattice vectors"""
-
 
 
         # define persistent vars
@@ -300,8 +298,6 @@ class CoulombicEnergy(object):
     def evaluate_python_self(self, charges):
 
         alpha = self._vars['alpha'].value
-        N_LOCAL = charges.npart_local
-
         eng_self = np.sum(np.square(charges[:,0]))
         eng_self *= -1. * sqrt(alpha/pi)
 
@@ -500,8 +496,17 @@ class CoulombicEnergy(object):
 
 
 
+def _test_split1(extent, eps=10.**-6, alpha=None, real_cutoff=None ):
+
+    #ss = cmath.sqrt(scipy.special.lambertw(1./eps)).real
 
 
+    if alpha is not None and real_cutoff is not None:
+        ss = real_cutoff * sqrt(alpha)
+
+    nmax = round(ss*extent*sqrt(alpha)/pi)
+
+    print real_cutoff, alpha, nmax
 
 
 

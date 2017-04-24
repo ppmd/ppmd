@@ -16,7 +16,6 @@ mpi_rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 mpi_size = md.mpi.MPI.COMM_WORLD.Get_size()
 ParticleDat = md.data.ParticleDat
 
-
 def test_ewald_energy_python_nacl_1():
     """
     Test that the python implementation of ewald calculates the correct 
@@ -58,7 +57,6 @@ def test_ewald_energy_python_nacl_1():
 
     # the tolerance here is about 6 decimal places
     assert abs(selfij + localsr + 0.4194069853E+04)< 10.**-2, "real + self error"
-
 
 def test_ewald_energy_python_co2_1():
     """
@@ -103,19 +101,27 @@ def test_ewald_energy_python_co2_1():
     assert abs(selfij + localsr + 0.110417414E5)< 10.**-2, "real + self error"
 
 
+def test_ewald_energy_python_nacl_2():
+    """
+    Test that the python implementation of ewald calculates the correct 
+    energy
+    """
 
+    if mpi_rank > 0:
+        return
 
+    e = 30.0
+    domain = md.domain.BaseDomainHalo(extent=(e,e,e))
+    c = md.coulomb.CoulombicEnergy(domain=domain, real_cutoff=12.)
+    assert abs(c.recip_cutoff - 0.28601) < 10.**-1, "recip space cutoff"
+    assert abs(c.real_cutoff - 12.) < 10.**-15., "real space cutoff"
+    assert c.kmax[0] == 9, "kmax_x"
+    assert c.kmax[1] == 9, "kmax_y"
+    assert c.kmax[2] == 9, "kmax_z"
+    assert abs(c.recip_vectors[0][0] - 0.0333333) < 10.**-5, "xrecip vector"
+    assert abs(c.recip_vectors[1][1] - 0.0333333) < 10.**-5, "yrecip vector"
+    assert abs(c.recip_vectors[2][2] - 0.0333333) < 10.**-5, "zrecip vector"
 
-
-
-
-
-
-
-
-
-
-@pytest.mark.skipif('True')
 def test_ewald_energy_python_co2_2():
     """
     Test that the python implementation of ewald calculates the correct 
@@ -130,29 +136,13 @@ def test_ewald_energy_python_co2_2():
     c = md.coulomb.CoulombicEnergy(domain=domain, real_cutoff=12.)
     assert abs(c.recip_cutoff - 0.28601) < 10.**-1, "recip space cutoff"
     assert abs(c.real_cutoff - 12.) < 10.**-15., "real space cutoff"
-    assert c.kmax[0] == 8, "kmax_x"
-    assert c.kmax[1] == 8, "kmax_y"
-    assert c.kmax[2] == 8, "kmax_z"
+    assert c.kmax[0] == 7, "kmax_x"
+    assert c.kmax[1] == 7, "kmax_y"
+    assert c.kmax[2] == 7, "kmax_z"
     assert abs(c.recip_vectors[0][0] - 0.0408579) < 10.**-5, "xrecip vector"
     assert abs(c.recip_vectors[1][1] - 0.0408579) < 10.**-5, "yrecip vector"
     assert abs(c.recip_vectors[2][2] - 0.0408579) < 10.**-5, "zrecip vector"
 
-    data = np.load('../res/coulomb/CO2.npy')
-
-
-
-    positions = ParticleDat(npart=N, ncomp=3)
-    charges = ParticleDat(npart=N, ncomp=1)
-
-    positions[:] = data[:,0:3:]
-    charges[:, 0] = data[:,3]
-    assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
-
-
-    rs = c.evaluate_python_sr(positions=positions, charges=charges)
-    print "self", c.evaluate_python_self(charges=charges)
-    print "rs", rs, 'rsdl', '%E' % Decimal(str(rs*9648.530821))
-    #print "recip space", c.evaluate_python_lr(positions=positions, charges=charges)
 
 
 
