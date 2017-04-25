@@ -16,6 +16,7 @@ import cmath
 import scipy
 import scipy.special
 from scipy.constants import epsilon_0
+import time
 
 from ppmd import data
 
@@ -56,10 +57,11 @@ class CoulombicEnergy(object):
         ly = (0., extent[1], 0.)
         lz = (0., 0., extent[2])
         ivolume = 1./np.dot(lx, np.cross(ly, lz))
-        
-        gx = np.cross(ly,lz)*ivolume
-        gy = np.cross(lz,lx)*ivolume
-        gz = np.cross(lx,ly)*ivolume
+
+
+        gx = np.cross(ly,lz)*ivolume * 2. * pi
+        gy = np.cross(lz,lx)*ivolume * 2. * pi
+        gz = np.cross(lx,ly)*ivolume * 2. * pi
 
         sqrtalpha = sqrt(alpha)
 
@@ -67,8 +69,8 @@ class CoulombicEnergy(object):
         nmax_y = round(ss*extent[1]*sqrtalpha/pi)
         nmax_z = round(ss*extent[2]*sqrtalpha/pi)
 
-        print gx, gy, gz
-        print 'nmax:', nmax_x, nmax_y, nmax_z
+        #print gx, gy, gz
+        #print 'nmax:', nmax_x, nmax_y, nmax_z
 
         # find shortest nmax_i * gi
         gxl = np.linalg.norm(gx)
@@ -80,15 +82,15 @@ class CoulombicEnergy(object):
             gzl*float(nmax_z)
         )
 
-        print "recip vector lengths", gxl, gyl, gzl
+        #print "recip vector lengths", gxl, gyl, gzl
 
         nmax_x = int(ceil(max_len/gxl))
         nmax_y = int(ceil(max_len/gyl))
         nmax_z = int(ceil(max_len/gzl))
 
-        print 'max reciprocal vector len:', max_len
+        #print 'max reciprocal vector len:', max_len
         nmax_t = max(nmax_x, nmax_y, nmax_z)
-        print "nmax_t", nmax_t
+        #print "nmax_t", nmax_t
 
         self.kmax = (nmax_x, nmax_y, nmax_z)
         """Number of reciporcal vectors taken in each direction."""
@@ -107,6 +109,7 @@ class CoulombicEnergy(object):
         self._vars['recip_vec'][0, :] = gx
         self._vars['recip_vec'][1, :] = gy
         self._vars['recip_vec'][2, :] = gz
+        self._vars['ivolume'] = ivolume
         # Again specific to orthogonal domains
         self._vars['recip_consts'] = np.zeros(3, dtype=ctypes.c_double)
         self._vars['recip_consts'][0] = exp((-1./(4.*alpha)) * (gx[0]**2.) )
@@ -130,8 +133,6 @@ class CoulombicEnergy(object):
         self._lib = build.simple_lib_creator(header, source, 'CoulombicEnergyOrth')
 
 
-
-
     @staticmethod
     def _COMP_EXP_PACKED(x, gh):
         gh[0] = cos(x)
@@ -151,8 +152,7 @@ class CoulombicEnergy(object):
         gh[0] = axmby*k[0] - xbpay*k[1]
         gh[1] = axmby*k[1] + xbpay*k[0]
 
-
-    def evaluate_python_lr(self, positions, charges):
+    def test_evaluate_python_lr(self, positions, charges):
         # python version for sanity
 
         np.set_printoptions(linewidth=400)
@@ -168,32 +168,45 @@ class CoulombicEnergy(object):
         coeff_space = self._vars['coeff_space']
         max_recip = self._vars['max_recip'].value
         alpha = self._vars['alpha'].value
+        ivolume = self._vars['ivolume']
 
-        print "recip_axis_len", recip_axis_len
+        #print "recip_axis_len", recip_axis_len
 
         recip_space[:] = 0.0
+
+        t0 = time.time()
 
         for lx in range(N_LOCAL):
 
             for dx in range(3):
-
-                gi = -1.0 * recip_vec[dx,dx]
-                ri = positions[lx, dx]*gi
+                ri =  -1.0 * recip_vec[dx,dx] * positions[lx, dx]
 
                 # unit at middle as exp(0) = 1+0i
                 recip_axis[:, recip_axis_len, dx] = (1.,0.)
 
 
-                # first element along each axis
+                # first positive index along each axis
                 self._COMP_EXP_PACKED(
                     ri,
                     recip_axis[:, recip_axis_len+1, dx]
                 )
 
+                # zeroth index on each axis
+                recip_axis[0, recip_axis_len-1, dx] = 1.0
+                recip_axis[1, recip_axis_len-1, dx] = 0.0
 
+                # first negative index on each axis
                 base_el = recip_axis[:, recip_axis_len+1, dx]
                 recip_axis[0, recip_axis_len-1, dx] = base_el[0]
                 recip_axis[1, recip_axis_len-1, dx] = -1. * base_el[1]
+
+                # check vals
+                #cval = cmath.exp(-1. * 1j*ri)
+                #_ctol15(recip_axis[0,recip_axis_len-1, dx], cval.real, "recip base -1")
+                #_ctol15(recip_axis[1,recip_axis_len-1, dx], cval.imag, "recip base -1")
+                #cval = cmath.exp(1j*ri)
+                #_ctol15(recip_axis[0,recip_axis_len+1, dx], cval.real, "recip base 1")
+                #_ctol15(recip_axis[1,recip_axis_len+1, dx], cval.imag, "recip base 1")
 
 
                 # +ve part
@@ -204,11 +217,20 @@ class CoulombicEnergy(object):
                         recip_axis[:,ex,dx]
                     )
 
+                    # check val
+                    #cval = cmath.exp(1j*ri)**(ex - recip_axis_len)
+                    #_ctol15(recip_axis[0,ex, dx], cval.real, "recip base")
+                    #_ctol15(recip_axis[1,ex, dx], cval.imag, "recip base")
+
+
                 # rest of axis
                 for ex in range(recip_axis_len-1):
                     recip_axis[0,recip_axis_len-2-ex,dx] = recip_axis[0,recip_axis_len+2+ex,dx]
                     recip_axis[1,recip_axis_len-2-ex,dx] = -1. * recip_axis[1,recip_axis_len+2+ex,dx]
-
+                    ##check val
+                    #cval = cmath.exp(-1. * 1j*ri)**( 2 + ex )
+                    #_ctol15(recip_axis[0,recip_axis_len-2-ex, dx], cval.real, "recip base")
+                    #_ctol15(recip_axis[1,recip_axis_len-2-ex, dx], cval.imag, "recip base")
 
             # now calculate the contributions to all of recip space
             qx = charges[lx, 0]
@@ -225,36 +247,64 @@ class CoulombicEnergy(object):
                         )
                         recip_space[:,rx,ry,rz] += tmp[:]*qx
 
-        # print 60*"="
-        # print "re"
-        # print recip_space[0,:,:,:]
-        # print "im"
-        # print recip_space[1,:,:,:]
-        # evaluate coefficient space
+                        ##check value by direct computation
+                        ri = positions[lx,:]
+                        px = rx - nmax_vec[0]
+                        py = ry - nmax_vec[1]
+                        pz = rz - nmax_vec[2]
+                        gx = recip_vec[0, 0]*px
+                        gy = recip_vec[1, 1]*py
+                        gz = recip_vec[2, 2]*pz
 
+                        cval = cmath.exp(-1j * np.dot(np.array((gx,gy,gz)),ri))
+                        _ctol(cval.real,tmp[0],'overall check RE',10.**-13)
+                        _ctol(cval.imag,tmp[1],'overall check IM {} {} {}'.format(px,py,pz),10.**-13)
+
+                        ##test abc
+                        #tmp2 = np.zeros(2)
+                        #self._COMP_ABC_PACKED(
+                        #    recip_axis[:,rx,0],
+                        #    recip_axis[:,ry,1],
+                        #    recip_axis[:,rz,2],
+                        #    tmp2[:]
+                        #)
+                        #cvalx = recip_axis[:,rx,0][0]+1j*recip_axis[:,rx,0][1]
+                        #cvaly = recip_axis[:,ry,1][0]+1j*recip_axis[:,ry,1][1]
+                        #cvalz = recip_axis[:,rz,2][0]+1j*recip_axis[:,rz,2][1]
+                        #cval = cvalx*cvaly*cvalz
+                        #_ctol(cval.real, tmp2[0], 'RE')
+                        #_ctol(cval.imag, tmp2[1], 'IM')
+
+
+        t1 = time.time()
+
+
+        # evaluate coefficient space ------------------------------------------
         max_recip2 = max_recip**2.
-        base_coeff1 = 4.*pi
+        base_coeff1 = 4.*pi*ivolume
         base_coeff2 = -1./(4.*alpha)
 
+        coeff_space[0,0,0] = 0.0
         for rz in xrange(nmax_vec[2]+1):
             for ry in xrange(nmax_vec[1]+1):
                 for rx in xrange(nmax_vec[0]+1):
                     if not (rx == 0 and ry == 0 and rz == 0):
 
-                        rlen2 = (rx*recip_vec[0,0])**2. + (ry*recip_vec[1,1])**2. + (rz*recip_vec[2,2])**2.
+                        rlen2 = (rx*recip_vec[0,0])**2. + \
+                                (ry*recip_vec[1,1])**2. + \
+                                (rz*recip_vec[2,2])**2.
 
                         if rlen2 > max_recip2:
                             coeff_space[rx,ry,rz] = 0.0
                         else:
                             coeff_space[rx,ry,rz] = (base_coeff1/rlen2)*exp(rlen2*base_coeff2)
 
-        # print 60*'='
-        # for rz in range(nmax_vec[2]+1):
-        #     print coeff_space[:,:,rz]
-
-
+        # ---------------------------------------------------------------------
         # evaluate total long range contribution loop over each particle then
         # over the reciprocal space
+
+        t2 = time.time()
+
 
         eng = 0.
         eng_im = 0.
@@ -264,6 +314,7 @@ class CoulombicEnergy(object):
             rx = positions[px, 0]
             ry = positions[px, 1]
             rz = positions[px, 2]
+            qx = charges[px,0]
 
             for kz in xrange(2*nmax_vec[2]+1):
                 rzkz = rz*recip_vec[2,2]*(kz-nmax_vec[2])
@@ -276,7 +327,7 @@ class CoulombicEnergy(object):
                             abs(kx-nmax_vec[0]),
                             abs(ky-nmax_vec[1]),
                             abs(kz-nmax_vec[2])
-                        ] * charges[px,0]
+                        ] * qx
 
                         re_coeff = cos(rzkz+ryky+rxkx)*coeff
                         im_coeff = sin(rzkz+ryky+rxkx)*coeff
@@ -289,13 +340,37 @@ class CoulombicEnergy(object):
 
                         # print re_coeff, im_coeff, re_con, im_con
 
-        print "ENG", eng
-        print "iENG", eng_im
+        t3 = time.time()
 
-        return eng
+        # ---------------------------------------------------------------------
+        # compute energy from structure factor
+        engs = 0.
 
+        for kz in xrange(2*nmax_vec[2]+1):
+            for ky in xrange(2*nmax_vec[1]+1):
+                for kx in xrange(2*nmax_vec[0]+1):
 
-    def evaluate_python_self(self, charges):
+                    coeff = coeff_space[
+                        abs(kx-nmax_vec[0]),
+                        abs(ky-nmax_vec[1]),
+                        abs(kz-nmax_vec[2])
+                    ]
+
+                    re_con = recip_space[0,kx,ky,kz]
+                    im_con = recip_space[1,kx,ky,kz]
+                    con = re_con*re_con + im_con*im_con
+
+                    engs += coeff*con
+
+        # ---------------------------------------------------------------------
+
+        t4 = time.time()
+
+        #print t1 - t0, t2 - t1, t3 - t2, t4 - t3
+
+        return eng*0.5, engs*0.5
+
+    def test_evaluate_python_self(self, charges):
 
         alpha = self._vars['alpha'].value
         eng_self = np.sum(np.square(charges[:,0]))
@@ -314,7 +389,8 @@ class CoulombicEnergy(object):
         l0 = 10.**-10
         return c0 / (4.*pi*epsilon_0*l0)
 
-    def evaluate_python_sr(self, positions, charges):
+
+    def test_evaluate_python_sr(self, positions, charges):
         extent = self.domain.extent
         N_LOCAL = positions.npart_local
         alpha = self._vars['alpha'].value
@@ -323,7 +399,7 @@ class CoulombicEnergy(object):
 
         # N^2 way for checking.....
 
-        print N_LOCAL, cutoff2, epsilon_0, extent, alpha
+        #print N_LOCAL, cutoff2, epsilon_0, extent, alpha
 
         eng = 0.0
         count = 0
@@ -357,143 +433,8 @@ class CoulombicEnergy(object):
                     #eng += (qi*qj/len_rij)
                     count += 2
 
-        print count, mind
+        #print count, mind
         return eng
-
-
-    def _check_single_contrib(self, pos, charge):
-        """
-        Check a single particles contribution
-        :param pos: 
-        :param charge: 
-        :return: False on error, True on no error
-        """
-
-        recip_axis = self._vars['recip_axis']
-        recip_vec = self._vars['recip_vec']
-        recip_axis_len = self._vars['recip_axis_len'].value
-        nmax_vec = self._vars['nmax_vec']
-        recip_space = self._vars['recip_space']
-
-        coeff_space = self._vars['coeff_space']
-        max_recip = self._vars['max_recip'].value
-        alpha = self._vars['alpha'].value
-
-
-        lr_eng = self.evaluate_python_lr(pos, charge)
-        self_eng = self.evaluate_python_self(charge)
-
-        posc = pos[0,:]
-
-        for rz in xrange(2*nmax_vec[2]+1):
-            for ry in xrange(2*nmax_vec[1]+1):
-                for rx in xrange(2*nmax_vec[0]+1):
-
-                    rzp = rz - nmax_vec[2]
-                    ryp = ry - nmax_vec[1]
-                    rxp = rx - nmax_vec[0]
-
-                    kx = np.array([
-                        rxp*recip_vec[0,0], ryp*recip_vec[1,1], rzp*recip_vec[2,2]
-                    ])
-
-                    mokr = -1. * np.dot(kx, posc)
-
-                    kstr = str(kx)
-
-                    if not abs(charge[0,] * cos(mokr) - recip_space[0,rx,ry,rz]) < 10.**(-15):
-                        print "real error " + str(charge[0,] * cos(mokr)) + " " + str(recip_space[0,rx,ry,rz]) + " " + kstr
-                        return False
-                    if not abs(charge[0,] * sin(mokr) - recip_space[1,rx,ry,rz]) < 10.**(-15):
-                        print "imag error " + str(charge[0,] * sin(mokr)) + " " + str(recip_space[1,rx,ry,rz]) + " " + kstr
-                        return False
-
-
-
-    def _check_quad_contrib(self, testpos, testq):
-        """
-        Check a single particles contribution
-        :param pos: 
-        :param charge: 
-        :return: 
-        """
-
-        extent = self.domain.extent
-        pos = data.ParticleDat(ncomp=3, npart=4)
-        charge = data.ParticleDat(ncomp=1, npart=4)
-
-        e0 = extent[0]
-        e1 = extent[1]
-
-        pos[0,:] = (0.5*e0, 0.5*e1, 0.)
-        pos[1,:] = (-0.5*e0, 0.5*e1, 0.)
-        pos[2,:] = (-0.5*e0, -0.5*e1, 0.)
-        pos[3,:] = (0.5*e0, -0.5*e1, 0.)
-
-        charge[0,] = 1
-        charge[1,] = -1
-        charge[2,] = 1
-        charge[3,] = -1
-
-
-        recip_axis = self._vars['recip_axis']
-        recip_vec = self._vars['recip_vec']
-        recip_axis_len = self._vars['recip_axis_len'].value
-        nmax_vec = self._vars['nmax_vec']
-        recip_space = self._vars['recip_space']
-
-        coeff_space = self._vars['coeff_space']
-        max_recip = self._vars['max_recip'].value
-        alpha = self._vars['alpha'].value
-
-        lr_eng = self.evaluate_python_lr(pos, charge)
-        self_eng = self.evaluate_python_self(charge)
-
-        # evaluate particle in own field this should:
-        # a) recalc match other calc
-        # b) match the supposid self contribution
-
-        lr_check_contrib_re = 0.0
-        lr_check_contrib_im = 0.0
-
-        rx = testpos[0]
-        ry = testpos[1]
-        rz = testpos[2]
-
-        for px in range(4):
-            rx = pos[px,0]
-            ry = pos[px,1]
-            rz = pos[px,2]
-            testtq = charge[px,]
-
-            for kz in xrange(2*nmax_vec[2]+1):
-                rzkz = rz*recip_vec[2,2]*(kz-nmax_vec[2])
-                for ky in xrange(2*nmax_vec[1]+1):
-                    ryky = ry*recip_vec[1,1]*(ky-nmax_vec[1])
-                    for kx in xrange(2*nmax_vec[0]+1):
-                        rxkx = rx*recip_vec[0,0]*(kx-nmax_vec[0])
-
-                        k2 =  (recip_vec[0,0]*(kx-nmax_vec[0])) ** 2.
-                        k2 += (recip_vec[1,1]*(ky-nmax_vec[1])) ** 2.
-                        k2 += (recip_vec[2,2]*(kz-nmax_vec[2])) ** 2.
-
-                        if (k2 < (max_recip ** 2.)) and k2 > 10.**-8:
-                            ck = exp(-1. * k2 / (4. * (alpha))) *4. * pi / k2
-                            ck *= testtq
-
-                            rk = rxkx + ryky + rzkz
-                            ckre = ck * cos(rk)
-                            ckim = ck * sin(rk)
-
-                            lr_check_contrib_re += ckre*recip_space[0,kx,ky,kx] - ckim*recip_space[1,kx,ky,kz]
-                            lr_check_contrib_im += ckre*recip_space[1,kx,ky,kx] + ckim*recip_space[0,kx,ky,kz]
-
-
-        print "check2"
-        print lr_check_contrib_re
-        print lr_check_contrib_im
-        print self.evaluate_python_self(charge)
-
 
 
 def _test_split1(extent, eps=10.**-6, alpha=None, real_cutoff=None ):
@@ -510,6 +451,9 @@ def _test_split1(extent, eps=10.**-6, alpha=None, real_cutoff=None ):
 
 
 
-
+def _ctol(a, b, m='No message given.', tol=10.**-15):
+    err = abs(a-b)
+    if  err> tol :
+        print(err, m)
 
 

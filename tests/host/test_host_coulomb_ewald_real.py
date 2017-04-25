@@ -19,7 +19,7 @@ ParticleDat = md.data.ParticleDat
 def test_ewald_energy_python_nacl_1():
     """
     Test that the python implementation of ewald calculates the correct 
-    energy
+    real space contribution and self interaction contribution.
     """
 
     if mpi_rank > 0:
@@ -47,8 +47,8 @@ def test_ewald_energy_python_nacl_1():
     charges[:, 0] = data[:,3]
     assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
 
-    rs = c.evaluate_python_sr(positions=positions, charges=charges)
-    selfinteraction = c.evaluate_python_self(charges)
+    rs = c.test_evaluate_python_sr(positions=positions, charges=charges)
+    selfinteraction = c.test_evaluate_python_self(charges)
 
     localsr = rs * c.internal_to_ev()
     selfij = selfinteraction * c.internal_to_ev()
@@ -61,7 +61,7 @@ def test_ewald_energy_python_nacl_1():
 def test_ewald_energy_python_co2_1():
     """
     Test that the python implementation of ewald calculates the correct 
-    energy
+    real space contribution and self interaction contribution.
     """
 
     if mpi_rank > 0:
@@ -89,8 +89,8 @@ def test_ewald_energy_python_co2_1():
     charges[:, 0] = data[:,3]
     assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
 
-    rs = c.evaluate_python_sr(positions=positions, charges=charges)
-    selfinteraction = c.evaluate_python_self(charges)
+    rs = c.test_evaluate_python_sr(positions=positions, charges=charges)
+    selfinteraction = c.test_evaluate_python_self(charges)
 
     localsr = rs * c.internal_to_ev()
     selfij = selfinteraction * c.internal_to_ev()
@@ -103,8 +103,8 @@ def test_ewald_energy_python_co2_1():
 
 def test_ewald_energy_python_nacl_2():
     """
-    Test that the python implementation of ewald calculates the correct 
-    energy
+    Test that the python implementation of ewald sets up the Ewald calculation
+    consistently.
     """
 
     if mpi_rank > 0:
@@ -124,8 +124,8 @@ def test_ewald_energy_python_nacl_2():
 
 def test_ewald_energy_python_co2_2():
     """
-    Test that the python implementation of ewald calculates the correct 
-    energy
+    Test that the python implementation of ewald sets up the Ewald calculation
+    consistently.
     """
 
     if mpi_rank > 0:
