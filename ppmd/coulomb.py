@@ -237,10 +237,21 @@ class CoulombicEnergy(object):
             tmp = np.zeros(2, dtype=ctypes.c_double)
             for rz in xrange(2*nmax_vec[2]+1):
                 for ry in xrange(2*nmax_vec[1]+1):
-                    for rx in xrange(2*nmax_vec[0]+1):
+
+                    # case for rx == 0
+                    tmp[:] = 0.0
+                    self._COMP_ABC_PACKED(
+                        recip_axis[:,nmax_vec[0],0],
+                        recip_axis[:,ry,1],
+                        recip_axis[:,rz,2],
+                        tmp[:]
+                    )
+                    recip_space[:,0,ry,rz] += tmp[:]*qx
+
+                    for rx in xrange(1, nmax_vec[0]+1):
                         tmp[:] = 0.0
                         self._COMP_ABC_PACKED(
-                            recip_axis[:,rx,0],
+                            recip_axis[:,nmax_vec[0] + rx,0],
                             recip_axis[:,ry,1],
                             recip_axis[:,rz,2],
                             tmp[:]
@@ -248,17 +259,17 @@ class CoulombicEnergy(object):
                         recip_space[:,rx,ry,rz] += tmp[:]*qx
 
                         ##check value by direct computation
-                        ri = positions[lx,:]
-                        px = rx - nmax_vec[0]
-                        py = ry - nmax_vec[1]
-                        pz = rz - nmax_vec[2]
-                        gx = recip_vec[0, 0]*px
-                        gy = recip_vec[1, 1]*py
-                        gz = recip_vec[2, 2]*pz
+                        #ri = positions[lx,:]
+                        #px = rx - nmax_vec[0]
+                        #py = ry - nmax_vec[1]
+                        #pz = rz - nmax_vec[2]
+                        #gx = recip_vec[0, 0]*px
+                        #gy = recip_vec[1, 1]*py
+                        #gz = recip_vec[2, 2]*pz
 
-                        cval = cmath.exp(-1j * np.dot(np.array((gx,gy,gz)),ri))
-                        _ctol(cval.real,tmp[0],'overall check RE',10.**-13)
-                        _ctol(cval.imag,tmp[1],'overall check IM {} {} {}'.format(px,py,pz),10.**-13)
+                        #cval = cmath.exp(-1j * np.dot(np.array((gx,gy,gz)),ri))
+                        #_ctol(cval.real,tmp[0],'overall check RE',10.**-13)
+                        #_ctol(cval.imag,tmp[1],'overall check IM {} {} {}'.format(px,py,pz),10.**-13)
 
                         ##test abc
                         #tmp2 = np.zeros(2)
@@ -305,7 +316,7 @@ class CoulombicEnergy(object):
 
         t2 = time.time()
 
-
+        '''
         eng = 0.
         eng_im = 0.
 
@@ -339,7 +350,7 @@ class CoulombicEnergy(object):
                         eng_im += re_coeff*im_con + im_coeff*re_con
 
                         # print re_coeff, im_coeff, re_con, im_con
-
+        '''
         t3 = time.time()
 
         # ---------------------------------------------------------------------
@@ -348,10 +359,23 @@ class CoulombicEnergy(object):
 
         for kz in xrange(2*nmax_vec[2]+1):
             for ky in xrange(2*nmax_vec[1]+1):
-                for kx in xrange(2*nmax_vec[0]+1):
+
+                coeff = coeff_space[
+                    0,
+                    abs(ky-nmax_vec[1]),
+                    abs(kz-nmax_vec[2])
+                ]
+
+                re_con = recip_space[0,0,ky,kz]
+                im_con = recip_space[1,0,ky,kz]
+                con = re_con*re_con + im_con*im_con
+
+                engs += coeff*con
+
+                for kx in xrange(1, nmax_vec[0]+1):
 
                     coeff = coeff_space[
-                        abs(kx-nmax_vec[0]),
+                        kx,
                         abs(ky-nmax_vec[1]),
                         abs(kz-nmax_vec[2])
                     ]
@@ -360,7 +384,7 @@ class CoulombicEnergy(object):
                     im_con = recip_space[1,kx,ky,kz]
                     con = re_con*re_con + im_con*im_con
 
-                    engs += coeff*con
+                    engs += coeff*con*2.
 
         # ---------------------------------------------------------------------
 
@@ -368,9 +392,10 @@ class CoulombicEnergy(object):
 
         #print t1 - t0, t2 - t1, t3 - t2, t4 - t3
 
-        return eng*0.5, engs*0.5
+        return engs*0.5, engs*0.5
 
     def test_evaluate_python_self(self, charges):
+        # type: (object) -> object
 
         alpha = self._vars['alpha'].value
         eng_self = np.sum(np.square(charges[:,0]))
