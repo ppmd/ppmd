@@ -80,6 +80,29 @@ multiple particles e.g. mass.
 }rst_doc
 """
 
+#####################################################################################
+# Global Array
+#####################################################################################
+class GlobalArray(object):
+    """
+    Class for global data. This class may be: globally set, incremented and read.
+    This class is constructed with a MPI reduction operator, default MPI.SUM, which
+    defines the addition operator. Global setting sets all values in the array to
+    the same value across all ranks.
+    """
+
+    def __init__(self, size=1, op=mpi.MPI.SUM, dtype=ctypes.c_double):
+        pass
+
+    def __iadd__(self, other):
+        pass
+
+    def set(self, val):
+        pass
+
+    def __getitem__(self, item):
+        pass
+
 
 #####################################################################################
 # Scalar array.
