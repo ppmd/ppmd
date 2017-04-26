@@ -8,7 +8,6 @@ import numpy as np
 
 # package level imports
 import ppmd.mpi as mpi
-import ppmd.host as host
 
 # cuda level imports
 import cuda_runtime
@@ -29,6 +28,10 @@ def create_halo_pairs(domain_in, slicexyz, direction):
     """
     cell_array = domain_in.cell_array
     extent = domain_in.extent
+    comm = domain_in.comm
+    dims = mpi.cartcomm_dims(comm)
+    top = mpi.cartcomm_top(comm)
+    periods = mpi.cartcomm_periods(comm)
 
     xr = range(1, cell_array[0] - 1)[slicexyz[0]]
     yr = range(1, cell_array[1] - 1)[slicexyz[1]]
@@ -63,9 +66,9 @@ def create_halo_pairs(domain_in, slicexyz, direction):
 
     shift = np.zeros(3, dtype=ctypes.c_double)
     for ix in range(3):
-        if mpi.MPI_HANDLE.top[ix] == 0 and mpi.MPI_HANDLE.periods[ix] == 1 and direction[ix] == -1:
+        if top[ix] == 0 and periods[ix] == 1 and direction[ix] == -1:
             shift[ix] = extent[ix]
-        if mpi.MPI_HANDLE.top[ix] == mpi.MPI_HANDLE.dims[ix] - 1 and mpi.MPI_HANDLE.periods[ix] == 1 and direction[ix] == 1:
+        if top[ix] == dims[ix] - 1 and periods[ix] == 1 and direction[ix] == 1:
             shift[ix] = -1. * extent[ix]
 
 
@@ -272,15 +275,6 @@ class CartesianHalo(object):
             self._get_pairs()
 
         return self._reverse_lookup
-
-
-
-
-HALOS = None
-
-
-
-
 
 
 

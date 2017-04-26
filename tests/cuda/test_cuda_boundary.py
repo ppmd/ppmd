@@ -16,12 +16,13 @@ N = 100
 crN = 10 #cubert(N)
 E = 8.
 
+
 Eo2 = E/2.
 tol = 0.1
 
 
-rank = md.mpi.MPI_HANDLE.rank
-nproc = md.mpi.MPI_HANDLE.nproc
+rank = md.mpi.MPI.COMM_WORLD.Get_rank()
+nproc = md.mpi.MPI.COMM_WORLD.Get_size()
 
 
 if mdc.CUDA_IMPORT:
@@ -47,7 +48,9 @@ def state(request):
 
     A = State()
     A.npart = N
+
     A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
+
     A.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
 
     A.p = PositionDat(ncomp=3)
@@ -84,6 +87,7 @@ def base_rank(request):
 
 @cuda
 def test_cuda_boundary_z0(state):
+
 
     # crN, Number of particles per coordinate direction
     state.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
@@ -140,14 +144,14 @@ def test_cuda_boundary_z0(state):
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     state.domain.boundary_condition.apply()
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
 
@@ -158,7 +162,6 @@ def test_cuda_boundary_z0(state):
         assert  b[0] < ps[px,0] < b[1]
         assert  b[2] < ps[px,1] < b[3]
         assert  b[4] < ps[px,2] < b[5]
-
 
 
     state.gather_data_on(0)
@@ -174,6 +177,8 @@ def test_cuda_boundary_z0(state):
 
 @cuda
 def test_cuda_boundary_z1(state):
+
+
     # crN, Number of particles per coordinate direction
     state.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
     state.domain.boundary_condition.set_state(state)
@@ -229,14 +234,14 @@ def test_cuda_boundary_z1(state):
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     state.domain.boundary_condition.apply()
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
 
@@ -256,8 +261,6 @@ def test_cuda_boundary_z1(state):
         pp = state.p[inds]
 
         assert np.sum(np.abs(pp - pjc)) < 1.
-
-
 
 
 @cuda
@@ -317,14 +320,14 @@ def test_cuda_boundary_x0(state):
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     state.domain.boundary_condition.apply()
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     # avoid excessive copying
@@ -344,6 +347,93 @@ def test_cuda_boundary_x0(state):
         pp = state.p[inds]
 
         assert np.sum(np.abs(pp - pjc)) < 1.
+
+
+@cuda
+def test_cuda_boundary_x01(state):
+    # crN, Number of particles per coordinate direction
+    state.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
+    state.domain.boundary_condition.set_state(state)
+
+
+    a = np.linspace(-0.5*(E-tol), 0.5*(E-tol), crN)
+    grid = np.meshgrid(a,a)
+    d1 = grid[0]
+    d2 = grid[1]
+
+    pi = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+
+
+    for d1x in range(crN):
+        for d2x in range(crN):
+            i = d1x*crN + d2x
+            pi[i, ::] = np.array([ 0, d2[d1x, d2x], d1[d1x, d2x] ])
+
+
+    # pj sets particles to be outside the domain, they should be swapped
+    # to the opposite side of the domain
+
+
+    offset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+    offset[:,0] = -0.5*(E - tol)*np.ones([crN*crN], dtype=ctypes.c_double)
+
+    coffset = np.zeros([crN*crN, 3], dtype=ctypes.c_double)
+    coffset[:,0] = E*np.ones([crN*crN], dtype=ctypes.c_double)
+
+    pj = pi + offset
+    pjc = pi - offset
+
+    #setup positions outside the boundary
+    state.p[:] = pj
+    state.v[:] = np.zeros([N,3])
+    state.f[:] = np.zeros([N,3])
+    state.gid[:,0] = np.arange(N)
+
+
+    state.scatter_data_from(0)
+
+
+    kernel_code = '''
+    P(0) -= %(TOL)s ;
+   ''' % {'TOL': str(tol)}
+
+    kernel = md.kernel.Kernel('test_cuda_boundary_x0',code=kernel_code)
+    kernel_map = {'P': state.p(md.access.RW)}
+
+    loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, dat_dict=kernel_map)
+    loop.execute(n=state.npart_local)
+
+
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
+    state.domain.boundary_condition.apply()
+
+    tcs = np.array([state.npart_local])
+    tcr = np.array([0])
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
+    assert tcr[0] == N
+
+    # avoid excessive copying
+    ps = state.p[:]
+    b = state.domain.boundary[:]
+    for px in range(state.npart_local):
+        assert  b[0] < ps[px,0] < b[1]
+        assert  b[2] < ps[px,1] < b[3]
+        assert  b[4] < ps[px,2] < b[5]
+
+
+    state.gather_data_on(0)
+
+    if rank == 0:
+
+        inds = state.gid[:,0].argsort()
+        pp = state.p[inds]
+
+        assert np.sum(np.abs(pp - pjc)) < 1.
+
 
 @cuda
 def test_cuda_boundary_x1(state):
@@ -385,7 +475,6 @@ def test_cuda_boundary_x1(state):
     state.f[:] = np.zeros([N,3])
     state.gid[:,0] = np.arange(N)
 
-
     state.scatter_data_from(0)
 
 
@@ -402,14 +491,14 @@ def test_cuda_boundary_x1(state):
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     state.domain.boundary_condition.apply()
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     # avoid excessive copying
@@ -435,6 +524,7 @@ def test_cuda_boundary_x1(state):
 
 @cuda
 def test_cuda_boundary_y0(state):
+
     # crN, Number of particles per coordinate direction
     state.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
     state.domain.boundary_condition.set_state(state)
@@ -473,9 +563,7 @@ def test_cuda_boundary_y0(state):
     state.f[:] = np.zeros([N,3])
     state.gid[:,0] = np.arange(N)
 
-
     state.scatter_data_from(0)
-
 
     kernel_code = '''
     P(1) -= %(TOL)s ;
@@ -487,17 +575,16 @@ def test_cuda_boundary_y0(state):
     loop = mdc.cuda_loop.ParticleLoop(kernel=kernel, dat_dict=kernel_map)
     loop.execute(n=state.npart_local)
 
-
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     state.domain.boundary_condition.apply()
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     # avoid excessive copying
@@ -517,6 +604,7 @@ def test_cuda_boundary_y0(state):
         pp = state.p[inds]
 
         assert np.sum(np.abs(pp - pjc)) < 1.
+
 
 
 
@@ -577,14 +665,14 @@ def test_cuda_boundary_y1(state):
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     state.domain.boundary_condition.apply()
 
     tcs = np.array([state.npart_local])
     tcr = np.array([0])
-    md.mpi.MPI_HANDLE.comm.Allreduce(tcs, tcr)
+    md.mpi.MPI.COMM_WORLD.Allreduce(tcs, tcr)
     assert tcr[0] == N
 
     # avoid excessive copying

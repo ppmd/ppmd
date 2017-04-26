@@ -14,16 +14,6 @@ import mpi
 import host
 import opt
 
-################################################################################################################
-# HALO DEFINITIONS
-################################################################################################################
-
-HALOS = None
-
-def reset_halos():
-    global HALOS
-    HALOS = None
-
 
 # ===========================================================================
 
@@ -43,6 +33,10 @@ def create_halo_pairs_slice_halo(domain_in, slicexyz, direction):
 
     cell_array = domain_in.cell_array
     extent = domain_in.extent
+    comm = domain_in.comm
+    dims = mpi.cartcomm_dims(comm)
+    top = mpi.cartcomm_top(comm)
+    periods = mpi.cartcomm_periods(comm)
 
     xr = range(0, cell_array[0])[slicexyz[0]]
     yr = range(0, cell_array[1])[slicexyz[1]]
@@ -77,30 +71,25 @@ def create_halo_pairs_slice_halo(domain_in, slicexyz, direction):
 
     shift = np.zeros(3, dtype=ctypes.c_double)
     for ix in range(3):
-        if mpi.MPI_HANDLE.top[ix] == 0 and \
-                        mpi.MPI_HANDLE.periods[ix] == 1 and \
+        if top[ix] == 0 and \
+                        periods[ix] == 1 and \
                         direction[ix] == -1:
 
             shift[ix] = extent[ix]
 
-        if mpi.MPI_HANDLE.top[ix] == mpi.MPI_HANDLE.dims[ix] - 1 and \
-                        mpi.MPI_HANDLE.periods[ix] == 1 and \
+        if top[ix] == dims[ix] - 1 and \
+                        periods[ix] == 1 and \
                         direction[ix] == 1:
 
             shift[ix] = -1. * extent[ix]
 
-
-    recv_rank = mpi.MPI_HANDLE.shift((-1 * direction[0],
-                                      -1 * direction[1],
-                                      -1 * direction[2]))
-
-    send_rank = mpi.MPI_HANDLE.shift(direction)
+    recv_rank = mpi.cartcomm_shift(
+        comm,
+        (-1 * direction[0], -1 * direction[1], -1 * direction[2])
+    )
+    send_rank = mpi.cartcomm_shift(comm, direction)
 
     return b_cells, h_cells, shift, send_rank, recv_rank
-
-
-
-
 
 
 
@@ -462,7 +451,7 @@ class CartesianHaloSix(object):
 
         assert ccc_ptr is not None, "No valid Cell Contents Count pointer found."
 
-        self._exchange_sizes_lib(ctypes.c_int(mpi.MPI_HANDLE.fortran_comm),
+        self._exchange_sizes_lib(ctypes.c_int(self._domain.comm.py2f()),
                                  self._send_ranks.ctypes_data,
                                  self._recv_ranks.ctypes_data,
                                  self._halo_groups_start_end_indices.ctypes_data,
@@ -481,8 +470,6 @@ class CartesianHaloSix(object):
             ccc[:] = self._cell_contents_count_tmp[:ccc.ncomp:]
 
         return self._h_count.value, self._t_count.value
-
-
 
 
 

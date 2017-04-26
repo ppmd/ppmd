@@ -9,7 +9,6 @@ __license__ = "GPL"
 
 # system level imports
 import ctypes
-from mpi4py.MPI import SUM
 import numpy as np
 import time
 import cgen
@@ -24,6 +23,14 @@ import mpi
 import pio
 import host
 import module
+
+
+_MPI = mpi.MPI
+SUM = _MPI.SUM
+_MPIWORLD = mpi.MPI.COMM_WORLD
+_MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
+_MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
+_MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
 
 def get_timer_accuracy():
 
@@ -152,12 +159,12 @@ class LoopTimer(module.Module):
         """
         Return the aggregated cpu time.
         """
-        if mpi.MPI_HANDLE.nproc == 1:
+        if _MPISIZE == 1:
             return self.time
         else:
             _my_time = np.array(self._time.value)
             _ttime =np.zeros(1)
-            mpi.MPI_HANDLE.comm.Allreduce(_my_time, _ttime, SUM)
+            _MPIWORLD.Allreduce(_my_time, _ttime, SUM)
             return _ttime[0]
 
     @property
@@ -165,13 +172,13 @@ class LoopTimer(module.Module):
         """
         Return the aggregated cpu time.
         """
-        if mpi.MPI_HANDLE.nproc == 1:
+        if _MPISIZE == 1:
             return self.time
         else:
             _my_time = np.array(self._time.value)
             _ttime =np.zeros(1)
-            mpi.MPI_HANDLE.comm.Allreduce(_my_time, _ttime, SUM)
-            return _ttime[0]/float(mpi.MPI_HANDLE.nproc)
+            _MPIWORLD.Allreduce(_my_time, _ttime, SUM)
+            return _ttime[0]/float(_MPISIZE)
 
     def get_cpp_headers(self):
         """
@@ -257,7 +264,7 @@ class SynchronizedTimer(Timer):
         """
         Start the timer.
         """
-        mpi.MPI_HANDLE.barrier()
+        _MPIBARRIER()
         if (self._lo > self._l) and (self._running is False):
             self._ts = time.time()
             self._running = True
@@ -266,7 +273,7 @@ class SynchronizedTimer(Timer):
         """
         Pause the timer.
         """
-        mpi.MPI_HANDLE.barrier()
+        _MPIBARRIER()
         if (self._lo > self._l) and (self._running is True):
             self._tt += time.time() - self._ts
             self._ts = 0.0
@@ -277,7 +284,7 @@ class SynchronizedTimer(Timer):
         Stop timer and print time.
         :arg string str: string to append after time. If None time printing will be suppressed.
         """
-        mpi.MPI_HANDLE.barrier()
+        _MPIBARRIER()
         if (self._lo > self._l) and (self._running is True):
             self._tt += time.time() - self._ts
 
@@ -306,7 +313,7 @@ Dict available module wide for profiling. Recommended format along lines of:
 }
 """
 
-PROFILE['MPI:rank'] = mpi.MPI_HANDLE.rank
+PROFILE['MPI:rank'] = _MPIRANK
 
 
 def print_profile():
@@ -317,7 +324,7 @@ def print_profile():
 
 def dump_profile():
 
-    rank = mpi.MPI_HANDLE.rank
+    rank = _MPIRANK
     cwd = os.getcwd()
     prof_dir = os.path.join(cwd, 'PROFILE')
     this_dump = os.path.join(prof_dir, datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
@@ -327,7 +334,7 @@ def dump_profile():
             os.mkdir(prof_dir)
         if not os.path.exists(this_dump):
             os.mkdir(this_dump)
-    mpi.MPI_HANDLE.barrier()
+    _MPIBARRIER()
 
     with open(
             os.path.join(this_dump, 'profile_dict.' + str(rank) + '.pkl'), 'wb'

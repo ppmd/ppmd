@@ -69,8 +69,14 @@ def numpy_to_xyz(arr, filename, symbol='A'):
         fh.writelines(str(arr.shape[0])+'\n')
         fh.writelines('Written by numpy_to_xyz.\n')
         for ix in xrange(arr.shape[0]):
+
+            if type(symbol) is not str:
+                sym = symbol[ix]
+            else:
+                sym = symbol
+
             fh.writelines(
-                symbol + '        {:.16f}        {:.16f}        {:.16f}\n'.format(arr[ix,0], arr[ix,1], arr[ix,2])
+                sym + '        {:.16f}        {:.16f}        {:.16f}\n'.format(arr[ix,0], arr[ix,1], arr[ix,2])
             )
 
 

@@ -2,7 +2,6 @@
 import ctypes
 
 #package level imports
-from ppmd import runtime, pio, mpi
 
 
 #cuda level imports
@@ -46,9 +45,10 @@ def cuda_mpi_err_check(err_code):
 ###############################################################################
 
 
-def MPI_Bcast(buffer, byte_count, root):
+def MPI_Bcast(comm, buffer, byte_count, root):
     """
     Perform MPI_Bcast with cuda pointers. All parameters are ctypes types.
+    :param comm: mpi4py MPI communicator to use
     :param buffer: ctypes pointer to data
     :param byte_count: number of bytes to transfer
     :param root: root mpi rank
@@ -58,7 +58,7 @@ def MPI_Bcast(buffer, byte_count, root):
     assert type(root) is ctypes.c_int, "root arg has incorrect data type"
 
     cuda_mpi_err_check(LIB_CUDA_MPI['MPI_Bcast_cuda'](
-        ctypes.c_int(mpi.MPI_HANDLE.comm.py2f()),
+        ctypes.c_int(comm.py2f()),
         buffer,
         byte_count,
         root
@@ -70,9 +70,10 @@ def MPI_Bcast(buffer, byte_count, root):
 ###############################################################################
 
 
-def MPI_Gatherv(s_buffer, s_count, r_buffer, r_counts, r_disps, root):
+def MPI_Gatherv(comm,s_buffer, s_count, r_buffer, r_counts, r_disps, root):
     """
     Cuda aware MPI_Gatherv. All counts/sizes are in bytes not counts.
+    :param comm: mpi4py MPI communicator to use
     :param s_buffer: ctypes pointer to send buffer
     :param s_count: ctypes.c_int of send count
     :param r_buffer: ctypes pointer to recv buffer
@@ -83,7 +84,7 @@ def MPI_Gatherv(s_buffer, s_count, r_buffer, r_counts, r_disps, root):
     """
 
     cuda_mpi_err_check(LIB_CUDA_MPI['MPI_Gatherv_cuda'](
-        ctypes.c_int(mpi.MPI_HANDLE.comm.py2f()),
+        ctypes.c_int(comm.py2f()),
         s_buffer,
         s_count,
         r_buffer,
@@ -92,13 +93,6 @@ def MPI_Gatherv(s_buffer, s_count, r_buffer, r_counts, r_disps, root):
         root
     ))
 
-
-
-# const int length,
-# const int* __restrict__ d_map,
-# const int* __restrict__ d_ccc,
-# int* __restrict__ d_scan,
-# int* __restrict__ h_max
 
 def cuda_exclusive_scan_int_masked_copy(length, d_map, d_ccc, d_scan):
     m = ctypes.c_int32(0)

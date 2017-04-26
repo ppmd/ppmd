@@ -13,8 +13,8 @@ Eo2 = E/2.
 tol = 0.1
 
 
-rank = md.mpi.MPI_HANDLE.rank
-nproc = md.mpi.MPI_HANDLE.nproc
+rank = md.mpi.MPI.COMM_WORLD.Get_rank()
+nproc = md.mpi.MPI.COMM_WORLD.Get_size()
 
 
 PositionDat = md.data.PositionDat
@@ -106,9 +106,7 @@ def test_host_halo_cube_1(state):
     state.p[:] = pi
     state.npart_local = N
 
-
     state.filter_on_domain_boundary()
-
 
     state.get_cell_to_particle_map().check()
 
@@ -138,7 +136,6 @@ def test_host_halo_cube_1(state):
             for cz in xrange(ca[2]):
                 ci = cz*(ca[0]*ca[1]) + cy*ca[0] + cx
                 assert state.get_cell_to_particle_map().cell_contents_count[ci] == 1
-
 
 
 

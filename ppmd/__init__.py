@@ -5,7 +5,8 @@ __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
 
-__all__ = [ 'config',
+__all__ = [ 'mpi',
+            'config',
             'access',
             'build',
             'cell',
@@ -16,14 +17,11 @@ __all__ = [ 'config',
             'kernel',
             'loop',
             'method',
-            'mpi',
             'pairloop',
             'pio',
             'potential',
             'runtime',
-            'simulation',
             'state',
-            'fio',
             'opt',
             'utility',
             'logic',
@@ -31,6 +29,7 @@ __all__ = [ 'config',
             'coulomb']
 
 
+import mpi
 import config
 import logic
 import access
@@ -43,14 +42,11 @@ import host
 import kernel
 import loop
 import method
-import mpi
 import pairloop
 import pio
 import potential
 import runtime
-import simulation
 import state
-import fio
 import opt
 import utility
 import module

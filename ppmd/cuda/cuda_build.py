@@ -10,6 +10,9 @@ import cuda_runtime
 
 NVCC = config.COMPILERS[cuda_config.CUDA_CFG['cc-main'][1]]
 
+_MPIWORLD = mpi.MPI.COMM_WORLD
+_MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
+_MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
 
 #####################################################################################
 # File writer helper function.
@@ -52,8 +55,9 @@ def source_write(header_code, src_code, name, extensions=('.h', '.cu'), dst_dir=
 def load(filename):
     try:
         return ctypes.cdll.LoadLibrary(str(filename))
-    except:
+    except Exception as e:
         print "cuda_build:load error. Could not load following library,", str(filename)
+        print e
         quit()
 
 def check_file_existance(abs_path=None):
@@ -102,7 +106,7 @@ def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR, CC=NVCC, dst_dir=cuda
 
     _lib_filename = os.path.join(dst_dir, lib + str(_m) + '.so')
 
-    if mpi.MPI_HANDLE.rank == 0:
+    if _MPIRANK == 0:
         if not os.path.exists(_lib_filename):
 
             _lib_src_filename = os.path.join(source_dir, lib + '.cu')
@@ -141,15 +145,16 @@ def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR, CC=NVCC, dst_dir=cuda
                 elif cuda_runtime.VERBOSE > 2:
                     print "cuda_build warning: Shared library not built:", lib
 
-    mpi.MPI_HANDLE.barrier()
-    if not os.path.exists(_lib_filename):
-        pio.pprint("Critical CUDA Error: Library not built, " + str(lib) + ", rank:", mpi.MPI_HANDLE.rank)
+    _MPIBARRIER()
 
-        if mpi.MPI_HANDLE.rank == 0:
+    if not os.path.exists(_lib_filename):
+        pio.pprint("Critical CUDA Error: Library not built, " + str(lib) + ", rank:", _MPIRANK)
+
+        if _MPIRANK == 0:
             with open(os.path.join(dst_dir, lib + str(_m) + '.err'), 'r') as stderr:
                 print stderr.read()
 
-        mpi.MPI_HANDLE.comm.barrier()
+        _MPIBARRIER()
 
 
         quit()

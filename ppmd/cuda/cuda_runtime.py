@@ -5,10 +5,10 @@ Module to handle the cuda runtime environment.
 import ctypes
 import os
 import math
-import atexit
 
 # pycuda imports
 import pycuda.driver as cudadrv
+
 
 #package level imports
 import cuda_config
@@ -40,7 +40,12 @@ except Exception as e:
     print e
     raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA helper lib not loaded')
 
-
+_MPI = mpi.MPI
+SUM = _MPI.SUM
+_MPIWORLD = mpi.MPI.COMM_WORLD
+_MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
+_MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
+_MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
 
 ###############################################################################
 # cuda_err_checking
@@ -57,7 +62,7 @@ def cuda_err_check(err_code):
 
     if LIB_HELPER is not None:
         err = LIB_HELPER['cudaErrorCheck'](err_code)
-        assert err == 0, "Non-zero CUDA error:" + str(err_code) + 'rank: ' + str(mpi.MPI_HANDLE.rank)
+        assert err == 0, "Non-zero CUDA error:" + str(err_code) + 'rank: ' + str(_MPIRANK)
 
 def cuda_set_device(device=None):
     """
@@ -95,21 +100,36 @@ def cuda_set_device(device=None):
         elif _ompr is not None:
             _r = int(_ompr) % device_count.value
         else:
-            _r = mpi.MPI_HANDLE.nproc % device_count.value
+            print "could not determine local rank, using CUDA device 0"
+            _r = 0
 
-        print _r, device_count.value, mpi.MPI_HANDLE.rank, mpi.MPI_HANDLE.nproc
+        print _r, device_count.value, _MPIRANK, _MPISIZE
         return cudadrv.Device(_r)
 
     else:
         return cudadrv.Device(device)
 
+
+
 # Set device
 DEVICE = cuda_set_device()
-# Make context
-CONTEXT = DEVICE.make_context()
-# Register destruction
-atexit.register(CONTEXT.pop)
 
+# Make context
+global CONTEXT
+CONTEXT = DEVICE.make_context()
+
+
+def context_cleanup():
+    global CONTEXT
+    CONTEXT.synchronize()
+    CONTEXT.pop()
+    CONTEXT = None
+
+    from pycuda.tools import clear_context_caches
+    clear_context_caches()
+
+# Register destruction, MPI_FINALIZE must be called before pycuda cleanup.
+mpi._CLEANUP_QUEUE.put((51,context_cleanup))
 
 
 try:

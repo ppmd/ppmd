@@ -17,8 +17,8 @@ Eo2 = E/2.
 
 tol = 10.**(-14)
 
-rank = md.mpi.MPI_HANDLE.rank
-nproc = md.mpi.MPI_HANDLE.nproc
+rank = md.mpi.MPI.COMM_WORLD.Get_rank()
+nproc = md.mpi.MPI.COMM_WORLD.Get_size()
 
 
 PositionDat = md.data.PositionDat

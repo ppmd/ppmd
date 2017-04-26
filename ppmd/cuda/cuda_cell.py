@@ -8,7 +8,6 @@ import math
 import numpy as np
 
 #package
-import ppmd.mpi as mpi
 import ppmd.opt as opt
 
 #cuda
@@ -268,7 +267,7 @@ class CellOccupancyMatrix(object):
         _nl = ctypes.c_int(self._n_layers)
         _n_cells = ctypes.c_int(self._n_cells)
 
-        args = [ctypes.c_int32(mpi.MPI_HANDLE.fortran_comm),
+        args = [ctypes.c_int32(self._domain.comm.py2f()),
                 ctypes.c_int(1),
                 _blocksize,
                 _threadsize,

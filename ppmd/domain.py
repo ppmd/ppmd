@@ -18,6 +18,11 @@ import pio
 import opt
 
 
+_MPI = mpi.MPI
+_MPIWORLD = _MPI.COMM_WORLD
+_MPIRANK = _MPIWORLD.Get_rank()
+_MPISIZE = _MPIWORLD.Get_size()
+_MPIBARRIER = _MPIWORLD.Barrier
 
 
 ##############################################################################################################
@@ -61,8 +66,7 @@ class BaseDomainHalo(object):
         self._boundary_cells = None
 
 
-
-
+        self.comm = _MPIWORLD
 
 
     def get_boundary_cells(self):
@@ -162,24 +166,24 @@ class BaseDomainHalo(object):
                       int(self.extent[1]/sf)*1000,
                       int(self.extent[2]/sf)*1000)
 
-                _dims = _find_domain_decomp(sc, mpi.MPI_HANDLE.nproc)
+                _dims = _find_domain_decomp(sc, _MPISIZE)
             else:
-                 _dims = _find_domain_decomp_no_extent(mpi.MPI_HANDLE.nproc)
+                 _dims = _find_domain_decomp_no_extent(_MPISIZE)
 
         else:
-            assert mpi_grid[0]*mpi_grid[1]*mpi_grid[2]==mpi.MPI_HANDLE.nproc,\
+            assert mpi_grid[0]*mpi_grid[1]*mpi_grid[2]==_MPISIZE,\
                 "Incompatible MPI rank structure"
             _dims = mpi_grid
 
          # Create cartesian communicator
         _dims = tuple(_dims)
 
-        mpi.MPI_HANDLE.create_cart(_dims[::-1],
-                                   (bool(self._periods[2]),
-                                    bool(self._periods[1]),
-                                    bool(self._periods[0])),
-                                   True)
-
+        self.comm = mpi.create_cartcomm(
+            _MPIWORLD,
+            _dims[::-1],
+            (bool(self._periods[2]), bool(self._periods[1]), bool(self._periods[0])),
+            True
+        )
 
 
         self._init_decomp = True
@@ -191,8 +195,8 @@ class BaseDomainHalo(object):
 
     def _distribute_domain(self):
 
-        _top = mpi.MPI_HANDLE.top
-        _dims = mpi.MPI_HANDLE.dims
+        _top = mpi.cartcomm_top(self.comm)
+        _dims = mpi.cartcomm_dims(self.comm)
 
         self._extent[0] = self._extent_global[0] / _dims[0]
         self._extent[1] = self._extent_global[1] / _dims[1]
@@ -216,16 +220,15 @@ class BaseDomainHalo(object):
     def cell_decompose(self, cell_width=None):
 
         if self._init_cells:
-            if mpi.MPI_HANDLE.rank == 0:
+            if _MPIRANK == 0:
                 print "WARNING: domain already decomposed into cells"
             if np.sum(cell_width > self.cell_edge_lengths[:]) > 0:
 
-                if mpi.MPI_HANDLE.rank == 0:
+                if _MPIRANK == 0:
                     print "WARNING: recreating cell decomposition"
 
-
             else:
-                if mpi.MPI_HANDLE.rank == 0:
+                if _MPIRANK == 0:
                     print "WARNING: NOT recreating cell decomposition"
                 return False
 
@@ -317,19 +320,23 @@ class BaseDomainHalo(object):
 
         _sfd = host.Array(ncomp=26*3, dtype=ctypes.c_double)
 
+        dims = mpi.cartcomm_dims(self.comm)
+        top = mpi.cartcomm_top(self.comm)
+        periods = mpi.cartcomm_periods(self.comm)
+
         for dx in range(26):
             dir = mpi.recv_modifiers[dx]
 
             for ix in range(3):
 
-                if mpi.MPI_HANDLE.top[ix] == 0 and \
-                   mpi.MPI_HANDLE.periods[ix] == 1 and \
+                if top[ix] == 0 and \
+                   periods[ix] == 1 and \
                    dir[ix] == -1:
 
                     _sfd[dx*3 + ix] = self.extent[ix]
 
-                elif mpi.MPI_HANDLE.top[ix] == mpi.MPI_HANDLE.dims[ix] - 1 and \
-                   mpi.MPI_HANDLE.periods[ix] == 1 and \
+                elif top[ix] == dims[ix] - 1 and \
+                   periods[ix] == 1 and \
                    dir[ix] == 1:
 
                     _sfd[dx*3 + ix] = -1. * self.extent[ix]
@@ -565,34 +572,6 @@ def _get_cell_distribution(global_cell_array=None, dims=None, top=None):
     return local_cell_array, _bs
 
 
-
-def _create_domain_decomp(global_cell_array=None, periods=None):
-    """
-    Create a local cell array from a global cell array and decompose the domain
-    :param global_cell_array:
-    :return:
-    """
-
-    _dims = _find_domain_decomp(global_cell_array, mpi.MPI_HANDLE.nproc)
-
-
-     # Create cartesian communicator
-    _dims = tuple(_dims)
-    mpi.MPI_HANDLE.create_cart(_dims[::-1],
-                               (bool(periods[2]), bool(periods[1]), bool(periods[0])),
-                               True)
-
-
-    # Topology has below indexing, last index reverses
-    # [z,y,x]
-    _top = mpi.MPI_HANDLE.top
-    _cell_distro = _get_cell_distribution(global_cell_array, _dims, _top)
-
-    return _cell_distro[0:2:]
-
-
-
-
 class BoundaryTypePeriodic(object):
     """
     Class to hold and perform periodic boundary conditions.
@@ -627,11 +606,13 @@ class BoundaryTypePeriodic(object):
         Enforce the boundary conditions on the held state.
         """
 
+        comm = self.state.domain.comm
+
         self.timer_apply.start()
 
         self._flag.data[0] = 0
 
-        if mpi.MPI_HANDLE.nproc == 1:
+        if comm.Get_size() == 1:
             """
             BC code for one proc. probably removable when restricting to large parallel systems.
             """

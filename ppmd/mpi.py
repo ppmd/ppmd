@@ -7,11 +7,30 @@ from mpi4py import MPI
 import sys
 import ctypes as ct
 import numpy as np
+import atexit
+import Queue
 
 #package level
-import runtime
-import pio
-import os
+import compiler
+
+
+if not MPI.Is_initialized():
+    MPI.Init()
+
+
+# priority queue for module cleanup.
+_CLEANUP_QUEUE = Queue.PriorityQueue()
+_CLEANUP_QUEUE.put((50, MPI.Finalize))
+
+def _atexit_queue():
+    while not _CLEANUP_QUEUE.empty():
+        item = _CLEANUP_QUEUE.get()
+        item[1]()
+
+
+atexit.register(_atexit_queue)
+
+
 
 
 mpi_map = {ct.c_double: MPI.DOUBLE, ct.c_int: MPI.INT, int: MPI.INT}
@@ -59,259 +78,12 @@ decomposition = enum(spatial=0, particle=1)
 # default to spatial decomposition
 decomposition_method = decomposition.spatial
 
-
-
-###############################################################################################################
-# MDMPI
-###############################################################################################################
-
-class MDMPI(object):
-    """
-    Class to store a MPI communicator such that it can be used everywhere (bottom level of hierarchy).
-    """
-    def __init__(self):
-        self._COMM = MPI.COMM_WORLD
-        self._p = (0, 0, 0)
-
-    @property
-    def comm(self):
-        """
-        Return the current communicator.
-        """
-        return self._COMM
-
-    def create_cart(self, dims, periods, reorder_flag):
-        """
-        Create an mpi cart on the current comm
-        """
-        self._COMM = MPI.COMM_WORLD.Create_cart(dims, periods, reorder_flag)
-
-        if runtime.VERBOSE > 1:
-            pio.pprint("Processor count ", self.nproc, " Processor layout ", self.dims)
-
-
-    @property
-    def fortran_comm(self):
-        return self._COMM.py2f()
-
-    @comm.setter
-    def comm(self, new_comm=None):
-        """
-        Set the current communicator.
-        """
-        assert new_comm is not None, "MDMPI error: no new communicator assigned."
-        self._COMM = new_comm
-
-    def __call__(self):
-        """
-        Return the current communicator.
-        """
-        return self._COMM
-
-    @property
-    def rank(self):
-        """
-        Return the current rank.
-        """
-        if self._COMM is not None:
-            return self._COMM.Get_rank()
-        else:
-            return 0
-
-    @property
-    def nproc(self):
-        """
-        Return the current size.
-        """
-        if self._COMM is not None:
-            return self._COMM.Get_size()
-        else:
-            return 1
-
-    @property
-    def top(self):
-        """
-        Return the current topology.
-        """
-        if self._COMM is not None:
-            return self._COMM.Get_topo()[2][::-1]
-        else:
-            return 0, 0, 0
-
-    @property
-    def dims(self):
-        """
-        Return the current dimensions.
-        """
-        if self._COMM is not None:
-            return self._COMM.Get_topo()[0][::-1]
-        else:
-            return 1, 1, 1
-
-    @property
-    def periods(self):
-        """
-        Return the current periods.
-        """
-        if self._COMM is not None:
-            return self._COMM.Get_topo()[1][::-1]
-        else:
-            return self._p
-
-    def set_periods(self, p=None):
-        """
-        set periods (if for some reason mpi4py does not set these this prives a soln.
-        """
-        assert p is not None, "Error no periods passed"
-        self._p = p
-
-    def barrier(self):
-        """
-        alias to comm barrier method.
-        """
-
-        # MPI.COMM_WORLD.Barrier()
-        if self._COMM is not None:
-            self._COMM.Barrier()
-
-
-    def print_str(self, *args):
-        """
-        Method to print on rank 0 to stdout
-        """
-
-        if self.rank == 0:
-            _s = ''
-            for ix in args:
-                _s += str(ix) + ' '
-            print _s
-            sys.stdout.flush()
-
-        self.barrier()
-
-
-    def _check_comm(self):
-        self._top = self._COMM.Get_topo()[2][::-1]
-        self._per = self._COMM.Get_topo()[1][::-1]
-        self._dims = self._COMM.Get_topo()[0][::-1]
-
-    @property
-    def query_boundary_exist(self):
-        """
-        Return for each direction:
-        Flag if process is a boundary edge or interior edge 1 or 0.
-
-        Xl 0, Xu 1
-        Yl 2, Yu 3
-        Zl 4, Zu 5
-        """
-
-        self._check_comm()
-
-        _sf = range(6)
-        for ix in range(3):
-            if self._top[ix] == 0:
-                _sf[2 * ix] = 1
-            else:
-                _sf[2 * ix] = 0
-            if self._top[ix] == self._dims[ix] - 1:
-                _sf[2 * ix + 1] = 1
-            else:
-                _sf[2 * ix + 1] = 0
-        return _sf
-
-    @property
-    def query_halo_exist(self):
-        """
-        Return for each direction:
-        Flag if process has a halo on each face.
-
-        Xl 0, Xu 1
-        Yl 2, Yu 3
-        Zl 4, Zu 5
-
-        """
-
-        self._check_comm()
-
-        _sf = range(6)
-        for ix in range(3):
-            if self._top[ix] == 0:
-                _sf[2 * ix] = self._per[ix]
-            else:
-                _sf[2 * ix] = 1
-            if self._top[ix] == self._dims[ix] - 1:
-                _sf[2 * ix + 1] = self._per[ix]
-            else:
-                _sf[2 * ix + 1] = 1
-        return _sf
-
-    def shift(self, offset=(0, 0, 0), ignore_periods=False):
-        """
-        Returns rank of process found at a given offset, will return -1 if no process exists.
-
-        :arg tuple offset: 3-tuple offset from current process.
-        """
-
-        if type(offset) is int:
-            offset = recv_modifiers[offset]
-
-        self._check_comm()
-
-        _x = self._top[0] + offset[0]
-        _y = self._top[1] + offset[1]
-        _z = self._top[2] + offset[2]
-
-        _r = [_x % self._dims[0], _y % self._dims[1], _z % self._dims[2]]
-
-        if not ignore_periods:
-
-            if (_r[0] != _x) and self._per[0] == 0:
-                return -1
-            if (_r[1] != _y) and self._per[1] == 0:
-                return -1
-            if (_r[2] != _z) and self._per[2] == 0:
-                return -1
-
-        return _r[0] + _r[1] * self._dims[0] + _r[2] * self._dims[0] * self._dims[1]
-
-    def get_move_send_recv_ranks(self):
-        send_ranks = range(26)
-        recv_ranks = range(26)
-
-        for ix in range(26):
-            direction = recv_modifiers[ix]
-            send_ranks[ix] = self.shift(direction, ignore_periods=True)
-            recv_ranks[ix] = self.shift((-1 * direction[0],
-                                         -1 * direction[1],
-                                         -1 * direction[2]),
-                                         ignore_periods=True)
-
-        return send_ranks, recv_ranks
-
-
-
-
-###############################################################################
-# MPI_HANDLE
-###############################################################################
-
-# Main MPI communicatior used by program.
-
-MPI_HANDLE = None
-def reset_mpi():
-    global MPI_HANDLE
-    MPI_HANDLE = MDMPI()
-
-reset_mpi()
-
-
 Status = MPI.Status
 
 
 def all_reduce(array):
     rarr = np.zeros_like(array)
-    MPI_HANDLE.comm.Allreduce(
+    MPI.COMM_WORLD.Allreduce(
         array,
         rarr
     )
@@ -395,22 +167,30 @@ class SHMWIN(object):
     """
     Create a shared memory window in each shared memory region
     """
-    def __init__(self, size=None):
+    def __init__(self, size=None, intracomm=None):
         """
         Allocate a shared memory region.
         :param size: Number of bytes per process.
+        :param intracomm: Intracomm to use.
         """
         assert size is not None, "No size passed"
+        assert intracomm is not None, "No intracomm passed"
         self._swin = MPI.Win()
         """temp window object."""
-        self.win = self._swin.Allocate_shared(size=size, comm=SHMMPI_HANDLE.get_intra_comm())
+        self.win = self._swin.Allocate_shared(size=size, comm=intracomm)
         """Win instance with shared memory allocated"""
 
+        assert self.win.model == MPI.WIN_UNIFIED, "Memory model is not MPI_WIN_UNIFIED"
 
-        rank = SHMMPI_HANDLE.get_intra_comm().Get_rank()
-        size = SHMMPI_HANDLE.get_intra_comm().Get_size()
-        print rank, self.win.memory, self.win.model == MPI.WIN_UNIFIED
+        self.size = size
+        """Size in allocated per process in intercomm"""
+        self.intercomm = intracomm
+        """Intercomm for RMA shared memory window"""
+        self.base = ct.c_void_p(self.win.Get_attr(MPI.WIN_BASE))
+        """base pointer for calling rank in shared memory window"""
 
+
+    def _test(self):
         lib = ct.cdll.LoadLibrary("/home/wrs20/md_workspace/test1.so")
 
         self.win.Fence()
@@ -418,46 +198,110 @@ class SHMWIN(object):
 
         ptr = ct.c_void_p(self.win.Get_attr(MPI.WIN_BASE))
 
-        print "\t", rank, ptr
+###############################################################################
+# MPI_HANDLE
+###############################################################################
 
-        self.win.Fence()
-        MPI.COMM_WORLD.Barrier()
+def print_str_on_0(comm, *args):
+    """
+    Method to print on rank 0 to stdout
+    """
 
-        lib['test1'](
-            ptr,
-            ct.c_int(size),
-            ct.c_int(rank)
-        )
+    if comm.Get_rank() == 0:
+        _s = ''
+        for ix in args:
+            _s += str(ix) + ' '
+        print _s
+        sys.stdout.flush()
 
+    comm.Barrier()
 
-        self.win.Fence()
-        MPI.COMM_WORLD.Barrier()
-        lib['test2'](
-            ptr,
-            ct.c_int(size),
-            ct.c_int(rank)
-        )
-
-        self.win.Fence()
-        MPI.COMM_WORLD.Barrier()
-        lib['test3'](
-            ptr,
-            ct.c_int(size),
-            ct.c_int(rank)
-        )
-
-        self.win.Fence()
-        MPI.COMM_WORLD.Barrier()
-
-        lib['test1'](
-            ptr,
-            ct.c_int(size),
-            ct.c_int(rank)
-        )
+###############################################################################
+# cartcomm functions
+###############################################################################
 
 
+def create_cartcomm(comm, dims, periods, reorder_flag):
+    """
+    Create an mpi cart on the current comm
+    """
+    COMM = comm.Create_cart(dims, periods, reorder_flag)
+    return COMM
+
+
+def cartcomm_get_move_send_recv_ranks(comm):
+
+    send_ranks = range(26)
+    recv_ranks = range(26)
+
+    for ix in range(26):
+        direction = recv_modifiers[ix]
+        send_ranks[ix] = cartcomm_shift(comm, direction, ignore_periods=True)
+        recv_ranks[ix] = cartcomm_shift(comm,
+                                        (-1 * direction[0],
+                                        -1 * direction[1],
+                                        -1 * direction[2]),
+                                        ignore_periods=True)
+    return send_ranks, recv_ranks
 
 
 
 
+def cartcomm_shift(comm, offset=(0, 0, 0), ignore_periods=False):
+    """
+    Returns rank of process found at a given offset, will return -1 if no process exists.
 
+    :arg tuple offset: 3-tuple offset from current process.
+    """
+
+    if type(offset) is int:
+        offset = recv_modifiers[offset]
+
+    _top = comm.Get_topo()[2][::-1]
+    _per = comm.Get_topo()[1][::-1]
+    _dims = comm.Get_topo()[0][::-1]
+
+    _x = _top[0] + offset[0]
+    _y = _top[1] + offset[1]
+    _z = _top[2] + offset[2]
+
+    _r = [_x % _dims[0], _y % _dims[1], _z % _dims[2]]
+
+    if not ignore_periods:
+
+        if (_r[0] != _x) and _per[0] == 0:
+            return -1
+        if (_r[1] != _y) and _per[1] == 0:
+            return -1
+        if (_r[2] != _z) and _per[2] == 0:
+            return -1
+
+    return _r[0] + _r[1] * _dims[0] + _r[2] * _dims[0] * _dims[1]
+
+
+def cartcomm_top(comm):
+    """
+    Return the current topology.
+    """
+    if comm is not None:
+        return comm.Get_topo()[2][::-1]
+    else:
+        return 0, 0, 0
+
+def cartcomm_dims(comm):
+    """
+    Return the current dimensions.
+    """
+    if comm is not None:
+        return comm.Get_topo()[0][::-1]
+    else:
+        return 1, 1, 1
+
+def cartcomm_periods(comm):
+    """
+    Return the current periods.
+    """
+    if comm is not None:
+        return comm.Get_topo()[1][::-1]
+    else:
+        return 1,1,1

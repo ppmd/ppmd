@@ -19,6 +19,11 @@ import opt
 
 BUILD_PER_PROC = False
 
+_MPIWORLD = mpi.MPI.COMM_WORLD
+_MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
+_MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
+_MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
+
 ###############################################################################
 # COMPILERS START
 ###############################################################################
@@ -32,6 +37,14 @@ MPI_CC = config.COMPILERS[config.MAIN_CFG['cc-mpi'][1]]
 ###############################################################################
 # AUTOCODE TOOLS START
 ###############################################################################
+
+
+build_dir = os.path.abspath(config.MAIN_CFG['build-dir'][1])
+
+if not os.path.exists(build_dir) and _MPIRANK == 0:
+    os.mkdir(build_dir)
+_MPIBARRIER()
+
 
 
 def load_library_exception(kernel_name='None supplied',
@@ -84,7 +97,7 @@ def load_library_exception(kernel_name='None supplied',
             code_str = [x + "\n" for x in code_str]
 
             err_code = ''.join(code_str)
-    print "Unique name", unique_name, "Rank", mpi.MPI_HANDLE.rank
+    print "Unique name", unique_name, "Rank", _MPIRANK
 
     raise RuntimeError("\n"
                        "################################################### \n"
@@ -393,7 +406,7 @@ def source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir
                            str(name))
 
     if BUILD_PER_PROC:
-        _filename += '_' + str(mpi.MPI_HANDLE.rank)
+        _filename += '_' + str(_MPIRANK)
 
     _fh = open(os.path.join(dst_dir, _filename + extensions[0]), 'w')
 
@@ -433,7 +446,7 @@ def check_file_existance(abs_path=None):
     return os.path.exists(abs_path)
 
 def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR, CC=TMPCC):
-    if not os.path.exists(dst_dir) and mpi.MPI_HANDLE.rank == 0:
+    if not os.path.exists(dst_dir) and _MPIRANK == 0:
         os.mkdir(dst_dir)
 
 
@@ -442,13 +455,13 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
                            str(name))
 
     if BUILD_PER_PROC:
-        _filename += '_' + str(mpi.MPI_HANDLE.rank)
+        _filename += '_' + str(_MPIRANK)
 
     _lib_filename = os.path.join(dst_dir, _filename + '.so')
 
     if not check_file_existance(_lib_filename):
 
-        if (mpi.MPI_HANDLE.rank == 0)  or BUILD_PER_PROC:
+        if (_MPIRANK == 0)  or BUILD_PER_PROC:
             source_write(header_code, src_code, name, extensions=extensions, dst_dir=runtime.BUILD_DIR, CC=CC)
         build_lib(_filename, extensions=extensions, CC=CC, hash=False)
 
@@ -459,7 +472,7 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
 
 
     if not BUILD_PER_PROC:
-        mpi.MPI_HANDLE.barrier()
+        _MPIBARRIER()
 
     with open(os.path.join(source_dir, lib + extensions[1]), "r") as fh:
         _code = fh.read()
@@ -478,7 +491,7 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
     _lib_filename = os.path.join(dst_dir, lib + str(_m) + '.so')
 
 
-    if (mpi.MPI_HANDLE.rank == 0) or BUILD_PER_PROC:
+    if (_MPIRANK == 0) or BUILD_PER_PROC:
         if not os.path.exists(_lib_filename):
 
             _lib_src_filename = os.path.join(source_dir, lib + extensions[1])
@@ -495,9 +508,8 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
             
             _c_cmd += CC.shared_lib_flag
 
-
             if runtime.VERBOSE > 2:
-                print "Building", _lib_filename, mpi.MPI_HANDLE.rank
+                print "Building", _lib_filename, _MPIRANK
 
             stdout_filename = os.path.join(dst_dir, lib + str(_m) + '.log')
             stderr_filename = os.path.join(dst_dir,  lib + str(_m) + '.err')
@@ -516,24 +528,15 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
                 raise RuntimeError('build error: library not built.')
 
 
-    #print "before barrier", mpi.MPI_HANDLE.rank
-    #sys.stdout.flush()
-
     if not BUILD_PER_PROC:
-        mpi.MPI_HANDLE.barrier()
-
-
-    #print "after barrier", mpi.MPI_HANDLE.rank
-    #sys.stdout.flush()
-
-    #mpi.MPI_HANDLE.barrier()
+        _MPIBARRIER()
 
 
     if not os.path.exists(_lib_filename):
         print "Critical build Error: Library not built,\n" + \
-                   _lib_filename + "\n rank:", mpi.MPI_HANDLE.rank
+                   _lib_filename + "\n rank:", _MPIRANK
 
-        if mpi.MPI_HANDLE.rank == 0:
+        if _MPIRANK == 0:
             with open(os.path.join(dst_dir, lib + str(_m) + '.err'), 'r') as stderr:
                 print stderr.read()
 

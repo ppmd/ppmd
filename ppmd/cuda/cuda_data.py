@@ -20,6 +20,15 @@ import cuda_build
 import cuda_mpi
 import cuda_runtime
 
+
+_MPI = mpi.MPI
+SUM = _MPI.SUM
+_MPIWORLD = mpi.MPI.COMM_WORLD
+_MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
+_MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
+_MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
+
+
 class ScalarArray(cuda_base.Array):
 
     def _init_struct(self):
@@ -193,33 +202,35 @@ class ParticleDat(cuda_base.Matrix):
 
 
     def broadcast_data_from(self, rank=0, _resize_callback=True):
-
-        if mpi.MPI_HANDLE.nproc == 1:
+        #seen from MPI_COMM_WORLD
+        if _MPISIZE == 1:
             return
         else:
             s = np.array([self._nrow.value], dtype=ctypes.c_int)
-            mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
+            _MPIWORLD.Bcast(s, root=rank)
             self.resize(s[0], _callback=_resize_callback)
             self.npart_local = s[0]
 
-            cuda_mpi.MPI_Bcast(self.ctypes_data,
+            cuda_mpi.MPI_Bcast(_MPIWORLD,
+                               self.ctypes_data,
                                ctypes.c_int(self.size),
                                ctypes.c_int(rank))
 
 
     def gather_data_on(self, rank=0):
-        assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
-        if mpi.MPI_HANDLE.nproc == 1:
+        #seen from MPI_COMM_WORLD
+        assert (rank>-1) and (rank<_MPISIZE), "Invalid mpi rank"
+        if _MPISIZE == 1:
             return
         else:
 
             esize = ctypes.sizeof(self.idtype)
 
-            counts = mpi.MPI_HANDLE.comm.gather(self.npart_local, root=rank)
+            counts = _MPIWORLD.gather(self.npart_local, root=rank)
 
             _ptr_new = 0
 
-            if mpi.MPI_HANDLE.rank == rank:
+            if _MPIRANK == rank:
 
                 _new_nloc = sum(counts)
 
@@ -233,7 +244,7 @@ class ParticleDat(cuda_base.Matrix):
                 disp = tuple(np.cumsum(self.ncomp * np.array(disp)))
                 counts = tuple([self.ncomp*c for c in counts])
 
-                ln = mpi.MPI_HANDLE.nproc
+                ln = _MPISIZE
                 disp_ = data.ScalarArray(dtype=ctypes.c_int, ncomp=ln)
                 counts_ = data.ScalarArray(dtype=ctypes.c_int, ncomp=ln)
 
@@ -244,12 +255,13 @@ class ParticleDat(cuda_base.Matrix):
                 counts = counts_
 
             else:
-                disp = data.ScalarArray(dtype=ctypes.c_int, ncomp=mpi.MPI_HANDLE.nproc)
-                counts = data.ScalarArray(dtype=ctypes.c_int, ncomp=mpi.MPI_HANDLE.nproc)
+                disp = data.ScalarArray(dtype=ctypes.c_int, ncomp=_MPISIZE)
+                counts = data.ScalarArray(dtype=ctypes.c_int, ncomp=_MPISIZE)
 
             send_count = ctypes.c_int(esize*self.npart_local*self.ncomp)
 
-            cuda_mpi.MPI_Gatherv(ctypes.cast(self.ctypes_data, ctypes.c_void_p),
+            cuda_mpi.MPI_Gatherv(_MPIWORLD,
+                                 ctypes.cast(self.ctypes_data, ctypes.c_void_p),
                                  send_count,
                                  ctypes.cast(_ptr_new, ctypes.c_void_p),
                                  counts.ctypes_data,
@@ -257,7 +269,7 @@ class ParticleDat(cuda_base.Matrix):
                                  ctypes.c_int(rank)
                                  )
 
-            if mpi.MPI_HANDLE.rank == rank:
+            if _MPIRANK == rank:
                 self.npart_local = _new_nloc
                 self._ncol.value = self.ncomp
                 self._nrow.value = _new_nloc
@@ -316,7 +328,8 @@ class ParticleDat(cuda_base.Matrix):
     def _halo_exchange_prepare(self):
         self._halo_timer.start()
 
-        nproc = mpi.MPI_HANDLE.nproc
+        nproc = self.group.domain.comm.Get_size()
+
         if nproc == 1:
             boundary_cell_groups = self.group._halo_manager.get_boundary_cell_groups[0]
             n = self.group._halo_manager.occ_matrix.layers_per_cell * boundary_cell_groups.ncomp
@@ -343,11 +356,13 @@ class ParticleDat(cuda_base.Matrix):
         self._halo_timer.pause()
     def halo_exchange(self, _prepare=True):
 
+        nproc = self.group.domain.comm.Get_size()
+
         self._halo_timer.start()
         if _prepare:
             self._halo_exchange_prepare()
 
-        if mpi.MPI_HANDLE.nproc == 1:
+        if nproc == 1:
             self._1p_halo_exchange()
         else:
             self.halo_start_reset()
@@ -366,23 +381,21 @@ class ParticleDat(cuda_base.Matrix):
 
 
     def _np_halo_exchange(self):
+
+        comm = self.group.domain.comm
+
         if type(self) is PositionDat:
             posdat = 1
         else:
             posdat = 0
 
 
-        #print "SEND_COUNTS", self.group._halo_send_counts[:]
-        #print "RECV_COUNTS", self.group._halo_manager.dir_counts[:]
-        #print "TMP SIZE", self.group._halo_tmp_space.ncomp
-
-        #print "resizing?, sum:", sum(self.group._halo_manager.dir_counts[:]) + self.npart_local, self.nrow
         if (sum(self.group._halo_manager.dir_counts[:]) + self.npart_local) > self.nrow:
             self.resize(sum(self.group._halo_manager.dir_counts[:]) + self.npart_local+10)
         self._npart_local_halo.value = sum(self.group._halo_manager.dir_counts[:])
 
         self._exchange_lib(
-            ctypes.c_int32(mpi.MPI_HANDLE.fortran_comm),
+            ctypes.c_int32(comm.py2f()),
             ctypes.c_int32(self.npart_local),
             ctypes.c_int32(posdat),
             ctypes.c_int32(self.group._halo_cell_max_b),

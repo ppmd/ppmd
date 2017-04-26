@@ -24,7 +24,12 @@ import cuda_build
 import cuda_base
 
 _AsFunc = ppmd.state._AsFunc
-
+_MPI = ppmd.mpi.MPI
+SUM = _MPI.SUM
+_MPIWORLD = ppmd.mpi.MPI.COMM_WORLD
+_MPIRANK = ppmd.mpi.MPI.COMM_WORLD.Get_rank()
+_MPISIZE = ppmd.mpi.MPI.COMM_WORLD.Get_size()
+_MPIBARRIER = ppmd.mpi.MPI.COMM_WORLD.Barrier
 
 class BaseMDState(object):
     """
@@ -106,6 +111,19 @@ class BaseMDState(object):
 
         self.invalidate_lists = False
         """If true, all cell lists/ neighbour lists should be rebuilt."""
+
+    @property
+    def _ccomm(self):
+        return self._domain.comm
+    @property
+    def _ccrank(self):
+        return self._domain.comm.Get_rank()
+    @property
+    def _ccsize(self):
+        return self._domain.comm.Get_size()
+    def _ccbarrier(self):
+        return self._domain.comm.Barrier()
+
 
     def _halo_update_exchange_sizes(self):
         idi = self._cell_to_particle_map.version_id
@@ -231,7 +249,7 @@ class BaseMDState(object):
             # initialise the filter method now we have a domain and positions
             self._filter_method = _FilterOnDomain(self._domain,
                                                   self.get_position_dat())
-            if ppmd.mpi.MPI_HANDLE.nproc == 1:
+            if self._ccsize == 1:
                 self._halo_manager = cuda_halo.CartesianHalo(self._cell_to_particle_map)
             else:
                 self._halo_manager = ppmd.halo.CartesianHaloSix(_AsFunc(self, '_domain'),
@@ -382,20 +400,22 @@ class BaseMDState(object):
 
 
     def broadcast_data_from(self, rank=0):
-        assert (rank>-1) and (rank<ppmd.mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
+        # uses MPI_COMM_WORLD
+        assert (rank>-1) and (rank<_MPISIZE), "Invalid mpi rank"
 
-        if ppmd.mpi.MPI_HANDLE.nproc == 1:
+        if _MPISIZE == 1:
             self.npart_local = self.npart
             return
         else:
             s = np.array([self.get_position_dat().nrow])
-            ppmd.mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
+            _MPIWORLD.Bcast(s, root=rank)
             self.npart_local = s[0]
             for px in self.particle_dats:
                 getattr(self, px).broadcast_data_from(rank=rank, _resize_callback=False)
 
     def gather_data_on(self, rank=0):
-        if ppmd.mpi.MPI_HANDLE.nproc == 1:
+        # uses MPI_COMM_WORLD
+        if _MPISIZE == 1:
             return
         else:
             for px in self.particle_dats:
@@ -479,7 +499,7 @@ class BaseMDState(object):
 
 
         self._move_send_ranks, self._move_recv_ranks = \
-            ppmd.mpi.MPI_HANDLE.get_move_send_recv_ranks()
+            ppmd.mpi.cartcomm_get_move_send_recv_ranks(self._ccomm)
 
         self._move_send_ranks = ppmd.host.Array(initial_value=self._move_send_ranks,
                                                 dtype=ctypes.c_int32)
@@ -513,7 +533,7 @@ class BaseMDState(object):
 
         cuda_mpi.cuda_mpi_err_check(
             self._move_lib['cudaMoveStageOne'](
-                ctypes.c_int32(ppmd.mpi.MPI_HANDLE.fortran_comm),
+                ctypes.c_int32(self._ccomm.py2f()),
                 self._move_send_ranks.ctypes_data,
                 self._move_recv_ranks.ctypes_data,
                 self._move_send_counts.ctypes_data,
@@ -566,7 +586,7 @@ class BaseMDState(object):
 
         cuda_mpi.cuda_mpi_err_check(
             self._move_lib['cudaMoveStageTwo'](
-                ctypes.c_int32(ppmd.mpi.MPI_HANDLE.fortran_comm),
+                ctypes.c_int32(self._ccomm.py2f()),
                 ctypes.c_int32(self.npart_local),
                 ctypes.c_int32(total_bytes),
                 ctypes.c_int32(ndats),
@@ -765,8 +785,6 @@ class _FindCompressionIndices(object):
     def apply(self, per_particle_flag, n_to_fill, new_n, search_n):
         if n_to_fill == 0:
             return None
-
-        #print ppmd.mpi.MPI_HANDLE.rank, n_to_fill, new_n, search_n
 
 
         self._replacement_slots.resize(n_to_fill)

@@ -18,7 +18,12 @@ import runtime
 import halo
 import opt
 
-
+_MPI = mpi.MPI
+SUM = _MPI.SUM
+_MPIWORLD = mpi.MPI.COMM_WORLD
+_MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
+_MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
+_MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
 
 class _AsFunc(object):
     """
@@ -35,7 +40,6 @@ class _AsFunc(object):
 
     def __call__(self):
         return getattr(self._i, self._n)
-
 
 
 class BaseMDState(object):
@@ -99,13 +103,11 @@ class BaseMDState(object):
         self.move_timer = opt.Timer(runtime.TIMER, 0)
         self.compress_timer = opt.Timer(runtime.TIMER, 0)
 
-        self._status = mpi.Status()
+        self._status = mpi.MPI.Status()
 
         # compressing vars
         self._compressing_lib = None
         self._compressing_dyn_args = None
-
-
 
         #halo vars
         self._halo_exchange_sizes = None
@@ -130,6 +132,18 @@ class BaseMDState(object):
     @property
     def domain(self):
         return self._domain
+    @property
+    def _ccomm(self):
+        return self._domain.comm
+    @property
+    def _ccrank(self):
+        return self._domain.comm.Get_rank()
+    @property
+    def _ccsize(self):
+        return self._domain.comm.Get_size()
+    def _ccbarrier(self):
+        return self._domain.comm.Barrier()
+
 
     @domain.setter
     def domain(self, new_domain):
@@ -198,8 +212,6 @@ class BaseMDState(object):
             else:
                 getattr(self, name).resize(self._npart, _callback=False)
 
-
-
             if type(value) is data.PositionDat:
                 self._position_dat = name
                 self._cell_particle_map_setup()
@@ -262,30 +274,34 @@ class BaseMDState(object):
             _dat = getattr(self,ix)
             _dat.resize(int(value), _callback=False)
 
+
     def scatter_data_from(self, rank):
         self.broadcast_data_from(rank)
         self.filter_on_domain_boundary()
 
-    def broadcast_data_from(self, rank=0):
-        assert (rank>-1) and (rank<mpi.MPI_HANDLE.nproc), "Invalid mpi rank"
 
-        if mpi.MPI_HANDLE.nproc == 1:
+    def broadcast_data_from(self, rank=0):
+        # This is in terms of MPI_COMM_WORLD
+        assert (rank>-1) and (rank<_MPISIZE), "Invalid mpi rank"
+
+        if _MPISIZE == 1:
             self.npart_local = self.npart
             return
         else:
             s = np.array([self.npart])
-            mpi.MPI_HANDLE.comm.Bcast(s, root=rank)
+            _MPIWORLD.Bcast(s, root=rank)
             self.npart_local = s[0]
             for px in self.particle_dats:
                 getattr(self, px).broadcast_data_from(rank=rank, _resize_callback=False)
 
+
     def gather_data_on(self, rank=0):
-        if mpi.MPI_HANDLE.nproc == 1:
+        # also in terms of MPI_COMM_WORLD
+        if _MPISIZE == 1:
             return
         else:
             for px in self.particle_dats:
                 getattr(self, px).gather_data_on(rank)
-
 
 
     def filter_on_domain_boundary(self):
@@ -371,7 +387,6 @@ class BaseMDState(object):
             self._move_recv_buffer = host.Array(ncomp=self._total_ncomp * _recv_total, dtype=ctypes.c_double)
         elif self._move_recv_buffer.ncomp < self._total_ncomp * _recv_total:
             self._move_recv_buffer.realloc(self._total_ncomp * _recv_total)
-        
 
 
         for ix in self.particle_dats:
@@ -404,9 +419,11 @@ class BaseMDState(object):
 
 
         # unpack recv buffer.
-        self._move_unpacking_lib.execute(static_args={'_recv_count': ctypes.c_int(_recv_total),
-                                                      '_num_free_slots': ctypes.c_int(_send_total),
-                                                      '_prev_num_particles': ctypes.c_int(self._npart_local)})
+        self._move_unpacking_lib.execute(
+            static_args={'_recv_count': ctypes.c_int(_recv_total),
+                        '_num_free_slots': ctypes.c_int(_send_total),
+                        '_prev_num_particles': ctypes.c_int(self._npart_local)}
+        )
 
         _recv_rank = np.zeros(26)
         _send_rank = np.zeros(26)
@@ -414,40 +431,20 @@ class BaseMDState(object):
         for _tx in range(26):
             direction = mpi.recv_modifiers[_tx]
 
-            _send_rank[_tx] = mpi.MPI_HANDLE.shift(direction, ignore_periods=True)
-            _recv_rank[_tx] = mpi.MPI_HANDLE.shift((-1 * direction[0],
-                                                    -1 * direction[1],
-                                                    -1 * direction[2]), ignore_periods=True)
+            _send_rank[_tx] = mpi.cartcomm_shift(
+                self._ccomm, direction, ignore_periods=True)
 
-        # print "recv_ranks ", _recv_rank
-        # print "recv_totals", self._move_dir_recv_totals.data
-        # print "send_totals", self._move_dir_send_totals.data
-        # print "send_ranks ", _send_rank
-
-        # print mpi.MPI_HANDLE.rank, "(recv, send, n)", (_recv_total, _send_total, self._npart_local)
+            _recv_rank[_tx] = mpi.cartcomm_shift(self._ccomm,
+                (-1 * direction[0], -1 * direction[1], -1 * direction[2]),
+                ignore_periods=True
+            )
 
         if _recv_total < _send_total:
             self.compressed = False
-
-            # print "EMPTIES_PRE_MOVE", self._move_empty_slots.data[0:_send_total]
-            # print "recv_total", _recv_total, "send_total", _send_total
-            # print "should copy?", self._move_empty_slots.data[_recv_total:_send_total:]
-
             _tmp = self._move_empty_slots.data[_recv_total:_send_total:]
-            #self._move_empty_slots.data[0:_send_total-_recv_total:, ::] = self._move_empty_slots.data[_recv_total:_send_total:, ::]
-            
-            # print "TMP", _tmp, type(_tmp)
-            '''
-            for ix in range(_send_total-_recv_total):
-                self._move_empty_slots.data[ix]=_tmp[ix]
-            '''
-
             self._move_empty_slots.data[0:_send_total-_recv_total:] = np.array(_tmp, copy=True)
-            # print "EMPTIES", self._move_empty_slots.data[0:_send_total-_recv_total:]
-
 
         else:
-            # print "setting n"
             self.npart_local = self.npart_local + _recv_total - _send_total
 
         # Compress particle dats.
@@ -531,14 +528,9 @@ class BaseMDState(object):
 
         _s_start = 0
         _s_end = 0
-
         _r_start = 0
         _r_end = 0
-
         _n = self._total_ncomp
-
-        # print "SEND_TOTALS", self._move_dir_send_totals.data
-        # print "RECV_TOTALS", self._move_dir_recv_totals.data
 
 
         for ix in range(26):
@@ -547,33 +539,35 @@ class BaseMDState(object):
 
             direction = mpi.recv_modifiers[ix]
 
-            _send_rank = mpi.MPI_HANDLE.shift(direction, ignore_periods=True)
-            _recv_rank = mpi.MPI_HANDLE.shift((-1 * direction[0],
-                                               -1 * direction[1],
-                                               -1 * direction[2]), ignore_periods=True)
-
-            # print "DIR", ix, _send_rank, _recv_rank
-
+            _send_rank = mpi.cartcomm_shift(
+                self._ccomm,
+                direction, ignore_periods=True
+            )
+            _recv_rank = mpi.cartcomm_shift(
+                self._ccomm,
+                (-1 * direction[0], -1 * direction[1], -1 * direction[2]),
+                ignore_periods=True
+            )
 
             # sending of particles.
             if self._move_dir_send_totals[ix] > 0 and self._move_dir_recv_totals[ix] > 0:
-                mpi.MPI_HANDLE.comm.Sendrecv(self._move_send_buffer.data[_s_start:_s_end:],
+                self._ccomm.Sendrecv(self._move_send_buffer.data[_s_start:_s_end:],
                                              _send_rank,
                                              _send_rank,
                                              self._move_recv_buffer.data[_r_start:_r_end:],
                                              _recv_rank,
-                                             mpi.MPI_HANDLE.rank,
+                                             self._ccrank,
                                              self._status)
+
             elif self._move_dir_send_totals[ix] > 0:
-                    mpi.MPI_HANDLE.comm.Send(self._move_send_buffer.data[_s_start:_s_end:],
+                    self._ccomm.Send(self._move_send_buffer.data[_s_start:_s_end:],
                                              _send_rank,
                                              _send_rank)
 
-
             elif self._move_dir_recv_totals[ix] > 0:
-                    mpi.MPI_HANDLE.comm.Recv(self._move_recv_buffer.data[_r_start:_r_end:],
+                    self._ccomm.Recv(self._move_recv_buffer.data[_r_start:_r_end:],
                                              _recv_rank,
-                                             mpi.MPI_HANDLE.rank,
+                                             self._ccrank,
                                              self._status)
 
             _s_start += _n * self._move_dir_send_totals[ix]
@@ -588,24 +582,29 @@ class BaseMDState(object):
         """
         Exhange the sizes expected in the next particle move.
         """
-        _status = mpi.Status()
+        _status = mpi.MPI.Status()
 
         for ix in range(26):
 
             direction = mpi.recv_modifiers[ix]
 
-            _send_rank = mpi.MPI_HANDLE.shift(direction, ignore_periods=True)
-            _recv_rank = mpi.MPI_HANDLE.shift((-1 * direction[0],
-                                               -1 * direction[1],
-                                               -1 * direction[2]), ignore_periods=True)
+            _send_rank = mpi.cartcomm_shift(
+                self._ccomm, direction, ignore_periods=True)
 
-            mpi.MPI_HANDLE.comm.Sendrecv(self._move_dir_send_totals.data[ix:ix + 1:],
-                                         _send_rank,
-                                         _send_rank,
-                                         self._move_dir_recv_totals.data[ix:ix + 1:],
-                                         _recv_rank,
-                                         mpi.MPI_HANDLE.rank,
-                                         _status)
+            _recv_rank = mpi.cartcomm_shift(
+                self._ccomm,
+                (-1 * direction[0], -1 * direction[1], -1 * direction[2]),
+                ignore_periods=True
+            )
+
+            self._ccomm.Sendrecv(self._move_dir_send_totals.data[ix:ix + 1:],
+                _send_rank,
+                _send_rank,
+                self._move_dir_recv_totals.data[ix:ix + 1:],
+                _recv_rank,
+                self._ccrank,
+                _status
+            )
 
     def _move_build_packing_lib(self):
         """
