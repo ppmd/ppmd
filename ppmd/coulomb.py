@@ -248,17 +248,17 @@ class CoulombicEnergy(object):
                         recip_space[:,rx,ry,rz] += tmp[:]*qx
 
                         ##check value by direct computation
-                        ri = positions[lx,:]
-                        px = rx - nmax_vec[0]
-                        py = ry - nmax_vec[1]
-                        pz = rz - nmax_vec[2]
-                        gx = recip_vec[0, 0]*px
-                        gy = recip_vec[1, 1]*py
-                        gz = recip_vec[2, 2]*pz
+                        #ri = positions[lx,:]
+                        #px = rx - nmax_vec[0]
+                        #py = ry - nmax_vec[1]
+                        #pz = rz - nmax_vec[2]
+                        #gx = recip_vec[0, 0]*px
+                        #gy = recip_vec[1, 1]*py
+                        #gz = recip_vec[2, 2]*pz
 
-                        cval = cmath.exp(-1j * np.dot(np.array((gx,gy,gz)),ri))
-                        _ctol(cval.real,tmp[0],'overall check RE',10.**-13)
-                        _ctol(cval.imag,tmp[1],'overall check IM {} {} {}'.format(px,py,pz),10.**-13)
+                        #cval = cmath.exp(-1j * np.dot(np.array((gx,gy,gz)),ri))
+                        #_ctol(cval.real,tmp[0],'overall check RE',10.**-13)
+                        #_ctol(cval.imag,tmp[1],'overall check IM {} {} {}'.format(px,py,pz),10.**-13)
 
                         ##test abc
                         #tmp2 = np.zeros(2)
