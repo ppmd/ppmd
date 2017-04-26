@@ -151,7 +151,7 @@ class MPISHM(object):
         return self.inter_comm
 
 ###############################################################################
-# sared memory default
+# shared memory default
 ###############################################################################
 
 SHMMPI_HANDLE = MPISHM()

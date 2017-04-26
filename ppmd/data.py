@@ -13,10 +13,7 @@ import numpy as np
 
 # package level
 import access
-import halo
 import mpi
-import cell
-import kernel
 import build
 import runtime
 import host
@@ -96,16 +93,47 @@ class GlobalArray(object):
     """
 
     def __init__(self, size=1, op=mpi.MPI.SUM, dtype=ctypes.c_double):
-        pass
+        # if no shared mem, numpy array, if shared mem, view into window
+        self._data = None
+        # MPI shared RMA window
+        self._win = None
+
+        self.op = op
+        """MPI Reduction operation"""
+        self.size = size
+        """Number of elements in the array."""
+        self.dtype = dtype
+        """Data type of array."""
+        self.shared_memory = (mpi.MPI.VERSION >= 3) and runtime.MPI_SHARED_MEM
+        """True if shared memory is enabled"""
+
+        if self.shared_memory:
+            # create shared memory windows and numpy views
+            self._win = mpi.SHMWIN(size=self.size*ctypes.sizeof(self.dtype),
+                                   intracomm=mpi.SHMMPI_HANDLE.get_intra_comm())
+            self._data = np.asarray(self._win.win.memory, dtype=self.dtype)
+        else:
+            self._data = np.zeros(shape=size, dtype=dtype)
+
+        self._data[:] = 0
 
     def __iadd__(self, other):
         pass
 
     def set(self, val):
-        pass
+        self._data[:] = val
 
     def __getitem__(self, item):
-        pass
+        return self._data[item]
+
+    def __call__(self, mode=access.READ):
+        return self, mode
+
+    def ctypes_data(self):
+        if self.shared_memory:
+            return self._win.base
+        else:
+            return self._data.ctypes.ctypes.data_as(ctypes.POINTER(self.dtype))
 
 
 #####################################################################################
