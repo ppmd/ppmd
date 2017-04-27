@@ -103,10 +103,12 @@ class MPISHM(object):
     The second a communicator between rank 0 of the shared memory regions.
     """
 
-    def __init__(self):
+    def __init__(self, parent_comm=MPI.COMM_WORLD):
         self.init = False
+        self.parent_comm = parent_comm
         self.inter_comm = None
         self.intra_comm = None
+
 
     def _init_comms(self):
         """
@@ -117,14 +119,14 @@ class MPISHM(object):
             assert MPI.VERSION >= 3, "MPI ERROR: mpi4py is not built against"\
                 + " a MPI3 or higher MPI distribution."
 
-            self.intra_comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
+            self.intra_comm = self.parent_comm.Split_type(MPI.COMM_TYPE_SHARED)
 
             if self.intra_comm.Get_rank() == 0:
                 colour = 0
             else:
                 colour = MPI.UNDEFINED
 
-            self.inter_comm = MPI.COMM_WORLD.Split(color=colour)
+            self.inter_comm = self.parent_comm.Split(color=colour)
 
             self.init = True
 

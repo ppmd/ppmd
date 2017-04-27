@@ -10,6 +10,7 @@ __license__ = "GPL"
 import sys
 import ctypes
 import numpy as np
+import math
 
 # package level
 import access
@@ -86,17 +87,24 @@ multiple particles e.g. mass.
 #####################################################################################
 class GlobalArray(object):
     """
-    Class for global data. This class may be: globally set, incremented and read.
-    This class is constructed with a MPI reduction operator, default MPI.SUM, which
-    defines the addition operator. Global setting sets all values in the array to
-    the same value across all ranks.
+    Class for global data. This class may be: globally set, incremented and
+    read. This class is constructed with a MPI reduction operator, currently 
+    only MPI.SUM is avaialbe, which defines the addition operator. Global 
+    setting sets all values in the array to the same value across all ranks. 
+    All calls must be made on all ranks in parent communicator.
     """
 
-    def __init__(self, size=1, op=mpi.MPI.SUM, dtype=ctypes.c_double):
+    def __init__(self, size=1, dtype=ctypes.c_double, comm=mpi.MPI.COMM_WORLD, op=mpi.MPI.SUM, shared_memory=True):
         # if no shared mem, numpy array, if shared mem, view into window
         self._data = None
+        # array to swap with self._data to avoid copying in allreduce
+        self._rdata = None
         # MPI shared RMA window
         self._win = None
+        # sync status
+        self._sync_status = True
+
+        assert op is mpi.MPI.SUM, "no other reduction operators are currently implemented"
 
         self.op = op
         """MPI Reduction operation"""
@@ -104,36 +112,119 @@ class GlobalArray(object):
         """Number of elements in the array."""
         self.dtype = dtype
         """Data type of array."""
-        self.shared_memory = (mpi.MPI.VERSION >= 3) and runtime.MPI_SHARED_MEM
+        self.shared_memory = (mpi.MPI.VERSION >= 3) and runtime.MPI_SHARED_MEM and shared_memory
         """True if shared memory is enabled"""
 
+        # aquire/create split communicator for window
+        if comm is mpi.MPI.COMM_WORLD and self.shared_memory:
+            self._split_comm = mpi.SHMMPI_HANDLE
+            self._redcomm = self._split_comm.get_inter_comm()
+        elif self.shared_memory:
+            self._split_comm = mpi.MPISHM(parent_comm=comm)
+            self._redcomm = self._split_comm.get_inter_comm()
+        else:
+            self._redcomm = comm
+
+        # create shared memory windows and numpy views
         if self.shared_memory:
-            # create shared memory windows and numpy views
+            # the write space
             self._win = mpi.SHMWIN(size=self.size*ctypes.sizeof(self.dtype),
                                    intracomm=mpi.SHMMPI_HANDLE.get_intra_comm())
-            self._data = np.asarray(self._win.win.memory, dtype=self.dtype)
+            self._data_memview = np.array(self._win.win.memory, copy=False)
+            self._data = self._data_memview.view(dtype=self.dtype)
+
+            # reduction and read space
+            rsize = int(self._split_comm.get_intra_comm().Get_rank()<1) * \
+                    size * ctypes.sizeof(self.dtype)
+            self._rwin = mpi.SHMWIN(size=rsize,
+                                    intracomm=mpi.SHMMPI_HANDLE.get_intra_comm())
+
+            # view into memory on node rank 0
+            rwin_root_memview = self._rwin.win.Shared_query(0)[0]
+            self._rdata_memview = np.array(rwin_root_memview, copy=False)
+            self._rdata = self._rdata_memview.view(dtype=self.dtype)
+
         else:
             self._data = np.zeros(shape=size, dtype=dtype)
+            self._rdata = np.zeros(shape=size, dtype=dtype)
 
         self._data[:] = 0
 
-    def __iadd__(self, other):
-        pass
-
     def set(self, val):
+        self._sync_wait()
         self._data[:] = val
+        if self.shared_memory:
+            self._rdata[:] = val
+        self._sync_status = True
+
+    def __setitem__(self, key, value):
+        self._sync_wait()
+        self._data[key] = value
+        self._sync_init()
 
     def __getitem__(self, item):
-        return self._data[item]
+        self._sync_wait()
+        if self.shared_memory:
+            return self._rdata[item]
+        else:
+            return self._data[item]
 
-    def __call__(self, mode=access.READ):
+    def __call__(self, mode=access.RW):
         return self, mode
 
     def ctypes_data(self):
+        self._sync_wait()
         if self.shared_memory:
             return self._win.base
         else:
             return self._data.ctypes.ctypes.data_as(ctypes.POINTER(self.dtype))
+
+    def ctypes_data_post(self, mode=access.RW):
+        self._sync_init()
+
+    def _sync_init(self):
+        self._sync_status = False
+        print "sync"
+        if not self.shared_memory:
+            self._redcomm.Allreduce(self._data, self._rdata, self.op)
+            t=self._data
+            self._data = self._rdata
+            self._rdata = t
+        else:
+
+            msize = None
+            lnp = self._split_comm.get_intra_comm().Get_size()
+            lrk = self._split_comm.get_intra_comm().Get_rank()
+            if self.size <= lnp:
+                msize = int(lrk<self.size)
+                mstart = lrk
+            else:
+                msize = int(math.floor(float(self.size)/lnp))
+                mrem = (self.size - msize*lnp) % lnp
+                msize += int(lrk < mrem)
+                mstart = None # fix this
+
+            print "MYSIZE", msize
+
+            self._rwin.win.Fence()
+            for rx in xrange(lnp):
+                self._rdata[mstart:mstart+msize:] = self.
+
+
+
+            self._rwin.win.Fence()
+
+            print self._rdata[0]
+
+
+
+
+
+    def _sync_wait(self):
+        if self._sync_status:
+            return
+        # nothing to do until iallreduce is implemented
+        self._sync_status = True
 
 
 #####################################################################################

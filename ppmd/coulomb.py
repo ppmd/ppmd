@@ -124,10 +124,10 @@ class CoulombicEnergy(object):
         self._vars['recip_space'] = np.zeros((2, 2*nmax_x+1, 2*nmax_y+1, 2*nmax_z+1), dtype=ctypes.c_double)
         self._vars['coeff_space'] = np.zeros((nmax_x+1, nmax_y+1, nmax_z+1), dtype=ctypes.c_double)
 
-        with open(str(runtime.LIB_DIR) + '/CoulombicEnergyOrthSource.h','r') as fh:
+        with open(str(runtime.LIB_DIR) + '/EwaldOrthSource.h','r') as fh:
             header = fh.read()
 
-        with open(str(runtime.LIB_DIR) + '/CoulombicEnergyOrthSource.cpp','r') as fh:
+        with open(str(runtime.LIB_DIR) + '/EwaldOrthSource.cpp','r') as fh:
             source = fh.read()
 
         self._lib = build.simple_lib_creator(header, source, 'CoulombicEnergyOrth')
