@@ -145,11 +145,10 @@ class MPISHM(object):
 
     def get_inter_comm(self):
         """
-        get communicator between shared memory regions.
+        get communicator between shared memory regions. Only valid on rank 0 of
+        the intracomm
         """
         self._init_comms()
-        if self.intra_comm.Get_rank() != 0:
-            print "warning this MPI comm is undefined on this rank"
         return self.inter_comm
 
 ###############################################################################
@@ -162,8 +161,6 @@ SHMMPI_HANDLE = MPISHM()
 ###############################################################################
 # shared memory mpi handle
 ###############################################################################
-
-
 
 class SHMWIN(object):
     """

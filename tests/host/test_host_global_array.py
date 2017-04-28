@@ -15,7 +15,15 @@ nproc = md.mpi.MPI.COMM_WORLD.Get_size()
 
 GlobalArray = md.data.GlobalArray
 
-N1 = 256
+N1 = 2
+
+def _not_factorial(N):
+    if N==0:
+        return 0
+    else:
+        return math.factorial(N)
+
+
 
 @pytest.fixture()
 def DGAN1():
@@ -28,34 +36,37 @@ def test_host_global_array_1(IGAN1):
     A = IGAN1
     A.set(1)
     for ix in range(N1):
-        assert A[ix] == 1, "GlobalArray.set failed"
-    rint = int(np.random.uniform(low=2, high=100, size=1)[0])
+        assert A[ix] == 1, "GlobalArray.set 1 failed"
+    rint = 4
     A.set(rint)
     for ix in range(N1):
-        assert A[ix] == rint, "GlobalArray.set failed"
+        assert A[ix] == rint, "GlobalArray.set 2 failed"
 
 def test_host_global_array_2(DGAN1):
     A = DGAN1
     A.set(1.5)
     for ix in range(N1):
-        assert A[ix] == 1.5, "GlobalArray.set failed"
-    rf = np.random.uniform(low=1, high=100, size=1)[0]
+        assert A[ix] == 1.5, "GlobalArray.set 1 failed"
+    rf = 3.1415
     A.set(rf)
     for ix in range(N1):
-        assert A[ix] == rf, "GlobalArray.set failed"
+        assert A[ix] == rf, "GlobalArray.set 2 failed"
 
 def test_host_global_array_2_5(IGAN1):
     A = IGAN1
     A.set(0)
-    A[:] += 1
-
-    for ix in range(N1):
-        assert A[ix] == nproc, "GlobalArray.reduction failed"
 
     A[:] += 1
 
+    print A[:]
+
     for ix in range(N1):
-        assert A[ix] == nproc*(nproc+1), "GlobalArray.reduction failed"
+        assert A[ix] == nproc, "GlobalArray.reduction 1 failed"
+
+    A[:] += 1
+
+    for ix in range(N1):
+        assert A[ix] == nproc*(nproc+1), "GlobalArray.reduction 2 failed"
 
     A.set(nproc)
     for ix in range(N1):
@@ -86,7 +97,7 @@ def test_host_global_array_4(DGAN1):
     A.set(0)
     A[:] += rank*0.234
 
-    fac = math.factorial(nproc-1)
+    fac = _not_factorial(nproc-1)
     csuma = 0.234 * fac
 
     for ix in range(N1):

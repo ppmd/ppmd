@@ -133,6 +133,8 @@ class GlobalArray(object):
             self._data_memview = np.array(self._win.win.memory, copy=False)
             self._data = self._data_memview.view(dtype=self.dtype)
 
+            print "DATA", self._data.shape
+
             # reduction and read space
             rsize = int(self._split_comm.get_intra_comm().Get_rank()<1) * \
                     size * ctypes.sizeof(self.dtype)
@@ -144,6 +146,29 @@ class GlobalArray(object):
             self._rdata_memview = np.array(rwin_root_memview, copy=False)
             self._rdata = self._rdata_memview.view(dtype=self.dtype)
 
+
+
+            # reduction sizes
+            self._msize = None
+            self._lsize = self._split_comm.get_intra_comm().Get_size()
+            self._lrank = self._split_comm.get_intra_comm().Get_rank()
+            if self.size <= self._lsize:
+                self._msize = int(self._lrank<self.size)
+                self._mstart = self._lrank
+            else:
+                bsize = int(math.floor(float(self.size)/self._lsize))
+                self._msize = bsize
+                mrem = (self.size - self._msize*self._lsize) % self._lsize
+                self._msize += int(self._lrank < mrem)
+                self._mstart = int(self._lrank < mrem)*self._lrank*self._msize + int(self._lrank>=mrem)*(mrem*(bsize+1)+(self._lrank-mrem)*bsize)
+
+            # view into all of shared memory, list of arrays
+            rwin_root_memview = [self._win.win.Shared_query(ix)[0] for ix in xrange(self._lsize)]
+
+            self._data_root_memview = [np.array(rwin_root_memview[ix], copy=False) for ix in xrange(self._lsize)]
+
+            self._data_root = [self._data_root_memview[ix].view(dtype=self.dtype) for ix in xrange(self._lsize)]
+
         else:
             self._data = np.zeros(shape=size, dtype=dtype)
             self._rdata = np.zeros(shape=size, dtype=dtype)
@@ -152,19 +177,31 @@ class GlobalArray(object):
 
     def set(self, val):
         self._sync_wait()
-        self._data[:] = val
         if self.shared_memory:
-            self._rdata[:] = val
+
+            self._split_comm.get_intra_comm().Barrier()
+            self._rwin.win.Fence()
+            if self._lrank == 0:
+                self._rdata[:] = val
+            self._rwin.win.Fence()
+            self._split_comm.get_intra_comm().Barrier()
+
+        self._data[:] = val
+
+
         self._sync_status = True
 
     def __setitem__(self, key, value):
+        print "setting", key, value, self._lrank
         self._sync_wait()
         self._data[key] = value
+        print "setting result", self._data[key]
         self._sync_init()
 
     def __getitem__(self, item):
         self._sync_wait()
         if self.shared_memory:
+            print "getting", self._rdata[item]
             return self._rdata[item]
         else:
             return self._data[item]
@@ -192,30 +229,31 @@ class GlobalArray(object):
             self._rdata = t
         else:
 
-            msize = None
-            lnp = self._split_comm.get_intra_comm().Get_size()
-            lrk = self._split_comm.get_intra_comm().Get_rank()
-            if self.size <= lnp:
-                msize = int(lrk<self.size)
-                mstart = lrk
-            else:
-                msize = int(math.floor(float(self.size)/lnp))
-                mrem = (self.size - msize*lnp) % lnp
-                msize += int(lrk < mrem)
-                mstart = None # fix this
+            self._split_comm.get_intra_comm().Barrier()
 
-            print "MYSIZE", msize
+
+
+            print "MYSIZE, MSTART", self._msize, self._mstart, "local rank", self._lrank, "local size", self._lsize
+
+            for rx in range(self._lsize):
+                if self._lrank == rx:
+                    print "data_root from rank", self._lrank, self._data_root[:]
+                self._split_comm.get_intra_comm().Barrier()
+
+
+            self._split_comm.get_intra_comm().Barrier()
+            self._rwin.win.Fence()
+
+            for rx in xrange(self._lsize):
+                if rx == 0:
+                    self._rdata[self._mstart:self._mstart+self._msize+1:] = self._data_root[rx][self._mstart:self._mstart+self._msize+1:]
+                else:
+                    self._rdata[self._mstart:self._mstart+self._msize+1:] += self._data_root[rx][self._mstart:self._mstart+self._msize+1:]
 
             self._rwin.win.Fence()
-            for rx in xrange(lnp):
-                self._rdata[mstart:mstart+msize:] = self.
-
-
-
-            self._rwin.win.Fence()
+            self._split_comm.get_intra_comm().Barrier()
 
             print self._rdata[0]
-
 
 
 
@@ -225,6 +263,8 @@ class GlobalArray(object):
             return
         # nothing to do until iallreduce is implemented
         self._sync_status = True
+        if self.shared_memory:
+            self._split_comm.get_intra_comm().Barrier()
 
 
 #####################################################################################
