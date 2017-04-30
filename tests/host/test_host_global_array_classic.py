@@ -17,12 +17,6 @@ GlobalArray = md.data.GlobalArrayClassic
 
 N1 = 4
 
-def _not_factorial(N):
-    if N==0:
-        return 0
-    else:
-        return math.factorial(N)
-
 
 @pytest.fixture()
 def DGAN1():
@@ -106,18 +100,18 @@ def test_host_global_array_4(DGAN1):
     A = DGAN1
     A.set(0)
     A[:] += rank*0.234
-
-    fac = _not_factorial(nproc-1)
+    
+    fac = sum(range(nproc))
     csuma = 0.234 * fac
 
     for ix in range(N1):
-        assert abs(A[ix] - csuma)<10.**-15, "GlobalArray.reduction failed"
+        assert abs(A[ix] - csuma)<10.**-15, "GlobalArray.reduction 1 failed"
 
     A[:] += rank*0.234
     csumb = nproc * csuma + fac*0.234
 
     for ix in range(N1):
-        assert abs(A[ix] - csumb)<10.**-15, "GlobalArray.reduction failed"
+        assert abs(A[ix] - csumb)<10.**-15, "GlobalArray.reduction 2 failed"
 
     A.set(0)
 
@@ -128,7 +122,7 @@ def test_host_global_array_4(DGAN1):
     csuma = [coeff[rx]*fac for rx in xrange(N1)]
 
     for ix in range(N1):
-        assert abs(A[ix] - csuma[ix])<10.**-15, "GlobalArray.reduction failed"
+        assert abs(A[ix] - csuma[ix])<10.**-15, "GlobalArray.reduction 3 failed"
 
 
 

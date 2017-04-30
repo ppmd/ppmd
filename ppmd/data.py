@@ -231,19 +231,29 @@ class GlobalArrayShared(object):
         self._data_memview = np.array(self._win.win.memory, copy=False)
         self._data = self._data_memview.view(dtype=self.dtype)
 
-        print "DATA", self._data.shape
-
         # reduction and read space
         rsize = int(self._split_comm.get_intra_comm().Get_rank()<1) * \
                 size * ctypes.sizeof(self.dtype)
+
+        # window 1 ===========================================================
         self._rwin = mpi.SHMWIN(size=rsize,
                                 intracomm=mpi.SHMMPI_HANDLE.get_intra_comm())
-
         # view into memory on node rank 0
         rwin_root_memview = self._rwin.win.Shared_query(0)[0]
         self._rdata_memview = np.array(rwin_root_memview, copy=False)
         self._rdata = self._rdata_memview.view(dtype=self.dtype)
 
+
+        # window 2 ===========================================================
+        self._rwin2 = mpi.SHMWIN(size=rsize,
+                                 intracomm=mpi.SHMMPI_HANDLE.get_intra_comm())
+        # view into memory on node rank 0
+        rwin_root_memview2 = self._rwin2.win.Shared_query(0)[0]
+        self._rdata_memview2 = np.array(rwin_root_memview2, copy=False)
+        self._rdata2 = self._rdata_memview2.view(dtype=self.dtype)
+
+        self._flip = True
+        # ====================================================================
 
 
         # reduction sizes
@@ -262,9 +272,7 @@ class GlobalArrayShared(object):
 
         # view into all of shared memory, list of arrays
         rwin_root_memview = [self._win.win.Shared_query(ix)[0] for ix in xrange(self._lsize)]
-
         self._data_root_memview = [np.array(rwin_root_memview[ix], copy=False) for ix in xrange(self._lsize)]
-
         self._data_root = [self._data_root_memview[ix].view(dtype=self.dtype) for ix in xrange(self._lsize)]
 
 
@@ -273,8 +281,7 @@ class GlobalArrayShared(object):
 
         self._split_comm.get_intra_comm().Barrier()
         self._rwin.win.Fence()
-        if self._lrank == 0:
-            self._rdata[:] = val
+        self._rdata[self._mstart:self._mstart+self._msize:] = val
         self._rwin.win.Fence()
         self._split_comm.get_intra_comm().Barrier()
 
@@ -282,16 +289,13 @@ class GlobalArrayShared(object):
         self._sync_status = True
 
     def __setitem__(self, key, value):
-        print "setting", key, value, self._lrank, "=="
         self._sync_wait()
         self._data[key] = value
-        print "setting result", self._data[key]
         self._sync_init()
 
     def __getitem__(self, item):
         self._sync_wait()
-        print "getting", self._rdata[item]
-        return self._rdata[item]
+        return np.array(self._rdata[item])
 
     def __call__(self, mode=access.RW):
         return self, mode
@@ -305,18 +309,6 @@ class GlobalArrayShared(object):
 
     def _sync_init(self):
         self._sync_status = False
-        print "sync"
-
-        self._split_comm.get_intra_comm().Barrier()
-
-
-        print "MYSIZE, MSTART", self._msize, self._mstart, "local rank", self._lrank, "local size", self._lsize
-
-        for rx in range(self._lsize):
-            if self._lrank == rx:
-                print "data_root from rank", self._lrank, self._data_root[:], self._rdata[:]
-            self._split_comm.get_intra_comm().Barrier()
-
 
         self._split_comm.get_intra_comm().Barrier()
         self._rwin.win.Fence()
@@ -324,17 +316,26 @@ class GlobalArrayShared(object):
         for rx in xrange(self._lsize):
             if rx == 0:
                 self._rdata[self._mstart:self._mstart+self._msize:] = self._data_root[rx][self._mstart:self._mstart+self._msize:]
-                print "R0", self._rdata[:], self._data_root[:]
             else:
                 self._rdata[self._mstart:self._mstart+self._msize:] += self._data_root[rx][self._mstart:self._mstart+self._msize:]
-
-                print "R1", self._rdata[:]
 
         self._rwin.win.Fence()
         self._split_comm.get_intra_comm().Barrier()
 
-        print self._rdata[:]
+        if self._lrank == 0:
+            self._redcomm.Allreduce(self._rdata, self._rdata2, self.op)
 
+        self._split_comm.get_intra_comm().Barrier()
+
+        if(self._flip):
+            self._rdata = self._rdata_memview2.view(dtype=self.dtype)
+            self._rdata2 = self._rdata_memview.view(dtype=self.dtype)
+        else:
+            self._rdata = self._rdata_memview.view(dtype=self.dtype)
+            self._rdata = self._rdata_memview2.view(dtype=self.dtype)
+        self._flip = not self._flip
+
+        self._split_comm.get_intra_comm().Barrier()
 
     def _sync_wait(self):
         if self._sync_status:
