@@ -60,13 +60,11 @@ def test_host_global_array_2_5(IGAN1):
 
     A[:] += 1
 
-    print A[:]
-
     for ix in range(N1):
         assert A[ix] == nproc, "GlobalArray.reduction 1 failed"
 
     A[:] += 1
-
+    
     for ix in range(N1):
         assert A[ix] == nproc*(nproc+1), "GlobalArray.reduction 2 failed"
 

@@ -282,7 +282,7 @@ class GlobalArrayShared(object):
         self._sync_status = True
 
     def __setitem__(self, key, value):
-        print "setting", key, value, self._lrank
+        print "setting", key, value, self._lrank, "=="
         self._sync_wait()
         self._data[key] = value
         print "setting result", self._data[key]
@@ -314,7 +314,7 @@ class GlobalArrayShared(object):
 
         for rx in range(self._lsize):
             if self._lrank == rx:
-                print "data_root from rank", self._lrank, self._data_root[:]
+                print "data_root from rank", self._lrank, self._data_root[:], self._rdata[:]
             self._split_comm.get_intra_comm().Barrier()
 
 
@@ -323,14 +323,17 @@ class GlobalArrayShared(object):
 
         for rx in xrange(self._lsize):
             if rx == 0:
-                self._rdata[self._mstart:self._mstart+self._msize+1:] = self._data_root[rx][self._mstart:self._mstart+self._msize+1:]
+                self._rdata[self._mstart:self._mstart+self._msize:] = self._data_root[rx][self._mstart:self._mstart+self._msize:]
+                print "R0", self._rdata[:], self._data_root[:]
             else:
-                self._rdata[self._mstart:self._mstart+self._msize+1:] += self._data_root[rx][self._mstart:self._mstart+self._msize+1:]
+                self._rdata[self._mstart:self._mstart+self._msize:] += self._data_root[rx][self._mstart:self._mstart+self._msize:]
+
+                print "R1", self._rdata[:]
 
         self._rwin.win.Fence()
         self._split_comm.get_intra_comm().Barrier()
 
-        print self._rdata[0]
+        print self._rdata[:]
 
 
     def _sync_wait(self):
