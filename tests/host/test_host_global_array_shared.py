@@ -15,14 +15,13 @@ nproc = md.mpi.MPI.COMM_WORLD.Get_size()
 
 GlobalArray = md.data.GlobalArray
 
-N1 = 2
+N1 = 4
 
 def _not_factorial(N):
     if N==0:
         return 0
     else:
         return math.factorial(N)
-
 
 
 @pytest.fixture()
@@ -34,6 +33,9 @@ def IGAN1():
 
 def test_host_global_array_1(IGAN1):
     A = IGAN1
+
+    assert type(A) is md.data.GlobalArrayShared, "bad instance type"
+
     A.set(1)
     for ix in range(N1):
         assert A[ix] == 1, "GlobalArray.set 1 failed"
