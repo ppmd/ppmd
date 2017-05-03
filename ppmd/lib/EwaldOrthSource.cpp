@@ -1,117 +1,114 @@
 
+
+
 /*
-#define REAB(a,b) ((a)*(a) - (b)*(b))
-#define IMAB(a,b) ((a)*(b)*2)
-#define ABS2(a,b) ((a)*(a) + (b)*(b))
-#define LINIDX(ix, iy, nx) ((iy)*(nx) + (ix))
+args
+~~~~
+double * RecipSpace
+const double * Positions
 */
 
 
-inline void COMP_AB(
-    const double *a,
-    const double *b,
-    const double *x,
-    const double *y,
-    double *g,
-    double *h
-){
-    // Compute (a + bi) * (x + yi)
-    *g = (*a)*(*x) - (*b)*(*y);
-    *h = (*a)*(*y) + (*b)*(*x);
+
+// kernel start --------------------------------------
+
+const int IndexRealStart = 12*NKAXIS;
+const int IndexImagStart = IndexRealStart + 8*LEN_QUAD;
+double* RRecipSpace = RecipSpace + IndexRealStart;
+double* IRecipSpace = RecipSpace + IndexImagStart;
+
+const double ri[4] = {-1.0*Positions.i[0]*GX, -1.0*Positions.i[1]*GX, -1.0*Positions.i[2]*GX, 0.0};
+double re_exp[4];
+double im_exp[4];
+
+// could pad to 4 for avx call instead of an sse call
+for(int ix=0 ; ix<3 ; ix++) { im_exp[ix] = sin(ri[ix]); re_exp[ix] = cos(ri[ix]); }
+
+
+// populate first and second entries in reciprocal axis
+//RE
+TMP_RECIP_AXES[XQR][0] = 1.0;
+TMP_RECIP_AXES[YQR][0] = 1.0;
+TMP_RECIP_AXES[ZQR][0] = 1.0;
+//IM
+TMP_RECIP_AXES[XQI][0] = 0.0;
+TMP_RECIP_AXES[YQI][0] = 0.0;
+TMP_RECIP_AXES[ZQI][0] = 0.0;
+
+//RE
+TMP_RECIP_AXES[XQR][1] = re_exp[0];
+TMP_RECIP_AXES[YQR][2] = re_exp[1];
+TMP_RECIP_AXES[ZQR][1] = re_exp[2];
+//IM
+TMP_RECIP_AXES[XQI][1]  = im_exp[0];
+TMP_RECIP_AXES[YQI][1]  = im_exp[1];
+TMP_RECIP_AXES[ZQI][1]  = im_exp[2];
+
+
+// multiply out x dir
+const double re_p1x = TMP_RECIP_AXES[XQR][1];
+const double im_p1x = TMP_RECIP_AXES[XQI][1];
+for(int ix=2 ; ix<NK ; ix++) {
+    COMP_AB(&re_p1x, &im_p1x, &TMP_RECIP_AXES[XQR][ix-1], &TMP_RECIP_AXES[XQI][ix-1], &TMP_RECIP_AXES[XQR][ix], &TMP_RECIP_AXES[XQI][ix]);
+}
+// multiply out y dir
+const double re_p1y = TMP_RECIP_AYES[YQR][1];
+const double im_p1y = TMP_RECIP_AYES[YQI][1];
+for(int ix=2 ; ix<NL ; ix++) {
+    COMP_AB(&re_p1x, &im_p1x, &TMP_RECIP_AYES[YQR][ix-1], &TMP_RECIP_AYES[YQI][ix-1], &TMP_RECIP_AYES[YQR][ix], &TMP_RECIP_AYES[YQI][ix]);
+}
+// multiply out z dir
+const double re_p1z = TMP_RECIP_AZES[ZQR][1];
+const double im_p1z = TMP_RECIP_AZES[ZQI][1];
+for(int ix=2 ; ix<NM ; ix++) {
+    COMP_AB(&re_p1x, &im_p1x, &TMP_RECIP_AZES[ZQR][ix-1], &TMP_RECIP_AZES[ZQI][ix-1], &TMP_RECIP_AZES[ZQR][ix], &TMP_RECIP_AZES[ZQI][ix]);
 }
 
 
+// now can multiply out and add to recip space
+// start with the axes
 
-inline void COMP_AB_PACKED(
-    const double *a,
-    const double *x,
-    double *gh
-){
-    // Compute (a + bi) * (x + yi)
-    gh[0] = a[0]*x[0] - a[1]*x[1];
-    gh[1] = a[0]*x[1] + a[1]*x[0];
+// X
+for( int ii=1 ; ii<NK ; ii++ ){
+    RRAXIS(0, ii) += TMP_RECIP_AXIS[XQR][ii];
+    IRAXIS(0, ii) += TMP_RECIP_AXIS[XQI][ii];
+    RRAXIS(2, ii) += TMP_RECIP_AXIS[XQR][ii];
+    IRAXIS(2, ii) -= TMP_RECIP_AXIS[XQI][ii];
 }
-
-
-
-inline void COMP_EXP_PACKED(
-    const double *x,
-    double *gh
-){
-    gh[0] = cos(*x);
-    gh[1] = sin(*x);
+// Y
+for( int ii=1 ; ii<NL ; ii++ ){
+    RRAXIS(1, ii) += TMP_RECIP_AXIS[YQR][ii];
+    IRAXIS(1, ii) += TMP_RECIP_AXIS[YQI][ii];
+    RRAXIS(3, ii) += TMP_RECIP_AXIS[YQR][ii];
+    IRAXIS(3, ii) -= TMP_RECIP_AXIS[YQI][ii];
 }
-
-inline void COMP_CONG(
-    const double *x,
-    double *y
-){
-    // y = x*
-    y[0] = x[0];
-    y[1] = -1. * x[1];
-}
-
-// reciprocal axis macros
-// real recip axis index
-#define RERAI(indx, alen, adir) (adir*(2*alen + 1) + indx + alen)
-// imag recip axis index
-#define IMRAI(indx, alen, adir) ((adir+3)*(2*alen + 1) + indx + alen)
-// complex exp in axis
-#define RAEXP(x, ptr, indx, alen, adir) (ptr[RERAI(indx,alen,adir)]=cos(x);\
-                                         ptr[IMRAI(indx,alen,adir)]=sin(x))
-
-
-extern "C" int ReciprocalContributions(
-    const double * RESTRICT positions,
-    const double * RESTRICT charges,
-    const int N_LOCAL,
-    const int * RESTRICT nmax_vec, // len = 3
-    const double * RESTRICT recip_vec, //      = np.zeros((3,3), dtype=ctypes.c_double)
-    const int recip_axis_len,               // number of k points is 2*recip_axis_length + 1
-    double * RESTRICT recip_axis,           // space to hold the values on the axis to multiple together
-    double * RESTRICT recip_space
-){
-    int err = 0;
-    double *ra = recip_axis;
-
-
-
-
-    for (int lx=0 ; lx<N_LOCAL ; lx++){
-
-        for(int dx=0 ; dx<3 ; dx++){
-            // because domain is orthoganal
-
-            double ri = -1. * positions[lx*3+dx]*recip_vec[dx*4];
-            recip_axis[2*dx*recip_axis_len] = 1.0;
-            recip_axis[2*dx*recip_axis_len] = 0.0;
-            COMP_EXP_PACKED(&ri, &recip_axis[2*dx*(recip_axis_len+1)]);
-            COMP_CONG(&recip_axis[2*dx*recip_axis_len - 2], &recip_axis[2*dx*(recip_axis_len+1)]);
-
-            for(int ex=1 ; ex<nmax_vec[dx] ; ex++){
-                
-                COMP_AB_PACKED(&recip_axis[2*(dx*recip_axis_len)],
-                               &recip_axis[2*(dx*recip_axis_len + ex - 1)],
-                               &recip_axis[2*(dx*recip_axis_len + ex)]);
-
-            }
-        }
-
-
-
-
-
-
-
-
-
-
-    }
-  
-
-    return err;
+// Z
+for( int ii=1 ; ii<NM ; ii++ ){
+    RRAXIS(4, ii) += TMP_RECIP_AXIS[ZQR][ii];
+    IRAXIS(4, ii) += TMP_RECIP_AXIS[ZQI][ii];
+    RRAXIS(5, ii) += TMP_RECIP_AXIS[ZQR][ii];
+    IRAXIS(5, ii) -= TMP_RECIP_AXIS[ZQI][ii];
 }
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// kernel end -----------------------------------------

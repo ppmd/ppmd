@@ -106,8 +106,8 @@ def _create_zeros(nrow=None, ncol=None, dtype=ctypes.c_double):
         return np.zeros(int(ncol), dtype=dtype)
 
 
-def _create_from_existing(ndarray=None, dtype=ctypes.c_double):
-    if ndarray.dtype != dtype:
+def _create_from_existing(ndarray=None, dtype=None):
+    if ndarray.dtype != dtype and dtype is not None:
         ndarray = ndarray.astype(dtype)
 
     return np.array(ndarray)
@@ -126,11 +126,11 @@ class Array(object):
         """
         Creates scalar with given initial value.
         """
-        self.idtype = dtype
         self.data = _make_array(initial_value=initial_value,
                                     dtype=dtype,
                                     ncol=ncomp)
 
+        self.idtype = self.data.dtype
         self._version = 0
         self.name = name
 

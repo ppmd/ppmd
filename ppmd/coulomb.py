@@ -18,7 +18,7 @@ import scipy.special
 from scipy.constants import epsilon_0
 import time
 
-from ppmd import data
+from ppmd import host
 
 _charge_coulomb = scipy.constants.physical_constants['atomic unit of charge'][0]
 
@@ -104,33 +104,31 @@ class CoulombicEnergy(object):
         self._vars = {}
         self._vars['alpha']           = ctypes.c_double(alpha)
         self._vars['max_recip']       = ctypes.c_double(max_len)
-        self._vars['nmax_vec']        = np.array((nmax_x, nmax_y, nmax_z), dtype=ctypes.c_int)
-        self._vars['recip_vec']       = np.zeros((3,3), dtype=ctypes.c_double)
+        self._vars['nmax_vec']        = host.Array((nmax_x, nmax_y, nmax_z), dtype=ctypes.c_int)
+        self._vars['recip_vec']       = host.Array(np.zeros((3,3), dtype=ctypes.c_double))
         self._vars['recip_vec'][0, :] = gx
         self._vars['recip_vec'][1, :] = gy
         self._vars['recip_vec'][2, :] = gz
         self._vars['ivolume'] = ivolume
-        # Again specific to orthogonal domains
-        self._vars['recip_consts'] = np.zeros(3, dtype=ctypes.c_double)
-        self._vars['recip_consts'][0] = exp((-1./(4.*alpha)) * (gx[0]**2.) )
-        self._vars['recip_consts'][1] = exp((-1./(4.*alpha)) * (gy[1]**2.) )
-        self._vars['recip_consts'][2] = exp((-1./(4.*alpha)) * (gz[2]**2.) )
-        
+        self._vars['coeff_space'] = np.zeros((nmax_x+1, nmax_y+1, nmax_z+1), dtype=ctypes.c_double)
+
         # pass stride in tmp space vector
         self._vars['recip_axis_len'] = ctypes.c_int(nmax_t)
-        # tmp space vector
-        self._vars['recip_axis'] = np.zeros((2,2*nmax_t+1,3), dtype=ctypes.c_double)
-        # recpirocal space
-        self._vars['recip_space'] = np.zeros((2, 2*nmax_x+1, 2*nmax_y+1, 2*nmax_z+1), dtype=ctypes.c_double)
-        self._vars['coeff_space'] = np.zeros((nmax_x+1, nmax_y+1, nmax_z+1), dtype=ctypes.c_double)
+
+        # |real axis | real quads | imag axis | imag axis
+        reciplen = (nmax_t+1)*12 + 16*nmax_x*nmax_y*nmax_z
+        self._vars['recip_space_kernel'] = host.Array(ncomp=reciplen, dtype=ctypes.c_double)
+        self._vars['recip_vec_kernel'] = host.Array(np.zeros(3, dtype=ctypes.c_double))
+        self._vars['recip_vec_kernel'][0] = gx
+        self._vars['recip_vec_kernel'][1] = gy
+        self._vars['recip_vec_kernel'][2] = gz
+
 
         with open(str(runtime.LIB_DIR) + '/EwaldOrthSource.h','r') as fh:
             header = fh.read()
 
         with open(str(runtime.LIB_DIR) + '/EwaldOrthSource.cpp','r') as fh:
             source = fh.read()
-
-        self._lib = build.simple_lib_creator(header, source, 'CoulombicEnergyOrth')
 
 
     @staticmethod
@@ -154,6 +152,15 @@ class CoulombicEnergy(object):
 
     def test_evaluate_python_lr(self, positions, charges):
         # python version for sanity
+        # recpirocal space PYTHON TODO remove when C working
+        nmax_x = self._vars['nmax_vec'][0]
+        nmax_y = self._vars['nmax_vec'][1]
+        nmax_z = self._vars['nmax_vec'][2]
+        # tmp space vector
+
+        recip_axis_len = self._vars['recip_axis_len'].value
+        self._vars['recip_axis'] = np.zeros((2,2*recip_axis_len+1,3), dtype=ctypes.c_double)
+        self._vars['recip_space'] = np.zeros((2, 2*nmax_x+1, 2*nmax_y+1, 2*nmax_z+1), dtype=ctypes.c_double)
 
         np.set_printoptions(linewidth=400)
 
@@ -161,7 +168,6 @@ class CoulombicEnergy(object):
 
         recip_axis = self._vars['recip_axis']
         recip_vec = self._vars['recip_vec']
-        recip_axis_len = self._vars['recip_axis_len'].value
         nmax_vec = self._vars['nmax_vec']
         recip_space = self._vars['recip_space']
 
