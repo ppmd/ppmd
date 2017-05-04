@@ -23,6 +23,8 @@
 
 
 // other defines  -------------------------------------
+//space allocated for planes in reciprocal space
+#define PLANE_SIZE (8*(NK*NL)+8*(NL*NM)+8*(NM*NK))
 
 // maps from quadrant indexes to axis indexes
 #define XQR (0)
@@ -41,14 +43,30 @@ const double CC_COEFF[2] = {1.0, -1.0};
 // double* RRecipSpace
 // double* IRecipSpace 
 // maps from k,l,m,quadrant into real and imaginary recip space assuming above pointers
-# define RRS_INDEX(k,l,m,q) (RRecipSpace[  8*( (k) + NK*((l) + NL*(m)) )  + (q)])
-# define IRS_INDEX(k,l,m,q) (IRecipSpace[  8*( (k) + NK*((l) + NL*(m)) )  + (q)])
+#define RRS_INDEX(k,l,m,q) (RRecipSpace[  8*( (k) + NK*((l) + NL*(m)) )  + (q)])
+#define IRS_INDEX(k,l,m,q) (IRecipSpace[  8*( (k) + NK*((l) + NL*(m)) )  + (q)])
 
 // double * RecipSpace
 // maps onto reciprocal space axis assuming above pointer
 #define RRAXIS(ax, ex) (RexipSpace[(ax)*NKAXIS+(ex)])
 #define IRAXIS(ax, ex) (RexipSpace[(6 + (ax))*NKAXIS+(ex)])
 
+
+//double* PlaneSpace
+//maps onto plane space assuming above pointer
+
+#define RRPLANE_0(quad, x1 , x2) ( PlaneSPace[ (x2)*(NK*4) + (x1)*4 + (quad) ] )
+#define IRPLANE_0(quad, x1 , x2) ( PlaneSPace[ (4*NK*NL) + (x2)*(NK*4) + (x1)*4 + (quad) ] )
+
+#define RRPLANE_1(quad, x1 , x2) ( PlaneSPace[ (NK*NL*8) + (x2)*(NL*4) + (x1)*4 + (quad) ] )
+#define IRPLANE_1(quad, x1 , x2) ( PlaneSPace[ (NK*NL*8) + (4*NL*NM) + (x2)*(NL*4) + (x1)*4 + (quad) ] )
+
+#define RRPLANE_2(quad, x1 , x2) ( PlaneSPace[ (NK*NL*8) + (8*NL*NM) + (x2)*(NM*4) + (x1)*4 + (quad) ] )
+#define IRPLANE_2(quad, x1 , x2) ( PlaneSPace[ (NK*NL*8) + (8*NL*NM) + (4*NM*NK) + (x2)*(NM*4) + (x1)*4 + (quad) ] )
+
+// complex part coefficient for planes
+const double CC_COEFF_PLANE_X1[4] = {1.0, -1.0, -1.0, 1.0};
+const double CC_COEFF_PLANE_X2[4] = {1.0, 1.0, -1.0, -1.0};
 
 
 

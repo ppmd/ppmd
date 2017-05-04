@@ -34,6 +34,8 @@ ctypes_map = {ctypes.c_double: 'double',
               'intpointer': 'int *',
               'longpointer': 'long *'}
 
+
+
 pointer_lookup = {ctypes.c_int: 'intpointer',
                   ctypes.c_long: 'longpointer',
                   ctypes.c_double: 'doublepointer'}
@@ -126,11 +128,12 @@ class Array(object):
         """
         Creates scalar with given initial value.
         """
+
+        self.idtype = dtype
         self.data = _make_array(initial_value=initial_value,
                                     dtype=dtype,
                                     ncol=ncomp)
 
-        self.idtype = self.data.dtype
         self._version = 0
         self.name = name
 

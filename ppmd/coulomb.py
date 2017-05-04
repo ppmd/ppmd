@@ -115,13 +115,18 @@ class CoulombicEnergy(object):
         # pass stride in tmp space vector
         self._vars['recip_axis_len'] = ctypes.c_int(nmax_t)
 
-        # |real axis | real quads | imag axis | imag axis
-        reciplen = (nmax_t+1)*12 + 16*nmax_x*nmax_y*nmax_z
+        # |axis | planes | quads
+        reciplen = (nmax_t+1)*12 +\
+                   8*nmax_x*nmax_y + \
+                   8*nmax_y*nmax_z +\
+                   8*nmax_z*nmax_x +\
+                   16*nmax_x*nmax_y*nmax_z
+
         self._vars['recip_space_kernel'] = host.Array(ncomp=reciplen, dtype=ctypes.c_double)
         self._vars['recip_vec_kernel'] = host.Array(np.zeros(3, dtype=ctypes.c_double))
-        self._vars['recip_vec_kernel'][0] = gx
-        self._vars['recip_vec_kernel'][1] = gy
-        self._vars['recip_vec_kernel'][2] = gz
+        self._vars['recip_vec_kernel'][0] = gx[0]
+        self._vars['recip_vec_kernel'][1] = gy[1]
+        self._vars['recip_vec_kernel'][2] = gz[2]
 
 
         with open(str(runtime.LIB_DIR) + '/EwaldOrthSource.h','r') as fh:

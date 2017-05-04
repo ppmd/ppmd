@@ -1,23 +1,22 @@
-
-
-
 /*
 args
 ~~~~
 double * RecipSpace
 const double * Positions
+const double * Charges
 */
 
 
 
 // kernel start --------------------------------------
 
-const int IndexRealStart = 12*NKAXIS;
-const int IndexImagStart = IndexRealStart + 8*LEN_QUAD;
-double* RRecipSpace = RecipSpace + IndexRealStart;
-double* IRecipSpace = RecipSpace + IndexImagStart;
+double* PlaneSpace = RecipSpace + 12*NKAXIS;
+double* RRecipSpace = PlaneSpace + PLANE_SIZE;
+double* IRecipSpace = RRecipSpace + 8*LENQUAD;
 
 const double ri[4] = {-1.0*Positions.i[0]*GX, -1.0*Positions.i[1]*GX, -1.0*Positions.i[2]*GX, 0.0};
+const double charge_i = Charges.i[0];
+
 double re_exp[4];
 double im_exp[4];
 
@@ -52,14 +51,14 @@ for(int ix=2 ; ix<NK ; ix++) {
     COMP_AB(&re_p1x, &im_p1x, &TMP_RECIP_AXES[XQR][ix-1], &TMP_RECIP_AXES[XQI][ix-1], &TMP_RECIP_AXES[XQR][ix], &TMP_RECIP_AXES[XQI][ix]);
 }
 // multiply out y dir
-const double re_p1y = TMP_RECIP_AYES[YQR][1];
-const double im_p1y = TMP_RECIP_AYES[YQI][1];
+const double re_p1y = TMP_RECIP_AXES[YQR][1];
+const double im_p1y = TMP_RECIP_AXES[YQI][1];
 for(int ix=2 ; ix<NL ; ix++) {
     COMP_AB(&re_p1x, &im_p1x, &TMP_RECIP_AYES[YQR][ix-1], &TMP_RECIP_AYES[YQI][ix-1], &TMP_RECIP_AYES[YQR][ix], &TMP_RECIP_AYES[YQI][ix]);
 }
 // multiply out z dir
-const double re_p1z = TMP_RECIP_AZES[ZQR][1];
-const double im_p1z = TMP_RECIP_AZES[ZQI][1];
+const double re_p1z = TMP_RECIP_AXES[ZQR][1];
+const double im_p1z = TMP_RECIP_AXES[ZQI][1];
 for(int ix=2 ; ix<NM ; ix++) {
     COMP_AB(&re_p1x, &im_p1x, &TMP_RECIP_AZES[ZQR][ix-1], &TMP_RECIP_AZES[ZQI][ix-1], &TMP_RECIP_AZES[ZQR][ix], &TMP_RECIP_AZES[ZQI][ix]);
 }
@@ -91,24 +90,71 @@ for( int ii=1 ; ii<NM ; ii++ ){
 }
 
 
+// now the planes between the axes
+// double loop over x,y
 
+for(int iy=0 ; iy<NL ; iy++){
+    for(int ix=0 ; ix<NK ; ix++ ){
+        const double xp = TMP_RECIP_AXES[XQR][ix];
+        const double yp = TMP_RECIP_AXES[XQI][ix];
+        const double ap = TMP_RECIP_AXES[YQR][iy];
+        const double bp = TMP_RECIP_AXES[YQI][iy];
+        for(int qx=0 ; qx<4 ; qx++){
+            RRPLANE_0(qx, ix, iy) += xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
+            IRPLANE_0(qx, ix, iy) += xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
+        }
+    }
+}
+// double loop over y,z
+for(int iy=0 ; iy<NM ; iy++){
+    for(int ix=0 ; ix<NL ; ix++ ){
+        const double xp = TMP_RECIP_AXES[YQR][ix];
+        const double yp = TMP_RECIP_AXES[YQI][ix];
+        const double ap = TMP_RECIP_AXES[ZQR][iy];
+        const double bp = TMP_RECIP_AXES[ZQI][iy];
+        for(int qx=0 ; qx<4 ; qx++){
+            RRPLANE_0(qx, ix, iy) += xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
+            IRPLANE_0(qx, ix, iy) += xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
+        }
+    }
+}
+// double loop over z,x
+for(int iy=0 ; iy<NK ; iy++){
+    for(int ix=0 ; ix<NM ; ix++ ){
+        const double xp = TMP_RECIP_AXES[ZQR][ix];
+        const double yp = TMP_RECIP_AXES[ZQI][ix];
+        const double ap = TMP_RECIP_AXES[XQR][iy];
+        const double bp = TMP_RECIP_AXES[XQI][iy];
+        for(int qx=0 ; qx<4 ; qx++){
+            RRPLANE_0(qx, ix, iy) += xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
+            IRPLANE_0(qx, ix, iy) += xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
+        }
+    }
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// finally loop over axes and quadrants
+//RRS_INDEX(k,l,m,q)
+for(int iz=0 ; iz<NM ; iz++ ){
+    const double gp = TMP_RECIP_AXES[ZQR][iz];
+    const double hp = TMP_RECIP_AXES[ZQI][iz];
+    for(int iy=0 ; iy<NL ; iy++){
+        const double ap = TMP_RECIP_AXES[YQR][iy];
+        const double bp = TMP_RECIP_AXES[YQI][iy];
+        for(int ix=0 ; ix<NK ; ix++ ){
+            const double xp = TMP_RECIP_AXES[XQR][ix];
+            const double yp = TMP_RECIP_AXES[XQI][ix];
+            for(int qx=0 ; qx<8 ; qx++){
+                const double ycp = yp * CC_MAP_X(qx)
+                const double bcp = bp * CC_MAP_Y(qx)
+                const double hcp = hp * CC_MAP_Z(qx)
+                const double xa_m_yb = xp*ap - ycp*bcp;
+                const double xb_p_ya = xp*bcp + ycp*ap;
+                RRS_INDEX(ix,iy,iz,qx) += charge_i * (gp*xa_m_yb - hcp*xb_p_ya);
+                IRS_INDEX(ix,iy,iz,qx) += charge_i * (xa_m_yb*hcp * xb_p_ya*gp);
+            }
+        }
+    }
+}
 
 
 // kernel end -----------------------------------------
