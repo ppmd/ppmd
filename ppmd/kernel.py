@@ -31,6 +31,7 @@ def analyse(kernel_in=None, dat_dict=None):
 
     return _ops_obs
 
+
 class Kernel(object):
     """Computational kernel, i.e. C-code + numerical constants.
 
@@ -159,13 +160,16 @@ class Constant(object):
 
 
 class Header(object):
-    def __init__(self, name, system=True):
+    def __init__(self, name=None, system=True, block=None):
         """
         :param str name: Name of header file to include.
         :param bool system: True if header is a system header
         """
         self._name = name
-        self.ast = cgen.Include(name, system)
+        if block is None:
+            self.ast = cgen.Include(name, system)
+        else:
+            self.ast = cgen.Line(block)
 
     def __str__(self):
         return self._name

@@ -39,6 +39,22 @@ const double CC_COEFF[2] = {1.0, -1.0};
 #define CC_MAP_X(qx) ( CC_COEFF[(((qx)+1) >> 1) & 1])
 #define CC_MAP_Y(qx) ( CC_COEFF[((qx) >> 1) & 1]    )
 #define CC_MAP_Z(qx) ( CC_COEFF[((qx) >> 2)]    )
+
+
+// slower than above
+/*
+const double CC_COEFF_X[8] = {1.0, -1.0, -1.0, 1.0, 1.0, -1.0, -1.0, 1.0};
+const double CC_COEFF_Y[8] = {1.0, 1.0, -1.0, -1.0, 1.0, 1.0, -1.0, -1.0};
+const double CC_COEFF_Z[8] = {1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0};
+#define CC_MAP_X(qx) ( CC_COEFF_X[(qx)] )
+#define CC_MAP_Y(qx) ( CC_COEFF_Y[(qx)] )
+#define CC_MAP_Z(qx) ( CC_COEFF_Z[(qx)] )
+*/
+
+
+
+
+
  
 // double* RRecipSpace
 // double* IRecipSpace 
@@ -48,21 +64,21 @@ const double CC_COEFF[2] = {1.0, -1.0};
 
 // double * RecipSpace
 // maps onto reciprocal space axis assuming above pointer
-#define RRAXIS(ax, ex) (RexipSpace[(ax)*NKAXIS+(ex)])
-#define IRAXIS(ax, ex) (RexipSpace[(6 + (ax))*NKAXIS+(ex)])
+#define RRAXIS(ax, ex) (RecipSpace[(ax)*NKAXIS+(ex)])
+#define IRAXIS(ax, ex) (RecipSpace[(6 + (ax))*NKAXIS+(ex)])
 
 
 //double* PlaneSpace
 //maps onto plane space assuming above pointer
 
-#define RRPLANE_0(quad, x1 , x2) ( PlaneSPace[ (x2)*(NK*4) + (x1)*4 + (quad) ] )
-#define IRPLANE_0(quad, x1 , x2) ( PlaneSPace[ (4*NK*NL) + (x2)*(NK*4) + (x1)*4 + (quad) ] )
+#define RRPLANE_0(quad, x1 , x2) ( PlaneSpace[ (x2)*(NK*4) + (x1)*4 + (quad) ] )
+#define IRPLANE_0(quad, x1 , x2) ( PlaneSpace[ (4*NK*NL) + (x2)*(NK*4) + (x1)*4 + (quad) ] )
 
-#define RRPLANE_1(quad, x1 , x2) ( PlaneSPace[ (NK*NL*8) + (x2)*(NL*4) + (x1)*4 + (quad) ] )
-#define IRPLANE_1(quad, x1 , x2) ( PlaneSPace[ (NK*NL*8) + (4*NL*NM) + (x2)*(NL*4) + (x1)*4 + (quad) ] )
+#define RRPLANE_1(quad, x1 , x2) ( PlaneSpace[ (NK*NL*8) + (x2)*(NL*4) + (x1)*4 + (quad) ] )
+#define IRPLANE_1(quad, x1 , x2) ( PlaneSpace[ (NK*NL*8) + (4*NL*NM) + (x2)*(NL*4) + (x1)*4 + (quad) ] )
 
-#define RRPLANE_2(quad, x1 , x2) ( PlaneSPace[ (NK*NL*8) + (8*NL*NM) + (x2)*(NM*4) + (x1)*4 + (quad) ] )
-#define IRPLANE_2(quad, x1 , x2) ( PlaneSPace[ (NK*NL*8) + (8*NL*NM) + (4*NM*NK) + (x2)*(NM*4) + (x1)*4 + (quad) ] )
+#define RRPLANE_2(quad, x1 , x2) ( PlaneSpace[ (NK*NL*8) + (8*NL*NM) + (x2)*(NM*4) + (x1)*4 + (quad) ] )
+#define IRPLANE_2(quad, x1 , x2) ( PlaneSpace[ (NK*NL*8) + (8*NL*NM) + (4*NM*NK) + (x2)*(NM*4) + (x1)*4 + (quad) ] )
 
 // complex part coefficient for planes
 const double CC_COEFF_PLANE_X1[4] = {1.0, -1.0, -1.0, 1.0};

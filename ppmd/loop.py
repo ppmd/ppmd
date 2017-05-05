@@ -175,8 +175,11 @@ class ParticleLoop(object):
     def _generate_kernel_headers(self):
         s = []
         if self._kernel.headers is not None:
-            for x in self._kernel.headers:
-                s.append(x.ast)
+            if hasattr(self._kernel.headers, "__iter__"):
+                for x in self._kernel.headers:
+                    s.append(x.ast)
+            else:
+                s.append(self._kernel.headers.ast)
 
         s.append(self.loop_timer.get_cpp_headers_ast())
         self._components['KERNEL_HEADERS'] = cgen.Module(s)

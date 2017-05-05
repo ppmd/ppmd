@@ -10,9 +10,9 @@ const double * Charges
 
 // kernel start --------------------------------------
 
-double* PlaneSpace = RecipSpace + 12*NKAXIS;
+double* PlaneSpace = &RecipSpace[0] + 12*NKAXIS;
 double* RRecipSpace = PlaneSpace + PLANE_SIZE;
-double* IRecipSpace = RRecipSpace + 8*LENQUAD;
+double* IRecipSpace = RRecipSpace + 8*LEN_QUAD;
 
 const double ri[4] = {-1.0*Positions.i[0]*GX, -1.0*Positions.i[1]*GX, -1.0*Positions.i[2]*GX, 0.0};
 const double charge_i = Charges.i[0];
@@ -21,14 +21,15 @@ double re_exp[4];
 double im_exp[4];
 
 // could pad to 4 for avx call instead of an sse call
-for(int ix=0 ; ix<3 ; ix++) { im_exp[ix] = sin(ri[ix]); re_exp[ix] = cos(ri[ix]); }
+for(int ix=0 ; ix<4 ; ix++) { im_exp[ix] = sin(ri[ix]); re_exp[ix] = cos(ri[ix]); }
 
 
 // populate first and second entries in reciprocal axis
-//RE
-TMP_RECIP_AXES[XQR][0] = 1.0;
-TMP_RECIP_AXES[YQR][0] = 1.0;
-TMP_RECIP_AXES[ZQR][0] = 1.0;
+//RE technically these should be 1.0 but it makes our life easier
+// if it is 0.0
+TMP_RECIP_AXES[XQR][0] = 0.0;
+TMP_RECIP_AXES[YQR][0] = 0.0;
+TMP_RECIP_AXES[ZQR][0] = 0.0;
 //IM
 TMP_RECIP_AXES[XQI][0] = 0.0;
 TMP_RECIP_AXES[YQI][0] = 0.0;
@@ -54,13 +55,13 @@ for(int ix=2 ; ix<NK ; ix++) {
 const double re_p1y = TMP_RECIP_AXES[YQR][1];
 const double im_p1y = TMP_RECIP_AXES[YQI][1];
 for(int ix=2 ; ix<NL ; ix++) {
-    COMP_AB(&re_p1x, &im_p1x, &TMP_RECIP_AYES[YQR][ix-1], &TMP_RECIP_AYES[YQI][ix-1], &TMP_RECIP_AYES[YQR][ix], &TMP_RECIP_AYES[YQI][ix]);
+    COMP_AB(&re_p1x, &im_p1x, &TMP_RECIP_AXES[YQR][ix-1], &TMP_RECIP_AXES[YQI][ix-1], &TMP_RECIP_AXES[YQR][ix], &TMP_RECIP_AXES[YQI][ix]);
 }
 // multiply out z dir
 const double re_p1z = TMP_RECIP_AXES[ZQR][1];
 const double im_p1z = TMP_RECIP_AXES[ZQI][1];
 for(int ix=2 ; ix<NM ; ix++) {
-    COMP_AB(&re_p1x, &im_p1x, &TMP_RECIP_AZES[ZQR][ix-1], &TMP_RECIP_AZES[ZQI][ix-1], &TMP_RECIP_AZES[ZQR][ix], &TMP_RECIP_AZES[ZQI][ix]);
+    COMP_AB(&re_p1x, &im_p1x, &TMP_RECIP_AXES[ZQR][ix-1], &TMP_RECIP_AXES[ZQI][ix-1], &TMP_RECIP_AXES[ZQR][ix], &TMP_RECIP_AXES[ZQI][ix]);
 }
 
 
@@ -69,24 +70,24 @@ for(int ix=2 ; ix<NM ; ix++) {
 
 // X
 for( int ii=1 ; ii<NK ; ii++ ){
-    RRAXIS(0, ii) += TMP_RECIP_AXIS[XQR][ii];
-    IRAXIS(0, ii) += TMP_RECIP_AXIS[XQI][ii];
-    RRAXIS(2, ii) += TMP_RECIP_AXIS[XQR][ii];
-    IRAXIS(2, ii) -= TMP_RECIP_AXIS[XQI][ii];
+    RRAXIS(0, ii) += TMP_RECIP_AXES[XQR][ii];
+    IRAXIS(0, ii) += TMP_RECIP_AXES[XQI][ii];
+    RRAXIS(2, ii) += TMP_RECIP_AXES[XQR][ii];
+    IRAXIS(2, ii) -= TMP_RECIP_AXES[XQI][ii];
 }
 // Y
 for( int ii=1 ; ii<NL ; ii++ ){
-    RRAXIS(1, ii) += TMP_RECIP_AXIS[YQR][ii];
-    IRAXIS(1, ii) += TMP_RECIP_AXIS[YQI][ii];
-    RRAXIS(3, ii) += TMP_RECIP_AXIS[YQR][ii];
-    IRAXIS(3, ii) -= TMP_RECIP_AXIS[YQI][ii];
+    RRAXIS(1, ii) += TMP_RECIP_AXES[YQR][ii];
+    IRAXIS(1, ii) += TMP_RECIP_AXES[YQI][ii];
+    RRAXIS(3, ii) += TMP_RECIP_AXES[YQR][ii];
+    IRAXIS(3, ii) -= TMP_RECIP_AXES[YQI][ii];
 }
 // Z
 for( int ii=1 ; ii<NM ; ii++ ){
-    RRAXIS(4, ii) += TMP_RECIP_AXIS[ZQR][ii];
-    IRAXIS(4, ii) += TMP_RECIP_AXIS[ZQI][ii];
-    RRAXIS(5, ii) += TMP_RECIP_AXIS[ZQR][ii];
-    IRAXIS(5, ii) -= TMP_RECIP_AXIS[ZQI][ii];
+    RRAXIS(4, ii) += TMP_RECIP_AXES[ZQR][ii];
+    IRAXIS(4, ii) += TMP_RECIP_AXES[ZQI][ii];
+    RRAXIS(5, ii) += TMP_RECIP_AXES[ZQR][ii];
+    IRAXIS(5, ii) -= TMP_RECIP_AXES[ZQI][ii];
 }
 
 
@@ -94,11 +95,11 @@ for( int ii=1 ; ii<NM ; ii++ ){
 // double loop over x,y
 
 for(int iy=0 ; iy<NL ; iy++){
+    const double ap = TMP_RECIP_AXES[YQR][iy];
+    const double bp = TMP_RECIP_AXES[YQI][iy];
     for(int ix=0 ; ix<NK ; ix++ ){
         const double xp = TMP_RECIP_AXES[XQR][ix];
         const double yp = TMP_RECIP_AXES[XQI][ix];
-        const double ap = TMP_RECIP_AXES[YQR][iy];
-        const double bp = TMP_RECIP_AXES[YQI][iy];
         for(int qx=0 ; qx<4 ; qx++){
             RRPLANE_0(qx, ix, iy) += xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
             IRPLANE_0(qx, ix, iy) += xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
@@ -107,11 +108,11 @@ for(int iy=0 ; iy<NL ; iy++){
 }
 // double loop over y,z
 for(int iy=0 ; iy<NM ; iy++){
+    const double ap = TMP_RECIP_AXES[ZQR][iy];
+    const double bp = TMP_RECIP_AXES[ZQI][iy];
     for(int ix=0 ; ix<NL ; ix++ ){
         const double xp = TMP_RECIP_AXES[YQR][ix];
         const double yp = TMP_RECIP_AXES[YQI][ix];
-        const double ap = TMP_RECIP_AXES[ZQR][iy];
-        const double bp = TMP_RECIP_AXES[ZQI][iy];
         for(int qx=0 ; qx<4 ; qx++){
             RRPLANE_0(qx, ix, iy) += xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
             IRPLANE_0(qx, ix, iy) += xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
@@ -120,11 +121,11 @@ for(int iy=0 ; iy<NM ; iy++){
 }
 // double loop over z,x
 for(int iy=0 ; iy<NK ; iy++){
+    const double ap = TMP_RECIP_AXES[XQR][iy];
+    const double bp = TMP_RECIP_AXES[XQI][iy];
     for(int ix=0 ; ix<NM ; ix++ ){
         const double xp = TMP_RECIP_AXES[ZQR][ix];
         const double yp = TMP_RECIP_AXES[ZQI][ix];
-        const double ap = TMP_RECIP_AXES[XQR][iy];
-        const double bp = TMP_RECIP_AXES[XQI][iy];
         for(int qx=0 ; qx<4 ; qx++){
             RRPLANE_0(qx, ix, iy) += xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
             IRPLANE_0(qx, ix, iy) += xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
@@ -143,14 +144,18 @@ for(int iz=0 ; iz<NM ; iz++ ){
         for(int ix=0 ; ix<NK ; ix++ ){
             const double xp = TMP_RECIP_AXES[XQR][ix];
             const double yp = TMP_RECIP_AXES[XQI][ix];
+            double* r_base_index = &RRS_INDEX(ix,iy,iz,0);
+            double* i_base_index = &RRS_INDEX(ix,iy,iz,0);
             for(int qx=0 ; qx<8 ; qx++){
-                const double ycp = yp * CC_MAP_X(qx)
-                const double bcp = bp * CC_MAP_Y(qx)
-                const double hcp = hp * CC_MAP_Z(qx)
+                const double ycp = yp * CC_MAP_X(qx);
+                const double bcp = bp * CC_MAP_Y(qx);
+                const double hcp = hp * CC_MAP_Z(qx);
                 const double xa_m_yb = xp*ap - ycp*bcp;
                 const double xb_p_ya = xp*bcp + ycp*ap;
-                RRS_INDEX(ix,iy,iz,qx) += charge_i * (gp*xa_m_yb - hcp*xb_p_ya);
-                IRS_INDEX(ix,iy,iz,qx) += charge_i * (xa_m_yb*hcp * xb_p_ya*gp);
+                *(r_base_index+qx) += charge_i * (gp*xa_m_yb - hcp*xb_p_ya);
+                *(i_base_index+qx) += charge_i * (xa_m_yb*hcp * xb_p_ya*gp);
+                //RRS_INDEX(ix,iy,iz,qx) += charge_i * (gp*xa_m_yb - hcp*xb_p_ya);
+                //IRS_INDEX(ix,iy,iz,qx) += charge_i * (xa_m_yb*hcp * xb_p_ya*gp);
             }
         }
     }

@@ -9,8 +9,11 @@ __license__ = "GPL"
 from math import sqrt, log, ceil, pi, exp, cos, sin, erfc
 import numpy as np
 import ctypes
-import build
+import kernel
+import loop
 import runtime
+import data
+import access
 
 import cmath
 import scipy
@@ -122,18 +125,227 @@ class CoulombicEnergy(object):
                    8*nmax_z*nmax_x +\
                    16*nmax_x*nmax_y*nmax_z
 
-        self._vars['recip_space_kernel'] = host.Array(ncomp=reciplen, dtype=ctypes.c_double)
-        self._vars['recip_vec_kernel'] = host.Array(np.zeros(3, dtype=ctypes.c_double))
-        self._vars['recip_vec_kernel'][0] = gx[0]
-        self._vars['recip_vec_kernel'][1] = gy[1]
-        self._vars['recip_vec_kernel'][2] = gz[2]
+        self._vars['recip_space_kernel'] = data.ScalarArray(ncomp=reciplen, dtype=ctypes.c_double)
+        #self._vars['recip_vec_kernel'] = data.ScalarArray(np.zeros(3, dtype=ctypes.c_double))
+        #self._vars['recip_vec_kernel'][0] = gx[0]
+        #self._vars['recip_vec_kernel'][1] = gy[1]
+        #self._vars['recip_vec_kernel'][2] = gz[2]
 
+        self._subvars = dict()
+        self._subvars['SUB_GX'] = str(gx[0])
+        self._subvars['SUB_GY'] = str(gy[1])
+        self._subvars['SUB_GZ'] = str(gz[2])
+        self._subvars['SUB_NKMAX'] = str(nmax_t)
+        self._subvars['SUB_NK'] = str(nmax_x)
+        self._subvars['SUB_NL'] = str(nmax_y)
+        self._subvars['SUB_NM'] = str(nmax_z)
+        self._subvars['SUB_NKAXIS'] =str(nmax_t+1)
+        self._subvars['SUB_LEN_QUAD'] = str(nmax_x*nmax_y*nmax_z)
+
+        self._init_libs()
+
+    def _init_libs(self):
 
         with open(str(runtime.LIB_DIR) + '/EwaldOrthSource.h','r') as fh:
-            header = fh.read()
+            self._cont_header_src = fh.read()
+        self._cont_header = kernel.Header(block=self._cont_header_src % self._subvars)
 
         with open(str(runtime.LIB_DIR) + '/EwaldOrthSource.cpp','r') as fh:
-            source = fh.read()
+            self._cont_source = fh.read()
+
+        self._cont_kernel = kernel.Kernel(
+            name='reciprocal_contributions',
+            code=self._cont_source,
+            headers=self._cont_header
+        )
+
+        self._cont_lib = loop.ParticleLoop(
+            kernel=self._cont_kernel,
+            dat_dict={
+                'Positions': data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(access.READ),
+                'Charges': data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(access.READ),
+                'RecipSpace': self._vars['recip_space_kernel'](access.INC_ZERO)
+            }
+        )
+
+
+
+    def evaluate_lr(self, positions, charges):
+
+        recip_space = self._vars['recip_space_kernel']
+        self._cont_lib.execute(
+            n = positions.npart_local,
+            dat_dict={
+                'Positions': positions(access.READ),
+                'Charges': charges(access.READ),
+                'RecipSpace': recip_space(access.INC_ZERO)
+            }
+        )
+
+        print self._cont_lib.loop_timer.time
+
+        # evaluate coefficient space ------------------------------------------
+        nmax_x = self._vars['nmax_vec'][0]
+        nmax_y = self._vars['nmax_vec'][1]
+        nmax_z = self._vars['nmax_vec'][2]
+        recip_axis_len = self._vars['recip_axis_len'].value
+        self._vars['recip_axis'] = np.zeros((2,2*recip_axis_len+1,3), dtype=ctypes.c_double)
+        self._vars['recip_space'] = np.zeros((2, 2*nmax_x+1, 2*nmax_y+1, 2*nmax_z+1), dtype=ctypes.c_double)
+        recip_vec = self._vars['recip_vec']
+        nmax_vec = self._vars['nmax_vec']
+
+        coeff_space = self._vars['coeff_space']
+        max_recip = self._vars['max_recip'].value
+        alpha = self._vars['alpha'].value
+        ivolume = self._vars['ivolume']
+
+        max_recip2 = max_recip**2.
+        base_coeff1 = 4.*pi*ivolume
+        base_coeff2 = -1./(4.*alpha)
+
+        coeff_space[0,0,0] = 0.0
+        for rz in xrange(nmax_vec[2]+1):
+            for ry in xrange(nmax_vec[1]+1):
+                for rx in xrange(nmax_vec[0]+1):
+                    if not (rx == 0 and ry == 0 and rz == 0):
+
+                        rlen2 = (rx*recip_vec[0,0])**2. + \
+                                (ry*recip_vec[1,1])**2. + \
+                                (rz*recip_vec[2,2])**2.
+
+                        if rlen2 > max_recip2:
+                            coeff_space[rx,ry,rz] = 0.0
+                        else:
+                            coeff_space[rx,ry,rz] = (base_coeff1/rlen2)*exp(rlen2*base_coeff2)
+
+
+        # ---------------------------------------------------------------------
+        nkmax = self._vars['recip_axis_len'].value
+        nkaxis = nkmax + 1
+        axes_size = 12*nkaxis
+        axes = recip_space[0:axes_size:].view()
+
+        plane_size = 4*nmax_x*nmax_y + 4*nmax_y*nmax_z + 4*nmax_z*nmax_x
+        planes = recip_space[axes_size:axes_size+plane_size*2:].view()
+
+        quad_size = nmax_x*nmax_y*nmax_z
+        quad_start = axes_size+plane_size*2
+        quads = recip_space[quad_start:quad_start+quad_size*16].view()
+
+        # compute energy from structure factor
+        engs = 0.
+
+
+        # AXES ------------------------
+
+        #+ve X
+        rax = 0
+        iax = 6
+        rtmp = axes[rax*nkaxis:(rax+1)*nkaxis:]
+        itmp = axes[iax*nkaxis:(iax+1)*nkaxis:]
+        print coeff_space[0:nmax_x+1:,0,0].shape, (rtmp[:nmax_x+1:]**2.).shape, coeff_space.shape, rtmp.shape, nkaxis, nmax_x
+        engs += np.dot(coeff_space[0:nmax_x+1:,0,0], (rtmp[:nmax_x+1:]**2.) + (itmp[:nmax_x+1:]**2.))
+        # -ve X
+        rax = 2
+        iax = 8
+        rtmp = axes[rax*nkaxis:(rax+1)*nkaxis:]
+        itmp = axes[iax*nkaxis:(iax+1)*nkaxis:]
+        engs += np.dot(coeff_space[0:nmax_x+1:,0,0], (rtmp[:nmax_x+1:]**2.) + (itmp[:nmax_x+1:]**2.))
+
+        #+ve y
+        rax = 1
+        iax = 7
+        rtmp = axes[rax*nkaxis:(rax+1)*nkaxis:]
+        itmp = axes[iax*nkaxis:(iax+1)*nkaxis:]
+        engs += np.dot(coeff_space[0,0:nmax_y+1:,0], (rtmp[:nmax_y+1:]**2.) + (itmp[:nmax_y+1:]**2.))
+        # -ve y
+        rax = 3
+        iax = 9
+        rtmp = axes[rax*nkaxis:(rax+1)*nkaxis:]
+        itmp = axes[iax*nkaxis:(iax+1)*nkaxis:]
+        engs += np.dot(coeff_space[0,0:nmax_y+1:,0], (rtmp[:nmax_y+1:]**2.) + (itmp[:nmax_y+1:]**2.))
+
+        #+ve z
+        rax = 4
+        iax = 10
+        rtmp = axes[rax*nkaxis:(rax+1)*nkaxis:]
+        itmp = axes[iax*nkaxis:(iax+1)*nkaxis:]
+        engs += np.dot(coeff_space[0,0,0:nmax_z+1:], (rtmp[:nmax_z+1:]**2.) + (itmp[:nmax_z+1:]**2.))
+        # -ve z
+        rax = 5
+        iax = 11
+        rtmp = axes[rax*nkaxis:(rax+1)*nkaxis:]
+        itmp = axes[iax*nkaxis:(iax+1)*nkaxis:]
+        engs += np.dot(coeff_space[0,0,0:nmax_z+1:], (rtmp[:nmax_z+1:]**2.) + (itmp[:nmax_z+1:]**2.))
+
+        # PLANES -----------------------
+        # XY
+        tps = nmax_x*nmax_y*4
+        rplane = 0
+        iplane = tps
+        rtmp = planes[rplane:rplane+tps:]
+        itmp = planes[iplane:iplane+tps:]
+        rtmp = rtmp**2.
+        itmp = itmp**2.
+        for px in range(4):
+            engs += np.dot(coeff_space[1:nmax_x+1:, 1:nmax_y+1:, 0].flatten(), rtmp.flatten()[px::4] + itmp.flatten()[px::4])
+
+        # YZ
+        rplane = iplane + tps
+        tps = nmax_y*nmax_z*4
+        iplane = rplane + tps
+        rtmp = planes[rplane:rplane+tps:]
+        itmp = planes[iplane:iplane+tps:]
+        rtmp = rtmp**2.
+        itmp = itmp**2.
+        for px in range(4):
+            # no chnages to indexing as y runs faster than z?
+            engs += np.dot(coeff_space[0, 1:nmax_y+1:, 1:nmax_z+1:].flatten(), rtmp.flatten()[px::4] + itmp.flatten()[px::4])
+
+        # ZX
+        rplane = iplane + tps
+        tps = nmax_z*nmax_x*4
+        iplane = rplane + tps
+        rtmp = planes[rplane:rplane+tps:]
+        itmp = planes[iplane:iplane+tps:]
+        rtmp = rtmp**2.
+        itmp = itmp**2.
+        for px in range(4):
+            # no chnages to indexing as y runs faster than z?
+            engs += np.dot(coeff_space[1:nmax_x+1:, 0, 1:nmax_z+1:].flatten(), rtmp.flatten()[px::4] + itmp.flatten()[px::4])
+
+
+        # guadrants
+        rquads = quads[:8*quad_size:]**2.
+        iquads = quads[8*quad_size::]**2.
+
+        engs+=np.sum(coeff_space[1::,1::,1::].flatten('K')*(rquads[0::8]+iquads[0::8]))
+
+
+
+
+
+        #for kz in xrange(2*nmax_vec[2]+1):
+        #    for ky in xrange(2*nmax_vec[1]+1):
+        #        for kx in xrange(2*nmax_vec[0]+1):
+
+        #            coeff = coeff_space[
+        #                abs(kx-nmax_vec[0]),
+        #                abs(ky-nmax_vec[1]),
+        #                abs(kz-nmax_vec[2])
+        #            ]
+
+        #            re_con = recip_space[0,kx,ky,kz]
+        #            im_con = recip_space[1,kx,ky,kz]
+        #            con = re_con*re_con + im_con*im_con
+
+        #            engs += coeff*con
+
+        # ---------------------------------------------------------------------
+
+        print "energy", 0.5*engs, 0.5*engs*self.internal_to_ev(), 0.917463161E1
+        #return engs*0.5
+
 
 
     @staticmethod

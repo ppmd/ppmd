@@ -1146,8 +1146,11 @@ class Type(object):
         self._dats.append(dat)
 
 
-
-
+class PlaceHolderDat(ParticleDat):
+    def __init__(self, ncomp=1, dtype=ctypes.c_double):
+        self.ncomp=ncomp
+        self.idtype = dtype
+        self.group = None
 
 
 
