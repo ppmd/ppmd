@@ -24,44 +24,37 @@ double im_exp[4];
 for(int ix=0 ; ix<4 ; ix++) { im_exp[ix] = sin(ri[ix]); re_exp[ix] = cos(ri[ix]); }
 
 
-// populate first and second entries in reciprocal axis
+// populate first entries in reciprocal axis
 //RE technically these should be 1.0 but it makes our life easier
 // if it is 0.0
-TMP_RECIP_AXES[XQR][0] = 0.0;
-TMP_RECIP_AXES[YQR][0] = 0.0;
-TMP_RECIP_AXES[ZQR][0] = 0.0;
-//IM
-TMP_RECIP_AXES[XQI][0] = 0.0;
-TMP_RECIP_AXES[YQI][0] = 0.0;
-TMP_RECIP_AXES[ZQI][0] = 0.0;
 
 //RE
-TMP_RECIP_AXES[XQR][1] = re_exp[0];
-TMP_RECIP_AXES[YQR][2] = re_exp[1];
-TMP_RECIP_AXES[ZQR][1] = re_exp[2];
+TMP_RECIP_AXES[XQR][0] = re_exp[0];
+TMP_RECIP_AXES[YQR][0] = re_exp[1];
+TMP_RECIP_AXES[ZQR][0] = re_exp[2];
 //IM
-TMP_RECIP_AXES[XQI][1]  = im_exp[0];
-TMP_RECIP_AXES[YQI][1]  = im_exp[1];
-TMP_RECIP_AXES[ZQI][1]  = im_exp[2];
+TMP_RECIP_AXES[XQI][0]  = im_exp[0];
+TMP_RECIP_AXES[YQI][0]  = im_exp[1];
+TMP_RECIP_AXES[ZQI][0]  = im_exp[2];
 
 
 // multiply out x dir
-const double re_p1x = TMP_RECIP_AXES[XQR][1];
-const double im_p1x = TMP_RECIP_AXES[XQI][1];
-for(int ix=2 ; ix<NK ; ix++) {
+const double re_p1x = TMP_RECIP_AXES[XQR][0];
+const double im_p1x = TMP_RECIP_AXES[XQI][0];
+for(int ix=1 ; ix<NK ; ix++) {
     COMP_AB(&re_p1x, &im_p1x, &TMP_RECIP_AXES[XQR][ix-1], &TMP_RECIP_AXES[XQI][ix-1], &TMP_RECIP_AXES[XQR][ix], &TMP_RECIP_AXES[XQI][ix]);
 }
 // multiply out y dir
-const double re_p1y = TMP_RECIP_AXES[YQR][1];
-const double im_p1y = TMP_RECIP_AXES[YQI][1];
-for(int ix=2 ; ix<NL ; ix++) {
-    COMP_AB(&re_p1x, &im_p1x, &TMP_RECIP_AXES[YQR][ix-1], &TMP_RECIP_AXES[YQI][ix-1], &TMP_RECIP_AXES[YQR][ix], &TMP_RECIP_AXES[YQI][ix]);
+const double re_p1y = TMP_RECIP_AXES[YQR][0];
+const double im_p1y = TMP_RECIP_AXES[YQI][0];
+for(int ix=1 ; ix<NL ; ix++) {
+    COMP_AB(&re_p1y, &im_p1y, &TMP_RECIP_AXES[YQR][ix-1], &TMP_RECIP_AXES[YQI][ix-1], &TMP_RECIP_AXES[YQR][ix], &TMP_RECIP_AXES[YQI][ix]);
 }
 // multiply out z dir
-const double re_p1z = TMP_RECIP_AXES[ZQR][1];
-const double im_p1z = TMP_RECIP_AXES[ZQI][1];
-for(int ix=2 ; ix<NM ; ix++) {
-    COMP_AB(&re_p1x, &im_p1x, &TMP_RECIP_AXES[ZQR][ix-1], &TMP_RECIP_AXES[ZQI][ix-1], &TMP_RECIP_AXES[ZQR][ix], &TMP_RECIP_AXES[ZQI][ix]);
+const double re_p1z = TMP_RECIP_AXES[ZQR][0];
+const double im_p1z = TMP_RECIP_AXES[ZQI][0];
+for(int ix=1 ; ix<NM ; ix++) {
+    COMP_AB(&re_p1z, &im_p1z, &TMP_RECIP_AXES[ZQR][ix-1], &TMP_RECIP_AXES[ZQI][ix-1], &TMP_RECIP_AXES[ZQR][ix], &TMP_RECIP_AXES[ZQI][ix]);
 }
 
 
@@ -69,25 +62,27 @@ for(int ix=2 ; ix<NM ; ix++) {
 // start with the axes
 
 // X
-for( int ii=1 ; ii<NK ; ii++ ){
-    RRAXIS(0, ii) += TMP_RECIP_AXES[XQR][ii];
-    IRAXIS(0, ii) += TMP_RECIP_AXES[XQI][ii];
-    RRAXIS(2, ii) += TMP_RECIP_AXES[XQR][ii];
-    IRAXIS(2, ii) -= TMP_RECIP_AXES[XQI][ii];
+for( int ii=0 ; ii<NK ; ii++ ){
+    RRAXIS(0, ii) += charge_i*TMP_RECIP_AXES[XQR][ii];
+    IRAXIS(0, ii) += charge_i*TMP_RECIP_AXES[XQI][ii];
+    RRAXIS(2, ii) += charge_i*TMP_RECIP_AXES[XQR][ii];
+    IRAXIS(2, ii) -= charge_i*TMP_RECIP_AXES[XQI][ii];
 }
+
+
 // Y
-for( int ii=1 ; ii<NL ; ii++ ){
-    RRAXIS(1, ii) += TMP_RECIP_AXES[YQR][ii];
-    IRAXIS(1, ii) += TMP_RECIP_AXES[YQI][ii];
-    RRAXIS(3, ii) += TMP_RECIP_AXES[YQR][ii];
-    IRAXIS(3, ii) -= TMP_RECIP_AXES[YQI][ii];
+for( int ii=0 ; ii<NL ; ii++ ){
+    RRAXIS(1, ii) += charge_i*TMP_RECIP_AXES[YQR][ii];
+    IRAXIS(1, ii) += charge_i*TMP_RECIP_AXES[YQI][ii];
+    RRAXIS(3, ii) += charge_i*TMP_RECIP_AXES[YQR][ii];
+    IRAXIS(3, ii) -= charge_i*TMP_RECIP_AXES[YQI][ii];
 }
 // Z
-for( int ii=1 ; ii<NM ; ii++ ){
-    RRAXIS(4, ii) += TMP_RECIP_AXES[ZQR][ii];
-    IRAXIS(4, ii) += TMP_RECIP_AXES[ZQI][ii];
-    RRAXIS(5, ii) += TMP_RECIP_AXES[ZQR][ii];
-    IRAXIS(5, ii) -= TMP_RECIP_AXES[ZQI][ii];
+for( int ii=0 ; ii<NM ; ii++ ){
+    RRAXIS(4, ii) += charge_i*TMP_RECIP_AXES[ZQR][ii];
+    IRAXIS(4, ii) += charge_i*TMP_RECIP_AXES[ZQI][ii];
+    RRAXIS(5, ii) += charge_i*TMP_RECIP_AXES[ZQR][ii];
+    IRAXIS(5, ii) -= charge_i*TMP_RECIP_AXES[ZQI][ii];
 }
 
 
@@ -101,11 +96,16 @@ for(int iy=0 ; iy<NL ; iy++){
         const double xp = TMP_RECIP_AXES[XQR][ix];
         const double yp = TMP_RECIP_AXES[XQI][ix];
         for(int qx=0 ; qx<4 ; qx++){
-            RRPLANE_0(qx, ix, iy) += xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
-            IRPLANE_0(qx, ix, iy) += xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
+            RRPLANE_0(qx, ix, iy) += charge_i*(xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp);
+            IRPLANE_0(qx, ix, iy) += charge_i*(xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap);
         }
     }
 }
+
+
+printf("KERNEL--> %f, %f\n", RRPLANE_0(0, 0, 0), IRPLANE_0(0, 0, 0));
+
+
 // double loop over y,z
 for(int iy=0 ; iy<NM ; iy++){
     const double ap = TMP_RECIP_AXES[ZQR][iy];
@@ -114,11 +114,15 @@ for(int iy=0 ; iy<NM ; iy++){
         const double xp = TMP_RECIP_AXES[YQR][ix];
         const double yp = TMP_RECIP_AXES[YQI][ix];
         for(int qx=0 ; qx<4 ; qx++){
-            RRPLANE_0(qx, ix, iy) += xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
-            IRPLANE_0(qx, ix, iy) += xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
+            RRPLANE_1(qx, ix, iy) += charge_i*(xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp);
+            IRPLANE_1(qx, ix, iy) += charge_i*(xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap);
         }
     }
 }
+
+
+printf("KERNEL--> %f, %f\n", RRPLANE_0(0, 0, 0), IRPLANE_0(0, 0, 0));
+
 // double loop over z,x
 for(int iy=0 ; iy<NK ; iy++){
     const double ap = TMP_RECIP_AXES[XQR][iy];
@@ -127,11 +131,14 @@ for(int iy=0 ; iy<NK ; iy++){
         const double xp = TMP_RECIP_AXES[ZQR][ix];
         const double yp = TMP_RECIP_AXES[ZQI][ix];
         for(int qx=0 ; qx<4 ; qx++){
-            RRPLANE_0(qx, ix, iy) += xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
-            IRPLANE_0(qx, ix, iy) += xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
+            RRPLANE_2(qx, ix, iy) += charge_i*(xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp);
+            IRPLANE_2(qx, ix, iy) += charge_i*(xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap);
         }
     }
 }
+
+
+printf("KERNEL--> %f, %f\n", RRPLANE_0(0, 0, 0), IRPLANE_0(0, 0, 0));
 
 // finally loop over axes and quadrants
 //RRS_INDEX(k,l,m,q)
@@ -162,4 +169,5 @@ for(int iz=0 ; iz<NM ; iz++ ){
 }
 
 
+printf("KERNEL--> %f, %f\n", RRPLANE_0(0, 0, 0), IRPLANE_0(0, 0, 0));
 // kernel end -----------------------------------------

@@ -72,7 +72,7 @@ class CoulombicEnergy(object):
         nmax_y = round(ss*extent[1]*sqrtalpha/pi)
         nmax_z = round(ss*extent[2]*sqrtalpha/pi)
 
-        #print gx, gy, gz
+        print gx, gy, gz
         #print 'nmax:', nmax_x, nmax_y, nmax_z
 
         # find shortest nmax_i * gi
@@ -139,7 +139,7 @@ class CoulombicEnergy(object):
         self._subvars['SUB_NK'] = str(nmax_x)
         self._subvars['SUB_NL'] = str(nmax_y)
         self._subvars['SUB_NM'] = str(nmax_z)
-        self._subvars['SUB_NKAXIS'] =str(nmax_t+1)
+        self._subvars['SUB_NKAXIS'] =str(nmax_t)
         self._subvars['SUB_LEN_QUAD'] = str(nmax_x*nmax_y*nmax_z)
 
         self._init_libs()
@@ -171,10 +171,15 @@ class CoulombicEnergy(object):
 
 
     def evaluate_lr(self, positions, charges):
+        np.set_printoptions(linewidth=158)
+        print 40*'-='
+        print 'r', positions[0,:], 'q', charges[0]
+        NLOCAL = positions.npart_local
+        NLOCAL = 1
 
         recip_space = self._vars['recip_space_kernel']
         self._cont_lib.execute(
-            n = positions.npart_local,
+            n = NLOCAL,
             dat_dict={
                 'Positions': positions(access.READ),
                 'Charges': charges(access.READ),
@@ -203,7 +208,6 @@ class CoulombicEnergy(object):
         base_coeff1 = 4.*pi*ivolume
         base_coeff2 = -1./(4.*alpha)
 
-        coeff_space[0,0,0] = 0.0
         for rz in xrange(nmax_vec[2]+1):
             for ry in xrange(nmax_vec[1]+1):
                 for rx in xrange(nmax_vec[0]+1):
@@ -214,19 +218,27 @@ class CoulombicEnergy(object):
                                 (rz*recip_vec[2,2])**2.
 
                         if rlen2 > max_recip2:
-                            coeff_space[rx,ry,rz] = 0.0
+                            coeff_space[rz,ry,rx] = 0.0
                         else:
-                            coeff_space[rx,ry,rz] = (base_coeff1/rlen2)*exp(rlen2*base_coeff2)
+                            coeff_space[rz,ry,rx] = (base_coeff1/rlen2)*exp(rlen2*base_coeff2)
 
+        coeff_space[0,0,0] = 0.0
 
         # ---------------------------------------------------------------------
         nkmax = self._vars['recip_axis_len'].value
-        nkaxis = nkmax + 1
+
+
+
+        nkaxis = nkmax
+        print "nkmax", nkmax, "nmax_x", nmax_x, "nmax_y", nmax_y, "nmax_z", nmax_z, "nkaxis", nkaxis
+
+
         axes_size = 12*nkaxis
         axes = recip_space[0:axes_size:].view()
 
         plane_size = 4*nmax_x*nmax_y + 4*nmax_y*nmax_z + 4*nmax_z*nmax_x
         planes = recip_space[axes_size:axes_size+plane_size*2:].view()
+
 
         quad_size = nmax_x*nmax_y*nmax_z
         quad_start = axes_size+plane_size*2
@@ -238,57 +250,95 @@ class CoulombicEnergy(object):
 
         # AXES ------------------------
 
+        print "AXES", 50*'~'
+
         #+ve X
         rax = 0
         iax = 6
         rtmp = axes[rax*nkaxis:(rax+1)*nkaxis:]
         itmp = axes[iax*nkaxis:(iax+1)*nkaxis:]
-        print coeff_space[0:nmax_x+1:,0,0].shape, (rtmp[:nmax_x+1:]**2.).shape, coeff_space.shape, rtmp.shape, nkaxis, nmax_x
-        engs += np.dot(coeff_space[0:nmax_x+1:,0,0], (rtmp[:nmax_x+1:]**2.) + (itmp[:nmax_x+1:]**2.))
+
+
+        print coeff_space[0,0,0:nmax_x:].shape, (rtmp[:nmax_x:]**2.).shape, coeff_space.shape, rtmp.shape, nkaxis, nmax_x
+        engs += np.dot(coeff_space[0,0,1:nmax_x+1:], (rtmp[:nmax_x:]**2.) + (itmp[:nmax_x:]**2.))
+        print '+X',rtmp
+        print '+X',itmp
+
+
         # -ve X
         rax = 2
         iax = 8
         rtmp = axes[rax*nkaxis:(rax+1)*nkaxis:]
         itmp = axes[iax*nkaxis:(iax+1)*nkaxis:]
-        engs += np.dot(coeff_space[0:nmax_x+1:,0,0], (rtmp[:nmax_x+1:]**2.) + (itmp[:nmax_x+1:]**2.))
+        engs += np.dot(coeff_space[0,0,1:nmax_x+1:], (rtmp[:nmax_x:]**2.) + (itmp[:nmax_x:]**2.))
+        print '-X',rtmp
+        print '-X',itmp
 
         #+ve y
         rax = 1
         iax = 7
         rtmp = axes[rax*nkaxis:(rax+1)*nkaxis:]
         itmp = axes[iax*nkaxis:(iax+1)*nkaxis:]
-        engs += np.dot(coeff_space[0,0:nmax_y+1:,0], (rtmp[:nmax_y+1:]**2.) + (itmp[:nmax_y+1:]**2.))
+        engs += np.dot(coeff_space[0,1:nmax_y+1:,0], (rtmp[:nmax_y:]**2.) + (itmp[:nmax_y:]**2.))
+
+        print '+Y',rtmp
+        print '+Y',itmp
+
         # -ve y
         rax = 3
         iax = 9
         rtmp = axes[rax*nkaxis:(rax+1)*nkaxis:]
         itmp = axes[iax*nkaxis:(iax+1)*nkaxis:]
-        engs += np.dot(coeff_space[0,0:nmax_y+1:,0], (rtmp[:nmax_y+1:]**2.) + (itmp[:nmax_y+1:]**2.))
+        engs += np.dot(coeff_space[0,1:nmax_y+1:,0], (rtmp[:nmax_y:]**2.) + (itmp[:nmax_y:]**2.))
+
+        print '-Y',rtmp
+        print '-Y',itmp
+
 
         #+ve z
         rax = 4
         iax = 10
         rtmp = axes[rax*nkaxis:(rax+1)*nkaxis:]
         itmp = axes[iax*nkaxis:(iax+1)*nkaxis:]
-        engs += np.dot(coeff_space[0,0,0:nmax_z+1:], (rtmp[:nmax_z+1:]**2.) + (itmp[:nmax_z+1:]**2.))
+        engs += np.dot(coeff_space[1:nmax_z+1:,0,0], (rtmp[:nmax_z:]**2.) + (itmp[:nmax_z:]**2.))
+
+        print '+Z',rtmp
+        print '+Z',itmp
+
         # -ve z
         rax = 5
         iax = 11
         rtmp = axes[rax*nkaxis:(rax+1)*nkaxis:]
         itmp = axes[iax*nkaxis:(iax+1)*nkaxis:]
-        engs += np.dot(coeff_space[0,0,0:nmax_z+1:], (rtmp[:nmax_z+1:]**2.) + (itmp[:nmax_z+1:]**2.))
+        engs += np.dot(coeff_space[1:nmax_z+1:,0,0], (rtmp[:nmax_z:]**2.) + (itmp[:nmax_z:]**2.))
+
+        print '-Z',rtmp
+        print '-Z',itmp
+
 
         # PLANES -----------------------
+
+        print "PLANES", 50*'~'
+
+
         # XY
         tps = nmax_x*nmax_y*4
         rplane = 0
         iplane = tps
         rtmp = planes[rplane:rplane+tps:]
         itmp = planes[iplane:iplane+tps:]
+
+        print "XY0R\n", rtmp[::4].reshape(nmax_y, nmax_x)
+        print 40*"-"
+        print "XY0I\n", itmp[::4].reshape(nmax_y, nmax_x)
+
         rtmp = rtmp**2.
         itmp = itmp**2.
         for px in range(4):
-            engs += np.dot(coeff_space[1:nmax_x+1:, 1:nmax_y+1:, 0].flatten(), rtmp.flatten()[px::4] + itmp.flatten()[px::4])
+            engs += np.dot(coeff_space[0, 1:nmax_y+1:, 1:nmax_x+1:].flatten(), rtmp.flatten()[px::4] + itmp.flatten()[px::4])
+
+
+
 
         # YZ
         rplane = iplane + tps
@@ -300,7 +350,7 @@ class CoulombicEnergy(object):
         itmp = itmp**2.
         for px in range(4):
             # no chnages to indexing as y runs faster than z?
-            engs += np.dot(coeff_space[0, 1:nmax_y+1:, 1:nmax_z+1:].flatten(), rtmp.flatten()[px::4] + itmp.flatten()[px::4])
+            engs += np.dot(coeff_space[1:nmax_z+1:, 1:nmax_y+1:, 0].flatten(), rtmp.flatten()[px::4] + itmp.flatten()[px::4])
 
         # ZX
         rplane = iplane + tps
@@ -312,7 +362,8 @@ class CoulombicEnergy(object):
         itmp = itmp**2.
         for px in range(4):
             # no chnages to indexing as y runs faster than z?
-            engs += np.dot(coeff_space[1:nmax_x+1:, 0, 1:nmax_z+1:].flatten(), rtmp.flatten()[px::4] + itmp.flatten()[px::4])
+            engs += np.dot(coeff_space[1:nmax_z+1:, 0, 1:nmax_x+1:].flatten(), rtmp.flatten()[px::4] + itmp.flatten()[px::4])
+
 
 
         # guadrants
@@ -320,8 +371,6 @@ class CoulombicEnergy(object):
         iquads = quads[8*quad_size::]**2.
 
         engs+=np.sum(coeff_space[1::,1::,1::].flatten('K')*(rquads[0::8]+iquads[0::8]))
-
-
 
 
 
@@ -344,6 +393,7 @@ class CoulombicEnergy(object):
         # ---------------------------------------------------------------------
 
         print "energy", 0.5*engs, 0.5*engs*self.internal_to_ev(), 0.917463161E1
+        print 40*'-='
         #return engs*0.5
 
 

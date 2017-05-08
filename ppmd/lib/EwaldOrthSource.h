@@ -16,7 +16,7 @@
 #define NK (%(SUB_NK)s)
 #define NL (%(SUB_NL)s)
 #define NM (%(SUB_NM)s)
-// Nkaxis = NKMAX+1
+// Nkaxis = NKMAX (was NKMAX+1)
 #define NKAXIS (%(SUB_NKAXIS)s)
 #define LEN_QUAD (%(SUB_LEN_QUAD)s)
 
