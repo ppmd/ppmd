@@ -103,9 +103,6 @@ for(int iy=0 ; iy<NL ; iy++){
 }
 
 
-printf("KERNEL--> %f, %f\n", RRPLANE_0(0, 0, 0), IRPLANE_0(0, 0, 0));
-
-
 // double loop over y,z
 for(int iy=0 ; iy<NM ; iy++){
     const double ap = TMP_RECIP_AXES[ZQR][iy];
@@ -121,8 +118,6 @@ for(int iy=0 ; iy<NM ; iy++){
 }
 
 
-printf("KERNEL--> %f, %f\n", RRPLANE_0(0, 0, 0), IRPLANE_0(0, 0, 0));
-
 // double loop over z,x
 for(int iy=0 ; iy<NK ; iy++){
     const double ap = TMP_RECIP_AXES[XQR][iy];
@@ -137,8 +132,6 @@ for(int iy=0 ; iy<NK ; iy++){
     }
 }
 
-
-printf("KERNEL--> %f, %f\n", RRPLANE_0(0, 0, 0), IRPLANE_0(0, 0, 0));
 
 // finally loop over axes and quadrants
 //RRS_INDEX(k,l,m,q)
@@ -168,6 +161,4 @@ for(int iz=0 ; iz<NM ; iz++ ){
     }
 }
 
-
-printf("KERNEL--> %f, %f\n", RRPLANE_0(0, 0, 0), IRPLANE_0(0, 0, 0));
 // kernel end -----------------------------------------

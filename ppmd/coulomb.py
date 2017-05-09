@@ -175,7 +175,7 @@ class CoulombicEnergy(object):
         print 40*'-='
         print 'r', positions[0,:], 'q', charges[0]
         NLOCAL = positions.npart_local
-        NLOCAL = 1
+        #NLOCAL = 1
 
         recip_space = self._vars['recip_space_kernel']
         self._cont_lib.execute(
@@ -238,7 +238,6 @@ class CoulombicEnergy(object):
 
         plane_size = 4*nmax_x*nmax_y + 4*nmax_y*nmax_z + 4*nmax_z*nmax_x
         planes = recip_space[axes_size:axes_size+plane_size*2:].view()
-
 
         quad_size = nmax_x*nmax_y*nmax_z
         quad_start = axes_size+plane_size*2
@@ -328,16 +327,10 @@ class CoulombicEnergy(object):
         rtmp = planes[rplane:rplane+tps:]
         itmp = planes[iplane:iplane+tps:]
 
-        print "XY0R\n", rtmp[::4].reshape(nmax_y, nmax_x)
-        print 40*"-"
-        print "XY0I\n", itmp[::4].reshape(nmax_y, nmax_x)
-
         rtmp = rtmp**2.
         itmp = itmp**2.
         for px in range(4):
             engs += np.dot(coeff_space[0, 1:nmax_y+1:, 1:nmax_x+1:].flatten(), rtmp.flatten()[px::4] + itmp.flatten()[px::4])
-
-
 
 
         # YZ
@@ -346,6 +339,11 @@ class CoulombicEnergy(object):
         iplane = rplane + tps
         rtmp = planes[rplane:rplane+tps:]
         itmp = planes[iplane:iplane+tps:]
+
+        #print "YZ0R\n", rtmp[::4].reshape(nmax_y, nmax_x)
+        #print 40*"-"
+        #print "YZ0I\n", itmp[::4].reshape(nmax_y, nmax_x)
+
         rtmp = rtmp**2.
         itmp = itmp**2.
         for px in range(4):
@@ -358,39 +356,25 @@ class CoulombicEnergy(object):
         iplane = rplane + tps
         rtmp = planes[rplane:rplane+tps:]
         itmp = planes[iplane:iplane+tps:]
+
+        #print "ZX0R\n", rtmp[3::4].reshape(nmax_y, nmax_x)
+        #print 40*"-"
+        #print "ZX0I\n", itmp[3::4].reshape(nmax_y, nmax_x)
+
         rtmp = rtmp**2.
         itmp = itmp**2.
         for px in range(4):
-            # no chnages to indexing as y runs faster than z?
-            engs += np.dot(coeff_space[1:nmax_z+1:, 0, 1:nmax_x+1:].flatten(), rtmp.flatten()[px::4] + itmp.flatten()[px::4])
-
+            engs += np.dot(coeff_space[1:nmax_z+1:, 0, 1:nmax_x+1:].flatten('F'), rtmp.flatten()[px::4] + itmp.flatten()[px::4])
 
 
         # guadrants
         rquads = quads[:8*quad_size:]**2.
         iquads = quads[8*quad_size::]**2.
 
-        engs+=np.sum(coeff_space[1::,1::,1::].flatten('K')*(rquads[0::8]+iquads[0::8]))
+        for qx in range(8):
+            engs+=np.dot(coeff_space[1::,1::,1::].flatten('K'), (rquads[qx::8]+iquads[qx::8]))
 
 
-
-        #for kz in xrange(2*nmax_vec[2]+1):
-        #    for ky in xrange(2*nmax_vec[1]+1):
-        #        for kx in xrange(2*nmax_vec[0]+1):
-
-        #            coeff = coeff_space[
-        #                abs(kx-nmax_vec[0]),
-        #                abs(ky-nmax_vec[1]),
-        #                abs(kz-nmax_vec[2])
-        #            ]
-
-        #            re_con = recip_space[0,kx,ky,kz]
-        #            im_con = recip_space[1,kx,ky,kz]
-        #            con = re_con*re_con + im_con*im_con
-
-        #            engs += coeff*con
-
-        # ---------------------------------------------------------------------
 
         print "energy", 0.5*engs, 0.5*engs*self.internal_to_ev(), 0.917463161E1
         print 40*'-='
@@ -449,6 +433,8 @@ class CoulombicEnergy(object):
 
         t0 = time.time()
 
+
+        #N_LOCAL = 1
         for lx in range(N_LOCAL):
 
             for dx in range(3):
@@ -640,6 +626,8 @@ class CoulombicEnergy(object):
         t4 = time.time()
 
         #print t1 - t0, t2 - t1, t3 - t2, t4 - t3
+
+        #np.save('co2_recip_space1.npy', recip_space)
 
         return eng*0.5, engs*0.5
 
