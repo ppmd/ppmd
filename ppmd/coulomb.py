@@ -169,9 +169,7 @@ class CoulombicEnergy(object):
         )
 
     def _calculate_reciprocal_contribution(self, positions, charges):
-
         NLOCAL = positions.npart_local
-
         recip_space = self._vars['recip_space_kernel']
         self._cont_lib.execute(
             n = NLOCAL,
@@ -189,6 +187,9 @@ class CoulombicEnergy(object):
 
         self._calculate_reciprocal_contribution(positions, charges)
 
+
+
+        recip_space = self._vars['recip_space_kernel']
         #print self._cont_lib.loop_timer.time
 
         # evaluate coefficient space ------------------------------------------
