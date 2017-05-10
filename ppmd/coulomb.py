@@ -143,6 +143,7 @@ class CoulombicEnergy(object):
         self._subvars['SUB_LEN_QUAD'] = str(nmax_x*nmax_y*nmax_z)
 
         self._init_libs()
+        self._init_coeff_space()
 
     def _init_libs(self):
 
@@ -168,6 +169,36 @@ class CoulombicEnergy(object):
             }
         )
 
+    def _init_coeff_space(self):
+        recip_vec = self._vars['recip_vec']
+        nmax_vec = self._vars['nmax_vec']
+
+        coeff_space = self._vars['coeff_space']
+        max_recip = self._vars['max_recip'].value
+        alpha = self._vars['alpha'].value
+        ivolume = self._vars['ivolume']
+
+        max_recip2 = max_recip**2.
+        base_coeff1 = 4.*pi*ivolume
+        base_coeff2 = -1./(4.*alpha)
+
+        coeff_space[0,0,0] = 0.0
+
+        for rz in xrange(nmax_vec[2]+1):
+            for ry in xrange(nmax_vec[1]+1):
+                for rx in xrange(nmax_vec[0]+1):
+                    if not (rx == 0 and ry == 0 and rz == 0):
+
+                        rlen2 = (rx*recip_vec[0,0])**2. + \
+                                (ry*recip_vec[1,1])**2. + \
+                                (rz*recip_vec[2,2])**2.
+
+                        if rlen2 > max_recip2:
+                            coeff_space[rz,ry,rx] = 0.0
+                        else:
+                            coeff_space[rz,ry,rx] = (base_coeff1/rlen2)*exp(rlen2*base_coeff2)
+
+
     def _calculate_reciprocal_contribution(self, positions, charges):
         NLOCAL = positions.npart_local
         recip_space = self._vars['recip_space_kernel']
@@ -179,7 +210,6 @@ class CoulombicEnergy(object):
                 'RecipSpace': recip_space(access.INC_ZERO)
             }
         )
-
 
 
 
@@ -199,34 +229,11 @@ class CoulombicEnergy(object):
         recip_axis_len = self._vars['recip_axis_len'].value
         self._vars['recip_axis'] = np.zeros((2,2*recip_axis_len+1,3), dtype=ctypes.c_double)
         self._vars['recip_space'] = np.zeros((2, 2*nmax_x+1, 2*nmax_y+1, 2*nmax_z+1), dtype=ctypes.c_double)
-        recip_vec = self._vars['recip_vec']
-        nmax_vec = self._vars['nmax_vec']
 
         coeff_space = self._vars['coeff_space']
-        max_recip = self._vars['max_recip'].value
-        alpha = self._vars['alpha'].value
-        ivolume = self._vars['ivolume']
-
-        max_recip2 = max_recip**2.
-        base_coeff1 = 4.*pi*ivolume
-        base_coeff2 = -1./(4.*alpha)
-
-        coeff_space[0,0,0] = 0.0
 
 
-        for rz in xrange(nmax_vec[2]+1):
-            for ry in xrange(nmax_vec[1]+1):
-                for rx in xrange(nmax_vec[0]+1):
-                    if not (rx == 0 and ry == 0 and rz == 0):
 
-                        rlen2 = (rx*recip_vec[0,0])**2. + \
-                                (ry*recip_vec[1,1])**2. + \
-                                (rz*recip_vec[2,2])**2.
-
-                        if rlen2 > max_recip2:
-                            coeff_space[rz,ry,rx] = 0.0
-                        else:
-                            coeff_space[rz,ry,rx] = (base_coeff1/rlen2)*exp(rlen2*base_coeff2)
 
 
         # ---------------------------------------------------------------------
