@@ -383,7 +383,7 @@ class CoulombicEnergy(object):
                                     tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix])
 
         t1 = time.time()
-        print "time taken", t1-t0
+        #print "time taken total", t1-t0, "time taken reciprocal", self._cont_lib.loop_timer.time
         return engs*0.5
 
 
