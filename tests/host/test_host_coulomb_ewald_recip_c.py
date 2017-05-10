@@ -16,8 +16,8 @@ mpi_rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 mpi_size = md.mpi.MPI.COMM_WORLD.Get_size()
 ParticleDat = md.data.ParticleDat
 
-def assert_tol(val, tol):
-    assert abs(val) < 10.**(-1*tol), "tolerance not met"
+def assert_tol(val, tol, msg="tolerance not met"):
+    assert abs(val) < 10.**(-1*tol), msg
 
 
 def test_ewald_energy_python_co2_1():
@@ -244,6 +244,80 @@ def test_ewald_energy_python_co2_1():
 
 
     # QUADS -------------------------------------------------------------------
+
+
+    rquads = quads[:8*quad_size:]
+    iquads = quads[8*quad_size::]
+
+    tmp_rquad = rquads[0::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x+1+ix, nmax_y+1+iy, nmax_z+1+iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+
+
+    tmp_rquad = rquads[1::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x-1-ix, nmax_y+1+iy, nmax_z+1+iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+
+    tmp_rquad = rquads[2::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x-1-ix, nmax_y-1-iy, nmax_z+1+iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+
+    tmp_rquad = rquads[3::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x+1+ix, nmax_y-1-iy, nmax_z+1+iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+
+    tmp_rquad = rquads[4::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x+1+ix, nmax_y+1+iy, nmax_z-1-iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+
+
+    tmp_rquad = rquads[5::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x-1-ix, nmax_y+1+iy, nmax_z-1-iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+
+    tmp_rquad = rquads[6::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x-1-ix, nmax_y-1-iy, nmax_z-1-iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+
+    tmp_rquad = rquads[7::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x+1+ix, nmax_y-1-iy, nmax_z-1-iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+
+
+
+
 
 
 

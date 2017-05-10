@@ -145,7 +145,7 @@ for(int iz=0 ; iz<NM ; iz++ ){
             const double xp = TMP_RECIP_AXES[XQR][ix];
             const double yp = TMP_RECIP_AXES[XQI][ix];
             double* r_base_index = &RRS_INDEX(ix,iy,iz,0);
-            double* i_base_index = &RRS_INDEX(ix,iy,iz,0);
+            double* i_base_index = &IRS_INDEX(ix,iy,iz,0);
             for(int qx=0 ; qx<8 ; qx++){
                 const double ycp = yp * CC_MAP_X(qx);
                 const double bcp = bp * CC_MAP_Y(qx);
@@ -154,6 +154,13 @@ for(int iz=0 ; iz<NM ; iz++ ){
                 const double xb_p_ya = xp*bcp + ycp*ap;
                 *(r_base_index+qx) += charge_i * (gp*xa_m_yb - hcp*xb_p_ya);
                 *(i_base_index+qx) += charge_i * (xa_m_yb*hcp * xb_p_ya*gp);
+
+//				if(iz==0  && iy==0 && ix==0){
+//					printf("qx %d, re %f, im %f\n", qx, charge_i * (gp*xa_m_yb - hcp*xb_p_ya), charge_i*(xa_m_yb*hcp * xb_p_ya*gp));
+//				}
+
+
+
                 //RRS_INDEX(ix,iy,iz,qx) += charge_i * (gp*xa_m_yb - hcp*xb_p_ya);
                 //IRS_INDEX(ix,iy,iz,qx) += charge_i * (xa_m_yb*hcp * xb_p_ya*gp);
             }

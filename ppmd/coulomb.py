@@ -368,8 +368,17 @@ class CoulombicEnergy(object):
 
 
         # guadrants
+
+        print quads[:8:]
+        print quads[8*quad_size:8*quad_size+8:]
+
+
+
         rquads = quads[:8*quad_size:]**2.
         iquads = quads[8*quad_size::]**2.
+
+
+
 
         for qx in range(8):
             engs+=np.dot(coeff_space[1::,1::,1::].flatten('K'), (rquads[qx::8]+iquads[qx::8]))
