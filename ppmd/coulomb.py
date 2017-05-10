@@ -146,11 +146,11 @@ class CoulombicEnergy(object):
 
     def _init_libs(self):
 
-        with open(str(runtime.LIB_DIR) + '/EwaldOrthSource.h','r') as fh:
+        with open(str(runtime.LIB_DIR) + '/EwaldOrthSourceAccumulateRecip.h','r') as fh:
             self._cont_header_src = fh.read()
         self._cont_header = kernel.Header(block=self._cont_header_src % self._subvars)
 
-        with open(str(runtime.LIB_DIR) + '/EwaldOrthSource.cpp','r') as fh:
+        with open(str(runtime.LIB_DIR) + '/EwaldOrthSourceAccumulateRecip.cpp','r') as fh:
             self._cont_source = fh.read()
 
         self._cont_kernel = kernel.Kernel(
