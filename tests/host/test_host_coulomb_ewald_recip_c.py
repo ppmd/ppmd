@@ -336,7 +336,6 @@ def test_ewald_energy_python_co2_1():
                 8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
 
-
     # Imaginary quads
     tmp_iquad = iquads[0::8]
     for iz in range(nmax_z):
@@ -347,49 +346,21 @@ def test_ewald_energy_python_co2_1():
                 8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    return
-    qx = 0
-    engs = 0.0
-    tmp_rquad = rquads[qx::8]**2.
-    tmp_iquad = iquads[qx::8]**2.
+    # Imaginary quads
+    tmp_iquad = iquads[1::8]
     for iz in range(nmax_z):
         for iy in range(nmax_y):
             for ix in range(nmax_x):
-                tmpc = coeff_space[iz+1, iy+1, ix+1]
-                engs+=tmpc*(tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] +
-                            tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix])
+                assert_tol(
+                    tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x-1-ix, nmax_y+1+iy, nmax_z+1+iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
 
-    # compute energy from structure factor
-    py_engs = 0.0
 
-    for kz in xrange(nmax_z):
-        for ky in xrange(nmax_y):
-            for kx in xrange(nmax_x):
-                coeff = coeff_space[kz+1, ky+1,kx+1]
-                re_con = py_recip_space[0,nmax_x+1+kx,nmax_y+1+ky,nmax_z+1+kz]
-                im_con = py_recip_space[1,nmax_x+1+kx,nmax_y+1+ky,nmax_z+1+kz]
-                con = re_con*re_con + im_con*im_con
-                py_engs += coeff*con
 
-    assert_tol(engs - py_engs, 8)
+
+
+
 
 
 
