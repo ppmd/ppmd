@@ -154,18 +154,6 @@ for(int iz=0 ; iz<NM ; iz++ ){
                 const double xb_p_ya = xp*bcp + ycp*ap;
                 *(r_base_index+qx) += charge_i * (gp*xa_m_yb - hcp*xb_p_ya);
                 *(i_base_index+qx) += charge_i * (xa_m_yb*hcp + xb_p_ya*gp);
-				
-/*
-				if(iz==0  && iy==0 && ix==0){
-					printf("qx %d, re %f, im %f\n", qx, (gp*xa_m_yb - hcp*xb_p_ya), (xa_m_yb*hcp + xb_p_ya*gp));
-					printf("ab %f,%f, xy %f,%f, gh %f,%f, (%f,%f,%f)\n", ap,bp,xp,yp,gp,hp, CC_MAP_X(qx),CC_MAP_Y(qx),CC_MAP_Z(qx));
-					printf("xa_m_yb %f, xb_p_ya %f\n", xa_m_yb, xb_p_ya);
-				}
-*/
-
-
-                //RRS_INDEX(ix,iy,iz,qx) += charge_i * (gp*xa_m_yb - hcp*xb_p_ya);
-                //IRS_INDEX(ix,iy,iz,qx) += charge_i * (xa_m_yb*hcp * xb_p_ya*gp);
             }
         }
     }
