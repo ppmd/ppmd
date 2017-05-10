@@ -60,7 +60,7 @@ def test_ewald_energy_python_co2_1():
     assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
 
     rs = c.evaluate_lr(positions=positions, charges=charges)
-    print rs
+    #print rs
     #assert abs(rs[0]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from loop back over particles"
     #assert abs(rs[1]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from structure factor"
 
@@ -90,27 +90,6 @@ def test_ewald_energy_python_co2_1():
     quad_start = axes_size+plane_size*2
     quads = recip_space[quad_start:quad_start+quad_size*16].view()
 
-    # evaluate coefficient space ------------------------------------------
-    max_recip2 = max_recip**2.
-    base_coeff1 = 4.*pi*ivolume
-    base_coeff2 = -1./(4.*alpha)
-
-    coeff_space[0,0,0] = 0.0
-    for rz in xrange(nmax_vec[2]+1):
-        for ry in xrange(nmax_vec[1]+1):
-            for rx in xrange(nmax_vec[0]+1):
-                if not (rx == 0 and ry == 0 and rz == 0):
-
-                    rlen2 = (rx*recip_vec[0,0])**2. + \
-                            (ry*recip_vec[1,1])**2. + \
-                            (rz*recip_vec[2,2])**2.
-
-                    if rlen2 > max_recip2:
-                        coeff_space[rz,ry,rx] = 0.0
-                    else:
-                        coeff_space[rz,ry,rx] = (base_coeff1/rlen2)*exp(rlen2*base_coeff2)
-
-    # axis --------------------------------------------------------------------
 
     #+ve X
     rax = 0
@@ -345,8 +324,6 @@ def test_ewald_energy_python_co2_1():
                     tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x+1+ix, nmax_y+1+iy, nmax_z+1+iz],
                 8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
-
-    # Imaginary quads
     tmp_iquad = iquads[1::8]
     for iz in range(nmax_z):
         for iy in range(nmax_y):
@@ -355,11 +332,56 @@ def test_ewald_energy_python_co2_1():
                     tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x-1-ix, nmax_y+1+iy, nmax_z+1+iz],
                 8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
+    tmp_iquad = iquads[2::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x-1-ix, nmax_y-1-iy, nmax_z+1+iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
+    tmp_iquad = iquads[3::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x+1+ix, nmax_y-1-iy, nmax_z+1+iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
+    tmp_iquad = iquads[4::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x+1+ix, nmax_y+1+iy, nmax_z-1-iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
+    tmp_iquad = iquads[5::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x-1-ix, nmax_y+1+iy, nmax_z-1-iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
+    tmp_iquad = iquads[6::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x-1-ix, nmax_y-1-iy, nmax_z-1-iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
+    tmp_iquad = iquads[7::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x+1+ix, nmax_y-1-iy, nmax_z-1-iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
+
+    #assert abs(rs[0]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from loop back over particles"
+    assert abs(rs*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from structure factor"
 
 
 

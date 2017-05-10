@@ -72,7 +72,7 @@ class CoulombicEnergy(object):
         nmax_y = round(ss*extent[1]*sqrtalpha/pi)
         nmax_z = round(ss*extent[2]*sqrtalpha/pi)
 
-        print gx, gy, gz
+        #print gx, gy, gz
         #print 'nmax:', nmax_x, nmax_y, nmax_z
 
         # find shortest nmax_i * gi
@@ -171,11 +171,7 @@ class CoulombicEnergy(object):
 
 
     def evaluate_lr(self, positions, charges):
-        np.set_printoptions(linewidth=158)
-        print 40*'-='
-        print 'r', positions[0,:], 'q', charges[0]
         NLOCAL = positions.npart_local
-        #NLOCAL = 1
 
         recip_space = self._vars['recip_space_kernel']
         self._cont_lib.execute(
@@ -187,7 +183,7 @@ class CoulombicEnergy(object):
             }
         )
 
-        print self._cont_lib.loop_timer.time
+        #print self._cont_lib.loop_timer.time
 
         # evaluate coefficient space ------------------------------------------
         nmax_x = self._vars['nmax_vec'][0]
@@ -232,7 +228,6 @@ class CoulombicEnergy(object):
 
 
         nkaxis = nkmax
-        print "nkmax", nkmax, "nmax_x", nmax_x, "nmax_y", nmax_y, "nmax_z", nmax_z, "nkaxis", nkaxis
 
 
         axes_size = 12*nkaxis
@@ -251,20 +246,14 @@ class CoulombicEnergy(object):
 
         # AXES ------------------------
 
-        print "AXES", 50*'~'
-
         #+ve X
         rax = 0
         iax = 6
         rtmp = axes[rax*nkaxis:(rax+1)*nkaxis:]**2.
         itmp = axes[iax*nkaxis:(iax+1)*nkaxis:]**2.
-        print coeff_space[0,0,0:nmax_x:].shape, (rtmp[:nmax_x:]**2.).shape, coeff_space.shape, rtmp.shape, nkaxis, nmax_x
         engs += np.dot(coeff_space[0,0,1:nmax_x+1:], rtmp[:nmax_x:] + itmp[:nmax_x:])
         #for ix in range(nmax_x):
         #    engs += coeff_space[0,0,ix+1]*(rtmp[ix] + itmp[ix])
-        print '+X',rtmp
-        print '+X',itmp
-
 
         # -ve X
         rax = 2
@@ -275,8 +264,6 @@ class CoulombicEnergy(object):
         #for ix in range(nmax_x):
         #    engs += coeff_space[0,0,ix+1]*(rtmp[ix] + itmp[ix])
 
-        print '-X',rtmp
-        print '-X',itmp
 
         #+ve y
         rax = 1
@@ -288,9 +275,6 @@ class CoulombicEnergy(object):
         #    engs += coeff_space[0,iy+1,0]*(rtmp[iy] + itmp[iy])
 
 
-        print '+Y',rtmp
-        print '+Y',itmp
-
         # -ve y
         rax = 3
         iax = 9
@@ -299,9 +283,6 @@ class CoulombicEnergy(object):
         engs += np.dot(coeff_space[0,1:nmax_y+1:,0], rtmp[:nmax_y:] + itmp[:nmax_y:])
         #for iy in range(nmax_y):
         #    engs += coeff_space[0,iy+1,0]*(rtmp[iy] + itmp[iy])
-
-        print '-Y',rtmp
-        print '-Y',itmp
 
 
         #+ve z
@@ -314,8 +295,6 @@ class CoulombicEnergy(object):
         #    engs += coeff_space[iz+1,0,0]*(rtmp[iz] + itmp[iz])
 
 
-        print '+Z',rtmp
-        print '+Z',itmp
 
         # -ve z
         rax = 5
@@ -328,13 +307,8 @@ class CoulombicEnergy(object):
 
 
 
-        print '-Z',rtmp
-        print '-Z',itmp
-
-
         # PLANES -----------------------
 
-        print "PLANES", 50*'~'
 
 
         # XY
@@ -399,11 +373,7 @@ class CoulombicEnergy(object):
                         engs+=tmpc*(tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] +
                                     tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix])
 
-
-
-        print "energy", 0.5*engs, 0.5*engs*self.internal_to_ev(), 0.917463161E1
-        print 40*'-='
-        #return engs*0.5
+        return engs*0.5
 
 
 
