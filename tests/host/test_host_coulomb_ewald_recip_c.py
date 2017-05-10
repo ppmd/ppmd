@@ -9,6 +9,7 @@ import ppmd as md
 
 import scipy
 import scipy.constants
+from math import pi, exp
 
 from math import sqrt
 
@@ -89,6 +90,25 @@ def test_ewald_energy_python_co2_1():
     quad_start = axes_size+plane_size*2
     quads = recip_space[quad_start:quad_start+quad_size*16].view()
 
+    # evaluate coefficient space ------------------------------------------
+    max_recip2 = max_recip**2.
+    base_coeff1 = 4.*pi*ivolume
+    base_coeff2 = -1./(4.*alpha)
+
+    coeff_space[0,0,0] = 0.0
+    for rz in xrange(nmax_vec[2]+1):
+        for ry in xrange(nmax_vec[1]+1):
+            for rx in xrange(nmax_vec[0]+1):
+                if not (rx == 0 and ry == 0 and rz == 0):
+
+                    rlen2 = (rx*recip_vec[0,0])**2. + \
+                            (ry*recip_vec[1,1])**2. + \
+                            (rz*recip_vec[2,2])**2.
+
+                    if rlen2 > max_recip2:
+                        coeff_space[rz,ry,rx] = 0.0
+                    else:
+                        coeff_space[rz,ry,rx] = (base_coeff1/rlen2)*exp(rlen2*base_coeff2)
 
     # axis --------------------------------------------------------------------
 
@@ -317,12 +337,59 @@ def test_ewald_energy_python_co2_1():
 
 
 
+    # Imaginary quads
+    tmp_iquad = iquads[0::8]
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                assert_tol(
+                    tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x+1+ix, nmax_y+1+iy, nmax_z+1+iz],
+                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+    return
+    qx = 0
+    engs = 0.0
+    tmp_rquad = rquads[qx::8]**2.
+    tmp_iquad = iquads[qx::8]**2.
+    for iz in range(nmax_z):
+        for iy in range(nmax_y):
+            for ix in range(nmax_x):
+                tmpc = coeff_space[iz+1, iy+1, ix+1]
+                engs+=tmpc*(tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] +
+                            tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix])
+
+
+    # compute energy from structure factor
+    py_engs = 0.0
+
+    for kz in xrange(nmax_z):
+        for ky in xrange(nmax_y):
+            for kx in xrange(nmax_x):
+                coeff = coeff_space[kz+1, ky+1,kx+1]
+                re_con = py_recip_space[0,nmax_x+1+kx,nmax_y+1+ky,nmax_z+1+kz]
+                im_con = py_recip_space[1,nmax_x+1+kx,nmax_y+1+ky,nmax_z+1+kz]
+                con = re_con*re_con + im_con*im_con
+                py_engs += coeff*con
+
+    assert_tol(engs - py_engs, 8)
 
 
 
