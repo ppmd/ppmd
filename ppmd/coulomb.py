@@ -212,11 +212,11 @@ class CoulombicEnergy(object):
         )
 
 
-
     def evaluate_lr(self, positions, charges):
 
-        self._calculate_reciprocal_contribution(positions, charges)
+        t0 = time.time()
 
+        self._calculate_reciprocal_contribution(positions, charges)
 
 
         recip_space = self._vars['recip_space_kernel']
@@ -234,13 +234,8 @@ class CoulombicEnergy(object):
 
 
 
-
-
         # ---------------------------------------------------------------------
         nkmax = self._vars['recip_axis_len'].value
-
-
-
         nkaxis = nkmax
 
 
@@ -387,6 +382,8 @@ class CoulombicEnergy(object):
                         engs+=tmpc*(tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] +
                                     tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix])
 
+        t1 = time.time()
+        print "time taken", t1-t0
         return engs*0.5
 
 
