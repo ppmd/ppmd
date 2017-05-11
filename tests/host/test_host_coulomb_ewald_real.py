@@ -122,6 +122,7 @@ def test_ewald_energy_python_nacl_2():
     assert abs(c.recip_vectors[1][1] - 0.0333333*2.*scipy.constants.pi) < 10.**-5, "yrecip vector"
     assert abs(c.recip_vectors[2][2] - 0.0333333*2.*scipy.constants.pi) < 10.**-5, "zrecip vector"
 
+
 def test_ewald_energy_python_co2_2():
     """
     Test that the python implementation of ewald sets up the Ewald calculation
@@ -144,6 +145,36 @@ def test_ewald_energy_python_co2_2():
     assert abs(c.recip_vectors[2][2] - 0.0408579*2.*scipy.constants.pi) < 10.**-5, "zrecip vector"
 
 
+
+def test_ewald_energy_python_co2_3():
+    """
+    Test that the python implementation of ewald sets up the Ewald calculation
+    consistently.
+    """
+
+    if mpi_rank > 0:
+        return
+
+    e0 = 30.
+    e1 = 40.
+    e2 = 50.
+
+    domain = md.domain.BaseDomainHalo(extent=(e0,e1,e2))
+    c = md.coulomb.CoulombicEnergy(
+        domain=domain,
+        real_cutoff=12.,
+        alpha=0.26506**2.,
+        recip_cutoff=0.2667*scipy.constants.pi*2.0,
+        recip_nmax=(8,11,14)
+    )
+    assert abs(c.recip_cutoff - 0.2667*scipy.constants.pi*2.0) < 10.**-1, "recip space cutoff"
+    assert abs(c.real_cutoff - 12.) < 10.**-15., "real space cutoff"
+    assert c.kmax[0] == 8, "kmax_x"
+    assert c.kmax[1] == 11, "kmax_y"
+    assert c.kmax[2] == 14, "kmax_z"
+    assert abs(c.recip_vectors[0][0] - 0.033333*2.*scipy.constants.pi) < 10.**-5, "xrecip vector"
+    assert abs(c.recip_vectors[1][1] - 0.025*2.*scipy.constants.pi) < 10.**-5, "yrecip vector"
+    assert abs(c.recip_vectors[2][2] - 0.02*2.*scipy.constants.pi) < 10.**-5, "zrecip vector"
 
 
 

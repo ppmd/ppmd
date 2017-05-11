@@ -29,7 +29,7 @@ _charge_coulomb = scipy.constants.physical_constants['atomic unit of charge'][0]
 
 class CoulombicEnergy(object):
 
-    def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None):
+    def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None, recip_cutoff=None, recip_nmax=None):
 
         self.domain = domain
         self.eps = float(eps)
@@ -72,24 +72,34 @@ class CoulombicEnergy(object):
         nmax_y = round(ss*extent[1]*sqrtalpha/pi)
         nmax_z = round(ss*extent[2]*sqrtalpha/pi)
 
+
         #print gx, gy, gz
         #print 'nmax:', nmax_x, nmax_y, nmax_z
+        #print "alpha", alpha, "sqrt(alpha)", sqrtalpha
 
-        # find shortest nmax_i * gi
+
+
         gxl = np.linalg.norm(gx)
         gyl = np.linalg.norm(gy)
         gzl = np.linalg.norm(gz)
-        max_len = min(
-            gxl*float(nmax_x),
-            gyl*float(nmax_y),
-            gzl*float(nmax_z)
-        )
+        if recip_cutoff is None:
+            max_len = min(
+                gxl*float(nmax_x),
+                gyl*float(nmax_y),
+                gzl*float(nmax_z)
+            )
+        else:
+            max_len = recip_cutoff
 
-        #print "recip vector lengths", gxl, gyl, gzl
+        if recip_nmax is None:
+            nmax_x = int(ceil(max_len/gxl))
+            nmax_y = int(ceil(max_len/gyl))
+            nmax_z = int(ceil(max_len/gzl))
+        else:
+            nmax_x = recip_nmax[0]
+            nmax_y = recip_nmax[1]
+            nmax_z = recip_nmax[2]
 
-        nmax_x = int(ceil(max_len/gxl))
-        nmax_y = int(ceil(max_len/gyl))
-        nmax_z = int(ceil(max_len/gzl))
 
         #print 'max reciprocal vector len:', max_len
         nmax_t = max(nmax_x, nmax_y, nmax_z)

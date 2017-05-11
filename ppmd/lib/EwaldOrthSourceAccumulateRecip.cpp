@@ -7,14 +7,13 @@ const double * Charges
 */
 
 
-
 // kernel start --------------------------------------
 
 double* PlaneSpace = &RecipSpace[0] + 12*NKAXIS;
 double* RRecipSpace = PlaneSpace + PLANE_SIZE;
 double* IRecipSpace = RRecipSpace + 8*LEN_QUAD;
 
-const double ri[4] = {-1.0*Positions.i[0]*GX, -1.0*Positions.i[1]*GX, -1.0*Positions.i[2]*GX, 0.0};
+const double ri[4] = {-1.0*Positions.i[0]*GX, -1.0*Positions.i[1]*GY, -1.0*Positions.i[2]*GZ, 0.0};
 const double charge_i = Charges.i[0];
 
 double re_exp[4];

@@ -64,7 +64,7 @@ def test_ewald_energy_python_co2_1():
     #assert abs(rs[0]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from loop back over particles"
     #assert abs(rs[1]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from structure factor"
 
-    py_recip_space = np.load('../res/co2_recip_space.npy')
+    py_recip_space = np.load('../res/coulomb/co2_recip_space.npy')
 
 
     nmax_x = c._vars['nmax_vec'][0]
@@ -386,6 +386,84 @@ def test_ewald_energy_python_co2_1():
 
 
 
+
+
+def test_ewald_energy_python_co2_2():
+    """
+    Test that the python implementation of ewald calculates the correct 
+    real space contribution and self interaction contribution.
+    """
+
+    if mpi_rank > 0:
+        return
+
+    eta = 0.26506
+    alpha = eta**2.
+    rc = 12.
+    e0 = 30.
+    e1 = 40.
+    e2 = 50.
+
+    domain = md.domain.BaseDomainHalo(extent=(e0,e1,e2))
+    c = md.coulomb.CoulombicEnergy(
+        domain=domain,
+        real_cutoff=12.,
+        alpha=alpha,
+        recip_cutoff=0.2667*scipy.constants.pi*2.0,
+        recip_nmax=(8,11,14)
+    )
+
+    assert c.alpha == alpha, "unexpected alpha"
+    assert c.real_cutoff == rc, "unexpected rc"
+
+    data = np.load('../res/coulomb/CO2cuboid.npy')
+
+    N = data.shape[0]
+
+    positions = ParticleDat(npart=N, ncomp=3)
+    charges = ParticleDat(npart=N, ncomp=1)
+
+    positions[:] = data[:,0:3:]
+    #positions[:, 0] -= e*0.5
+    #positions[:, 1] -= e*0.5
+    #positions[:, 2] -= e*0.5
+    #print(np.max(positions[:,0]), np.min(positions[:,0]))
+    #print(np.max(positions[:,1]), np.min(positions[:,1]))
+    #print(np.max(positions[:,2]), np.min(positions[:,2]))
+
+    charges[:, 0] = data[:,3]
+    assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
+
+    rs = c.evaluate_lr(positions=positions, charges=charges)
+
+    assert abs(rs*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "Energy from structure factor"
+
+    return
+    py_recip_space = np.load('../res/co2_recip_space.npy')
+
+
+    nmax_x = c._vars['nmax_vec'][0]
+    nmax_y = c._vars['nmax_vec'][1]
+    nmax_z = c._vars['nmax_vec'][2]
+    recip_axis_len = c._vars['recip_axis_len'].value
+    recip_vec = c._vars['recip_vec']
+    nmax_vec = c._vars['nmax_vec']
+    coeff_space = c._vars['coeff_space']
+    max_recip = c._vars['max_recip'].value
+    alpha = c._vars['alpha'].value
+    ivolume = c._vars['ivolume']
+    recip_space = c._vars['recip_space_kernel']
+    nkmax = c._vars['recip_axis_len'].value
+    nkaxis = nkmax
+
+
+    axes_size = 12*nkaxis
+    axes = recip_space[0:axes_size:].view()
+    plane_size = 4*nmax_x*nmax_y + 4*nmax_y*nmax_z + 4*nmax_z*nmax_x
+    planes = recip_space[axes_size:axes_size+plane_size*2:].view()
+    quad_size = nmax_x*nmax_y*nmax_z
+    quad_start = axes_size+plane_size*2
+    quads = recip_space[quad_start:quad_start+quad_size*16].view()
 
 
 

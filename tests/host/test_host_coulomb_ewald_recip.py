@@ -56,7 +56,7 @@ def test_ewald_energy_python_nacl_1():
     assert abs(rs[0]*c.internal_to_ev() - 0.5223894616E-26) < 10.**-3, "Energy from loop back over particles"
     assert abs(rs[1]*c.internal_to_ev() - 0.5223894616E-26) < 10.**-3, "Energy from structure factor"
 
-#@pytest.mark.skip
+@pytest.mark.skip
 def test_ewald_energy_python_co2_1():
     """
     Test that the python implementation of ewald calculates the correct 
@@ -98,6 +98,61 @@ def test_ewald_energy_python_co2_1():
     rs = c.test_evaluate_python_lr(positions=positions, charges=charges)
     assert abs(rs[0]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from loop back over particles"
     assert abs(rs[1]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from structure factor"
+
+@pytest.mark.skip
+def test_ewald_energy_python_co2_2():
+    """
+    Test that the python implementation of ewald calculates the correct 
+    real space contribution and self interaction contribution.
+    """
+
+    if mpi_rank > 0:
+        return
+
+    eta = 0.26506
+    alpha = eta**2.
+    rc = 12.
+    e0 = 30.
+    e1 = 40.
+    e2 = 50.
+
+    domain = md.domain.BaseDomainHalo(extent=(e0,e1,e2))
+    c = md.coulomb.CoulombicEnergy(
+        domain=domain,
+        real_cutoff=12.,
+        alpha=alpha,
+        recip_cutoff=0.2667*scipy.constants.pi*2.0,
+        recip_nmax=(8,11,14)
+    )
+
+    assert c.alpha == alpha, "unexpected alpha"
+    assert c.real_cutoff == rc, "unexpected rc"
+
+
+    data = np.load('../res/coulomb/CO2cuboid.npy')
+
+
+    N = data.shape[0]
+
+    positions = ParticleDat(npart=N, ncomp=3)
+    charges = ParticleDat(npart=N, ncomp=1)
+
+    positions[:] = data[:,0:3:]
+    charges[:, 0] = data[:,3]
+
+    assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
+
+    rs = c.test_evaluate_python_lr(positions=positions, charges=charges)
+    assert abs(rs[0]*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "Energy from loop back over particles"
+    assert abs(rs[1]*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "Energy from structure factor"
+
+
+
+
+
+
+
+
 
 
 
