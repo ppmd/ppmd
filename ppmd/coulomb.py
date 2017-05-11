@@ -78,7 +78,6 @@ class CoulombicEnergy(object):
         #print "alpha", alpha, "sqrt(alpha)", sqrtalpha
 
 
-
         gxl = np.linalg.norm(gx)
         gyl = np.linalg.norm(gy)
         gzl = np.linalg.norm(gz)
@@ -157,27 +156,56 @@ class CoulombicEnergy(object):
 
     def _init_libs(self):
 
-        with open(str(runtime.LIB_DIR) + '/EwaldOrthSourceAccumulateRecip.h','r') as fh:
-            self._cont_header_src = fh.read()
-        self._cont_header = kernel.Header(block=self._cont_header_src % self._subvars)
+        # reciprocal contribution calculation
+        with open(str(runtime.LIB_DIR) + '/EwaldOrthSource/AccumulateRecip.h','r') as fh:
+            _cont_header_src = fh.read()
+        _cont_header = kernel.Header(block=_cont_header_src % self._subvars)
 
-        with open(str(runtime.LIB_DIR) + '/EwaldOrthSourceAccumulateRecip.cpp','r') as fh:
-            self._cont_source = fh.read()
+        with open(str(runtime.LIB_DIR) + '/EwaldOrthSource/AccumulateRecip.cpp','r') as fh:
+            _cont_source = fh.read()
 
-        self._cont_kernel = kernel.Kernel(
+        _cont_kernel = kernel.Kernel(
             name='reciprocal_contributions',
-            code=self._cont_source,
-            headers=self._cont_header
+            code=_cont_source,
+            headers=_cont_header
         )
 
         self._cont_lib = loop.ParticleLoop(
-            kernel=self._cont_kernel,
+            kernel=_cont_kernel,
             dat_dict={
                 'Positions': data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(access.READ),
                 'Charges': data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(access.READ),
                 'RecipSpace': self._vars['recip_space_kernel'](access.INC_ZERO)
             }
         )
+
+
+        # reciprocal extract forces plus
+        with open(str(runtime.LIB_DIR) + '/EwaldOrthSource/ExtractForceEnergy.h','r') as fh:
+            _cont_header_src = fh.read()
+        _cont_header = kernel.Header(block=_cont_header_src % self._subvars)
+
+        with open(str(runtime.LIB_DIR) + '/EwaldOrthSource/ExtractForceEnergy.cpp','r') as fh:
+            _cont_source = fh.read()
+
+        _cont_kernel = kernel.Kernel(
+            name='reciprocal_force_energy',
+            code=_cont_source,
+            headers=_cont_header
+        )
+
+        self._extract_force_energy_lib = loop.ParticleLoop(
+            kernel=_cont_kernel,
+            dat_dict={
+                'Positions': data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(access.READ),
+                'Forces': data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(access.WRITE),
+                'Charges': data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(access.READ),
+                'RecipSpace': self._vars['recip_space_kernel'](access.READ)
+            }
+        )
+
+
+
 
     def _init_coeff_space(self):
         recip_vec = self._vars['recip_vec']

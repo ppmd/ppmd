@@ -390,8 +390,7 @@ def test_ewald_energy_python_co2_1():
 
 def test_ewald_energy_python_co2_2():
     """
-    Test that the python implementation of ewald calculates the correct 
-    real space contribution and self interaction contribution.
+    Test non cube domains reciprocal space
     """
 
     if mpi_rank > 0:
