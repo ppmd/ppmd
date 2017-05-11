@@ -1152,6 +1152,9 @@ class PlaceHolderDat(ParticleDat):
         self.idtype = dtype
         self.group = None
 
+class PlaceHolderArray(ScalarArray):
+    def __init__(self, ncomp=1, dtype=ctypes.c_double):
+        self.idtype = dtype
 
 
 

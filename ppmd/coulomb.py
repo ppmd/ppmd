@@ -122,7 +122,12 @@ class CoulombicEnergy(object):
         self._vars['recip_vec'][1, :] = gy
         self._vars['recip_vec'][2, :] = gz
         self._vars['ivolume'] = ivolume
-        self._vars['coeff_space'] = np.zeros((nmax_z+1, nmax_y+1, nmax_x+1), dtype=ctypes.c_double)
+        self._vars['coeff_space_kernel'] = data.ScalarArray(
+            ncomp=((nmax_x+1)*(nmax_y+1)*(nmax_z+1)),
+            dtype=ctypes.c_double
+        )
+        self._vars['coeff_space'] = self._vars['coeff_space_kernel'].data.view().reshape(nmax_z+1, nmax_y+1, nmax_x+1)
+        #self._vars['coeff_space'] = np.zeros((nmax_z+1, nmax_y+1, nmax_x+1), dtype=ctypes.c_double)
 
         # pass stride in tmp space vector
         self._vars['recip_axis_len'] = ctypes.c_int(nmax_t)
@@ -150,6 +155,8 @@ class CoulombicEnergy(object):
         self._subvars['SUB_NM'] = str(nmax_z)
         self._subvars['SUB_NKAXIS'] =str(nmax_t)
         self._subvars['SUB_LEN_QUAD'] = str(nmax_x*nmax_y*nmax_z)
+        self._subvars['SUB_MAX_RECIP'] = str(max_len)
+
 
         self._init_libs()
         self._init_coeff_space()
@@ -179,8 +186,7 @@ class CoulombicEnergy(object):
             }
         )
 
-
-        # reciprocal extract forces plus
+        # reciprocal extract forces plus energy
         with open(str(runtime.LIB_DIR) + '/EwaldOrthSource/ExtractForceEnergy.h','r') as fh:
             _cont_header_src = fh.read()
         _cont_header = kernel.Header(block=_cont_header_src % self._subvars)
@@ -199,12 +205,12 @@ class CoulombicEnergy(object):
             dat_dict={
                 'Positions': data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(access.READ),
                 'Forces': data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(access.WRITE),
+                'Energy': data.PlaceHolderArray(ncomp=1, dtype=ctypes.c_double)(access.INC_ZERO),
                 'Charges': data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(access.READ),
-                'RecipSpace': self._vars['recip_space_kernel'](access.READ)
+                'RecipSpace': self._vars['recip_space_kernel'](access.READ),
+                'CoeffSpace': self._vars['coeff_space_kernel'](access.READ)
             }
         )
-
-
 
 
     def _init_coeff_space(self):

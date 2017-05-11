@@ -9,12 +9,15 @@ const double * Charges
 
 // kernel start --------------------------------------
 
-double* PlaneSpace = &RecipSpace[0] + 12*NKAXIS;
-double* RRecipSpace = PlaneSpace + PLANE_SIZE;
-double* IRecipSpace = RRecipSpace + 8*LEN_QUAD;
+const double* PlaneSpace = &RecipSpace[0] + 12*NKAXIS;
+const double* RRecipSpace = PlaneSpace + PLANE_SIZE;
+const double* IRecipSpace = RRecipSpace + 8*LEN_QUAD;
 
-const double ri[4] = {-1.0*Positions.i[0]*GX, -1.0*Positions.i[1]*GY, -1.0*Positions.i[2]*GZ, 0.0};
+const double ri[4] = {Positions.i[0]*GX, Positions.i[1]*GY, Positions.i[2]*GZ, 0.0};
 const double charge_i = Charges.i[0];
+
+double* force = Forces.i;
+
 
 double re_exp[4];
 double im_exp[4];
@@ -22,10 +25,6 @@ double im_exp[4];
 // could pad to 4 for avx call instead of an sse call
 for(int ix=0 ; ix<4 ; ix++) { im_exp[ix] = sin(ri[ix]); re_exp[ix] = cos(ri[ix]); }
 
-
-// populate first entries in reciprocal axis
-//RE technically these should be 1.0 but it makes our life easier
-// if it is 0.0
 
 //RE
 TMP_RECIP_AXES[XQR][0] = re_exp[0];
@@ -57,31 +56,21 @@ for(int ix=1 ; ix<NM ; ix++) {
 }
 
 
-// now can multiply out and add to recip space
 // start with the axes
-
 // X
 for( int ii=0 ; ii<NK ; ii++ ){
-    RRAXIS(0, ii) += charge_i*TMP_RECIP_AXES[XQR][ii];
-    IRAXIS(0, ii) += charge_i*TMP_RECIP_AXES[XQI][ii];
-    RRAXIS(2, ii) += charge_i*TMP_RECIP_AXES[XQR][ii];
-    IRAXIS(2, ii) -= charge_i*TMP_RECIP_AXES[XQI][ii];
-}
-
-
+    const double coeff = COEFF_SPACE(ii+1, 0, 0) * charge_i;
+    Energy[0] += coeff * ((RRAXIS(XP, ii) + RRAXIS(XN, ii))*TMP_RECIP_AXES[XQR][ii] + (IRAXIS(XN, ii) - IRAXIS(XP, ii))*TMP_RECIP_AXES[XQI][ii]);
+} 
 // Y
 for( int ii=0 ; ii<NL ; ii++ ){
-    RRAXIS(1, ii) += charge_i*TMP_RECIP_AXES[YQR][ii];
-    IRAXIS(1, ii) += charge_i*TMP_RECIP_AXES[YQI][ii];
-    RRAXIS(3, ii) += charge_i*TMP_RECIP_AXES[YQR][ii];
-    IRAXIS(3, ii) -= charge_i*TMP_RECIP_AXES[YQI][ii];
+    const double coeff = COEFF_SPACE(0, ii+1, 0) * charge_i;
+    Energy[0] += coeff * ((RRAXIS(YP, ii) + RRAXIS(YN, ii))*TMP_RECIP_AXES[YQR][ii] + (IRAXIS(YN, ii) - IRAXIS(YP, ii))*TMP_RECIP_AXES[YQI][ii]);
 }
 // Z
 for( int ii=0 ; ii<NM ; ii++ ){
-    RRAXIS(4, ii) += charge_i*TMP_RECIP_AXES[ZQR][ii];
-    IRAXIS(4, ii) += charge_i*TMP_RECIP_AXES[ZQI][ii];
-    RRAXIS(5, ii) += charge_i*TMP_RECIP_AXES[ZQR][ii];
-    IRAXIS(5, ii) -= charge_i*TMP_RECIP_AXES[ZQI][ii];
+    const double coeff = COEFF_SPACE(0, 0, ii+1) * charge_i;
+    Energy[0] += coeff * ((RRAXIS(ZP, ii) + RRAXIS(ZN, ii))*TMP_RECIP_AXES[ZQR][ii] + (IRAXIS(ZN, ii) - IRAXIS(ZP, ii))*TMP_RECIP_AXES[ZQI][ii]);
 }
 
 
@@ -94,9 +83,11 @@ for(int iy=0 ; iy<NL ; iy++){
     for(int ix=0 ; ix<NK ; ix++ ){
         const double xp = TMP_RECIP_AXES[XQR][ix];
         const double yp = TMP_RECIP_AXES[XQI][ix];
+        const double coeff = COEFF_SPACE(ix+1, iy+1, 0) * charge_i;
         for(int qx=0 ; qx<4 ; qx++){
-            RRPLANE_0(qx, ix, iy) += charge_i*(xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp);
-            IRPLANE_0(qx, ix, iy) += charge_i*(xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap);
+            const double reali = xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
+            const double imagi = xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
+            Energy[0] += coeff*(RRPLANE_0(qx, ix, iy)*reali - IRPLANE_0(qx, ix, iy)*imagi);
         }
     }
 }
@@ -109,9 +100,11 @@ for(int iy=0 ; iy<NM ; iy++){
     for(int ix=0 ; ix<NL ; ix++ ){
         const double xp = TMP_RECIP_AXES[YQR][ix];
         const double yp = TMP_RECIP_AXES[YQI][ix];
+        const double coeff = COEFF_SPACE(0, ix+1, iy+1) * charge_i;
         for(int qx=0 ; qx<4 ; qx++){
-            RRPLANE_1(qx, ix, iy) += charge_i*(xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp);
-            IRPLANE_1(qx, ix, iy) += charge_i*(xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap);
+            const double reali = xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
+            const double imagi = xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
+            Energy[0] += coeff*(RRPLANE_1(qx, ix, iy)*reali - IRPLANE_1(qx, ix, iy)*imagi);
         }
     }
 }
@@ -124,9 +117,11 @@ for(int iy=0 ; iy<NK ; iy++){
     for(int ix=0 ; ix<NM ; ix++ ){
         const double xp = TMP_RECIP_AXES[ZQR][ix];
         const double yp = TMP_RECIP_AXES[ZQI][ix];
+        const double coeff = COEFF_SPACE(iy+1, 0, ix+1) * charge_i;
         for(int qx=0 ; qx<4 ; qx++){
-            RRPLANE_2(qx, ix, iy) += charge_i*(xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp);
-            IRPLANE_2(qx, ix, iy) += charge_i*(xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap);
+            const double reali = xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
+            const double imagi = xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
+            Energy[0] += coeff*(RRPLANE_2(qx, ix, iy)*reali - IRPLANE_2(qx, ix, iy)*imagi);
         }
     }
 }
@@ -143,16 +138,21 @@ for(int iz=0 ; iz<NM ; iz++ ){
         for(int ix=0 ; ix<NK ; ix++ ){
             const double xp = TMP_RECIP_AXES[XQR][ix];
             const double yp = TMP_RECIP_AXES[XQI][ix];
-            double* r_base_index = &RRS_INDEX(ix,iy,iz,0);
-            double* i_base_index = &IRS_INDEX(ix,iy,iz,0);
+            const double* r_base_index = &RRS_INDEX(ix,iy,iz,0);
+            const double* i_base_index = &IRS_INDEX(ix,iy,iz,0);
+            const double coeff = COEFF_SPACE(ix+1, iy+1, iz+1) * charge_i;
             for(int qx=0 ; qx<8 ; qx++){
                 const double ycp = yp * CC_MAP_X(qx);
                 const double bcp = bp * CC_MAP_Y(qx);
                 const double hcp = hp * CC_MAP_Z(qx);
                 const double xa_m_yb = xp*ap - ycp*bcp;
                 const double xb_p_ya = xp*bcp + ycp*ap;
-                *(r_base_index+qx) += charge_i * (gp*xa_m_yb - hcp*xb_p_ya);
-                *(i_base_index+qx) += charge_i * (xa_m_yb*hcp + xb_p_ya*gp);
+    
+                //*(r_base_index+qx) += charge_i * (gp*xa_m_yb - hcp*xb_p_ya);
+                //*(i_base_index+qx) += charge_i * (xa_m_yb*hcp + xb_p_ya*gp);
+
+                Energy[0] += coeff*((gp*xa_m_yb - hcp*xb_p_ya)*(*(r_base_index+qx)) - (xa_m_yb*hcp + xb_p_ya*gp)*(*(i_base_index+qx)));
+
             }
         }
     }

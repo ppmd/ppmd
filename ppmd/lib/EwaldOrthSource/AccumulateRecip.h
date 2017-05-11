@@ -19,7 +19,8 @@
 // Nkaxis = NKMAX (was NKMAX+1)
 #define NKAXIS (%(SUB_NKAXIS)s)
 #define LEN_QUAD (%(SUB_LEN_QUAD)s)
-
+// maximum reciprocal vector length
+#define MAX_RECIP (%(SUB_MAX_RECIP)s)
 
 
 // other defines  -------------------------------------
@@ -33,6 +34,14 @@
 #define YQI (4)
 #define ZQR (2)
 #define ZQI (5)
+
+// maps to reciprocal space planes
+#define XP (0)
+#define XN (2)
+#define YP (1)
+#define YN (3)
+#define ZP (4)
+#define ZN (5)
 
 // handle complex conjugate efficently
 const double CC_COEFF[2] = {1.0, -1.0};

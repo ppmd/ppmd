@@ -19,7 +19,8 @@
 // Nkaxis = NKMAX (was NKMAX+1)
 #define NKAXIS (%(SUB_NKAXIS)s)
 #define LEN_QUAD (%(SUB_LEN_QUAD)s)
-
+// maximum reciprocal vector length
+#define MAX_RECIP (%(SUB_MAX_RECIP)s)
 
 
 // other defines  -------------------------------------
@@ -33,6 +34,16 @@
 #define YQI (4)
 #define ZQR (2)
 #define ZQI (5)
+
+// maps to reciprocal space planes
+#define XP (0)
+#define XN (2)
+#define YP (1)
+#define YN (3)
+#define ZP (4)
+#define ZN (5)
+
+
 
 // handle complex conjugate efficently
 const double CC_COEFF[2] = {1.0, -1.0};
@@ -50,10 +61,6 @@ const double CC_COEFF_Z[8] = {1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0};
 #define CC_MAP_Y(qx) ( CC_COEFF_Y[(qx)] )
 #define CC_MAP_Z(qx) ( CC_COEFF_Z[(qx)] )
 */
-
-
-
-
 
  
 // double* RRecipSpace
@@ -85,7 +92,6 @@ const double CC_COEFF_PLANE_X1[4] = {1.0, -1.0, -1.0, 1.0};
 const double CC_COEFF_PLANE_X2[4] = {1.0, 1.0, -1.0, -1.0};
 
 
-
 // temporary space on the stack for the recip axis should be alright in terms of stack size....
 double TMP_RECIP_AXES[6][NKMAX];
 
@@ -103,7 +109,7 @@ inline void COMP_AB(
     *h = (*a)*(*y) + (*b)*(*x);
 }
 
-
-
+// map into reciprocal space
+#define COEFF_SPACE(ix,iy,iz) (CoeffSpace[(NK+1)*((NL+1)*(iz) + (iy)) + (ix)]) 
 
 

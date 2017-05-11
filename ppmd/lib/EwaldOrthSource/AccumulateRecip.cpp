@@ -62,26 +62,26 @@ for(int ix=1 ; ix<NM ; ix++) {
 
 // X
 for( int ii=0 ; ii<NK ; ii++ ){
-    RRAXIS(0, ii) += charge_i*TMP_RECIP_AXES[XQR][ii];
-    IRAXIS(0, ii) += charge_i*TMP_RECIP_AXES[XQI][ii];
-    RRAXIS(2, ii) += charge_i*TMP_RECIP_AXES[XQR][ii];
-    IRAXIS(2, ii) -= charge_i*TMP_RECIP_AXES[XQI][ii];
+    RRAXIS(XP, ii) += charge_i*TMP_RECIP_AXES[XQR][ii];
+    IRAXIS(XP, ii) += charge_i*TMP_RECIP_AXES[XQI][ii];
+    RRAXIS(XN, ii) += charge_i*TMP_RECIP_AXES[XQR][ii];
+    IRAXIS(XN, ii) -= charge_i*TMP_RECIP_AXES[XQI][ii];
 }
 
 
 // Y
 for( int ii=0 ; ii<NL ; ii++ ){
-    RRAXIS(1, ii) += charge_i*TMP_RECIP_AXES[YQR][ii];
-    IRAXIS(1, ii) += charge_i*TMP_RECIP_AXES[YQI][ii];
-    RRAXIS(3, ii) += charge_i*TMP_RECIP_AXES[YQR][ii];
-    IRAXIS(3, ii) -= charge_i*TMP_RECIP_AXES[YQI][ii];
+    RRAXIS(YP, ii) += charge_i*TMP_RECIP_AXES[YQR][ii];
+    IRAXIS(YP, ii) += charge_i*TMP_RECIP_AXES[YQI][ii];
+    RRAXIS(YN, ii) += charge_i*TMP_RECIP_AXES[YQR][ii];
+    IRAXIS(YN, ii) -= charge_i*TMP_RECIP_AXES[YQI][ii];
 }
 // Z
 for( int ii=0 ; ii<NM ; ii++ ){
-    RRAXIS(4, ii) += charge_i*TMP_RECIP_AXES[ZQR][ii];
-    IRAXIS(4, ii) += charge_i*TMP_RECIP_AXES[ZQI][ii];
-    RRAXIS(5, ii) += charge_i*TMP_RECIP_AXES[ZQR][ii];
-    IRAXIS(5, ii) -= charge_i*TMP_RECIP_AXES[ZQI][ii];
+    RRAXIS(ZP, ii) += charge_i*TMP_RECIP_AXES[ZQR][ii];
+    IRAXIS(ZP, ii) += charge_i*TMP_RECIP_AXES[ZQI][ii];
+    RRAXIS(ZN, ii) += charge_i*TMP_RECIP_AXES[ZQR][ii];
+    IRAXIS(ZN, ii) -= charge_i*TMP_RECIP_AXES[ZQI][ii];
 }
 
 
