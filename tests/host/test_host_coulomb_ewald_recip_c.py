@@ -523,8 +523,51 @@ def test_ewald_energy_python_co2_3():
 
 
 
+def test_ewald_energy_python_co2_4():
+    """
+    Test that the python implementation of ewald calculates the correct 
+    real space contribution and self interaction contribution.
+    """
 
+    if mpi_rank > 0:
+        return
 
+    eta = 0.26506
+    alpha = eta**2.
+    rc = 12.
 
+    e = 24.47507
+    domain = md.domain.BaseDomainHalo(extent=(e,e,e))
+    c = md.coulomb.CoulombicEnergy(domain=domain, real_cutoff=rc, alpha=alpha)
+
+    assert c.alpha == alpha, "unexpected alpha"
+    assert c.real_cutoff == rc, "unexpected rc"
+
+    data = np.load('../res/coulomb/CO2.npy')
+
+    N = data.shape[0]
+
+    positions = ParticleDat(npart=N, ncomp=3)
+    forces = ParticleDat(npart=N, ncomp=3)
+    charges = ParticleDat(npart=N, ncomp=1)
+    energy = ScalarArray(ncomp=1, dtype=ctypes.c_double)
+
+    positions[:] = data[:,0:3:]
+    #positions[:, 0] -= e*0.5
+    #positions[:, 1] -= e*0.5
+    #positions[:, 2] -= e*0.5
+    #print(np.max(positions[:,0]), np.min(positions[:,0]))
+    #print(np.max(positions[:,1]), np.min(positions[:,1]))
+    #print(np.max(positions[:,2]), np.min(positions[:,2]))
+
+    charges[:, 0] = data[:,3]
+    assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
+
+    rs = c.evaluate_lr(positions=positions, charges=charges)
+
+    energy[0] = 0.0
+    c.evaluate_lr_energy(positions, charges, forces, energy)
+
+    assert (energy[0]*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3
 
 
