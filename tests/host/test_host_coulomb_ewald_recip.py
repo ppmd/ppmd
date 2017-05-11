@@ -56,7 +56,7 @@ def test_ewald_energy_python_nacl_1():
     assert abs(rs[0]*c.internal_to_ev() - 0.5223894616E-26) < 10.**-3, "Energy from loop back over particles"
     assert abs(rs[1]*c.internal_to_ev() - 0.5223894616E-26) < 10.**-3, "Energy from structure factor"
 
-@pytest.mark.skip
+#@pytest.mark.skip
 def test_ewald_energy_python_co2_1():
     """
     Test that the python implementation of ewald calculates the correct 
@@ -96,8 +96,9 @@ def test_ewald_energy_python_co2_1():
     assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
 
     rs = c.test_evaluate_python_lr(positions=positions, charges=charges)
-    assert abs(rs[0]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from loop back over particles"
+
     assert abs(rs[1]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from structure factor"
+    assert abs(rs[0]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from loop back over particles"
 
 @pytest.mark.skip
 def test_ewald_energy_python_co2_2():

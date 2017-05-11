@@ -256,7 +256,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x+1+ix, nmax_y+1+iy, nmax_z+1+iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                4, '{}_{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix], py_recip_space[0, nmax_x+1+ix, nmax_y+1+iy, nmax_z+1+iz]))
 
 
     tmp_rquad = rquads[1::8]
@@ -265,7 +265,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x-1-ix, nmax_y+1+iy, nmax_z+1+iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                4, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
     tmp_rquad = rquads[2::8]
     for iz in range(nmax_z):
@@ -273,7 +273,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x-1-ix, nmax_y-1-iy, nmax_z+1+iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                5, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
     tmp_rquad = rquads[3::8]
     for iz in range(nmax_z):
@@ -281,7 +281,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x+1+ix, nmax_y-1-iy, nmax_z+1+iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                5, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
     tmp_rquad = rquads[4::8]
     for iz in range(nmax_z):
@@ -289,7 +289,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x+1+ix, nmax_y+1+iy, nmax_z-1-iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                5, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
 
     tmp_rquad = rquads[5::8]
@@ -298,7 +298,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x-1-ix, nmax_y+1+iy, nmax_z-1-iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                5, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
     tmp_rquad = rquads[6::8]
     for iz in range(nmax_z):
@@ -306,7 +306,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x-1-ix, nmax_y-1-iy, nmax_z-1-iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                4, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
     tmp_rquad = rquads[7::8]
     for iz in range(nmax_z):
@@ -314,7 +314,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[0, nmax_x+1+ix, nmax_y-1-iy, nmax_z-1-iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                5, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_rquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
 
     # Imaginary quads
@@ -324,7 +324,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x+1+ix, nmax_y+1+iy, nmax_z+1+iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                5, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
     tmp_iquad = iquads[1::8]
     for iz in range(nmax_z):
@@ -332,7 +332,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x-1-ix, nmax_y+1+iy, nmax_z+1+iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                5, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
     tmp_iquad = iquads[2::8]
     for iz in range(nmax_z):
@@ -340,7 +340,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x-1-ix, nmax_y-1-iy, nmax_z+1+iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                5, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
     tmp_iquad = iquads[3::8]
     for iz in range(nmax_z):
@@ -348,7 +348,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x+1+ix, nmax_y-1-iy, nmax_z+1+iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                5, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
     tmp_iquad = iquads[4::8]
     for iz in range(nmax_z):
@@ -356,7 +356,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x+1+ix, nmax_y+1+iy, nmax_z-1-iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                5, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
     tmp_iquad = iquads[5::8]
     for iz in range(nmax_z):
@@ -364,7 +364,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x-1-ix, nmax_y+1+iy, nmax_z-1-iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                5, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
     tmp_iquad = iquads[6::8]
     for iz in range(nmax_z):
@@ -372,7 +372,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x-1-ix, nmax_y-1-iy, nmax_z-1-iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                5, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
     tmp_iquad = iquads[7::8]
     for iz in range(nmax_z):
@@ -380,7 +380,7 @@ def test_ewald_energy_python_co2_1():
             for ix in range(nmax_x):
                 assert_tol(
                     tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix] - py_recip_space[1, nmax_x+1+ix, nmax_y-1-iy, nmax_z-1-iz],
-                8, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
+                5, '{}_{}_{}_{}'.format(ix,iy,iz, tmp_iquad[nmax_x*(nmax_y*iz + iy) + ix]))
 
     #assert abs(rs[0]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from loop back over particles"
     assert abs(rs*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from structure factor"

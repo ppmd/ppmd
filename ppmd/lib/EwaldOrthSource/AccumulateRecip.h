@@ -21,6 +21,7 @@
 #define LEN_QUAD (%(SUB_LEN_QUAD)s)
 // maximum reciprocal vector length
 #define MAX_RECIP (%(SUB_MAX_RECIP)s)
+#define MAX_RECIP_SQ (%(SUB_MAX_RECIP_SQ)s)
 
 
 // other defines  -------------------------------------

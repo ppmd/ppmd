@@ -156,6 +156,7 @@ class CoulombicEnergy(object):
         self._subvars['SUB_NKAXIS'] =str(nmax_t)
         self._subvars['SUB_LEN_QUAD'] = str(nmax_x*nmax_y*nmax_z)
         self._subvars['SUB_MAX_RECIP'] = str(max_len)
+        self._subvars['SUB_MAX_RECIP_SQ'] = str(max_len**2.)
 
 
         self._init_libs()
@@ -493,6 +494,7 @@ class CoulombicEnergy(object):
 
         coeff_space = self._vars['coeff_space']
         max_recip = self._vars['max_recip'].value
+        max_recip2 = max_recip*max_recip
         alpha = self._vars['alpha'].value
         ivolume = self._vars['ivolume']
 
@@ -502,6 +504,9 @@ class CoulombicEnergy(object):
 
         t0 = time.time()
 
+        gx = recip_vec[0,0]
+        gy = recip_vec[1,1]
+        gz = recip_vec[2,2]
 
         #N_LOCAL = 1
         for lx in range(N_LOCAL):
@@ -563,45 +568,31 @@ class CoulombicEnergy(object):
             # now calculate the contributions to all of recip space
             qx = charges[lx, 0]
             tmp = np.zeros(2, dtype=ctypes.c_double)
+
             for rz in xrange(2*nmax_vec[2]+1):
+                rzp = abs(rz-nmax_vec[2])
+                recip_len2 = (rzp*gz)**2.
                 for ry in xrange(2*nmax_vec[1]+1):
+                    ryp = abs(ry-nmax_vec[1])
+                    recip_len2zy = recip_len2 + (ryp*gy)**2.
                     for rx in xrange(2*nmax_vec[0]+1):
-                        tmp[:] = 0.0
-                        self._COMP_ABC_PACKED(
-                            recip_axis[:,rx,0],
-                            recip_axis[:,ry,1],
-                            recip_axis[:,rz,2],
-                            tmp[:]
-                        )
-                        recip_space[:,rx,ry,rz] += tmp[:]*qx
+                        rxp = abs(rx-nmax_vec[0])
+                        recip_len2zyx = recip_len2zy + (rxp*gx)**2.
 
-                        ##check value by direct computation
-                        ri = positions[lx,:]
-                        px = rx - nmax_vec[0]
-                        py = ry - nmax_vec[1]
-                        pz = rz - nmax_vec[2]
-                        gx = recip_vec[0, 0]*px
-                        gy = recip_vec[1, 1]*py
-                        gz = recip_vec[2, 2]*pz
+                        if (recip_len2zyx <= max_recip2) or rxp == 0 or ryp == 0 or rzp == 0:
 
-                        #cval = cmath.exp(-1j * np.dot(np.array((gx,gy,gz)),ri))
-                        #_ctol(cval.real,tmp[0],'overall check RE',10.**-13)
-                        #_ctol(cval.imag,tmp[1],'overall check IM {} {} {}'.format(px,py,pz),10.**-13)
+                            tmp[:] = 0.0
+                            self._COMP_ABC_PACKED(
+                                recip_axis[:,rx,0],
+                                recip_axis[:,ry,1],
+                                recip_axis[:,rz,2],
+                                tmp[:]
+                            )
+                            recip_space[:,rx,ry,rz] += tmp[:]*qx
+                        else:
 
-                        ##test abc
-                        #tmp2 = np.zeros(2)
-                        #self._COMP_ABC_PACKED(
-                        #    recip_axis[:,rx,0],
-                        #    recip_axis[:,ry,1],
-                        #    recip_axis[:,rz,2],
-                        #    tmp2[:]
-                        #)
-                        #cvalx = recip_axis[:,rx,0][0]+1j*recip_axis[:,rx,0][1]
-                        #cvaly = recip_axis[:,ry,1][0]+1j*recip_axis[:,ry,1][1]
-                        #cvalz = recip_axis[:,rz,2][0]+1j*recip_axis[:,rz,2][1]
-                        #cval = cvalx*cvaly*cvalz
-                        #_ctol(cval.real, tmp2[0], 'RE')
-                        #_ctol(cval.imag, tmp2[1], 'IM')
+                            recip_space[:,rx,ry,rz] = 0.0
+
 
 
         t1 = time.time()
@@ -646,27 +637,40 @@ class CoulombicEnergy(object):
 
             for kz in xrange(2*nmax_vec[2]+1):
                 rzkz = rz*recip_vec[2,2]*(kz-nmax_vec[2])
+
                 for ky in xrange(2*nmax_vec[1]+1):
                     ryky = ry*recip_vec[1,1]*(ky-nmax_vec[1])
                     for kx in xrange(2*nmax_vec[0]+1):
                         rxkx = rx*recip_vec[0,0]*(kx-nmax_vec[0])
 
-                        coeff = coeff_space[
-                            abs(kz-nmax_vec[2]),
-                            abs(ky-nmax_vec[1]),
-                            abs(kx-nmax_vec[0])
-                        ] * qx
+                        rxp = abs(kx-nmax_vec[0])
+                        ryp = abs(ky-nmax_vec[1])
+                        rzp = abs(kz-nmax_vec[2])
 
-                        re_coeff = cos(rzkz+ryky+rxkx)*coeff
-                        im_coeff = sin(rzkz+ryky+rxkx)*coeff
+                        recip_len2 = (rxp*gx)**2. + (ryp*gy)**2. + (rzp*gz)**2.
+                        if (recip_len2 <= max_recip2) or rxp == 0 or ryp == 0 or rzp == 0:
 
-                        re_con = recip_space[0,kx,ky,kz]
-                        im_con = recip_space[1,kx,ky,kz]
+                            coeff = coeff_space[
+                                abs(kz-nmax_vec[2]),
+                                abs(ky-nmax_vec[1]),
+                                abs(kx-nmax_vec[0])
+                            ] * qx
 
-                        eng += re_coeff*re_con - im_coeff*im_con
-                        eng_im += re_coeff*im_con + im_coeff*re_con
+                            re_coeff = cos(rzkz+ryky+rxkx)*coeff
+                            im_coeff = sin(rzkz+ryky+rxkx)*coeff
+
+                            re_con = recip_space[0,kx,ky,kz]
+                            im_con = recip_space[1,kx,ky,kz]
+
+                            eng += re_coeff*re_con - im_coeff*im_con
+                            eng_im += re_coeff*im_con + im_coeff*re_con
+
+
+
 
                         # print re_coeff, im_coeff, re_con, im_con
+
+
 
         t3 = time.time()
 
@@ -696,7 +700,7 @@ class CoulombicEnergy(object):
 
         #print t1 - t0, t2 - t1, t3 - t2, t4 - t3
 
-        #np.save('co2_recip_space1.npy', recip_space)
+        #np.save('co2_recip_space.npy', recip_space)
 
         return eng*0.5, engs*0.5
 

@@ -133,27 +133,39 @@ for(int iy=0 ; iy<NK ; iy++){
 for(int iz=0 ; iz<NM ; iz++ ){
     const double gp = TMP_RECIP_AXES[ZQR][iz];
     const double hp = TMP_RECIP_AXES[ZQI][iz];
+    const double izGZ = (iz+1)*GZ;
+    const double recip_len_z = izGZ*izGZ;
+
     for(int iy=0 ; iy<NL ; iy++){
         const double ap = TMP_RECIP_AXES[YQR][iy];
         const double bp = TMP_RECIP_AXES[YQI][iy];
+        const double iyGY = (iy+1)*GY;
+        const double recip_len_zy = recip_len_z + iyGY*iyGY;
+        
         for(int ix=0 ; ix<NK ; ix++ ){
-            const double xp = TMP_RECIP_AXES[XQR][ix];
-            const double yp = TMP_RECIP_AXES[XQI][ix];
-            const double* r_base_index = &RRS_INDEX(ix,iy,iz,0);
-            const double* i_base_index = &IRS_INDEX(ix,iy,iz,0);
-            const double coeff = COEFF_SPACE(ix+1, iy+1, iz+1) * charge_i_o2;
-            for(int qx=0 ; qx<8 ; qx++){
-                const double ycp = yp * CC_MAP_X(qx);
-                const double bcp = bp * CC_MAP_Y(qx);
-                const double hcp = hp * CC_MAP_Z(qx);
-                const double xa_m_yb = xp*ap - ycp*bcp;
-                const double xb_p_ya = xp*bcp + ycp*ap;
-    
-                //*(r_base_index+qx) += charge_i_o2 * (gp*xa_m_yb - hcp*xb_p_ya);
-                //*(i_base_index+qx) += charge_i_o2 * (xa_m_yb*hcp + xb_p_ya*gp);
+            const double ixGX = (ix+1)*GX;
+            const double recip_len_zyx = recip_len_zy + ixGX*ixGX;
+            
+            if (recip_len_zyx < MAX_RECIP_SQ){
+                const double xp = TMP_RECIP_AXES[XQR][ix];
+                const double yp = TMP_RECIP_AXES[XQI][ix];
+                const double* r_base_index = &RRS_INDEX(ix,iy,iz,0);
+                const double* i_base_index = &IRS_INDEX(ix,iy,iz,0);
+                const double coeff = COEFF_SPACE(ix+1, iy+1, iz+1) * charge_i_o2;
+                for(int qx=0 ; qx<8 ; qx++){
+                    const double ycp = yp * CC_MAP_X(qx);
+                    const double bcp = bp * CC_MAP_Y(qx);
+                    const double hcp = hp * CC_MAP_Z(qx);
+                    const double xa_m_yb = xp*ap - ycp*bcp;
+                    const double xb_p_ya = xp*bcp + ycp*ap;
+        
+                    //*(r_base_index+qx) += charge_i_o2 * (gp*xa_m_yb - hcp*xb_p_ya);
+                    //*(i_base_index+qx) += charge_i_o2 * (xa_m_yb*hcp + xb_p_ya*gp);
 
-                Energy[0] += coeff*((gp*xa_m_yb - hcp*xb_p_ya)*(*(r_base_index+qx)) - (xa_m_yb*hcp + xb_p_ya*gp)*(*(i_base_index+qx)));
-
+                    Energy[0] += coeff*((gp*xa_m_yb - hcp*xb_p_ya)*(*(r_base_index+qx)) - (xa_m_yb*hcp + xb_p_ya*gp)*(*(i_base_index+qx)));
+                }
+            } else {
+                break;
             }
         }
     }
