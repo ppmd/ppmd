@@ -255,6 +255,25 @@ class CoulombicEnergy(object):
             }
         )
 
+    def _extract_reciprocal_contribution(self, positions, charges, forces, energy):
+
+        NLOCAL = positions.npart_local
+        self._extract_force_energy_lib.execute(
+            n = NLOCAL,
+            dat_dict={
+                'Positions': positions(access.READ),
+                'Charges': charges(access.READ),
+                'RecipSpace': self._vars['recip_space_kernel'](access.READ),
+                'Forces': forces(access.WRITE),
+                'Energy': energy(access.INC_ZERO),
+                'CoeffSpace': self._vars['coeff_space_kernel'](access.READ)
+            }
+        )
+
+    def evaluate_lr_energy(self, positions, charges, forces, energy):
+        self._extract_reciprocal_contribution(positions, charges, forces, energy)
+
+
 
     def evaluate_lr(self, positions, charges):
 

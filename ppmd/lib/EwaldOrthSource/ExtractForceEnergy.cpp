@@ -15,6 +15,7 @@ const double* IRecipSpace = RRecipSpace + 8*LEN_QUAD;
 
 const double ri[4] = {Positions.i[0]*GX, Positions.i[1]*GY, Positions.i[2]*GZ, 0.0};
 const double charge_i = Charges.i[0];
+const double charge_i_o2 = charge_i*0.5;
 
 double* force = Forces.i;
 
@@ -59,17 +60,17 @@ for(int ix=1 ; ix<NM ; ix++) {
 // start with the axes
 // X
 for( int ii=0 ; ii<NK ; ii++ ){
-    const double coeff = COEFF_SPACE(ii+1, 0, 0) * charge_i;
+    const double coeff = COEFF_SPACE(ii+1, 0, 0) * charge_i_o2;
     Energy[0] += coeff * ((RRAXIS(XP, ii) + RRAXIS(XN, ii))*TMP_RECIP_AXES[XQR][ii] + (IRAXIS(XN, ii) - IRAXIS(XP, ii))*TMP_RECIP_AXES[XQI][ii]);
 } 
 // Y
 for( int ii=0 ; ii<NL ; ii++ ){
-    const double coeff = COEFF_SPACE(0, ii+1, 0) * charge_i;
+    const double coeff = COEFF_SPACE(0, ii+1, 0) * charge_i_o2;
     Energy[0] += coeff * ((RRAXIS(YP, ii) + RRAXIS(YN, ii))*TMP_RECIP_AXES[YQR][ii] + (IRAXIS(YN, ii) - IRAXIS(YP, ii))*TMP_RECIP_AXES[YQI][ii]);
 }
 // Z
 for( int ii=0 ; ii<NM ; ii++ ){
-    const double coeff = COEFF_SPACE(0, 0, ii+1) * charge_i;
+    const double coeff = COEFF_SPACE(0, 0, ii+1) * charge_i_o2;
     Energy[0] += coeff * ((RRAXIS(ZP, ii) + RRAXIS(ZN, ii))*TMP_RECIP_AXES[ZQR][ii] + (IRAXIS(ZN, ii) - IRAXIS(ZP, ii))*TMP_RECIP_AXES[ZQI][ii]);
 }
 
@@ -83,7 +84,7 @@ for(int iy=0 ; iy<NL ; iy++){
     for(int ix=0 ; ix<NK ; ix++ ){
         const double xp = TMP_RECIP_AXES[XQR][ix];
         const double yp = TMP_RECIP_AXES[XQI][ix];
-        const double coeff = COEFF_SPACE(ix+1, iy+1, 0) * charge_i;
+        const double coeff = COEFF_SPACE(ix+1, iy+1, 0) * charge_i_o2;
         for(int qx=0 ; qx<4 ; qx++){
             const double reali = xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
             const double imagi = xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
@@ -100,7 +101,7 @@ for(int iy=0 ; iy<NM ; iy++){
     for(int ix=0 ; ix<NL ; ix++ ){
         const double xp = TMP_RECIP_AXES[YQR][ix];
         const double yp = TMP_RECIP_AXES[YQI][ix];
-        const double coeff = COEFF_SPACE(0, ix+1, iy+1) * charge_i;
+        const double coeff = COEFF_SPACE(0, ix+1, iy+1) * charge_i_o2;
         for(int qx=0 ; qx<4 ; qx++){
             const double reali = xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
             const double imagi = xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
@@ -117,7 +118,7 @@ for(int iy=0 ; iy<NK ; iy++){
     for(int ix=0 ; ix<NM ; ix++ ){
         const double xp = TMP_RECIP_AXES[ZQR][ix];
         const double yp = TMP_RECIP_AXES[ZQI][ix];
-        const double coeff = COEFF_SPACE(iy+1, 0, ix+1) * charge_i;
+        const double coeff = COEFF_SPACE(iy+1, 0, ix+1) * charge_i_o2;
         for(int qx=0 ; qx<4 ; qx++){
             const double reali = xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
             const double imagi = xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
@@ -140,7 +141,7 @@ for(int iz=0 ; iz<NM ; iz++ ){
             const double yp = TMP_RECIP_AXES[XQI][ix];
             const double* r_base_index = &RRS_INDEX(ix,iy,iz,0);
             const double* i_base_index = &IRS_INDEX(ix,iy,iz,0);
-            const double coeff = COEFF_SPACE(ix+1, iy+1, iz+1) * charge_i;
+            const double coeff = COEFF_SPACE(ix+1, iy+1, iz+1) * charge_i_o2;
             for(int qx=0 ; qx<8 ; qx++){
                 const double ycp = yp * CC_MAP_X(qx);
                 const double bcp = bp * CC_MAP_Y(qx);
@@ -148,8 +149,8 @@ for(int iz=0 ; iz<NM ; iz++ ){
                 const double xa_m_yb = xp*ap - ycp*bcp;
                 const double xb_p_ya = xp*bcp + ycp*ap;
     
-                //*(r_base_index+qx) += charge_i * (gp*xa_m_yb - hcp*xb_p_ya);
-                //*(i_base_index+qx) += charge_i * (xa_m_yb*hcp + xb_p_ya*gp);
+                //*(r_base_index+qx) += charge_i_o2 * (gp*xa_m_yb - hcp*xb_p_ya);
+                //*(i_base_index+qx) += charge_i_o2 * (xa_m_yb*hcp + xb_p_ya*gp);
 
                 Energy[0] += coeff*((gp*xa_m_yb - hcp*xb_p_ya)*(*(r_base_index+qx)) - (xa_m_yb*hcp + xb_p_ya*gp)*(*(i_base_index+qx)));
 
