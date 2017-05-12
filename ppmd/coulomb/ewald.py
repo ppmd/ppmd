@@ -161,6 +161,9 @@ class EwaldOrthoganal(object):
         self._subvars['SUB_LEN_QUAD'] = str(nmax_x*nmax_y*nmax_z)
         self._subvars['SUB_MAX_RECIP'] = str(max_len)
         self._subvars['SUB_MAX_RECIP_SQ'] = str(max_len**2.)
+        self._subvars['SUB_SQRT_ALPHA'] = str(sqrt(alpha))
+        self._subvars['SUB_REAL_CUTOFF_SQ'] = str(recip_cutoff**2.)
+        self._subvars['SUB_REAL_CUTOFF'] = str(recip_cutoff)
 
 
         self._init_libs()
@@ -304,13 +307,8 @@ class EwaldOrthoganal(object):
         self._calculate_reciprocal_contribution(positions, charges)
 
 
-
-
-
-
-
-
-
+    def evaluate_real_space(self, positions, charges):
+        pass
 
 
 
