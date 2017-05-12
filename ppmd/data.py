@@ -318,9 +318,13 @@ class GlobalArrayShared(host._Array):
         self._sync_wait()
         return self._win.base
 
-    def ctypes_data_access(self, mode=access.RW, pair=False):
+    def ctypes_data_access(self, mode=None, pair=False):
+        assert mode in (access.INC_ZERO, access.READ, access.R, access.INC, access.INC0)
         self._sync_wait()
-        return self._win.base
+        if mode.write:
+            return self._win.base
+        else:
+            return self._rdata.ctypes.data_as(ctypes.POINTER(self.dtype))
 
         
     def ctypes_data_post(self, mode=None):
