@@ -314,7 +314,6 @@ class ParticleLoop(object):
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 args.append(dat_orig[0].ctypes_data)
-                print args[-1]
                 if issubclass(type(dat_orig[0]), data.ParticleDat):
                     _N_LOCAL = dat_orig[0].npart_local
             else:
