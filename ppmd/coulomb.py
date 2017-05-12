@@ -278,17 +278,18 @@ class CoulombicEnergy(object):
             }
         )
 
-    def evaluate_lr_energy(self, positions, charges, forces, energy):
+    def extract_forces_energy(self, positions, charges, forces, energy):
         self._extract_reciprocal_contribution(positions, charges, forces, energy)
 
 
-
-    def evaluate_lr(self, positions, charges):
+    def evaluate_contributions(self, positions, charges):
 
         t0 = time.time()
 
         self._calculate_reciprocal_contribution(positions, charges)
 
+
+    def _test_python_structure_factor(self, positions, charges):
 
         recip_space = self._vars['recip_space_kernel']
         #print self._cont_lib.loop_timer.time
@@ -459,6 +460,11 @@ class CoulombicEnergy(object):
 
 
 
+
+
+
+
+
     @staticmethod
     def _COMP_EXP_PACKED(x, gh):
         gh[0] = cos(x)
@@ -477,6 +483,7 @@ class CoulombicEnergy(object):
 
         gh[0] = axmby*k[0] - xbpay*k[1]
         gh[1] = axmby*k[1] + xbpay*k[0]
+
 
     def test_evaluate_python_lr(self, positions, charges):
         # python version for sanity

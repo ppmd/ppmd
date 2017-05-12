@@ -60,10 +60,8 @@ def test_ewald_energy_python_co2_1():
     charges[:, 0] = data[:,3]
     assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
 
-    rs = c.evaluate_lr(positions=positions, charges=charges)
-    #print rs
-    #assert abs(rs[0]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from loop back over particles"
-    #assert abs(rs[1]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Energy from structure factor"
+    c.evaluate_contributions(positions=positions, charges=charges)
+    rs = c._test_python_structure_factor(positions=positions, charges=charges)
 
     py_recip_space = np.load('../res/coulomb/co2_recip_space.npy')
 
@@ -428,7 +426,8 @@ def test_ewald_energy_python_co2_2():
     charges[:, 0] = data[:,3]
     assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
 
-    rs = c.evaluate_lr(positions=positions, charges=charges)
+    c.evaluate_contributions(positions=positions, charges=charges)
+    rs = c._test_python_structure_factor(positions=positions, charges=charges)
 
     assert abs(rs*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "Energy from structure factor"
 
@@ -505,11 +504,12 @@ def test_ewald_energy_python_co2_3():
     charges[:, 0] = data[:,3]
     assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
 
-    rs = c.evaluate_lr(positions=positions, charges=charges)
+    c.evaluate_contributions(positions=positions, charges=charges)
+    rs = c._test_python_structure_factor(positions=positions, charges=charges)
 
     assert abs(rs*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3
 
-    c.evaluate_lr_energy(positions, charges, forces, energy)
+    c.extract_forces_energy(positions, charges, forces, energy)
     assert abs(energy[0]*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3
 
 
@@ -551,12 +551,13 @@ def test_ewald_energy_python_co2_4():
     charges[:, 0] = data[:,3]
     assert abs(np.sum(charges[:,0])) < 10.**-13, "total charge not zero"
 
-    rs = c.evaluate_lr(positions=positions, charges=charges)
+    c.evaluate_contributions(positions=positions, charges=charges)
+    rs = c._test_python_structure_factor(positions=positions, charges=charges)
 
     assert abs(rs*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "Structure factor"
 
     energy[0] = 0.0
-    c.evaluate_lr_energy(positions, charges, forces, energy)
+    c.extract_forces_energy(positions, charges, forces, energy)
 
     assert abs(energy[0]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "particle loops factor"
 
@@ -600,7 +601,8 @@ def test_ewald_energy_python_co2_5():
         A.charges[:, 0] = data[:,3]
     A.scatter_data_from(0)
 
-    rs = c.evaluate_lr(positions=A.positions, charges=A.charges)
+    c.evaluate_contributions(positions=A.positions, charges=A.charges)
+    rs = c._test_python_structure_factor(positions=A.positions, charges=A.charges)
 
     py_recip_space = np.load('../res/coulomb/co2_recip_space.npy')
 
@@ -960,7 +962,8 @@ def test_ewald_energy_python_co2_6():
         A.charges[:, 0] = data[:,3]
     A.scatter_data_from(0)
 
-    rs = c.evaluate_lr(positions=A.positions, charges=A.charges)
+    c.evaluate_contributions(positions=A.positions, charges=A.charges)
+    rs = c._test_python_structure_factor(positions=A.positions, charges=A.charges)
 
     py_recip_space = np.load('../res/coulomb/co2_recip_space.npy')
 
