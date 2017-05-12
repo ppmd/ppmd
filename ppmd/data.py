@@ -109,7 +109,7 @@ class GlobalArray(object):
 
 
 
-class GlobalArrayClassic(object):
+class GlobalArrayClassic(host._Array):
     """
     Class for global data. This class may be: globally set, incremented and
     read. This class is constructed with a MPI reduction operator, currently 
@@ -158,12 +158,18 @@ class GlobalArrayClassic(object):
         self._sync_wait()
         return self._data[item]
 
-    def __call__(self, mode=access.RW):
+    def __call__(self, mode=access.INC):
+
+        assert mode in (access.INC_ZERO, access.READ, access.R, access.INC, access.INC0)
+        if mode in (access.INC0, access.INC_ZERO):
+            self.set(0)
+
         return self, mode
 
+    @property
     def ctypes_data(self):
         self._sync_wait()
-        return self._data.ctypes.ctypes.data_as(ctypes.POINTER(self.dtype))
+        return self._data.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def ctypes_data_post(self, mode=access.RW):
         self._sync_init()
@@ -182,7 +188,7 @@ class GlobalArrayClassic(object):
         self._sync_status = True
 
 
-class GlobalArrayShared(object):
+class GlobalArrayShared(host._Array):
     """
     Class for global data. This class may be: globally set, incremented and
     read. This class is constructed with a MPI reduction operator, currently 
@@ -297,9 +303,14 @@ class GlobalArrayShared(object):
         self._sync_wait()
         return np.array(self._rdata[item])
 
-    def __call__(self, mode=access.RW):
+    def __call__(self, mode=access.INC):
+        assert mode in (access.INC_ZERO, access.READ, access.R, access.INC, access.INC0)
+        if mode in (access.INC0, access.INC_ZERO):
+            self.set(0)
+
         return self, mode
 
+    @property
     def ctypes_data(self):
         self._sync_wait()
         return self._win.base

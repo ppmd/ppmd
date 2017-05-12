@@ -14,7 +14,11 @@ rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 nproc = md.mpi.MPI.COMM_WORLD.Get_size()
 
 GlobalArray = md.data.GlobalArray
+ParticleDat = md.data.ParticleDat
+Kernel = md.kernel.Kernel
+ParticleLoop = md.loop.ParticleLoop
 
+from ppmd.access import *
 N1 = 4
 
 
@@ -116,7 +120,55 @@ def test_host_global_array_4(DGAN1):
         assert abs(A[ix] - csuma[ix])<10.**-15, "GlobalArray.reduction 3 failed"
 
 
+def test_host_global_array_5(DGAN1):
+    A = DGAN1
+    A.set(0)
 
+    PD = ParticleDat(npart=N1, ncomp=1, dtype=ctypes.c_int)
+    PD[:,0] = np.arange(N1)
+
+    kernel_src = '''
+    A[PD.i[0]] = 1;
+    '''
+    kernel = Kernel('DGAN1', kernel_src)
+    loop = ParticleLoop(kernel=kernel, dat_dict={'A': A(INC), 'PD':PD(READ)})
+    loop.execute()
+
+    for ix in range(N1):
+        assert abs(A[ix] - nproc)<10.**-15, "GlobalArray.reduction 1 failed"
+
+def test_host_global_array_6(DGAN1):
+    A = DGAN1
+    A.set(1)
+
+    PD = ParticleDat(npart=N1, ncomp=1, dtype=ctypes.c_int)
+    PD[:,0] = np.arange(N1)
+
+    kernel_src = '''
+    '''
+    kernel = Kernel('DGAN2', kernel_src)
+    loop = ParticleLoop(kernel=kernel, dat_dict={'A': A(INC_ZERO), 'PD':PD(READ)})
+    loop.execute()
+
+    for ix in range(N1):
+        assert abs(A[ix])<10.**-15, "GlobalArray.reduction 1 failed"
+
+def test_host_global_array_7(DGAN1):
+    A = DGAN1
+    A.set(1)
+
+    PD = ParticleDat(npart=N1, ncomp=1, dtype=ctypes.c_int)
+    PD[:,0] = np.arange(N1)
+
+    kernel_src = '''
+    A[PD.i[0]] = 2;
+    '''
+    kernel = Kernel('DGAN2', kernel_src)
+    loop = ParticleLoop(kernel=kernel, dat_dict={'A': A(INC_ZERO), 'PD':PD(READ)})
+    loop.execute()
+
+    for ix in range(N1):
+        assert abs(A[ix] - 2*nproc)<10.**-15, "GlobalArray.reduction 1 failed"
 
 
 

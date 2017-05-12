@@ -120,7 +120,16 @@ def _create_from_existing(ndarray=None, dtype=None):
 # Array.
 ###############################################################################
 
-class Array(object):
+class _Array(object):
+    @property
+    def ctypes_data(self):
+        return None
+    def ctypes_data_access(self, mode=access.RW, pair=True):
+        pass
+    def ctypes_data_post(self, mode=access.RW):
+        pass
+
+class Array(_Array):
     """
     Basic dynamic memory array on host, with some methods.
     """

@@ -112,7 +112,7 @@ class ParticleLoop(object):
                                           Restrict(self._cc.restrict_keyword, dat[0]))
                                       )
 
-            if issubclass(type(dat[1][0]), host.Array):
+            if issubclass(type(dat[1][0]), host._Array):
                 kernel_arg = cgen.Pointer(cgen.Value(host.ctypes_map[dat[1][0].dtype],
                                               Restrict(self._cc.restrict_keyword, dat[0]))
                                           )
@@ -150,7 +150,7 @@ class ParticleLoop(object):
         g = cgen.Module([cgen.Comment('#### KERNEL_MAP_MACROS ####')])
 
         for i, dat in enumerate(self._dat_dict.items()):
-            if issubclass(type(dat[1][0]), host.Array):
+            if issubclass(type(dat[1][0]), host._Array):
                 g.append(cgen.Define(dat[0]+'(x)', '('+dat[0]+'[(x)])'))
             if issubclass(type(dat[1][0]), host.Matrix):
                 g.append(cgen.Define(dat[0]+'(y)', dat[0]+'.i[(y)]'))
@@ -191,7 +191,7 @@ class ParticleLoop(object):
         kernel_call_symbols = []
 
         for i, dat in enumerate(self._dat_dict.items()):
-            if issubclass(type(dat[1][0]), host.Array):
+            if issubclass(type(dat[1][0]), host._Array):
                 kernel_call_symbols.append(dat[0])
             elif issubclass(type(dat[1][0]), host.Matrix):
                 call_symbol = dat[0] + '_c'
@@ -314,6 +314,7 @@ class ParticleLoop(object):
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
                 args.append(dat_orig[0].ctypes_data)
+                print args[-1]
                 if issubclass(type(dat_orig[0]), data.ParticleDat):
                     _N_LOCAL = dat_orig[0].npart_local
             else:

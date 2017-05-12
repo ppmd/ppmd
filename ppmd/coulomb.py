@@ -29,7 +29,7 @@ _charge_coulomb = scipy.constants.physical_constants['atomic unit of charge'][0]
 
 class CoulombicEnergy(object):
 
-    def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None, recip_cutoff=None, recip_nmax=None):
+    def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None, recip_cutoff=None, recip_nmax=None, shared_memory=False):
 
         self.domain = domain
         self.eps = float(eps)
@@ -139,7 +139,11 @@ class CoulombicEnergy(object):
                    8*nmax_z*nmax_x +\
                    16*nmax_x*nmax_y*nmax_z
 
-        self._vars['recip_space_kernel'] = data.ScalarArray(ncomp=reciplen, dtype=ctypes.c_double)
+        self._vars['recip_space_kernel'] = data.GlobalArray(
+            size=reciplen,
+            dtype=ctypes.c_double,
+            shared_memory=shared_memory
+        )
         #self._vars['recip_vec_kernel'] = data.ScalarArray(np.zeros(3, dtype=ctypes.c_double))
         #self._vars['recip_vec_kernel'][0] = gx[0]
         #self._vars['recip_vec_kernel'][1] = gy[1]
