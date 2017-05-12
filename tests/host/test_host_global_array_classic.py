@@ -17,6 +17,7 @@ GlobalArray = md.data.GlobalArrayClassic
 ParticleDat = md.data.ParticleDat
 Kernel = md.kernel.Kernel
 ParticleLoop = md.loop.ParticleLoop
+Header = md.kernel.Header
 
 from ppmd.access import *
 
@@ -138,7 +139,7 @@ def test_host_global_array_5(DGAN1):
     kernel_src = '''
     A[PD.i[0]] = 1;
     '''
-    kernel = Kernel('DGAN1', kernel_src)
+    kernel = Kernel('DGAN1', kernel_src, headers=Header('stdio.h'))
     loop = ParticleLoop(kernel=kernel, dat_dict={'A': A(INC), 'PD':PD(READ)})
     loop.execute()
 
@@ -209,6 +210,9 @@ def test_host_global_array_8(DGAN1):
     for ix in range(N1):
         assert abs(PD2[ix,] - 2*nproc)<10.**-15, "GlobalArray.reduction 2 failed"
 
+
+    for ix in range(N1):
+        assert abs(A[ix] - 2*nproc)<10.**-15, "GlobalArray.reduction 3 failed"
 
 
 

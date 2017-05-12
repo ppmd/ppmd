@@ -205,6 +205,9 @@ def test_host_global_array_8(DGAN1):
         assert abs(PD2[ix,0] - 2*nproc)<10.**-15, "GlobalArray.reduction 2 failed"
 
 
+    for ix in range(N1):
+        assert abs(A[ix] - 2*nproc)<10.**-15, "GlobalArray.reduction 3 failed"
+
 
 
 

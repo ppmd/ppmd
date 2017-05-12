@@ -164,7 +164,7 @@ def test_ewald_energy_python_co2_2_3():
     rs = c._test_python_structure_factor()
 
 
-    #assert abs(rs*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "structure factor"
+    assert abs(rs*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "structure factor"
     assert abs(energy[0]*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "particle loop"
 
 
@@ -222,9 +222,12 @@ def test_ewald_energy_python_co2_2_4():
     rs = c._test_python_structure_factor()
 
 
-    #assert abs(rs*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "structure factor"
+    assert abs(rs*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "structure factor"
     assert abs(energy[0]*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "particle loop"
 
+    c.extract_forces_energy(A.positions, A.charges, A.forces, energy)
+
+    assert abs(energy[0]*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "particle loop"
 
 
 

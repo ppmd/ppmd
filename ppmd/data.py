@@ -163,6 +163,7 @@ class GlobalArrayClassic(host._Array):
         return self, mode
 
     def ctypes_data_access(self, mode=access.RW, pair=False):
+        self._sync_wait()
         if mode in (access.INC0, access.INC_ZERO):
             self.set(0)
         return self.ctypes_data
@@ -172,8 +173,9 @@ class GlobalArrayClassic(host._Array):
         self._sync_wait()
         return self._data.ctypes.data_as(ctypes.POINTER(self.dtype))
 
-    def ctypes_data_post(self, mode=access.RW):
-        self._sync_init()
+    def ctypes_data_post(self, mode=None):
+        if mode.write:
+            self._sync_init()
 
     def _sync_init(self):
         self._sync_status = False
@@ -315,11 +317,13 @@ class GlobalArrayShared(host._Array):
         return self._win.base
 
     def ctypes_data_access(self, mode=None, pair=False):
+
+        self._sync_wait()
+
         assert mode in (access.INC_ZERO, access.READ, access.R, access.INC, access.INC0)
         if mode in (access.INC0, access.INC_ZERO):
             self.set(0)
 
-        self._sync_wait()
         if mode.write:
             return self._win.base
         else:
@@ -327,7 +331,8 @@ class GlobalArrayShared(host._Array):
 
         
     def ctypes_data_post(self, mode=None):
-        self._sync_init()
+        if mode.write:
+            self._sync_init()
 
     def _sync_init(self):
         self._sync_status = False
