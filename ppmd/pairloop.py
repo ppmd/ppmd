@@ -1559,7 +1559,7 @@ class AllToAllNS(object):
         '''Add pointer arguments to launch command'''
         _N = 0
         for dat_orig in self._dat_dict.values():
-            args.append(dat_orig[0].ctypes_data_access(dat_orig[1]), pair=True)
+            args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=True))
             _N = dat_orig[0].npart_local
 
 
