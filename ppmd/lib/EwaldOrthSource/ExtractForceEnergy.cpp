@@ -17,7 +17,7 @@ const double ri[4] = {Positions.i[0]*GX, Positions.i[1]*GY, Positions.i[2]*GZ, 0
 const double charge_i = Charges.i[0];
 const double charge_i_o2 = charge_i*0.5;
 
-double* force = Forces.i;
+double tmp_energy[1] = {0.0};
 
 
 double re_exp[4];
@@ -61,17 +61,17 @@ for(int ix=1 ; ix<NM ; ix++) {
 // X
 for( int ii=0 ; ii<NK ; ii++ ){
     const double coeff = COEFF_SPACE(ii+1, 0, 0) * charge_i_o2;
-    Energy[0] += coeff * ((RRAXIS(XP, ii) + RRAXIS(XN, ii))*TMP_RECIP_AXES[XQR][ii] + (IRAXIS(XN, ii) - IRAXIS(XP, ii))*TMP_RECIP_AXES[XQI][ii]);
+    tmp_energy[0] += coeff * ((RRAXIS(XP, ii) + RRAXIS(XN, ii))*TMP_RECIP_AXES[XQR][ii] + (IRAXIS(XN, ii) - IRAXIS(XP, ii))*TMP_RECIP_AXES[XQI][ii]);
 } 
 // Y
 for( int ii=0 ; ii<NL ; ii++ ){
     const double coeff = COEFF_SPACE(0, ii+1, 0) * charge_i_o2;
-    Energy[0] += coeff * ((RRAXIS(YP, ii) + RRAXIS(YN, ii))*TMP_RECIP_AXES[YQR][ii] + (IRAXIS(YN, ii) - IRAXIS(YP, ii))*TMP_RECIP_AXES[YQI][ii]);
+    tmp_energy[0] += coeff * ((RRAXIS(YP, ii) + RRAXIS(YN, ii))*TMP_RECIP_AXES[YQR][ii] + (IRAXIS(YN, ii) - IRAXIS(YP, ii))*TMP_RECIP_AXES[YQI][ii]);
 }
 // Z
 for( int ii=0 ; ii<NM ; ii++ ){
     const double coeff = COEFF_SPACE(0, 0, ii+1) * charge_i_o2;
-    Energy[0] += coeff * ((RRAXIS(ZP, ii) + RRAXIS(ZN, ii))*TMP_RECIP_AXES[ZQR][ii] + (IRAXIS(ZN, ii) - IRAXIS(ZP, ii))*TMP_RECIP_AXES[ZQI][ii]);
+    tmp_energy[0] += coeff * ((RRAXIS(ZP, ii) + RRAXIS(ZN, ii))*TMP_RECIP_AXES[ZQR][ii] + (IRAXIS(ZN, ii) - IRAXIS(ZP, ii))*TMP_RECIP_AXES[ZQI][ii]);
 }
 
 
@@ -88,7 +88,7 @@ for(int iy=0 ; iy<NL ; iy++){
         for(int qx=0 ; qx<4 ; qx++){
             const double reali = xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
             const double imagi = xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
-            Energy[0] += coeff*(RRPLANE_0(qx, ix, iy)*reali - IRPLANE_0(qx, ix, iy)*imagi);
+            tmp_energy[0] += coeff*(RRPLANE_0(qx, ix, iy)*reali - IRPLANE_0(qx, ix, iy)*imagi);
         }
     }
 }
@@ -105,7 +105,7 @@ for(int iy=0 ; iy<NM ; iy++){
         for(int qx=0 ; qx<4 ; qx++){
             const double reali = xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
             const double imagi = xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
-            Energy[0] += coeff*(RRPLANE_1(qx, ix, iy)*reali - IRPLANE_1(qx, ix, iy)*imagi);
+            tmp_energy[0] += coeff*(RRPLANE_1(qx, ix, iy)*reali - IRPLANE_1(qx, ix, iy)*imagi);
         }
     }
 }
@@ -122,7 +122,7 @@ for(int iy=0 ; iy<NK ; iy++){
         for(int qx=0 ; qx<4 ; qx++){
             const double reali = xp*ap - CC_COEFF_PLANE_X1[qx]*yp * CC_COEFF_PLANE_X2[qx]*bp;
             const double imagi = xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
-            Energy[0] += coeff*(RRPLANE_2(qx, ix, iy)*reali - IRPLANE_2(qx, ix, iy)*imagi);
+            tmp_energy[0] += coeff*(RRPLANE_2(qx, ix, iy)*reali - IRPLANE_2(qx, ix, iy)*imagi);
         }
     }
 }
@@ -159,7 +159,7 @@ for(int iz=0 ; iz<NM ; iz++ ){
                     const double xa_m_yb = xp*ap - ycp*bcp;
                     const double xb_p_ya = xp*bcp + ycp*ap;
 
-                    Energy[0] += coeff*((gp*xa_m_yb - hcp*xb_p_ya)*(*(r_base_index+qx)) - (xa_m_yb*hcp + xb_p_ya*gp)*(*(i_base_index+qx)));
+                    tmp_energy[0] += coeff*((gp*xa_m_yb - hcp*xb_p_ya)*(*(r_base_index+qx)) - (xa_m_yb*hcp + xb_p_ya*gp)*(*(i_base_index+qx)));
                 }
             } else {
                 break;
@@ -167,5 +167,7 @@ for(int iz=0 ; iz<NM ; iz++ ){
         }
     }
 }
+
+Energy[0] += tmp_energy[0];
 
 // kernel end -----------------------------------------

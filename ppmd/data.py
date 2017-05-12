@@ -159,14 +159,12 @@ class GlobalArrayClassic(host._Array):
         return self._data[item]
 
     def __call__(self, mode=access.INC):
-
         assert mode in (access.INC_ZERO, access.READ, access.R, access.INC, access.INC0)
-        if mode in (access.INC0, access.INC_ZERO):
-            self.set(0)
-
         return self, mode
 
     def ctypes_data_access(self, mode=access.RW, pair=False):
+        if mode in (access.INC0, access.INC_ZERO):
+            self.set(0)
         return self.ctypes_data
 
     @property
@@ -308,8 +306,6 @@ class GlobalArrayShared(host._Array):
 
     def __call__(self, mode=access.INC):
         assert mode in (access.INC_ZERO, access.READ, access.R, access.INC, access.INC0)
-        if mode in (access.INC0, access.INC_ZERO):
-            self.set(0)
 
         return self, mode
 
@@ -320,6 +316,9 @@ class GlobalArrayShared(host._Array):
 
     def ctypes_data_access(self, mode=None, pair=False):
         assert mode in (access.INC_ZERO, access.READ, access.R, access.INC, access.INC0)
+        if mode in (access.INC0, access.INC_ZERO):
+            self.set(0)
+
         self._sync_wait()
         if mode.write:
             return self._win.base

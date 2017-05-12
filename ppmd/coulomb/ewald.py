@@ -143,6 +143,7 @@ class EwaldOrthoganal(object):
             dtype=ctypes.c_double,
             shared_memory=shared_memory
         )
+
         #self._vars['recip_vec_kernel'] = data.ScalarArray(np.zeros(3, dtype=ctypes.c_double))
         #self._vars['recip_vec_kernel'][0] = gx[0]
         #self._vars['recip_vec_kernel'][1] = gy[1]
@@ -334,7 +335,7 @@ class EwaldOrthoganal(object):
     # Below here is python based test code
     ######################################################
 
-    def _test_python_structure_factor(self, positions, charges):
+    def _test_python_structure_factor(self, positions=None, charges=None):
 
         recip_space = self._vars['recip_space_kernel']
         #print self._cont_lib.loop_timer.time
