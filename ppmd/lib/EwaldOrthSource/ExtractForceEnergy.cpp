@@ -158,9 +158,6 @@ for(int iz=0 ; iz<NM ; iz++ ){
                     const double hcp = hp * CC_MAP_Z(qx);
                     const double xa_m_yb = xp*ap - ycp*bcp;
                     const double xb_p_ya = xp*bcp + ycp*ap;
-        
-                    //*(r_base_index+qx) += charge_i_o2 * (gp*xa_m_yb - hcp*xb_p_ya);
-                    //*(i_base_index+qx) += charge_i_o2 * (xa_m_yb*hcp + xb_p_ya*gp);
 
                     Energy[0] += coeff*((gp*xa_m_yb - hcp*xb_p_ya)*(*(r_base_index+qx)) - (xa_m_yb*hcp + xb_p_ya*gp)*(*(i_base_index+qx)));
                 }

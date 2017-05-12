@@ -25,7 +25,7 @@ def test_ewald_energy_python_nacl_1():
     real space contribution and self interaction contribution.
     """
 
-    if mpi_rank > 0:
+    if mpi_size > 1:
         return
 
     eta = 0.26506
@@ -56,14 +56,14 @@ def test_ewald_energy_python_nacl_1():
     assert abs(rs[0]*c.internal_to_ev() - 0.5223894616E-26) < 10.**-3, "Energy from loop back over particles"
     assert abs(rs[1]*c.internal_to_ev() - 0.5223894616E-26) < 10.**-3, "Energy from structure factor"
 
-#@pytest.mark.skip
+@pytest.mark.skip
 def test_ewald_energy_python_co2_1():
     """
     Test that the python implementation of ewald calculates the correct 
     real space contribution and self interaction contribution.
     """
 
-    if mpi_rank > 0:
+    if mpi_size > 1:
         return
 
     eta = 0.26506
@@ -107,7 +107,7 @@ def test_ewald_energy_python_co2_2():
     real space contribution and self interaction contribution.
     """
 
-    if mpi_rank > 0:
+    if mpi_size > 1:
         return
 
     eta = 0.26506

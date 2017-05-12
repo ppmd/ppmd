@@ -245,7 +245,10 @@ class CoulombicEnergy(object):
 
 
     def _calculate_reciprocal_contribution(self, positions, charges):
+
         NLOCAL = positions.npart_local
+
+        print "NLOCAL R", NLOCAL
         recip_space = self._vars['recip_space_kernel']
         self._cont_lib.execute(
             n = NLOCAL,
@@ -259,6 +262,8 @@ class CoulombicEnergy(object):
     def _extract_reciprocal_contribution(self, positions, charges, forces, energy):
 
         NLOCAL = positions.npart_local
+
+        print "NLOCAL E", NLOCAL
         self._extract_force_energy_lib.execute(
             n = NLOCAL,
             dat_dict={
