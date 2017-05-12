@@ -134,9 +134,10 @@ class _Base(object):
         '''Add pointer arguments to launch command'''
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]))
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1]), pair=True)
             else:
-                args.append(dat_orig.ctypes_data)
+                raise RuntimeError
+                #args.append(dat_orig.ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
@@ -427,7 +428,7 @@ class PairLoopRapaportHalo(_Base):
         '''Pass access descriptor to dat'''
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_access(dat_orig[1])
+                dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
 
         args = [ctypes.c_int(_N),
                 self._domain.cell_array.ctypes_data,
@@ -445,8 +446,9 @@ class PairLoopRapaportHalo(_Base):
         '''Add pointer arguments to launch command'''
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data)
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=True))
             else:
+                raise RuntimeError
                 args.append(dat_orig.ctypes_data)
 
         '''Execute the kernel over all particle pairs.'''
@@ -627,7 +629,7 @@ class PairLoopNeighbourListNS(object):
                                           Restrict(self._cc.restrict_keyword, dat[0]))
                                       )
 
-            if issubclass(type(dat[1][0]), host._Array):
+            if issubclass(type(dat[1][0]), host.Array):
                 kernel_arg = cgen.Pointer(cgen.Value(host.ctypes_map[dat[1][0].dtype],
                                               Restrict(self._cc.restrict_keyword, dat[0]))
                                           )
@@ -669,7 +671,7 @@ class PairLoopNeighbourListNS(object):
         g = cgen.Module([cgen.Comment('#### KERNEL_MAP_MACROS ####')])
 
         for i, dat in enumerate(self._dat_dict.items()):
-            if issubclass(type(dat[1][0]), host._Array):
+            if issubclass(type(dat[1][0]), host.Array):
                 g.append(cgen.Define(dat[0]+'(x)', '('+dat[0]+'[(x)])'))
             if issubclass(type(dat[1][0]), host.Matrix):
                 g.append(cgen.Define(dat[0]+'(x,y)', dat[0]+'_##x(y)'))
@@ -739,7 +741,7 @@ class PairLoopNeighbourListNS(object):
 
         for i, dat in enumerate(self._dat_dict.items()):
 
-            if issubclass(type(dat[1][0]), host._Array):
+            if issubclass(type(dat[1][0]), host.Array):
                 pass
             elif issubclass(type(dat[1][0]), host.Matrix) \
                     and dat[1][1].write \
@@ -781,7 +783,7 @@ class PairLoopNeighbourListNS(object):
         kernel_call_symbols = []
 
         for i, dat in enumerate(self._dat_dict.items()):
-            if issubclass(type(dat[1][0]), host._Array):
+            if issubclass(type(dat[1][0]), host.Array):
                 kernel_call_symbols.append(dat[0])
             elif issubclass(type(dat[1][0]), host.Matrix):
                 call_symbol = dat[0] + '_c'
@@ -835,13 +837,13 @@ class PairLoopNeighbourListNS(object):
 
         for i, dat in enumerate(self._dat_dict.items()):
 
-            if issubclass(type(dat[1][0]), host._Array):
+            if issubclass(type(dat[1][0]), host.Array):
                 pass
             elif issubclass(type(dat[1][0]), host.Matrix)\
                     and dat[1][1].write\
                     and dat[1][0].ncomp <= self._gather_size_limit:
 
-                
+
                 isym = dat[0]+'i'
                 nc = dat[1][0].ncomp
                 ncb = '['+str(nc)+']'
@@ -952,15 +954,16 @@ class PairLoopNeighbourListNS(object):
         '''Pass access descriptor to dat'''
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_access(dat_orig[1])
+                dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
 
 
         '''Add pointer arguments to launch command'''
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data)
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=True))
             else:
-                args.append(dat_orig.ctypes_data)
+                raise RuntimeError
+                #args.append(dat_orig.ctypes_data)
 
 
         '''Rebuild neighbour list potentially'''
@@ -995,11 +998,11 @@ class PairLoopNeighbourListNS(object):
         opt.PROFILE[
             self.__class__.__name__+':'+self._kernel.name+':execute_internal'
         ] = self.loop_timer.time
-        
+
 
 
         self._kernel_execution_count += self.neighbour_list.neighbour_starting_points[self.neighbour_list.n_local]
-        
+
 
         opt.PROFILE[
             self.__class__.__name__+':'+self._kernel.name+':kernel_execution_count'
@@ -1214,7 +1217,7 @@ class AllToAllNS(object):
 
             # print host.ctypes_map[dat[1][0].dtype], dat[1][0].dtype
 
-            if issubclass(type(dat[1][0]), host._Array):
+            if issubclass(type(dat[1][0]), host.Array):
                 kernel_arg = cgen.Pointer(cgen.Value(host.ctypes_map[dat[1][0].dtype],
                                               Restrict(self._cc.restrict_keyword, dat[0]))
                                           )
@@ -1256,7 +1259,7 @@ class AllToAllNS(object):
         g = cgen.Module([cgen.Comment('#### KERNEL_MAP_MACROS ####')])
 
         for i, dat in enumerate(self._dat_dict.items()):
-            if issubclass(type(dat[1][0]), host._Array):
+            if issubclass(type(dat[1][0]), host.Array):
                 g.append(cgen.Define(dat[0]+'(x)', '('+dat[0]+'[(x)])'))
             if issubclass(type(dat[1][0]), host.Matrix):
                 g.append(cgen.Define(dat[0]+'(x,y)', dat[0]+'_##x(y)'))
@@ -1338,7 +1341,7 @@ class AllToAllNS(object):
 
         for i, dat in enumerate(self._dat_dict.items()):
 
-            if issubclass(type(dat[1][0]), host._Array):
+            if issubclass(type(dat[1][0]), host.Array):
                 pass
             elif issubclass(type(dat[1][0]), host.Matrix) \
                     and dat[1][1].write \
@@ -1377,7 +1380,7 @@ class AllToAllNS(object):
         kernel_call_symbols = []
 
         for i, dat in enumerate(self._dat_dict.items()):
-            if issubclass(type(dat[1][0]), host._Array):
+            if issubclass(type(dat[1][0]), host.Array):
                 kernel_call_symbols.append(dat[0])
             elif issubclass(type(dat[1][0]), host.Matrix):
                 call_symbol = dat[0] + '_c'
@@ -1431,7 +1434,7 @@ class AllToAllNS(object):
 
         for i, dat in enumerate(self._dat_dict.items()):
 
-            if issubclass(type(dat[1][0]), host._Array):
+            if issubclass(type(dat[1][0]), host.Array):
                 pass
             elif issubclass(type(dat[1][0]), host.Matrix)\
                     and dat[1][1].write\
@@ -1550,13 +1553,13 @@ class AllToAllNS(object):
         if self._group is not None:
             for dat_orig in self._dat_dict.values():
                 if type(dat_orig) is tuple:
-                    dat_orig[0].ctypes_data_access(dat_orig[1])
+                    dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
 
 
         '''Add pointer arguments to launch command'''
         _N = 0
         for dat_orig in self._dat_dict.values():
-            args.append(dat_orig[0].ctypes_data)
+            args.append(dat_orig[0].ctypes_data_access(dat_orig[1]), pair=True)
             _N = dat_orig[0].npart_local
 
 

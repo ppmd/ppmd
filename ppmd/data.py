@@ -166,6 +166,9 @@ class GlobalArrayClassic(host._Array):
 
         return self, mode
 
+    def ctypes_data_access(self, mode=access.RW, pair=False):
+        return self.ctypes_data
+
     @property
     def ctypes_data(self):
         self._sync_wait()
@@ -314,6 +317,11 @@ class GlobalArrayShared(host._Array):
     def ctypes_data(self):
         self._sync_wait()
         return self._win.base
+
+    def ctypes_data_access(self, mode=access.RW, pair=False):
+        self._sync_wait()
+        return self._win.base
+
         
     def ctypes_data_post(self, mode=None):
         self._sync_init()

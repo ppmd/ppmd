@@ -124,7 +124,7 @@ class _Array(object):
     @property
     def ctypes_data(self):
         return None
-    def ctypes_data_access(self, mode=access.RW, pair=True):
+    def ctypes_data_access(self, mode=access.RW, pair=False):
         pass
     def ctypes_data_post(self, mode=access.RW):
         pass
@@ -159,7 +159,7 @@ class Array(_Array):
     def ctypes_data(self):
         return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
 
-    def ctypes_data_access(self, mode=access.RW, pair=True):
+    def ctypes_data_access(self, mode=access.RW, pair=False):
         if mode is access.INC0:
             self.zero()
 
@@ -277,7 +277,7 @@ class Matrix(object):
     def ctypes_data(self):
         return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
 
-    def ctypes_data_access(self, mode=access.RW):
+    def ctypes_data_access(self, mode=access.RW, pair=False):
         """
         :arg access mode: Access type required by the calling method.
         :return: The pointer to the data.

@@ -313,11 +313,12 @@ class ParticleLoop(object):
         '''Add pointer arguments to launch command'''
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data)
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=False))
                 if issubclass(type(dat_orig[0]), data.ParticleDat):
                     _N_LOCAL = dat_orig[0].npart_local
             else:
-                args.append(dat_orig.ctypes_data)
+                raise RuntimeError
+                #args.append(dat_orig.ctypes_data)
 
 
         '''Create arg list'''
