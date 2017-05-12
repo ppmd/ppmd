@@ -9,11 +9,11 @@ __license__ = "GPL"
 from math import sqrt, log, ceil, pi, exp, cos, sin, erfc
 import numpy as np
 import ctypes
-import kernel
-import loop
-import runtime
-import data
-import access
+import ppmd.kernel
+import ppmd.loop
+import ppmd.runtime
+import ppmd.data
+import ppmd.access
 
 import cmath
 import scipy
@@ -26,8 +26,7 @@ from ppmd import host
 _charge_coulomb = scipy.constants.physical_constants['atomic unit of charge'][0]
 
 
-
-class CoulombicEnergy(object):
+class EwaldOrthoganal(object):
 
     def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None, recip_cutoff=None, recip_nmax=None, shared_memory=False):
 
@@ -122,7 +121,7 @@ class CoulombicEnergy(object):
         self._vars['recip_vec'][1, :] = gy
         self._vars['recip_vec'][2, :] = gz
         self._vars['ivolume'] = ivolume
-        self._vars['coeff_space_kernel'] = data.ScalarArray(
+        self._vars['coeff_space_kernel'] = ppmd.data.ScalarArray(
             ncomp=((nmax_x+1)*(nmax_y+1)*(nmax_z+1)),
             dtype=ctypes.c_double
         )
@@ -139,7 +138,7 @@ class CoulombicEnergy(object):
                    8*nmax_z*nmax_x +\
                    16*nmax_x*nmax_y*nmax_z
 
-        self._vars['recip_space_kernel'] = data.GlobalArray(
+        self._vars['recip_space_kernel'] = ppmd.data.GlobalArray(
             size=reciplen,
             dtype=ctypes.c_double,
             shared_memory=shared_memory
@@ -169,51 +168,64 @@ class CoulombicEnergy(object):
     def _init_libs(self):
 
         # reciprocal contribution calculation
-        with open(str(runtime.LIB_DIR) + '/EwaldOrthSource/AccumulateRecip.h','r') as fh:
+        with open(str(
+                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/AccumulateRecip.h', 'r') as fh:
             _cont_header_src = fh.read()
-        _cont_header = kernel.Header(block=_cont_header_src % self._subvars)
+        _cont_header = ppmd.kernel.Header(block=_cont_header_src % self._subvars)
 
-        with open(str(runtime.LIB_DIR) + '/EwaldOrthSource/AccumulateRecip.cpp','r') as fh:
+        with open(str(
+                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/AccumulateRecip.cpp', 'r') as fh:
             _cont_source = fh.read()
 
-        _cont_kernel = kernel.Kernel(
+        _cont_kernel = ppmd.kernel.Kernel(
             name='reciprocal_contributions',
             code=_cont_source,
             headers=_cont_header
         )
 
-        self._cont_lib = loop.ParticleLoop(
+        self._cont_lib = ppmd.loop.ParticleLoop(
             kernel=_cont_kernel,
             dat_dict={
-                'Positions': data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(access.READ),
-                'Charges': data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(access.READ),
-                'RecipSpace': self._vars['recip_space_kernel'](access.INC_ZERO)
+                'Positions': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(
+                    ppmd.access.READ),
+                'Charges': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(
+                    ppmd.access.READ),
+                'RecipSpace': self._vars['recip_space_kernel'](
+                    ppmd.access.INC_ZERO)
             }
         )
 
         # reciprocal extract forces plus energy
-        with open(str(runtime.LIB_DIR) + '/EwaldOrthSource/ExtractForceEnergy.h','r') as fh:
+        with open(str(
+                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/ExtractForceEnergy.h', 'r') as fh:
             _cont_header_src = fh.read()
-        _cont_header = kernel.Header(block=_cont_header_src % self._subvars)
+        _cont_header = ppmd.kernel.Header(block=_cont_header_src % self._subvars)
 
-        with open(str(runtime.LIB_DIR) + '/EwaldOrthSource/ExtractForceEnergy.cpp','r') as fh:
+        with open(str(
+                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/ExtractForceEnergy.cpp', 'r') as fh:
             _cont_source = fh.read()
 
-        _cont_kernel = kernel.Kernel(
+        _cont_kernel = ppmd.kernel.Kernel(
             name='reciprocal_force_energy',
             code=_cont_source,
             headers=_cont_header
         )
 
-        self._extract_force_energy_lib = loop.ParticleLoop(
+        self._extract_force_energy_lib = ppmd.loop.ParticleLoop(
             kernel=_cont_kernel,
             dat_dict={
-                'Positions': data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(access.READ),
-                'Forces': data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(access.WRITE),
-                'Energy': data.PlaceHolderArray(ncomp=1, dtype=ctypes.c_double)(access.INC_ZERO),
-                'Charges': data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(access.READ),
-                'RecipSpace': self._vars['recip_space_kernel'](access.READ),
-                'CoeffSpace': self._vars['coeff_space_kernel'](access.READ)
+                'Positions': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(
+                    ppmd.access.READ),
+                'Forces': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(
+                    ppmd.access.WRITE),
+                'Energy': ppmd.data.PlaceHolderArray(ncomp=1, dtype=ctypes.c_double)(
+                    ppmd.access.INC_ZERO),
+                'Charges': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(
+                    ppmd.access.READ),
+                'RecipSpace': self._vars['recip_space_kernel'](
+                    ppmd.access.READ),
+                'CoeffSpace': self._vars['coeff_space_kernel'](
+                    ppmd.access.READ)
             }
         )
 
@@ -256,9 +268,9 @@ class CoulombicEnergy(object):
         self._cont_lib.execute(
             n = NLOCAL,
             dat_dict={
-                'Positions': positions(access.READ),
-                'Charges': charges(access.READ),
-                'RecipSpace': recip_space(access.INC_ZERO)
+                'Positions': positions(ppmd.access.READ),
+                'Charges': charges(ppmd.access.READ),
+                'RecipSpace': recip_space(ppmd.access.INC_ZERO)
             }
         )
 
@@ -269,12 +281,14 @@ class CoulombicEnergy(object):
         self._extract_force_energy_lib.execute(
             n = NLOCAL,
             dat_dict={
-                'Positions': positions(access.READ),
-                'Charges': charges(access.READ),
-                'RecipSpace': self._vars['recip_space_kernel'](access.READ),
-                'Forces': forces(access.WRITE),
-                'Energy': energy(access.INC_ZERO),
-                'CoeffSpace': self._vars['coeff_space_kernel'](access.READ)
+                'Positions': positions(ppmd.access.READ),
+                'Charges': charges(ppmd.access.READ),
+                'RecipSpace': self._vars['recip_space_kernel'](
+                    ppmd.access.READ),
+                'Forces': forces(ppmd.access.WRITE),
+                'Energy': energy(ppmd.access.INC_ZERO),
+                'CoeffSpace': self._vars['coeff_space_kernel'](
+                    ppmd.access.READ)
             }
         )
 
@@ -288,6 +302,37 @@ class CoulombicEnergy(object):
 
         self._calculate_reciprocal_contribution(positions, charges)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    @staticmethod
+    def internal_to_ev():
+        """
+        Multiply by this constant to convert from internal units to eV.
+        """
+        epsilon_0 = scipy.constants.epsilon_0
+        pi = scipy.constants.pi
+        c0 = scipy.constants.physical_constants['atomic unit of charge'][0]
+        l0 = 10.**-10
+        return c0 / (4.*pi*epsilon_0*l0)
+
+    ######################################################
+    # Below here is python based test code
+    ######################################################
 
     def _test_python_structure_factor(self, positions, charges):
 
@@ -457,12 +502,6 @@ class CoulombicEnergy(object):
         t1 = time.time()
         #print "time taken total", t1-t0, "time taken reciprocal", self._cont_lib.loop_timer.time
         return engs*0.5
-
-
-
-
-
-
 
 
     @staticmethod
@@ -726,16 +765,7 @@ class CoulombicEnergy(object):
 
         return eng_self
 
-    @staticmethod
-    def internal_to_ev():
-        """
-        Multiply by this constant to convert from internal units to eV.
-        """
-        epsilon_0 = scipy.constants.epsilon_0
-        pi = scipy.constants.pi
-        c0 = scipy.constants.physical_constants['atomic unit of charge'][0]
-        l0 = 10.**-10
-        return c0 / (4.*pi*epsilon_0*l0)
+
 
 
     def test_evaluate_python_sr(self, positions, charges):

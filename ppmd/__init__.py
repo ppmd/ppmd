@@ -28,27 +28,26 @@ __all__ = [ 'mpi',
             'module',
             'coulomb']
 
-
-import mpi
-import config
-import logic
 import access
 import build
 import cell
+import config
 import data
 import domain
 import halo
 import host
 import kernel
+import logic
 import loop
 import method
+import module
+import mpi
+import opt
 import pairloop
 import pio
 import potential
 import runtime
 import state
-import opt
 import utility
-import module
 import coulomb
 

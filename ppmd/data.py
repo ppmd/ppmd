@@ -315,7 +315,7 @@ class GlobalArrayShared(host._Array):
         self._sync_wait()
         return self._win.base
         
-    def ctypes_data_post(self, mode=access.RW):
+    def ctypes_data_post(self, mode=None):
         self._sync_init()
 
     def _sync_init(self):

@@ -1,18 +1,14 @@
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 
-
-import numpy as np
-import pytest
-from decimal import Decimal
-import ppmd as md
 import ctypes
-
+import numpy as np
 import scipy
 import scipy.constants
-from math import pi, exp
 
-from math import sqrt
+import pytest
+
+import ppmd as md
 
 mpi_rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 mpi_size = md.mpi.MPI.COMM_WORLD.Get_size()
@@ -37,7 +33,7 @@ def test_ewald_energy_python_co2_1():
 
     e = 24.47507
     domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    c = md.coulomb.CoulombicEnergy(domain=domain, real_cutoff=rc, alpha=alpha)
+    c = md.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=rc, alpha=alpha)
 
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
@@ -397,7 +393,7 @@ def test_ewald_energy_python_co2_2():
     e2 = 50.
 
     domain = md.domain.BaseDomainHalo(extent=(e0,e1,e2))
-    c = md.coulomb.CoulombicEnergy(
+    c = md.coulomb.ewald.EwaldOrthoganal(
         domain=domain,
         real_cutoff=12.,
         alpha=alpha,
@@ -473,7 +469,7 @@ def test_ewald_energy_python_co2_3():
     e2 = 50.
 
     domain = md.domain.BaseDomainHalo(extent=(e0,e1,e2))
-    c = md.coulomb.CoulombicEnergy(
+    c = md.coulomb.ewald.EwaldOrthoganal(
         domain=domain,
         real_cutoff=12.,
         alpha=alpha,
@@ -526,7 +522,7 @@ def test_ewald_energy_python_co2_4():
 
     e = 24.47507
     domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    c = md.coulomb.CoulombicEnergy(domain=domain, real_cutoff=rc, alpha=alpha)
+    c = md.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=rc, alpha=alpha)
 
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
@@ -586,7 +582,7 @@ def test_ewald_energy_python_co2_5():
     A.domain = md.domain.BaseDomainHalo(extent=(e,e,e))
     A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
 
-    c = md.coulomb.CoulombicEnergy(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory=False)
+    c = md.coulomb.ewald.EwaldOrthoganal(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory=False)
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
@@ -947,7 +943,7 @@ def test_ewald_energy_python_co2_6():
     A.domain = md.domain.BaseDomainHalo(extent=(e,e,e))
     A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
 
-    c = md.coulomb.CoulombicEnergy(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory=True)
+    c = md.coulomb.ewald.EwaldOrthoganal(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory=True)
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
@@ -971,13 +967,6 @@ def test_ewald_energy_python_co2_6():
     nmax_x = c._vars['nmax_vec'][0]
     nmax_y = c._vars['nmax_vec'][1]
     nmax_z = c._vars['nmax_vec'][2]
-    recip_axis_len = c._vars['recip_axis_len'].value
-    recip_vec = c._vars['recip_vec']
-    nmax_vec = c._vars['nmax_vec']
-    coeff_space = c._vars['coeff_space']
-    max_recip = c._vars['max_recip'].value
-    alpha = c._vars['alpha'].value
-    ivolume = c._vars['ivolume']
     recip_space = c._vars['recip_space_kernel']
     nkmax = c._vars['recip_axis_len'].value
     nkaxis = nkmax

@@ -67,8 +67,6 @@ def test_host_global_array_2_5(IGAN1):
 
     A[:] += 1
 
-    print A[:]
-
     for ix in range(N1):
         assert A[ix] == nproc, "GlobalArray.reduction 1 failed"
 
@@ -181,7 +179,35 @@ def test_host_global_array_7(DGAN1):
         assert abs(A[ix] - 2*nproc)<10.**-15, "GlobalArray.reduction 1 failed"
 
 
+def test_host_global_array_8(DGAN1):
+    A = DGAN1
+    A.set(1)
 
+    PD = ParticleDat(npart=N1, ncomp=1, dtype=ctypes.c_int)
+    PD[:,0] = np.arange(N1)
+    PD2 = ParticleDat(npart=N1, ncomp=1, dtype=ctypes.c_double)
+    PD2[:,0] = 100.0
+
+    kernel_src = '''
+    A[PD.i[0]] = 2;
+    '''
+    kernel = Kernel('DGAN2', kernel_src)
+    loop = ParticleLoop(kernel=kernel, dat_dict={'A': A(INC_ZERO), 'PD':PD(READ)})
+    loop.execute()
+
+
+    for ix in range(N1):
+        assert abs(A[ix] - 2*nproc)<10.**-15, "GlobalArray.reduction 1 failed"
+
+    kernel_src = '''
+    PD2.i[0] = A[PD.i[0]];
+    '''
+    kernel = Kernel('DGAN2', kernel_src)
+    loop = ParticleLoop(kernel=kernel, dat_dict={'A': A(READ), 'PD':PD(READ), 'PD2': PD2(WRITE)})
+    loop.execute()
+
+    for ix in range(N1):
+        assert abs(PD2[ix,] - 2*nproc)<10.**-15, "GlobalArray.reduction 2 failed"
 
 
 

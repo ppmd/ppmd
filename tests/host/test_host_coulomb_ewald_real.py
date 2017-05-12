@@ -1,16 +1,11 @@
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 
-
 import numpy as np
-import pytest
-from decimal import Decimal
-import ppmd as md
-
 import scipy
 import scipy.constants
 
-from math import sqrt
+import ppmd as md
 
 mpi_rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 mpi_size = md.mpi.MPI.COMM_WORLD.Get_size()
@@ -31,7 +26,7 @@ def test_ewald_energy_python_nacl_1():
 
     e = 30.0
     domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    c = md.coulomb.CoulombicEnergy(domain=domain, real_cutoff=rc, alpha=alpha)
+    c = md.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=rc, alpha=alpha)
 
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
@@ -73,7 +68,7 @@ def test_ewald_energy_python_co2_1():
 
     e = 24.47507
     domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    c = md.coulomb.CoulombicEnergy(domain=domain, real_cutoff=rc, alpha=alpha)
+    c = md.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=rc, alpha=alpha)
 
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
@@ -112,7 +107,7 @@ def test_ewald_energy_python_nacl_2():
 
     e = 30.0
     domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    c = md.coulomb.CoulombicEnergy(domain=domain, real_cutoff=12.)
+    c = md.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=12.)
     assert abs(c.recip_cutoff - 0.28601*scipy.constants.pi*2.0) < 10.**-1, "recip space cutoff"
     assert abs(c.real_cutoff - 12.) < 10.**-15., "real space cutoff"
     assert c.kmax[0] == 9, "kmax_x"
@@ -134,7 +129,7 @@ def test_ewald_energy_python_co2_2():
 
     e = 24.4750735
     domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    c = md.coulomb.CoulombicEnergy(domain=domain, real_cutoff=12.)
+    c = md.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=12.)
     assert abs(c.recip_cutoff - 0.28601*scipy.constants.pi*2.0) < 10.**-1, "recip space cutoff"
     assert abs(c.real_cutoff - 12.) < 10.**-15., "real space cutoff"
     assert c.kmax[0] == 7, "kmax_x"
@@ -160,7 +155,7 @@ def test_ewald_energy_python_co2_3():
     e2 = 50.
 
     domain = md.domain.BaseDomainHalo(extent=(e0,e1,e2))
-    c = md.coulomb.CoulombicEnergy(
+    c = md.coulomb.ewald.EwaldOrthoganal(
         domain=domain,
         real_cutoff=12.,
         alpha=0.26506**2.,
