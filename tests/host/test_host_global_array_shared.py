@@ -191,13 +191,10 @@ def test_host_global_array_8(DGAN1):
         assert abs(A[ix] - 2*nproc)<10.**-15, "GlobalArray.reduction 1 failed"
 
 
-    print '__getitem__ value --->', A[:]
-
-
     kernel_src = '''
     PD2.i[0] = A[PD.i[0]];
     
-    printf("%f\\n",A[PD.i[0]]);
+    //printf("%f\\n",A[PD.i[0]]);
     
     '''
     kernel = Kernel('DGAN2', kernel_src, headers=Header('stdio.h'))
