@@ -252,7 +252,6 @@ class CoulombicEnergy(object):
 
         NLOCAL = positions.npart_local
 
-        print "NLOCAL R", NLOCAL
         recip_space = self._vars['recip_space_kernel']
         self._cont_lib.execute(
             n = NLOCAL,
@@ -267,7 +266,6 @@ class CoulombicEnergy(object):
 
         NLOCAL = positions.npart_local
 
-        print "NLOCAL E", NLOCAL
         self._extract_force_energy_lib.execute(
             n = NLOCAL,
             dat_dict={
