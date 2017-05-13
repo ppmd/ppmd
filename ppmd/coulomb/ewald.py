@@ -162,8 +162,8 @@ class EwaldOrthoganal(object):
         self._subvars['SUB_MAX_RECIP'] = str(max_len)
         self._subvars['SUB_MAX_RECIP_SQ'] = str(max_len**2.)
         self._subvars['SUB_SQRT_ALPHA'] = str(sqrt(alpha))
-        self._subvars['SUB_REAL_CUTOFF_SQ'] = str(recip_cutoff**2.)
-        self._subvars['SUB_REAL_CUTOFF'] = str(recip_cutoff)
+        self._subvars['SUB_REAL_CUTOFF_SQ'] = str(real_cutoff**2.)
+        self._subvars['SUB_REAL_CUTOFF'] = str(real_cutoff)
 
 
         self._init_libs()
@@ -231,6 +231,34 @@ class EwaldOrthoganal(object):
                 'CoeffSpace': self._vars['coeff_space_kernel'](
                     ppmd.access.READ)
             }
+        )
+
+        # real space energy and force kernel
+        with open(str(
+                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/RealSpaceForceEnergy.h', 'r') as fh:
+            _cont_header_src = fh.read()
+        _cont_header = (ppmd.kernel.Header(block=_cont_header_src % self._subvars),)
+
+        with open(str(
+                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/RealSpaceForceEnergy.cpp', 'r') as fh:
+            _cont_source = fh.read()
+
+        _real_kernel = ppmd.kernel.Kernel(
+            name='real_space_part',
+            code=_cont_source,
+            headers=_cont_header
+        ) 
+
+
+        self._real_space_pairloop = ppmd.pairloop.PairLoopNeighbourList(
+            kernel=_real_kernel,
+            dat_dict={
+                'P': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.READ),
+                'Q': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
+                'F': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.INC),
+                'u': ppmd.data.PlaceHolderArray(ncomp=1, dtype=ctypes.c_double)(ppmd.access.INC)
+            },
+            shell_cutoff=1.05*self.real_cutoff
         )
 
 

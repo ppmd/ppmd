@@ -20,6 +20,6 @@ const double sqrtalpha_r = SQRT_ALPHA*r;
 u[0] += (r < REAL_CUTOFF) ? qiqj_rm1*erfc(sqrtalpha_r) : 0.0;
 
 
-//A.i[0]+= (r2 < rc2) ? f_tmp*R0 : 0.0;
-//A.i[1]+= (r2 < rc2) ? f_tmp*R1 : 0.0;
-//A.i[2]+= (r2 < rc2) ? f_tmp*R2 : 0.0;
+//F.i[0]+= (r2 < rc2) ? f_tmp*R0 : 0.0;
+//F.i[1]+= (r2 < rc2) ? f_tmp*R1 : 0.0;
+//F.i[2]+= (r2 < rc2) ? f_tmp*R2 : 0.0;
