@@ -10,6 +10,12 @@ from math import pi
 
 import ppmd as md
 
+
+import os
+def get_res_file_path(filename):
+    return os.path.join(os.path.join(os.path.dirname(__file__), '../res'), filename)
+
+
 mpi_rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 mpi_size = md.mpi.MPI.COMM_WORLD.Get_size()
 ParticleDat = md.data.ParticleDat
@@ -34,7 +40,7 @@ def test_ewald_energy_python_co2_2_1():
     e = 24.47507
     meo2 = -0.5 * e
 
-    data = np.load('../res/coulomb/CO2.npy')
+    data = np.load(get_res_file_path('coulomb/CO2.npy'))
 
     N = data.shape[0]
     A = State()
@@ -77,7 +83,7 @@ def test_ewald_energy_python_co2_2_2():
 
     e = 24.47507
 
-    data = np.load('../res/coulomb/CO2.npy')
+    data = np.load(get_res_file_path('coulomb/CO2.npy'))
 
     N = data.shape[0]
     A = State()
@@ -124,7 +130,7 @@ def test_ewald_energy_python_co2_2_3():
     e1 = 40.
     e2 = 50.
 
-    data = np.load('../res/coulomb/CO2cuboid.npy')
+    data = np.load(get_res_file_path('coulomb/CO2cuboid.npy'))
 
     N = data.shape[0]
     A = State()
@@ -182,7 +188,7 @@ def test_ewald_energy_python_co2_2_4():
     e1 = 40.
     e2 = 50.
 
-    data = np.load('../res/coulomb/CO2cuboid.npy')
+    data = np.load(get_res_file_path('coulomb/CO2cuboid.npy'))
 
     N = data.shape[0]
     A = State()

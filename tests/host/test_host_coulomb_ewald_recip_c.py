@@ -16,6 +16,9 @@ ParticleDat = md.data.ParticleDat
 PositionDat = md.data.PositionDat
 ScalarArray = md.data.ScalarArray
 State = md.state.BaseMDState
+import os
+def get_res_file_path(filename):
+    return os.path.join(os.path.join(os.path.dirname(__file__), '../res'), filename)
 
 def assert_tol(val, tol, msg="tolerance not met"):
     assert abs(val) < 10.**(-1*tol), msg
@@ -38,7 +41,7 @@ def test_ewald_energy_python_co2_1():
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
-    data = np.load('../res/coulomb/CO2.npy')
+    data = np.load(get_res_file_path('coulomb/CO2.npy'))
 
     N = data.shape[0]
 
@@ -59,7 +62,7 @@ def test_ewald_energy_python_co2_1():
     c.evaluate_contributions(positions=positions, charges=charges)
     rs = c._test_python_structure_factor(positions=positions, charges=charges)
 
-    py_recip_space = np.load('../res/coulomb/co2_recip_space.npy')
+    py_recip_space = np.load(get_res_file_path('coulomb/co2_recip_space.npy'))
 
 
     nmax_x = c._vars['nmax_vec'][0]
@@ -404,7 +407,7 @@ def test_ewald_energy_python_co2_2():
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
-    data = np.load('../res/coulomb/CO2cuboid.npy')
+    data = np.load(get_res_file_path('coulomb/CO2cuboid.npy'))
 
     N = data.shape[0]
 
@@ -428,7 +431,7 @@ def test_ewald_energy_python_co2_2():
     assert abs(rs*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "Energy from structure factor"
 
     return
-    py_recip_space = np.load('../res/co2_recip_space.npy')
+    py_recip_space = np.load(get_res_file_path('co2_recip_space.npy'))
 
 
     nmax_x = c._vars['nmax_vec'][0]
@@ -480,7 +483,7 @@ def test_ewald_energy_python_co2_3():
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
-    data = np.load('../res/coulomb/CO2cuboid.npy')
+    data = np.load(get_res_file_path('coulomb/CO2cuboid.npy'))
 
     N = data.shape[0]
 
@@ -527,7 +530,7 @@ def test_ewald_energy_python_co2_4():
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
-    data = np.load('../res/coulomb/CO2.npy')
+    data = np.load(get_res_file_path('coulomb/CO2.npy'))
 
     N = data.shape[0]
 
@@ -574,7 +577,7 @@ def test_ewald_energy_python_co2_5():
     e = 24.47507
     meo2 = -0.5 * e
 
-    data = np.load('../res/coulomb/CO2.npy')
+    data = np.load(get_res_file_path('coulomb/CO2.npy'))
 
     N = data.shape[0]
     A = State()
@@ -600,7 +603,7 @@ def test_ewald_energy_python_co2_5():
     c.evaluate_contributions(positions=A.positions, charges=A.charges)
     rs = c._test_python_structure_factor(positions=A.positions, charges=A.charges)
 
-    py_recip_space = np.load('../res/coulomb/co2_recip_space.npy')
+    py_recip_space = np.load(get_res_file_path('coulomb/co2_recip_space.npy'))
 
 
     nmax_x = c._vars['nmax_vec'][0]
@@ -935,7 +938,7 @@ def test_ewald_energy_python_co2_6():
     e = 24.47507
     meo2 = -0.5 * e
 
-    data = np.load('../res/coulomb/CO2.npy')
+    data = np.load(get_res_file_path('coulomb/CO2.npy'))
 
     N = data.shape[0]
     A = State()
@@ -961,7 +964,7 @@ def test_ewald_energy_python_co2_6():
     c.evaluate_contributions(positions=A.positions, charges=A.charges)
     rs = c._test_python_structure_factor(positions=A.positions, charges=A.charges)
 
-    py_recip_space = np.load('../res/coulomb/co2_recip_space.npy')
+    py_recip_space = np.load(get_res_file_path('coulomb/co2_recip_space.npy'))
 
 
     nmax_x = c._vars['nmax_vec'][0]

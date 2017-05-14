@@ -249,7 +249,7 @@ class EwaldOrthoganal(object):
             headers=_cont_header
         ) 
 
-
+        return
         self._real_space_pairloop = ppmd.pairloop.PairLoopNeighbourList(
             kernel=_real_kernel,
             dat_dict={

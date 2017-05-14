@@ -12,6 +12,9 @@ import ppmd as md
 mpi_rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 mpi_size = md.mpi.MPI.COMM_WORLD.Get_size()
 ParticleDat = md.data.ParticleDat
+import os
+def get_res_file_path(filename):
+    return os.path.join(os.path.join(os.path.dirname(__file__), '../res'), filename)
 
 
 # this test is fairly pointless as the result is some tiny number
@@ -36,7 +39,7 @@ def test_ewald_energy_python_nacl_1():
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
-    data = np.load('../res/coulomb/NACL.npy')
+    data = np.load(get_res_file_path('coulomb/NACL.npy'))
 
     N = data.shape[0]
 
@@ -74,7 +77,7 @@ def test_ewald_energy_python_co2_1():
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
-    data = np.load('../res/coulomb/CO2.npy')
+    data = np.load(get_res_file_path('coulomb/CO2.npy'))
 
     N = data.shape[0]
 
@@ -127,7 +130,7 @@ def test_ewald_energy_python_co2_2():
     assert c.real_cutoff == rc, "unexpected rc"
 
 
-    data = np.load('../res/coulomb/CO2cuboid.npy')
+    data = np.load(get_res_file_path('coulomb/CO2cuboid.npy'))
 
 
     N = data.shape[0]
