@@ -51,6 +51,7 @@ class BaseMDState(object):
     def __init__(self, *args, **kwargs):
 
         self._domain = None
+        self._base_cell_width = 0.0 # no cell structure imposed
 
         self._cell_to_particle_map = None
         self._halo_manager = None
@@ -81,6 +82,27 @@ class BaseMDState(object):
 
         #halo vars
         self._halo_exchange_sizes = None
+
+    def rebuild_cell_to_particle_maps(self):
+        pass
+
+
+    def cell_decompose(self, cell_width):
+
+        # decompose into larger cells if needed
+        if cell_width > self._base_cell_width:
+
+            # decompose the domain and create associated cell list
+            assert self._domain is not None, "no domain to decompose"
+            assert self._domain.cell_decompose(cell_width) is True, "Requested new cell size cannot be made"
+            self._base_cell_width = cell_width
+            self._cell_particle_map_setup()
+            self.invalidate_lists = True
+
+            return True
+        else:
+            return False
+
 
 
     def _cell_particle_map_setup(self):

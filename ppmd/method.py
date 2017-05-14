@@ -107,6 +107,7 @@ class ListUpdateController(object):
         self.execute_boundary_conditions()
 
     def post_update(self):
+        self._state.rebuild_cell_to_particle_maps()
         self._reset_moved_distance()
 
 

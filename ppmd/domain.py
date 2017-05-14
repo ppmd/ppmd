@@ -219,24 +219,11 @@ class BaseDomainHalo(object):
 
     def cell_decompose(self, cell_width=None):
 
-        if self._init_cells:
-            if _MPIRANK == 0:
-                print "WARNING: domain already decomposed into cells"
-            if np.sum(cell_width > self.cell_edge_lengths[:]) > 0:
-
-                if _MPIRANK == 0:
-                    print "WARNING: recreating cell decomposition"
-
-            else:
-                if _MPIRANK == 0:
-                    print "WARNING: NOT recreating cell decomposition"
-                return False
-
         assert cell_width is not None, "ERROR: No cell size passed."
+        assert cell_width > 10.**-14, "ERROR: requested cell size stupidly small."
 
         if not self._init_decomp:
             print "WARNING: domain not spatial decomposed, see mpi_decompose()"
-
 
         cell_width = float(cell_width)
 
@@ -256,8 +243,6 @@ class BaseDomainHalo(object):
         self._cell_array[1] += 2
         self._cell_array[2] += 2
 
-        #print self._cell_array[:]
-        #print self._extent[:]
 
         _boundary = (
             self._boundary[0] - self._cell_edge_lengths[0],
@@ -269,7 +254,6 @@ class BaseDomainHalo(object):
         )
 
         self._boundary_outer = data.ScalarArray(_boundary, dtype=ctypes.c_double)
-
 
         self._init_cells = True
         return True

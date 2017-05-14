@@ -527,13 +527,7 @@ class PairLoopNeighbourListNS(object):
 
         assert self._group is not None, "No cell to particle map found"
 
-
-        new_decomp_flag = self._group.domain.cell_decompose(
-            self.shell_cutoff
-        )
-
-        if new_decomp_flag:
-            self._group.get_cell_to_particle_map().create()
+        self._group.cell_decompose(self.shell_cutoff)
 
         self._key = (self.shell_cutoff,
                      self._group.domain,
@@ -541,11 +535,10 @@ class PairLoopNeighbourListNS(object):
 
 
         _nd = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS
-        if not self._key in _nd.keys() or new_decomp_flag:
+        if not self._key in _nd.keys():
             _nd[self._key] = cell.NeighbourListNonN3(
                 self._group.get_cell_to_particle_map()
             )
-
 
             _nd[self._key].setup(self._group.get_npart_local_func(),
                                  self._group.get_position_dat(),
@@ -1078,12 +1071,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
         # therefore no halo exchange etc
         assert self._group is not None, "No cell to particle map found"
 
-        new_decomp_flag = self._group.domain.cell_decompose(
-            self.shell_cutoff
-        )
-
-        if new_decomp_flag:
-            self._group.get_cell_to_particle_map().create()
+        self._group.cell_decompose(self.shell_cutoff)
 
         self._key = (
             self.shell_cutoff, self._group.domain,
@@ -1091,11 +1079,10 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
             )
 
         _nd = PairLoopNeighbourList._neighbour_list_dict_PNL
-        if not self._key in _nd.keys() or new_decomp_flag:
+        if not self._key in _nd.keys():
             _nd[self._key] = cell.NeighbourListv2(
                 self._group.get_cell_to_particle_map()
             )
-
 
             _nd[self._key].setup(self._group.get_npart_local_func(),
                                  self._group.get_position_dat(),

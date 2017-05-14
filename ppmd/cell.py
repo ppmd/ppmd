@@ -71,6 +71,8 @@ class CellList(object):
         self._update_func_pre = None
         self._update_func_post = None
 
+        self.create()
+
     def reset_callbacks(self):
         self._update_func = None
         self._update_func_pre = None
