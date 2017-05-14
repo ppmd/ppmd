@@ -20,7 +20,19 @@ class CellList(object):
     Class to handle cell lists for a given domain.
     """
 
-    def __init__(self):
+    def __init__(self, n_func, positions, domain):
+        """
+        Setup the cell list with a set of positions and a domain.
+        :param n_func: Function handle to get number of local particles.
+        :param positions: Positions to use to sort into cells using.
+        :param domain: Domain to setup with cell array.
+        :param cell_width: Cell width to use for domain partitioning.
+        :return:
+        """
+        self._n = n_func
+        self._positions = positions
+        self._domain = domain
+
         # Is class initialised?
         self._init = False
 
@@ -36,15 +48,6 @@ class CellList(object):
         # container for reverse lookup. (If needed ?)
         self._cell_reverse_lookup = None
 
-        # domain to partition.
-        self._domain = None
-
-        # positions init
-        self._positions = None
-
-
-        #function handle to get number of local particles from state
-        self._n = None
 
         # static args init.
         self._static_args = None
@@ -60,8 +63,6 @@ class CellList(object):
 
         self.halo_version_id = 0
         """halo version id incremented when halo cell list is updated."""
-        
-
 
         # vars for automatic updating based on a counter
 
@@ -84,23 +85,6 @@ class CellList(object):
         assert (None in (self._n, self._positions, self._domain)) is False, "get_setup_parameters Error: cell list not setup."
         return self._n, self._positions, self._domain
 
-
-    def setup(self, n_func, positions, domain):
-        """
-        Setup the cell list with a set of positions and a domain.
-        :param n_func: Function handle to get number of local particles.
-        :param positions: Positions to use to sort into cells using.
-        :param domain: Domain to setup with cell array.
-        :param cell_width: Cell width to use for domain partitioning.
-        :return:
-        """
-        self._n = n_func
-        self._positions = positions
-        self._domain = domain
-
-        # setup methods to sort into cells.
-        # self._cell_sort_setup()
-        return
 
     def create(self):
         self._cell_sort_setup()
@@ -169,6 +153,8 @@ class CellList(object):
             return True
         else:
             return False
+
+
 
     def _cell_sort_setup(self):
         """

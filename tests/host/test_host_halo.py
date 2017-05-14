@@ -88,6 +88,7 @@ def test_host_halo_cube_1(state):
     """
     cell_width = float(E)/float(crN)
     state.domain.cell_decompose(cell_width)
+
     state.get_cell_to_particle_map().create()
     state.get_cell_to_particle_map().update_required = True
 

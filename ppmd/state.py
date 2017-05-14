@@ -52,7 +52,7 @@ class BaseMDState(object):
 
         self._domain = None
 
-        self._cell_to_particle_map = cell.CellList()
+        self._cell_to_particle_map = None
         self._halo_manager = None
 
         self._position_dat = None
@@ -92,10 +92,12 @@ class BaseMDState(object):
 
             self._domain.boundary_condition.set_state(self)
 
-            self._cell_to_particle_map.setup(self.as_func('npart_local'),
-                                             self.get_position_dat(),
-                                             self.domain)
-            self._cell_to_particle_map.trigger_update()
+            self._cell_to_particle_map = cell.CellList(
+                self.as_func('npart_local'),
+                self.get_position_dat(),
+                self.domain
+            )
+
             self._halo_manager = halo.CartesianHaloSix(_AsFunc(self, '_domain'),
                                                        self._cell_to_particle_map)
 
