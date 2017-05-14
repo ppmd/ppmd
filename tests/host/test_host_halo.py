@@ -87,7 +87,7 @@ def test_host_halo_cube_1(state):
     Check cell counts before and after halo exchange.
     """
     cell_width = float(E)/float(crN)
-    state.get_domain().cell_decompose(cell_width)
+    state.domain.cell_decompose(cell_width)
     state.get_cell_to_particle_map().create()
     state.get_cell_to_particle_map().update_required = True
 
@@ -110,7 +110,7 @@ def test_host_halo_cube_1(state):
 
     state.get_cell_to_particle_map().check()
 
-    ca = state.get_domain().cell_array
+    ca = state.domain.cell_array
 
     #np.set_printoptions(linewidth=24)
     #print "cell counts \n", state.get_cell_to_particle_map().cell_contents_count[:]

@@ -1041,7 +1041,7 @@ class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):
         assert self._group is not None, "No cell to particle map found"
 
 
-        new_decomp_flag = self._group.get_domain().cell_decompose(
+        new_decomp_flag = self._group.domain.cell_decompose(
             self.shell_cutoff
         )
 
@@ -1049,7 +1049,7 @@ class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):
             self._group.get_cell_to_particle_map().create()
 
         self._key = (self.shell_cutoff,
-                     self._group.get_domain(),
+                     self._group.domain,
                      self._group.get_position_dat())
 
         _nd = PairLoopNeighbourListNSSplit._neighbour_list_dict_PNLNS_split
