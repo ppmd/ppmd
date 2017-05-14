@@ -146,7 +146,7 @@ def test_host_halo_cube_2(state):
     Check cell contents of a simple cube by value.
     """
     cell_width = float(E)/float(crN)
-    state.get_domain().cell_decompose(cell_width)
+    state.domain.cell_decompose(cell_width)
     state.get_cell_to_particle_map().create()
     state.get_cell_to_particle_map().update_required = True
 
@@ -173,7 +173,7 @@ def test_host_halo_cube_2(state):
     pj = state.p[:state.p.npart_local+state.p.npart_local_halo:]
     pj = pj[np.lexsort((pj[:, 0], pj[:, 1], pj[:,2]))]
 
-    ca = state.get_domain().cell_array
+    ca = state.domain.cell_array
 
 
 
@@ -207,7 +207,7 @@ def test_host_halo_cube_3(state):
     Check cell contents using a cell by cell inspection.
     """
     cell_width = float(E)/float(crN)
-    state.get_domain().cell_decompose(cell_width)
+    state.domain.cell_decompose(cell_width)
     state.get_cell_to_particle_map().create()
     state.get_cell_to_particle_map().update_required = True
 
@@ -233,7 +233,7 @@ def test_host_halo_cube_3(state):
 
     pj = state.p[:state.p.npart_local+state.p.npart_local_halo:]
 
-    ca = state.get_domain().cell_array
+    ca = state.domain.cell_array
 
 
     offsets = (-1, 0, 1)
@@ -273,7 +273,7 @@ def test_host_halo_cube_non_position_1(state):
     Check cell contents using a cell by cell inspection.
     """
     cell_width = float(E)/float(crN)
-    state.get_domain().cell_decompose(cell_width)
+    state.domain.cell_decompose(cell_width)
     state.get_cell_to_particle_map().create()
     state.get_cell_to_particle_map().update_required = True
 
@@ -302,7 +302,7 @@ def test_host_halo_cube_non_position_1(state):
     pj = state.p[:state.p.npart_local+state.p.npart_local_halo:]
     vj = state.v[:state.v.npart_local+state.v.npart_local_halo:]
 
-    ca = state.get_domain().cell_array
+    ca = state.domain.cell_array
 
 
     offsets = (-1, 0, 1)
@@ -381,7 +381,7 @@ def test_host_halo_cube_non_position_2(state_int_dat):
     Check cell contents using a cell by cell inspection.
     """
     cell_width = float(E)/float(crN)
-    state_int_dat.get_domain().cell_decompose(cell_width)
+    state_int_dat.domain.cell_decompose(cell_width)
     state_int_dat.get_cell_to_particle_map().create()
     state_int_dat.get_cell_to_particle_map().update_required = True
 
@@ -410,7 +410,7 @@ def test_host_halo_cube_non_position_2(state_int_dat):
     pj = state_int_dat.p[:state_int_dat.p.npart_local+state_int_dat.p.npart_local_halo:]
     vj = state_int_dat.v[:state_int_dat.v.npart_local+state_int_dat.v.npart_local_halo:]
 
-    ca = state_int_dat.get_domain().cell_array
+    ca = state_int_dat.domain.cell_array
 
 
     offsets = (-1, 0, 1)

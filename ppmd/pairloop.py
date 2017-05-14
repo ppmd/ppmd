@@ -528,7 +528,7 @@ class PairLoopNeighbourListNS(object):
         assert self._group is not None, "No cell to particle map found"
 
 
-        new_decomp_flag = self._group.get_domain().cell_decompose(
+        new_decomp_flag = self._group.domain.cell_decompose(
             self.shell_cutoff
         )
 
@@ -536,7 +536,7 @@ class PairLoopNeighbourListNS(object):
             self._group.get_cell_to_particle_map().create()
 
         self._key = (self.shell_cutoff,
-                     self._group.get_domain(),
+                     self._group.domain,
                      self._group.get_position_dat())
 
 
@@ -549,7 +549,7 @@ class PairLoopNeighbourListNS(object):
 
             _nd[self._key].setup(self._group.get_npart_local_func(),
                                  self._group.get_position_dat(),
-                                 self._group.get_domain(),
+                                 self._group.domain,
                                  self.shell_cutoff)
 
         self.neighbour_list = _nd[self._key]
@@ -1078,7 +1078,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
         # therefore no halo exchange etc
         assert self._group is not None, "No cell to particle map found"
 
-        new_decomp_flag = self._group.get_domain().cell_decompose(
+        new_decomp_flag = self._group.domain.cell_decompose(
             self.shell_cutoff
         )
 
@@ -1086,7 +1086,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
             self._group.get_cell_to_particle_map().create()
 
         self._key = (
-            self.shell_cutoff, self._group.get_domain(),
+            self.shell_cutoff, self._group.domain,
             self._group.get_position_dat()
             )
 
@@ -1099,7 +1099,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
 
             _nd[self._key].setup(self._group.get_npart_local_func(),
                                  self._group.get_position_dat(),
-                                 self._group.get_domain(),
+                                 self._group.domain,
                                  self.shell_cutoff)
 
         self.neighbour_list = _nd[self._key]

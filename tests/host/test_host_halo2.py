@@ -69,7 +69,7 @@ def test_host_halo_1_cell(state):
     Check cell counts before and after halo exchange.
     """
     cell_width = float(E)
-    state.get_domain().cell_decompose(E)
+    state.domain.cell_decompose(E)
     state.get_cell_to_particle_map().create()
     state.get_cell_to_particle_map().update_required = True
 
@@ -84,7 +84,7 @@ def test_host_halo_1_cell(state):
 
     state.get_cell_to_particle_map().check()
 
-    ca = state.get_domain().cell_array
+    ca = state.domain.cell_array
 
 
     for cx in xrange(ca[0]):

@@ -126,11 +126,11 @@ def test_host_halo_cube_4(state, h_state):
     if nproc > 1:
         cell_width = float(E)/float(crN)
 
-        state.get_domain().cell_decompose(cell_width)
+        state.domain.cell_decompose(cell_width)
         state.get_cell_to_particle_map().create()
         state.get_cell_to_particle_map().update_required = True
 
-        h_state.get_domain().cell_decompose(cell_width)
+        h_state.domain.cell_decompose(cell_width)
         h_state.get_cell_to_particle_map().create()
         h_state.get_cell_to_particle_map().update_required = True
 

@@ -88,7 +88,7 @@ def test_host_halo_cube_1(state):
     Check cell counts before and after halo exchange.
     """
     cell_width = float(E)/float(crN)
-    state.get_domain().cell_decompose(cell_width)
+    state.domain.cell_decompose(cell_width)
     state.get_cell_to_particle_map().create()
     state.get_cell_to_particle_map().update_required = True
 
@@ -111,7 +111,7 @@ def test_host_halo_cube_1(state):
     state.get_cell_to_particle_map().update_required = True
     state.get_cell_to_particle_map().check()
 
-    ca = state.get_domain().cell_array
+    ca = state.domain.cell_array
 
     np.set_printoptions(linewidth=2*(ca[0]))
 
@@ -145,7 +145,7 @@ def test_host_halo_cube_2(state):
     Check cell contents of a simple cube by value.
     """
     cell_width = float(E)/float(crN)
-    state.get_domain().cell_decompose(cell_width)
+    state.domain.cell_decompose(cell_width)
     state.get_cell_to_particle_map().create()
     state.get_cell_to_particle_map().update_required = True
 
@@ -172,7 +172,7 @@ def test_host_halo_cube_2(state):
     pj = state.p[:state.p.npart_local+state.p.npart_local_halo:]
     pj = pj[np.lexsort((pj[:, 0], pj[:, 1], pj[:,2]))]
 
-    ca = state.get_domain().cell_array
+    ca = state.domain.cell_array
 
     # print "rank, local, halo",rank, state.p.npart_local, state.p.npart_local_halo
 
@@ -207,11 +207,11 @@ def test_host_halo_cube_3(state, h_state):
     if nproc > 1:
         cell_width = float(E)/float(crN)
 
-        state.get_domain().cell_decompose(cell_width)
+        state.domain.cell_decompose(cell_width)
         state.get_cell_to_particle_map().create()
         state.get_cell_to_particle_map().update_required = True
 
-        h_state.get_domain().cell_decompose(cell_width)
+        h_state.domain.cell_decompose(cell_width)
         h_state.get_cell_to_particle_map().create()
         h_state.get_cell_to_particle_map().update_required = True
 

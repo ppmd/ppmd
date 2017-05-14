@@ -131,9 +131,6 @@ class BaseMDState(object):
     def get_npart_local_func(self):
         return self.as_func('npart_local')
 
-    def get_domain(self):
-        return self._domain
-
     def get_cell_to_particle_map(self):
         return self._cell_to_particle_map
 
