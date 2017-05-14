@@ -1073,8 +1073,10 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
                 self._group = pd[1][0].group
                 break
 
-        assert self._group is not None, "No cell to particle map found"
 
+        # if group is none there is no cell to particle map.
+        # therefore no halo exchange etc
+        assert self._group is not None, "No cell to particle map found"
 
         new_decomp_flag = self._group.get_domain().cell_decompose(
             self.shell_cutoff

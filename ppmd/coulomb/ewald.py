@@ -165,7 +165,7 @@ class EwaldOrthoganal(object):
         self._subvars['SUB_REAL_CUTOFF_SQ'] = str(real_cutoff**2.)
         self._subvars['SUB_REAL_CUTOFF'] = str(real_cutoff)
 
-
+        self._real_space_pairloop = None
         self._init_libs()
         self._init_coeff_space()
 
@@ -233,6 +233,8 @@ class EwaldOrthoganal(object):
             }
         )
 
+    def _init_real_space_lib(self):
+
         # real space energy and force kernel
         with open(str(
                 ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/RealSpaceForceEnergy.h', 'r') as fh:
@@ -249,7 +251,6 @@ class EwaldOrthoganal(object):
             headers=_cont_header
         ) 
 
-        return
         self._real_space_pairloop = ppmd.pairloop.PairLoopNeighbourList(
             kernel=_real_kernel,
             dat_dict={
@@ -336,12 +337,9 @@ class EwaldOrthoganal(object):
 
 
     def evaluate_real_space(self, positions, charges):
-        pass
 
-
-
-
-
+        if self._real_space_pairloop is None:
+            self._init_real_space_lib()
 
 
 
