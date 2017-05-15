@@ -389,7 +389,6 @@ class EwaldOrthoganal(object):
         )
 
 
-
     @staticmethod
     def internal_to_ev():
         """

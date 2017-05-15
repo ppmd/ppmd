@@ -169,13 +169,20 @@ def test_ewald_energy_python_co2_2_3():
 
     rs = c._test_python_structure_factor()
 
-
     assert abs(rs*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "structure factor"
     assert abs(energy[0]*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "particle loop"
 
+    energy_real = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=SHARED_MEMORY)
+    energy_self = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=SHARED_MEMORY)
 
 
+    energy_real[0] = 0.0
+    c.extract_forces_energy_real(A.positions, A.charges, A.forces, energy_real)
 
+    energy_self[0] = 0.0
+    c.evaluate_self_interactions(A.charges, energy_self)
+
+    assert abs(energy_real[0]*c.internal_to_ev() + energy_self[0]*c.internal_to_ev() + 0.6750050309E+04) < 10.**-2, "bad real space part"
 
 
 
