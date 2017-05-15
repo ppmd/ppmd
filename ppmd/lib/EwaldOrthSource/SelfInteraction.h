@@ -1,0 +1,1 @@
+#define M_SQRT_ALPHA_O_PI (%(SUB_M_SQRT_ALPHA_O_PI)s)
