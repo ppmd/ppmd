@@ -60,7 +60,7 @@ def test_ewald_energy_python_nacl_1():
     localsr = rs * c.internal_to_ev()
     selfij = selfinteraction * c.internal_to_ev()
 
-    #print selfij + localsr
+    print selfij, localsr
 
     # the tolerance here is about 6 decimal places
     assert abs(selfij + localsr + 0.4194069853E+04)< 10.**-2, "real + self error"

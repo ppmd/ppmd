@@ -62,6 +62,7 @@ def test_ewald_energy_python_nacl_c_1():
 
     energy = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=SHARED_MEMORY)
     energy_real = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=SHARED_MEMORY)
+    energy_self = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=SHARED_MEMORY)
 
     if mpi_rank == 0:
         A.positions[:] = data[:,0:3:]
@@ -82,8 +83,10 @@ def test_ewald_energy_python_nacl_c_1():
     energy_real[0] = 0.0
     c.extract_forces_energy_real(A.positions, A.charges, A.forces, energy_real)
 
+    energy_self[0] = 0.0
+    c.evaluate_self_interactions(A.charges, energy_self)
 
-    print energy_real[0]*c.internal_to_ev()
+    assert abs(energy_real[0]*c.internal_to_ev() + energy_self[0]*c.internal_to_ev() + 0.4194069853E+04) < 10.**-2, "bad real space part"
 
 
 

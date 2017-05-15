@@ -164,10 +164,12 @@ class EwaldOrthoganal(object):
         self._subvars['SUB_SQRT_ALPHA'] = str(sqrt(alpha))
         self._subvars['SUB_REAL_CUTOFF_SQ'] = str(real_cutoff**2.)
         self._subvars['SUB_REAL_CUTOFF'] = str(real_cutoff)
+        self._subvars['SUB_M_SQRT_ALPHA_O_PI'] = str(-1.0*sqrt(alpha/pi))
 
         self._real_space_pairloop = None
         self._init_libs()
         self._init_coeff_space()
+        self._self_interaction_lib = None
 
     def _init_libs(self):
 
@@ -350,6 +352,42 @@ class EwaldOrthoganal(object):
                 'u': energy(ppmd.access.INC)
             }
         )
+
+    def _init_self_interaction_lib(self):
+        with open(str(
+            ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/SelfInteraction.h', 'r') as fh:
+            _cont_header_src = fh.read()
+        _cont_header = (ppmd.kernel.Header(block=_cont_header_src % self._subvars),)
+
+        with open(str(
+            ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/SelfInteraction.cpp', 'r') as fh:
+            _cont_source = fh.read()
+
+        _real_kernel = ppmd.kernel.Kernel(
+            name='real_space_part',
+            code=_cont_source,
+            headers=_cont_header
+        )
+
+        self._self_interaction_lib = ppmd.loop.ParticleLoop(
+            kernel=_real_kernel,
+            dat_dict={
+                'Q': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
+                'u': ppmd.data.PlaceHolderArray(ncomp=1, dtype=ctypes.c_double)(ppmd.access.INC)
+            }
+        )
+
+    def evaluate_self_interactions(self, charges, energy):
+
+        if self._self_interaction_lib is None:
+            self._init_self_interaction_lib()
+        self._self_interaction_lib.execute(
+            dat_dict={
+                'Q': charges(ppmd.access.READ),
+                'u': energy(ppmd.access.INC)
+            }
+        )
+
 
 
     @staticmethod
