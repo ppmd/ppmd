@@ -681,9 +681,6 @@ def test_host_pair_loop_NS_FCC_2():
     kernel_map = {'P': A.P(md.access.R),
                   'NC': A.nc(md.access.INC0)}
 
-
-    print 60*'-'
-
     loop = md.pairloop.PairLoopNeighbourListNS(
         kernel=kernel,
         dat_dict=kernel_map,

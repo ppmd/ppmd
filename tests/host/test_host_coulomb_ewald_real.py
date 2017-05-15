@@ -4,17 +4,24 @@ __copyright__ = "Copyright 2016, W.R.Saunders"
 import numpy as np
 import scipy
 import scipy.constants
+from math import pi
 
+import ctypes
 import ppmd as md
 
-mpi_rank = md.mpi.MPI.COMM_WORLD.Get_rank()
-mpi_size = md.mpi.MPI.COMM_WORLD.Get_size()
-ParticleDat = md.data.ParticleDat
 
 import os
 def get_res_file_path(filename):
     return os.path.join(os.path.join(os.path.dirname(__file__), '../res'), filename)
 
+
+mpi_rank = md.mpi.MPI.COMM_WORLD.Get_rank()
+mpi_size = md.mpi.MPI.COMM_WORLD.Get_size()
+ParticleDat = md.data.ParticleDat
+PositionDat = md.data.PositionDat
+ScalarArray = md.data.ScalarArray
+State = md.state.BaseMDState
+GlobalArray = md.data.GlobalArray
 
 def test_ewald_energy_python_nacl_1():
     """
@@ -175,15 +182,6 @@ def test_ewald_energy_python_co2_3():
     assert abs(c.recip_vectors[0][0] - 0.033333*2.*scipy.constants.pi) < 10.**-5, "xrecip vector"
     assert abs(c.recip_vectors[1][1] - 0.025*2.*scipy.constants.pi) < 10.**-5, "yrecip vector"
     assert abs(c.recip_vectors[2][2] - 0.02*2.*scipy.constants.pi) < 10.**-5, "zrecip vector"
-
-
-
-
-
-
-
-
-
 
 
 

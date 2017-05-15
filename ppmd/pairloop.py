@@ -482,7 +482,6 @@ class PairLoopNeighbourListNS(object):
 
         self._dat_dict = dat_dict
         self._cc = build.TMPCC
-        # self.rn = None
 
         ##########
         # End of Rapaport initialisations.
@@ -525,37 +524,40 @@ class PairLoopNeighbourListNS(object):
                 self._group = pd[1][0].group
                 break
 
-        assert self._group is not None, "No cell to particle map found"
+        #assert self._group is not None, "No cell to particle map found"
 
-        _nd = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS
-        # if flag is true then a new cell list was created
-        flag = self._group.cell_decompose(self.shell_cutoff)
+        if self._group is not None:
+            _nd = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS
+            # if flag is true then a new cell list was created
+            flag = self._group.cell_decompose(self.shell_cutoff)
 
-        if flag:
-            for key in _nd.keys():
-                _nd[key] = cell.NeighbourListNonN3(
+            if flag:
+                for key in _nd.keys():
+                    _nd[key] = cell.NeighbourListNonN3(
+                        self._group.get_cell_to_particle_map()
+                    )
+                    _nd[key].setup(self._group.get_npart_local_func(),
+                                   self._group.get_position_dat(),
+                                   self._group.domain,
+                                   key[0])
+
+            self._key = (self.shell_cutoff,
+                         self._group.domain,
+                         self._group.get_position_dat())
+
+
+            if not self._key in _nd.keys():
+
+                _nd[self._key] = cell.NeighbourListNonN3(
                     self._group.get_cell_to_particle_map()
                 )
-                _nd[key].setup(self._group.get_npart_local_func(),
-                               self._group.get_position_dat(),
-                               self._group.domain,
-                               key[0])
 
-        self._key = (self.shell_cutoff,
-                     self._group.domain,
-                     self._group.get_position_dat())
+                _nd[self._key].setup(self._group.get_npart_local_func(),
+                                     self._group.get_position_dat(),
+                                     self._group.domain,
+                                     self.shell_cutoff)
 
 
-        if not self._key in _nd.keys():
-
-            _nd[self._key] = cell.NeighbourListNonN3(
-                self._group.get_cell_to_particle_map()
-            )
-
-            _nd[self._key].setup(self._group.get_npart_local_func(),
-                                 self._group.get_position_dat(),
-                                 self._group.domain,
-                                 self.shell_cutoff)
 
         self._neighbourlist_count = 0
         self._kernel_execution_count = 0
@@ -937,14 +939,58 @@ class PairLoopNeighbourListNS(object):
          potential engery.
         """
 
-        neighbour_list = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[self._key]
-
-        cell2part = self._group.get_cell_to_particle_map()
-        cell2part.check()
-
         '''Allow alternative pointers'''
         if dat_dict is not None:
             self._dat_dict = dat_dict
+
+        _group = self._group
+        if self._group is None:
+
+            _group = None
+            for pd in self._dat_dict.items():
+                if issubclass(type(pd[1][0]), data.PositionDat):
+                    _group = pd[1][0].group
+                    break
+
+            assert _group is not None, "no group found"
+
+            _nd = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS
+            # if flag is true then a new cell list was created
+            flag = _group.cell_decompose(self.shell_cutoff)
+
+            if flag:
+                for key in _nd.keys():
+                    _nd[key] = cell.NeighbourListNonN3(
+                        _group.get_cell_to_particle_map()
+                    )
+                    _nd[key].setup(_group.get_npart_local_func(),
+                                   _group.get_position_dat(),
+                                   _group.domain,
+                                   key[0])
+
+
+        self._key = (self.shell_cutoff,
+                     _group.domain,
+                     _group.get_position_dat())
+
+
+        if self._group is None:
+            if not self._key in _nd.keys():
+
+                _nd[self._key] = cell.NeighbourListNonN3(
+                    _group.get_cell_to_particle_map()
+                )
+
+                _nd[self._key].setup(_group.get_npart_local_func(),
+                                     _group.get_position_dat(),
+                                     _group.domain,
+                                     self.shell_cutoff)
+
+
+        neighbour_list = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[self._key]
+
+        cell2part = _group.get_cell_to_particle_map()
+        cell2part.check()
 
 
         args = []

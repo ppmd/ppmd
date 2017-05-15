@@ -251,7 +251,7 @@ class EwaldOrthoganal(object):
             headers=_cont_header
         ) 
 
-        self._real_space_pairloop = ppmd.pairloop.PairLoopNeighbourList(
+        self._real_space_pairloop = ppmd.pairloop.PairLoopNeighbourListNS(
             kernel=_real_kernel,
             dat_dict={
                 'P': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.READ),
@@ -325,8 +325,9 @@ class EwaldOrthoganal(object):
             }
         )
 
-    def extract_forces_energy(self, positions, charges, forces, energy):
+    def extract_forces_energy_reciprocal(self, positions, charges, forces, energy):
         self._extract_reciprocal_contribution(positions, charges, forces, energy)
+
 
 
     def evaluate_contributions(self, positions, charges):
@@ -336,12 +337,19 @@ class EwaldOrthoganal(object):
         self._calculate_reciprocal_contribution(positions, charges)
 
 
-    def evaluate_real_space(self, positions, charges):
+    def extract_forces_energy_real(self, positions, charges, forces, energy):
 
         if self._real_space_pairloop is None:
             self._init_real_space_lib()
 
-
+        self._real_space_pairloop.execute(
+            dat_dict={
+                'P': positions(ppmd.access.READ),
+                'Q': charges(ppmd.access.READ),
+                'F': forces(ppmd.access.INC),
+                'u': energy(ppmd.access.INC)
+            }
+        )
 
 
     @staticmethod
