@@ -469,6 +469,7 @@ class CartesianHaloSix(object):
         if type(ccc) is not host.Array:
             ccc[:] = self._cell_contents_count_tmp[:ccc.ncomp:]
 
+
         return self._h_count.value, self._t_count.value
 
 

@@ -527,15 +527,27 @@ class PairLoopNeighbourListNS(object):
 
         assert self._group is not None, "No cell to particle map found"
 
-        self._group.cell_decompose(self.shell_cutoff)
+        _nd = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS
+        # if flag is true then a new cell list was created
+        flag = self._group.cell_decompose(self.shell_cutoff)
+
+        if flag:
+            for key in _nd.keys():
+                _nd[key] = cell.NeighbourListNonN3(
+                    self._group.get_cell_to_particle_map()
+                )
+                _nd[key].setup(self._group.get_npart_local_func(),
+                               self._group.get_position_dat(),
+                               self._group.domain,
+                               key[0])
 
         self._key = (self.shell_cutoff,
                      self._group.domain,
                      self._group.get_position_dat())
 
 
-        _nd = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS
         if not self._key in _nd.keys():
+
             _nd[self._key] = cell.NeighbourListNonN3(
                 self._group.get_cell_to_particle_map()
             )
@@ -544,8 +556,6 @@ class PairLoopNeighbourListNS(object):
                                  self._group.get_position_dat(),
                                  self._group.domain,
                                  self.shell_cutoff)
-
-        self.neighbour_list = _nd[self._key]
 
         self._neighbourlist_count = 0
         self._kernel_execution_count = 0
@@ -927,6 +937,8 @@ class PairLoopNeighbourListNS(object):
          potential engery.
         """
 
+        neighbour_list = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[self._key]
+
         cell2part = self._group.get_cell_to_particle_map()
         cell2part.check()
 
@@ -962,17 +974,19 @@ class PairLoopNeighbourListNS(object):
         '''Rebuild neighbour list potentially'''
         self._invocations += 1
 
-        if cell2part.version_id > self.neighbour_list.version_id:
 
-            self.neighbour_list.update()
+
+        if cell2part.version_id > neighbour_list.version_id:
+
+            neighbour_list.update()
 
             self._neighbourlist_count += 1
 
 
         '''Create arg list'''
-        _N_LOCAL = ctypes.c_int(self.neighbour_list.n_local)
-        _STARTS = self.neighbour_list.neighbour_starting_points.ctypes_data
-        _LIST = self.neighbour_list.list.ctypes_data
+        _N_LOCAL = ctypes.c_int(neighbour_list.n_local)
+        _STARTS = neighbour_list.neighbour_starting_points.ctypes_data
+        _LIST = neighbour_list.list.ctypes_data
 
         args2 = [_N_LOCAL, _STARTS, _LIST]
 
@@ -993,8 +1007,7 @@ class PairLoopNeighbourListNS(object):
         ] = self.loop_timer.time
 
 
-
-        self._kernel_execution_count += self.neighbour_list.neighbour_starting_points[self.neighbour_list.n_local]
+        self._kernel_execution_count += neighbour_list.neighbour_starting_points[neighbour_list.n_local]
 
 
         opt.PROFILE[
@@ -1071,15 +1084,28 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
         # therefore no halo exchange etc
         assert self._group is not None, "No cell to particle map found"
 
-        self._group.cell_decompose(self.shell_cutoff)
-
-        self._key = (
-            self.shell_cutoff, self._group.domain,
-            self._group.get_position_dat()
-            )
-
         _nd = PairLoopNeighbourList._neighbour_list_dict_PNL
+
+        # if flag is true then a new cell list was created
+        flag = self._group.cell_decompose(self.shell_cutoff)
+
+        if flag:
+            for key in _nd.keys():
+                _nd[key] = cell.NeighbourListv2(
+                    self._group.get_cell_to_particle_map()
+                )
+                _nd[key].setup(self._group.get_npart_local_func(),
+                               self._group.get_position_dat(),
+                               self._group.domain,
+                               key[0])
+
+        self._key = (self.shell_cutoff,
+                     self._group.domain,
+                     self._group.get_position_dat())
+
+
         if not self._key in _nd.keys():
+
             _nd[self._key] = cell.NeighbourListv2(
                 self._group.get_cell_to_particle_map()
             )
@@ -1089,11 +1115,128 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
                                  self._group.domain,
                                  self.shell_cutoff)
 
-        self.neighbour_list = _nd[self._key]
-
         self._neighbourlist_count = 0
         self._invocations = 0
         self._kernel_execution_count = 0
+
+    def execute(self, n=None, dat_dict=None, static_args=None):
+        """
+        C version of the pair_locate: Loop over all cells update forces and
+         potential engery.
+        """
+
+        neighbour_list = PairLoopNeighbourList._neighbour_list_dict_PNL[self._key]
+
+        cell2part = self._group.get_cell_to_particle_map()
+        cell2part.check()
+
+        '''Allow alternative pointers'''
+        if dat_dict is not None:
+            self._dat_dict = dat_dict
+
+
+        args = []
+        '''Add static arguments to launch command'''
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not " \
+                                            "passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+
+        '''Pass access descriptor to dat'''
+        for dat_orig in self._dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
+
+
+        '''Add pointer arguments to launch command'''
+        for dat_orig in self._dat_dict.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=True))
+            else:
+                raise RuntimeError
+                #args.append(dat_orig.ctypes_data)
+
+
+        '''Rebuild neighbour list potentially'''
+        self._invocations += 1
+
+
+
+        if cell2part.version_id > neighbour_list.version_id:
+
+            neighbour_list.update()
+
+            self._neighbourlist_count += 1
+
+
+        '''Create arg list'''
+        _N_LOCAL = ctypes.c_int(neighbour_list.n_local)
+        _STARTS = neighbour_list.neighbour_starting_points.ctypes_data
+        _LIST = neighbour_list.list.ctypes_data
+
+        args2 = [_N_LOCAL, _STARTS, _LIST]
+
+        args2.append(self.loop_timer.get_python_parameters())
+
+        args = args2 + args
+
+        '''Execute the kernel over all particle pairs.'''
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        self.wrapper_timer.start()
+        method(*args)
+        self.wrapper_timer.pause()
+
+
+        opt.PROFILE[
+            self.__class__.__name__+':'+self._kernel.name+':execute_internal'
+        ] = self.loop_timer.time
+
+
+        self._kernel_execution_count += neighbour_list.neighbour_starting_points[neighbour_list.n_local]
+
+
+        opt.PROFILE[
+            self.__class__.__name__+':'+self._kernel.name+':kernel_execution_count'
+        ] =  self._kernel_execution_count
+
+
+
+        '''afterwards access descriptors'''
+        for dat_orig in self._dat_dict.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

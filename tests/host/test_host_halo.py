@@ -22,38 +22,9 @@ ParticleDat = md.data.ParticleDat
 ScalarArray = md.data.ScalarArray
 State = md.state.State
 
-@pytest.fixture
-def state():
-    A = State()
-    A.npart = N
-    A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
-    A.p = PositionDat(ncomp=3)
-    A.v = ParticleDat(ncomp=3)
-    A.f = ParticleDat(ncomp=3)
-    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
 
-    A.u = ScalarArray(ncomp=2)
-    A.u.halo_aware = True
 
-    return A
 
-@pytest.fixture
-def state_int_dat():
-    A = State()
-    A.npart = N
-    A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
-    A.p = PositionDat(ncomp=3)
-    A.v = ParticleDat(ncomp=3)
-    A.f = ParticleDat(ncomp=3)
-    A.int = ParticleDat(ncomp=2, dtype=ctypes.c_long)
-    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
-
-    A.u = ScalarArray(ncomp=2)
-    A.u.halo_aware = True
-
-    return A
 
 @pytest.fixture
 def s_nd():
@@ -78,9 +49,38 @@ def s_nd():
 def base_rank(request):
     return request.param
 
+@pytest.fixture
+def state_int_dat():
+    A = State()
+    A.npart = N
+    A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.p = PositionDat(ncomp=3)
+    A.v = ParticleDat(ncomp=3)
+    A.f = ParticleDat(ncomp=3)
+    A.int = ParticleDat(ncomp=2, dtype=ctypes.c_long)
+    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
 
+    A.u = ScalarArray(ncomp=2)
+    A.u.halo_aware = True
 
+    return A
 
+@pytest.fixture
+def state():
+    A = State()
+    A.npart = N
+    A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.p = PositionDat(ncomp=3)
+    A.v = ParticleDat(ncomp=3)
+    A.f = ParticleDat(ncomp=3)
+    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
+
+    A.u = ScalarArray(ncomp=2)
+    A.u.halo_aware = True
+
+    return A
 
 def test_host_halo_cube_1(state):
     """
@@ -131,6 +131,7 @@ def test_host_halo_cube_1(state):
                     assert state.get_cell_to_particle_map().cell_contents_count[ci] == 1
 
     state.p.halo_exchange()
+
 
     for cx in xrange(ca[0]):
         for cy in xrange(ca[1]):

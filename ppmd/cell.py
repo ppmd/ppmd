@@ -274,6 +274,15 @@ class CellList(object):
 
         if self._init:
 
+            _dat_dict = {'B': self._domain.boundary,
+                         'P': self._positions,
+                         'CEL': self._domain.cell_edge_lengths,
+                         'CA': self._domain.cell_array,
+                         'q': self._cell_list,
+                         'CCC': self._cell_contents_count,
+                         'CRL': self._cell_reverse_lookup}
+
+
             self.timer_sort.start()
 
             _n = self._cell_list.end - self._domain.cell_count
@@ -282,7 +291,10 @@ class CellList(object):
             self._cell_list.data[_n:self._cell_list.end:] = ct.c_int(-1)
             self._cell_contents_count.zero()
 
-            self._cell_sort_lib.execute(static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)})
+            self._cell_sort_lib.execute(
+                static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)},
+                dat_dict=_dat_dict
+            )
 
             self.version_id += 1
             self.update_required = False
@@ -648,6 +660,8 @@ class NeighbourList(object):
         # timer inits
         self.timer_update = opt.Timer()
 
+
+        self._cell_list_func = list
         self.cell_list = list
         self.max_len = None
         self.list = None

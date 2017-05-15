@@ -119,6 +119,7 @@ class BaseMDState(object):
                 self.get_position_dat(),
                 self.domain
             )
+            self._cell_to_particle_map.update_required = True
 
             self._halo_manager = halo.CartesianHaloSix(_AsFunc(self, '_domain'),
                                                        self._cell_to_particle_map)
