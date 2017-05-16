@@ -25,9 +25,15 @@ N1 = 4
 @pytest.fixture()
 def DGAN1():
     return GlobalArray(size=N1, dtype=ctypes.c_double)
+
+@pytest.fixture()
+def DGAN2():
+    return GlobalArray(size=1, dtype=ctypes.c_double)
+
 @pytest.fixture()
 def IGAN1():
     return GlobalArray(size=N1, dtype=ctypes.c_int)
+
 
 def test_host_global_array_1(IGAN1):
     A = IGAN1
@@ -211,6 +217,25 @@ def test_host_global_array_8(DGAN1):
 
 
 
+
+
+def test_host_global_array_9():
+    A = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=True)
+    A[0] = 0.0
+
+    PD = ParticleDat(npart=N1, ncomp=1, dtype=ctypes.c_int)
+    PD[:,0] = np.arange(N1)
+    PD2 = ParticleDat(npart=N1, ncomp=1, dtype=ctypes.c_double)
+    PD2[:,0] = -10.0
+
+    kernel_src = '''
+    A[0] += 1;
+    '''
+    kernel = Kernel('DGAN2', kernel_src, headers=Header('stdio.h'))
+    loop = ParticleLoop(kernel=kernel, dat_dict={'A': A(INC), 'PD':PD(READ)})
+    loop.execute()
+
+    assert abs(A[0] - nproc*4)<10.**-15, "GlobalArray.reduction 1 failed"
 
 
 

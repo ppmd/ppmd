@@ -45,10 +45,16 @@
 #define ZN (5)
 
 // handle complex conjugate efficently
-const double CC_COEFF[2] = {1.0, -1.0};
-#define CC_MAP_X(qx) ( CC_COEFF[(((qx)+1) >> 1) & 1])
-#define CC_MAP_Y(qx) ( CC_COEFF[((qx) >> 1) & 1]    )
-#define CC_MAP_Z(qx) ( CC_COEFF[((qx) >> 2)]    )
+//const double CC_COEFF[2] = {1.0, -1.0};
+
+//#define CC_MAP_X(qx) ( CC_COEFF[(((qx)+1) >> 1) & 1])
+#define CC_MAP_X(qx) ( 1.0 - 2.0*((((qx)+1)>>1)&1) )
+
+//#define CC_MAP_Y(qx) ( CC_COEFF[((qx) >> 1) & 1]    )
+#define CC_MAP_Y(qx) ( 1.0 - 2.*(((qx)>>1)&1)  )
+
+//#define CC_MAP_Z(qx) ( CC_COEFF[((qx) >> 2)]    )
+#define CC_MAP_Z(qx) ( 1.0 - (((qx)>>1)&2) )
 
 
 // slower than above

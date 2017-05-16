@@ -144,6 +144,8 @@ class GlobalArrayClassic(host._Array):
 
         self._data[:] = 0
 
+        self._timer = opt.Timer(runtime.TIMER)
+
     def set(self, val):
         self._sync_wait()
         self._data[:] = val
@@ -178,11 +180,21 @@ class GlobalArrayClassic(host._Array):
             self._sync_init()
 
     def _sync_init(self):
+        self._timer.start()
+
         self._sync_status = False
         self._redcomm.Allreduce(self._data, self._rdata, self.op)
         t=self._data
         self._data = self._rdata
         self._rdata = t
+
+        self._timer.pause()
+
+        opt.PROFILE[
+            self.__class__.__name__+':{}--{}:{}:'.format(self.dtype, self.size, id(self))
+        ] = (self._timer.time())
+
+
 
     def _sync_wait(self):
         if self._sync_status:
@@ -285,6 +297,7 @@ class GlobalArrayShared(host._Array):
         self._data_root = [self._data_root_memview[ix].view(dtype=self.dtype) for ix in xrange(self._lsize)]
 
 
+        self._timer = opt.Timer(runtime.TIMER)
     def set(self, val):
         self._sync_wait()
 
@@ -335,6 +348,8 @@ class GlobalArrayShared(host._Array):
             self._sync_init()
 
     def _sync_init(self):
+        self._timer.start()
+
         self._sync_status = False
 
         self._split_comm.get_intra_comm().Barrier()
@@ -363,6 +378,15 @@ class GlobalArrayShared(host._Array):
         self._flip = not self._flip
 
         self._split_comm.get_intra_comm().Barrier()
+
+
+        self._timer.pause()
+
+        opt.PROFILE[
+            self.__class__.__name__+':{}--{}:{}:'.format(self.dtype, self.size, id(self))
+        ] = (self._timer.time())
+
+
 
     def _sync_wait(self):
         if self._sync_status:
