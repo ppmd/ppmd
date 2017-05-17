@@ -1,28 +1,27 @@
-
-
-
-
-
-
-
 const double R0 = P.j[0] - P.i[0];
 const double R1 = P.j[1] - P.i[1];
 const double R2 = P.j[2] - P.i[2];
 
 const double r2 = R0*R0 + R1*R1 + R2*R2;
+//const double rmrc = r2 - REAL_CUTOFF_SQ;
+//const double mask = (   (*((uint64_t*)&(rmrc) ) & ((uint64_t)1 << 63)    )>> 63) & 1;
+const double mask = (r2 < REAL_CUTOFF_SQ)? 1.0 : 0.0;
 
 const double r = sqrt(r2);
+const double r_m1 = 1.0/r;
 
-const double r_m1 = 0.5/r;
-const double qiqj_rm1 = Q.i[0] * Q.j[0] * r_m1;
+const double qiqj_rm1 = Q.i[0] * Q.j[0] * r_m1 * mask;
 const double sqrtalpha_r = SQRT_ALPHA*r;
 
-u[0] += (r < REAL_CUTOFF) ? qiqj_rm1*erfc(sqrtalpha_r) : 0.0;
+// (qi*qj/rij) * erfc(sqrt(alpha)*rij)
+const double term1 = qiqj_rm1*erfc(sqrtalpha_r);
 
-//printf("%f, %f, \n", r, REAL_CUTOFF);
+u[0] += 0.5*term1;
+//term2 = term1*(1/rij) = (qi*qj/(rij**2)) * erfc(sqrt(alpha)*rij)
+const double term2 = r_m1*term1;
+//term3 = (qi*qj/rij)*(sqrt(alpha/pi) * -2)*(exp(-(rij**2))) - term2
+const double term3 = qiqj_rm1 * M2_SQRT_ALPHAOPI * exp(MALPHA*r2) - term2;
 
-
-
-//F.i[0]+= (r2 < rc2) ? f_tmp*R0 : 0.0;
-//F.i[1]+= (r2 < rc2) ? f_tmp*R1 : 0.0;
-//F.i[2]+= (r2 < rc2) ? f_tmp*R2 : 0.0;
+F.i[0] += term3 * R0;
+F.i[1] += term3 * R1;
+F.i[2] += term3 * R2;

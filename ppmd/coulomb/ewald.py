@@ -165,6 +165,8 @@ class EwaldOrthoganal(object):
         self._subvars['SUB_REAL_CUTOFF_SQ'] = str(real_cutoff**2.)
         self._subvars['SUB_REAL_CUTOFF'] = str(real_cutoff)
         self._subvars['SUB_M_SQRT_ALPHA_O_PI'] = str(-1.0*sqrt(alpha/pi))
+        self._subvars['SUB_M2_SQRT_ALPHAOPI'] = str(-2.0*sqrt(alpha/pi))
+        self._subvars['SUB_MALPHA'] = str(-1.0*alpha)
 
         self._real_space_pairloop = None
         self._init_libs()
