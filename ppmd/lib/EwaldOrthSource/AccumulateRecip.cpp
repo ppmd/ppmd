@@ -152,6 +152,7 @@ for(int iz=0 ; iz<NM ; iz++ ){
             
             if (recip_len_zyx <= MAX_RECIP_SQ){
                 const double xp = TMP_RECIP_AXES[XQR][ix];
+                const double xpap = xp*ap;
                 const double yp = TMP_RECIP_AXES[XQI][ix];
                 double* r_base_index = &RRS_INDEX(ix,iy,iz,0);
                 double* i_base_index = &IRS_INDEX(ix,iy,iz,0);
@@ -159,7 +160,7 @@ for(int iz=0 ; iz<NM ; iz++ ){
                     const double ycp = yp * CC_MAP_X(qx);
                     const double bcp = bp * CC_MAP_Y(qx);
                     const double hcp = hp * CC_MAP_Z(qx);
-                    const double xa_m_yb = xp*ap - ycp*bcp;
+                    const double xa_m_yb = xpap - ycp*bcp;
                     const double xb_p_ya = xp*bcp + ycp*ap;
         
                     *(r_base_index+qx) += charge_i * (gp*xa_m_yb - hcp*xb_p_ya);

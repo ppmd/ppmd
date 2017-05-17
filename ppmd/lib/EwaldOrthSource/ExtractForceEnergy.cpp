@@ -193,6 +193,7 @@ for(int iz=0 ; iz<NM ; iz++ ){
             if (recip_len_zyx < MAX_RECIP_SQ){
                 const double xp = TMP_RECIP_AXES[XQR][ix];
                 const double yp = TMP_RECIP_AXES[XQI][ix];
+                const double xpap = xp*ap;
                 const double* r_base_index = &RRS_INDEX(ix,iy,iz,0);
                 const double* i_base_index = &IRS_INDEX(ix,iy,iz,0);
                 const double coeff = COEFF_SPACE(ix+1, iy+1, iz+1) * charge_i_o2;
@@ -206,7 +207,7 @@ for(int iz=0 ; iz<NM ; iz++ ){
                     const double bcp = bp * ccy;
                     const double hcp = hp * ccz;
 
-                    const double xa_m_yb = xp*ap - ycp*bcp;
+                    const double xa_m_yb = xpap - ycp*bcp;
                     const double xb_p_ya = xp*bcp + ycp*ap;
                     
                     const double reali = gp*xa_m_yb - hcp*xb_p_ya;
@@ -222,9 +223,9 @@ for(int iz=0 ; iz<NM ; iz++ ){
                     //tmp_force[0] += fterm*(ix+1)*GX*ccx;
                     //tmp_force[1] += fterm*(iy+1)*GY*ccy;
                     //tmp_force[2] += fterm*(iz+1)*GZ*ccz;
-                    tmp_forcex += fterm*(ix+1)*GX*ccx;
-                    tmp_forcey += fterm*(iy+1)*GY*ccy;
-                    tmp_forcez += fterm*(iz+1)*GZ*ccz;
+                    tmp_forcex += fterm*ixGX*ccx;
+                    tmp_forcey += fterm*iyGY*ccy;
+                    tmp_forcez += fterm*izGZ*ccz;
                 }
             } else {
                 break;
