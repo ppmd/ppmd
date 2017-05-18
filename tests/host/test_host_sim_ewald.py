@@ -179,17 +179,26 @@ def test_host_sim_1(directiong):
             irij*erfc(sqrt(c.alpha)*rij)
         )
 
-        inds = A.gid[:,0].argsort()
+        inds = A.gid[:, 0].argsort()
         fs = A.f[inds]
         f2s = A.f2[inds]
 
         assert np.sum(abs(fs[0, :] - factor*directiong)) < 10.**-12
         assert np.sum(abs(fs[1, :] + factor*directiong)) < 10.**-12
 
-
         not_dir = np.logical_not(np.array(np.abs(directiong), dtype=bool))
+        dir = np.array(np.abs(directiong), dtype=bool)
+
+        # checks symmetric long range parts are zero
         assert np.sum(np.abs(f2s[:, not_dir])) < 10.**-16
         assert np.sum(np.abs(f2s[:, not_dir])) < 10.**-16
+
+        # checks sign of long range part
+        assert np.sign(f2s[0, dir]) == np.sign(np.array(directiong)[dir])
+        assert np.sign(f2s[1, dir]) == -1*np.sign(np.array(directiong)[dir])
+
+
+
 
 
 
