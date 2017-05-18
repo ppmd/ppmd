@@ -102,7 +102,6 @@ def directiong(request):
 def directiona(request):
     return request.param
 
-
 #@pytest.mark.skip
 def test_host_sim_1(directiong):
 
@@ -187,8 +186,15 @@ def test_host_sim_1(directiong):
         assert np.sum(abs(fs[0, :] - factor*directiong)) < 10.**-12
         assert np.sum(abs(fs[1, :] + factor*directiong)) < 10.**-12
 
-        assert np.sum(np.abs(f2s[:, np.logical_not(np.array(np.abs(directiong), dtype=bool))])) < 10.**-16
-        assert np.sum(np.abs(f2s[:, np.logical_not(np.array(np.abs(directiong), dtype=bool))])) < 10.**-16
+
+        not_dir = np.logical_not(np.array(np.abs(directiong), dtype=bool))
+        assert np.sum(np.abs(f2s[:, not_dir])) < 10.**-16
+        assert np.sum(np.abs(f2s[:, not_dir])) < 10.**-16
+
+
+
+
+
 
 
 
