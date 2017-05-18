@@ -107,6 +107,10 @@ class GlobalArray(object):
             size=size, dtype=dtype, comm=comm, op=op, shared_memory=shared_memory
             )
 
+    def __getitem__(self, item):
+        pass
+    def __setitem__(self, key, value):
+        pass
 
 
 class GlobalArrayClassic(host._Array):
