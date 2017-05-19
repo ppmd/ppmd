@@ -5,7 +5,7 @@ import ctypes
 import numpy as np
 import math
 import os
-
+import sys
 
 import ppmd as md
 
@@ -105,7 +105,6 @@ def directiona(request):
 @pytest.mark.slowtest
 def test_host_sim_1(directiong):
 
-    print "direction", directiong
 
     A = State()
     dt = 0.001
@@ -212,10 +211,8 @@ def test_host_sim_1(directiong):
 
 
 @pytest.mark.slowtest
-@pytest.mark.skip
+#@pytest.mark.skip
 def test_host_sim_2(directiona):
-
-    print "direction", directiona
 
     A = State()
     dt = 0.001
@@ -324,8 +321,8 @@ def test_host_sim_2(directiona):
         for ix in range(len(ke_array)-1):
             ke_diff = ke_array[ix] - ke_array[ix+1]
             u_diff = u_array[ix] - u_array[ix+1]
-            assert abs(ke_diff) < 2.
-            assert abs(u_diff) < 2.
+            assert abs(ke_diff) < 4.
+            assert abs(u_diff) < 4.
 
             steperr = abs(ke_diff + u_diff)
             #if VERBOSE and steperr > 10.**-5:

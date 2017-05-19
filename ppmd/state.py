@@ -83,6 +83,7 @@ class BaseMDState(object):
         #halo vars
         self._halo_exchange_sizes = None
 
+
     def rebuild_cell_to_particle_maps(self):
         pass
 
@@ -365,7 +366,7 @@ class _move_controller(object):
 
         self._move_unpacking_lib = None
         self._move_packing_lib = None
-        self._move_empty_slots = None
+        self._move_empty_slots = host.Array(ncomp=4, dtype=ctypes.c_int)
         self._move_used_free_slot_count = None
 
         self._move_ncomp = None
@@ -429,17 +430,17 @@ class _move_controller(object):
         elif self._move_send_buffer.ncomp < self._total_ncomp * _send_total:
             self._move_send_buffer.realloc(self._total_ncomp * _send_total)
 
-        #Make recv sizes array.
+        # Make recv sizes array.
         if self._move_dir_recv_totals is None:
             self._move_dir_recv_totals = host.Array(ncomp=26, dtype=ctypes.c_int)
 
-        #exchange number of particles about to be sent.
+        # exchange number of particles about to be sent.
         self._move_dir_send_totals = dir_send_totals
 
         self._move_dir_recv_totals.zero()
         self._move_exchange_send_recv_sizes()
 
-        #resize recv buffer.
+        # resize recv buffer.
         _recv_total = self._move_dir_recv_totals.data.sum()
         if self._move_recv_buffer is None:
             self._move_recv_buffer = host.Array(ncomp=self._total_ncomp * _recv_total, dtype=ctypes.c_double)
@@ -452,7 +453,8 @@ class _move_controller(object):
                 _d.resize(_recv_total + self.state.npart_local)
 
         # Empty slots store.
-        self._resize_empty_slot_store(_send_total)
+        if _send_total > 0:
+            self._resize_empty_slot_store(_send_total)
 
         #pack particles to send.
         self._packing_args_shift['SEND_BUFFER'] = self._move_send_buffer
@@ -755,6 +757,99 @@ class _move_controller(object):
     def _ccbarrier(self):
         return self.state.domain.comm.Barrier()
 
+    def _build_compressing_lib(self):
+        _dyn_dat_case = ''
+        _space = ' ' * 16
+
+        for ixi, ix in enumerate(self.state.particle_dats):
+            _dat = getattr(self.state, ix)
+            var_name = '_' + ix
+            if _dat.ncomp > 1:
+                _dyn_dat_case += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP': _dat.ncomp}
+                _dyn_dat_case += _space + '%(NAME)s[(slot_to_fill*%(NCOMP)s)+ni] = %(NAME)s[found_index*%(NCOMP)s+ni]; \n' % {'NCOMP':_dat.ncomp, 'NAME':str(var_name)}
+                _dyn_dat_case += _space + '} \n'
+            else:
+                _dyn_dat_case += _space + '%(NAME)s[slot_to_fill] = %(NAME)s[found_index]; \n' % {'NAME':str(var_name)}
+
+
+        _static_args = {
+            'slots_to_fill_in': ctypes.c_int,
+            'n_new_in': ctypes.c_int
+        }
+
+
+        self._compressing_dyn_args = {
+            'slots': host.Array(ncomp=1, dtype=ctypes.c_int),
+            'n_new_out': host.Array([0], dtype=ctypes.c_int)
+        }
+
+        _compressing_code = '''
+
+        int slots_to_fill = slots_to_fill_in;
+        int n_new = n_new_in;
+
+        int last_slot;
+        int last_slot_lookup_index = slots_to_fill - 1;
+
+        int slot_to_fill_index = 0;
+
+        int slot_to_fill = -1;
+
+        // Whilst there are slots to fill and the current slot is not past the end of the array.
+        if (n_new > 0) {
+            while ( (slot_to_fill_index <= last_slot_lookup_index) && (slots[slot_to_fill_index] < n_new) ){
+
+                // get first empty slot in particle dats.
+                slot_to_fill = slots[slot_to_fill_index];
+
+                int found_index = -1;
+
+                //loop from end to empty slot
+                for (int iy = n_new - 1; iy > slot_to_fill; iy--){
+
+
+                    if (iy == slots[last_slot_lookup_index]){
+                        n_new = iy;
+                        last_slot_lookup_index--;
+                        //printf("n_new=%%d \\n", n_new);
+                    } else {
+                        found_index = iy;
+                        break;
+                    }
+
+                }
+
+                if (found_index > 0){
+
+                    \n%(DYN_DAT_CODE)s
+
+                    n_new = found_index;
+
+
+                } else {
+
+                    n_new = slots[last_slot_lookup_index];
+                    break;
+                }
+
+
+                slot_to_fill_index++;
+            }
+        }
+
+        n_new_out[0] = n_new;
+
+        ''' % {'DYN_DAT_CODE': _dyn_dat_case}
+
+        # Add ParticleDats to pointer arguments.
+        for idx, ix in enumerate(self.state.particle_dats):
+            self._compressing_dyn_args['_' + ix] = getattr(self.state, ix)
+
+        _compressing_kernel = kernel.Kernel('ParticleDat_compressing_lib', _compressing_code, headers=['stdio.h'], static_args=_static_args)
+
+        self._compressing_lib = build.SharedLib(_compressing_kernel, self._compressing_dyn_args)
+
+
 
     def _compress_particle_dats(self, num_slots_to_fill):
         """
@@ -762,100 +857,8 @@ class _move_controller(object):
         """
 
         _compressing_n_new = host.Array([0], dtype=ctypes.c_int)
-        #self._compressing_slots = host.Array(self._move_empty_slots, dtype=ctypes.c_int)
 
-        if self._compressing_lib is None:
-
-            _dyn_dat_case = ''
-            _space = ' ' * 16
-
-            for ixi, ix in enumerate(self.state.particle_dats):
-                _dat = getattr(self.state, ix)
-                var_name = '_' + ix
-                if _dat.ncomp > 1:
-                    _dyn_dat_case += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP': _dat.ncomp}
-                    _dyn_dat_case += _space + '%(NAME)s[(slot_to_fill*%(NCOMP)s)+ni] = %(NAME)s[found_index*%(NCOMP)s+ni]; \n' % {'NCOMP':_dat.ncomp, 'NAME':str(var_name)}
-                    _dyn_dat_case += _space + '} \n'
-                else:
-                    _dyn_dat_case += _space + '%(NAME)s[slot_to_fill] = %(NAME)s[found_index]; \n' % {'NAME':str(var_name)}
-
-
-            _static_args = {
-                'slots_to_fill_in': ctypes.c_int,
-                'n_new_in': ctypes.c_int
-            }
-
-            self._compressing_dyn_args = {
-                'slots': self._move_empty_slots,
-                'n_new_out': _compressing_n_new
-            }
-
-            _compressing_code = '''
-
-            int slots_to_fill = slots_to_fill_in;
-            int n_new = n_new_in;
-
-            int last_slot;
-            int last_slot_lookup_index = slots_to_fill - 1;
-
-            int slot_to_fill_index = 0;
-
-            int slot_to_fill = -1;
-
-            // Whilst there are slots to fill and the current slot is not past the end of the array.
-            if (n_new > 0) {
-                while ( (slot_to_fill_index <= last_slot_lookup_index) && (slots[slot_to_fill_index] < n_new) ){
-
-                    // get first empty slot in particle dats.
-                    slot_to_fill = slots[slot_to_fill_index];
-
-                    int found_index = -1;
-
-                    //loop from end to empty slot
-                    for (int iy = n_new - 1; iy > slot_to_fill; iy--){
-
-
-                        if (iy == slots[last_slot_lookup_index]){
-                            n_new = iy;
-                            last_slot_lookup_index--;
-                            //printf("n_new=%%d \\n", n_new);
-                        } else {
-                            found_index = iy;
-                            break;
-                        }
-
-                    }
-
-                    if (found_index > 0){
-
-                        \n%(DYN_DAT_CODE)s
-
-                        n_new = found_index;
-
-
-                    } else {
-
-                        n_new = slots[last_slot_lookup_index];
-                        break;
-                    }
-
-
-                    slot_to_fill_index++;
-                }
-            }
-
-            n_new_out[0] = n_new;
-
-            ''' % {'DYN_DAT_CODE': _dyn_dat_case}
-
-            # Add ParticleDats to pointer arguments.
-            for idx, ix in enumerate(self.state.particle_dats):
-                self._compressing_dyn_args['_' + ix] = getattr(self.state, ix)
-
-            _compressing_kernel = kernel.Kernel('ParticleDat_compressing_lib', _compressing_code, headers=['stdio.h'], static_args=_static_args)
-
-
-            self._compressing_lib = build.SharedLib(_compressing_kernel, self._compressing_dyn_args)
+        assert self._compressing_lib is not None
 
         if self.compressed is True:
             # print "COMPRESSED"
@@ -880,21 +883,24 @@ class _move_controller(object):
             # self._move_empty_slots = []
             self.compress_timer.pause()
 
+
     def compress_empty_slots(self, slots):
+        if self._compressing_lib is None:
+            self._build_compressing_lib()
+
         le = len(slots)
         if le > 0:
             self.compressed = False
         else:
             self.compressed = True
-        self._resize_empty_slot_store(le)
-        self._move_empty_slots[0:le:] = slots
-        self._compress_particle_dats(le)
+        if le > 0:
+            self._resize_empty_slot_store(le)
+            self._move_empty_slots[0:le:] = slots
+            self._compress_particle_dats(le)
 
     def _resize_empty_slot_store(self, new_size):
-
-        if self._move_empty_slots is None:
-            self._move_empty_slots = host.Array(ncomp=new_size, dtype=ctypes.c_int)
-        elif self._move_empty_slots.ncomp < new_size:
+        new_size = max(new_size, 1)
+        if self._move_empty_slots.ncomp < new_size:
             self._move_empty_slots.realloc(new_size)
 
 

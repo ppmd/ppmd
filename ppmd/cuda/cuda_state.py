@@ -123,7 +123,8 @@ class BaseMDState(object):
         return self._domain.comm.Get_size()
     def _ccbarrier(self):
         return self._domain.comm.Barrier()
-
+    def rebuild_cell_to_particle_maps(self):
+        pass
 
     def _halo_update_exchange_sizes(self):
         idi = self._cell_to_particle_map.version_id
