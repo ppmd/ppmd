@@ -66,12 +66,12 @@ for( int ii=0 ; ii<NK ; ii++ ){
     const double coeff = COEFF_SPACE(ii+1, 0, 0) * charge_i_o2;
     tmp_energy += coeff * ((RRAXIS(XP, ii) + RRAXIS(XN, ii))*TMP_RECIP_AXES[XQR][ii] + (IRAXIS(XN, ii) - IRAXIS(XP, ii))*TMP_RECIP_AXES[XQI][ii]);
 
-    const double fterm = coeff*(
+    const double fterm = 2.0 * coeff*(
                                 RRAXIS(XP, ii)*TMP_RECIP_AXES[XQI][ii] + IRAXIS(XP, ii)*TMP_RECIP_AXES[XQR][ii] + \
                                 RRAXIS(XN, ii)*TMP_RECIP_AXES[XQI][ii] - IRAXIS(XN, ii)*TMP_RECIP_AXES[XQR][ii]
                                );
 
-    tmp_forcex += fterm*ii*GX;
+    tmp_forcex += fterm*(ii+1)*GX;
 
 } 
 // Y
@@ -79,12 +79,12 @@ for( int ii=0 ; ii<NL ; ii++ ){
     const double coeff = COEFF_SPACE(0, ii+1, 0) * charge_i_o2;
     tmp_energy += coeff * ((RRAXIS(YP, ii) + RRAXIS(YN, ii))*TMP_RECIP_AXES[YQR][ii] + (IRAXIS(YN, ii) - IRAXIS(YP, ii))*TMP_RECIP_AXES[YQI][ii]);
 
-    const double fterm = coeff*(
+    const double fterm = 2.0 * coeff*(
                                 RRAXIS(YP, ii)*TMP_RECIP_AXES[YQI][ii] + IRAXIS(YP, ii)*TMP_RECIP_AXES[YQR][ii] + \
                                 RRAXIS(YN, ii)*TMP_RECIP_AXES[YQI][ii] - IRAXIS(YN, ii)*TMP_RECIP_AXES[YQR][ii]
                                );
 
-    tmp_forcey += fterm*ii*GY;
+    tmp_forcey += fterm*(ii+1)*GY;
 
 }
 // Z
@@ -92,12 +92,12 @@ for( int ii=0 ; ii<NM ; ii++ ){
     const double coeff = COEFF_SPACE(0, 0, ii+1) * charge_i_o2;
     tmp_energy += coeff * ((RRAXIS(ZP, ii) + RRAXIS(ZN, ii))*TMP_RECIP_AXES[ZQR][ii] + (IRAXIS(ZN, ii) - IRAXIS(ZP, ii))*TMP_RECIP_AXES[ZQI][ii]);
 
-    const double fterm = coeff*(
+    const double fterm = 2.0 * coeff*(
                                 RRAXIS(ZP, ii)*TMP_RECIP_AXES[ZQI][ii] + IRAXIS(ZP, ii)*TMP_RECIP_AXES[ZQR][ii] + \
                                 RRAXIS(ZN, ii)*TMP_RECIP_AXES[ZQI][ii] - IRAXIS(ZN, ii)*TMP_RECIP_AXES[ZQR][ii]
                                );
 
-    tmp_forcez += fterm*ii*GZ;
+    tmp_forcez += fterm*(ii+1)*GZ;
 
 }
 
@@ -117,7 +117,7 @@ for(int iy=0 ; iy<NL ; iy++){
             const double imagi = xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
             tmp_energy += coeff*(RRPLANE_0(qx, ix, iy)*reali - IRPLANE_0(qx, ix, iy)*imagi);
 
-            const double fterm = coeff*(RRPLANE_0(qx, ix, iy)*imagi + IRPLANE_0(qx, ix, iy)*reali);
+            const double fterm = 2.0 * coeff*(RRPLANE_0(qx, ix, iy)*imagi + IRPLANE_0(qx, ix, iy)*reali);
             tmp_forcex += fterm*(ix+1)*CC_COEFF_PLANE_X1[qx]*GX;
             tmp_forcey += fterm*(iy+1)*CC_COEFF_PLANE_X2[qx]*GY;
 
@@ -139,7 +139,7 @@ for(int iy=0 ; iy<NM ; iy++){
             const double imagi = xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
             tmp_energy += coeff*(RRPLANE_1(qx, ix, iy)*reali - IRPLANE_1(qx, ix, iy)*imagi);
 
-            const double fterm = coeff*(RRPLANE_1(qx, ix, iy)*imagi + IRPLANE_1(qx, ix, iy)*reali);
+            const double fterm = 2.0 * coeff*(RRPLANE_1(qx, ix, iy)*imagi + IRPLANE_1(qx, ix, iy)*reali);
             tmp_forcey += fterm*(ix+1)*CC_COEFF_PLANE_X1[qx]*GY;
             tmp_forcez += fterm*(iy+1)*CC_COEFF_PLANE_X2[qx]*GZ;
 
@@ -161,7 +161,7 @@ for(int iy=0 ; iy<NK ; iy++){
             const double imagi = xp * CC_COEFF_PLANE_X2[qx]*bp + CC_COEFF_PLANE_X1[qx]*yp*ap;
             tmp_energy += coeff*(RRPLANE_2(qx, ix, iy)*reali - IRPLANE_2(qx, ix, iy)*imagi);
 
-            const double fterm = coeff*(RRPLANE_2(qx, ix, iy)*imagi + IRPLANE_2(qx, ix, iy)*reali);
+            const double fterm = 2.0 * coeff*(RRPLANE_2(qx, ix, iy)*imagi + IRPLANE_2(qx, ix, iy)*reali);
             tmp_forcex += fterm*(iy+1)*CC_COEFF_PLANE_X2[qx]*GX;
             tmp_forcez += fterm*(ix+1)*CC_COEFF_PLANE_X1[qx]*GZ;
 
@@ -218,7 +218,7 @@ for(int iz=0 ; iz<NM ; iz++ ){
 
                     tmp_energy += coeff * (reali*Qreal - imagi*Qimag);
 
-                    const double fterm = coeff*(reali*Qimag + imagi*Qreal);
+                    const double fterm = 2.0 * coeff*(reali*Qimag + imagi*Qreal);
 
                     //tmp_force[0] += fterm*(ix+1)*GX*ccx;
                     //tmp_force[1] += fterm*(iy+1)*GY*ccy;
