@@ -634,7 +634,7 @@ class PairLoopNeighbourListNS(object):
                                           Restrict(self._cc.restrict_keyword, dat[0]))
                                       )
 
-            if issubclass(type(dat[1][0]), host.Array):
+            if issubclass(type(dat[1][0]), host._Array):
                 kernel_arg = cgen.Pointer(cgen.Value(host.ctypes_map[dat[1][0].dtype],
                                               Restrict(self._cc.restrict_keyword, dat[0]))
                                           )
@@ -676,7 +676,7 @@ class PairLoopNeighbourListNS(object):
         g = cgen.Module([cgen.Comment('#### KERNEL_MAP_MACROS ####')])
 
         for i, dat in enumerate(self._dat_dict.items()):
-            if issubclass(type(dat[1][0]), host.Array):
+            if issubclass(type(dat[1][0]), host._Array):
                 g.append(cgen.Define(dat[0]+'(x)', '('+dat[0]+'[(x)])'))
             if issubclass(type(dat[1][0]), host.Matrix):
                 g.append(cgen.Define(dat[0]+'(x,y)', dat[0]+'_##x(y)'))
@@ -746,7 +746,7 @@ class PairLoopNeighbourListNS(object):
 
         for i, dat in enumerate(self._dat_dict.items()):
 
-            if issubclass(type(dat[1][0]), host.Array):
+            if issubclass(type(dat[1][0]), host._Array):
                 pass
             elif issubclass(type(dat[1][0]), host.Matrix) \
                     and dat[1][1].write \
@@ -788,7 +788,7 @@ class PairLoopNeighbourListNS(object):
         kernel_call_symbols = []
 
         for i, dat in enumerate(self._dat_dict.items()):
-            if issubclass(type(dat[1][0]), host.Array):
+            if issubclass(type(dat[1][0]), host._Array):
                 kernel_call_symbols.append(dat[0])
             elif issubclass(type(dat[1][0]), host.Matrix):
                 call_symbol = dat[0] + '_c'
@@ -842,7 +842,7 @@ class PairLoopNeighbourListNS(object):
 
         for i, dat in enumerate(self._dat_dict.items()):
 
-            if issubclass(type(dat[1][0]), host.Array):
+            if issubclass(type(dat[1][0]), host._Array):
                 pass
             elif issubclass(type(dat[1][0]), host.Matrix)\
                     and dat[1][1].write\
@@ -1395,7 +1395,7 @@ class AllToAllNS(object):
 
             # print host.ctypes_map[dat[1][0].dtype], dat[1][0].dtype
 
-            if issubclass(type(dat[1][0]), host.Array):
+            if issubclass(type(dat[1][0]), host._Array):
                 kernel_arg = cgen.Pointer(cgen.Value(host.ctypes_map[dat[1][0].dtype],
                                               Restrict(self._cc.restrict_keyword, dat[0]))
                                           )
@@ -1437,7 +1437,7 @@ class AllToAllNS(object):
         g = cgen.Module([cgen.Comment('#### KERNEL_MAP_MACROS ####')])
 
         for i, dat in enumerate(self._dat_dict.items()):
-            if issubclass(type(dat[1][0]), host.Array):
+            if issubclass(type(dat[1][0]), host._Array):
                 g.append(cgen.Define(dat[0]+'(x)', '('+dat[0]+'[(x)])'))
             if issubclass(type(dat[1][0]), host.Matrix):
                 g.append(cgen.Define(dat[0]+'(x,y)', dat[0]+'_##x(y)'))
@@ -1519,7 +1519,7 @@ class AllToAllNS(object):
 
         for i, dat in enumerate(self._dat_dict.items()):
 
-            if issubclass(type(dat[1][0]), host.Array):
+            if issubclass(type(dat[1][0]), host._Array):
                 pass
             elif issubclass(type(dat[1][0]), host.Matrix) \
                     and dat[1][1].write \
@@ -1558,7 +1558,7 @@ class AllToAllNS(object):
         kernel_call_symbols = []
 
         for i, dat in enumerate(self._dat_dict.items()):
-            if issubclass(type(dat[1][0]), host.Array):
+            if issubclass(type(dat[1][0]), host._Array):
                 kernel_call_symbols.append(dat[0])
             elif issubclass(type(dat[1][0]), host.Matrix):
                 call_symbol = dat[0] + '_c'
@@ -1612,7 +1612,7 @@ class AllToAllNS(object):
 
         for i, dat in enumerate(self._dat_dict.items()):
 
-            if issubclass(type(dat[1][0]), host.Array):
+            if issubclass(type(dat[1][0]), host._Array):
                 pass
             elif issubclass(type(dat[1][0]), host.Matrix)\
                     and dat[1][1].write\

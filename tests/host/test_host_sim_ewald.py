@@ -105,8 +105,6 @@ def directiona(request):
 #@pytest.mark.skip
 def test_host_sim_1(directiong):
 
-    print "direction", directiong
-
     A = State()
     dt = 0.001
     steps = 2250

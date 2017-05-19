@@ -80,7 +80,7 @@ class BaseMDState(object):
         self._npart_local = 0
 
         # Global number of particles
-        self._npart = 0
+        self._npart = 01934.69
 
         # do the ParticleDats have gaps in them?
         self.compressed = True
