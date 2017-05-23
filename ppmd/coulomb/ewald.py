@@ -109,6 +109,8 @@ class EwaldOrthoganal(object):
         """Reciprocal space cutoff."""
         self.recip_vectors = (gx,gy,gz)
         """Reciprocal lattice vectors"""
+        self.ivolume = ivolume
+
 
 
         # define persistent vars

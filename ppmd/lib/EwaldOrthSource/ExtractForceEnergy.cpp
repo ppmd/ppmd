@@ -217,12 +217,12 @@ for(int iz=0 ; iz<NM ; iz++ ){
                     const double Qimag = *(i_base_index+qx);
 
                     tmp_energy += coeff * (reali*Qreal - imagi*Qimag);
+                    //const double riqi_p_iiqr = reali*Qimag + imagi*Qreal;
+                    //const double fterm = coeff*(riqi_p_iiqr + riqi_p_iiqr);
 
-                    const double fterm = 2.0 * coeff*(reali*Qimag + imagi*Qreal);
+                    const double fterm = 2.0*coeff*(reali*Qimag + imagi*Qreal);
 
-                    //tmp_force[0] += fterm*(ix+1)*GX*ccx;
-                    //tmp_force[1] += fterm*(iy+1)*GY*ccy;
-                    //tmp_force[2] += fterm*(iz+1)*GZ*ccz;
+
                     tmp_forcex += fterm*ixGX*ccx;
                     tmp_forcey += fterm*iyGY*ccy;
                     tmp_forcez += fterm*izGZ*ccz;
