@@ -17,6 +17,7 @@ import ppmd.access
 
 import cmath
 import scipy
+import scipy.interpolate
 import scipy.special
 from scipy.constants import epsilon_0
 import time
@@ -177,9 +178,9 @@ class EwaldOrthoganalFFT(ewald.EwaldOrthoganal):
         nky = self.kmax[1]*2 + 2
         nkz = self.kmax[2]*2 + 2
 
-        nkx = 30
-        nky = 30
-        nkz = 30
+        nkx = 40
+        nky = 40
+        nkz = 40
 
         hx = E[0]/nkx
         hy = E[1]/nky
@@ -248,7 +249,78 @@ class EwaldOrthoganalFFT(ewald.EwaldOrthoganal):
 
         self.fftr2space = np.fft.ifftn(k2*self.fftkspace)
 
-        u = 0.0
+        X = np.linspace(-0.5*hx,E[0]+0.5*hx, nkx+2)
+        Y = np.linspace(-0.5*hy,E[1]+0.5*hy, nky+2)
+        Z = np.linspace(-0.5*hz,E[2]+0.5*hz, nkz+2)
+
+        # middle
+        interp_space = np.zeros((nkz+2, nky+2, nkx+2))
+        interp_space[1:-1:, 1:-1:, 1:-1:] = self.fftr2space[:,:,:].real
+
+        # corners
+        interp_space[-1, -1, -1] = self.fftr2space[0,0,0].real
+        interp_space[ 0, -1, -1] = self.fftr2space[-1,0,0].real
+        interp_space[-1,  0, -1] = self.fftr2space[0,-1,0].real
+        interp_space[ 0,  0, -1] = self.fftr2space[-1,-1,0].real
+        interp_space[-1, -1,  0] = self.fftr2space[0,0,-1].real
+        interp_space[ 0, -1,  0] = self.fftr2space[-1,0,-1].real
+        interp_space[-1,  0,  0] = self.fftr2space[0,-1,-1].real
+        interp_space[ 0,  0,  0] = self.fftr2space[-1,-1,-1].real
+
+        # planes
+        interp_space[0, 1:-1:, 1:-1:] = self.fftr2space[-1, :,:].real
+        interp_space[-1, 1:-1:, 1:-1:] = self.fftr2space[0, :,:].real
+
+        interp_space[1:-1:, 0, 1:-1:] = self.fftr2space[:, -1,:].real
+        interp_space[1:-1:, -1, 1:-1:] = self.fftr2space[:, 0,:].real
+
+        interp_space[1:-1:, 1:-1:, 0] = self.fftr2space[:, :, -1].real
+        interp_space[1:-1:, 1:-1:, -1] = self.fftr2space[:, :, 0].real
+
+        # edges
+        interp_space[-1, -1, 1:-1:] = self.fftr2space[ 0, 0, :].real
+        interp_space[ 0, -1, 1:-1:] = self.fftr2space[-1, 0, :].real
+        interp_space[ 0,  0, 1:-1:] = self.fftr2space[-1,-1, :].real
+        interp_space[-1,  0, 1:-1:] = self.fftr2space[ 0,-1, :].real
+
+        # edges
+        interp_space[-1, 1:-1:, -1] = self.fftr2space[ 0,:,  0,].real
+        interp_space[ 0, 1:-1:, -1] = self.fftr2space[-1,:,  0,].real
+        interp_space[ 0, 1:-1:,  0] = self.fftr2space[-1,:, -1,].real
+        interp_space[-1, 1:-1:,  0] = self.fftr2space[ 0,:, -1,].real
+
+        # edges
+        interp_space[1:-1:, -1, -1] = self.fftr2space[:, 0,  0,].real
+        interp_space[1:-1:,  0, -1] = self.fftr2space[:,-1,  0,].real
+        interp_space[1:-1:,  0,  0] = self.fftr2space[:,-1, -1,].real
+        interp_space[1:-1:, -1,  0] = self.fftr2space[:, 0, -1,].real
+
+
+
+        I = scipy.interpolate.RegularGridInterpolator(
+            (Z,Y,X),
+            interp_space,
+            bounds_error = False,
+            fill_value=None,
+            method='linear'
+        )
+
+
+        ZYX = np.zeros((N,3))
+        ZYX[:, 0] = positions[:, 2] + Eo2x
+        ZYX[:, 1] = positions[:, 1] + Eo2y
+        ZYX[:, 2] = positions[:, 0] + Eo2z
+
+
+        u = np.dot(
+            charges[:,0],
+            I(ZYX)
+        )
+
+        print u
+
+        u1 = 0.0
+        u2 = 0.0
         for px in xrange(N):
             qi = charges[px, 0]
 
@@ -260,10 +332,15 @@ class EwaldOrthoganalFFT(ewald.EwaldOrthoganal):
             cy = int(ry/hy)
             cz = int(rz/hz)
 
-            u += self.fftr2space[cz,cy,cx]*qi
+            val1 = I((rz,ry,rx))*qi
+            val2 = self.fftr2space[cz, cy, cx].real*qi
 
+            u1 += val1
+            u2 += val2
 
-        print u.real, u.real*self.internal_to_ev()
+        print u1, u2
+
+        print u1*self.internal_to_ev()*0.5, 0.5*u2*self.internal_to_ev(), u*self.internal_to_ev()*0.5
 
 
 
