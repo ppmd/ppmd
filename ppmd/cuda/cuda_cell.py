@@ -9,11 +9,102 @@ import numpy as np
 
 #package
 import ppmd.opt as opt
+import ppmd.host as host
 
 #cuda
 import cuda_runtime
 import cuda_base
 import cuda_build
+
+
+class SubCellOccupancyMatrix(object):
+    def __init__(self, boundary, cell_array, positions):
+
+        for ix in cell_array:
+            assert ix > 0, "cell array entries much be positive non zero ints"
+            assert ix == int(ix), "cell array entries much be positive non zero ints"
+        assert boundary[1] > boundary[0], "nonsensical boundary"
+        assert boundary[3] > boundary[2], "nonsensical boundary"
+        assert boundary[5] > boundary[4], "nonsensical boundary"
+
+
+        self.positions = positions
+        self.boundary = boundary
+
+        self.cell_array = host.Array(ncomp=3, dtype=ctypes.c_int)
+        self.cell_array[:] = cell_array[:]
+        self.cell_sizes = host.Array(ncomp=3, dtype=ctypes.c_double)
+
+        cs = [0,0,0]
+        cs[0] = float(boundary[1] - boundary[0])/cell_array[0]
+        cs[1] = float(boundary[3] - boundary[2])/cell_array[1]
+        cs[2] = float(boundary[5] - boundary[4])/cell_array[2]
+        self.cell_sizes[:] = cs[:]
+
+        self.cell_count = cell_array[0]*cell_array[1]*cell_array[2]
+
+        self.particle_layers = cuda_base.Array(ncomp=1, dtype=ctypes.c_int)
+        self.cell_reverse_lookup = cuda_base.Array(ncomp=1, dtype=ctypes.c_int)
+        self.cell_contents_count = cuda_base.Array(ncomp=self.cell_count, dtype=ctypes.c_int)
+        self.matrix = cuda_base.Matrix(nrow=self.cell_count,
+                                       ncol=1,
+                                       dtype=ctypes.c_int)
+        self._n_layers = 0
+
+        with open(str(cuda_runtime.LIB_DIR) + '/cudaSubCellOccupancyMatrixSource.cu','r') as fh:
+            _code = fh.read()
+        with open(str(cuda_runtime.LIB_DIR) + '/cudaSubCellOccupancyMatrixSource.h','r') as fh:
+            _header = fh.read()
+        _name = 'SubCellOccupancyMatrix'
+        lib = cuda_build.simple_lib_creator(_header, _code, _name)
+        self._sort_lib = lib['LayerSort']
+        self._fill_lib = lib['PopMatrix']
+
+    def sort(self):
+
+        npart = self.positions.npart_local + self.positions.npart_local_halo
+
+        _tpb = 256
+        _blocksize = (ctypes.c_int * 3)(int(math.ceil(npart / float(_tpb))), 1, 1)
+        _threadsize = (ctypes.c_int * 3)(_tpb, 1, 1)
+
+        ca = self.cell_array
+        ca = ca[0] * ca[1] * ca[2]
+        _blocksize2 = (ctypes.c_int * 3)(int(math.ceil(ca / float(_tpb))), 1, 1)
+        _threadsize2 = (ctypes.c_int * 3)(_tpb, 1, 1)
+
+        num_layers = ctypes.c_int(0)
+
+
+        if self.particle_layers.ncomp < npart:
+            self.particle_layers.realloc(ncomp=npart + 8)
+        if self.cell_reverse_lookup.ncomp < npart:
+            self.cell_reverse_lookup.realloc(ncomp=npart + 8)
+        if self.cell_contents_count.ncomp < ca:
+            self.cell_contents_count.realloc(ncomp=ca)
+
+        self.cell_contents_count.zero()
+
+        self._sort_lib(
+            _blocksize, _threadsize,
+            _blocksize2, _threadsize2,
+            ctypes.c_int(npart),
+            ctypes.c_int(ca),
+            ctypes.byref(num_layers),
+            self.particle_layers.ctypes_data,
+            self.cell_reverse_lookup.ctypes_data,
+            self.cell_contents_count.ctypes_data,
+            self.cell_array.ctypes_data,
+            self.boundary.ctypes_data,
+            self.cell_sizes.ctypes_data,
+            self.positions.ctypes_data
+        )
+
+        print num_layers.value, self.cell_contents_count[:]
+
+
+
+
 
 
 class CellOccupancyMatrix(object):

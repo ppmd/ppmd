@@ -7,6 +7,7 @@ import sys
 import ctypes as ct
 import math
 import numpy as np
+import itertools
 
 # package level imports
 import host
@@ -14,6 +15,78 @@ import runtime
 import build
 import kernel
 import opt
+
+
+
+
+
+
+def radius_cell_decompose(rc, rd, verbose=False):
+    """
+    returns list of cell offset tuples for cell sub-division with cell width
+    rd matching a interaction cutoff rc.
+    """
+    rc = float(rc)
+    rd = float(rd)
+    rc2 = rc*rc
+
+    print rc, rd, verbose
+
+    maxdx = int(math.ceil(rc/rd))
+    maxd = maxdx + 1
+    print maxd
+
+    arg = (-1*maxd, maxd+1)
+    argax = (-1*maxdx, maxdx+1)
+
+    offsets2 = []
+
+    # create the axis directions first as moving along the axis is tedious
+    offsets2 += [(ix,0, 0) for ix in xrange(*argax)] + \
+        [(0, ix, 0) for ix in xrange(*argax)] + \
+        [(0, 0, ix) for ix in xrange(*argax)]
+        
+    # planes
+    for ix in itertools.product([0], xrange(1, maxd), xrange(1, maxd)):
+        if ((ix[1]-1)*rd)**2. + ((ix[2]-1)*rd)**2. < rc2:
+            offsets2 += [(ix[0], ix[1]*s[0], ix[2]*s[1]) for s in itertools.product([-1, 1], [-1, 1]) ]
+    for ix in itertools.product( xrange(1, maxd), [0], xrange(1, maxd)):
+        if ((ix[0]-1)*rd)**2. + ((ix[2]-1)*rd)**2. < rc2:
+            offsets2 += [(ix[0]*s[0], ix[1], ix[2]*s[1]) for s in itertools.product([-1, 1], [-1, 1]) ]
+
+    for ix in itertools.product( xrange(1, maxd), xrange(1, maxd), [0]):
+        if ((ix[0]-1)*rd)**2. + ((ix[1]-1)*rd)**2. < rc2:
+            offsets2 += [(ix[0]*s[0], ix[1]*s[1], ix[2]) for s in itertools.product([-1, 1], [-1, 1]) ]
+
+    # quadrants
+    for ix in itertools.product(xrange(1, maxd), xrange(1, maxd), xrange(1, maxd)):
+        if ((ix[0]-1)*rd)**2. + ((ix[1]-1)*rd)**2. + ((ix[2]-1)*rd)**2. < rc2:
+            offsets2 += [
+                (ix[0]*s[0], ix[1]*s[1], ix[2]*s[2]) for s in itertools.product(
+                    [-1, 1], [-1, 1], [-1, 1]
+                )
+            ]
+
+    return set(offsets2)
+
+def convert_offset_tuples(offsets, cell_array, remove_zero=False):
+    dy = cell_array[0]
+    dz = dy*cell_array[1]
+    a = set([ ix[0] + ix[1]*dy + ix[2]*dz for ix in offsets])
+    if remove_zero:
+        a.remove(0)
+    return sorted(a)
+
+
+
+
+
+
+
+
+
+
+
 
 class CellList(object):
     """

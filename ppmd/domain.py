@@ -278,7 +278,7 @@ class BaseDomainHalo(object):
         """
         Return local domain boundary
         """
-        if not self._init_cells:
+        if not self._init_cells and runtime.VERBOSE > 0:
             print "WARNING: No cell decomposition, outer boundary same as inner"
 
         return self._boundary_outer

@@ -25,7 +25,7 @@ import ewald
 
 from ppmd import host
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 _charge_coulomb = scipy.constants.physical_constants['atomic unit of charge'][0]
 
