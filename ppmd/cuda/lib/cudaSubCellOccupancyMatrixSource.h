@@ -14,7 +14,10 @@ extern "C" int LayerSort(
     const int* __restrict__ h_ca,
     const double* __restrict__ h_b,
     const double* __restrict__ h_cel,
-    const double* __restrict__ d_p
+    const double* __restrict__ d_p,
+    const int h_OLD_NUM_LAYERS,
+    const int* __restrict__ d_OLD_M,
+    const int* __restrict__ d_OLD_CCC
 );
 
 extern "C" int PopMatrix(
@@ -24,6 +27,9 @@ extern "C" int PopMatrix(
     const int nl,
     const int* __restrict__ d_pl,
     const int* __restrict__ d_crl,
-    int* __restrict__ d_M
+    int* __restrict__ d_M,
+    const int h_OLD_NUM_LAYERS,
+    const int* __restrict__ d_OLD_M,
+    const int* __restrict__ d_OLD_CCC
 );
 

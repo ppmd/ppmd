@@ -3,6 +3,7 @@
 __constant__ int d_n;
 __constant__ int d_nl;
 __constant__ int d_nc;
+__constant__ int d_OLD_NUM_LAYERS;
 
 __constant__ double _icel0;
 __constant__ double _icel1;
@@ -19,29 +20,38 @@ __constant__ double _ca0;
 __constant__ double _ca1;
 __constant__ double _ca2;
 
-__global__ void d_LayerSort(int* __restrict__ d_pl,
-                            int* __restrict__ d_crl,
-                            int* __restrict__ d_ccc,
-                            const double* __restrict__ d_p
+__global__ void d_LayerSort(
+    int* __restrict__ d_pl,
+    int* __restrict__ d_crl,
+    int* __restrict__ d_ccc,
+    const double* __restrict__ d_p,
+    const int* __restrict__ d_OLD_M,
+    const int* __restrict__ d_OLD_CCC
 ){
 
-const int _ix = threadIdx.x + blockIdx.x*blockDim.x;
-if (_ix < d_n){
+const int _tx = threadIdx.x + blockIdx.x*blockDim.x;
+if (_tx < d_n){
+    
+    const int old_cell = _tx/d_OLD_NUM_LAYERS;
+    const int old_layer = _tx % d_OLD_NUM_LAYERS;
+    if (old_layer < d_OLD_CCC[old_cell])
+    {
+        const int _ix = d_OLD_M[old_cell*d_OLD_NUM_LAYERS + old_layer];
 
-    int C0 = __double2int_rz(( d_p[_ix*3]    - _b0 )*_icel0);
-    int C1 = __double2int_rz(( d_p[_ix*3+1]  - _b2 )*_icel1);
-    int C2 = __double2int_rz(( d_p[_ix*3+2]  - _b4 )*_icel2);
+        int C0 = __double2int_rz(( d_p[_ix*3]    - _b0 )*_icel0);
+        int C1 = __double2int_rz(( d_p[_ix*3+1]  - _b2 )*_icel1);
+        int C2 = __double2int_rz(( d_p[_ix*3+2]  - _b4 )*_icel2);
 
-    if ( (C0 > (_ca0-1)) && (d_p[_ix*3]   <= _b1 )) {C0 = _ca0-1;}
-    if ( (C1 > (_ca1-1)) && (d_p[_ix*3+1] <= _b3 )) {C1 = _ca1-1;}
-    if ( (C2 > (_ca2-1)) && (d_p[_ix*3+2] <= _b5 )) {C2 = _ca2-1;}
+        if ( (C0 > (_ca0-1)) && (d_p[_ix*3]   <= _b1 )) {C0 = _ca0-1;}
+        if ( (C1 > (_ca1-1)) && (d_p[_ix*3+1] <= _b3 )) {C1 = _ca1-1;}
+        if ( (C2 > (_ca2-1)) && (d_p[_ix*3+2] <= _b5 )) {C2 = _ca2-1;}
 
-    const int val = (C2*_ca1 + C1)*_ca0 + C0;
+        const int val = (C2*_ca1 + C1)*_ca0 + C0;
 
-    d_crl[_ix] = val;
-    //old=atomicAdd(address, new);
-    d_pl[_ix] = atomicAdd(&d_ccc[val], (int)1);
-
+        d_crl[_ix] = val;
+        //old=atomicAdd(address, new);
+        d_pl[_ix] = atomicAdd(&d_ccc[val], (int)1);
+    }
 
 }
 return;
@@ -74,13 +84,21 @@ return;
 __global__ void d_PopulateMatrix(
     const int* __restrict__ d_pl,
     const int* __restrict__ d_crl,
-    int* __restrict__ d_M
+    int* __restrict__ d_M,
+    const int* __restrict__ d_OLD_M,
+    const int* __restrict__ d_OLD_CCC
 ){
 
-const int _ix = threadIdx.x + blockIdx.x*blockDim.x;
-if (_ix < d_n){
+const int _tx = threadIdx.x + blockIdx.x*blockDim.x;
+if (_tx < d_n){
     
-    d_M[ d_crl[_ix]*d_nl + d_pl[_ix]  ] = _ix;
+    const int old_cell = _tx/d_OLD_NUM_LAYERS;
+    const int old_layer = _tx % d_OLD_NUM_LAYERS;
+    if (old_layer < d_OLD_CCC[old_cell])
+    {
+        const int _ix = d_OLD_M[old_cell*d_OLD_NUM_LAYERS + old_layer];
+        d_M[ d_crl[_ix]*d_nl + d_pl[_ix]  ] = _ix;
+    }
 }
 return;
 }
@@ -100,7 +118,10 @@ int LayerSort(
     const int* __restrict__ h_ca,
     const double* __restrict__ h_b,
     const double* __restrict__ h_cel,
-    const double* __restrict__ d_p
+    const double* __restrict__ d_p,
+    const int h_OLD_NUM_LAYERS,
+    const int* __restrict__ d_OLD_M,
+    const int* __restrict__ d_OLD_CCC
 ){
     int err = 0;
 
@@ -118,6 +139,8 @@ int LayerSort(
     const double _hca0 = h_ca[0];
     const double _hca1 = h_ca[1];
     const double _hca2 = h_ca[2];
+
+    checkCudaErrors(cudaMemcpyToSymbol(d_OLD_NUM_LAYERS, &h_OLD_NUM_LAYERS, sizeof(int)));
 
     checkCudaErrors(cudaMemcpyToSymbol(_icel0, &_hicel0, sizeof(double)));
     checkCudaErrors(cudaMemcpyToSymbol(_icel1, &_hicel1, sizeof(double)));
@@ -142,7 +165,7 @@ int LayerSort(
     dim3 bs; bs.x = blocksize[0]; bs.y = blocksize[1]; bs.z = blocksize[2];
     dim3 ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
     
-    d_LayerSort<<<bs,ts>>>(d_pl, d_crl, d_ccc, d_p);
+    d_LayerSort<<<bs,ts>>>(d_pl, d_crl, d_ccc, d_p, d_OLD_M, d_OLD_CCC);
     checkCudaErrors(cudaDeviceSynchronize());
     getLastCudaError(" d_LayerSort Execution failed. \n");
     
@@ -172,14 +195,18 @@ int PopMatrix(
     const int nl,
     const int* __restrict__ d_pl,
     const int* __restrict__ d_crl,
-    int* __restrict__ d_M
+    int* __restrict__ d_M,
+    const int h_OLD_NUM_LAYERS,
+    const int* __restrict__ d_OLD_M,
+    const int* __restrict__ d_OLD_CCC
 ){
 
+    checkCudaErrors(cudaMemcpyToSymbol(d_OLD_NUM_LAYERS, &h_OLD_NUM_LAYERS, sizeof(int)));
     checkCudaErrors(cudaMemcpyToSymbol(d_nl, &nl, sizeof(nl)));
     checkCudaErrors(cudaMemcpyToSymbol(d_n, &n, sizeof(n)));
     dim3 bs; bs.x = blocksize[0]; bs.y = blocksize[1]; bs.z = blocksize[2];
     dim3 ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
-    d_PopulateMatrix<<<bs,ts>>>(d_pl, d_crl, d_M);
+    d_PopulateMatrix<<<bs,ts>>>(d_pl, d_crl, d_M, d_OLD_M, d_OLD_CCC);
     checkCudaErrors(cudaDeviceSynchronize());
 
     return 0;

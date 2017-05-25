@@ -82,19 +82,43 @@ def h_state(request):
 def base_rank(request):
     return request.param
 
-@cuda
-def test_cuda_pair_loop_1(state):
+
+@pytest.fixture(
+    scope="module",
+    params=(
+            (1. , 6, 1.),
+            (-1., 0, 1.),
+            (1. , 18, math.sqrt(2.)),
+            (-1., 6, math.sqrt(2.)),
+            (1. , 26, math.sqrt(3.)),
+            (-1., 18, math.sqrt(3.))
+    )
+)
+def tolset(request):
+    return request.param
+
+@pytest.fixture(
+    scope="module",
+    params=(
+            (0.25,),
+            (0.5,),
+            (0.75,),
+            (1.,),
+            (1.5,),
+            (2.,)
+    )
+)
+def sub_cell_factor(request):
+    return request.param
+
+
+#@cuda
+def test_cuda_pair_loop_2(state, tolset, sub_cell_factor):
     """
     Set a cutoff slightly smaller than the smallest distance in the grid
     """
+
     cell_width = float(E)/float(crN)
-    subcell_width = cell_width/1.001
-
-    state.domain.cell_decompose(cell_width)
-    state.get_cell_to_particle_map().create()
-    state.get_cell_to_particle_map().update_required = True
-
-    print state.domain.boundary_outer, state.domain.cell_array
 
     pi = np.zeros([N,3], dtype=ctypes.c_double)
     px = 0
@@ -109,48 +133,44 @@ def test_cuda_pair_loop_1(state):
     state.p[:] = pi
     state.npart_local = N
     state.filter_on_domain_boundary()
-    state.get_cell_to_particle_map().update_required = True
-    state.get_cell_to_particle_map().check()
 
-    subcell_array = [0,0,0]
+    RC = cell_width*tolset[2] + tol*tolset[0]
 
-    bd = state.domain.boundary_outer
-    subcell_array[0] = int(float(bd[1] - bd[0])/ subcell_width)
-    subcell_array[1] = int(float(bd[3] - bd[2])/ subcell_width)
-    subcell_array[2] = int(float(bd[5] - bd[4])/ subcell_width)
+    kernel_code = '''
+    const double rx = P.j[0] - P.i[0];
+    const double ry = P.j[1] - P.i[1];
+    const double rz = P.j[2] - P.i[2];
+    const double r2 = rx*rx + ry*ry + rz*rz;
+    
+    if (_i == 1) {
+    printf("_j %%d, r2 %%f, CX %%d\\n", _j, r2, _CX);
+    }
+    
+    
+     
+    NC.i[0] += (r2 < %(TOL)s) ? 1 : 0 ;
+    ''' % {'TOL': str(RC**2.)}
 
-    print "subcell_array", subcell_array
+    kernel = md.kernel.Kernel('test_cuda_pair_loop_1',code=kernel_code)
+    kernel_map = {'P': state.p(md.access.R),
+                  'NC': state.nc(md.access.W)}
 
-    sub_cell_occ = mdc.cuda_cell.SubCellOccupancyMatrix(
-        state.domain.boundary_outer,
-        subcell_array,
-        state.p
+    loop = mdc.cuda_pairloop.PairLoopCellByCell(
+        kernel=kernel,
+        dat_dict=kernel_map,
+        shell_cutoff=RC,
+        sub_divide=RC*sub_cell_factor[0]
     )
 
-    sub_cell_occ.sort()
+    state.nc.zero()
 
-    state.p.halo_exchange()
+    loop.execute()
 
-    print "----"
-    sub_cell_occ.sort()
-    #kernel_code = '''
-    #NC(0,0)+=1;
-    #'''
+    print state.p[:10:,:]
+    print state.nc[:N:,0]
 
-    #kernel = md.kernel.Kernel('test_cuda_pair_loop_1',code=kernel_code)
-    #kernel_map = {'P': state.p(md.access.R),
-    #              'NC': state.nc(md.access.W)}
-
-    #loop = mdc.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
-    #                                                 dat_dict=kernel_map,
-    #                                                 shell_cutoff=cell_width-tol)
-
-    #state.nc.zero()
-
-    #loop.execute()
-    #for ix in range(state.npart_local):
-    #    assert state.nc[ix] == 0
-
+    for ix in range(state.npart_local):
+        assert state.nc[ix] == tolset[1], "ix={}".format(ix)
 
 
 
