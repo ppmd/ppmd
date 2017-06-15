@@ -93,3 +93,46 @@ def test_dlpoly_config_read():
         assert abs(frc[px, 0] - float(px)) < 10.**-16, "bad force x"
         assert abs(frc[px, 1] - float(px+1)) < 10.**-16, "bad force x"
         assert abs(frc[px, 2] - float(px+2)) < 10.**-16, "bad force x"
+
+
+def test_dlpoly_control_read():
+
+    CONTROL = dlpoly.read_control(os.path.join(RES_DIR, 'dlpoly/CONTROL'))
+    get = dlpoly.get_control_value
+
+    assert get(CONTROL, 'ENSEMBLE')[0][0] == 'NVE', "bad single value"
+    assert get(CONTROL, 'CLOSE')[0] == ['TIME', '1.0000E+02'], "bad multi value"
+    assert get(CONTROL, 'FINISH')[0] == [], "bad no value"
+    with pytest.raises(IndexError):
+        err = get(CONTROL, 'NULL')[0]
+
+def test_dlpoly_field_read():
+
+    FIELD = dlpoly.read_field(os.path.join(RES_DIR, 'dlpoly/FIELD'))
+    get = dlpoly.get_field_value
+    assert get(FIELD, 'UNITS')[0][0] == 'EV', "bad single value"
+    assert len(get(FIELD, 'Na')) == 4, "bad number of entries read"
+    assert get(FIELD, 'Na')[0] == []
+    assert get(FIELD, 'Na')[1] == ['22.9898', '1.0']
+    assert get(FIELD, 'Na')[2] == ['Na', 'LJ', '0.13', '2.35']
+    assert get(FIELD, 'Na')[3] == ['Cl', 'LJ', '0.11', '3.40']
+    assert get(FIELD, 'CLOSE')[0] == []
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
