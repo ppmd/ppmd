@@ -18,9 +18,6 @@ import opt
 
 
 
-
-
-
 def radius_cell_decompose(rc, rd, verbose=False):
     """
     returns list of cell offset tuples for cell sub-division with cell width
@@ -34,51 +31,37 @@ def radius_cell_decompose(rc, rd, verbose=False):
 
     rc2 = rc*rc
 
-    #print rc, rd, verbose
+    maxdx = int(math.ceil(rc/rd[0])) + 1
+    maxdy = int(math.ceil(rc/rd[1])) + 1
+    maxdz = int(math.ceil(rc/rd[2])) + 1
 
-    maxdx = int(math.ceil(rc/rd[0]))
-    maxdy = int(math.ceil(rc/rd[1]))
-    maxdz = int(math.ceil(rc/rd[2]))
+    argx = (-1*maxdx, maxdx+1)
+    argy = (-1*maxdy, maxdy+1)
+    argz = (-1*maxdz, maxdz+1)
 
-    maxdxx = maxdx + 1
-    maxdyy = maxdy + 1
-    maxdzz = maxdz + 1
-    #print maxd
-    maxdx = maxdx + 1
-    maxdy = maxdy + 1
-    maxdz = maxdz + 1
-
-
-    argx = (-1*maxdxx, maxdxx+1)
-    argy = (-1*maxdyy, maxdyy+1)
-    argz = (-1*maxdzz, maxdzz+1)
-
-    argax = (-1*maxdx, maxdx+1)
-    argay = (-1*maxdy, maxdy+1)
-    argaz = (-1*maxdz, maxdz+1)
 
     offsets2 = []
 
     # create the axis directions first as moving along the axis is tedious
-    offsets2 += [(ix,0, 0) for ix in xrange(*argx)] + \
-        [(0, ix, 0) for ix in xrange(*argy)] + \
-        [(0, 0, ix) for ix in xrange(*argz)]
+    offsets2 += [(ix,0, 0) for ix in range(*argx)] + \
+        [(0, ix, 0) for ix in range(*argy)] + \
+        [(0, 0, ix) for ix in range(*argz)]
         
     # planes
-    for ix in itertools.product([0], xrange(1, maxdy), xrange(1, maxdz)):
+    for ix in itertools.product([0], range(1, maxdy), range(1, maxdz)):
         if ((ix[1]-1)*rd[1])**2. + ((ix[2]-1)*rd[2])**2. < rc2:
             offsets2 += [(ix[0], ix[1]*s[0], ix[2]*s[1]) for s in itertools.product([-1, 1], [-1, 1]) ]
 
-    for ix in itertools.product( xrange(1, maxdx), [0], xrange(1, maxdz)):
+    for ix in itertools.product( range(1, maxdx), [0], range(1, maxdz)):
         if ((ix[0]-1)*rd[0])**2. + ((ix[2]-1)*rd[2])**2. < rc2:
             offsets2 += [(ix[0]*s[0], ix[1], ix[2]*s[1]) for s in itertools.product([-1, 1], [-1, 1]) ]
 
-    for ix in itertools.product( xrange(1, maxdx), xrange(1, maxdy), [0]):
+    for ix in itertools.product( range(1, maxdx), range(1, maxdy), [0]):
         if ((ix[0]-1)*rd[0])**2. + ((ix[1]-1)*rd[1])**2. < rc2:
             offsets2 += [(ix[0]*s[0], ix[1]*s[1], ix[2]) for s in itertools.product([-1, 1], [-1, 1]) ]
 
     # quadrants
-    for ix in itertools.product(xrange(1, maxdx), xrange(1, maxdy), xrange(1, maxdz)):
+    for ix in itertools.product(range(1, maxdx), range(1, maxdy), range(1, maxdz)):
         if ((ix[0]-1)*rd[0])**2. + ((ix[1]-1)*rd[0])**2. + ((ix[2]-1)*rd[0])**2. < rc2:
             offsets2 += [
                 (ix[0]*s[0], ix[1]*s[1], ix[2]*s[2]) for s in itertools.product(
@@ -91,10 +74,6 @@ def radius_cell_decompose(rc, rd, verbose=False):
 def convert_offset_tuples(offsets, cell_array, remove_zero=False):
     dy = cell_array[0]
     dz = dy*cell_array[1]
-
-    for ix in offsets:
-        print ix, ix[0] + ix[1]*dy + ix[2]*dz
-
 
     a = set([ ix[0] + ix[1]*dy + ix[2]*dz for ix in offsets])
     if remove_zero:

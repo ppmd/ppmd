@@ -38,25 +38,24 @@ h_State = md.state.State
 
 
 
-@cuda
 @pytest.fixture
+@cuda
 def state(request):
-    if mdc.CUDA_IMPORT_ERROR is not None:
-        print mdc.CUDA_IMPORT_ERROR
+    if mdc.CUDA_IMPORT:
 
-    A = State()
-    A.npart = N
-    A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
-    A.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
+        A = State()
+        A.npart = N
+        A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
+        A.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
 
-    A.p = PositionDat(ncomp=3)
-    A.v = ParticleDat(ncomp=3)
-    A.f = ParticleDat(ncomp=3)
-    A.u = ScalarArray(ncomp=2)
-    A.u.halo_aware = True
-    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
-    A.nc = ParticleDat(ncomp=1, dtype=ctypes.c_int)
-    return A
+        A.p = PositionDat(ncomp=3)
+        A.v = ParticleDat(ncomp=3)
+        A.f = ParticleDat(ncomp=3)
+        A.u = ScalarArray(ncomp=2)
+        A.u.halo_aware = True
+        A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
+        A.nc = ParticleDat(ncomp=1, dtype=ctypes.c_int)
+        return A
 
 
 
@@ -112,7 +111,7 @@ def sub_cell_factor(request):
     return request.param
 
 
-#@cuda
+@cuda
 def test_cuda_pair_loop_2(state, tolset, sub_cell_factor):
     """
     Set a cutoff slightly smaller than the smallest distance in the grid
@@ -124,9 +123,9 @@ def test_cuda_pair_loop_2(state, tolset, sub_cell_factor):
     px = 0
 
     # This is upsetting....
-    for ix in xrange(crN):
-        for iy in xrange(crN):
-            for iz in xrange(crN):
+    for ix in range(crN):
+        for iy in range(crN):
+            for iz in range(crN):
                 pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
                 px += 1
 
@@ -141,13 +140,6 @@ def test_cuda_pair_loop_2(state, tolset, sub_cell_factor):
     const double ry = P.j[1] - P.i[1];
     const double rz = P.j[2] - P.i[2];
     const double r2 = rx*rx + ry*ry + rz*rz;
-    
-    if (_i == 1) {
-    printf("_j %%d, r2 %%f, CX %%d\\n", _j, r2, _CX);
-    }
-    
-    
-     
     NC.i[0] += (r2 < %(TOL)s) ? 1 : 0 ;
     ''' % {'TOL': str(RC**2.)}
 
@@ -166,8 +158,8 @@ def test_cuda_pair_loop_2(state, tolset, sub_cell_factor):
 
     loop.execute()
 
-    print state.p[:10:,:]
-    print state.nc[:N:,0]
+    #print state.p[:10:,:]
+    #print state.nc[:N:,0]
 
     for ix in range(state.npart_local):
         assert state.nc[ix] == tolset[1], "ix={}".format(ix)

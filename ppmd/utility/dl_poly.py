@@ -1,3 +1,4 @@
+from __future__ import print_function, division
 import numpy as np
 
 def read_domain_extent(filename=None):
@@ -99,6 +100,29 @@ def read_forces(filename=None):
     fh.close()
     return np.array(data)
 
+def read_symbols(filename):
+    """
+    Read atom symbols from a DL_POLY config file
+    :param filename: CONFIG file to read
+    :return: np.array of symbols
+    """
+
+    shift = 9
+    offset = 4
+    _n = 0
+
+    data = []
+
+    with open(filename) as fh:
+        for i, line in enumerate(fh):
+            if (i > (shift - 2)) and ((i - shift + 1) % offset == 0):
+                _t = (float(line.strip().split()[0]),
+                      float(line.strip().split()[1]),
+                      float(line.strip().split()[2]))
+                data.append(_t)
+
+    return np.array(data)
+
 
 def read_control(filename=None):
     """
@@ -130,7 +154,7 @@ def get_control_value(src=None, key=None):
     if type(src) is str:
         src = read_control(src)
     key = key.lower().split()
-    for kx in xrange(len(key)):
+    for kx in range(len(key)):
         src = [v[1::] for v in src if v[0].lower() == key[kx]]
 
     return src
@@ -153,9 +177,6 @@ def read_field(filename=None):
             if line.startswith('#') or len(line) == 0:
                 continue
 
-
-
-
             else:
                 r.append(
                     line.split()
@@ -167,7 +188,7 @@ def get_field_value(src=None, key=None):
     if type(src) is str:
         src = read_control(src)
     key = key.lower().split()
-    for kx in xrange(len(key)):
+    for kx in range(len(key)):
         src = [v[1::] for v in src if v[0].lower() == key[kx]]
 
     return src

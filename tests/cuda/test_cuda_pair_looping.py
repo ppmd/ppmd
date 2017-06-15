@@ -30,7 +30,6 @@ if mdc.CUDA_IMPORT:
     ScalarArray = mdc.cuda_data.ScalarArray
     State = mdc.cuda_state.State
 
-
 h_PositionDat = md.data.PositionDat
 h_ParticleDat = md.data.ParticleDat
 h_ScalarArray = md.data.ScalarArray
@@ -93,9 +92,9 @@ def test_cuda_pair_loop_1(state):
     px = 0
 
     # This is upsetting....
-    for ix in xrange(crN):
-        for iy in xrange(crN):
-            for iz in xrange(crN):
+    for ix in range(crN):
+        for iy in range(crN):
+            for iz in range(crN):
                 pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
                 px += 1
 
@@ -133,9 +132,9 @@ def test_cuda_pair_loop_2(state):
     px = 0
 
     # This is upsetting....
-    for ix in xrange(crN):
-        for iy in xrange(crN):
-            for iz in xrange(crN):
+    for ix in range(crN):
+        for iy in range(crN):
+            for iz in range(crN):
                 pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
                 px += 1
 
@@ -173,9 +172,9 @@ def test_cuda_pair_loop_3(state):
     px = 0
 
     # This is upsetting....
-    for ix in xrange(crN):
-        for iy in xrange(crN):
-            for iz in xrange(crN):
+    for ix in range(crN):
+        for iy in range(crN):
+            for iz in range(crN):
                 pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
                 px += 1
 
@@ -213,9 +212,9 @@ def test_cuda_pair_loop_4(state):
     px = 0
 
     # This is upsetting....
-    for ix in xrange(crN):
-        for iy in xrange(crN):
-            for iz in xrange(crN):
+    for ix in range(crN):
+        for iy in range(crN):
+            for iz in range(crN):
                 pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
                 px += 1
 
@@ -255,9 +254,9 @@ def test_cuda_pair_loop_5(state):
     px = 0
 
     # This is upsetting....
-    for ix in xrange(crN):
-        for iy in xrange(crN):
-            for iz in xrange(crN):
+    for ix in range(crN):
+        for iy in range(crN):
+            for iz in range(crN):
                 pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
                 px += 1
 
@@ -297,9 +296,9 @@ def test_cuda_pair_loop_ns_1(state):
     px = 0
 
     # This is upsetting....
-    for ix in xrange(crN):
-        for iy in xrange(crN):
-            for iz in xrange(crN):
+    for ix in range(crN):
+        for iy in range(crN):
+            for iz in range(crN):
                 pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
                 px += 1
 

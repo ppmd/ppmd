@@ -97,9 +97,9 @@ def test_host_halo_cube_1(state):
     px = 0
 
     # This is upsetting....
-    for ix in xrange(crN):
-        for iy in xrange(crN):
-            for iz in xrange(crN):
+    for ix in range(crN):
+        for iy in range(crN):
+            for iz in range(crN):
                 pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
                 px += 1
 
@@ -117,9 +117,9 @@ def test_host_halo_cube_1(state):
 
 
 
-    for cx in xrange(ca[0]):
-        for cy in xrange(ca[1]):
-            for cz in xrange(ca[2]):
+    for cx in range(ca[0]):
+        for cy in range(ca[1]):
+            for cz in range(ca[2]):
                 ci = cz*(ca[0]*ca[1]) + cy*ca[0] + cx
                 if ( cx == 0 or cx == ca[0]-1 ) or \
                    ( cy == 0 or cy == ca[1]-1 ) or \
@@ -131,9 +131,9 @@ def test_host_halo_cube_1(state):
     state.p.halo_exchange()
 
 
-    for cx in xrange(ca[0]):
-        for cy in xrange(ca[1]):
-            for cz in xrange(ca[2]):
+    for cx in range(ca[0]):
+        for cy in range(ca[1]):
+            for cz in range(ca[2]):
                 ci = cz*(ca[0]*ca[1]) + cy*ca[0] + cx
                 assert state.get_cell_to_particle_map().cell_contents_count[ci] == 1
 
@@ -154,9 +154,9 @@ def test_host_halo_cube_2(state):
     px = 0
 
     # This is upsetting....
-    for ix in xrange(crN):
-        for iy in xrange(crN):
-            for iz in xrange(crN):
+    for ix in range(crN):
+        for iy in range(crN):
+            for iz in range(crN):
                 pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
                 px += 1
 

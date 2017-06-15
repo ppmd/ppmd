@@ -87,9 +87,9 @@ def test_host_halo_1_cell(state):
     ca = state.domain.cell_array
 
 
-    for cx in xrange(ca[0]):
-        for cy in xrange(ca[1]):
-            for cz in xrange(ca[2]):
+    for cx in range(ca[0]):
+        for cy in range(ca[1]):
+            for cz in range(ca[2]):
 
                 ci = cz*(ca[0]*ca[1]) + cy*ca[0] + cx
                 if ( cx == 0 or cx == ca[0]-1 ) or \
@@ -101,9 +101,9 @@ def test_host_halo_1_cell(state):
 
     state.p.halo_exchange()
 
-    for cx in xrange(ca[0]):
-        for cy in xrange(ca[1]):
-            for cz in xrange(ca[2]):
+    for cx in range(ca[0]):
+        for cy in range(ca[1]):
+            for cz in range(ca[2]):
                 ci = cz*(ca[0]*ca[1]) + cy*ca[0] + cx
                 assert state.get_cell_to_particle_map().cell_contents_count[ci] == N
 

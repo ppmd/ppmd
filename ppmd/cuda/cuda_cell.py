@@ -54,13 +54,13 @@ class SubCellOccupancyMatrix(object):
         rpady = pady*cell_sizes[1]
         rpadz = padz*cell_sizes[2]
 
-        print "CA", cell_array[:], "CS", self.cell_sizes[:], "CES", self.domain.cell_edge_lengths[:]
+        #print "CA", cell_array[:], "CS", self.cell_sizes[:], "CES", self.domain.cell_edge_lengths[:]
 
         self.cell_array[0] = cell_array[0] + 2*padx
         self.cell_array[1] = cell_array[1] + 2*pady
         self.cell_array[2] = cell_array[2] + 2*padz
 
-        print "CA2", self.cell_array[:]
+        #print "CA2", self.cell_array[:]
 
 
 

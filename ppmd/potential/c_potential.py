@@ -5,12 +5,10 @@ __license__ = "GPL"
 
 # system level
 import math
+import ctypes
 
 # package level
-import kernel
-import data
-import ctypes
-import access
+from ppmd import kernel, data, access
 
 
 class BasePotential(object):

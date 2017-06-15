@@ -296,9 +296,9 @@ class GlobalArrayShared(host._Array):
             self._mstart = int(self._lrank < mrem)*self._lrank*self._msize + int(self._lrank>=mrem)*(mrem*(bsize+1)+(self._lrank-mrem)*bsize)
 
         # view into all of shared memory, list of arrays
-        rwin_root_memview = [self._win.win.Shared_query(ix)[0] for ix in xrange(self._lsize)]
-        self._data_root_memview = [np.array(rwin_root_memview[ix], copy=False) for ix in xrange(self._lsize)]
-        self._data_root = [self._data_root_memview[ix].view(dtype=self.dtype) for ix in xrange(self._lsize)]
+        rwin_root_memview = [self._win.win.Shared_query(ix)[0] for ix in range(self._lsize)]
+        self._data_root_memview = [np.array(rwin_root_memview[ix], copy=False) for ix in range(self._lsize)]
+        self._data_root = [self._data_root_memview[ix].view(dtype=self.dtype) for ix in range(self._lsize)]
 
 
         self._timer = opt.Timer(runtime.TIMER)
@@ -359,7 +359,7 @@ class GlobalArrayShared(host._Array):
         self._split_comm.get_intra_comm().Barrier()
         self._rwin.win.Fence()
 
-        for rx in xrange(self._lsize):
+        for rx in range(self._lsize):
             if rx == 0:
                 self._rdata[self._mstart:self._mstart+self._msize:] = self._data_root[rx][self._mstart:self._mstart+self._msize:]
             else:
