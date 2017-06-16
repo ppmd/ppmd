@@ -26,6 +26,7 @@ double_str = 'double'
 ctypes_map = {ctypes.c_double: 'double',
               ctypes.c_int: 'int',
               ctypes.c_long: 'long',
+              ctypes.c_byte: 'char',
               'float64': 'double',
               'int32': 'int',
               'doublepointerpointer': 'double **',
@@ -313,6 +314,7 @@ class Matrix(object):
 
 NullIntArray = Array(dtype=ctypes.c_int)
 NullDoubleArray = Array(dtype=ctypes.c_double)
+NullByteArray = Array(dtype=ctypes.c_byte)
 NullIntMatrix = Matrix(dtype=ctypes.c_int)
 NullDoubleMatrix = Matrix(dtype=ctypes.c_double)
 
