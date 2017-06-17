@@ -49,7 +49,7 @@ def test_host_xyz_rw(tmpdir):
     b = xyz_reader.positions
     a = a.ravel()
     b = b.ravel()
-    for ix in xrange(3*N2):
+    for ix in range(3*N2):
         assert abs(b[ix] - a[ix]) < 10.**-15
     
 

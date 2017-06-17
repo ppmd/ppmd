@@ -724,7 +724,7 @@ class ParticleLoop(object):
         return code % d
 
 
-    def execute(self, n=None, dat_dict=None, static_args=None, threads=1024):
+    def execute(self, n=None, dat_dict=None, static_args=None, threads=256):
 
         """Allow alternative pointers"""
         if dat_dict is not None:

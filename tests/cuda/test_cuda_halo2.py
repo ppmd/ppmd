@@ -108,9 +108,9 @@ def test_cuda_halo_cell_check(state):
 
     flags = state.get_cell_to_particle_map().cell_in_halo_flag[:]
 
-    for cz in xrange(C2):
-        for cy in xrange(C1):
-            for cx in xrange(C0):
+    for cz in range(C2):
+        for cy in range(C1):
+            for cx in range(C0):
 
                 cv = cx + C0*(cy + cz*C1)
                 assert bool_in_halo(cx,cy,cz,C0,C1,C2) == flags[cv]

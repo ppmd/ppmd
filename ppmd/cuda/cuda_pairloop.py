@@ -839,7 +839,7 @@ class PairLoopCellByCell(_Base):
 
         self.sub_divide_size = rs_default
 
-        print "ACTUAL SUB CELL WIDTH", self.sub_divide_size
+        #print "ACTUAL SUB CELL WIDTH", self.sub_divide_size
 
         self.loop_timer = opt.LoopTimer()
         self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
@@ -906,12 +906,12 @@ class PairLoopCellByCell(_Base):
         self.offset_list = cuda_base.Array(ncomp=len(oslist), dtype=ctypes.c_int)
         self.offset_list[:] = oslist[:]
 
-        print cell.radius_cell_decompose(shell_cutoff, self.cell_list.cell_sizes),
+        #print cell.radius_cell_decompose(shell_cutoff, self.cell_list.cell_sizes),
 
-        print "SHELL_CUTOFF", shell_cutoff
-        print "SUBCELL_ARRAY", self.cell_list.cell_array[:]
-        print "NUM_OFFSETS", self.offset_list.ncomp
-        print "OFFSETS", self.offset_list[:]
+        #print "SHELL_CUTOFF", shell_cutoff
+        #print "SUBCELL_ARRAY", self.cell_list.cell_array[:]
+        #print "NUM_OFFSETS", self.offset_list.ncomp
+        #print "OFFSETS", self.offset_list[:]
 
     def _generate_lib_specific_args(self):
         self._components['LIB_ARG_DECLS'] = [
@@ -1065,8 +1065,11 @@ class PairLoopCellByCell(_Base):
                                     cgen.Const(cgen.Value(host.int32_str, IY)),
                                     '_D_L_MATRIX[' + CY+'*_D_N_LAYERS' + '+_jk]'
                                 ),
-                                self._components['KERNEL_MAPPING'],
-                                cgen.Line(self._kernel.code)
+                                #cgen.If(IX+'!='+IY,
+                                #cgen.Block([
+                                    self._components['KERNEL_MAPPING'],
+                                    cgen.Line(self._kernel.code)
+                                #]))
                             ]))
                     ])
                 ),
@@ -1150,7 +1153,7 @@ class PairLoopCellByCell(_Base):
         if cell2part.version_id > self.cell_list.version_id:
             self.cell_list.sort()
 
-        print "CRL", self.cell_list.cell_reverse_lookup[:n:]
+        #print "CRL", self.cell_list.cell_reverse_lookup[:n:]
 
 
         args2 = [ctypes.byref(_blocksize),

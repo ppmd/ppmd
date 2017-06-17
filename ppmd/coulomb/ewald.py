@@ -1,5 +1,5 @@
 """
-Methods for Coulombic forces and energies.
+Methods for Coulombic forces and energies with the classical Ewald method.
 """
 
 __author__ = "W.R.Saunders"
@@ -284,9 +284,9 @@ class EwaldOrthoganal(object):
 
         coeff_space[0,0,0] = 0.0
 
-        for rz in xrange(nmax_vec[2]+1):
-            for ry in xrange(nmax_vec[1]+1):
-                for rx in xrange(nmax_vec[0]+1):
+        for rz in range(nmax_vec[2]+1):
+            for ry in range(nmax_vec[1]+1):
+                for rx in range(nmax_vec[0]+1):
                     if not (rx == 0 and ry == 0 and rz == 0):
 
                         rlen2 = (rx*recip_vec[0,0])**2. + \
@@ -696,13 +696,13 @@ class EwaldOrthoganal(object):
             qx = charges[lx, 0]
             tmp = np.zeros(2, dtype=ctypes.c_double)
 
-            for rz in xrange(2*nmax_vec[2]+1):
+            for rz in range(2*nmax_vec[2]+1):
                 rzp = abs(rz-nmax_vec[2])
                 recip_len2 = (rzp*gz)**2.
-                for ry in xrange(2*nmax_vec[1]+1):
+                for ry in range(2*nmax_vec[1]+1):
                     ryp = abs(ry-nmax_vec[1])
                     recip_len2zy = recip_len2 + (ryp*gy)**2.
-                    for rx in xrange(2*nmax_vec[0]+1):
+                    for rx in range(2*nmax_vec[0]+1):
                         rxp = abs(rx-nmax_vec[0])
                         recip_len2zyx = recip_len2zy + (rxp*gx)**2.
 
@@ -731,9 +731,9 @@ class EwaldOrthoganal(object):
         base_coeff2 = -1./(4.*alpha)
 
         coeff_space[0,0,0] = 0.0
-        for rz in xrange(nmax_vec[2]+1):
-            for ry in xrange(nmax_vec[1]+1):
-                for rx in xrange(nmax_vec[0]+1):
+        for rz in range(nmax_vec[2]+1):
+            for ry in range(nmax_vec[1]+1):
+                for rx in range(nmax_vec[0]+1):
                     if not (rx == 0 and ry == 0 and rz == 0):
 
                         rlen2 = (rx*recip_vec[0,0])**2. + \
@@ -762,12 +762,12 @@ class EwaldOrthoganal(object):
             rz = positions[px, 2]
             qx = charges[px,0]
 
-            for kz in xrange(2*nmax_vec[2]+1):
+            for kz in range(2*nmax_vec[2]+1):
                 rzkz = rz*recip_vec[2,2]*(kz-nmax_vec[2])
 
-                for ky in xrange(2*nmax_vec[1]+1):
+                for ky in range(2*nmax_vec[1]+1):
                     ryky = ry*recip_vec[1,1]*(ky-nmax_vec[1])
-                    for kx in xrange(2*nmax_vec[0]+1):
+                    for kx in range(2*nmax_vec[0]+1):
                         rxkx = rx*recip_vec[0,0]*(kx-nmax_vec[0])
 
                         rxp = abs(kx-nmax_vec[0])
@@ -805,9 +805,9 @@ class EwaldOrthoganal(object):
         # compute energy from structure factor
         engs = 0.
 
-        for kz in xrange(2*nmax_vec[2]+1):
-            for ky in xrange(2*nmax_vec[1]+1):
-                for kx in xrange(2*nmax_vec[0]+1):
+        for kz in range(2*nmax_vec[2]+1):
+            for ky in range(2*nmax_vec[1]+1):
+                for kx in range(2*nmax_vec[0]+1):
 
                     coeff = coeff_space[
                         abs(kz-nmax_vec[2]),
@@ -858,11 +858,11 @@ class EwaldOrthoganal(object):
 
         mind = 10000.
 
-        for ix in xrange(N_LOCAL):
+        for ix in range(N_LOCAL):
             ri = positions[ix,:]
             qi = charges[ix, 0]
 
-            for jx in xrange(ix+1, N_LOCAL):
+            for jx in range(ix+1, N_LOCAL):
 
                 rj = positions[jx,:]
 

@@ -5,12 +5,10 @@ __license__ = "GPL"
 
 # system level
 import math
+import ctypes
 
 # package level
-import kernel
-import data
-import ctypes
-import access
+from ppmd import kernel, data, access
 
 
 class BasePotential(object):
@@ -711,7 +709,6 @@ class VLennardJones(LennardJones):
         A.i[0]+= (r2 < rc2) ? f_tmp*R0 : 0.0;
         A.i[1]+= (r2 < rc2) ? f_tmp*R1 : 0.0;
         A.i[2]+= (r2 < rc2) ? f_tmp*R2 : 0.0;
-
         '''
         constants = (kernel.Constant('sigma2', self._sigma ** 2),
                      kernel.Constant('rc2', self._rc ** 2),

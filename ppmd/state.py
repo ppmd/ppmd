@@ -369,7 +369,6 @@ class _move_controller(object):
         self._move_empty_slots = host.Array(ncomp=4, dtype=ctypes.c_int)
         self._move_used_free_slot_count = None
 
-        self._move_ncomp = None
         self._total_ncomp = None
 
         # Timers
@@ -402,11 +401,9 @@ class _move_controller(object):
 
         # Re-create the move library.
         self._total_ncomp = 0
-        self._move_ncomp = []
         for ixi, ix in enumerate(self.state.particle_dats):
             _dat = getattr(self.state, ix)
-            self._move_ncomp.append(_dat.ncomp)
-            self._total_ncomp += _dat.ncomp
+            self._total_ncomp += _dat.ncomp*ctypes.sizeof(_dat.dtype)
 
 
     def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None, shifts=None):
@@ -426,7 +423,7 @@ class _move_controller(object):
         _send_total = dir_send_totals.data.sum()
         # Make/resize send buffer.
         if self._move_send_buffer is None:
-            self._move_send_buffer = host.Array(ncomp=self._total_ncomp * _send_total, dtype=ctypes.c_double)
+            self._move_send_buffer = host.Array(ncomp=self._total_ncomp * _send_total, dtype=ctypes.c_byte)
         elif self._move_send_buffer.ncomp < self._total_ncomp * _send_total:
             self._move_send_buffer.realloc(self._total_ncomp * _send_total)
 
@@ -443,7 +440,7 @@ class _move_controller(object):
         # resize recv buffer.
         _recv_total = self._move_dir_recv_totals.data.sum()
         if self._move_recv_buffer is None:
-            self._move_recv_buffer = host.Array(ncomp=self._total_ncomp * _recv_total, dtype=ctypes.c_double)
+            self._move_recv_buffer = host.Array(ncomp=self._total_ncomp * _recv_total, dtype=ctypes.c_byte)
         elif self._move_recv_buffer.ncomp < self._total_ncomp * _recv_total:
             self._move_recv_buffer.realloc(self._total_ncomp * _recv_total)
 
@@ -457,7 +454,7 @@ class _move_controller(object):
             self._resize_empty_slot_store(_send_total)
 
         #pack particles to send.
-        self._packing_args_shift['SEND_BUFFER'] = self._move_send_buffer
+        self._packing_args_shift['S_BUF'] = self._move_send_buffer
         self._packing_args_shift['SHIFT'] = shifts
         self._packing_args_shift['direction_id_list'] = ids_directions_list
         self._packing_args_shift['empty_slot_store'] = self._move_empty_slots
@@ -466,6 +463,7 @@ class _move_controller(object):
 
         #sort empty slots.
         self._move_empty_slots.data[0:_send_total:].sort()
+
 
         #exchange particle data.
         self._exchange_move_send_recv_buffers()
@@ -512,26 +510,30 @@ class _move_controller(object):
 
         self.move_timer.pause()
 
-
         return True
 
     def _move_build_unpacking_lib(self):
 
             _dyn_dat_case = ''
-            _space = ' ' * 16
+            cumulative_ncomp = 0
 
-            _cumulative_ncomp = 0
+            for ix in self.state.particle_dats:
 
-            for ixi, ix in enumerate(self.state.particle_dats):
-                _dat = getattr(self.state, ix)
-                if _dat.ncomp > 1:
-                    _dyn_dat_case += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP': _dat.ncomp}
-                    _dyn_dat_case += _space + '%(NAME)s[(pos*%(NCOMP)s)+ni] = _RECV_BUFFER[(ix*%(NCOMP_TOTAL)s)+%(NCOMP_START)s+ni]; \n' % {'NCOMP':_dat.ncomp, 'NAME':str(ix), 'NCOMP_TOTAL': self._total_ncomp, 'NCOMP_START': _cumulative_ncomp}
-                    _dyn_dat_case += _space + '} \n'
-                else:
-                    _dyn_dat_case += _space + '%(NAME)s[pos] = _RECV_BUFFER[(ix*%(NCOMP_TOTAL)s)+%(NCOMP_START)s]; \n' % {'NAME':str(ix), 'NCOMP_TOTAL': self._total_ncomp, 'NCOMP_START': _cumulative_ncomp}
+                dat = getattr(self.state,ix)
+                sub_dict = {
+                    'TBYTE': str(dat.ncomp*ctypes.sizeof(dat.dtype)),
+                    'NCOMP':str(dat.ncomp),
+                    'NAME':str(ix),
+                    'OFFSET': str(cumulative_ncomp),
+                    'STRIDE_BYTE': str(self._total_ncomp)
+                }
 
-                _cumulative_ncomp += _dat.ncomp
+                _dyn_dat_case += '''
+                memcpy(&%(NAME)s[pos * %(NCOMP)s], R_BUF, %(TBYTE)s);
+                R_BUF += %(TBYTE)s;
+                ''' % sub_dict
+
+                cumulative_ncomp += dat.ncomp*ctypes.sizeof(dat.dtype)
 
 
             _unpacking_code = '''
@@ -560,19 +562,17 @@ class _move_controller(object):
 
             _unpacking_dynamic_args = {
                 '_free_slots': self._move_empty_slots,
-                '_RECV_BUFFER': self._move_recv_buffer
+                'R_BUF': self._move_recv_buffer
             }
 
             for ix in self.state.particle_dats:
                 # existing dat in state
                 _unpacking_dynamic_args['%(NAME)s' % {'NAME':ix}] = getattr(self.state, ix)
 
-            _unpacking_headers = ['stdio.h']
+            _unpacking_headers = ['stdio.h', 'string.h']
 
             # create a unique but searchable name.
-            _name = ''
-            for ix in self.state.particle_dats:
-                _name += '_' + str(ix)
+            _name = ''.join(['_' + ix for ix in self.state.particle_dats])
 
             # make kernel
             _unpacking_kernel = kernel.Kernel('state_move_unpacking' + _name, _unpacking_code, None, _unpacking_headers, None, _unpacking_static_args)
@@ -628,7 +628,7 @@ class _move_controller(object):
             _r_start += _n * self._move_dir_recv_totals[ix]
 
             if self._move_dir_recv_totals[ix] > 0:
-                _tsize = self._status.Get_count(mpi.mpi_map[ctypes.c_double])
+                _tsize = self._status.Get_count(mpi.mpi_map[ctypes.c_byte])
                 assert _tsize == self._move_dir_recv_totals[ix]*self._total_ncomp, "RECVD incorrect amount of data:" + str(_tsize) + " " + str(self._move_dir_recv_totals[ix]*self._total_ncomp)
 
 
@@ -666,33 +666,39 @@ class _move_controller(object):
         """
 
         _dynamic_dats_shift = ''
-        _space = ' ' * 16
 
-        for ix, iy in zip(self.state.particle_dats, self._move_ncomp):
+        for ix in self.state.particle_dats:
 
-            # make case where ParticleDat has more than one component.
-            if iy > 1:
+            dat = getattr(self.state,ix)
+            sub_dict = {
+                'DTYPE': host.ctypes_map[dat.dtype],
+                'DBYTE': str(ctypes.sizeof(dat.dtype)),
+                'TBYTE': str(dat.ncomp*ctypes.sizeof(dat.dtype)),
+                'NCOMP':str(dat.ncomp),
+                'NAME':str(ix)
+            }
 
-                # if ix == 'positions':
-                if type(getattr(self.state,ix)) is data.PositionDat:
-                    _dynamic_dats_shift += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP':iy}
-                    _dynamic_dats_shift += _space + 'SEND_BUFFER[index+ni] = %(NAME)s[(_ix*%(NCOMP)s)+ni] + SHIFT[(_dir*3)+ni]; \n' % {'NCOMP':iy, 'NAME':str(ix)}
-                    _dynamic_dats_shift += _space + '} \n'
-                    _dynamic_dats_shift += _space + 'index += %(NCOMP)s; \n' % {'NCOMP':iy}
-                else:
-                    _dynamic_dats_shift += _space + 'for(int ni = 0; ni < %(NCOMP)s; ni++){ \n' % {'NCOMP':iy}
-                    _dynamic_dats_shift += _space + 'SEND_BUFFER[index+ni] = %(NAME)s[(_ix*%(NCOMP)s)+ni]; \n' % {'NCOMP':iy, 'NAME':str(ix)}
-                    _dynamic_dats_shift += _space + '} \n'
-                    _dynamic_dats_shift += _space + 'index += %(NCOMP)s; \n' % {'NCOMP':iy}
+            if type(dat) is data.PositionDat:
+                assert dat.ncomp == 3, "move only defined in 3D"
+                _dynamic_dats_shift += '''
+                %(DTYPE)s pos_tmp[3];
+                pos_tmp[0] = %(NAME)s[_ix * %(NCOMP)s    ] + SHIFT[(_dir*3)    ];
+                pos_tmp[1] = %(NAME)s[_ix * %(NCOMP)s + 1] + SHIFT[(_dir*3) + 1];
+                pos_tmp[2] = %(NAME)s[_ix * %(NCOMP)s + 2] + SHIFT[(_dir*3) + 2];
+                memcpy(S_BUF, pos_tmp, 3*%(DBYTE)s);
+                S_BUF += %(TBYTE)s;
+                ''' % sub_dict
 
             else:
-                _dynamic_dats_shift += _space + 'SEND_BUFFER[index] = %(NAME)s[_ix]; \n' % {'NAME':str(ix)}
-                _dynamic_dats_shift += _space + 'index += 1; \n'
+                assert dat.ncomp > 0, "move not defined for zero component dats"
+                _dynamic_dats_shift += '''
+                memcpy(S_BUF, &%(NAME)s[_ix * %(NCOMP)s], %(TBYTE)s);
+                S_BUF += %(TBYTE)s;
+                ''' % sub_dict
 
 
         _packing_code_shift = '''
         // Next free space in send buffer.
-        int index = 0;
         int slot_index = 0;
 
         //loop over the send directions.
@@ -706,7 +712,6 @@ class _move_controller(object):
                 //Generate code based on ParticleDats
 
                 int _ix = direction_id_list[_ixd];
-                //cout << "packing " << _ix << endl;
 
                 \n%(DYNAMIC_DATS)s
 
@@ -718,7 +723,7 @@ class _move_controller(object):
         }
         ''' % {'DYNAMIC_DATS': _dynamic_dats_shift}
 
-        self._packing_args_shift = {'SEND_BUFFER':host.NullDoubleArray,
+        self._packing_args_shift = {'S_BUF':host.NullByteArray,
                                     'SHIFT': host.NullDoubleArray,
                                     'direction_id_list': host.NullIntArray,
                                     'empty_slot_store': host.NullIntArray}
@@ -735,7 +740,7 @@ class _move_controller(object):
             _name += '_' + str(ix)
 
         # make kernel
-        _packing_kernel_shift = kernel.Kernel('state_move_packing_shift' + _name, _packing_code_shift, None, ['stdio.h'], None, None)
+        _packing_kernel_shift = kernel.Kernel('state_move_packing_shift' + _name, _packing_code_shift, None, ['stdio.h', 'string.h'], None, None)
 
         # make packing library
         self._move_packing_shift_lib = build.SharedLib(_packing_kernel_shift, self._packing_args_shift)

@@ -120,7 +120,7 @@ def test_host_global_array_4(DGAN1):
 
     tmp = np.array([ix*rank for ix in coeff])
     A[:] = tmp[:]
-    csuma = [coeff[rx]*fac for rx in xrange(N1)]
+    csuma = [coeff[rx]*fac for rx in range(N1)]
 
     for ix in range(N1):
         assert abs(A[ix] - csuma[ix])<10.**-15, "GlobalArray.reduction 3 failed"

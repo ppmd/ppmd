@@ -2,12 +2,17 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
+# syestem level
 import hashlib
 import re
 import cgen
 import ctypes
-import host
 import numpy as np
+
+# package level
+import host
+
+
 
 def analyse(kernel_in=None, dat_dict=None):
     """
@@ -124,6 +129,8 @@ class Reduction(object):
     def index(self):
         """Returns index in C pointer syntax, eg u[0] returns 0"""
         return re.match('(' + self._var + '\[)(.*)(\])', self._pointer).group(2)
+
+
 
 class Constant(object):
     """Class representing a numerical constant.

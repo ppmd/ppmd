@@ -27,6 +27,7 @@ GlobalArray = md.data.GlobalArray
 def assert_tol(val, tol, msg="tolerance not met"):
     assert abs(val) < 10.**(-1*tol), msg
 
+@pytest.mark.skip
 def test_ewald_energy_python_co2_2_1():
     """
     Test that the python implementation of ewald calculates the correct 

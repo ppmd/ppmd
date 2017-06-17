@@ -9,7 +9,7 @@ import itertools
 
 
 def nested_iterator(low, high):
-    b = [xrange(i,j) for i,j in zip(low, high)]
+    b = [range(i,j) for i,j in zip(low, high)]
     return itertools.product(*b)
 
 
@@ -93,9 +93,9 @@ def fcc(n, e):
 
     tmp = np.zeros_like(unit)
 
-    for iz in xrange(n[2]):
-        for iy in xrange(n[1]):
-            for ix in xrange(n[0]):
+    for iz in range(n[2]):
+        for iy in range(n[1]):
+            for ix in range(n[0]):
                 i = iz*(n[0]*n[1]) + iy*n[0] + ix
                 tmp.fill(0.0)
 

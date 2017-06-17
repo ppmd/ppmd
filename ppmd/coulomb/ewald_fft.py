@@ -112,9 +112,9 @@ class EwaldOrthoganalFFT(ewald.EwaldOrthoganal):
 
         coeff_space[0,0,0] = 0.0
 
-        for rz in xrange(nmax_vec[2]+1):
-            for ry in xrange(nmax_vec[1]+1):
-                for rx in xrange(nmax_vec[0]+1):
+        for rz in range(nmax_vec[2]+1):
+            for ry in range(nmax_vec[1]+1):
+                for rx in range(nmax_vec[0]+1):
                     if not (rx == 0 and ry == 0 and rz == 0):
 
                         rlen2 = (rx*recip_vec[0,0])**2. + \
@@ -195,7 +195,7 @@ class EwaldOrthoganalFFT(ewald.EwaldOrthoganal):
 
         print "NK", nkx, nky, nkz, ssx, ssy, ssz
 
-        for px in xrange(N):
+        for px in range(N):
 
             qi = charges[px, 0]
 
@@ -207,11 +207,11 @@ class EwaldOrthoganalFFT(ewald.EwaldOrthoganal):
             cy = int(ry/hy)
             cz = int(rz/hz)
 
-            for oz in xrange(-1*ssz, ssz+1):
+            for oz in range(-1*ssz, ssz+1):
                 ozv = (cz+oz)*hz
-                for oy in xrange(-1*ssy, ssy+1):
+                for oy in range(-1*ssy, ssy+1):
                     oyv = (cy+oy)*hy
-                    for ox in xrange(-1*ssx, ssx+1):
+                    for ox in range(-1*ssx, ssx+1):
                         oxv = (cx+ox)*hx
                         x = rx - oxv
                         y = ry - oyv
@@ -321,7 +321,7 @@ class EwaldOrthoganalFFT(ewald.EwaldOrthoganal):
 
         u1 = 0.0
         u2 = 0.0
-        for px in xrange(N):
+        for px in range(N):
             qi = charges[px, 0]
 
             rx = positions[px, 0] + Eo2x

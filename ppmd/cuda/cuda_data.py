@@ -679,10 +679,16 @@ def _build_norm_linf_lib(dtype):
 
 
 
+class PlaceHolderDat(ParticleDat):
+    def __init__(self, ncomp=1, dtype=ctypes.c_double):
+        self._ncol = ctypes.c_int(ncomp)
+        self.idtype = dtype
+        self.group = None
 
-
-
-
+class PlaceHolderArray(ScalarArray):
+    def __init__(self, ncomp=1, dtype=ctypes.c_double):
+        self.idtype = dtype
+        self._ncomp = ctypes.c_int(ncomp)
 
 
 

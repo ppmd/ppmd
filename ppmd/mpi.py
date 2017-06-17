@@ -31,9 +31,12 @@ def _atexit_queue():
 atexit.register(_atexit_queue)
 
 
-
-
-mpi_map = {ct.c_double: MPI.DOUBLE, ct.c_int: MPI.INT, int: MPI.INT}
+mpi_map = {
+    ct.c_double: MPI.DOUBLE,
+    ct.c_int: MPI.INT,
+    int: MPI.INT,
+    ct.c_byte: MPI.BYTE
+}
 
 recv_modifiers = [
     [-1, -1, -1],  # 0
