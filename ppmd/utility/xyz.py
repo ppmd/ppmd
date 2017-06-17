@@ -56,16 +56,19 @@ class XYZ(object):
         self.positions = np.array(positions)
         """Atoms positions in file."""
 
-
-
-def numpy_to_xyz(arr, filename, symbol='A'):
+def numpy_to_xyz(arr, filename, symbol='A', append=False):
     """
     Write a N*3 array to a file in xyz format
     :param arr: numpy array to write.
     :param filename: name of file to write to.
     """
 
-    with open(filename, 'w') as fh:
+    if append:
+        mode = 'a'
+    else:
+        mode = 'w'
+
+    with open(filename, mode) as fh:
         fh.writelines(str(arr.shape[0])+'\n')
         fh.writelines('Written by numpy_to_xyz.\n')
         for ix in xrange(arr.shape[0]):
