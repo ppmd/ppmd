@@ -170,9 +170,13 @@ class ParticleLoopOMP(ParticleLoop):
             shared+= sx+','
         shared = shared[:-1]
 
+        pragma = cgen.Pragma('omp parallel for default(none) shared(' + shared + ')')
+        if runtime.OMP_NUM_THREADS is None:
+            pragma = cgen.Comment(pragma)
+
         loop = cgen.Module([
             cgen.Line('omp_set_num_threads(_NUM_THREADS);'),
-            cgen.Pragma('omp parallel for default(none) shared(' + shared + ')'),
+            pragma,
             cgen.For('int ' + i + '=0',
                     i + '<_N_LOCAL',
                     i+'++',
