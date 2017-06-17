@@ -25,9 +25,13 @@ MPI_SHARED_MEM = True
 
 
 try:
-    OMP_NUM_THREADS = os.environ['OMP_NUM_THREADS']
-except KeyError:
+    OMP_NUM_THREADS = int(os.environ['OMP_NUM_THREADS'])
+except Exception as e:
+    print "error", e
     OMP_NUM_THREADS = 1
+
+print "val", OMP_NUM_THREADS
+
 
 NUM_THREADS = OMP_NUM_THREADS
 
