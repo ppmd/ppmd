@@ -1,0 +1,3 @@
+./ppmd/config_dir/default.cfg
+*.pyc
+.idea
