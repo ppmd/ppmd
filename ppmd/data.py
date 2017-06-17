@@ -185,7 +185,6 @@ class GlobalArrayThreaded(host._Array):
         if not mode.write:
             return self._read_pointers
         else:   
-            print "PRIOR", self._kdata
             return self._write_pointers
 
     @property
@@ -196,7 +195,6 @@ class GlobalArrayThreaded(host._Array):
     def ctypes_data_post(self, mode=None, threaded=False):
         if not mode.write:
             return
-        print "POST", self._kdata
         if threaded is True:
             self._sync_thread_regions()
         self._sync_init()
