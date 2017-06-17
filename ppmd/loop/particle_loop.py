@@ -37,11 +37,7 @@ class ParticleLoop(object):
         self.loop_timer = opt.LoopTimer()
         self.wrapper_timer = opt.Timer(runtime.TIMER)
 
-
-        self._components = {
-            'LIB_PAIR_INDEX_0': '_i',
-            'LIB_NAME': str(self._kernel.name) + '_wrapper'
-            }
+        self._components = None
 
         self._generate()
 
@@ -61,9 +57,16 @@ class ParticleLoop(object):
 
         # assert self._group is not None, "No cell to particle map found"
 
+    def _init_components(self):
+        self._components = {
+            'LIB_PAIR_INDEX_0': '_i',
+            'LIB_NAME': str(self._kernel.name) + '_wrapper',
+            'LIB_HEADERS': [],
+            }
 
 
     def _generate(self):
+        self._init_components()
         self._generate_lib_specific_args()
         self._generate_kernel_arg_decls()
         self._generate_kernel_func()
@@ -173,7 +176,7 @@ class ParticleLoop(object):
             )
 
     def _generate_kernel_headers(self):
-        s = []
+        s = self._components['LIB_HEADERS']
         if self._kernel.headers is not None:
             if hasattr(self._kernel.headers, "__iter__"):
                 for x in self._kernel.headers:

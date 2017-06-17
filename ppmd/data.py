@@ -93,7 +93,7 @@ class GlobalArray(object):
                 return GlobalArrayShared(
                 size=size, dtype=dtype, comm=comm, op=op, shared_memory=shared_memory
                 )
-            if shared_memory == 'omp':
+            if shared_memory == 'thread':
                 return GlobalArrayThreaded(
                 size=size, dtype=dtype, comm=comm, op=op
                 )

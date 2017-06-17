@@ -24,15 +24,15 @@ N1 = 4
 
 @pytest.fixture()
 def DGAN1():
-    return GlobalArray(size=N1, dtype=ctypes.c_double, shared_memory='omp')
+    return GlobalArray(size=N1, dtype=ctypes.c_double, shared_memory='thread')
 
 @pytest.fixture()
 def DGAN2():
-    return GlobalArray(size=1, dtype=ctypes.c_double, shared_memory='omp')
+    return GlobalArray(size=1, dtype=ctypes.c_double, shared_memory='thread')
 
 @pytest.fixture()
 def IGAN1():
-    return GlobalArray(size=N1, dtype=ctypes.c_int, shared_memory='omp')
+    return GlobalArray(size=N1, dtype=ctypes.c_int, shared_memory='thread')
 
 
 md.runtime.NUM_THREADS = 4
@@ -70,7 +70,7 @@ def test_host_global_array_2_5(IGAN1):
         assert A[ix] == nproc, "GlobalArray.reduction 1 failed"
 
     A[:] += 1
-    
+
     for ix in range(N1):
         assert A[ix] == nproc*(nproc+1), "GlobalArray.reduction 2 failed"
 
@@ -90,7 +90,7 @@ def test_host_global_array_3(IGAN1):
         assert A[ix] == csum, "GlobalArray.reduction failed"
 
 def test_host_global_array_3_5():
-    A = GlobalArray(size=nproc, dtype=ctypes.c_int, shared_memory='omp')
+    A = GlobalArray(size=nproc, dtype=ctypes.c_int, shared_memory='thread')
     A.set(0)
     A[rank] += 1
 
@@ -222,7 +222,7 @@ def test_host_global_array_8(DGAN1):
 
 
 def test_host_global_array_9():
-    A = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory='omp')
+    A = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory='thread')
     A[0] = 0.0
 
     PD = ParticleDat(npart=N1, ncomp=1, dtype=ctypes.c_int)
