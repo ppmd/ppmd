@@ -1,3 +1,5 @@
+from __future__ import print_function, division
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -9,17 +11,17 @@ import cgen
 import os
 
 # package level
-import build
-import runtime
-import host
-import opt
-import data
+from ppmd import build
+from ppmd import runtime
+from ppmd import host
+from ppmd import opt
+from ppmd import data
 
 def Restrict(keyword, symbol):
     return str(keyword) + ' ' + str(symbol)
 
 
-class ParticleLoop(object):
+class ParticleLoopOMP(object):
 
 
     def __init__(self, kernel=None, dat_dict=None):
@@ -207,7 +209,7 @@ class ParticleLoop(object):
                 kernel_call.append(g)
 
             else:
-                print "ERROR: Type not known"
+                print("ERROR: Type not known")
 
         kernel_call.append(cgen.Comment('#### Kernel call ####'))
 

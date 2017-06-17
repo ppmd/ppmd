@@ -22,6 +22,7 @@ BUILD_DIR = os.path.abspath(config.MAIN_CFG['build-dir'][1])
 LIB_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib/'))
 
 MPI_SHARED_MEM = True
+NUM_THREADS = 1
 
 
 

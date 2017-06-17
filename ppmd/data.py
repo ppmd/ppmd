@@ -66,18 +66,6 @@ be conserved. This is the default behaviour of any sorting methods implemented i
     :undoc-members:
     :members:
 
-Typed Dat
-~~~~~~~~~
-
-Instances of this class should be used to store properties of particles which are common to
-multiple particles e.g. mass.
-
-
-.. autoclass:: data.TypedDat
-    :show-inheritance:
-    :undoc-members:
-    :members:
-
 
 }rst_doc
 """
@@ -85,6 +73,8 @@ multiple particles e.g. mass.
 #####################################################################################
 # Global Array
 #####################################################################################
+
+
 
 class GlobalArray(object):
     """
@@ -98,10 +88,15 @@ class GlobalArray(object):
     def __new__(
     self, size=1, dtype=ctypes.c_double, comm=mpi.MPI.COMM_WORLD, op=mpi.MPI.SUM, shared_memory=True
     ):
-        if shared_memory is True:
-            return GlobalArrayShared(
-            size=size, dtype=dtype, comm=comm, op=op, shared_memory=shared_memory
-            )
+        if shared_memory:
+            if shared_memory is True:
+                return GlobalArrayShared(
+                size=size, dtype=dtype, comm=comm, op=op, shared_memory=shared_memory
+                )
+            if shared_memory == 'omp':
+                return GlobalArrayThreaded(
+                size=size, dtype=dtype, comm=comm, op=op
+                )
         else:
             return GlobalArrayClassic(
             size=size, dtype=dtype, comm=comm, op=op, shared_memory=shared_memory
@@ -111,6 +106,127 @@ class GlobalArray(object):
         pass
     def __setitem__(self, key, value):
         pass
+
+
+
+class GlobalArrayThreaded(host._Array):
+    """
+    Class for global data. This class may be: globally set, incremented and
+    read. This class is constructed with a MPI reduction operator, currently 
+    only MPI.SUM is avaialbe, which defines the addition operator. Global 
+    setting sets all values in the array to the same value across all ranks. 
+    All calls must be made on all ranks in parent communicator.
+    """
+
+    def __init__(self, size=1, dtype=ctypes.c_double, comm=mpi.MPI.COMM_WORLD, op=mpi.MPI.SUM):
+        # if no shared mem, numpy array, if shared mem, view into window
+        self._data = None
+        # array to swap with self._data to avoid copying in allreduce
+        self._rdata = None
+        # sync status
+        self._sync_status = True
+
+        assert op is mpi.MPI.SUM, "no other reduction operators are currently implemented"
+
+        self.op = op
+        """MPI Reduction operation"""
+        self.size = size
+        """Number of elements in the array."""
+        self.dtype = dtype
+        """Data type of array."""
+        self.shared_memory = True
+        """True if shared memory is enabled"""
+
+        self._redcomm = comm
+
+        self._data = np.zeros(shape=size, dtype=dtype)
+        self._rdata = np.zeros(shape=size, dtype=dtype)
+
+        self._data[:] = 0
+
+        self.thread_count = runtime.NUM_THREADS
+
+        self._kdata = [np.zeros(shape=size, dtype=dtype) for tx in range(self.thread_count)]
+
+        self._write_pointers = (ctypes.POINTER(self.dtype) * self.thread_count)(*[kx.ctypes.data_as(ctypes.POINTER(self.dtype)) for kx in self._kdata])
+        self._read_pointers = (ctypes.POINTER(self.dtype) * self.thread_count)(*[self._data.ctypes.data_as(ctypes.POINTER(self.dtype)) for kx in range(self.thread_count)])
+
+        self._timer = opt.Timer(runtime.TIMER)
+
+    def set(self, val):
+        self._sync_wait()
+        self._data[:] = val
+        for kx in self._kdata:
+            kx[:] = val
+        self._sync_status = True
+
+    def __setitem__(self, key, value):
+        self._sync_wait()
+        self._data[key] = value
+        self._sync_init()
+
+    def __getitem__(self, item):
+        self._sync_wait()
+        return self._data[item]
+
+    def __call__(self, mode=access.INC):
+        assert mode in (access.INC_ZERO, access.READ, access.R, access.INC, access.INC0)
+        return self, mode
+
+    def ctypes_data_access(self, mode=access.RW, pair=False, threaded=False):
+        # generation needs to explictly request array of pointers, otherwise
+        # behaviour is like GlobalArrayClassic
+        self._sync_wait()
+        if mode in (access.INC0, access.INC_ZERO):
+            self.set(0)
+        if threaded is False:
+            return self.ctypes_data
+
+        if not mode.write:
+            return self._read_pointers
+        else:
+            return self._write_pointers
+
+    @property
+    def ctypes_data(self):
+        self._sync_wait()
+        return self._data.ctypes.data_as(ctypes.POINTER(self.dtype))
+
+    def ctypes_data_post(self, mode=None, threaded=False):
+        if not mode.write:
+            return
+        if threaded is True:
+            self._sync_thread_regions()
+        self._sync_init()
+
+    def _sync_thread_regions(self):
+        for kx in self._kdata:
+            self._data[:] += kx[:]
+
+    def _sync_init(self):
+        self._timer.start()
+
+        self._sync_status = False
+        self._redcomm.Allreduce(self._data, self._rdata, self.op)
+        t=self._data
+        self._data = self._rdata
+        self._rdata = t
+
+        self._timer.pause()
+
+        opt.PROFILE[
+            self.__class__.__name__+':{}--{}:{}:'.format(self.dtype, self.size, id(self))
+        ] = (self._timer.time())
+
+
+    def _sync_wait(self):
+        if self._sync_status:
+            return
+        # nothing to do until iallreduce is implemented
+        self._sync_status = True
+
+
+
 
 
 class GlobalArrayClassic(host._Array):
