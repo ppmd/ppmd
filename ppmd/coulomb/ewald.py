@@ -249,7 +249,7 @@ class EwaldOrthoganal(object):
         )
 
 
-        self._extract_force_energy_lib = ppmd.loop.ParticleLoop(
+        self._extract_force_energy_lib = PL(
             kernel=_cont_kernel,
             dat_dict={
                 'Positions': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.READ),
