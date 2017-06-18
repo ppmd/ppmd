@@ -159,3 +159,37 @@ def test_host_looping_2(s_nd):
         2.*np.sin(s_nd.p[0:N:,0]) + np.sin(s_nd.p[0:N:, 1]) + np.sin(s_nd.p[0:N:,2])
     )*nproc) < 10.**-10, "critical GlobalArray Failure"
 
+
+def test_host_looping_3(s_nd):
+    """
+    looping on non spatially decomposed state
+    """
+
+    print "THREADS", md.runtime.NUM_THREADS
+    gid_sum = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory='thread')
+
+    pi = np.random.uniform(-1*Eo2, Eo2, [N,3])
+    vi = np.random.normal(0, 2, [N,3])
+    fi = np.zeros([N,3])
+    gidi = np.arange(N)
+
+    s_nd.p[:] = pi
+    s_nd.v[:] = vi
+    s_nd.f[:] = fi
+    s_nd.gid[:,0] = gidi
+
+    kernel_code = '''
+    P.i[0] += 0.5*V.i[0];
+    '''
+
+    kernel = md.kernel.Kernel('test_host_looping_1',code=kernel_code)
+    kernel_map = {'P': s_nd.p(md.access.RW),
+                  'V': s_nd.v(md.access.W),
+                  'F': s_nd.f(md.access.RW),
+                  'G': s_nd.gid(md.access.R),
+                  'gid_sum': gid_sum(INC_ZERO)}
+
+    loop = md.loop.ParticleLoopOMP(kernel=kernel, dat_dict=kernel_map)
+    loop.execute(n=N)
+
+

@@ -1328,7 +1328,9 @@ class PlaceHolderArray(ScalarArray):
         self.idtype = dtype
 
 
-
+class PlaceHolderGlobalArrayThreaded(GlobalArrayThreaded):
+    def __init__(self, size=1, dtype=ctypes.c_double):
+        self.dtype = dtype
 
 
 

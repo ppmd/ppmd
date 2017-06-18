@@ -146,6 +146,9 @@ class EwaldOrthoganal(object):
             shared_memory=shared_memory
         )
 
+        
+        self.shared_memory = shared_memory
+
         #self._vars['recip_vec_kernel'] = data.ScalarArray(np.zeros(3, dtype=ctypes.c_double))
         #self._vars['recip_vec_kernel'][0] = gx[0]
         #self._vars['recip_vec_kernel'][1] = gy[1]
@@ -176,6 +179,13 @@ class EwaldOrthoganal(object):
         self._self_interaction_lib = None
 
     def _init_libs(self):
+        
+        if self.shared_memory == 'thread':
+            PL = ppmd.loop.ParticleLoopOMP
+            PHA = ppmd.data.PlaceHolderGlobalArrayThreaded
+        else:
+            PL = ppmd.loop.ParticleLoop
+            PHA = ppmd.data.PlaceHolderArray
 
         # reciprocal contribution calculation
         with open(str(
@@ -192,8 +202,8 @@ class EwaldOrthoganal(object):
             code=_cont_source,
             headers=_cont_header
         )
-
-        self._cont_lib = ppmd.loop.ParticleLoop(
+        
+        self._cont_lib = PL(
             kernel=_cont_kernel,
             dat_dict={
                 'Positions': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(
@@ -221,14 +231,14 @@ class EwaldOrthoganal(object):
             headers=_cont_header
         )
 
-        self._extract_force_energy_lib = ppmd.loop.ParticleLoop(
+        self._extract_force_energy_lib = PL(
             kernel=_cont_kernel,
             dat_dict={
                 'Positions': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(
                     ppmd.access.READ),
                 'Forces': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(
                     ppmd.access.WRITE),
-                'Energy': ppmd.data.PlaceHolderArray(ncomp=1, dtype=ctypes.c_double)(
+                'Energy': PHA(1, ctypes.c_double)(
                     ppmd.access.INC_ZERO),
                 'Charges': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(
                     ppmd.access.READ),
@@ -263,7 +273,7 @@ class EwaldOrthoganal(object):
                 'P': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.READ),
                 'Q': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
                 'F': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.INC),
-                'u': ppmd.data.PlaceHolderArray(ncomp=1, dtype=ctypes.c_double)(ppmd.access.INC)
+                'u': ppmd.data.PlaceHolderArray(1, dtype=ctypes.c_double)(ppmd.access.INC)
             },
             shell_cutoff=1.05*self.real_cutoff
         )

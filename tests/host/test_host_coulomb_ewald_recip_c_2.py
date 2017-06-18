@@ -203,5 +203,74 @@ def test_ewald_energy_python_co2_2_3():
 
 
 
+def test_ewald_energy_python_co2_2_3_omp():
+    """
+    Test non cube domains reciprocal space
+    """
+
+    SHARED_MEMORY = 'thread'
+
+    eta = 0.26506
+    alpha = eta**2.
+    rc = 12.
+    e0 = 30.
+    e1 = 40.
+    e2 = 50.
+
+    data = np.load(get_res_file_path('coulomb/CO2cuboid.npy'))
+
+    N = data.shape[0]
+    A = State()
+    A.npart = N
+    A.domain = md.domain.BaseDomainHalo(extent=(e0,e1,e2))
+    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+
+    c = md.coulomb.ewald.EwaldOrthoganal(
+        domain=A.domain,
+        real_cutoff=12.,
+        alpha=alpha,
+        recip_cutoff=0.2667*pi*2.0,
+        recip_nmax=(8,11,14),
+        shared_memory=SHARED_MEMORY
+    )
+
+    assert c.alpha == alpha, "unexpected alpha"
+    assert c.real_cutoff == rc, "unexpected rc"
+
+
+    A.positions = PositionDat(ncomp=3)
+    A.forces = ParticleDat(ncomp=3)
+    A.charges = ParticleDat(ncomp=1)
+
+    energy = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=SHARED_MEMORY)
+
+    if mpi_rank == 0:
+        A.positions[:] = data[:,0:3:]
+        A.charges[:, 0] = data[:,3]
+    A.scatter_data_from(0)
+
+    c.evaluate_contributions(positions=A.positions, charges=A.charges)
+
+    energy[0] = 0.0
+    c.extract_forces_energy_reciprocal(A.positions, A.charges, A.forces, energy)
+
+    rs = c._test_python_structure_factor()
+
+    assert abs(rs*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "structure factor"
+    assert abs(energy[0]*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "particle loop"
+
+    energy_real = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=SHARED_MEMORY)
+    energy_self = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=SHARED_MEMORY)
+
+
+    energy_real[0] = 0.0
+    c.extract_forces_energy_real(A.positions, A.charges, A.forces, energy_real)
+
+    energy_self[0] = 0.0
+    c.evaluate_self_interactions(A.charges, energy_self)
+
+    assert abs(energy_real[0]*c.internal_to_ev() + energy_self[0]*c.internal_to_ev() + 0.6750050309E+04) < 10.**-2, "bad real space part"
+
+
 
 
