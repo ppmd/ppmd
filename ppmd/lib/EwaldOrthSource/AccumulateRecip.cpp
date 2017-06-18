@@ -6,6 +6,8 @@ const double * Positions
 const double * Charges
 */
 
+// temporary space on the stack for the recip axis should be alright in terms of stack size....
+double TMP_RECIP_AXES[6][NKMAX];
 
 // kernel start --------------------------------------
 

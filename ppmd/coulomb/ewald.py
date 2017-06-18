@@ -451,13 +451,8 @@ class EwaldOrthoganal(object):
 
     def _test_python_structure_factor(self, positions=None, charges=None):
 
-        print "START"
-
         recip_space = self._vars['recip_space_kernel']
 
-        print np.linalg.norm(recip_space[:])
-
-        #print self._cont_lib.loop_timer.time
 
         # evaluate coefficient space ------------------------------------------
         nmax_x = self._vars['nmax_vec'][0]

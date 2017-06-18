@@ -100,8 +100,8 @@ const double CC_COEFF_PLANE_X2[4] = {1.0, 1.0, -1.0, -1.0};
 
 
 // temporary space on the stack for the recip axis should be alright in terms of stack size....
-double TMP_RECIP_AXES[6][NKMAX];
-
+// double TMP_RECIP_AXES[6][NKMAX];
+// ^ not thread safe
 
 inline void COMP_AB(
     const double *a,

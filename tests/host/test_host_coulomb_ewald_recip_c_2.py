@@ -178,7 +178,6 @@ def test_ewald_energy_python_co2_2_3():
 
     assert abs(energy_real[0]*c.internal_to_ev() + energy_self[0]*c.internal_to_ev() + 0.6750050309E+04) < 10.**-2, "bad real space part"
 
-@pytest.mark.skip
 def test_ewald_energy_python_co2_2_3_omp():
     """
     Test non cube domains reciprocal space
@@ -227,10 +226,7 @@ def test_ewald_energy_python_co2_2_3_omp():
 
     c.evaluate_contributions(positions=A.positions, charges=A.charges)
 
-    print "POST CONTRIB", np.linalg.norm(c._vars['recip_space_kernel'][:]), 3298.0244365
-
     assert abs(np.linalg.norm(c._vars['recip_space_kernel'][:]) - 3298.0244365) < 10.**-8, "d"
-
 
     rs = c._test_python_structure_factor()
     c.extract_forces_energy_reciprocal(A.positions, A.charges, A.forces, energy)

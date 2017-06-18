@@ -9,6 +9,9 @@ const double * Charges
 
 // kernel start --------------------------------------
 
+// temporary space on the stack for the recip axis should be alright in terms of stack size....
+double TMP_RECIP_AXES[6][NKMAX];
+
 const double* PlaneSpace = &RecipSpace[0] + 12*NKAXIS;
 const double* RRecipSpace = PlaneSpace + PLANE_SIZE;
 const double* IRecipSpace = RRecipSpace + 8*LEN_QUAD;
