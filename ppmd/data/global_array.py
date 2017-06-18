@@ -116,6 +116,9 @@ class GlobalArrayClassic(host._Array):
         self._kdata = [np.zeros(shape=self.size, dtype=self.dtype) for tx in range(self.thread_count)]
         self._write_pointers = (ctypes.POINTER(self.dtype) * self.thread_count)(*[kx.ctypes.data_as(ctypes.POINTER(self.dtype)) for kx in self._kdata])
         self._read_pointers = (ctypes.POINTER(self.dtype) * self.thread_count)(*[self._data.ctypes.data_as(ctypes.POINTER(self.dtype)) for kx in range(self.thread_count)])
+
+        print "KDATA init", self.size
+
         self._threaded = True
 
     def set(self, val):

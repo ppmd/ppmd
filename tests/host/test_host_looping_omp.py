@@ -23,6 +23,7 @@ State = md.state.State
 seed = 235236
 rng = np.random.RandomState(seed=seed)
 
+N2 = 1000
 
 @pytest.fixture
 def state():
@@ -197,5 +198,43 @@ def test_host_looping_3(s_nd):
 
     loop = md.loop.ParticleLoopOMP(kernel=kernel, dat_dict=kernel_map)
     loop.execute(n=N)
+
+
+
+def test_host_looping_4(state):
+
+    print "THREADS", md.runtime.NUM_THREADS
+
+    pi = rng.uniform(-1*Eo2, Eo2, [N,3])
+
+    data = rng.uniform(0, 1, [N, N2])
+    state.data = ParticleDat(ncomp=N2)
+
+    correct = np.zeros(N2)
+    for nx in range(N2):
+        correct[nx] = np.sum(data[:, nx])
+
+    state.data[:, :] = data[:,:]
+    state.p[:] = pi
+
+    state.scatter_data_from(0)
+
+    gdata = GlobalArray(size=N2, dtype=ctypes.c_double, shared_memory='thread')
+
+    kernel_code = '''
+    for(int ix=0 ; ix<%(N2)s ; ix++){
+        gdata[ix] += data.i[ix];
+    }
+    ''' % {'N2':str(N2)}
+
+    kernel = md.kernel.Kernel('test_looping_omp_4',code=kernel_code)
+    kernel_map = {'data': state.data(md.access.R),
+                  'gdata': gdata(INC_ZERO)}
+
+    loop = md.loop.ParticleLoopOMP(kernel=kernel, dat_dict=kernel_map)
+    loop.execute()
+
+    for nx in range(N2):
+        assert abs(correct[nx] - gdata[nx]) < 10.**-8, "INDEX: " + str(nx)
 
 

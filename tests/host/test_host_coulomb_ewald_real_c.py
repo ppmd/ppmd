@@ -70,6 +70,7 @@ def test_ewald_energy_python_nacl_c_1():
 
     c.evaluate_contributions(positions=A.positions, charges=A.charges)
 
+
     c.extract_forces_energy_reciprocal(A.positions, A.charges, A.forces, energy)
 
     rs = c._test_python_structure_factor()
@@ -78,7 +79,6 @@ def test_ewald_energy_python_nacl_c_1():
     assert abs(energy[0]*c.internal_to_ev() - 0.5223894616E-26) < 10.**-3, "particle loop"
 
     c.extract_forces_energy_real(A.positions, A.charges, A.forces, energy_real)
-
     c.evaluate_self_interactions(A.charges, energy_self)
 
     assert abs(energy_real[0]*c.internal_to_ev() + energy_self[0]*c.internal_to_ev() + 0.4194069853E+04) < 10.**-2, "bad real space part"

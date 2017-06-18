@@ -127,8 +127,8 @@ def test_host_sim_1(directiong):
 
     A.u = ScalarArray(ncomp=1)
     A.ke = ScalarArray(ncomp=1)
-    A.rr = GlobalArray(size=1)
-    A.rl = GlobalArray(size=1)
+    A.rr = ScalarArray(ncomp=1)
+    A.rl = ScalarArray(ncomp=1)
 
     A.gid[:, 0] = np.arange(A.npart)
     A.p[0, :] = 1.*np.array(directiong)
@@ -139,8 +139,6 @@ def test_host_sim_1(directiong):
     A.f[:] = 0.0
     A.u[0] = 0.0
     A.ke[0] = 0.0
-    A.rr[0] = 0.0
-    A.rl[0] = 0.0
     A.q[:, 0] = 1.0
 
     A.mass[:, 0] = 40.

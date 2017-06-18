@@ -158,6 +158,12 @@ class EwaldOrthoganal(object):
             dtype=ctypes.c_double,
             shared_memory=shared_memory
         )
+        self._vars['self_interaction_energy'] = ppmd.data.GlobalArray(
+            size=1,
+            dtype=ctypes.c_double,
+            shared_memory=shared_memory
+        )
+
 
         self.shared_memory = shared_memory
 
@@ -381,8 +387,13 @@ class EwaldOrthoganal(object):
 
 
 
-
     def _init_self_interaction_lib(self):
+
+        if self.shared_memory in ('thread', 'omp'):
+            PL = ppmd.loop.ParticleLoopOMP
+        else:
+            PL = ppmd.loop.ParticleLoop
+
         with open(str(
             ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/SelfInteraction.h', 'r') as fh:
             _cont_header_src = fh.read()
@@ -398,24 +409,29 @@ class EwaldOrthoganal(object):
             headers=_cont_header
         )
 
-        self._self_interaction_lib = ppmd.loop.ParticleLoop(
+        self._self_interaction_lib = PL(
             kernel=_real_kernel,
             dat_dict={
                 'Q': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
-                'u': ppmd.data.PlaceHolderArray(ncomp=1, dtype=ctypes.c_double)(ppmd.access.INC)
+                'u': self._vars['self_interaction_energy'](ppmd.access.INC_ZERO)
             }
         )
 
-    def evaluate_self_interactions(self, charges, energy):
+    def evaluate_self_interactions(self, charges, energy=None):
 
         if self._self_interaction_lib is None:
             self._init_self_interaction_lib()
+        en = self._vars['self_interaction_energy']
         self._self_interaction_lib.execute(
             dat_dict={
                 'Q': charges(ppmd.access.READ),
-                'u': energy(ppmd.access.INC)
+                'u': en(ppmd.access.INC_ZERO)
             }
         )
+        if energy is not None:
+            energy[0] = en[0]
+
+        return en[0]
 
 
     @staticmethod
@@ -435,7 +451,12 @@ class EwaldOrthoganal(object):
 
     def _test_python_structure_factor(self, positions=None, charges=None):
 
+        print "START"
+
         recip_space = self._vars['recip_space_kernel']
+
+        print np.linalg.norm(recip_space[:])
+
         #print self._cont_lib.loop_timer.time
 
         # evaluate coefficient space ------------------------------------------
@@ -447,7 +468,6 @@ class EwaldOrthoganal(object):
         self._vars['recip_space'] = np.zeros((2, 2*nmax_x+1, 2*nmax_y+1, 2*nmax_z+1), dtype=ctypes.c_double)
 
         coeff_space = self._vars['coeff_space']
-
 
 
         # ---------------------------------------------------------------------

@@ -946,7 +946,7 @@ def test_ewald_energy_python_co2_6():
     A.domain = md.domain.BaseDomainHalo(extent=(e,e,e))
     A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
 
-    c = md.coulomb.ewald.EwaldOrthoganal(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory=True)
+    c = md.coulomb.ewald.EwaldOrthoganal(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory='mpi')
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
