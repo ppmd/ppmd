@@ -24,17 +24,17 @@ N1 = 4
 
 @pytest.fixture()
 def DGAN1():
-    return GlobalArray(size=N1, dtype=ctypes.c_double)
+    return GlobalArray(size=N1, dtype=ctypes.c_double, shared_memory='mpi')
 
 @pytest.fixture()
 def DGAN2():
-    return GlobalArray(size=1, dtype=ctypes.c_double)
+    return GlobalArray(size=1, dtype=ctypes.c_double, shared_memory='mpi')
 
 @pytest.fixture()
 def IGAN1():
-    return GlobalArray(size=N1, dtype=ctypes.c_int)
+    return GlobalArray(size=N1, dtype=ctypes.c_int, shared_memory='mpi')
 
-
+@pytest.mark.skip
 def test_host_global_array_1(IGAN1):
     A = IGAN1
 
@@ -48,6 +48,7 @@ def test_host_global_array_1(IGAN1):
     for ix in range(N1):
         assert A[ix] == rint, "GlobalArray.set 2 failed"
 
+@pytest.mark.skip
 def test_host_global_array_2(DGAN1):
     A = DGAN1
     A.set(1.5)
@@ -58,6 +59,7 @@ def test_host_global_array_2(DGAN1):
     for ix in range(N1):
         assert A[ix] == rf, "GlobalArray.set 2 failed"
 
+@pytest.mark.skip
 def test_host_global_array_2_5(IGAN1):
     A = IGAN1
     A.set(0)
@@ -76,7 +78,7 @@ def test_host_global_array_2_5(IGAN1):
     for ix in range(N1):
         assert A[ix] == nproc, "GlobalArray.set failed"
 
-
+@pytest.mark.skip
 def test_host_global_array_3(IGAN1):
     A = IGAN1
     A.set(0)
@@ -87,15 +89,26 @@ def test_host_global_array_3(IGAN1):
     for ix in range(N1):
         assert A[ix] == csum, "GlobalArray.reduction failed"
 
+@pytest.mark.skip
 def test_host_global_array_3_5():
-    A = GlobalArray(size=nproc, dtype=ctypes.c_int)
+    A = GlobalArray(size=nproc, dtype=ctypes.c_int, shared_memory='mpi')
     A.set(0)
     A[rank] += 1
 
     for ix in range(nproc):
         assert A[ix] == 1, "GlobalArray.reduction failed"
 
+    A[rank] += 0
 
+    for ix in range(nproc):
+        assert A[ix] == 1, "GlobalArray.reduction failed"
+
+    A[nproc - 1 - rank] += 1
+
+    for ix in range(nproc):
+        assert A[ix] == 2, "GlobalArray.reduction failed"
+
+@pytest.mark.skip
 def test_host_global_array_4(DGAN1):
     A = DGAN1
     A.set(0)
@@ -216,12 +229,9 @@ def test_host_global_array_8(DGAN1):
 
 
 
-
-
-
 def test_host_global_array_9():
-    A = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=True)
-    A[0] = 0.0
+    A = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory='mpi')
+    A.set(0.0)
 
     PD = ParticleDat(npart=N1, ncomp=1, dtype=ctypes.c_int)
     PD[:,0] = np.arange(N1)

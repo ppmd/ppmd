@@ -19,6 +19,11 @@ ParticleDat = md.data.ParticleDat
 GlobalArray = md.data.GlobalArray
 State = md.state.State
 
+
+seed = 235236
+rng = np.random.RandomState(seed=seed)
+
+
 @pytest.fixture
 def state():
     A = State()
@@ -63,8 +68,8 @@ def test_host_looping_1(s_nd):
     print "THREADS", md.runtime.NUM_THREADS
     gid_sum = GlobalArray(size=1, dtype=ctypes.c_int, shared_memory='thread')
 
-    pi = np.random.uniform(-1*Eo2, Eo2, [N,3])
-    vi = np.random.normal(0, 2, [N,3])
+    pi = rng.uniform(-1*Eo2, Eo2, [N,3])
+    vi = rng.normal(0, 2, [N,3])
     fi = np.zeros([N,3])
     gidi = np.arange(N)
 
@@ -124,8 +129,9 @@ def test_host_looping_2(s_nd):
     print "THREADS", md.runtime.NUM_THREADS
     gid_sum = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory='thread')
 
-    pi = np.random.uniform(-1*Eo2, Eo2, [N,3])
-    vi = np.random.normal(0, 2, [N,3])
+    pi = rng.uniform(-1*Eo2, Eo2, [N,3])
+
+    vi = rng.normal(0, 2, [N,3])
     fi = np.zeros([N,3])
     gidi = np.arange(N)
 
@@ -168,8 +174,8 @@ def test_host_looping_3(s_nd):
     print "THREADS", md.runtime.NUM_THREADS
     gid_sum = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory='thread')
 
-    pi = np.random.uniform(-1*Eo2, Eo2, [N,3])
-    vi = np.random.normal(0, 2, [N,3])
+    pi = rng.uniform(-1*Eo2, Eo2, [N,3])
+    vi = rng.normal(0, 2, [N,3])
     fi = np.zeros([N,3])
     gidi = np.arange(N)
 

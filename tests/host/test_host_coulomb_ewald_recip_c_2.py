@@ -66,7 +66,7 @@ def test_ewald_energy_python_co2_2_1():
 
     c.evaluate_contributions(positions=A.positions, charges=A.charges)
 
-    energy[0] = 0.0
+    energy.set(0.0)
     c.extract_forces_energy_reciprocal(A.positions, A.charges, A.forces, energy)
 
     assert abs(energy[0]*c.internal_to_ev() - 0.917463161E1) < 10.**-3
@@ -109,7 +109,7 @@ def test_ewald_energy_python_co2_2_2():
 
     c.evaluate_contributions(positions=A.positions, charges=A.charges)
 
-    energy[0] = 0.0
+    energy.set(0.0)
     c.extract_forces_energy_reciprocal(A.positions, A.charges, A.forces, energy)
 
     assert abs(energy[0]*c.internal_to_ev() - 0.917463161E1) < 10.**-3, "{}, {}".format(energy[0]*c.internal_to_ev(), energy[0])
@@ -164,7 +164,7 @@ def test_ewald_energy_python_co2_2_3():
 
     c.evaluate_contributions(positions=A.positions, charges=A.charges)
 
-    energy[0] = 0.0
+    energy.set(0.0)
     c.extract_forces_energy_reciprocal(A.positions, A.charges, A.forces, energy)
 
     rs = c._test_python_structure_factor()
@@ -176,10 +176,10 @@ def test_ewald_energy_python_co2_2_3():
     energy_self = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=SHARED_MEMORY)
 
 
-    energy_real[0] = 0.0
+    energy_real.set(0.0)
     c.extract_forces_energy_real(A.positions, A.charges, A.forces, energy_real)
 
-    energy_self[0] = 0.0
+    energy_self.set(0)
     c.evaluate_self_interactions(A.charges, energy_self)
 
     assert abs(energy_real[0]*c.internal_to_ev() + energy_self[0]*c.internal_to_ev() + 0.6750050309E+04) < 10.**-2, "bad real space part"
@@ -251,10 +251,10 @@ def test_ewald_energy_python_co2_2_3_omp():
 
     c.evaluate_contributions(positions=A.positions, charges=A.charges)
 
-    energy[0] = 0.0
+    rs = c._test_python_structure_factor()
+    energy.set(0)
     c.extract_forces_energy_reciprocal(A.positions, A.charges, A.forces, energy)
 
-    rs = c._test_python_structure_factor()
 
     assert abs(rs*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "structure factor"
     assert abs(energy[0]*c.internal_to_ev() - 0.3063162184E+02) < 10.**-3, "particle loop"
@@ -263,10 +263,10 @@ def test_ewald_energy_python_co2_2_3_omp():
     energy_self = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=SHARED_MEMORY)
 
 
-    energy_real[0] = 0.0
+    energy_real.set(0)
     c.extract_forces_energy_real(A.positions, A.charges, A.forces, energy_real)
 
-    energy_self[0] = 0.0
+    energy_self.set(0)
     c.evaluate_self_interactions(A.charges, energy_self)
 
     assert abs(energy_real[0]*c.internal_to_ev() + energy_self[0]*c.internal_to_ev() + 0.6750050309E+04) < 10.**-2, "bad real space part"

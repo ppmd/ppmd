@@ -16,12 +16,11 @@ def get_res_file_path(filename):
 
 
 mpi_rank = md.mpi.MPI.COMM_WORLD.Get_rank()
-mpi_size = md.mpi.MPI.COMM_WORLD.Get_size()
+mpi_ncomp = md.mpi.MPI.COMM_WORLD.Get_size()
 ParticleDat = md.data.ParticleDat
 PositionDat = md.data.PositionDat
 ScalarArray = md.data.ScalarArray
 State = md.state.BaseMDState
-GlobalArray = md.data.GlobalArray
 
 
 def test_ewald_energy_python_nacl_c_1():
@@ -55,14 +54,13 @@ def test_ewald_energy_python_nacl_c_1():
         shared_memory=SHARED_MEMORY
     )
 
-
     A.positions = PositionDat(ncomp=3)
     A.forces = ParticleDat(ncomp=3)
     A.charges = ParticleDat(ncomp=1)
 
-    energy = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=SHARED_MEMORY)
-    energy_real = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=SHARED_MEMORY)
-    energy_self = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory=SHARED_MEMORY)
+    energy = ScalarArray(ncomp=1, dtype=ctypes.c_double)
+    energy_real = ScalarArray(ncomp=1, dtype=ctypes.c_double)
+    energy_self = ScalarArray(ncomp=1, dtype=ctypes.c_double)
 
     if mpi_rank == 0:
         A.positions[:] = data[:,0:3:]
@@ -72,7 +70,6 @@ def test_ewald_energy_python_nacl_c_1():
 
     c.evaluate_contributions(positions=A.positions, charges=A.charges)
 
-    energy[0] = 0.0
     c.extract_forces_energy_reciprocal(A.positions, A.charges, A.forces, energy)
 
     rs = c._test_python_structure_factor()
@@ -80,10 +77,8 @@ def test_ewald_energy_python_nacl_c_1():
     assert abs(rs*c.internal_to_ev() - 0.5223894616E-26) < 10.**-3, "structure factor"
     assert abs(energy[0]*c.internal_to_ev() - 0.5223894616E-26) < 10.**-3, "particle loop"
 
-    energy_real[0] = 0.0
     c.extract_forces_energy_real(A.positions, A.charges, A.forces, energy_real)
 
-    energy_self[0] = 0.0
     c.evaluate_self_interactions(A.charges, energy_self)
 
     assert abs(energy_real[0]*c.internal_to_ev() + energy_self[0]*c.internal_to_ev() + 0.4194069853E+04) < 10.**-2, "bad real space part"

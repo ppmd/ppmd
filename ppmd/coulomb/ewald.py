@@ -34,6 +34,9 @@ class EwaldOrthoganal(object):
         self.eps = float(eps)
 
 
+        assert shared_memory in (False, 'omp', 'mpi')
+
+
         ss = cmath.sqrt(scipy.special.lambertw(1./eps)).real
 
         if alpha is None and real_cutoff is None:
@@ -145,8 +148,17 @@ class EwaldOrthoganal(object):
             dtype=ctypes.c_double,
             shared_memory=shared_memory
         )
+        self._vars['recip_space_energy'] = ppmd.data.GlobalArray(
+            size=1,
+            dtype=ctypes.c_double,
+            shared_memory=shared_memory
+        )
+        self._vars['real_space_energy'] = ppmd.data.GlobalArray(
+            size=1,
+            dtype=ctypes.c_double,
+            shared_memory=shared_memory
+        )
 
-        
         self.shared_memory = shared_memory
 
         #self._vars['recip_vec_kernel'] = data.ScalarArray(np.zeros(3, dtype=ctypes.c_double))
@@ -179,13 +191,6 @@ class EwaldOrthoganal(object):
         self._self_interaction_lib = None
 
     def _init_libs(self):
-        
-        if self.shared_memory == 'thread':
-            PL = ppmd.loop.ParticleLoopOMP
-            PHA = ppmd.data.PlaceHolderGlobalArrayThreaded
-        else:
-            PL = ppmd.loop.ParticleLoop
-            PHA = ppmd.data.PlaceHolderArray
 
         # reciprocal contribution calculation
         with open(str(
@@ -202,7 +207,12 @@ class EwaldOrthoganal(object):
             code=_cont_source,
             headers=_cont_header
         )
-        
+
+        if self.shared_memory in ('thread', 'omp'):
+            PL = ppmd.loop.ParticleLoopOMP
+        else:
+            PL = ppmd.loop.ParticleLoop
+
         self._cont_lib = PL(
             kernel=_cont_kernel,
             dat_dict={
@@ -214,6 +224,7 @@ class EwaldOrthoganal(object):
                     ppmd.access.INC_ZERO)
             }
         )
+
 
         # reciprocal extract forces plus energy
         with open(str(
@@ -231,23 +242,19 @@ class EwaldOrthoganal(object):
             headers=_cont_header
         )
 
-        self._extract_force_energy_lib = PL(
+
+        self._extract_force_energy_lib = ppmd.loop.ParticleLoop(
             kernel=_cont_kernel,
             dat_dict={
-                'Positions': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(
-                    ppmd.access.READ),
-                'Forces': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(
-                    ppmd.access.WRITE),
-                'Energy': PHA(1, ctypes.c_double)(
-                    ppmd.access.INC_ZERO),
-                'Charges': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(
-                    ppmd.access.READ),
-                'RecipSpace': self._vars['recip_space_kernel'](
-                    ppmd.access.READ),
-                'CoeffSpace': self._vars['coeff_space_kernel'](
-                    ppmd.access.READ)
+                'Positions': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.READ),
+                'Forces': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.INC),
+                'Energy': self._vars['recip_space_energy'](ppmd.access.INC_ZERO),
+                'Charges': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
+                'RecipSpace': self._vars['recip_space_kernel'](ppmd.access.READ),
+                'CoeffSpace': self._vars['coeff_space_kernel'](ppmd.access.READ)
             }
         )
+
 
     def _init_real_space_lib(self):
 
@@ -273,7 +280,7 @@ class EwaldOrthoganal(object):
                 'P': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.READ),
                 'Q': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
                 'F': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.INC),
-                'u': ppmd.data.PlaceHolderArray(1, dtype=ctypes.c_double)(ppmd.access.INC)
+                'u': self._vars['real_space_energy'](ppmd.access.INC_ZERO)
             },
             shell_cutoff=1.05*self.real_cutoff
         )
@@ -323,27 +330,27 @@ class EwaldOrthoganal(object):
             }
         )
 
-    def _extract_reciprocal_contribution(self, positions, charges, forces, energy):
+    def _extract_reciprocal_contribution(self, positions, charges, forces, energy=None):
 
         NLOCAL = positions.npart_local
-
+        re = self._vars['recip_space_energy']
         self._extract_force_energy_lib.execute(
             n = NLOCAL,
             dat_dict={
                 'Positions': positions(ppmd.access.READ),
                 'Charges': charges(ppmd.access.READ),
-                'RecipSpace': self._vars['recip_space_kernel'](
-                    ppmd.access.READ),
-                'Forces': forces(ppmd.access.WRITE),
-                'Energy': energy(ppmd.access.INC_ZERO),
-                'CoeffSpace': self._vars['coeff_space_kernel'](
-                    ppmd.access.READ)
+                'RecipSpace': self._vars['recip_space_kernel'](ppmd.access.READ),
+                'Forces': forces(ppmd.access.INC),
+                'Energy': re(ppmd.access.INC_ZERO),
+                'CoeffSpace': self._vars['coeff_space_kernel'](ppmd.access.READ)
             }
         )
+        if energy is not None:
+            energy[0] = re[0]
+        return re[0]
 
     def extract_forces_energy_reciprocal(self, positions, charges, forces, energy):
         self._extract_reciprocal_contribution(positions, charges, forces, energy)
-
 
 
     def evaluate_contributions(self, positions, charges):
@@ -353,19 +360,27 @@ class EwaldOrthoganal(object):
         self._calculate_reciprocal_contribution(positions, charges)
 
 
-    def extract_forces_energy_real(self, positions, charges, forces, energy):
+    def extract_forces_energy_real(self, positions, charges, forces, energy=None):
 
         if self._real_space_pairloop is None:
             self._init_real_space_lib()
 
+        re = self._vars['real_space_energy']
         self._real_space_pairloop.execute(
             dat_dict={
                 'P': positions(ppmd.access.READ),
                 'Q': charges(ppmd.access.READ),
                 'F': forces(ppmd.access.INC),
-                'u': energy(ppmd.access.INC)
+                'u': re(ppmd.access.INC_ZERO)
             }
         )
+
+        if energy is not None:
+            energy[0] = re[0]
+        return re[0]
+
+
+
 
     def _init_self_interaction_lib(self):
         with open(str(

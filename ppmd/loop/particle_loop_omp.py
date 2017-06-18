@@ -68,7 +68,7 @@ class ParticleLoopOMP(ParticleLoop):
                                           Restrict(self._cc.restrict_keyword, symbol))
                                       )
 
-            if issubclass(type(obj), data.GlobalArrayThreaded):
+            if issubclass(type(obj), data.GlobalArrayClassic):
                 kernel_lib_arg = cgen.Pointer(kernel_lib_arg)
 
             if issubclass(type(obj), host._Array):
@@ -81,7 +81,7 @@ class ParticleLoopOMP(ParticleLoop):
                 _kernel_arg_decls.append(kernel_arg)
 
                 if mode.write is True:
-                    assert issubclass(type(obj), data.GlobalArrayThreaded), "global array must be a thread safe type for \
+                    assert issubclass(type(obj), data.GlobalArrayClassic), "global array must be a thread safe type for \
                     write access. Type is:" + str(type(obj))
 
 
@@ -123,7 +123,7 @@ class ParticleLoopOMP(ParticleLoop):
         for i, dat in enumerate(self._dat_dict.items()):
             if issubclass(type(dat[1][0]), host._Array):
                 sym = dat[0]
-                if issubclass(type(dat[1][0]), data.GlobalArrayThreaded):
+                if issubclass(type(dat[1][0]), data.GlobalArrayClassic):
                     sym += '[' + self._components['OMP_THREAD_INDEX_SYM'] + ']'
                 kernel_call_symbols.append(sym)
                 shared_syms.append(dat[0])
@@ -216,7 +216,7 @@ class ParticleLoopOMP(ParticleLoop):
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
 
-                if issubclass(type(dat_orig[0]), data.GlobalArrayThreaded):
+                if issubclass(type(dat_orig[0]), data.GlobalArrayClassic):
                     args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=False, threaded=True))
                 else:
                     args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=False))
@@ -257,7 +257,7 @@ class ParticleLoopOMP(ParticleLoop):
         '''afterwards access descriptors'''
         for dat_orig in self._dat_dict.values():
             if type(dat_orig) is tuple:
-                if issubclass(type(dat_orig[0]), data.GlobalArrayThreaded):
+                if issubclass(type(dat_orig[0]), data.GlobalArrayClassic):
                     dat_orig[0].ctypes_data_post(dat_orig[1], threaded=True)
                 else:
                     dat_orig[0].ctypes_data_post(dat_orig[1])
