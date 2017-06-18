@@ -16,6 +16,7 @@ import os
 def get_res_file_path(filename):
     return os.path.join(os.path.join(os.path.dirname(__file__), '../res'), filename)
 
+cuda = pytest.mark.skipif("mdc.CUDA_IMPORT is False")
 
 mpi_rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 mpi_size = md.mpi.MPI.COMM_WORLD.Get_size()
@@ -35,6 +36,7 @@ h_GlobalArray = md.data.GlobalArray
 def assert_tol(val, tol, msg="tolerance not met"):
     assert abs(val) < 10.**(-1*tol), msg
 
+@cuda
 def test_ewald_energy_python_co2_2_1():
     """
     Test that the python implementation of ewald calculates the correct 
