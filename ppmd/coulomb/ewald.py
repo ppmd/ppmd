@@ -28,7 +28,7 @@ _charge_coulomb = scipy.constants.physical_constants['atomic unit of charge'][0]
 
 class EwaldOrthoganal(object):
 
-    def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None, recip_cutoff=None, recip_nmax=None, shared_memory=False):
+    def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None, recip_cutoff=None, recip_nmax=None, shared_memory=False, shell_width=None):
 
         self.domain = domain
         self.eps = float(eps)
@@ -52,6 +52,8 @@ class EwaldOrthoganal(object):
 
         self.real_cutoff = float(real_cutoff)
         """Real space cutoff"""
+        self.shell_width = shell_width
+        """Real space padding width"""
         self.alpha = float(alpha)
         """alpha"""
 
@@ -280,6 +282,12 @@ class EwaldOrthoganal(object):
             headers=_cont_header
         ) 
 
+
+        if self.shell_width is None:
+            rn = self.real_cutoff*1.05
+        else:
+            rn = self.real_cutoff + self.shell_width
+
         self._real_space_pairloop = ppmd.pairloop.PairLoopNeighbourListNS(
             kernel=_real_kernel,
             dat_dict={
@@ -288,7 +296,7 @@ class EwaldOrthoganal(object):
                 'F': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.INC),
                 'u': self._vars['real_space_energy'](ppmd.access.INC_ZERO)
             },
-            shell_cutoff=1.05*self.real_cutoff
+            shell_cutoff=rn
         )
 
 

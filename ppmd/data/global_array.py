@@ -47,8 +47,11 @@ class GlobalArray(object):
     """
 
     def __new__(
-    self, size=1, dtype=ctypes.c_double, comm=mpi.MPI.COMM_WORLD, op=mpi.MPI.SUM, shared_memory=False
-    ):
+    self, size=1, dtype=ctypes.c_double, comm=mpi.MPI.COMM_WORLD, op=mpi.MPI.SUM, shared_memory=False,
+    ncomp=None):
+        if ncomp is not None:
+            size = max(size,ncomp)
+
         assert shared_memory in (False, 'mpi', 'thread', 'omp')
         if shared_memory == 'mpi':
             return GlobalArrayShared(
@@ -369,12 +372,12 @@ class GlobalArrayShared(host._Array):
 
         self._split_comm.get_intra_comm().Barrier()
 
-        if(self._flip):
+        if self._flip:
             self._rdata = self._rdata_memview2.view(dtype=self.dtype)
             self._rdata2 = self._rdata_memview.view(dtype=self.dtype)
         else:
             self._rdata = self._rdata_memview.view(dtype=self.dtype)
-            self._rdata = self._rdata_memview2.view(dtype=self.dtype)
+            self._rdata2 = self._rdata_memview2.view(dtype=self.dtype)
         self._flip = not self._flip
 
         self._split_comm.get_intra_comm().Barrier()

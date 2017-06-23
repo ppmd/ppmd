@@ -256,6 +256,9 @@ class BaseDomainHalo(object):
         self._boundary_outer = data.ScalarArray(_boundary, dtype=ctypes.c_double)
 
         self._init_cells = True
+
+        opt.PROFILE[self.__class__.__name__+':cell_array'] = (self.cell_array[:])
+
         return True
 
 
