@@ -45,7 +45,7 @@ class PairLoopNeighbourListNS(object):
 
         self.loop_timer = opt.LoopTimer()
         self.wrapper_timer = opt.Timer(runtime.TIMER)
-
+        self.list_timer = opt.Timer(runtime.TIMER)
 
         self._components = {'LIB_PAIR_INDEX_0': '_i',
                             'LIB_PAIR_INDEX_1': '_j',
@@ -351,9 +351,8 @@ class PairLoopNeighbourListNS(object):
                 kernel_call.append(g)
 
 
-
             else:
-                print "ERROR: Type not known"
+                print("ERROR: Type not known")
 
         kernel_call.append(cgen.Comment('#### Kernel call ####'))
 
@@ -562,13 +561,15 @@ class PairLoopNeighbourListNS(object):
         '''Rebuild neighbour list potentially'''
         self._invocations += 1
 
-
-
+        self.list_timer.start()
         if cell2part.version_id > neighbour_list.version_id:
-
             neighbour_list.update()
-
             self._neighbourlist_count += 1
+        self.list_timer.pause()
+
+        opt.PROFILE[
+            self.__class__.__name__+':'+self._kernel.name+':list_timer'
+        ] = self.list_timer.time()
 
 
         '''Create arg list'''
@@ -753,9 +754,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
 
 
         if cell2part.version_id > neighbour_list.version_id:
-
             neighbour_list.update()
-
             self._neighbourlist_count += 1
 
 

@@ -1,7 +1,7 @@
 """
 Methods for Coulombic forces and energies with the classical Ewald method.
 """
-
+from __future__ import division, print_function
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -14,6 +14,7 @@ import ppmd.loop
 import ppmd.runtime
 import ppmd.data
 import ppmd.access
+import ppmd.opt as opt
 
 import cmath
 import scipy
@@ -116,7 +117,12 @@ class EwaldOrthoganal(object):
         """Reciprocal lattice vectors"""
         self.ivolume = ivolume
 
-
+        opt.PROFILE[self.__class__.__name__+':recip_vectors'] = (self.recip_vectors)
+        opt.PROFILE[self.__class__.__name__+':recip_cutoff'] = (self.recip_cutoff)
+        opt.PROFILE[self.__class__.__name__+':recip_kmax'] = (self.kmax)
+        opt.PROFILE[self.__class__.__name__+':alpha'] = (self.alpha)
+        opt.PROFILE[self.__class__.__name__+':tol'] = (eps)
+        opt.PROFILE[self.__class__.__name__+':real_cutoff'] = (self.real_cutoff)
 
         # define persistent vars
         self._vars = {}
@@ -947,7 +953,7 @@ def _test_split1(extent, eps=10.**-6, alpha=None, real_cutoff=None ):
 
     nmax = round(ss*extent*sqrt(alpha)/pi)
 
-    print real_cutoff, alpha, nmax
+    print(real_cutoff, alpha, nmax)
 
 
 

@@ -17,6 +17,7 @@ import runtime
 import pio
 import opt
 
+from functools import reduce
 
 _MPI = mpi.MPI
 _MPIWORLD = _MPI.COMM_WORLD
@@ -145,7 +146,7 @@ class BaseDomainHalo(object):
         )
 
         if self._init_decomp:
-            print "WARNING EXTENT CHANGED AFTER DECOMP"
+            print("WARNING EXTENT CHANGED AFTER DECOMP")
 
             self._distribute_domain()
 
@@ -154,7 +155,7 @@ class BaseDomainHalo(object):
 
     def mpi_decompose(self, mpi_grid=None):
         if self._init_decomp:
-            print "WARNING: domain already spatially decomposed"
+            print("WARNING: domain already spatially decomposed")
 
 
         if mpi_grid is None:
@@ -223,7 +224,7 @@ class BaseDomainHalo(object):
         assert cell_width > 10.**-14, "ERROR: requested cell size stupidly small."
 
         if not self._init_decomp:
-            print "WARNING: domain not spatial decomposed, see mpi_decompose()"
+            print("WARNING: domain not spatial decomposed, see mpi_decompose()")
 
         cell_width = float(cell_width)
 
@@ -282,7 +283,7 @@ class BaseDomainHalo(object):
         Return local domain boundary
         """
         if not self._init_cells and runtime.VERBOSE > 0:
-            print "WARNING: No cell decomposition, outer boundary same as inner"
+            print("WARNING: No cell decomposition, outer boundary same as inner")
 
         return self._boundary_outer
 
@@ -444,20 +445,20 @@ def _find_domain_decomp(global_cell_array=None, nproc=None):
         _NP = [1, 1, 1]
     elif len(_factors) == 1:
         if _factors[0] > _cal[0][1]:
-            print "ERROR: Cannot decompose this domain onto this number of " \
-                  "processors"
+            print("ERROR: Cannot decompose this domain onto this number of " \
+                  "processors")
             quit()
 
         _NP = [_factors[0], 1, 1]
 
     elif len(_factors) == 2:
          if _factors[0] > _cal[0][1]:
-            print "ERROR: Cannot decompose this domain onto this number of " \
-                  "processors"
+            print("ERROR: Cannot decompose this domain onto this number of " \
+                  "processors")
             quit()
          if _factors[1] > _cal[1][1]:
-            print "ERROR: Cannot decompose this domain onto this number of " \
-                  "processors"
+            print("ERROR: Cannot decompose this domain onto this number of " \
+                  "processors")
             quit()
 
          _NP = [_factors[0], _factors[1], 1]
@@ -499,15 +500,15 @@ def _find_domain_decomp(global_cell_array=None, nproc=None):
     for i in range(3):
         ix = _cal[i][0]
         if _cal[i][1] < _NP[i]:
-            print "ERROR matching domain to processes, dimension %(DIM)s" \
-                  %{'DIM': str(ix)}
+            print("ERROR matching domain to processes, dimension %(DIM)s" \
+                  %{'DIM': str(ix)})
             success = False
 
         _dims[ix] = _NP[i]
 
 
     if not success:
-        print "Processor grid error, suitable layout search failed." + str(_dims[:]) + str(global_cell_array[:])
+        print("Processor grid error, suitable layout search failed." + str(_dims[:]) + str(global_cell_array[:]))
         quit()
 
     return _dims

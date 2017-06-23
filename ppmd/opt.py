@@ -1,7 +1,7 @@
 """
 Optimisation and profiling tools
 """
-
+from __future__ import division, print_function
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -318,8 +318,8 @@ PROFILE['MPI:rank'] = _MPIRANK
 
 def print_profile():
     for key, value in sorted(PROFILE.items()):
-        print key
-        print '\t',value
+        print(key)
+        print('\t', value)
 
 
 def dump_profile():

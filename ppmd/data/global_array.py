@@ -7,7 +7,6 @@ __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
 # system level
-import sys
 import ctypes
 import numpy as np
 import math

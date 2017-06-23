@@ -4,7 +4,6 @@ import pytest
 import ctypes
 import numpy as np
 import ppmd as md
-import math
 
 N = 16
 E = 8.
