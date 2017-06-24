@@ -211,6 +211,7 @@ class ParticleLoopOMP(ParticleLoop):
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_access(dat_orig[1], pair=False)
 
+        _N_LOCAL = None
 
         '''Add pointer arguments to launch command'''
         for dat_orig in self._dat_dict.values():
@@ -230,13 +231,15 @@ class ParticleLoopOMP(ParticleLoop):
 
 
         '''Create arg list'''
-        if n is None:
+        if n is None and _N_LOCAL is None:
             assert self._group is not None, "cannot determine number of particles"
             _N_LOCAL = ctypes.c_int(self._group.npart_local)
 
-        else:
+        if n is not None:
             _N_LOCAL = ctypes.c_int(n)
 
+
+        assert _N_LOCAL is not None
         args2 = [ctypes.c_int(runtime.NUM_THREADS), _N_LOCAL]
 
         args2.append(self.loop_timer.get_python_parameters())

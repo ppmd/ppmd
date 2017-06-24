@@ -65,8 +65,9 @@ class GlobalArray(object):
         pass
     #def __setitem__(self, key, value):
     #    pass
-
-
+    @property
+    def ncomp(self):
+        return self.size
 
 class GlobalArrayClassic(host._Array):
     """
@@ -111,6 +112,10 @@ class GlobalArrayClassic(host._Array):
         self._write_pointers = None
         self._read_pointers = None
         self._threaded = False
+
+    @property
+    def ncomp(self):
+        return self.size
 
     def _init_shared_memory(self):
         if self._threaded is True:
@@ -302,8 +307,12 @@ class GlobalArrayShared(host._Array):
         self._data_root_memview = [np.array(rwin_root_memview[ix], copy=False) for ix in range(self._lsize)]
         self._data_root = [self._data_root_memview[ix].view(dtype=self.dtype) for ix in range(self._lsize)]
 
-
         self._timer = opt.Timer(runtime.TIMER)
+
+    @property
+    def ncomp(self):
+        return self.size
+
     def set(self, val):
         self._sync_wait()
 

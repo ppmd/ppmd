@@ -21,20 +21,7 @@ double = ctypes.c_double
 double_str = 'double'
 
 
-
-
-ctypes_map = {ctypes.c_double: 'double',
-              ctypes.c_int: 'int',
-              ctypes.c_long: 'long',
-              ctypes.c_byte: 'char',
-              'float64': 'double',
-              'int32': 'int',
-              'doublepointerpointer': 'double **',
-              # ctypes.c_longlong: 'long long',
-              'doublepointer': 'double *',
-              'intpointer': 'int *',
-              'longpointer': 'long *'}
-
+ctypes_map = access._ctypes_map
 
 
 pointer_lookup = {ctypes.c_int: 'intpointer',
