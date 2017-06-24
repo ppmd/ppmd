@@ -51,7 +51,11 @@ class Kernel(object):
         self._code = code
         self._headers = headers
         self._reductions = reductions
-        self._sargs = access.StaticArgStore(static_args)
+
+        if static_args is not None:
+            self._sargs = access.StaticArgStore(static_args)
+        else:
+            self._sargs = None
 
         self._reduction_dict = {}
 

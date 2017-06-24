@@ -4,26 +4,29 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
-
 # system level
 import ctypes
 import cgen
-import os
 
 # package level
-from ppmd import build
-from ppmd import runtime
-from ppmd import host
-from ppmd import opt
-from ppmd import data
+from ppmd import runtime, host, opt, data, access
+
 
 from particle_loop import ParticleLoop
 
 def Restrict(keyword, symbol):
     return str(keyword) + ' ' + str(symbol)
 
-
 class ParticleLoopOMP(ParticleLoop):
+    def _get_allowed_types(self):
+        return {
+            data.ScalarArray: (access.READ,),
+            data.ParticleDat: access.all_access_types,
+            data.PositionDat: access.all_access_types,
+            data.GlobalArrayClassic: (access.INC_ZERO, access.INC, access.READ),
+            data.GlobalArrayShared: (access.READ,),
+        }
+
 
     def _init_components(self):
         self._components = {
@@ -193,41 +196,25 @@ class ParticleLoopOMP(ParticleLoop):
          potential engery.
         """
 
-        '''Allow alternative pointers'''
-        if dat_dict is not None:
-            self._dat_dict = dat_dict
-
+        _N_LOCAL = None
         args = []
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not " \
                                             "passed to loop."
-            for dat in static_args.values():
-                args.append(dat)
+            args += self._kernel.static_args.get_args(static_args)
 
+        for dat in self._dat_dict.items(new_dats=dat_dict):
+            obj = dat[1][0]
+            mode = dat[1][1]
 
-        '''Pass access descriptor to dat'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_access(dat_orig[1], pair=False)
-
-        _N_LOCAL = None
-
-        '''Add pointer arguments to launch command'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-
-                if issubclass(type(dat_orig[0]), data.GlobalArrayClassic):
-                    args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=False, threaded=True))
-                else:
-                    args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=False))
-
-
-                if issubclass(type(dat_orig[0]), data.ParticleDat):
-                    _N_LOCAL = dat_orig[0].npart_local
+            if issubclass(type(obj), data.GlobalArrayClassic):
+                args.append(obj.ctypes_data_access(mode, pair=False, threaded=True))
             else:
-                raise RuntimeError
-                #args.append(dat_orig.ctypes_data)
+                args.append(obj.ctypes_data_access(mode, pair=False))
+
+            if issubclass(type(obj), data.ParticleDat):
+                _N_LOCAL = obj.npart_local
 
 
         '''Create arg list'''
@@ -237,7 +224,6 @@ class ParticleLoopOMP(ParticleLoop):
 
         if n is not None:
             _N_LOCAL = ctypes.c_int(n)
-
 
         assert _N_LOCAL is not None
         args2 = [ctypes.c_int(runtime.NUM_THREADS), _N_LOCAL]
@@ -257,13 +243,11 @@ class ParticleLoopOMP(ParticleLoop):
             self.__class__.__name__+':'+self._kernel.name+':execute_internal'
         ] = (self.loop_timer.time)
 
-        '''afterwards access descriptors'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                if issubclass(type(dat_orig[0]), data.GlobalArrayClassic):
-                    dat_orig[0].ctypes_data_post(dat_orig[1], threaded=True)
-                else:
-                    dat_orig[0].ctypes_data_post(dat_orig[1])
+        for dat in self._dat_dict.items(new_dats=dat_dict):
+            obj = dat[1][0]
+            mode = dat[1][1]
+            if issubclass(type(obj), data.GlobalArrayClassic):
+                obj.ctypes_data_post(mode, threaded=True)
             else:
-                dat_orig.ctypes_data_post()
+                obj.ctypes_data_post(mode)
 

@@ -119,20 +119,3 @@ class ScalarArray(host.Array):
         """
         return self.data.sum()
 
-
-###############################################################################
-# Blank arrays.
-###############################################################################
-
-NullIntScalarArray = ScalarArray(dtype=ctypes.c_int)
-"""Empty integer :class:`~data.ScalarArray` for specifying a kernel argument that may not yet be
-declared."""
-
-
-NullDoubleScalarArray = ScalarArray(dtype=ctypes.c_double)
-"""Empty double :class:`~data.ScalarArray` for specifying a kernel argument that may not yet be
-declared."""
-
-class PlaceHolderArray(ScalarArray):
-    def __init__(self, ncomp=1, dtype=ctypes.c_double):
-        self.idtype = dtype

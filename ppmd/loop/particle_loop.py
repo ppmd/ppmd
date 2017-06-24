@@ -9,11 +9,8 @@ import cgen
 import os
 
 # package level
-from ppmd import build
-from ppmd import runtime
-from ppmd import host
-from ppmd import opt
-from ppmd import data
+from ppmd import build, runtime, host, opt, data, access
+
 
 def Restrict(keyword, symbol):
     return str(keyword) + ' ' + str(symbol)
@@ -24,9 +21,12 @@ class ParticleLoop(object):
 
     def __init__(self, kernel=None, dat_dict=None):
 
-        self._dat_dict = dat_dict
-        self._cc = build.TMPCC
+        self._dat_dict = access.DatArgStore(
+            self._get_allowed_types(),
+            dat_dict
+        )
 
+        self._cc = build.TMPCC
 
         self._temp_dir = runtime.BUILD_DIR
         if not os.path.exists(self._temp_dir):
@@ -57,6 +57,16 @@ class ParticleLoop(object):
 
         # assert self._group is not None, "No cell to particle map found"
 
+    def _get_allowed_types(self):
+        return {
+            data.ScalarArray: access.all_access_types,
+            data.ParticleDat: access.all_access_types,
+            data.PositionDat: access.all_access_types,
+            data.GlobalArrayClassic: (access.INC_ZERO, access.INC, access.READ),
+            data.GlobalArrayShared: (access.INC_ZERO, access.INC, access.READ),
+        }
+
+
     def _init_components(self):
         self._components = {
             'LIB_PAIR_INDEX_0': '_i',
@@ -78,11 +88,6 @@ class ParticleLoop(object):
         self._generate_lib_outer_loop()
         self._generate_lib_func()
         self._generate_lib_src()
-
-        #print 60*"-"
-        #print self._components['LIB_SRC']
-        #print 60*"-"
-
 
 
     def _generate_lib_specific_args(self):
@@ -286,43 +291,25 @@ class ParticleLoop(object):
              'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
-
-
     def execute(self, n=None, dat_dict=None, static_args=None):
         """
         C version of the pair_locate: Loop over all cells update forces and
          potential engery.
         """
 
-        '''Allow alternative pointers'''
-        if dat_dict is not None:
-            self._dat_dict = dat_dict
-
         args = []
         '''Add static arguments to launch command'''
         if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not " \
                                             "passed to loop."
-            for dat in static_args.values():
-                args.append(dat)
+            args += self._kernel.static_args.get_args(static_args)
 
-
-        '''Pass access descriptor to dat'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_access(dat_orig[1], pair=False)
-
-
-        '''Add pointer arguments to launch command'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=False))
-                if issubclass(type(dat_orig[0]), data.ParticleDat):
-                    _N_LOCAL = dat_orig[0].npart_local
-            else:
-                raise RuntimeError
-                #args.append(dat_orig.ctypes_data)
-
+        for dat in self._dat_dict.items(new_dats=dat_dict):
+            obj = dat[1][0]
+            mode = dat[1][1]
+            args.append(obj.ctypes_data_access(mode, pair=False))
+            if issubclass(type(obj), data.ParticleDat):
+                _N_LOCAL = obj.npart_local
 
         '''Create arg list'''
         if n is None:
@@ -349,10 +336,7 @@ class ParticleLoop(object):
             self.__class__.__name__+':'+self._kernel.name+':execute_internal'
         ] = (self.loop_timer.time)
 
-        '''afterwards access descriptors'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_post(dat_orig[1])
-            else:
-                dat_orig.ctypes_data_post()
-
+        for dat in self._dat_dict.items(new_dats=dat_dict):
+            obj = dat[1][0]
+            mode = dat[1][1]
+            obj.ctypes_data_post(mode)

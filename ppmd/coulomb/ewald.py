@@ -230,9 +230,9 @@ class EwaldOrthoganal(object):
         self._cont_lib = PL(
             kernel=_cont_kernel,
             dat_dict={
-                'Positions': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(
+                'Positions': ppmd.data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(
                     ppmd.access.READ),
-                'Charges': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(
+                'Charges': ppmd.data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(
                     ppmd.access.READ),
                 'RecipSpace': self._vars['recip_space_kernel'](
                     ppmd.access.INC_ZERO)
@@ -260,10 +260,10 @@ class EwaldOrthoganal(object):
         self._extract_force_energy_lib = PL(
             kernel=_cont_kernel,
             dat_dict={
-                'Positions': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.READ),
-                'Forces': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.INC),
+                'Positions': ppmd.data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.READ),
+                'Forces': ppmd.data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.INC),
                 'Energy': self._vars['recip_space_energy'](ppmd.access.INC_ZERO),
-                'Charges': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
+                'Charges': ppmd.data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
                 'RecipSpace': self._vars['recip_space_kernel'](ppmd.access.READ),
                 'CoeffSpace': self._vars['coeff_space_kernel'](ppmd.access.READ)
             }
@@ -297,9 +297,9 @@ class EwaldOrthoganal(object):
         self._real_space_pairloop = ppmd.pairloop.PairLoopNeighbourListNS(
             kernel=_real_kernel,
             dat_dict={
-                'P': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.READ),
-                'Q': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
-                'F': ppmd.data.PlaceHolderDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.INC),
+                'P': ppmd.data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.READ),
+                'Q': ppmd.data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
+                'F': ppmd.data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.INC),
                 'u': self._vars['real_space_energy'](ppmd.access.INC_ZERO)
             },
             shell_cutoff=rn
@@ -426,7 +426,7 @@ class EwaldOrthoganal(object):
         self._self_interaction_lib = PL(
             kernel=_real_kernel,
             dat_dict={
-                'Q': ppmd.data.PlaceHolderDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
+                'Q': ppmd.data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
                 'u': self._vars['self_interaction_energy'](ppmd.access.INC_ZERO)
             }
         )

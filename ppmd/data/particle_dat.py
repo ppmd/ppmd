@@ -669,16 +669,12 @@ class ParticleDat(host.Matrix):
 
 
 
-
-
 #########################################################################
 # PositionDat.
 #########################################################################
 
 class PositionDat(ParticleDat):
     pass
-
-
 
 
 #########################################################################
@@ -761,13 +757,6 @@ class Type(object):
     def _append_dat(self, dat=None):
         assert dat is not None, "No dat added to Type instance"
         self._dats.append(dat)
-
-
-class PlaceHolderDat(ParticleDat):
-    def __init__(self, ncomp=1, dtype=ctypes.c_double):
-        self.ncomp=ncomp
-        self.idtype = dtype
-        self.group = None
 
 
 

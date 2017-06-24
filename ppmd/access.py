@@ -141,6 +141,10 @@ WRITE = W
 INC_ZERO = INC0
 """Access descriptor for data that is incremented from zero. """
 
+
+all_access_types = (READ, WRITE, INC_ZERO, INC, RW)
+
+
 class DatArgStore(object):
     def __init__(self, allow, initial):
         """
@@ -218,7 +222,8 @@ class DatArgStore(object):
 
             assert symbol in self.symbols.keys(), "unexpected symbol in dat dict"
             assert mode == self.register[symbol][0], "incorrect access mode"
-            assert issubclass(type(obj), self.register[symbol][1]), "incompatible dat passed"
+            assert issubclass(type(obj), self.register[symbol][1]), "incompatible dat passed"+\
+                str(type(obj)) + " != " + str(self.register[symbol][1])
             assert obj.dtype == self.register[symbol][2], "incompatible dat data type"
             assert obj.ncomp == self.register[symbol][3], "incompatible dat ncomp"
 
@@ -236,6 +241,7 @@ class DatArgStore(object):
             dats[self.symbols[ax[0]]] = ax
 
         return tuple(dats)
+
 
 
 class StaticArgStore(object):

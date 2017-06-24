@@ -151,6 +151,7 @@ class GlobalArrayClassic(host._Array):
 
     def ctypes_data_access(self, mode=access.READ, pair=False, threaded=False):
         self._sync_wait()
+
         if mode in (access.INC0, access.INC_ZERO):
             self.set(self.identity_element)
         if threaded is False:
@@ -164,6 +165,7 @@ class GlobalArrayClassic(host._Array):
                 return self._read_pointers
             else:
                 return self._write_pointers
+
 
     @property
     def ctypes_data_read(self):
