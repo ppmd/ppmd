@@ -32,7 +32,7 @@ class ParticleLoopOMP(ParticleLoop):
             'LIB_HEADERS': [cgen.Include('omp.h', system=True),],
             'OMP_THREAD_INDEX_SYM': '_threadid',
             'OMP_SHARED_SYMS': []
-            }
+        }
 
     def _generate_lib_specific_args(self):
         self._components['LIB_ARG_DECLS'] = [
@@ -231,8 +231,8 @@ class ParticleLoopOMP(ParticleLoop):
 
         '''Create arg list'''
         if n is None:
-            if self._group is not None:
-                _N_LOCAL = ctypes.c_int(self._group.npart_local)
+            assert self._group is not None, "cannot determine number of particles"
+            _N_LOCAL = ctypes.c_int(self._group.npart_local)
 
         else:
             _N_LOCAL = ctypes.c_int(n)

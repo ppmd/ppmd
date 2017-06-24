@@ -25,9 +25,6 @@ class PairLoopNeighbourListNS(object):
         self._dat_dict = dat_dict
         self._cc = build.TMPCC
 
-        ##########
-        # End of Rapaport initialisations.
-        ##########
 
         self._temp_dir = runtime.BUILD_DIR
         if not os.path.exists(self._temp_dir):
@@ -35,11 +32,6 @@ class PairLoopNeighbourListNS(object):
 
         self._kernel = kernel
 
-        '''
-        if type(shell_cutoff) is not logic.Distance:
-            shell_cutoff = logic.Distance(shell_cutoff)
-        self.shell_cutoff = shell_cutoff
-        '''
         self.shell_cutoff = shell_cutoff
 
 
@@ -47,9 +39,6 @@ class PairLoopNeighbourListNS(object):
         self.wrapper_timer = opt.Timer(runtime.TIMER)
         self.list_timer = opt.Timer(runtime.TIMER)
 
-        self._components = {'LIB_PAIR_INDEX_0': '_i',
-                            'LIB_PAIR_INDEX_1': '_j',
-                            'LIB_NAME': str(self._kernel.name) + '_wrapper'}
         self._gather_size_limit = 4
         self._generate()
 
@@ -100,13 +89,22 @@ class PairLoopNeighbourListNS(object):
                                      self.shell_cutoff)
 
 
-
         self._neighbourlist_count = 0
         self._kernel_execution_count = 0
         self._invocations = 0
 
 
+    def _init_components(self):
+         self._components = {
+             'LIB_PAIR_INDEX_0': '_i',
+             'LIB_PAIR_INDEX_1': '_j',
+             'LIB_NAME': str(self._kernel.name) + '_wrapper',
+             'LIB_HEADERS': [],
+         }
+
+
     def _generate(self):
+        self._init_components()
         self._generate_lib_specific_args()
         self._generate_kernel_arg_decls()
         self._generate_kernel_func()
@@ -123,10 +121,6 @@ class PairLoopNeighbourListNS(object):
         self._generate_lib_outer_loop()
         self._generate_lib_func()
         self._generate_lib_src()
-
-        # print 60*"-"
-        # print self._components['LIB_SRC']
-        # print 60*"-"
 
 
     def _generate_lib_specific_args(self):
@@ -149,9 +143,6 @@ class PairLoopNeighbourListNS(object):
             ),
             self.loop_timer.get_cpp_arguments_ast()
         ]
-
-
-
 
     def _generate_kernel_arg_decls(self):
 
@@ -225,7 +216,6 @@ class PairLoopNeighbourListNS(object):
                 g.append(cgen.Define(dat[0]+'_0(y)', dat[0]+'.i[(y)]'))
                 g.append(cgen.Define(dat[0]+'_1(y)', dat[0]+'.j[(y)]'))
 
-
         self._components['KERNEL_MAP_MACROS'] = g
 
 
@@ -243,16 +233,17 @@ class PairLoopNeighbourListNS(object):
             )
 
 
-
     def _generate_kernel_headers(self):
-        s = []
+        s = self._components['LIB_HEADERS']
         if self._kernel.headers is not None:
-            for x in self._kernel.headers:
-                s.append(x.ast)
+            if hasattr(self._kernel.headers, "__iter__"):
+                for x in self._kernel.headers:
+                    s.append(x.ast)
+            else:
+                s.append(self._kernel.headers.ast)
 
         s.append(self.loop_timer.get_cpp_headers_ast())
         self._components['KERNEL_HEADERS'] = cgen.Module(s)
-
 
 
     def _generate_lib_inner_loop_block(self):
@@ -279,18 +270,9 @@ class PairLoopNeighbourListNS(object):
 
         kernel_gather = cgen.Module([cgen.Comment('#### Pre kernel gather ####')])
 
-
-        if self._kernel.static_args is not None:
-
-            for i, dat in enumerate(self._kernel.static_args.items()):
-                pass
-
-
         for i, dat in enumerate(self._dat_dict.items()):
 
-            if issubclass(type(dat[1][0]), host._Array):
-                pass
-            elif issubclass(type(dat[1][0]), host.Matrix) \
+            if issubclass(type(dat[1][0]), host.Matrix) \
                     and dat[1][1].write \
                     and dat[1][0].ncomp <= self._gather_size_limit:
 
@@ -307,20 +289,11 @@ class PairLoopNeighbourListNS(object):
                 t = t[:-1] + '}'
 
                 g = cgen.Value(dtype,isym+ncb)
-                '''
-                if not dat[1][1].write:
-                    g = cgen.Const(g)
-                '''
                 g = cgen.Initializer(g,t)
-
-
 
                 kernel_gather.append(g)
 
-
-
         self._components['LIB_KERNEL_GATHER'] = kernel_gather
-
 
 
 
@@ -350,7 +323,6 @@ class PairLoopNeighbourListNS(object):
 
                 kernel_call.append(g)
 
-
             else:
                 print("ERROR: Type not known")
 
@@ -366,9 +338,6 @@ class PairLoopNeighbourListNS(object):
         ))
 
         self._components['LIB_KERNEL_CALL'] = kernel_call
-
-
-
 
     def _generate_kernel_scatter(self):
 
@@ -400,15 +369,10 @@ class PairLoopNeighbourListNS(object):
                 g = cgen.For('int _tx=0', '_tx<'+str(nc), '_tx++',
                              cgen.Block([b]))
 
-
                 kernel_scatter.append(g)
 
 
-
         self._components['LIB_KERNEL_SCATTER'] = kernel_scatter
-
-
-
 
 
     def _generate_lib_outer_loop(self):
@@ -472,6 +436,62 @@ class PairLoopNeighbourListNS(object):
              'LIB_DIR': runtime.LIB_DIR}
         return code % d
 
+    def _update_opt(self):
+        opt.PROFILE[
+            self.__class__.__name__+':'+self._kernel.name+':list_timer'
+        ] = self.list_timer.time()
+
+        opt.PROFILE[
+            self.__class__.__name__+':'+self._kernel.name+':execute_internal'
+        ] = self.loop_timer.time
+
+        opt.PROFILE[
+            self.__class__.__name__+':'+self._kernel.name+':kernel_execution_count'
+        ] =  self._kernel_execution_count
+
+
+    def _get_class_lib_args(self):
+        neighbour_list = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[self._key]
+        _N_LOCAL = ctypes.c_int(neighbour_list.n_local)
+        _STARTS = neighbour_list.neighbour_starting_points.ctypes_data
+        _LIST = neighbour_list.list.ctypes_data
+
+        return [_N_LOCAL, _STARTS, _LIST, self.loop_timer.get_python_parameters()]
+
+    def _get_static_lib_args(self, static_args):
+        args = []
+
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not " \
+                                            "passed to loop."
+            for dat in static_args.values():
+                args.append(dat)
+
+        return args
+
+
+    def __init_dat_lib_args(self, dats):
+        for dat_orig in dats.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
+
+
+    def _get_dat_lib_args(self, dats):
+        args = []
+        for dat_orig in dats.values():
+            if type(dat_orig) is tuple:
+                args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=True))
+            else:
+                raise RuntimeError
+        return args
+
+    def _post_execute_dats(self, dats):
+        '''afterwards access descriptors'''
+        for dat_orig in dats.values():
+            if type(dat_orig) is tuple:
+                dat_orig[0].ctypes_data_post(dat_orig[1])
+            else:
+                dat_orig.ctypes_data_post()
 
 
     def execute(self, n=None, dat_dict=None, static_args=None):
@@ -527,35 +547,13 @@ class PairLoopNeighbourListNS(object):
                                      _group.domain,
                                      self.shell_cutoff)
 
-
         neighbour_list = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[self._key]
 
         cell2part = _group.get_cell_to_particle_map()
         cell2part.check()
 
-
-        args = []
-        '''Add static arguments to launch command'''
-        if self._kernel.static_args is not None:
-            assert static_args is not None, "Error: static arguments not " \
-                                            "passed to loop."
-            for dat in static_args.values():
-                args.append(dat)
-
-
-        '''Pass access descriptor to dat'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
-
-
-        '''Add pointer arguments to launch command'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=True))
-            else:
-                raise RuntimeError
-                #args.append(dat_orig.ctypes_data)
+        self.__init_dat_lib_args(self._dat_dict)
+        args = self._get_dat_lib_args(self._dat_dict)
 
 
         '''Rebuild neighbour list potentially'''
@@ -567,21 +565,8 @@ class PairLoopNeighbourListNS(object):
             self._neighbourlist_count += 1
         self.list_timer.pause()
 
-        opt.PROFILE[
-            self.__class__.__name__+':'+self._kernel.name+':list_timer'
-        ] = self.list_timer.time()
-
-
         '''Create arg list'''
-        _N_LOCAL = ctypes.c_int(neighbour_list.n_local)
-        _STARTS = neighbour_list.neighbour_starting_points.ctypes_data
-        _LIST = neighbour_list.list.ctypes_data
-
-        args2 = [_N_LOCAL, _STARTS, _LIST]
-
-        args2.append(self.loop_timer.get_python_parameters())
-
-        args = args2 + args
+        args = self._get_class_lib_args() + self._get_static_lib_args(static_args) + args
 
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
@@ -590,30 +575,10 @@ class PairLoopNeighbourListNS(object):
         method(*args)
         self.wrapper_timer.pause()
 
-
-        opt.PROFILE[
-            self.__class__.__name__+':'+self._kernel.name+':execute_internal'
-        ] = self.loop_timer.time
-
-
         self._kernel_execution_count += neighbour_list.neighbour_starting_points[neighbour_list.n_local]
 
-
-        opt.PROFILE[
-            self.__class__.__name__+':'+self._kernel.name+':kernel_execution_count'
-        ] =  self._kernel_execution_count
-
-
-
-        '''afterwards access descriptors'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_post(dat_orig[1])
-            else:
-                dat_orig.ctypes_data_post()
-
-
-
+        self._update_opt()
+        self._post_execute_dats(self._dat_dict)
 
 
 ###############################################################################
@@ -648,10 +613,6 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
         self.loop_timer = opt.LoopTimer()
         self.wrapper_timer = opt.Timer(runtime.TIMER)
 
-
-        self._components = {'LIB_PAIR_INDEX_0': '_i',
-                            'LIB_PAIR_INDEX_1': '_j',
-                            'LIB_NAME': str(self._kernel.name) + '_wrapper'}
         self._gather_size_limit = 4
         self._generate()
 
@@ -788,7 +749,6 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
         opt.PROFILE[
             self.__class__.__name__+':'+self._kernel.name+':kernel_execution_count'
         ] =  self._kernel_execution_count
-
 
 
         '''afterwards access descriptors'''

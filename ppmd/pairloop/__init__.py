@@ -14,3 +14,4 @@ __all__ = [
 from alltoall import *
 from cellbycell import *
 from neighbourlist import *
+from neighbourlist_omp import *
