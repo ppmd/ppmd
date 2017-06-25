@@ -10,7 +10,6 @@ import ppmd as md
 import ppmd.cuda as mdc
 
 
-
 SKIP = True
 cuda = pytest.mark.skipif("mdc.CUDA_IMPORT is False")
 skip = pytest.mark.skipif("SKIP is True")
@@ -39,7 +38,7 @@ if mdc.CUDA_IMPORT:
 @pytest.fixture
 def state(request):
     if mdc.CUDA_IMPORT_ERROR is not None:
-        print mdc.CUDA_IMPORT_ERROR
+        print(mdc.CUDA_IMPORT_ERROR)
 
     A = State()
     A.npart = N
@@ -172,5 +171,5 @@ def test_host_sim_1():
         potaa_kinetic_energy_updater.get_kinetic_energy_array()[-1] - \
         potaa_potential_energy.get_potential_energy_array()[-1])
 
-    print "err:", eng_err
+    print("err:", eng_err)
 

@@ -68,18 +68,8 @@ def generate_reduction_final_stage(symbol_external, symbol_internal, dat):
 
     return _s + '\n'
 
-
-
 def Restrict(keyword, symbol):
     return str(keyword) + ' ' + str(symbol)
-
-
-
-
-
-
-
-
 
 
 
@@ -381,7 +371,8 @@ class PairLoopNeighbourListNS(_Base):
 
     def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
 
-        self._dat_dict = dat_dict
+        self._dat_dict = access.DatArgStore(
+            self._get_allowed_types(), dat_dict)
         self._cc = cuda_build.NVCC
 
 
@@ -442,6 +433,15 @@ class PairLoopNeighbourListNS(_Base):
         self._neighbourlist_count = 0
         self._invocations = 0
 
+    @staticmethod
+    def _get_allowed_types():
+        return {
+            cuda_data.ScalarArray: access.all_access_types,
+            cuda_data.ParticleDat: access.all_access_types,
+            cuda_data.PositionDat: access.all_access_types,
+            cuda_base.Array: access.all_access_types,
+            cuda_base.Matrix: access.all_access_types
+        }
 
 
     def _generate_lib_specific_args(self):
@@ -550,19 +550,11 @@ class PairLoopNeighbourListNS(_Base):
             )
 
 
-
-
     def execute(self, n=None, dat_dict=None, static_args=None, threads=256):
 
         cell2part = self._group.get_cell_to_particle_map()
 
         cell2part.check()
-
-
-
-        """Allow alternative pointers"""
-        if dat_dict is not None:
-            self._dat_dict = dat_dict
 
         if n is None:
             n = self._group.npart_local
@@ -578,29 +570,20 @@ class PairLoopNeighbourListNS(_Base):
 
 
         dargs = []
-        '''Add static arguments to launch command'''
+
+        # Add static arguments to launch command
         if self._kernel.static_args is not None:
-            assert static_args is not None, "Error: static arguments not passed to loop."
-            for dat in static_args.values():
-                dargs.append(dat)
+            assert static_args is not None, "Error: static arguments not " \
+                                            "passed to loop."
+            dargs += self._kernel.static_args.get_args(static_args)
 
-
-        '''Pass access descriptor to dat'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
-
-        '''Add pointer arguments to launch command'''
-        for dat in self._dat_dict.values():
-            if type(dat) is tuple:
-                dargs.append(dat[0].ctypes_data)
-            else:
-                dargs.append(dat.ctypes_data)
-
+        # pointer args
+        for dat in self._dat_dict.items(new_dats=dat_dict):
+            obj = dat[1][0]
+            mode = dat[1][1]
+            dargs.append(obj.ctypes_data_access(mode, pair=True))
 
         if cell2part.version_id > self.neighbour_list.version_id:
-            #print "CUDA rebuild NL"
-            #print cell2part.version_id, self.neighbour_list.version_id
             self.neighbour_list.update()
 
 
@@ -614,26 +597,15 @@ class PairLoopNeighbourListNS(_Base):
 
         args = args2 + dargs
 
-        '''Execute the kernel over all particle pairs.'''
-
         self._lib(*args)
 
+        # post execute
+        for dat_orig in self._dat_dict.values(dat_dict):
+            dat_orig[0].ctypes_data_post(dat_orig[1])
 
-        '''afterwards access descriptors'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_post(dat_orig[1])
-            else:
-                dat_orig.ctypes_data_post()
         opt.PROFILE[
             self.__class__.__name__+':'+self._kernel.name+':execute_internal'
         ] = (self.loop_timer.time)
-
-
-
-
-
-
 
 
 
@@ -645,7 +617,9 @@ class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):
 
     def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
 
-        self._dat_dict = dat_dict
+        self._dat_dict = access.DatArgStore(
+            self._get_allowed_types(), dat_dict)
+
         self._cc = cuda_build.NVCC
 
 
@@ -710,12 +684,7 @@ class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):
     def execute(self, n=None, dat_dict=None, static_args=None, threads=256):
 
         cell2part = self._group.get_cell_to_particle_map()
-
         cell2part.check()
-
-        """Allow alternative pointers"""
-        if dat_dict is not None:
-            self._dat_dict = dat_dict
 
         if n is None:
             n = self._group.npart_local
@@ -731,27 +700,23 @@ class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):
 
 
         dargs = []
-        '''Add static arguments to launch command'''
+        # Add static arguments to launch command
         if self._kernel.static_args is not None:
-            assert static_args is not None, "Error: static arguments not passed to loop."
-            for dat in static_args.values():
-                dargs.append(dat)
+            assert static_args is not None, "Error: static arguments not " \
+                                            "passed to loop."
+            dargs += self._kernel.static_args.get_args(static_args)
 
 
         '''Pass access descriptor to dat'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_access(dat_orig[1],
-                                               pair=True,
-                                               exchange=False)
+
+        for dat_orig in self._dat_dict.values(dat_dict):
+            dat_orig[0].ctypes_data_access(dat_orig[1],
+                                           pair=True,
+                                           exchange=False)
 
         '''Add pointer arguments to launch command'''
-        for dat in self._dat_dict.values():
-            if type(dat) is tuple:
-                dargs.append(dat[0].ctypes_data)
-            else:
-                dargs.append(dat.ctypes_data)
-
+        for dat_orig in self._dat_dict.values(dat_dict):
+            dargs.append(dat_orig[0].ctypes_data)
 
         if cell2part.version_id > self.neighbour_list.version_id_1:
             self.neighbour_list.update1()
@@ -777,11 +742,10 @@ class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):
         proc.start()
 
         # exchange dats
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple and \
-                    issubclass(type(dat_orig[0]), cuda_data.ParticleDat):
-                dat_orig[0].halo_exchange_async(dat_orig[1],
-                                                pair=True)
+
+        for dat_orig in self._dat_dict.values(dat_dict):
+            if issubclass(type(dat_orig[0]), cuda_data.ParticleDat):
+                dat_orig[0].halo_exchange_async(dat_orig[1], pair=True)
 
 
         if cell2part.version_id > self.neighbour_list.version_id_2:
@@ -794,27 +758,8 @@ class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):
         self._lib(*args)
 
         '''afterwards access descriptors'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_post(dat_orig[1])
-            else:
-                dat_orig.ctypes_data_post()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        for dat_orig in self._dat_dict.values(dat_dict):
+            dat_orig[0].ctypes_data_post(dat_orig[1])
 
 
 
@@ -825,7 +770,8 @@ class PairLoopCellByCell(_Base):
 
     def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None, sub_divide=None):
 
-        self._dat_dict = dat_dict
+        self._dat_dict = access.DatArgStore(
+            self._get_allowed_types(), dat_dict)
         self._cc = cuda_build.NVCC
 
         self._kernel = kernel
@@ -898,20 +844,18 @@ class PairLoopCellByCell(_Base):
             remove_zero=True
         )
 
-        #print "OSLIST", len(oslist), oslist
-        #print "SUB CELL ARRAY", self.cell_list.cell_array[:]
-        #print "SUB CELL WIDTHS", self.cell_list.cell_sizes[:]
-
-
         self.offset_list = cuda_base.Array(ncomp=len(oslist), dtype=ctypes.c_int)
         self.offset_list[:] = oslist[:]
 
-        #print cell.radius_cell_decompose(shell_cutoff, self.cell_list.cell_sizes),
-
-        #print "SHELL_CUTOFF", shell_cutoff
-        #print "SUBCELL_ARRAY", self.cell_list.cell_array[:]
-        #print "NUM_OFFSETS", self.offset_list.ncomp
-        #print "OFFSETS", self.offset_list[:]
+    @staticmethod
+    def _get_allowed_types():
+        return {
+            cuda_data.ScalarArray: access.all_access_types,
+            cuda_data.ParticleDat: access.all_access_types,
+            cuda_data.PositionDat: access.all_access_types,
+            cuda_base.Array: access.all_access_types,
+            cuda_base.Matrix: access.all_access_types
+        }
 
     def _generate_lib_specific_args(self):
         self._components['LIB_ARG_DECLS'] = [
@@ -1104,18 +1048,10 @@ class PairLoopCellByCell(_Base):
                 func
             )
 
-
-
-
     def execute(self, n=None, dat_dict=None, static_args=None, threads=256):
 
         cell2part = self._group.get_cell_to_particle_map()
         cell2part.check()
-
-
-        """Allow alternative pointers"""
-        if dat_dict is not None:
-            self._dat_dict = dat_dict
 
         if n is None:
             n = self._group.npart_local
@@ -1130,31 +1066,21 @@ class PairLoopCellByCell(_Base):
             _threadsize = (ctypes.c_int * 3)(threads, 1, 1)
 
 
-
         dargs = []
-        '''Add static arguments to launch command'''
+        # Add static arguments to launch command
         if self._kernel.static_args is not None:
-            assert static_args is not None, "Error: static arguments not passed to loop."
-            for dat in static_args.values():
-                dargs.append(dat)
+            assert static_args is not None, "Error: static arguments not " \
+                                            "passed to loop."
+            dargs += self._kernel.static_args.get_args(static_args)
 
-        '''Pass access descriptor to dat'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
-
-        '''Add pointer arguments to launch command'''
-        for dat in self._dat_dict.values():
-            if type(dat) is tuple:
-                dargs.append(dat[0].ctypes_data)
-            else:
-                dargs.append(dat.ctypes_data)
+        # pointer args
+        for dat in self._dat_dict.items(new_dats=dat_dict):
+            obj = dat[1][0]
+            mode = dat[1][1]
+            dargs.append(obj.ctypes_data_access(mode, pair=True))
 
         if cell2part.version_id > self.cell_list.version_id:
             self.cell_list.sort()
-
-        #print "CRL", self.cell_list.cell_reverse_lookup[:n:]
-
 
         args2 = [ctypes.byref(_blocksize),
                  ctypes.byref(_threadsize),
@@ -1174,13 +1100,11 @@ class PairLoopCellByCell(_Base):
 
         self._lib(*args)
 
+        # post execute
+        for dat_orig in self._dat_dict.values(dat_dict):
+            dat_orig[0].ctypes_data_post(dat_orig[1])
 
-        '''afterwards access descriptors'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_post(dat_orig[1])
-            else:
-                dat_orig.ctypes_data_post()
+
         opt.PROFILE[
             self.__class__.__name__+':'+self._kernel.name+':execute_internal'
         ] = (self.loop_timer.time)

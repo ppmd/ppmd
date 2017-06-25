@@ -9,11 +9,21 @@ import ctypes
 
 # package level
 
-from ppmd import data, runtime, cell, opt, host
+from ppmd import data, runtime, host, access
 
 from neighbourlist import PairLoopNeighbourListNS, Restrict
 
 class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
+
+    @staticmethod
+    def _get_allowed_types():
+        return {
+            data.ScalarArray: (access.READ,),
+            data.ParticleDat: access.all_access_types,
+            data.PositionDat: access.all_access_types,
+            data.GlobalArrayClassic: (access.INC_ZERO, access.INC, access.READ),
+            data.GlobalArrayShared: (access.INC_ZERO, access.INC, access.READ),
+        }
 
     def _init_components(self):
          self._components = {
@@ -105,7 +115,6 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
                 # MAKE STRUCT ARG
                 _kernel_arg_decls.append(cgen.Value(typename, dat[0]))
-
 
             if not dat[1][1].write:
                 kernel_lib_arg = cgen.Const(kernel_lib_arg)
@@ -263,7 +272,7 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
     def _get_dat_lib_args(self, dats):
         args = []
-        for dat_orig in dats.values():
+        for dat_orig in self._dat_dict.values(dats):
             assert type(dat_orig) is tuple
             obj = dat_orig[0]
             mode = dat_orig[1]
@@ -277,7 +286,7 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
         return args
 
     def _post_execute_dats(self, dats):
-        for dat_orig in dats.values():
+        for dat_orig in self._dat_dict.values(dats):
             assert type(dat_orig) is tuple
             obj = dat_orig[0]
             mode = dat_orig[1]

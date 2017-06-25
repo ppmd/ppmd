@@ -10,7 +10,7 @@ import os
 import cgen
 
 # package level
-from ppmd import data, build, runtime, host, opt
+from ppmd import data, build, runtime, host, opt, access
 
 from base import *
 
@@ -25,9 +25,12 @@ class AllToAllNS(object):
 
     def __init__(self, kernel=None, dat_dict=None):
 
-        self._dat_dict = dat_dict
-        self._cc = build.TMPCC
+        self._dat_dict = access.DatArgStore(
+            self._get_allowed_types(),
+            dat_dict
+        )
 
+        self._cc = build.TMPCC
 
         self._temp_dir = runtime.BUILD_DIR
         if not os.path.exists(self._temp_dir):
@@ -48,7 +51,6 @@ class AllToAllNS(object):
 
         self._generate()
 
-
         self._group = None
 
         for pd in self._dat_dict.items():
@@ -61,6 +63,15 @@ class AllToAllNS(object):
                                              self._kernel.name,
                                              CC=self._cc)
 
+    @staticmethod
+    def _get_allowed_types():
+        return {
+            data.ScalarArray: access.all_access_types,
+            data.ParticleDat: access.all_access_types,
+            data.PositionDat: access.all_access_types,
+            data.GlobalArrayClassic: (access.INC_ZERO, access.INC, access.READ),
+            data.GlobalArrayShared: (access.INC_ZERO, access.INC, access.READ),
+        }
 
 
     def _generate(self):
@@ -81,21 +92,11 @@ class AllToAllNS(object):
         self._generate_lib_func()
         self._generate_lib_src()
 
-        #print 60*"-"
-        #print self._components['LIB_SRC']
-        #print 60*"-"
-
-
-
-
     def _generate_lib_specific_args(self):
         self._components['LIB_ARG_DECLS'] = [
             cgen.Const(cgen.Value(host.int32_str, '_N_LOCAL')),
             self.loop_timer.get_cpp_arguments_ast()
         ]
-
-
-
 
     def _generate_kernel_arg_decls(self):
 
@@ -189,7 +190,6 @@ class AllToAllNS(object):
                 ])
             )
 
-
     def _generate_kernel_headers(self):
         s = []
         if self._kernel.headers is not None:
@@ -199,17 +199,11 @@ class AllToAllNS(object):
         s.append(self.loop_timer.get_cpp_headers_ast())
         self._components['KERNEL_HEADERS'] = cgen.Module(s)
 
-
-
-
-
     def _generate_lib_inner_loop_block(self):
         self._components['LIB_INNER_LOOP_BLOCK'] = \
             cgen.Block([
                         self._components['LIB_KERNEL_CALL']
                         ])
-
-
 
     def _generate_lib_inner_loop(self):
         i = self._components['LIB_PAIR_INDEX_0']
@@ -231,7 +225,6 @@ class AllToAllNS(object):
                 b
                 ),
         ])
-
 
     def _generate_kernel_gather(self):
 
@@ -277,8 +270,6 @@ class AllToAllNS(object):
         self._components['LIB_KERNEL_GATHER'] = kernel_gather
 
 
-
-
     def _generate_kernel_call(self):
 
         kernel_call = cgen.Module([cgen.Comment('#### Kernel call arguments ####')])
@@ -305,10 +296,8 @@ class AllToAllNS(object):
 
                 kernel_call.append(g)
 
-
-
             else:
-                print "ERROR: Type not known"
+                raise RuntimeError("ERROR: Type not known")
 
         kernel_call.append(cgen.Comment('#### Kernel call ####'))
 
@@ -322,7 +311,6 @@ class AllToAllNS(object):
         ))
 
         self._components['LIB_KERNEL_CALL'] = kernel_call
-
 
 
 
@@ -440,35 +428,24 @@ class AllToAllNS(object):
             cell2part = self._group.get_cell_to_particle_map()
             cell2part.check()
 
-        '''Allow alternative pointers'''
-        if dat_dict is not None:
-            self._dat_dict = dat_dict
-
 
         args = []
-        '''Add static arguments to launch command'''
+        # Add static arguments to launch command
         if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not " \
                                             "passed to loop."
-            for dat in static_args.values():
-                args.append(dat)
+            args += self._kernel.static_args.get_args(static_args)
 
-        '''Pass access descriptor to dat'''
-
-        if self._group is not None:
-            for dat_orig in self._dat_dict.values():
-                if type(dat_orig) is tuple:
-                    dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
-
-
-        '''Add pointer arguments to launch command'''
+        # Pass access descriptor to dat
         _N = 0
-        for dat_orig in self._dat_dict.values():
-            args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=True))
-            _N = dat_orig[0].npart_local
+        for dat in self._dat_dict.values(new_dats=dat_dict):
+            obj = dat[0]
+            mode = dat[1]
+            args.append(obj.ctypes_data_access(mode, pair=True))
+            _N = obj.npart_local
 
 
-        '''Create arg list'''
+        # Create arg list
         if n is not None:
             _N_LOCAL = n
         else:
@@ -479,18 +456,14 @@ class AllToAllNS(object):
         args2.append(self.loop_timer.get_python_parameters())
 
         args = args2 + args
-
-        '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
-
         self.wrapper_timer.start()
         method(*args)
         self.wrapper_timer.pause()
 
-        '''afterwards access descriptors'''
-        if self._group is not None:
-            for dat_orig in self._dat_dict.values():
-                dat_orig[0].ctypes_data_post(dat_orig[1])
+        # post execution cleanup
+        for dat_orig in self._dat_dict.values(dat_dict):
+            dat_orig[0].ctypes_data_post(dat_orig[1])
 
 
 

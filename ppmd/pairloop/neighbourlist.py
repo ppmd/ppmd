@@ -10,21 +10,23 @@ import cgen
 
 # package level
 
-from ppmd import data, runtime, cell
+from ppmd import data, runtime, cell, access
 
 from base import *
 
 
 class PairLoopNeighbourListNS(object):
 
-
     _neighbour_list_dict_PNLNS = {}
 
     def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
 
-        self._dat_dict = dat_dict
-        self._cc = build.TMPCC
+        self._dat_dict = access.DatArgStore(
+            self._get_allowed_types(),
+            dat_dict
+        )
 
+        self._cc = build.TMPCC
 
         self._temp_dir = runtime.BUILD_DIR
         if not os.path.exists(self._temp_dir):
@@ -33,7 +35,6 @@ class PairLoopNeighbourListNS(object):
         self._kernel = kernel
 
         self.shell_cutoff = shell_cutoff
-
 
         self.loop_timer = opt.LoopTimer()
         self.wrapper_timer = opt.Timer(runtime.TIMER)
@@ -56,7 +57,13 @@ class PairLoopNeighbourListNS(object):
                 break
 
         #assert self._group is not None, "No cell to particle map found"
+        self._make_neigbour_list()
 
+        self._neighbourlist_count = 0
+        self._kernel_execution_count = 0
+        self._invocations = 0
+
+    def _make_neigbour_list(self):
         if self._group is not None:
             _nd = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS
             # if flag is true then a new cell list was created
@@ -88,11 +95,15 @@ class PairLoopNeighbourListNS(object):
                                      self._group.domain,
                                      self.shell_cutoff)
 
-
-        self._neighbourlist_count = 0
-        self._kernel_execution_count = 0
-        self._invocations = 0
-
+    @staticmethod
+    def _get_allowed_types():
+        return {
+            data.ScalarArray: access.all_access_types,
+            data.ParticleDat: access.all_access_types,
+            data.PositionDat: access.all_access_types,
+            data.GlobalArrayClassic: (access.INC_ZERO, access.INC, access.READ),
+            data.GlobalArrayShared: (access.INC_ZERO, access.INC, access.READ),
+        }
 
     def _init_components(self):
          self._components = {
@@ -471,14 +482,14 @@ class PairLoopNeighbourListNS(object):
 
 
     def __init_dat_lib_args(self, dats):
-        for dat_orig in dats.values():
+        for dat_orig in self._dat_dict.values(dats):
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
 
 
     def _get_dat_lib_args(self, dats):
         args = []
-        for dat_orig in dats.values():
+        for dat_orig in self._dat_dict.values(dats):
             if type(dat_orig) is tuple:
                 args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=True))
             else:
@@ -486,8 +497,8 @@ class PairLoopNeighbourListNS(object):
         return args
 
     def _post_execute_dats(self, dats):
-        '''afterwards access descriptors'''
-        for dat_orig in dats.values():
+        # post execution data access
+        for dat_orig in self._dat_dict.values(dats):
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_post(dat_orig[1])
             else:
@@ -500,15 +511,11 @@ class PairLoopNeighbourListNS(object):
          potential engery.
         """
 
-        '''Allow alternative pointers'''
-        if dat_dict is not None:
-            self._dat_dict = dat_dict
-
         _group = self._group
         if self._group is None:
 
             _group = None
-            for pd in self._dat_dict.items():
+            for pd in self._dat_dict.items(dat_dict):
                 if issubclass(type(pd[1][0]), data.PositionDat):
                     _group = pd[1][0].group
                     break
@@ -552,8 +559,8 @@ class PairLoopNeighbourListNS(object):
         cell2part = _group.get_cell_to_particle_map()
         cell2part.check()
 
-        self.__init_dat_lib_args(self._dat_dict)
-        args = self._get_dat_lib_args(self._dat_dict)
+        self.__init_dat_lib_args(dat_dict)
+        args = self._get_dat_lib_args(dat_dict)
 
 
         '''Rebuild neighbour list potentially'''
@@ -578,7 +585,7 @@ class PairLoopNeighbourListNS(object):
         self._kernel_execution_count += neighbour_list.neighbour_starting_points[neighbour_list.n_local]
 
         self._update_opt()
-        self._post_execute_dats(self._dat_dict)
+        self._post_execute_dats(dat_dict)
 
 
 ###############################################################################
@@ -589,49 +596,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
 
     _neighbour_list_dict_PNL = {}
 
-    def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
-
-        self._dat_dict = dat_dict
-        self._cc = build.TMPCC
-        # self.rn = None
-
-        ##########
-        # End of Rapaport initialisations.
-        ##########
-
-        self._temp_dir = runtime.BUILD_DIR
-        if not os.path.exists(self._temp_dir):
-            os.mkdir(self._temp_dir)
-
-        self._kernel = kernel
-        '''
-        if type(shell_cutoff) is not logic.Distance:
-            shell_cutoff = logic.Distance(shell_cutoff)
-        '''
-        self.shell_cutoff = shell_cutoff
-
-        self.loop_timer = opt.LoopTimer()
-        self.wrapper_timer = opt.Timer(runtime.TIMER)
-
-        self._gather_size_limit = 4
-        self._generate()
-
-
-        self._lib = build.simple_lib_creator(self._generate_header_source(),
-                                             self._components['LIB_SRC'],
-                                             self._kernel.name,
-                                             CC=self._cc)
-
-        self._group = None
-
-        for pd in self._dat_dict.items():
-            if issubclass(type(pd[1][0]), data.PositionDat):
-                self._group = pd[1][0].group
-                break
-
-
-        # if group is none there is no cell to particle map.
-        # therefore no halo exchange etc
+    def _make_neigbour_list(self):
         assert self._group is not None, "No cell to particle map found"
 
         _nd = PairLoopNeighbourList._neighbour_list_dict_PNL
@@ -665,9 +630,6 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
                                  self._group.domain,
                                  self.shell_cutoff)
 
-        self._neighbourlist_count = 0
-        self._invocations = 0
-        self._kernel_execution_count = 0
 
     def execute(self, n=None, dat_dict=None, static_args=None):
         """
@@ -680,46 +642,27 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
         cell2part = self._group.get_cell_to_particle_map()
         cell2part.check()
 
-        '''Allow alternative pointers'''
-        if dat_dict is not None:
-            self._dat_dict = dat_dict
-
-
         args = []
-        '''Add static arguments to launch command'''
+        # Add static arguments to launch command
         if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not " \
                                             "passed to loop."
-            for dat in static_args.values():
-                args.append(dat)
+            args += self._kernel.static_args.get_args(static_args)
 
+        # Add pointer arguments to launch command
+        for dat in self._dat_dict.values(new_dats=dat_dict):
+            obj = dat[0]
+            mode = dat[1]
+            args.append(obj.ctypes_data_access(mode, pair=True))
 
-        '''Pass access descriptor to dat'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
-
-
-        '''Add pointer arguments to launch command'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=True))
-            else:
-                raise RuntimeError
-                #args.append(dat_orig.ctypes_data)
-
-
-        '''Rebuild neighbour list potentially'''
+        # Rebuild neighbour list potentially
         self._invocations += 1
-
-
-
         if cell2part.version_id > neighbour_list.version_id:
             neighbour_list.update()
             self._neighbourlist_count += 1
 
 
-        '''Create arg list'''
+        # Create arg list for lib
         _N_LOCAL = ctypes.c_int(neighbour_list.n_local)
         _STARTS = neighbour_list.neighbour_starting_points.ctypes_data
         _LIST = neighbour_list.list.ctypes_data
@@ -730,7 +673,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
 
         args = args2 + args
 
-        '''Execute the kernel over all particle pairs.'''
+        # Execute the kernel over all particle pairs.
         method = self._lib[self._kernel.name + '_wrapper']
 
         self.wrapper_timer.start()
@@ -738,23 +681,8 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
         self.wrapper_timer.pause()
 
 
-        opt.PROFILE[
-            self.__class__.__name__+':'+self._kernel.name+':execute_internal'
-        ] = self.loop_timer.time
-
-
         self._kernel_execution_count += neighbour_list.neighbour_starting_points[neighbour_list.n_local]
 
-
-        opt.PROFILE[
-            self.__class__.__name__+':'+self._kernel.name+':kernel_execution_count'
-        ] =  self._kernel_execution_count
-
-
-        '''afterwards access descriptors'''
-        for dat_orig in self._dat_dict.values():
-            if type(dat_orig) is tuple:
-                dat_orig[0].ctypes_data_post(dat_orig[1])
-            else:
-                dat_orig.ctypes_data_post()
+        self._update_opt()
+        self._post_execute_dats(dat_dict)
 

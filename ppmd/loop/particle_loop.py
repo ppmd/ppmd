@@ -215,7 +215,7 @@ class ParticleLoop(object):
                 kernel_call.append(g)
 
             else:
-                print "ERROR: Type not known"
+                raise RuntimeError("ERROR: Type not known")
 
         kernel_call.append(cgen.Comment('#### Kernel call ####'))
 
@@ -298,12 +298,13 @@ class ParticleLoop(object):
         """
 
         args = []
-        '''Add static arguments to launch command'''
+        # Add static arguments to launch command
         if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not " \
                                             "passed to loop."
             args += self._kernel.static_args.get_args(static_args)
 
+        # pointer args
         for dat in self._dat_dict.items(new_dats=dat_dict):
             obj = dat[1][0]
             mode = dat[1][1]
@@ -311,7 +312,7 @@ class ParticleLoop(object):
             if issubclass(type(obj), data.ParticleDat):
                 _N_LOCAL = obj.npart_local
 
-        '''Create arg list'''
+        # get a number of particles
         if n is None:
             if self._group is not None:
                 _N_LOCAL = ctypes.c_int(self._group.npart_local)

@@ -228,7 +228,7 @@ class DatArgStore(object):
             assert obj.ncomp == self.register[symbol][3], "incompatible dat ncomp"
 
     def items(self, new_dats=None):
-        """return the dats in a guaranteed order"""
+        """return the dats in a consistent order"""
         if new_dats is None:
             return self.dats
 
@@ -242,6 +242,9 @@ class DatArgStore(object):
 
         return tuple(dats)
 
+    def values(self, new_dats=None):
+        """return the dat values in a consistent order"""
+        return tuple([dx[1] for dx in self.items(new_dats)])
 
 
 class StaticArgStore(object):
@@ -249,7 +252,6 @@ class StaticArgStore(object):
         """
         Provide compatibility checking of passed initial dats with allowed dats
         and provide consistent looping over dats.
-        :param allow: Dictionary, form {dat-type: tuple of allowed access descriptors)}
         :param initial: initial dat dict
         """
         assert type(initial) is dict, "expected a dict"
@@ -312,7 +314,10 @@ class StaticArgStore(object):
         # ensure order is consistent with old dats
         dats = [0] * len(self.symbols)
         for ax in values.items():
-            dats[self.symbols[ax[0]]] = self.register[ax[0]](ax[1])
+            if self.register[ax[0]] is type(ax[1]):
+                 dats[self.symbols[ax[0]]] = ax[1]
+            else:
+                dats[self.symbols[ax[0]]] = self.register[ax[0]](ax[1])
 
         return dats
 

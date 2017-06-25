@@ -1,6 +1,6 @@
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
-
+'''
 import ctypes
 import numpy as np
 
@@ -35,6 +35,7 @@ h_GlobalArray = md.data.GlobalArray
 
 def assert_tol(val, tol, msg="tolerance not met"):
     assert abs(val) < 10.**(-1*tol), msg
+
 
 @cuda
 def test_ewald_energy_python_co2_2_1():
@@ -75,7 +76,7 @@ def test_ewald_energy_python_co2_2_1():
 
     c.evaluate_contributions(positions=A.positions, charges=A.charges)
 
-
+'''
 
 
 
