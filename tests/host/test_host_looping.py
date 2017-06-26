@@ -487,7 +487,7 @@ def test_host_looping_7(DTYPE):
     PI[:] = PIi[0]
     SR[:] = SRi[:]
     SI[:] = SIi[0]
-    SI0i[:] = SI0i[0]
+    SI0[:] = SI0i[0]
 
     if DTYPE is ctypes.c_int:
         cast = int
@@ -495,7 +495,6 @@ def test_host_looping_7(DTYPE):
         cast = float
     else:
         raise RuntimeError
-
     a1 = cast(A1i[0])
 
     loop.execute(n=N, static_args={'A1': a1})
@@ -508,6 +507,5 @@ def test_host_looping_7(DTYPE):
         assert PI0[px, 0] == PR[px, 0], "bad zero increment"
 
     assert SR[0] == cast(SRi[0]), "read only data has changed"
-
     assert abs(SI[0] - (cast(SIi[0]) + N*a1)) < 10.**-10, "bad scalar array INC"
     assert abs(SI0[0] - (N*a1)) < 10.**-10, "bad scalar array INC_ZERO"

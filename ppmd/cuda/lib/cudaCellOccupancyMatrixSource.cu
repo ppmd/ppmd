@@ -150,8 +150,10 @@
             dim3 bs; bs.x = blocksize[0]; bs.y = blocksize[1]; bs.z = blocksize[2];
             dim3 ts; ts.x = threadsize[0]; ts.y = threadsize[1]; ts.z = threadsize[2];
 
+            if (n > 0){
+                d_LayerSort<<<bs,ts>>>(d_pl, d_crl, d_ccc, d_p);
+            }
 
-            d_LayerSort<<<bs,ts>>>(d_pl, d_crl, d_ccc, d_p);
             checkCudaErrors(cudaDeviceSynchronize());
             getLastCudaError(" d_LayerSort Execution failed. \n");
             
@@ -193,8 +195,9 @@
             }
 
             //checkCudaErrors(cudaMemcpyToSymbol(d_nl, nl, sizeof(*nl)));
-
-            d_PopulateMatrix<<<bs,ts>>>(*nl, d_pl, d_crl, *d_M);
+            if (n > 0){
+                d_PopulateMatrix<<<bs,ts>>>(*nl, d_pl, d_crl, *d_M);
+            }
             checkCudaErrors(cudaDeviceSynchronize());
 
             return err;

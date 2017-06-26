@@ -306,7 +306,7 @@ class CellOccupancyMatrix(object):
             self._cell_sort_setup()
 
             if not self._init:
-                print "Initalisation failed"
+                print("Initalisation failed")
                 return False
 
 
@@ -440,8 +440,6 @@ class CellOccupancyMatrix(object):
 
         rval = self._p1_lib['LayerSort'](*args)
 
-        # print "layersort out pointer", self.matrix.ctypes_data
-
 
         self._n_layers = _nl.value
         self.matrix.ncol = self._n_layers
@@ -471,7 +469,7 @@ class CellOccupancyMatrix(object):
 
         # Is a resize needed?
         if max_halo_layers > self._n_layers:
-            print "resizing occupancy matrix, you should not see this message"
+            print("resizing occupancy matrix, you should not see this message")
 
             new_matrix = cuda_base.device_buffer_2d(nrow=self.matrix.nrow,
                                                     ncol=max_halo_layers,
@@ -552,9 +550,15 @@ class NeighbourListLayerBased(object):
 
         if (self.list.ncol < self._occ_matrix.positions.npart_local) or \
                 (self.list.nrow < limit):
-            self.list.realloc(nrow=limit,
-                              ncol=self._occ_matrix.positions.npart_local,
-                              copy=False)
+
+            self.list.realloc(
+                nrow=limit,
+                ncol=max(
+                    int(self._occ_matrix.positions.npart_local)
+                    ,1
+                ),
+                copy=False
+            )
 
         _tpb = 256
         _blocksize = (ctypes.c_int * 3)(int(math.ceil(
@@ -581,7 +585,7 @@ class NeighbourListLayerBased(object):
         e = self._lib(*args)
 
         if e < 0:
-            print "warning reallocing neighbour matrix"
+            print("warning reallocing neighbour matrix")
             limit = -1*e + 1
             self.list.realloc(nrow=limit, ncol=self._occ_matrix.positions.npart_local)
 
@@ -674,7 +678,7 @@ class NeighbourListLayerSplit(object):
         e = self._lib1(*args)
 
         if e < 0:
-            print "warning reallocing neighbour matrix"
+            print("warning reallocing neighbour matrix")
             limit = -1*e + 1
             self.list1.realloc(nrow=limit, ncol=self._occ_matrix.positions.npart_local)
 
@@ -738,7 +742,7 @@ class NeighbourListLayerSplit(object):
         e = self._lib2(*args)
 
         if e < 0:
-            print "warning reallocing neighbour matrix"
+            print("warning reallocing neighbour matrix")
             limit = -1*e + 1
             self.list2.realloc(nrow=limit, ncol=self._occ_matrix.positions.npart_local)
 

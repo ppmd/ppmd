@@ -22,58 +22,10 @@ import cuda_data
 import cuda_cell
 import cuda_base
 
-
-
-
-
-def generate_reduction_final_stage(symbol_external, symbol_internal, dat):
-    """
-    Reduce arrays here
-
-    :arg string symbol_external: variable name for shared library
-    :arg string symbol_internal: variable name for kernel.
-    :arg cuda_data.data: :class:`~cuda_data.ParticleDat` or :class:`~cuda_data.ScalarArray` cuda_data.object in question.
-
-    :return: string for initialisation code.
-    """
-    _nl = '\n'
-    _space = ' ' * 14
-
-    _s = _nl
-
-    _s += _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
-    _s += 2 * _space + symbol_internal + '[_iz] = warpReduceSumDouble(' + symbol_internal + '[_iz]); \n'
-    _s += _space + '}\n'
-
-
-
-    _s += _space + '__shared__ ' + host.ctypes_map[dat.dtype] + ' _d_red_' + symbol_internal + '[' + str(dat.ncomp) + ']; \n'
-    _s += _space + 'if (  (int)(threadIdx.x & (warpSize - 1)) == 0){ \n'
-    _s += 2 * _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
-    _s += 3 * _space +'_d_red_' + symbol_internal + '[_iz] = 0; \n'
-    _s += _space + '}} __syncthreads(); \n'
-
-
-
-    # reduce into the shared dat.
-    _s += _space + 'if (  (int)(threadIdx.x & (warpSize - 1)) == 0){ \n'
-    _s += 2 * _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
-    _s += 3 * _space +'atomicAddDouble(&_d_red_' + symbol_internal + '[_iz], ' + symbol_internal + '[_iz]); \n'
-    _s += _space + '}} __syncthreads(); \n'
-
-    _s += _space + 'if (threadIdx.x == 0){ \n'
-    _s += 2 * _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
-    _s += 3 * _space +'atomicAddDouble(&' + symbol_external + '[_iz], _d_red_' + symbol_internal + '[_iz]); \n'
-    _s += _space + '}} \n'
-
-    return _s + '\n'
+from cuda_loop import generate_reduction_final_stage
 
 def Restrict(keyword, symbol):
     return str(keyword) + ' ' + str(symbol)
-
-
-
-
 
 class _Base(object):
 
@@ -159,30 +111,21 @@ class _Base(object):
 
                 # KERNEL GATHER/SCATTER START ------------------
                 if not kacc.incremented:
-                    a = cgen.Initializer(
-                        cgen.Pointer(cgen.Value(
+                    a = cgen.Pointer(cgen.Value(
                             host.ctypes_map[dati.dtype], ksym
-                        )),
-                        dsym
-                    )
-                    if not kacc.write:
-                        a = cgen.Const(a)
-                    self._components['IF_GATHER'].append(a)
-                else:
-                    if kacc is access.INC0:
-                        s = '{0}'
-                    else:
-                        s = '{'
-                        for cx in range(dati.ncomp - 1):
-                            s += dsym + '[' + str(cx) + '], '
-                        s += dsym + '[' + str(dati.ncomp - 1) + ']}'
+                        ))
 
+                    a = cgen.Const(a)
+                    a = cgen.Initializer(a, dsym)
+                    self._components['IF_GATHER'].append(a)
+
+                else:
                     a = cgen.Initializer(
                         cgen.Value(
                             host.ctypes_map[dati.dtype],
                             ksym + '[' + str(dati.ncomp) +']'
                         ),
-                        s
+                        '{0}'
                     )
 
                     self._components['IF_GATHER'].append(a)
@@ -436,7 +379,7 @@ class PairLoopNeighbourListNS(_Base):
     @staticmethod
     def _get_allowed_types():
         return {
-            cuda_data.ScalarArray: access.all_access_types,
+            cuda_data.ScalarArray: (access.READ, access.INC_ZERO, access.INC),
             cuda_data.ParticleDat: access.all_access_types,
             cuda_data.PositionDat: access.all_access_types,
             cuda_base.Array: access.all_access_types,

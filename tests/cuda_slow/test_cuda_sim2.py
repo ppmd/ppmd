@@ -3,11 +3,13 @@
 import pytest
 import ctypes
 import numpy as np
-import math
-import os
-import sys
+
 
 import ppmd as md
+import ppmd.cuda as mdc
+
+cuda = pytest.mark.skipif("mdc.CUDA_IMPORT is False")
+
 
 VERBOSE = True
 
@@ -15,15 +17,14 @@ rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 nproc = md.mpi.MPI.COMM_WORLD.Get_size()
 
 
-PositionDat = md.data.PositionDat
-ParticleDat = md.data.ParticleDat
-ScalarArray = md.data.ScalarArray
-State = md.state.State
-ParticleLoop = md.loop.ParticleLoop
-Pairloop = md.pairloop.PairLoopNeighbourListNS
-PBC = md.domain.BoundaryTypePeriodic()
-GlobalArray = md.data.GlobalArray
-State = md.state.State
+if mdc.CUDA_IMPORT:
+    PositionDat = mdc.cuda_data.PositionDat
+    ParticleDat = mdc.cuda_data.ParticleDat
+    ScalarArray = mdc.cuda_data.ScalarArray
+    State = mdc.cuda_state.State
+    ParticleLoop = mdc.cuda_loop.ParticleLoop
+    PairLoop = mdc.cuda_pairloop.PairLoopNeighbourListNS
+    PBC = md.domain.BoundaryTypePeriodic()
 
 
 vv_kernel1_code = '''
@@ -100,10 +101,9 @@ def directiona(request):
     return request.param
 
 
-#@pytest.mark.skip
-
+@cuda
 @pytest.mark.slowtest
-def test_host_sim_1(directiong):
+def test_cuda_sim_1(directiong):
 
 
     A = State()
@@ -115,7 +115,7 @@ def test_host_sim_1(directiong):
     E = 8.
     extent = (E, E, E)
     A.domain = md.domain.BaseDomainHalo(extent=extent)
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
 
     # init state
     A.p = PositionDat(ncomp=3)
@@ -151,7 +151,7 @@ def test_host_sim_1(directiong):
         rc=potaa_rc
     )
 
-    potaa_force_updater = md.pairloop.PairLoopNeighbourListNS(
+    potaa_force_updater = PairLoop(
         kernel=potaa.kernel,
         dat_dict=potaa.get_data_map(
             positions=A.p,
@@ -209,10 +209,9 @@ def test_host_sim_1(directiong):
         assert np.sum(np.abs(A.p[0, :] - np.array(directiong))) < 10. ** -14
 
 
-
+@cuda
 @pytest.mark.slowtest
-#@pytest.mark.skip
-def test_host_sim_2(directiona):
+def test_cuda_sim_2(directiona):
 
     A = State()
     dt = 0.001
@@ -223,7 +222,7 @@ def test_host_sim_2(directiona):
     E = 6.
     extent = (E, E, E)
     A.domain = md.domain.BaseDomainHalo(extent=extent)
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
 
     # init state
     A.p = PositionDat(ncomp=3)
@@ -260,7 +259,7 @@ def test_host_sim_2(directiona):
         rc=potaa_rc
     )
 
-    potaa_force_updater = md.pairloop.PairLoopNeighbourListNS(
+    potaa_force_updater = PairLoop(
         kernel=potaa.kernel,
         dat_dict=potaa.get_data_map(
             positions=A.p,

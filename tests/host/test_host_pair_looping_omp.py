@@ -7,6 +7,7 @@ import math
 
 
 import ppmd as md
+from ppmd.access import *
 
 N = 1000
 crN = 10 #cubert(N)
@@ -26,6 +27,8 @@ ScalarArray = md.data.ScalarArray
 GlobalArray = md.data.GlobalArray
 State = md.state.State
 PairLoop = md.pairloop.PairLoopNeighbourListNSOMP
+Kernel = md.kernel.Kernel
+
 
 @pytest.fixture
 def state():
@@ -491,6 +494,104 @@ def test_host_pair_loop_NS_FCC_2():
 
 
 
+
+@pytest.fixture(scope="module", params=list({ctypes.c_int, ctypes.c_double}))
+def DTYPE(request):
+    return request.param
+
+def test_host_pair_loop_NS_dtypes_access(DTYPE):
+    """
+    Set a cutoff slightly larger than the 3rd nearest neighbour distance in
+    the grid
+    """
+
+    A = State()
+
+    crN2 = 10
+    N = (crN2**3)*4
+    A.npart = N
+
+    A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+
+    cell_width = (0.5*float(E))/float(crN2)
+
+    A.P = PositionDat(ncomp=3)
+    A.P[:] = md.utility.lattice.fcc((crN2, crN2, crN2), (E, E, E))
+
+    A.npart_local = (crN2**3)*4
+
+    A.PR = ParticleDat(npart=N, ncomp=1, dtype=DTYPE)
+    A.PW = ParticleDat(npart=N, ncomp=1, dtype=DTYPE)
+    A.PI0 = ParticleDat(npart=N, ncomp=1, dtype=DTYPE)
+    A.PI = ParticleDat(npart=N, ncomp=1, dtype=DTYPE)
+    A.PRW = ParticleDat(npart=N, ncomp=1, dtype=DTYPE)
+    A.SR = ScalarArray(ncomp=1, dtype=DTYPE)
+
+    rng = np.random.RandomState(seed=2352413423)
+    A1i = rng.uniform(low=10, high=20, size=1)
+    PRi = rng.uniform(low=10, high=20, size=(N,1))
+    PRWi = rng.uniform(low=10, high=20, size=(N,1))
+    SRi = rng.uniform(low=10, high=20, size=1)
+    PI0i = rng.uniform(low=10, high=20, size=1)
+    PIi = rng.uniform(low=10, high=20, size=1)
+
+    A.PR[:] = PRi[:]
+    A.PRW[:] = PRWi[:]
+    A.PW[:] = 0
+    A.PI0[:] = PI0i[0]
+    A.PI[:] = PIi[0]
+    A.SR[:] = SRi[:]
+
+    A.filter_on_domain_boundary()
+
+    kernel_code = '''
+    PW.i[0] = A1;
+    PRW.i[0] = A1;
+    PI0.i[0] += PR.i[0];
+    PI.i[0] += SR[0];
+    '''
+    kernel = md.kernel.Kernel(
+        'test_host_pair_loop_NS_dtype',
+        code=kernel_code,
+        static_args={
+            'A1': DTYPE
+        }
+    )
+    kernel_map = {
+        'P': A.P(READ),
+        'PR' :A.PR(READ),
+        'PW' :A.PW(WRITE) ,
+        'PI0':A.PI0(INC_ZERO),
+        'PI' :A.PI(INC),
+        'PRW':A.PRW(RW),
+        'SR' :A.SR(READ)
+    }
+
+    loop = PairLoop(
+        kernel=kernel,
+        dat_dict=kernel_map,
+        shell_cutoff=math.sqrt(2.)*cell_width+tol
+    )
+
+
+    if DTYPE is ctypes.c_int:
+        cast = int
+    elif DTYPE is ctypes.c_double:
+        cast = float
+    else:
+        raise RuntimeError
+    a1 = cast(A1i[0])
+
+    loop.execute(static_args={'A1': a1})
+
+
+    for px in range(A.npart_local):
+        assert A.PR[px, 0] == cast(PRi[px, 0]), "read only data has changed"
+        assert A.PW[px, 0] == a1, "bad write only particle dat"
+        assert A.PRW[px, 0] == a1, "bad read/write particle dat"
+        assert A.PI[px, 0] == 12*A.SR[0] + cast(PIi[0]), "bad increment"
+        assert A.PI0[px, 0] == 12*A.PR[px, 0], "bad zero increment"
 
 
 

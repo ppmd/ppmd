@@ -122,6 +122,8 @@
     cuda_Matrix<int> d_W
 ){
 
+        if (h_npart < 1) {return 1;}
+
         int h_offsets[27];
 
         for(int ix = 0; ix < 27; ix++){

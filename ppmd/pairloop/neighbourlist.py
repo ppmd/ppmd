@@ -164,11 +164,10 @@ class PairLoopNeighbourListNS(object):
         ])
 
         if self._kernel.static_args is not None:
-
             for i, dat in enumerate(self._kernel.static_args.items()):
-                _kernel_arg_decls.append(
-                    cgen.Const(cgen.Value(host.ctypes_map[dat[1]], dat[0]))
-                )
+                arg = cgen.Const(cgen.Value(host.ctypes_map[dat[1]], dat[0]))
+                _kernel_arg_decls.append(arg)
+                _kernel_lib_arg_decls.append(arg)
 
         for i, dat in enumerate(self._dat_dict.items()):
 
@@ -312,6 +311,9 @@ class PairLoopNeighbourListNS(object):
 
         kernel_call = cgen.Module([cgen.Comment('#### Kernel call arguments ####')])
         kernel_call_symbols = []
+        if self._kernel.static_args is not None:
+            for i, dat in enumerate(self._kernel.static_args.items()):
+                kernel_call_symbols.append(dat[0])
 
         for i, dat in enumerate(self._dat_dict.items()):
             if issubclass(type(dat[1][0]), host._Array):
@@ -475,7 +477,7 @@ class PairLoopNeighbourListNS(object):
         if self._kernel.static_args is not None:
             assert static_args is not None, "Error: static arguments not " \
                                             "passed to loop."
-            for dat in static_args.values():
+            for dat in self._kernel.static_args.get_args(static_args):
                 args.append(dat)
 
         return args
@@ -574,6 +576,9 @@ class PairLoopNeighbourListNS(object):
 
         '''Create arg list'''
         args = self._get_class_lib_args() + self._get_static_lib_args(static_args) + args
+
+
+
 
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
