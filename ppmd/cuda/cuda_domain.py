@@ -56,7 +56,6 @@ class BoundaryTypePeriodic(object):
 
         self.timer_apply.start()
 
-        self._flag[0] = 0
 
         if comm.Get_size() == 1:
             """
@@ -83,7 +82,7 @@ class BoundaryTypePeriodic(object):
                 self._one_process_pbc_lib = cuda_loop.ParticleLoop(
                     _one_proc_pbc_kernel,
                     {'P': self.state.get_position_dat()(access.RW),
-                     'BCFLAG':self._flag(access.W)}
+                     'BCFLAG':self._flag(access.INC_ZERO)}
                 )
 
 
@@ -98,6 +97,11 @@ class BoundaryTypePeriodic(object):
                              'E1':ctypes.c_double(_E[1]),
                              'E2':ctypes.c_double(_E[2])}
             )
+
+            res = self._flag[0]
+            if res > 0:
+                self._flag[0] = 1
+
             self.timer_move.pause()
 
 

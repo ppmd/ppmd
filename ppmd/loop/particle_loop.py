@@ -106,11 +106,10 @@ class ParticleLoop(object):
         ])
 
         if self._kernel.static_args is not None:
-
             for i, dat in enumerate(self._kernel.static_args.items()):
-                _kernel_arg_decls.append(
-                    cgen.Const(cgen.Value(host.ctypes_map[dat[1]], dat[0]))
-                )
+                arg = cgen.Const(cgen.Value(host.ctypes_map[dat[1]], dat[0]))
+                _kernel_arg_decls.append(arg)
+                _kernel_lib_arg_decls.append(arg)
 
         for i, dat in enumerate(self._dat_dict.items()):
 
@@ -197,6 +196,9 @@ class ParticleLoop(object):
 
         kernel_call = cgen.Module([cgen.Comment('#### Kernel call arguments ####')])
         kernel_call_symbols = []
+        if self._kernel.static_args is not None:
+            for i, dat in enumerate(self._kernel.static_args.items()):
+                kernel_call_symbols.append(dat[0])
 
         for i, dat in enumerate(self._dat_dict.items()):
             if issubclass(type(dat[1][0]), host._Array):

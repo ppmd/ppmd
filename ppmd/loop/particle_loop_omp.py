@@ -53,11 +53,10 @@ class ParticleLoopOMP(ParticleLoop):
         ])
 
         if self._kernel.static_args is not None:
-
             for i, dat in enumerate(self._kernel.static_args.items()):
-                _kernel_arg_decls.append(
-                    cgen.Const(cgen.Value(host.ctypes_map[dat[1]], dat[0]))
-                )
+                arg = cgen.Const(cgen.Value(host.ctypes_map[dat[1]], dat[0]))
+                _kernel_arg_decls.append(arg)
+                _kernel_lib_arg_decls.append(arg)
 
         for i, dat in enumerate(self._dat_dict.items()):
 
@@ -122,6 +121,10 @@ class ParticleLoopOMP(ParticleLoop):
         ])
         kernel_call_symbols = []
         shared_syms = self._components['OMP_SHARED_SYMS']
+
+        if self._kernel.static_args is not None:
+            for i, dat in enumerate(self._kernel.static_args.items()):
+                kernel_call_symbols.append(dat[0])
 
         for i, dat in enumerate(self._dat_dict.items()):
             if issubclass(type(dat[1][0]), host._Array):

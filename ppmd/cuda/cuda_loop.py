@@ -29,15 +29,31 @@ def generate_reduction_final_stage(symbol_external, symbol_internal, dat):
 
     :return: string for initialisation code.
     """
+
+    if dat.dtype not in (ctypes.c_int, ctypes.c_double):
+        raise NotImplementedError("this data type does not have reductions defined yet")
+
+    warpred = {
+        ctypes.c_double: 'warpReduceSumDouble',
+        ctypes.c_int: 'warpReduceSumInt'
+    }
+
+    globalred = {
+        ctypes.c_double: 'atomicAddDouble',
+        ctypes.c_int: 'atomicAddInt'
+    }
+
+    wr = warpred[dat.dtype]
+    gr = globalred[dat.dtype]
+
     _nl = '\n'
     _space = ' ' * 14
 
     _s = _nl
 
     _s += _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
-    _s += 2 * _space + symbol_internal + '[_iz] = warpReduceSumDouble(' + symbol_internal + '[_iz]); \n'
+    _s += 2 * _space + symbol_internal + '[_iz] = '+ wr +'(' + symbol_internal + '[_iz]); \n'
     _s += _space + '}\n'
-
 
 
     _s += _space + '__shared__ ' + host.ctypes_map[dat.dtype] + ' _d_red_' + symbol_internal + '[' + str(dat.ncomp) + ']; \n'
@@ -51,12 +67,12 @@ def generate_reduction_final_stage(symbol_external, symbol_internal, dat):
     # reduce into the shared dat.
     _s += _space + 'if (  (int)(threadIdx.x & (warpSize - 1)) == 0){ \n'
     _s += 2 * _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
-    _s += 3 * _space +'atomicAddDouble(&_d_red_' + symbol_internal + '[_iz], ' + symbol_internal + '[_iz]); \n'
+    _s += 3 * _space + gr + '(&_d_red_' + symbol_internal + '[_iz], ' + symbol_internal + '[_iz]); \n'
     _s += _space + '}} __syncthreads(); \n'
 
     _s += _space + 'if (threadIdx.x == 0){ \n'
     _s += 2 * _space + 'for(int _iz = 0; _iz < ' + str(dat.ncomp) + '; _iz++ ){ \n'
-    _s += 3 * _space +'atomicAddDouble(&' + symbol_external + '[_iz], _d_red_' + symbol_internal + '[_iz]); \n'
+    _s += 3 * _space + gr +'(&' + symbol_external + '[_iz], _d_red_' + symbol_internal + '[_iz]); \n'
     _s += _space + '}} \n'
 
     return _s + '\n'
@@ -95,6 +111,7 @@ class ParticleLoop(object):
         #start code creation
         self._generate()
 
+
         # Create library
         self._lib = cuda_build.simple_lib_creator(
             self._generate_header_source(),
@@ -105,7 +122,7 @@ class ParticleLoop(object):
     @staticmethod
     def _get_allowed_types():
         return {
-            cuda_data.ScalarArray: access.all_access_types,
+            cuda_data.ScalarArray: (access.INC_ZERO, access.READ, access.INC),
             cuda_data.ParticleDat: access.all_access_types,
             cuda_data.PositionDat: access.all_access_types,
             cuda_base.Array: access.all_access_types,
@@ -123,12 +140,6 @@ class ParticleLoop(object):
 
         self._generate_lib_func()
         self._generate_lib_src()
-
-        #print 60*"-"
-        #print self._components['LIB_SRC']
-        #print 60*"-"
-
-
 
     def _generate_lib_specific_args(self):
         self._components['LIB_ARG_DECLS'] = [
@@ -228,33 +239,24 @@ class ParticleLoop(object):
                 # KERNEL CALL SYMS -----------------------------
                 kernel_call_symbols.append(ksym)
 
-
                 # KERNEL GATHER/SCATTER START ------------------
                 if not kacc.incremented:
-                    a = cgen.Initializer(
-                        cgen.Pointer(cgen.Value(
+                    a = cgen.Pointer(cgen.Value(
                             host.ctypes_map[dati.dtype], ksym
-                        )),
-                        dsym
-                    )
-                    if not kacc.write:
-                        a = cgen.Const(a)
+                        ))
+
+                    a = cgen.Const(a)
+                    a = cgen.Initializer(a, dsym)
                     self._components['IF_GATHER'].append(a)
+
                 else:
-                    if kacc is access.INC0:
-                        s = '{0}'
-                    else:
-                        s = '{'
-                        for cx in range(dati.ncomp - 1):
-                            s += dsym + '[' + str(cx) + '], '
-                        s += dsym + '[' + str(dati.ncomp - 1) + ']}'
 
                     a = cgen.Initializer(
                         cgen.Value(
                             host.ctypes_map[dati.dtype],
                             ksym + '[' + str(dati.ncomp) +']'
                         ),
-                        s
+                        '{0}'
                     )
 
                     self._components['IF_GATHER'].append(a)
@@ -392,7 +394,6 @@ class ParticleLoop(object):
             self._components['IF_SCATTER']
         ])
 
-
         self._components['KERNEL_FUNC'] = cgen.FunctionBody(
 
             cgen.FunctionDeclaration(
@@ -441,7 +442,6 @@ class ParticleLoop(object):
 
 
     def _generate_lib_src(self):
-
 
         self._components['LIB_SRC'] = cgen.Module([
             self._components['KERNEL_STRUCT_TYPEDEFS'],

@@ -167,8 +167,8 @@ class ParticleDat(cuda_base.Matrix):
         #print pair, self._vid_int, self._vid_halo
 
         if mode is access.INC0:
-            self.zero(self.npart_local)
-            #self.zero()
+            #self.zero(self.npart)
+            self.zero()
 
         if mode.read:
             if (self._vid_int > self._vid_halo) and pair:

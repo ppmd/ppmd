@@ -141,6 +141,20 @@ Lines below this point are subject to the following license.
       return val;
     }
 
+    // Taken from http://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/
+    __inline__ __device__
+    int warpReduceSumInt(int val) {
+      return warpReduceSum(val);
+    }
+
+    __inline__ __device__
+    int atomicAddInt(int* address, int val){
+        return atomicAdd(address, val);
+    }
+
+
+
+
     // edited from http://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/
     __inline__ __device__
     double warpReduceSumDouble(double val) {
