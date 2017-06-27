@@ -27,9 +27,31 @@ from ppmd import host
 _charge_coulomb = scipy.constants.physical_constants['atomic unit of charge'][0]
 
 
+def compute_alpha(N, L, ratio):
+    """
+    Compute an optimal alpha to give O(N^{3/2}) scaling for ewald summation. 
+    tau_r: Real space time cost per pair of particles (time cost per real space
+    kernel executin)
+    tau_f: Time for reciprocal component per particle per reciprocal vector.
+    :param N: Number of particles
+    :param L: Domain extent (assumes cubic)
+    :param ratio: ratio: tau_r/tau_f. 
+    :return: optimal alpha
+    """
+    return ((float(ratio)) * (pi**3.) * float(N) / (float(L)**6.))**(2./6)
+
+
+def compute_rc_nc_cutoff(alpha, L, eps=10.**-6):
+    ss = cmath.sqrt(scipy.special.lambertw(1./eps)).real
+    rc = ss/sqrt(alpha)
+    nc = int(round(ss*L*sqrt(alpha)/pi))
+    return rc, nc
+
+
+
 class EwaldOrthoganal(object):
 
-    def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None, recip_cutoff=None, recip_nmax=None, shared_memory=False, shell_width=None):
+    def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None, recip_cutoff=None, recip_nmax=None, shared_memory=False, shell_width=None, work_ratio=1.0):
 
         self.domain = domain
         self.eps = float(eps)
@@ -37,19 +59,20 @@ class EwaldOrthoganal(object):
 
         assert shared_memory in (False, 'omp', 'mpi')
 
-
         ss = cmath.sqrt(scipy.special.lambertw(1./eps)).real
 
-        if alpha is None and real_cutoff is None:
-            real_cutoff = 10.
-            alpha = (ss/real_cutoff)**2.
-        elif alpha is not None and real_cutoff is not None:
+        if alpha is not None and real_cutoff is not None:
             ss = real_cutoff * sqrt(alpha)
 
         elif alpha is None:
             alpha = (ss/real_cutoff)**2.
         else:
-            self.real_cutoff = ss/sqrt(alpha)
+            real_cutoff = ss/sqrt(alpha)
+
+
+        assert alpha is not None, "no alpha deduced/passed"
+        assert real_cutoff is not None, "no real_cutoff deduced/passed"
+
 
         self.real_cutoff = float(real_cutoff)
         """Real space cutoff"""
@@ -319,8 +342,10 @@ class EwaldOrthoganal(object):
         base_coeff1 = 4.*pi*ivolume
         base_coeff2 = -1./(4.*alpha)
 
+
         coeff_space[0,0,0] = 0.0
 
+        count = 0
         for rz in range(nmax_vec[2]+1):
             for ry in range(nmax_vec[1]+1):
                 for rx in range(nmax_vec[0]+1):
@@ -333,7 +358,11 @@ class EwaldOrthoganal(object):
                         if rlen2 > max_recip2:
                             coeff_space[rz,ry,rx] = 0.0
                         else:
+                            count += 8
                             coeff_space[rz,ry,rx] = (base_coeff1/rlen2)*exp(rlen2*base_coeff2)
+
+        opt.PROFILE[self.__class__.__name__+':recip_vector_count'] = \
+            (count)
 
 
     def _calculate_reciprocal_contribution(self, positions, charges):

@@ -349,12 +349,8 @@ class BaseDomainHalo(object):
         """
         return self._cell_array[0] * self._cell_array[1] * self._cell_array[2]
 
-
-
-
 def factor(n):
     return [ix for ix in range(1, n / 2 + 1) if not n % ix] + [n]
-
 
 def pfactor(n):
     lst = []
@@ -368,60 +364,18 @@ def pfactor(n):
     return lst
 
 
+def get_domain_decomp(nproc):
+    return _find_domain_decomp_no_extent(nproc)
+
+
 def _find_domain_decomp_no_extent(nproc):
     """
     find a decomp
-    :param global_cell_array:
     :param nproc:
     :return:
     """
-
     assert nproc is not None, "No number of processes passed"
-
-    '''Prime factor number of processes'''
-    _factors = pfactor(nproc)
-
-    _factors.sort(reverse=True)
-    '''Create grid from factorisation'''
-    if len(_factors) == 0:
-        _NP = [1, 1, 1]
-    elif len(_factors) == 1:
-        _NP = [_factors[0], 1, 1]
-
-    elif len(_factors) == 2:
-         _NP = [_factors[0], _factors[1], 1]
-    else:
-        if len(_factors)==4:
-            _NP = []
-            _NP.append(_factors[0])
-            _NP.append(_factors[1])
-            _NP.append(_factors[2] * _factors[3])
-
-        elif len(_factors)==5:
-            _NP = []
-            _NP.append(_factors[0])
-            _NP.append(_factors[1] * _factors[2])
-            _NP.append(_factors[3] * _factors[4])
-
-        else:
-            _factors.sort(reverse=True)
-            _q = len(_factors) / 3
-            #print _q, _factors[0:_q:], _factors[_q:2 * _q:], _factors[2*_q::]
-            _NP = []
-            _NP.append(reduce(lambda x, y: x * y, _factors[0:_q:]))
-            _NP.append(reduce(lambda x, y: x * y, _factors[_q:2 * _q:]))
-            _NP.append(reduce(lambda x, y: x * y, _factors[2 * _q::]))
-
-
-    '''Order processor calculated dimension sizes in descending order'''
-    _NP.sort(reverse=True)
-
-    '''Try to match avaible processor dimensions to phyiscal cells'''
-
-    return _NP
-
-
-
+    return mpi.MPI.Compute_dims(nproc, 3)
 
 
 def _find_domain_decomp(global_cell_array=None, nproc=None):
@@ -436,61 +390,9 @@ def _find_domain_decomp(global_cell_array=None, nproc=None):
     _cal = [[0, global_cell_array[0]], [1, global_cell_array[1]], [2, global_cell_array[2]]]
     _cal.sort(key=lambda x: x[1], reverse=True)
 
-
-    '''Prime factor number of processes'''
-    _factors = pfactor(nproc)
-
-    '''Create grid from factorisation'''
-    if len(_factors) == 0:
-        _NP = [1, 1, 1]
-    elif len(_factors) == 1:
-        if _factors[0] > _cal[0][1]:
-            print("ERROR: Cannot decompose this domain onto this number of " \
-                  "processors")
-            quit()
-
-        _NP = [_factors[0], 1, 1]
-
-    elif len(_factors) == 2:
-         if _factors[0] > _cal[0][1]:
-            print("ERROR: Cannot decompose this domain onto this number of " \
-                  "processors")
-            quit()
-         if _factors[1] > _cal[1][1]:
-            print("ERROR: Cannot decompose this domain onto this number of " \
-                  "processors")
-            quit()
-
-         _NP = [_factors[0], _factors[1], 1]
-    else:
-
-        _factors.sort(reverse=True)
-
-        if len(_factors)==4:
-            _NP = []
-            _NP.append(_factors[0])
-            _NP.append(_factors[1])
-            _NP.append(_factors[2] * _factors[3])
-
-        elif len(_factors)==5:
-            _NP = []
-            _NP.append(_factors[0])
-            _NP.append(_factors[1] * _factors[2])
-            _NP.append(_factors[3] * _factors[4])
-
-        else:
-            _factors.sort(reverse=True)
-            _q = len(_factors) / 3
-            #print _q, _factors[0:_q:], _factors[_q:2 * _q:], _factors[2*_q::]
-            _NP = []
-            _NP.append(reduce(lambda x, y: x * y, _factors[0:_q:]))
-            _NP.append(reduce(lambda x, y: x * y, _factors[_q:2 * _q:]))
-            _NP.append(reduce(lambda x, y: x * y, _factors[2 * _q::]))
-
-
     '''Order processor calculated dimension sizes in descending order'''
+    _NP = _find_domain_decomp_no_extent(nproc)
     _NP.sort(reverse=True)
-
 
     '''Try to match avaible processor dimensions to phyiscal cells'''
 
@@ -506,12 +408,13 @@ def _find_domain_decomp(global_cell_array=None, nproc=None):
 
         _dims[ix] = _NP[i]
 
-
     if not success:
-        print("Processor grid error, suitable layout search failed." + str(_dims[:]) + str(global_cell_array[:]))
-        quit()
+        raise RuntimeError("Processor grid error, suitable layout search failed." + str(_dims[:]) + str(global_cell_array[:]))
 
     return _dims
+
+
+
 
 def _get_cell_distribution(global_cell_array=None, dims=None, top=None):
 
