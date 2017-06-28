@@ -17,8 +17,6 @@ import runtime
 import pio
 import opt
 
-from functools import reduce
-
 _MPI = mpi.MPI
 _MPIWORLD = _MPI.COMM_WORLD
 _MPIRANK = _MPIWORLD.Get_rank()
@@ -375,6 +373,15 @@ def _find_domain_decomp_no_extent(nproc):
     :return:
     """
     assert nproc is not None, "No number of processes passed"
+
+
+    if runtime.MPI_DIMS is not None:
+        assert len(runtime.MPI_DIMS) == 3, "bad number of mpi dims defined"
+        p = runtime.MPI_DIMS[0] * runtime.MPI_DIMS[1] * runtime.MPI_DIMS[2]
+        assert p == nproc, "bad number of dims predefined {}, {}".format(p, nproc)
+        return runtime.MPI_DIMS
+
+
     return mpi.MPI.Compute_dims(nproc, 3)
 
 
@@ -391,7 +398,7 @@ def _find_domain_decomp(global_cell_array=None, nproc=None):
     _cal.sort(key=lambda x: x[1], reverse=True)
 
     '''Order processor calculated dimension sizes in descending order'''
-    _NP = _find_domain_decomp_no_extent(nproc)
+    _NP = list(_find_domain_decomp_no_extent(nproc))
     _NP.sort(reverse=True)
 
     '''Try to match avaible processor dimensions to phyiscal cells'''

@@ -33,7 +33,7 @@ if OMP_NUM_THREADS is not None:
 else:
     NUM_THREADS = 1
 
-
+MPI_DIMS = None
 
 
 

@@ -268,7 +268,6 @@ class IntegratorRange(object):
         return self
 
     def next(self):
-
         if self._ix < self._nm1:
             self._update_controller.increment_step_count()
             self._ix += 1

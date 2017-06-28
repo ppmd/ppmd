@@ -250,12 +250,23 @@ def test_host_global_array_9():
 
 
 
+def test_host_global_array_10():
+    A = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory='mpi')
+    A.set(1.0)
 
+    N2 = 100
+    PD = ParticleDat(npart=N2, ncomp=1, dtype=ctypes.c_int)
 
+    kernel_src = '''
+    A[0] += 0;
+    '''
 
+    kernel = Kernel('DGAN2', kernel_src, headers=Header('stdio.h'))
+    loop = ParticleLoop(kernel=kernel, dat_dict={'A': A(INC), 'PD':PD(READ)})
 
+    loop.execute()
 
-
+    assert abs(A[0] - 1.0)<10.**-15, "GlobalArray.reduction 1 failed"
 
 
 

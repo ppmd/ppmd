@@ -38,7 +38,7 @@ def compute_alpha(N, L, ratio):
     :param ratio: ratio: tau_r/tau_f. 
     :return: optimal alpha
     """
-    return ((float(ratio)) * (pi**3.) * float(N) / (float(L)**6.))**(2./6)
+    return ((float(ratio)) * (pi**3.) * float(N) / (float(L)**6.))**(1./3.)
 
 
 def compute_rc_nc_cutoff(alpha, L, eps=10.**-6):

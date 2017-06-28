@@ -102,6 +102,7 @@ class GlobalArrayClassic(host._Array):
 
         self._data = np.zeros(shape=size, dtype=dtype)
         self._rdata = np.zeros(shape=size, dtype=dtype)
+        self._data2 = np.zeros(shape=size, dtype=dtype)
 
         self._data[:] = 0
 
@@ -152,6 +153,7 @@ class GlobalArrayClassic(host._Array):
     def ctypes_data_access(self, mode=access.READ, pair=False, threaded=False):
         self._sync_wait()
 
+
         if mode in (access.INC0, access.INC_ZERO):
             self.set(self.identity_element)
         if threaded is False:
@@ -178,6 +180,7 @@ class GlobalArrayClassic(host._Array):
         return self._rdata.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def ctypes_data_post(self, mode=None, threaded=False):
+
         if mode.write:
             if self._threaded and threaded:
                 for kx in self._kdata:
@@ -191,9 +194,10 @@ class GlobalArrayClassic(host._Array):
 
     def _sync_init(self):
         self._timer.start()
-
         self._sync_status = False
-        self._redcomm.Allreduce(self._rdata, self._data, self.op)
+
+        self._redcomm.Allreduce(self._rdata, self._data2, self.op)
+        self._data[:] += self._data2[:]
         self._rdata.fill(self.identity_element)
 
         self._timer.pause()
