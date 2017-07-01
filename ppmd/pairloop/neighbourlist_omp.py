@@ -20,37 +20,34 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
     _neighbour_list_dict_OMP = {}
 
     def _neighbour_list_from_group(self, group):
-            _nd = PairLoopNeighbourListNSOMP._neighbour_list_dict_OMP
-            # if flag is true then a new cell list was created
-            flag = group.cell_decompose(self.shell_cutoff)
+        _nd = PairLoopNeighbourListNSOMP._neighbour_list_dict_OMP
+        # if flag is true then a new cell list was created
+        flag = group.cell_decompose(self.shell_cutoff)
 
-            if flag:
-                for key in _nd.keys():
-                    _nd[key] = NeighbourListOMP(
-                        group.get_npart_local_func(),
-                        group.get_position_dat(),
-                        group.domain,
-                        key[0],
-                        group.get_cell_to_particle_map()
-                    )
+        if flag:
+            for key in _nd.keys():
+                _nd[key] = NeighbourListOMP(
+                    group.get_npart_local_func(),
+                    group.get_position_dat(),
+                    group.domain,
+                    key[0],
+                    group.get_cell_to_particle_map()
+                )
 
-            self._key = (self.shell_cutoff,
-                         group.domain,
-                         group.get_position_dat())
+        self._key = (self.shell_cutoff,
+                     group.domain,
+                     group.get_position_dat())
 
-            if not self._key in _nd.keys():
+        if not self._key in _nd.keys():
 
-                _nd[self._key] = NeighbourListOMP(
-                        group.get_npart_local_func(),
-                        group.get_position_dat(),
-                        group.domain,
-                        self.shell_cutoff,
-                        group.get_cell_to_particle_map()
-                    )
+            _nd[self._key] = NeighbourListOMP(
+                    group.get_npart_local_func(),
+                    group.get_position_dat(),
+                    group.domain,
+                    self.shell_cutoff,
+                    group.get_cell_to_particle_map()
+                )
 
-    def _make_neigbour_list(self):
-        if self._group is not None:
-            self._neighbour_list_from_group(self._group)
 
     @staticmethod
     def _get_allowed_types():
@@ -376,9 +373,10 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
         # Rebuild neighbour list potentially
         self._invocations += 1
-        if cell2part.version_id > neighbour_list.version_id:
-            neighbour_list.update()
-            self._neighbourlist_count += 1
+
+        self.list_timer.start()
+        neighbour_list.update_if_required()
+        self.list_timer.pause()
 
         args2 = self._get_class_lib_args()
 

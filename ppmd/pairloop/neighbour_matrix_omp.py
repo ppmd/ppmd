@@ -21,6 +21,7 @@ class NeighbourListOMP(object):
         self.cell_width = cell_width
         self.cell_list = cell_list
         self.version_id = 0
+        self.domain_id = 0
         self.n_local = None
         self.timer_update = opt.Timer(runtime.TIMER)
         self.matrix = host.Array(ncomp=1, dtype=ctypes.c_int)
@@ -35,13 +36,20 @@ class NeighbourListOMP(object):
 
         self._lib = build.simple_lib_creator(hsrc, src, "OMP_N_MATRIX")['OMPNeighbourMatrix']
 
+    def update_if_required(self):
+        if self.version_id < self.cell_list.version_id or \
+            self.domain_id < self._domain.version_id:
+            self.update()
+
+
     def update(self):
 
         self.timer_update.start()
 
         self._update()
 
-        self.version_id += 1
+        self.version_id = self.cell_list.version_id
+        self.domain_id = self._domain.version_id
 
         self.timer_update.pause()
         opt.PROFILE[

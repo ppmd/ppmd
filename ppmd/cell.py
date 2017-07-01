@@ -747,6 +747,7 @@ class NeighbourList(object):
         self.list = None
         self.lib = None
 
+        self.domain_id = 0
         self.version_id = 0
         """Update tracking of neighbour list. """
 
@@ -2060,6 +2061,10 @@ class NeighbourListNonN3(NeighbourList):
         _kernel = kernel.Kernel('cell_neighbour_list_method', _code, headers=['stdio.h'], static_args=_static_args)
         self._neighbour_lib = build.SharedLib(_kernel, _dat_dict)
 
+    def update_if_required(self):
+        if self.version_id < self.cell_list.version_id or \
+            self.domain_id < self._domain.version_id:
+            self.update()
 
     def update(self):
         assert self.max_len is not None and \
@@ -2072,7 +2077,8 @@ class NeighbourListNonN3(NeighbourList):
 
         self._update()
 
-        self.version_id += 1
+        self.version_id = self.cell_list.version_id
+        self.domain_id = self._domain.version_id
 
         self.timer_update.pause()
         opt.PROFILE[

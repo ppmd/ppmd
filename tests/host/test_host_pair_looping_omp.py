@@ -535,7 +535,7 @@ def test_host_pair_loop_NS_dtypes_access(DTYPE):
     PI0i = rng.uniform(low=10, high=20, size=1)
     PIi = rng.uniform(low=10, high=20, size=1)
 
-    A.PR[:] = PRi[:]
+    A.PR[:] = PRi[0]
     A.PRW[:] = PRWi[:]
     A.PW[:] = 0
     A.PI0[:] = PI0i[0]
@@ -586,7 +586,7 @@ def test_host_pair_loop_NS_dtypes_access(DTYPE):
 
 
     for px in range(A.npart_local):
-        assert A.PR[px, 0] == cast(PRi[px, 0]), "read only data has changed"
+        assert A.PR[px, 0] == cast(PRi[0, 0]), "read only data has changed"
         assert A.PW[px, 0] == a1, "bad write only particle dat"
         assert A.PRW[px, 0] == a1, "bad read/write particle dat"
         assert abs(A.PI[px, 0] - 12*A.SR[0] - cast(PIi[0]))<10.**-10, "bad increment"

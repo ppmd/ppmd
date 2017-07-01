@@ -40,6 +40,7 @@ class BaseDomainHalo(object):
         self._init_cells = False
         self._init_decomp = False
 
+        self.version_id = 0
         self._periods = periods
 
         self._extent = data.ScalarArray(ncomp=3, dtype=ctypes.c_double)
@@ -63,7 +64,6 @@ class BaseDomainHalo(object):
         #vars to return boudary cells
         self._boundary_cell_version = -1
         self._boundary_cells = None
-
 
         self.comm = _MPIWORLD
 
@@ -149,6 +149,7 @@ class BaseDomainHalo(object):
             self._distribute_domain()
 
         self._init_extent = True
+        self.version_id += 1
 
 
     def mpi_decompose(self, mpi_grid=None):
@@ -190,6 +191,7 @@ class BaseDomainHalo(object):
         if self._init_extent:
             self._distribute_domain()
 
+        self.version_id += 1
         return True
 
     def _distribute_domain(self):
@@ -258,6 +260,7 @@ class BaseDomainHalo(object):
 
         opt.PROFILE[self.__class__.__name__+':cell_array'] = (self.cell_array[:])
 
+        self.version_id += 1
         return True
 
 
