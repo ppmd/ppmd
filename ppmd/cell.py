@@ -1022,7 +1022,6 @@ class NeighbourListv2(NeighbourList):
 
         //cout << "------------------------------" << endl;
         //printf("start P[0] = %%f \\n", P[0]);
-        
 
 
         const double cutoff = CUTOFF[0];

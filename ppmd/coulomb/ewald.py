@@ -311,13 +311,17 @@ class EwaldOrthoganal(object):
             headers=_cont_header
         ) 
 
-
         if self.shell_width is None:
             rn = self.real_cutoff*1.05
         else:
             rn = self.real_cutoff + self.shell_width
 
-        self._real_space_pairloop = ppmd.pairloop.PairLoopNeighbourListNS(
+        if self.shared_memory in ('thread', 'omp'):
+            PPL = ppmd.pairloop.PairLoopNeighbourListNSOMP
+        else:
+            PPL = ppmd.pairloop.PairLoopNeighbourListNS
+
+        self._real_space_pairloop = PPL(
             kernel=_real_kernel,
             dat_dict={
                 'P': ppmd.data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.READ),
