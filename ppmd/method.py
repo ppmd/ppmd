@@ -227,18 +227,7 @@ class IntegratorRange(object):
             step_index_func=self._get_loop_index
         )
 
-        _suc = self._update_controller
-        self._g.get_cell_to_particle_map().setup_pre_update(
-            _suc.pre_update
-        )
-
-        self._g.get_cell_to_particle_map().setup_update_tracking(
-            _suc.determine_update_status
-        )
-
-        self._g.get_cell_to_particle_map().setup_callback_on_update(
-            _suc.post_update
-        )
+        self._setup_tracking()
 
         self._ix = -1
         self._nm1 = n-1
@@ -256,6 +245,19 @@ class IntegratorRange(object):
         else:
             self._cprof_dump = None
             self._pr = None
+
+    def _setup_tracking(self):
+        _suc = self._update_controller
+        self._g.pre_update_funcs.append(
+            _suc.pre_update
+        )
+        self._g.determine_update_funcs.append(
+            _suc.determine_update_status
+        )
+        self._g.post_update_funcs.append(
+           _suc.post_update
+        )
+
 
     def _get_loop_index(self):
         return self._ix

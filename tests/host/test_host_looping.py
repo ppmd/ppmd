@@ -507,5 +507,5 @@ def test_host_looping_7(DTYPE):
         assert PI0[px, 0] == PR[px, 0], "bad zero increment"
 
     assert SR[0] == cast(SRi[0]), "read only data has changed"
-    assert abs(SI[0] - (cast(SIi[0]) + N*a1)) < 10.**-10, "bad scalar array INC"
-    assert abs(SI0[0] - (N*a1)) < 10.**-10, "bad scalar array INC_ZERO"
+    assert abs(SI[0] - (cast(SIi[0]) + N*a1)) < 10.**-9, "bad scalar array INC"
+    assert abs(SI0[0] - (N*a1)) < 10.**-9, "bad scalar array INC_ZERO"

@@ -83,6 +83,10 @@ class BaseMDState(object):
         #halo vars
         self._halo_exchange_sizes = None
 
+        self.determine_update_funcs = []
+        self.pre_update_funcs = []
+        self.post_update_funcs = []
+
 
     def rebuild_cell_to_particle_maps(self):
         pass
@@ -115,15 +119,38 @@ class BaseMDState(object):
 
             self._domain.boundary_condition.set_state(self)
 
+
             self._cell_to_particle_map = cell.CellList(
                 self.as_func('npart_local'),
                 self.get_position_dat(),
                 self.domain
             )
+
+            self._cell_to_particle_map.setup_pre_update(self._pre_update_func)
+            self._cell_to_particle_map.setup_update_tracking(
+                self._determine_update_status
+            )
+            self._cell_to_particle_map.setup_callback_on_update(
+               self._post_update_funcs
+            )
+
             self._cell_to_particle_map.update_required = True
 
             self._halo_manager = halo.CartesianHaloSix(_AsFunc(self, '_domain'),
                                                        self._cell_to_particle_map)
+
+    def _pre_update_func(self):
+        for foo in self.pre_update_funcs:
+            foo()
+
+    def _post_update_funcs(self):
+        for foo in self.post_update_funcs:
+            foo()
+    def _determine_update_status(self):
+        v = False
+        for foo in self.determine_update_funcs:
+            v |= foo()
+        return v
 
     @property
     def domain(self):

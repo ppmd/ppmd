@@ -212,7 +212,6 @@ class CellList(object):
         Check if the cell_list needs updating and update if required.
         :return:
         """
-
         if not self._init:
             self._cell_sort_setup()
 
@@ -222,7 +221,6 @@ class CellList(object):
 
 
         if (self.update_required is True) or self._update_tracking():
-
             self._pre_update()
 
             self.sort()
@@ -231,7 +229,6 @@ class CellList(object):
             return True
         else:
             return False
-
 
 
     def _cell_sort_setup(self):
@@ -347,7 +344,6 @@ class CellList(object):
         Sort local particles into cell list.
         :return:
         """
-
         if self._init:
 
             _dat_dict = {'B': self._domain.boundary,
@@ -2061,9 +2057,14 @@ class NeighbourListNonN3(NeighbourList):
         _kernel = kernel.Kernel('cell_neighbour_list_method', _code, headers=['stdio.h'], static_args=_static_args)
         self._neighbour_lib = build.SharedLib(_kernel, _dat_dict)
 
+        self.domain_id = self._domain.version_id
+
+    def check_lib_rebuild(self):
+        """return true if lib needs remaking"""
+        return self.domain_id < self._domain.version_id
+
     def update_if_required(self):
-        if self.version_id < self.cell_list.version_id or \
-            self.domain_id < self._domain.version_id:
+        if self.version_id < self.cell_list.version_id:
             self.update()
 
     def update(self):
@@ -2074,11 +2075,9 @@ class NeighbourListNonN3(NeighbourList):
 
 
         self.timer_update.start()
-
         self._update()
 
         self.version_id = self.cell_list.version_id
-        self.domain_id = self._domain.version_id
 
         self.timer_update.pause()
         opt.PROFILE[

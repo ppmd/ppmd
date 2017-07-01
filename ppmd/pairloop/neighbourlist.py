@@ -78,18 +78,17 @@ class PairLoopNeighbourListNS(object):
                                group.domain,
                                key[0])
 
-        self._key = (self.shell_cutoff,
+        _key = (self.shell_cutoff,
                      group.domain,
                      group.get_position_dat())
 
 
-        if not self._key in _nd.keys():
-
-            _nd[self._key] = cell.NeighbourListNonN3(
+        if not _key in _nd.keys():
+            _nd[_key] = cell.NeighbourListNonN3(
                 group.get_cell_to_particle_map()
             )
 
-            _nd[self._key].setup(group.get_npart_local_func(),
+            _nd[_key].setup(group.get_npart_local_func(),
                                  group.get_position_dat(),
                                  group.domain,
                                  self.shell_cutoff)
@@ -466,8 +465,8 @@ class PairLoopNeighbourListNS(object):
         ] =  self._kernel_execution_count
 
 
-    def _get_class_lib_args(self):
-        neighbour_list = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[self._key]
+    def _get_class_lib_args(self, key):
+        neighbour_list = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[key]
         _N_LOCAL = ctypes.c_int(neighbour_list.n_local)
         _STARTS = neighbour_list.neighbour_starting_points.ctypes_data
         _LIST = neighbour_list.list.ctypes_data
@@ -524,6 +523,11 @@ class PairLoopNeighbourListNS(object):
         _key = (self.shell_cutoff, _group.domain, _group.get_position_dat())
         neighbour_list = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[_key]
 
+        if neighbour_list.check_lib_rebuild:
+            del PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[_key]
+            self._neighbour_list_from_group(_group)
+            neighbour_list = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[_key]
+
         cell2part = _group.get_cell_to_particle_map()
         cell2part.check()
 
@@ -534,14 +538,11 @@ class PairLoopNeighbourListNS(object):
         self._invocations += 1
 
         self.list_timer.start()
-        if cell2part.version_id > neighbour_list.version_id:
-            neighbour_list.update()
+        neighbour_list.update_if_required()
         self.list_timer.pause()
 
         '''Create arg list'''
-        args = self._get_class_lib_args() + self._get_static_lib_args(static_args) + args
-
-
+        args = self._get_class_lib_args(_key) + self._get_static_lib_args(static_args) + args
 
 
         '''Execute the kernel over all particle pairs.'''
