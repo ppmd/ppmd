@@ -13,13 +13,13 @@ int OMPNeighbourMatrix(
         const int STRIDE,
         const double cutoff
 ){
-    int err = 0;
+    int totaln = 0;
     int tmp_offset[27];
     for(int ix=0; ix<27; ix++){
         tmp_offset[ix] = h_map[ix][0] + h_map[ix][1] * CA[0] + h_map[ix][2] * CA[0]* CA[1];
     }
 
-#pragma omp parallel for default(none) shared(NLIST, NNEIG)
+#pragma omp parallel for default(none) shared(NLIST, NNEIG, P, qlist, CRL, tmp_offset) reduction(+ : totaln)
     for(int px=0 ; px<NPART ; px++){
         const int my_cell = CRL[px];
         // NNEIG[px] contains the number of neighbours of particle px. The start position is px*stride, neighbours
@@ -41,13 +41,14 @@ int OMPNeighbourMatrix(
                         nn++;
                     }
                 }
-                jx = q[jx];
+                jx = qlist[jx];
             }
         }
         NNEIG[px] = nn;
+        totaln += nn;
     }
 
-    return err;
+    return totaln;
 }
 
 

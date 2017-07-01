@@ -94,7 +94,6 @@ def test_host_pair_loop_NS_1(state):
     kernel_code = '''
     NC(0,0)+=1;
     '''
-
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
@@ -590,8 +589,8 @@ def test_host_pair_loop_NS_dtypes_access(DTYPE):
         assert A.PR[px, 0] == cast(PRi[px, 0]), "read only data has changed"
         assert A.PW[px, 0] == a1, "bad write only particle dat"
         assert A.PRW[px, 0] == a1, "bad read/write particle dat"
-        assert A.PI[px, 0] == 12*A.SR[0] + cast(PIi[0]), "bad increment"
-        assert A.PI0[px, 0] == 12*A.PR[px, 0], "bad zero increment"
+        assert abs(A.PI[px, 0] - 12*A.SR[0] - cast(PIi[0]))<10.**-10, "bad increment"
+        assert abs(A.PI0[px, 0] - 12*A.PR[px, 0]) < 10.**-10, "bad zero increment"
 
 
 

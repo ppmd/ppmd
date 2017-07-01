@@ -637,10 +637,6 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
 
 
     def execute(self, n=None, dat_dict=None, static_args=None):
-        """
-        C version of the pair_locate: Loop over all cells update forces and
-         potential engery.
-        """
 
         neighbour_list = PairLoopNeighbourList._neighbour_list_dict_PNL[self._key]
 

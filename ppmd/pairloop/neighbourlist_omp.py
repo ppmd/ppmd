@@ -9,11 +9,45 @@ import ctypes
 
 # package level
 
-from ppmd import data, runtime, host, access
+from ppmd import data, runtime, host, access, build
 
 from neighbourlist import PairLoopNeighbourListNS, Restrict
+from neighbour_matrix_omp import NeighbourListOMP
+
 
 class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
+
+    _neighbour_list_dict_OMP = {}
+
+    def _make_neigbour_list(self):
+        if self._group is not None:
+            _nd = PairLoopNeighbourListNSOMP._neighbour_list_dict_OMP
+            # if flag is true then a new cell list was created
+            flag = self._group.cell_decompose(self.shell_cutoff)
+
+            if flag:
+                for key in _nd.keys():
+                    _nd[key] = NeighbourListOMP(
+                        self._group.get_npart_local_func(),
+                        self._group.get_position_dat(),
+                        self._group.domain,
+                        key[0],
+                        self._group.get_cell_to_particle_map()
+                    )
+
+            self._key = (self.shell_cutoff,
+                         self._group.domain,
+                         self._group.get_position_dat())
+
+            if not self._key in _nd.keys():
+
+                _nd[self._key] = NeighbourListOMP(
+                        self._group.get_npart_local_func(),
+                        self._group.get_position_dat(),
+                        self._group.domain,
+                        self.shell_cutoff,
+                        self._group.get_cell_to_particle_map()
+                    )
 
     @staticmethod
     def _get_allowed_types():
@@ -32,18 +66,19 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
              'LIB_NAME': str(self._kernel.name) + '_wrapper',
              'LIB_HEADERS': [cgen.Include('omp.h', system=True),],
              'OMP_THREAD_INDEX_SYM': '_threadid',
-             'OMP_SHARED_SYMS': ['_START_POINTS', '_NLIST']
+             'OMP_SHARED_SYMS': ['_NN', '_NLIST']
          }
 
     def _generate_lib_specific_args(self):
         self._components['LIB_ARG_DECLS'] = [
             cgen.Const(cgen.Value(host.int32_str, '_NUM_THREADS')),
             cgen.Const(cgen.Value(host.int32_str, '_N_LOCAL')),
+            cgen.Const(cgen.Value(host.int32_str, '_STRIDE')),
             cgen.Const(
                 cgen.Pointer(
-                    cgen.Value(host.int64_str,
+                    cgen.Value(host.int32_str,
                                Restrict(
-                                   self._cc.restrict_keyword,'_START_POINTS'
+                                   self._cc.restrict_keyword,'_NN'
                                )
                                )
                 )
@@ -229,6 +264,15 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
         self._components['LIB_KERNEL_CALL'] = kernel_call
 
 
+    def _generate_lib_inner_loop(self):
+        i = self._components['LIB_PAIR_INDEX_0']
+        b = self._components['LIB_INNER_LOOP_BLOCK']
+        self._components['LIB_INNER_LOOP'] = cgen.For('long _k='+i+'* _STRIDE',
+                                                      '_k<_NN['+i+']+'+i+'* _STRIDE',
+                                                      '_k++',
+                                                      b
+                                                      )
+
     def _generate_lib_outer_loop(self):
 
         block = cgen.Block([self._components['LIB_KERNEL_GATHER'],
@@ -259,15 +303,17 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
     def _get_class_lib_args(self):
 
-        neighbour_list = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[self._key]
+        neighbour_list = PairLoopNeighbourListNSOMP._neighbour_list_dict_OMP[self._key]
         _N_LOCAL = ctypes.c_int(neighbour_list.n_local)
-        _STARTS = neighbour_list.neighbour_starting_points.ctypes_data
-        _LIST = neighbour_list.list.ctypes_data
+        _STRIDE = ctypes.c_int(neighbour_list.stride)
+        _NN = neighbour_list.ncount.ctypes_data
+        _LIST = neighbour_list.matrix.ctypes_data
 
         return [
             ctypes.c_int(runtime.NUM_THREADS),
             _N_LOCAL,
-            _STARTS,
+            _STRIDE,
+            _NN,
             _LIST,
             self.loop_timer.get_python_parameters()
         ]
@@ -298,6 +344,44 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
                 obj.ctypes_data_post(mode)
 
 
+    def execute(self, n=None, dat_dict=None, static_args=None):
+        neighbour_list = PairLoopNeighbourListNSOMP._neighbour_list_dict_OMP[self._key]
+
+        cell2part = self._group.get_cell_to_particle_map()
+        cell2part.check()
+
+        args = []
+        # Add static arguments to launch command
+        if self._kernel.static_args is not None:
+            assert static_args is not None, "Error: static arguments not " \
+                                            "passed to loop."
+            args += self._kernel.static_args.get_args(static_args)
+
+        # Add pointer arguments to launch command
+        args+=self._get_dat_lib_args(dat_dict)
+
+
+        # Rebuild neighbour list potentially
+        self._invocations += 1
+        if cell2part.version_id > neighbour_list.version_id:
+            neighbour_list.update()
+            self._neighbourlist_count += 1
+
+        args2 = self._get_class_lib_args()
+
+        args = args2 + args
+
+        # Execute the kernel over all particle pairs.
+        method = self._lib[self._kernel.name + '_wrapper']
+
+        self.wrapper_timer.start()
+        method(*args)
+        self.wrapper_timer.pause()
+
+        self._kernel_execution_count += neighbour_list.total_num_neighbours
+
+        self._update_opt()
+        self._post_execute_dats(dat_dict)
 
 
 

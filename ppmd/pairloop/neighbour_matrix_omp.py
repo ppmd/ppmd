@@ -4,7 +4,8 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
-import ctypes
+import ctypes, os
+
 from ppmd import build, host, runtime, opt
 
 
@@ -13,27 +14,32 @@ from ppmd import build, host, runtime, opt
 ################################################################################################################
 
 class NeighbourListOMP(object):
-    def __init__(self, domain, cell_width, cell_list):
+    def __init__(self, n, positions, domain, cell_width, cell_list):
+        self._n_func = n
+        self._positions = positions
         self._domain = domain
         self.cell_width = cell_width
         self.cell_list = cell_list
         self.version_id = 0
+        self.n_local = None
         self.timer_update = opt.Timer(runtime.TIMER)
         self.matrix = host.Array(ncomp=1, dtype=ctypes.c_int)
         self.ncount = host.Array(ncomp=1, dtype=ctypes.c_int)
         self.stride = ctypes.c_int(0)
-        with open('./lib/NeighbourMatrixSource.cpp') as fh:
+        self.total_num_neighbours = 0
+        src_dir = os.path.join(os.path.dirname(__file__), 'lib')
+        with open(src_dir + '/NeighbourMatrixSource.cpp') as fh:
             src = fh.read()
-        with open('./lib/NeighbourMatrixSource.h') as fh:
+        with open(src_dir + '/NeighbourMatrixSource.h') as fh:
             hsrc = fh.read()
 
-        self._lib = build.simple_lib_creator(hsrc, src, "OMP_N_MATRIX")
+        self._lib = build.simple_lib_creator(hsrc, src, "OMP_N_MATRIX")['OMPNeighbourMatrix']
 
-    def update(self, positions):
+    def update(self):
 
         self.timer_update.start()
 
-        self._update(positions)
+        self._update()
 
         self.version_id += 1
 
@@ -42,14 +48,14 @@ class NeighbourListOMP(object):
             self.__class__.__name__+':update('+str(self.cell_width)+')'
         ] = (self.timer_update.time())
 
-    def _update(self, positions):
+    def _update(self):
+        positions = self._positions
         assert self.cell_list.cell_list is not None, "cell list is not initialised"
         assert self.cell_list.cell_list.dtype is ctypes.c_int, "bad datatype"
         assert positions.dtype is ctypes.c_double, "bad datatype"
         assert self._domain.cell_array.dtype is ctypes.c_int, "dtype"
         assert self.cell_list.cell_reverse_lookup.dtype is ctypes.c_int, "dtype"
-
-        n = positions.npart_local
+        n = self._n_func()
         if self.ncount.ncomp < n:
             self.ncount = host.Array(ncomp=n, dtype=ctypes.c_int)
         needed_stride = self.cell_list.max_cell_contents_count*27
@@ -68,11 +74,12 @@ class NeighbourListOMP(object):
             self.matrix.ctypes_data,
             self.ncount.ctypes_data,
             ctypes.c_int(self.stride),
-            ctypes.c_double(self.cell_width)
+            ctypes.c_double(self.cell_width**2.0)
         )
 
-        assert ret == 0, "lib failed, return code: " + str(ret)
-
+        assert ret >= 0, "lib failed, return code: " + str(ret)
+        self.n_local = n
+        self.total_num_neighbours = ret
 
 
 

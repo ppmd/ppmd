@@ -1,4 +1,5 @@
 #include <omp.h>
+#include <stdio.h>
 
 const int h_map[27][3] = {
         {-1,1,-1},
