@@ -19,35 +19,38 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
     _neighbour_list_dict_OMP = {}
 
-    def _make_neigbour_list(self):
-        if self._group is not None:
+    def _neighbour_list_from_group(self, group):
             _nd = PairLoopNeighbourListNSOMP._neighbour_list_dict_OMP
             # if flag is true then a new cell list was created
-            flag = self._group.cell_decompose(self.shell_cutoff)
+            flag = group.cell_decompose(self.shell_cutoff)
 
             if flag:
                 for key in _nd.keys():
                     _nd[key] = NeighbourListOMP(
-                        self._group.get_npart_local_func(),
-                        self._group.get_position_dat(),
-                        self._group.domain,
+                        group.get_npart_local_func(),
+                        group.get_position_dat(),
+                        group.domain,
                         key[0],
-                        self._group.get_cell_to_particle_map()
+                        group.get_cell_to_particle_map()
                     )
 
             self._key = (self.shell_cutoff,
-                         self._group.domain,
-                         self._group.get_position_dat())
+                         group.domain,
+                         group.get_position_dat())
 
             if not self._key in _nd.keys():
 
                 _nd[self._key] = NeighbourListOMP(
-                        self._group.get_npart_local_func(),
-                        self._group.get_position_dat(),
-                        self._group.domain,
+                        group.get_npart_local_func(),
+                        group.get_position_dat(),
+                        group.domain,
                         self.shell_cutoff,
-                        self._group.get_cell_to_particle_map()
+                        group.get_cell_to_particle_map()
                     )
+
+    def _make_neigbour_list(self):
+        if self._group is not None:
+            self._neighbour_list_from_group(self._group)
 
     @staticmethod
     def _get_allowed_types():
@@ -345,9 +348,20 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
 
     def execute(self, n=None, dat_dict=None, static_args=None):
-        neighbour_list = PairLoopNeighbourListNSOMP._neighbour_list_dict_OMP[self._key]
 
-        cell2part = self._group.get_cell_to_particle_map()
+        _group = self._group # could be None
+        if _group is None:
+            for pd in self._dat_dict.items(dat_dict):
+                if issubclass(type(pd[1][0]), data.PositionDat):
+                    _group = pd[1][0].group
+                    break
+            self._neighbour_list_from_group(_group)
+
+        assert _group is not None, "no group"
+        _key = (self.shell_cutoff, _group.domain, _group.get_position_dat())
+        neighbour_list = PairLoopNeighbourListNSOMP._neighbour_list_dict_OMP[_key]
+
+        cell2part = _group.get_cell_to_particle_map()
         cell2part.check()
 
         args = []
@@ -359,7 +373,6 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
         # Add pointer arguments to launch command
         args+=self._get_dat_lib_args(dat_dict)
-
 
         # Rebuild neighbour list potentially
         self._invocations += 1
