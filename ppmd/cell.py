@@ -417,6 +417,10 @@ class CellList(object):
         return self._cell_contents_count
 
     @property
+    def max_cell_contents_count(self):
+        return np.max(self.cell_contents_count[:])
+
+    @property
     def domain(self):
         """
         :return: The domain used.
