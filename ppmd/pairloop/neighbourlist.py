@@ -308,7 +308,6 @@ class PairLoopNeighbourListNS(object):
         self._components['LIB_KERNEL_GATHER'] = kernel_gather
 
 
-
     def _generate_kernel_call(self):
 
         kernel_call = cgen.Module([cgen.Comment('#### Kernel call arguments ####')])
@@ -357,13 +356,6 @@ class PairLoopNeighbourListNS(object):
     def _generate_kernel_scatter(self):
 
         kernel_scatter = cgen.Module([cgen.Comment('#### Post kernel scatter ####')])
-
-
-        if self._kernel.static_args is not None:
-
-            for i, dat in enumerate(self._kernel.static_args.items()):
-                pass
-
 
         for i, dat in enumerate(self._dat_dict.items()):
 
