@@ -282,7 +282,7 @@ class ParticleDat(host.Matrix):
         if mode is access.INC0:
             self.zero(self.npart_local)
 
-        if mode.read and pair and self.group is not None:
+        if mode.halo and pair and self.group is not None:
             if (self._vid_int > self._vid_halo) and \
                 self.group._cell_to_particle_map.halos_exist is True:
                 self.halo_exchange()

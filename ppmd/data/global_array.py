@@ -150,6 +150,10 @@ class GlobalArrayClassic(host._Array):
         assert mode in _global_array_access
         return self, mode
 
+    @property
+    def ctype(self):
+        return host.ctypes_map[self.dtype]
+
     def ctypes_data_access(self, mode=access.READ, pair=False, threaded=False):
         self._sync_wait()
 
@@ -344,6 +348,10 @@ class GlobalArrayShared(host._Array):
     def __call__(self, mode=access.INC):
         assert mode in _global_array_access
         return self, mode
+
+    @property
+    def ctype(self):
+        return host.ctypes_map[self.dtype]
 
     def ctypes_data_access(self, mode=None, pair=False, threaded=False):
         assert threaded is False, "this global array is not thread safe"

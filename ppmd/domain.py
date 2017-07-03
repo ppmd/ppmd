@@ -199,6 +199,8 @@ class BaseDomainHalo(object):
         _top = mpi.cartcomm_top(self.comm)
         _dims = mpi.cartcomm_dims(self.comm)
 
+        opt.PROFILE[self.__class__.__name__+':mpi_dims'] = (_dims)
+
         self._extent[0] = self._extent_global[0] / _dims[0]
         self._extent[1] = self._extent_global[1] / _dims[1]
         self._extent[2] = self._extent_global[2] / _dims[2]
@@ -422,8 +424,6 @@ def _find_domain_decomp(global_cell_array=None, nproc=None):
         raise RuntimeError("Processor grid error, suitable layout search failed." + str(_dims[:]) + str(global_cell_array[:]))
 
     return _dims
-
-
 
 
 def _get_cell_distribution(global_cell_array=None, dims=None, top=None):

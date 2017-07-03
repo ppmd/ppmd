@@ -109,7 +109,6 @@ class BaseMDState(object):
             return False
 
 
-
     def _cell_particle_map_setup(self):
 
         # Can only setup a cell to particle map after a domain and a position

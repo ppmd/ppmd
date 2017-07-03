@@ -2053,7 +2053,6 @@ class NeighbourListNonN3(NeighbourList):
         _static_args = {'end_ix': ct.c_int,  # Number of particles.
                         'n': ct.c_int}       # start of cell point in list.
 
-
         _kernel = kernel.Kernel('cell_neighbour_list_method', _code, headers=['stdio.h'], static_args=_static_args)
         self._neighbour_lib = build.SharedLib(_kernel, _dat_dict)
 
@@ -2061,6 +2060,7 @@ class NeighbourListNonN3(NeighbourList):
 
     def check_lib_rebuild(self):
         """return true if lib needs remaking"""
+
         return self.domain_id < self._domain.version_id
 
     def update_if_required(self):
@@ -2073,7 +2073,6 @@ class NeighbourListNonN3(NeighbourList):
                self._neighbour_lib is not None, \
             "Neighbourlist setup not ran, or failed."
 
-
         self.timer_update.start()
         self._update()
 
@@ -2083,6 +2082,7 @@ class NeighbourListNonN3(NeighbourList):
         opt.PROFILE[
             self.__class__.__name__+':update'
         ] = (self.timer_update.time())
+
 
 
     def _update(self, attempt=1):

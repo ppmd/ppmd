@@ -56,6 +56,8 @@
 //#define CC_MAP_Z(qx) ( CC_COEFF[((qx) >> 2)]    )
 #define CC_MAP_Z(qx) ( 1.0 - (((qx)>>1)&2) )
 
+#define CC_MAP_XY(qx) (1.0 - 2*((qx)&1))
+
 
 // slower than above
 /*

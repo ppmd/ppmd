@@ -111,11 +111,14 @@ def _create_from_existing(ndarray=None, dtype=None):
 class _Array(object):
     @property
     def ctypes_data(self):
-        return None
+        raise NotImplementedError
     def ctypes_data_access(self, mode=access.RW, pair=False):
-        pass
+        raise NotImplementedError
     def ctypes_data_post(self, mode=access.RW):
-        pass
+        raise NotImplementedError
+    @property
+    def ctype(self):
+         raise NotImplementedError
 
 class Array(_Array):
     """
@@ -134,6 +137,9 @@ class Array(_Array):
         self._version = 0
         self.name = name
 
+    @property
+    def ctype(self):
+        return ctypes_map[self.dtype]
 
     @property
     def ncomp(self):
@@ -260,7 +266,9 @@ class Matrix(object):
     @property
     def size(self):
         return self.data.shape[0] * self.data.shape[1] * ctypes.sizeof(self.dtype)
-
+    @property
+    def ctype(self):
+        return ctypes_map[self.dtype]
     @property
     def ctypes_data(self):
         return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))

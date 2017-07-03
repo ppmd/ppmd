@@ -14,6 +14,26 @@ from ppmd import data, runtime, cell, access
 
 from base import *
 
+def gather_matrix(obj, symbol_dat, symbol_tmp, loop_index):
+    nc = obj.ncomp
+    t = '{'
+    for tx in range(nc):
+        t+= '*(' + symbol_dat + '+' + loop_index
+        t+= '*' + str(nc) + '+' + str(tx) + '),'
+    t = t[:-1] + '}'
+
+    g = cgen.Value(obj.ctype, symbol_tmp + '['+str(nc)+']')
+    return cgen.Initializer(g,t)
+
+def scatter_matrix(obj, symbol_dat, symbol_tmp, loop_index):
+    nc = obj.ncomp
+
+    b = cgen.Assign(symbol_dat+'[' + str(nc) + '*' + loop_index + '+_tx]',
+                    symbol_tmp + '[_tx]')
+    g = cgen.For('int _tx=0', '_tx<' + str(nc), '_tx++',
+                 cgen.Block([b]))
+    return g
+
 
 class PairLoopNeighbourListNS(object):
 
@@ -276,36 +296,35 @@ class PairLoopNeighbourListNS(object):
                                                       b
                                                       )
 
-
-
     def _generate_kernel_gather(self):
-
         kernel_gather = cgen.Module([cgen.Comment('#### Pre kernel gather ####')])
 
         for i, dat in enumerate(self._dat_dict.items()):
-
             if issubclass(type(dat[1][0]), host.Matrix) \
                     and dat[1][1].write \
                     and dat[1][0].ncomp <= self._gather_size_limit:
 
-
                 isym = dat[0]+'i'
-                nc = dat[1][0].ncomp
-                ncb = '['+str(nc)+']'
-                dtype = host.ctypes_map[dat[1][0].dtype]
-
-                t = '{'
-                for tx in range(nc):
-                    t+= '*(' + dat[0] + '+' + self._components['LIB_PAIR_INDEX_0']
-                    t+= '*' + str(nc) + '+' + str(tx) + '),'
-                t = t[:-1] + '}'
-
-                g = cgen.Value(dtype,isym+ncb)
-                g = cgen.Initializer(g,t)
-
+                g = gather_matrix(dat[1][0], dat[0], isym,
+                        self._components['LIB_PAIR_INDEX_0'])
                 kernel_gather.append(g)
 
         self._components['LIB_KERNEL_GATHER'] = kernel_gather
+
+    def _generate_kernel_scatter(self):
+        kernel_scatter = cgen.Module([cgen.Comment('#### Post kernel scatter ####')])
+
+        for i, dat in enumerate(self._dat_dict.items()):
+            if issubclass(type(dat[1][0]), host.Matrix)\
+                    and dat[1][1].write\
+                    and dat[1][0].ncomp <= self._gather_size_limit:
+
+                isym = dat[0]+'i'
+                ix =self._components['LIB_PAIR_INDEX_0']
+                g = scatter_matrix(dat[1][0], dat[0], isym, ix)
+                kernel_scatter.append(g)
+
+        self._components['LIB_KERNEL_SCATTER'] = kernel_scatter
 
 
     def _generate_kernel_call(self):
@@ -317,28 +336,35 @@ class PairLoopNeighbourListNS(object):
                 kernel_call_symbols.append(dat[0])
 
         for i, dat in enumerate(self._dat_dict.items()):
+            ast = None
             if issubclass(type(dat[1][0]), host._Array):
-                kernel_call_symbols.append(dat[0])
+                call_symbol = dat[0]
             elif issubclass(type(dat[1][0]), host.Matrix):
                 call_symbol = dat[0] + '_c'
-                kernel_call_symbols.append(call_symbol)
 
                 nc = str(dat[1][0].ncomp)
                 _ishift = '+' + self._components['LIB_PAIR_INDEX_0'] + '*' + nc
-                _jshift = '+' + self._components['LIB_PAIR_INDEX_1'] + '*' + nc
-
                 if dat[1][1].write and dat[1][0].ncomp <= self._gather_size_limit:
                     isym = '&'+ dat[0]+'i[0]'
                 else:
                     isym = dat[0] + _ishift
+
+                _jshift = '+' + self._components['LIB_PAIR_INDEX_1'] + '*' + nc
+
                 jsym = dat[0] + _jshift
                 g = cgen.Value('_'+dat[0]+'_t', call_symbol)
                 g = cgen.Initializer(g, '{ ' + isym + ', ' + jsym + '}')
 
-                kernel_call.append(g)
+                ast = g
 
             else:
-                print("ERROR: Type not known")
+                raise RuntimeError("ERROR: Type not known")
+
+            kernel_call_symbols.append(call_symbol)
+            if ast is not None:
+                kernel_call.append(ast)
+
+
 
         kernel_call.append(cgen.Comment('#### Kernel call ####'))
 
@@ -352,34 +378,6 @@ class PairLoopNeighbourListNS(object):
         ))
 
         self._components['LIB_KERNEL_CALL'] = kernel_call
-
-    def _generate_kernel_scatter(self):
-
-        kernel_scatter = cgen.Module([cgen.Comment('#### Post kernel scatter ####')])
-
-        for i, dat in enumerate(self._dat_dict.items()):
-
-            if issubclass(type(dat[1][0]), host._Array):
-                pass
-            elif issubclass(type(dat[1][0]), host.Matrix)\
-                    and dat[1][1].write\
-                    and dat[1][0].ncomp <= self._gather_size_limit:
-
-
-                isym = dat[0]+'i'
-                nc = dat[1][0].ncomp
-                ncb = '['+str(nc)+']'
-                dtype = host.ctypes_map[dat[1][0].dtype]
-                ix =self._components['LIB_PAIR_INDEX_0']
-
-                b = cgen.Assign(dat[0]+'['+str(nc)+'*'+ix+'+_tx]', isym+'[_tx]')
-                g = cgen.For('int _tx=0', '_tx<'+str(nc), '_tx++',
-                             cgen.Block([b]))
-
-                kernel_scatter.append(g)
-
-
-        self._components['LIB_KERNEL_SCATTER'] = kernel_scatter
 
 
     def _generate_lib_outer_loop(self):
@@ -515,7 +513,7 @@ class PairLoopNeighbourListNS(object):
         _key = (self.shell_cutoff, _group.domain, _group.get_position_dat())
         neighbour_list = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[_key]
 
-        if neighbour_list.check_lib_rebuild:
+        if neighbour_list.check_lib_rebuild():
             del PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[_key]
             self._neighbour_list_from_group(_group)
             neighbour_list = PairLoopNeighbourListNS._neighbour_list_dict_PNLNS[_key]

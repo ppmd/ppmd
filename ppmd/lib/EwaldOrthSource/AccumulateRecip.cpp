@@ -133,12 +133,11 @@ for(int iy=0 ; iy<NK ; iy++){
     }
 }
 
-
 // finally loop over axes and quadrants
 //RRS_INDEX(k,l,m,q)
 for(int iz=0 ; iz<NM ; iz++ ){
-    const double gp = TMP_RECIP_AXES[ZQR][iz];
-    const double hp = TMP_RECIP_AXES[ZQI][iz];
+    const double gp = charge_i * TMP_RECIP_AXES[ZQR][iz];
+    const double hp = charge_i * TMP_RECIP_AXES[ZQI][iz];
     const double izGZ = (iz+1)*GZ;
     const double recip_len_z = izGZ*izGZ;
 
@@ -158,15 +157,17 @@ for(int iz=0 ; iz<NM ; iz++ ){
                 const double yp = TMP_RECIP_AXES[XQI][ix];
                 double* r_base_index = &RRS_INDEX(ix,iy,iz,0);
                 double* i_base_index = &IRS_INDEX(ix,iy,iz,0);
+                const double ypbp = yp*bp;
+                const double ypap = yp*ap;
+                const double xpbp = xp*bp;
                 for(int qx=0 ; qx<8 ; qx++){
-                    const double ycp = yp * CC_MAP_X(qx);
-                    const double bcp = bp * CC_MAP_Y(qx);
                     const double hcp = hp * CC_MAP_Z(qx);
-                    const double xa_m_yb = xpap - ycp*bcp;
-                    const double xb_p_ya = xp*bcp + ycp*ap;
+                    const double ycpbcp = ypbp*CC_MAP_XY(qx);
+                    const double xa_m_yb = xpap - ycpbcp;
+                    const double xb_p_ya = xpbp*CC_MAP_Y(qx) + ypap*CC_MAP_X(qx);
         
-                    *(r_base_index+qx) += charge_i * (gp*xa_m_yb - hcp*xb_p_ya);
-                    *(i_base_index+qx) += charge_i * (xa_m_yb*hcp + xb_p_ya*gp);
+                    *(r_base_index+qx) += gp*xa_m_yb - hcp*xb_p_ya;
+                    *(i_base_index+qx) += xa_m_yb*hcp + xb_p_ya*gp;
                 }
             } else {
                 break;

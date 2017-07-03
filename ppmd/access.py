@@ -105,6 +105,15 @@ class AccessType(object):
         return self._mode in ["R", "RW", "INC"]
 
     @property
+    def halo(self):
+        """
+        Does this access type need halo exchange in pairwise
+        operations
+        :return: Bool.
+        """
+        return self._mode in ["R", "RW"]
+
+    @property
     def write(self):
         """
         Does this access type write data, True/False.
