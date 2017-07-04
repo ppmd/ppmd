@@ -12,6 +12,7 @@ import ewald
 
 
 from ewald import *
+from ewald_half import *
 #from ewald_fft import *
 #from fmm import PyFMM
 #from cuda_ewald import *

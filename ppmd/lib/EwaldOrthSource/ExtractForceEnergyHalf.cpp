@@ -199,22 +199,20 @@ for(int iz=0 ; iz<NM ; iz++ ){
                 const double xpap = xp*ap;
                 const double* r_base_index = &RRS_INDEX(ix,iy,iz,0);
                 const double* i_base_index = &IRS_INDEX(ix,iy,iz,0);
-                const double coeff = COEFF_SPACE(ix+1, iy+1, iz+1) * charge_i_o2;
-                for(int qx=0 ; qx<8 ; qx++){
+                const double coeff = COEFF_SPACE(ix+1, iy+1, iz+1) * charge_i;
+                for(int qx=0 ; qx<4 ; qx++){
 
                     const double ccx = CC_MAP_X(qx);
                     const double ccy = CC_MAP_Y(qx);
-                    const double ccz = CC_MAP_Z(qx);
 
                     const double ycp = yp * ccx;
                     const double bcp = bp * ccy;
-                    const double hcp = hp * ccz;
 
                     const double xa_m_yb = xpap - ycp*bcp;
                     const double xb_p_ya = xp*bcp + ycp*ap;
                     
-                    const double reali = gp*xa_m_yb - hcp*xb_p_ya;
-                    const double imagi = xa_m_yb*hcp + xb_p_ya*gp;
+                    const double reali = gp*xa_m_yb - hp*xb_p_ya;
+                    const double imagi = xa_m_yb*hp + xb_p_ya*gp;
 
                     const double Qreal = *(r_base_index+qx);
                     const double Qimag = *(i_base_index+qx);
@@ -225,7 +223,7 @@ for(int iz=0 ; iz<NM ; iz++ ){
 
                     tmp_forcex += fterm*ixGX*ccx;
                     tmp_forcey += fterm*iyGY*ccy;
-                    tmp_forcez += fterm*izGZ*ccz;
+                    tmp_forcez += fterm*izGZ;
                 }
             } else {
                 break;
