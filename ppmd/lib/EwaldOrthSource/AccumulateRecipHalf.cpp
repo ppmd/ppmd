@@ -150,11 +150,11 @@ for(int iz=0 ; iz<NM ; iz++ ){
         const double iyGY = (iy+1)*GY;
         const double recip_len_zy = recip_len_z + iyGY*iyGY;
 
-        for(int ix=0 ; ix<NK ; ix++ ){
-            const double ixGX = (ix+1)*GX;
-            const double recip_len_zyx = recip_len_zy + ixGX*ixGX;
-            
-            if (recip_len_zyx <= MAX_RECIP_SQ){
+        double ixGX = GX;
+        double recip_len_zyx = recip_len_zy + ixGX*ixGX;
+        int ix = 0;
+        while (recip_len_zyx < MAX_RECIP_SQ){
+
                 const double xp = TMP_RECIP_AXES[XQR][ix];
                 const double xpap = xp*ap;
                 const double yp = TMP_RECIP_AXES[XQI][ix];
@@ -163,17 +163,18 @@ for(int iz=0 ; iz<NM ; iz++ ){
                 const double ypbp = yp*bp;
                 const double ypap = yp*ap;
                 const double xpbp = xp*bp;
+                ix++;
+                ixGX += GX;
+                recip_len_zyx = recip_len_zy + ixGX*ixGX;
                 for(int qx=0 ; qx<4 ; qx++){
-                    const double ycpbcp = ypbp*cc_map_xy[qx];
+                    const double ycpbcp = ypbp*CC_MAP_XY(qx);
                     const double xa_m_yb = xpap - ycpbcp;
-                    const double xb_p_ya = xpbp*cc_map_y[qx] + ypap*cc_map_x[qx];
+                    const double xb_p_ya = xpbp*cc_map_y[qx] + ypap*CC_MAP_X(qx);
         
                     *(r_base_index+qx) += gp*xa_m_yb - hp*xb_p_ya;
                     *(i_base_index+qx) += xa_m_yb*hp + xb_p_ya*gp;
                 }
-            } else {
-                break;
-            }
+
         }
 
     }

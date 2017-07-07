@@ -189,17 +189,20 @@ for(int iz=0 ; iz<NM ; iz++ ){
         const double iyGY = (iy+1)*GY;
         const double recip_len_zy = recip_len_z + iyGY*iyGY;
         
-        for(int ix=0 ; ix<NK ; ix++ ){
-            const double ixGX = (ix+1)*GX;
-            const double recip_len_zyx = recip_len_zy + ixGX*ixGX;
+        double ixGX = GX;
+        double recip_len_zyx = recip_len_zy + ixGX*ixGX;
+        int ix = 0;
+        while (recip_len_zyx < MAX_RECIP_SQ){
             
-            if (recip_len_zyx < MAX_RECIP_SQ){
                 const double xp = TMP_RECIP_AXES[XQR][ix];
                 const double yp = TMP_RECIP_AXES[XQI][ix];
                 const double xpap = xp*ap;
                 const double* r_base_index = &RRS_INDEX(ix,iy,iz,0);
                 const double* i_base_index = &IRS_INDEX(ix,iy,iz,0);
                 const double coeff = COEFF_SPACE(ix+1, iy+1, iz+1) * charge_i;
+                ix++;
+                ixGX += GX;
+                recip_len_zyx = recip_len_zy + ixGX*ixGX;
                 for(int qx=0 ; qx<4 ; qx++){
 
                     const double ccx = CC_MAP_X(qx);
@@ -225,9 +228,7 @@ for(int iz=0 ; iz<NM ; iz++ ){
                     tmp_forcey += fterm*iyGY*ccy;
                     tmp_forcez += fterm*izGZ;
                 }
-            } else {
-                break;
-            }
+
         }
     }
 }

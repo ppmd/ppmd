@@ -94,6 +94,7 @@ class ParticleDat(host.Matrix):
 
         self._vid_int = 0
         self._vid_halo = -1
+        self.vid_halo_cell_list = -1
 
         self.group = None
 
@@ -282,14 +283,29 @@ class ParticleDat(host.Matrix):
         if mode is access.INC0:
             self.zero(self.npart_local)
 
-        if mode.halo and pair and self.group is not None:
-            if (self._vid_int > self._vid_halo) and \
-                self.group._cell_to_particle_map.halos_exist is True:
-                self.halo_exchange()
+        exchange = False
 
-                self._vid_halo = self._vid_int
+        if mode.halo and pair:
+            if self.group is not None:
+                celllist = self.group.get_cell_to_particle_map()
 
-        return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
+                if celllist.halos_exist is True and \
+                        (self._vid_int > self._vid_halo or
+                        self.vid_halo_cell_list < celllist.version_id):
+
+                    exchange = True
+            else:
+                # halo exchanges are currently not functional wihout a group
+                exchange = False
+
+        if exchange:
+            self.halo_exchange()
+
+            self._vid_halo = self._vid_int
+            self.vid_halo_cell_list = celllist.version_id
+
+
+        return self._dat.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def ctypes_data_post(self, mode=access.RW):
         """
@@ -298,6 +314,7 @@ class ParticleDat(host.Matrix):
         """
         if mode.write:
             self._vid_int += 1
+
 
     def halo_start_shift(self, shift):
         """

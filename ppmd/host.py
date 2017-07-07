@@ -271,7 +271,7 @@ class Matrix(object):
         return ctypes_map[self.dtype]
     @property
     def ctypes_data(self):
-        return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
+        return self._dat.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def ctypes_data_access(self, mode=access.RW, pair=False):
         """

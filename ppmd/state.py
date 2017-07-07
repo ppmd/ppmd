@@ -104,6 +104,9 @@ class BaseMDState(object):
             self._cell_particle_map_setup()
             self.invalidate_lists = True
 
+            for dat in self.particle_dats:
+                getattr(self, dat).vid_halo_cell_list = -1
+
             return True
         else:
             return False

@@ -3,3 +3,5 @@ cgen
 scipy
 mpi4py
 pytest
+pymbolic
+
