@@ -267,11 +267,12 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
     def _generate_lib_inner_loop(self):
         i = self._components['LIB_PAIR_INDEX_0']
         b = self._components['LIB_INNER_LOOP_BLOCK']
-        self._components['LIB_INNER_LOOP'] = cgen.For('long _k='+i+'* _STRIDE',
-                                                      '_k<_NN['+i+']+'+i+'* _STRIDE',
-                                                      '_k++',
-                                                      b
-                                                      )
+        self._components['LIB_INNER_LOOP'] = cgen.For(
+            'unsigned long long _k= ((unsigned long long)'+i+') * ((unsigned long long)_STRIDE)',
+            '_k<((unsigned long long)_NN['+i+'])+((unsigned long long)'+i+') * ((unsigned long long)_STRIDE)',
+            '_k++',
+            b
+        )
 
     def _generate_lib_outer_loop(self):
 
@@ -324,13 +325,13 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
             assert type(dat_orig) is tuple
             obj = dat_orig[0]
             mode = dat_orig[1]
-
             if issubclass(type(obj), data.GlobalArrayClassic):
                 args.append(
                     obj.ctypes_data_access(mode, pair=True, threaded=True)
                 )
             else:
                 args.append(obj.ctypes_data_access(mode, pair=True))
+
         return args
 
     def _post_execute_dats(self, dats):
@@ -369,6 +370,7 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
             args += self._kernel.static_args.get_args(static_args)
 
         # Add pointer arguments to launch command
+        self._init_dat_lib_args(dat_dict)
         args+=self._get_dat_lib_args(dat_dict)
 
         # Rebuild neighbour list potentially

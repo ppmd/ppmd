@@ -475,7 +475,12 @@ class PairLoopNeighbourListNS(object):
         return args
 
 
-    def __init_dat_lib_args(self, dats):
+    def _init_dat_lib_args(self, dats):
+        """
+        The halo exchange process may reallocate all in the group. Hence this 
+        function loops over all dats to ensure pointers collected in the second
+        pass over the dats are valid.
+        """
         for dat_orig in self._dat_dict.values(dats):
             if type(dat_orig) is tuple:
                 dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
@@ -485,6 +490,8 @@ class PairLoopNeighbourListNS(object):
         args = []
         for dat_orig in self._dat_dict.values(dats):
             if type(dat_orig) is tuple:
+
+                obj = dat_orig[0]
                 args.append(dat_orig[0].ctypes_data_access(dat_orig[1], pair=True))
             else:
                 raise RuntimeError
@@ -521,7 +528,7 @@ class PairLoopNeighbourListNS(object):
         cell2part = _group.get_cell_to_particle_map()
         cell2part.check()
 
-        self.__init_dat_lib_args(dat_dict)
+        self._init_dat_lib_args(dat_dict)
         args = self._get_dat_lib_args(dat_dict)
 
         '''Rebuild neighbour list potentially'''

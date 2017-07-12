@@ -353,7 +353,6 @@ class BaseMDState(object):
             shifts
         )
 
-
     def _halo_update_exchange_sizes(self):
 
         idi = self._cell_to_particle_map.version_id

@@ -127,6 +127,7 @@ class GlobalArrayClassic(host._Array):
 
         self._threaded = True
 
+
     def set(self, val):
         self._sync_wait()
         self._data.fill(val)
@@ -160,6 +161,8 @@ class GlobalArrayClassic(host._Array):
 
         if mode in (access.INC0, access.INC_ZERO):
             self.set(self.identity_element)
+
+
         if threaded is False:
             if not mode.write:
                 return self.ctypes_data_read

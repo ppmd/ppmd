@@ -265,7 +265,7 @@ class Matrix(object):
 
     @property
     def size(self):
-        return self.data.shape[0] * self.data.shape[1] * ctypes.sizeof(self.dtype)
+        return self._dat.nbytes
     @property
     def ctype(self):
         return ctypes_map[self.dtype]
@@ -278,7 +278,7 @@ class Matrix(object):
         :arg access mode: Access type required by the calling method.
         :return: The pointer to the data.
         """
-        return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
+        return self._dat.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def ctypes_data_post(self, mode=access.RW):
         pass

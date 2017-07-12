@@ -1,7 +1,7 @@
 
 
 extern "C"
-int OMPNeighbourMatrix(
+signed long long OMPNeighbourMatrix(
         const int NPART,
         const double *P,
         const int *qlist,
@@ -13,7 +13,8 @@ int OMPNeighbourMatrix(
         const int STRIDE,
         const double cutoff
 ){
-    int totaln = 0;
+    signed long long totaln = 0;
+    signed long long err = 0;
     int tmp_offset[27];
     for(int ix=0; ix<27; ix++){
         tmp_offset[ix] = h_map[ix][0] + h_map[ix][1] * CA[0] + h_map[ix][2] * CA[0]* CA[1];
@@ -24,9 +25,10 @@ int OMPNeighbourMatrix(
         const int my_cell = CRL[px];
         // NNEIG[px] contains the number of neighbours of particle px. The start position is px*stride, neighbours
         // are consecutive.
-        int nn = 0;
-        const int ndx = STRIDE*px;
+        unsigned long long nn = 0;
+        const unsigned long long ndx = ((unsigned long long)STRIDE)*((unsigned long long)px);
         // loop over cells.
+
         for( int k=0 ; k<27 ; k++){
             int jx = qlist[qoffset + my_cell + tmp_offset[k]]; //get first particle in other cell.
             while(jx > -1){
@@ -37,18 +39,23 @@ int OMPNeighbourMatrix(
 
                     // check if close enough
                     if ( (rj0*rj0 + rj1*rj1+ rj2*rj2) <= cutoff ) {
-                        NLIST[ndx+nn] = jx;
+                        NLIST[ndx+((unsigned long long)nn)] = jx;
                         nn++;
                     }
                 }
                 jx = qlist[jx];
             }
         }
-        NNEIG[px] = nn;
+
+        if (nn > STRIDE) {printf("bad neighbour count\n");}
+        if (ndx+((unsigned long long)nn) > STRIDE*NPART) {printf("bad neighbour index\n");}
+
+        NNEIG[px] = (int) nn;
         totaln += nn;
     }
 
-    return totaln;
+    err = totaln;
+    return err;
 }
 
 

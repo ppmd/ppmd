@@ -33,7 +33,7 @@ const int h_map[27][3] = {
         {1,-1,1}
 };
 extern "C"
-int OMPNeighbourMatrix(
+signed long long OMPNeighbourMatrix(
         const int NPART,
         const double *P,
         const int *qlist,

@@ -28,6 +28,7 @@ class NeighbourListOMP(object):
         self.ncount = host.Array(ncomp=1, dtype=ctypes.c_int)
         self.stride = ctypes.c_int(0)
         self.total_num_neighbours = 0
+        self.max_size = 0
         src_dir = os.path.join(os.path.dirname(__file__), 'lib')
         with open(src_dir + '/NeighbourMatrixSource.cpp') as fh:
             src = fh.read()
@@ -35,6 +36,7 @@ class NeighbourListOMP(object):
             hsrc = fh.read()
 
         self._lib = build.simple_lib_creator(hsrc, src, "OMP_N_MATRIX")['OMPNeighbourMatrix']
+        self._lib.restype = ctypes.c_longlong
 
     def update_if_required(self):
         if self.version_id < self.cell_list.version_id or \
@@ -56,6 +58,12 @@ class NeighbourListOMP(object):
             self.__class__.__name__+':update('+str(self.cell_width)+')'
         ] = (self.timer_update.time())
 
+        self.max_size = max(self.max_size, self.matrix.size)
+
+        opt.PROFILE[
+            self.__class__.__name__+':nbytes('+str(self.cell_width)+')'
+        ] = (self.max_size)
+
     def _update(self):
         positions = self._positions
         assert self.cell_list.cell_list is not None, "cell list is not initialised"
@@ -71,6 +79,7 @@ class NeighbourListOMP(object):
             self.stride = needed_stride
         if self.matrix.ncomp < n*self.stride:
             self.matrix = host.Array(ncomp=n*self.stride, dtype=ctypes.c_int)
+
 
         ret = self._lib(
             ctypes.c_int(n),

@@ -39,13 +39,10 @@ class BaseMDState(object):
 
     def __init__(self):
 
-
         self._domain = None
 
 
         self._cell_to_particle_map = cuda_cell.CellOccupancyMatrix()
-
-
 
         self._halo_manager = None
         self._halo_device_version = -1
@@ -111,6 +108,10 @@ class BaseMDState(object):
 
         self.invalidate_lists = False
         """If true, all cell lists/ neighbour lists should be rebuilt."""
+        self.determine_update_funcs = []
+        self.pre_update_funcs = []
+        self.post_update_funcs = []
+
 
     @property
     def _ccomm(self):
@@ -228,10 +229,6 @@ class BaseMDState(object):
         self._halo_device_version = self.domain.cell_array.version
 
 
-
-
-
-
     def _cell_particle_map_setup(self):
 
         # Can only setup a cell to particle map after a domain and a position
@@ -247,6 +244,15 @@ class BaseMDState(object):
                                              self.domain)
             self._cell_to_particle_map.trigger_update()
 
+            self._cell_to_particle_map.setup_pre_update(self._pre_update_func)
+            self._cell_to_particle_map.setup_update_tracking(
+                self._determine_update_status
+            )
+            self._cell_to_particle_map.setup_callback_on_update(
+               self._post_update_funcs
+            )
+
+
             # initialise the filter method now we have a domain and positions
             self._filter_method = _FilterOnDomain(self._domain,
                                                   self.get_position_dat())
@@ -255,6 +261,20 @@ class BaseMDState(object):
             else:
                 self._halo_manager = ppmd.halo.CartesianHaloSix(_AsFunc(self, '_domain'),
                                                                 self._cell_to_particle_map)
+
+    def _pre_update_func(self):
+        for foo in self.pre_update_funcs:
+            foo()
+
+    def _post_update_funcs(self):
+        for foo in self.post_update_funcs:
+            foo()
+    def _determine_update_status(self):
+        v = False
+        for foo in self.determine_update_funcs:
+            v |= foo()
+        return v
+
     @property
     def domain(self):
         return self._domain
