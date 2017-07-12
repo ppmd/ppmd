@@ -524,6 +524,12 @@ class PairLoopNeighbourListNS(_Base):
         for dat in self._dat_dict.items(new_dats=dat_dict):
             obj = dat[1][0]
             mode = dat[1][1]
+            obj.ctypes_data_access(mode, pair=True)
+
+        # pointer args
+        for dat in self._dat_dict.items(new_dats=dat_dict):
+            obj = dat[1][0]
+            mode = dat[1][1]
             dargs.append(obj.ctypes_data_access(mode, pair=True))
 
         if cell2part.version_id > self.neighbour_list.version_id:
