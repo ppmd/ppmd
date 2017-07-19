@@ -511,7 +511,6 @@ class PairLoopNeighbourListNS(_Base):
             _blocksize = (ctypes.c_int * 3)(int(math.ceil(n / float(threads))), 1, 1)
             _threadsize = (ctypes.c_int * 3)(threads, 1, 1)
 
-
         dargs = []
 
         # Add static arguments to launch command

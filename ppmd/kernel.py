@@ -1,3 +1,4 @@
+from __future__ import print_function, division
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -21,7 +22,7 @@ def analyse(kernel_in=None, dat_dict=None):
     
     _code = kernel_in.code
 
-    print _code
+    print(_code)
     
     _ops_lookup = ['+', '-', '*', '/']
     _ops_obs = dict((op, 0) for op in _ops_lookup)

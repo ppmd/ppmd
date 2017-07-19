@@ -1,3 +1,4 @@
+from __future__ import print_function, division
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -8,10 +9,13 @@ import sys
 import ctypes as ct
 import numpy as np
 import atexit
-import Queue
+
+if sys.version_info[0] >= 3:
+    import queue as Queue
+else:
+    import Queue
 
 #package level
-import compiler
 
 
 if not MPI.Is_initialized():
@@ -135,9 +139,9 @@ class MPISHM(object):
 
     def _print_comm_info(self):
         self._init_comms()
-        print self.intra_comm.Get_rank(), self.intra_comm.Get_size()
+        print(self.intra_comm.Get_rank(), self.intra_comm.Get_size())
         if self.intra_comm.Get_rank() == 0:
-            print self.inter_comm.Get_rank(), self.inter_comm.Get_size()
+            print(self.inter_comm.Get_rank(), self.inter_comm.Get_size())
 
     def get_intra_comm(self):
         """
@@ -213,7 +217,7 @@ def print_str_on_0(comm, *args):
         _s = ''
         for ix in args:
             _s += str(ix) + ' '
-        print _s
+        print(_s)
         sys.stdout.flush()
 
     comm.Barrier()

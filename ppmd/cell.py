@@ -1,3 +1,5 @@
+from __future__ import print_function, division
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -216,7 +218,7 @@ class CellList(object):
             self._cell_sort_setup()
 
             if not self._init:
-                print "Initalisation failed"
+                print("Initalisation failed")
                 return False
 
 
@@ -379,7 +381,7 @@ class CellList(object):
 
 
         else:
-            print "CELL LIST NOT INITIALISED"
+            print("CELL LIST NOT INITIALISED")
 
 
     @property
@@ -939,7 +941,7 @@ class NeighbourList(object):
             # print "resizing"
             self.neighbour_starting_points.realloc(self._n() + 1)
         if runtime.VERBOSE > 3:
-            print "rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list"
+            print("rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list")
 
 
         _n = self.cell_list.cell_list.end - self._domain.cell_count
@@ -952,7 +954,7 @@ class NeighbourList(object):
 
         if self._return_code[0] < 0:
             if runtime.VERBOSE > 2:
-                print "rank:", self._domain.comm.Get_rank(), "neighbour list resizing", "old", self.max_len[0], "new", 2*self.max_len[0]
+                print("rank:", self._domain.comm.Get_rank(), "neighbour list resizing", "old", self.max_len[0], "new", 2*self.max_len[0])
             self.max_len[0] *= 2
             self.list.realloc(self.max_len[0])
 
@@ -1506,7 +1508,7 @@ class NeighbourMatrix(object):
             self.list.realloc(self.max_len[0] * self._n())
 
         if runtime.VERBOSE > 3:
-            print "rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list"
+            print("rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list")
 
 
         _n = self.cell_list.cell_list.end - self._domain.cell_count
@@ -1520,7 +1522,7 @@ class NeighbourMatrix(object):
 
         if self._return_code[0] < 0:
             if runtime.VERBOSE > 2:
-                print "rank:", self._domain.comm.Get_rank(), "neighbour list resizing", "old", self.max_len[0], "new", 2*self.max_len[0]
+                print("rank:", self._domain.comm.Get_rank(), "neighbour list resizing", "old", self.max_len[0], "new", 2*self.max_len[0])
             self.max_len[0] *= 2
             self.list.realloc(self.max_len[0]*self._n())
 
@@ -1870,7 +1872,7 @@ class NeighbourListHaloAware(object):
             self.halo_neighbour_starting_points.realloc(self._n() + 1)
 
         if runtime.VERBOSE > 3:
-            print "rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list"
+            print("rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list")
 
 
         _n = self.cell_list.cell_list.end - self._domain.cell_count
@@ -1883,7 +1885,7 @@ class NeighbourListHaloAware(object):
 
         if self._return_code[0] < 0:
             if runtime.VERBOSE > 2:
-                print "rank:", self._domain.comm.Get_rank(), "neighbour list resizing", "old", self.max_len[0], "new", 2 * self.max_len[0]
+                print("rank:", self._domain.comm.Get_rank(), "neighbour list resizing", "old", self.max_len[0], "new", 2 * self.max_len[0])
             self.max_len[0] *= 2
             self.list.realloc(self.max_len[0])
 
@@ -1905,7 +1907,7 @@ class NeighbourListHaloAware(object):
         self._halo_neighbour_lib.execute(static_args={'end_ix': ct.c_int(self._boundary_cells.ncomp), 'n': ct.c_int(_n), 'N_LOCAL': ct.c_int(self._n())})
         if self._return_code[0] < 0:
             if runtime.VERBOSE > 2:
-                print "rank:", self._domain.comm.Get_rank(), "halo neighbour list resizing", "old", self.halo_max_len[0], "new", 2 * self.halo_max_len[0]
+                print("rank:", self._domain.comm.Get_rank(), "halo neighbour list resizing", "old", self.halo_max_len[0], "new", 2 * self.halo_max_len[0])
             self.halo_max_len[0] *= 2
             self.halo_list.realloc(self.halo_max_len[0])
 
@@ -2090,7 +2092,7 @@ class NeighbourListNonN3(NeighbourList):
         if self.neighbour_starting_points.ncomp < self._n() + 1:
             self.neighbour_starting_points.realloc(self._n() + 1)
         if runtime.VERBOSE > 3:
-            print "rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list"
+            print("rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list")
 
         _n = self.cell_list.cell_list.end - self._domain.cell_count
         self._neighbour_lib.execute(
@@ -2104,13 +2106,13 @@ class NeighbourListNonN3(NeighbourList):
         if self._return_code[0] < 0:
 
             if runtime.VERBOSE > 2:
-                print "rank:",\
+                print("rank:",\
                     self._domain.comm.Get_rank(),\
                     "neighbour list resizing",\
                     "old",\
                     self.max_len[0],\
                     "new",\
-                    2 * self.max_len[0]
+                    2 * self.max_len[0])
 
             self.max_len[0] *= 2
             self.list.realloc(self.max_len[0])
@@ -2607,7 +2609,7 @@ class NeighbourListPairIndices(object):
             self.listj.realloc(_initial_factor)
             self.max_len.value = _initial_factor 
         if runtime.VERBOSE > 3:
-            print "rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list"
+            print("rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list")
 
 
         _n = self.cell_list.cell_list.end - self._domain.cell_count
@@ -2646,7 +2648,7 @@ class NeighbourListPairIndices(object):
 
         if self._return_code[0] < 0:
             if runtime.VERBOSE > 2:
-                print "rank:", self._domain.comm.Get_rank(), "neighbour list resizing", "old", self.max_len.value, "new", 2*self.max_len.value
+                print("rank:", self._domain.comm.Get_rank(), "neighbour list resizing", "old", self.max_len.value, "new", 2*self.max_len.value)
             self.max_len.value *= 2
             self.listi.realloc(self.max_len.value)
             self.listj.realloc(self.max_len.value)

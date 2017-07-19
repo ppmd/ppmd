@@ -5,6 +5,7 @@ import numpy as np
 import scipy
 import scipy.constants
 from math import pi
+import pytest
 
 import ctypes
 import ppmd as md
@@ -23,6 +24,7 @@ ScalarArray = md.data.ScalarArray
 State = md.state.BaseMDState
 GlobalArray = md.data.GlobalArray
 
+@pytest.mark.skipif(mpi_size>1, reason="MPI::Get_size()>1")
 def test_ewald_energy_python_nacl_1():
     """
     Test that the python implementation of ewald calculates the correct 
@@ -65,6 +67,7 @@ def test_ewald_energy_python_nacl_1():
     # the tolerance here is about 6 decimal places
     assert abs(selfij + localsr + 0.4194069853E+04)< 10.**-2, "real + self error"
 
+@pytest.mark.skipif(mpi_size>1, reason="MPI::Get_size()>1")
 def test_ewald_energy_python_co2_1():
     """
     Test that the python implementation of ewald calculates the correct 
@@ -108,6 +111,7 @@ def test_ewald_energy_python_co2_1():
     assert abs(selfij + localsr + 0.110417414E5)< 10.**-2, "real + self error"
 
 
+@pytest.mark.skipif(mpi_size>1, reason="MPI::Get_size()>1")
 def test_ewald_energy_python_nacl_2():
     """
     Test that the python implementation of ewald sets up the Ewald calculation
@@ -130,6 +134,7 @@ def test_ewald_energy_python_nacl_2():
     assert abs(c.recip_vectors[2][2] - 0.0333333*2.*scipy.constants.pi) < 10.**-5, "zrecip vector"
 
 
+@pytest.mark.skipif(mpi_size>1, reason="MPI::Get_size()>1")
 def test_ewald_energy_python_co2_2():
     """
     Test that the python implementation of ewald sets up the Ewald calculation
@@ -153,6 +158,7 @@ def test_ewald_energy_python_co2_2():
 
 
 
+@pytest.mark.skipif(mpi_size>1, reason="MPI::Get_size()>1")
 def test_ewald_energy_python_co2_3():
     """
     Test that the python implementation of ewald sets up the Ewald calculation

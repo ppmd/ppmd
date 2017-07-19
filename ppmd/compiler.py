@@ -26,20 +26,6 @@ class Compiler(object):
     def __init__(self, name, binary, c_flags, l_flags, opt_flags, dbg_flags,
                  compile_flag, shared_lib_flag, restrict_keyword=''):
 
-
-        if type(c_flags) is str:
-            c_flags = shlex.split(c_flags)
-        if type(l_flags) is str:
-            l_flags = shlex.split(l_flags)
-        if type(opt_flags) is str:
-            opt_flags = shlex.split(opt_flags)
-        if type(dbg_flags) is str:
-            dbg_flags = shlex.split(dbg_flags)
-        if type(compile_flag) is str:
-            compile_flag = shlex.split(compile_flag)
-        if type(shared_lib_flag) is str:
-            shared_lib_flag = shlex.split(shared_lib_flag)
-
         self._name = name
         self._binary = binary
         self._cflags = c_flags
@@ -49,9 +35,6 @@ class Compiler(object):
         self._compileflag = compile_flag
         self._sharedlibf = shared_lib_flag
         self._restrictkeyword = restrict_keyword
-
-
-
 
     def __str__(self):
         nl = ', '

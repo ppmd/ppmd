@@ -4,8 +4,6 @@ __all__ = [
     'particle_dat',
     'scalar_array'
 ]
-
-
-from global_array import *
-from particle_dat import *
-from scalar_array import *
+from ppmd.data.global_array import *
+from ppmd.data.particle_dat import *
+from ppmd.data.scalar_array import *

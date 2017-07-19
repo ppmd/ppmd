@@ -1,3 +1,4 @@
+from __future__ import print_function, division
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -71,7 +72,7 @@ def load_library_exception(kernel_name='None supplied',
         err_read = True
 
     except:
-        print "Error file not read"
+        print("Error file not read")
 
     # Try to read source lines around error.
     if err_read:
@@ -90,14 +91,14 @@ def load_library_exception(kernel_name='None supplied',
                 code_str = f.read()
                 f.close()
             except:
-                print "Source file not read"
+                print("Source file not read")
 
             code_str = code_str.split('\n')[max(0, err_line - 6):err_line + 1]
             code_str[-3] += "    <-------------"
             code_str = [x + "\n" for x in code_str]
 
             err_code = ''.join(code_str)
-    print "Unique name", unique_name, "Rank", _MPIRANK
+    print("Unique name", unique_name, "Rank", _MPIRANK)
 
     raise RuntimeError("\n"
                        "################################################### \n"
@@ -435,9 +436,9 @@ def load(filename):
     try:
         return ctypes.cdll.LoadLibrary(str(filename))
     except Exception as e:
-        print "build:load error. Could not load following library,", \
-            str(filename)
-        print e
+        print("build:load error. Could not load following library,", \
+            str(filename))
+        print(e)
         raise RuntimeError
 
 def check_file_existance(abs_path=None):
@@ -470,7 +471,6 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
 def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
               CC=TMPCC, dst_dir=runtime.BUILD_DIR, hash=True):
 
-
     if not BUILD_PER_PROC:
         _MPIBARRIER()
 
@@ -496,9 +496,9 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
 
             _lib_src_filename = os.path.join(source_dir, lib + extensions[1])
 
-            _c_cmd = [CC.binary] + [_lib_src_filename] + ['-o'] + \
+            _c_cmd = CC.binary + [_lib_src_filename] + ['-o'] + \
                      [_lib_filename] + CC.c_flags  + CC.l_flags + \
-                     ['-I' + str(runtime.LIB_DIR)] +\
+                     ['-I' + str(runtime.LIB_DIR)] + \
                      ['-I' + str(source_dir)]
 
             if runtime.DEBUG > 0:
@@ -508,8 +508,10 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
             
             _c_cmd += CC.shared_lib_flag
 
+            #print("CCMD", _c_cmd)
+
             if runtime.VERBOSE > 2:
-                print "Building", _lib_filename, _MPIRANK
+                print("Building", _lib_filename, _MPIRANK)
 
             stdout_filename = os.path.join(dst_dir, lib + str(_m) + '.log')
             stderr_filename = os.path.join(dst_dir,  lib + str(_m) + '.err')
@@ -524,7 +526,7 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
                                              stderr=stderr)
                         p.communicate()
             except Exception as e:
-                print e
+                print(e)
                 raise RuntimeError('build error: library not built.')
 
 
@@ -533,12 +535,12 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
 
 
     if not os.path.exists(_lib_filename):
-        print "Critical build Error: Library not built,\n" + \
-                   _lib_filename + "\n rank:", _MPIRANK
+        print("Critical build Error: Library not built,\n" + \
+                   _lib_filename + "\n rank:", _MPIRANK)
 
         if _MPIRANK == 0:
             with open(os.path.join(dst_dir, lib + str(_m) + '.err'), 'r') as stderr:
-                print stderr.read()
+                print(stderr.read())
 
         quit()
 

@@ -8,8 +8,9 @@ __license__ = "GPL"
 
 # system level imports
 import os
-import ConfigParser
+import configparser as ConfigParser
 import mpi4py
+import shlex
 
 # package level imports
 import compiler
@@ -74,11 +75,17 @@ def load_config(dir=None):
         args = []
         for key in CC_KEYS:
             try:
-                args.append(cc_parser.get('compiler', key))
+                getval = cc_parser.get('compiler', key)
             except ConfigParser.InterpolationError:
                 pass
             except ConfigParser.NoOptionError:
                 pass
+
+            if key in ('name', 'restrict-keyword'):
+                args.append(getval)
+            else:
+                args.append(shlex.split(getval))
+
 
         COMPILERS[args[0]] = compiler.Compiler(*args)
 
@@ -87,7 +94,7 @@ def load_config(dir=None):
     tm = COMPILERS['MPI4PY']
     COMPILERS['MPI4PY'] = compiler.Compiler(
         name='MPI4PY',
-        binary=mpi4py.get_config()['mpicxx'],
+        binary=[mpi4py.get_config()['mpicxx'],],
         c_flags=tm.c_flags,
         l_flags=tm.l_flags,
         opt_flags=tm.opt_flags,

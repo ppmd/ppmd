@@ -1,3 +1,4 @@
+from __future__ import print_function, division
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -47,7 +48,7 @@ def rprint(*args):
 
     for ix in range(_MPISIZE):
         if _MPIRANK == ix:
-            print "rank", _MPIRANK, ":", _s
+            print("rank", _MPIRANK, ":", _s)
             sys.stdout.flush()
 
         _MPIBARRIER()
@@ -99,7 +100,7 @@ class pfprint(object):
             _s = ''
             for ix in args:
                 _s += str(ix) + ' '
-            print _s
+            print(_s)
 
             self._fh.write(_s + '\n')
 
