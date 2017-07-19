@@ -24,7 +24,6 @@ __all__ = [ 'mpi',
             'state',
             'opt',
             'utility',
-            'logic',
             'module',
             'coulomb']
 
@@ -37,7 +36,6 @@ import domain
 import halo
 import host
 import kernel
-import logic
 import loop
 import method
 import module
