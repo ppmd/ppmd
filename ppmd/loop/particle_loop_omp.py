@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import print_function, division, absolute_import
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
@@ -10,9 +10,7 @@ import cgen
 
 # package level
 from ppmd import runtime, host, opt, data, access
-
-
-from particle_loop import ParticleLoop
+from ppmd.loop.particle_loop import ParticleLoop
 
 def Restrict(keyword, symbol):
     return str(keyword) + ' ' + str(symbol)

@@ -1,3 +1,4 @@
+from __future__ import print_function, division, absolute_import
 """
 This module contains high level arrays and matrices.
 """
@@ -12,11 +13,8 @@ import numpy as np
 import math
 
 # package level
-from ppmd import access
-from ppmd import mpi
-from ppmd import runtime
-from ppmd import host
-from ppmd import opt
+from ppmd import access, mpi, runtime, host, opt
+
 
 np.set_printoptions(threshold=1000)
 

@@ -1,7 +1,7 @@
 """
 Methods for Coulombic forces and energies with the classical Ewald method.
 """
-from __future__ import division, print_function
+from __future__ import division, print_function, absolute_import
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -10,21 +10,15 @@ from math import sqrt, log, ceil, pi, exp, cos, sin, erfc
 import numpy as np
 import ctypes
 import os
-
-import ppmd.kernel
-import ppmd.loop
-import ppmd.runtime
-import ppmd.data
-import ppmd.access
-import ppmd.opt as opt
-
 import cmath
 import scipy
 import scipy.special
 from scipy.constants import epsilon_0
 import time
 
-from ppmd import host
+
+from ppmd import kernel, loop, data, access, opt, host, pairloop
+
 
 _charge_coulomb = scipy.constants.physical_constants['atomic unit of charge'][0]
 
@@ -159,7 +153,7 @@ class EwaldOrthoganal(object):
         self._vars['recip_vec'][1, :] = gy
         self._vars['recip_vec'][2, :] = gz
         self._vars['ivolume'] = ivolume
-        self._vars['coeff_space_kernel'] = ppmd.data.ScalarArray(
+        self._vars['coeff_space_kernel'] = data.ScalarArray(
             ncomp=((nmax_x+1)*(nmax_y+1)*(nmax_z+1)),
             dtype=ctypes.c_double
         )
@@ -176,22 +170,22 @@ class EwaldOrthoganal(object):
                    8*nmax_z*nmax_x +\
                    16*nmax_x*nmax_y*nmax_z
 
-        self._vars['recip_space_kernel'] = ppmd.data.GlobalArray(
+        self._vars['recip_space_kernel'] = data.GlobalArray(
             size=reciplen,
             dtype=ctypes.c_double,
             shared_memory=shared_memory
         )
-        self._vars['recip_space_energy'] = ppmd.data.GlobalArray(
+        self._vars['recip_space_energy'] = data.GlobalArray(
             size=1,
             dtype=ctypes.c_double,
             shared_memory=shared_memory
         )
-        self._vars['real_space_energy'] = ppmd.data.GlobalArray(
+        self._vars['real_space_energy'] = data.GlobalArray(
             size=1,
             dtype=ctypes.c_double,
             shared_memory=shared_memory
         )
-        self._vars['self_interaction_energy'] = ppmd.data.GlobalArray(
+        self._vars['self_interaction_energy'] = data.GlobalArray(
             size=1,
             dtype=ctypes.c_double,
             shared_memory=shared_memory
@@ -235,32 +229,32 @@ class EwaldOrthoganal(object):
         with open(str(
                 _SRC_DIR) + '/EwaldOrthSource/AccumulateRecip.h', 'r') as fh:
             _cont_header_src = fh.read()
-        _cont_header = ppmd.kernel.Header(block=_cont_header_src % self._subvars)
+        _cont_header = kernel.Header(block=_cont_header_src % self._subvars)
 
         with open(str(
                 _SRC_DIR) + '/EwaldOrthSource/AccumulateRecip.cpp', 'r') as fh:
             _cont_source = fh.read()
 
-        _cont_kernel = ppmd.kernel.Kernel(
+        _cont_kernel = kernel.Kernel(
             name='reciprocal_contributions',
             code=_cont_source,
             headers=_cont_header
         )
 
         if self.shared_memory in ('thread', 'omp'):
-            PL = ppmd.loop.ParticleLoopOMP
+            PL = loop.ParticleLoopOMP
         else:
-            PL = ppmd.loop.ParticleLoop
+            PL = loop.ParticleLoop
 
         self._cont_lib = PL(
             kernel=_cont_kernel,
             dat_dict={
-                'Positions': ppmd.data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(
-                    ppmd.access.READ),
-                'Charges': ppmd.data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(
-                    ppmd.access.READ),
+                'Positions': data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(
+                    access.READ),
+                'Charges': data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(
+                    access.READ),
                 'RecipSpace': self._vars['recip_space_kernel'](
-                    ppmd.access.INC_ZERO)
+                    access.INC_ZERO)
             }
         )
 
@@ -269,13 +263,13 @@ class EwaldOrthoganal(object):
         with open(str(
                 _SRC_DIR) + '/EwaldOrthSource/ExtractForceEnergy.h', 'r') as fh:
             _cont_header_src = fh.read()
-        _cont_header = ppmd.kernel.Header(block=_cont_header_src % self._subvars)
+        _cont_header = kernel.Header(block=_cont_header_src % self._subvars)
 
         with open(str(
                 _SRC_DIR) + '/EwaldOrthSource/ExtractForceEnergy.cpp', 'r') as fh:
             _cont_source = fh.read()
 
-        _cont_kernel = ppmd.kernel.Kernel(
+        _cont_kernel = kernel.Kernel(
             name='reciprocal_force_energy',
             code=_cont_source,
             headers=_cont_header
@@ -285,12 +279,12 @@ class EwaldOrthoganal(object):
         self._extract_force_energy_lib = PL(
             kernel=_cont_kernel,
             dat_dict={
-                'Positions': ppmd.data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.READ),
-                'Forces': ppmd.data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.INC),
-                'Energy': self._vars['recip_space_energy'](ppmd.access.INC_ZERO),
-                'Charges': ppmd.data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
-                'RecipSpace': self._vars['recip_space_kernel'](ppmd.access.READ),
-                'CoeffSpace': self._vars['coeff_space_kernel'](ppmd.access.READ)
+                'Positions': data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(access.READ),
+                'Forces': data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(access.INC),
+                'Energy': self._vars['recip_space_energy'](access.INC_ZERO),
+                'Charges': data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(access.READ),
+                'RecipSpace': self._vars['recip_space_kernel'](access.READ),
+                'CoeffSpace': self._vars['coeff_space_kernel'](access.READ)
             }
         )
 
@@ -301,13 +295,13 @@ class EwaldOrthoganal(object):
         with open(str(
                 _SRC_DIR) + '/EwaldOrthSource/RealSpaceForceEnergy.h', 'r') as fh:
             _cont_header_src = fh.read()
-        _cont_header = (ppmd.kernel.Header(block=_cont_header_src % self._subvars),)
+        _cont_header = (kernel.Header(block=_cont_header_src % self._subvars),)
 
         with open(str(
                 _SRC_DIR) + '/EwaldOrthSource/RealSpaceForceEnergy.cpp', 'r') as fh:
             _cont_source = fh.read()
 
-        _real_kernel = ppmd.kernel.Kernel(
+        _real_kernel = kernel.Kernel(
             name='real_space_part',
             code=_cont_source,
             headers=_cont_header
@@ -319,17 +313,17 @@ class EwaldOrthoganal(object):
             rn = self.real_cutoff + self.shell_width
 
         if self.shared_memory in ('thread', 'omp'):
-            PPL = ppmd.pairloop.PairLoopNeighbourListNSOMP
+            PPL = pairloop.PairLoopNeighbourListNSOMP
         else:
-            PPL = ppmd.pairloop.PairLoopNeighbourListNS
+            PPL = pairloop.PairLoopNeighbourListNS
 
         self._real_space_pairloop = PPL(
             kernel=_real_kernel,
             dat_dict={
-                'P': ppmd.data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.READ),
-                'Q': ppmd.data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
-                'F': ppmd.data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(ppmd.access.INC),
-                'u': self._vars['real_space_energy'](ppmd.access.INC_ZERO)
+                'P': data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(access.READ),
+                'Q': data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(access.READ),
+                'F': data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(access.INC),
+                'u': self._vars['real_space_energy'](access.INC_ZERO)
             },
             shell_cutoff=rn
         )
@@ -379,9 +373,9 @@ class EwaldOrthoganal(object):
         self._cont_lib.execute(
             n = NLOCAL,
             dat_dict={
-                'Positions': positions(ppmd.access.READ),
-                'Charges': charges(ppmd.access.READ),
-                'RecipSpace': recip_space(ppmd.access.INC_ZERO)
+                'Positions': positions(access.READ),
+                'Charges': charges(access.READ),
+                'RecipSpace': recip_space(access.INC_ZERO)
             }
         )
 
@@ -392,12 +386,12 @@ class EwaldOrthoganal(object):
         self._extract_force_energy_lib.execute(
             n = NLOCAL,
             dat_dict={
-                'Positions': positions(ppmd.access.READ),
-                'Charges': charges(ppmd.access.READ),
-                'RecipSpace': self._vars['recip_space_kernel'](ppmd.access.READ),
-                'Forces': forces(ppmd.access.INC),
-                'Energy': re(ppmd.access.INC_ZERO),
-                'CoeffSpace': self._vars['coeff_space_kernel'](ppmd.access.READ)
+                'Positions': positions(access.READ),
+                'Charges': charges(access.READ),
+                'RecipSpace': self._vars['recip_space_kernel'](access.READ),
+                'Forces': forces(access.INC),
+                'Energy': re(access.INC_ZERO),
+                'CoeffSpace': self._vars['coeff_space_kernel'](access.READ)
             }
         )
         if energy is not None:
@@ -423,10 +417,10 @@ class EwaldOrthoganal(object):
         re = self._vars['real_space_energy']
         self._real_space_pairloop.execute(
             dat_dict={
-                'P': positions(ppmd.access.READ),
-                'Q': charges(ppmd.access.READ),
-                'F': forces(ppmd.access.INC),
-                'u': re(ppmd.access.INC_ZERO)
+                'P': positions(access.READ),
+                'Q': charges(access.READ),
+                'F': forces(access.INC),
+                'u': re(access.INC_ZERO)
             }
         )
 
@@ -439,20 +433,20 @@ class EwaldOrthoganal(object):
     def _init_self_interaction_lib(self):
 
         if self.shared_memory in ('thread', 'omp'):
-            PL = ppmd.loop.ParticleLoopOMP
+            PL = loop.ParticleLoopOMP
         else:
-            PL = ppmd.loop.ParticleLoop
+            PL = loop.ParticleLoop
 
         with open(str(
             _SRC_DIR) + '/EwaldOrthSource/SelfInteraction.h', 'r') as fh:
             _cont_header_src = fh.read()
-        _cont_header = (ppmd.kernel.Header(block=_cont_header_src % self._subvars),)
+        _cont_header = (kernel.Header(block=_cont_header_src % self._subvars),)
 
         with open(str(
             _SRC_DIR) + '/EwaldOrthSource/SelfInteraction.cpp', 'r') as fh:
             _cont_source = fh.read()
 
-        _real_kernel = ppmd.kernel.Kernel(
+        _real_kernel = kernel.Kernel(
             name='real_space_part',
             code=_cont_source,
             headers=_cont_header
@@ -461,8 +455,8 @@ class EwaldOrthoganal(object):
         self._self_interaction_lib = PL(
             kernel=_real_kernel,
             dat_dict={
-                'Q': ppmd.data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(ppmd.access.READ),
-                'u': self._vars['self_interaction_energy'](ppmd.access.INC_ZERO)
+                'Q': data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(access.READ),
+                'u': self._vars['self_interaction_energy'](access.INC_ZERO)
             }
         )
 
@@ -473,8 +467,8 @@ class EwaldOrthoganal(object):
         en = self._vars['self_interaction_energy']
         self._self_interaction_lib.execute(
             dat_dict={
-                'Q': charges(ppmd.access.READ),
-                'u': en(ppmd.access.INC_ZERO)
+                'Q': charges(access.READ),
+                'u': en(access.INC_ZERO)
             }
         )
         if energy is not None:

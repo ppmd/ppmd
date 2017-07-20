@@ -1,4 +1,3 @@
-import ppmd.lib.shared_lib
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
@@ -11,7 +10,7 @@ import numpy as np
 
 # package level
 from ppmd import data, cell, host, kernel, mpi, runtime, halo, opt
-
+import ppmd.lib.shared_lib
 
 _MPI = mpi.MPI
 SUM = _MPI.SUM

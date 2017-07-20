@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import print_function, division, absolute_import
 
 from ppmd import opt, runtime, host
 from ppmd.lib.build import simple_lib_creator, TMPCC, TMPCC_OpenMP
