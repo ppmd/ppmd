@@ -1,4 +1,4 @@
-from __future__ import print_function, division#, absolute_import
+from __future__ import print_function, division, absolute_import
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -7,7 +7,7 @@ __license__ = "GPL"
 import os
 
 # package level
-import config.config as config
+import ppmd.config.config as config
 
 OPT = config.MAIN_CFG['opt-level'][1]
 DEBUG = config.MAIN_CFG['debug-level'][1]

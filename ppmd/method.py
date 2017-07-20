@@ -1,14 +1,8 @@
-from __future__ import division, print_function#, absolute_import
+from __future__ import division, print_function, absolute_import
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
-
-import math
-import data
-import pairloop
-import loop
-import numpy as np
 
 _GRAPHICS = True
 try:
@@ -30,9 +24,11 @@ import datetime
 import inspect
 import cProfile
 import time
+import math
+import numpy as np
 
 # package level
-from ppmd import kernel, data, runtime, pio, mpi, opt, access
+from ppmd import kernel, data, runtime, pio, mpi, opt, access, pairloop, loop
 
 np.set_printoptions(threshold='nan')
 

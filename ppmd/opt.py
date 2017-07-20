@@ -1,7 +1,7 @@
 """
 Optimisation and profiling tools
 """
-from __future__ import division, print_function#, absolute_import
+from __future__ import division, print_function, absolute_import
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -18,7 +18,7 @@ import datetime
 import glob
 
 # package level imports
-import mpi, pio, host, module
+from ppmd import mpi, pio, host, module
 
 
 _MPI = mpi.MPI

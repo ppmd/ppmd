@@ -10,13 +10,8 @@ import math
 import ctypes
 
 # package level
-import data
-import host
-import kernel
-import mpi
-import runtime
-import pio
-import opt
+from ppmd import data, host, kernel, mpi, runtime, pio, opt
+
 
 _MPI = mpi.MPI
 _MPIWORLD = _MPI.COMM_WORLD

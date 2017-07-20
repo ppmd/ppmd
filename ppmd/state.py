@@ -10,14 +10,8 @@ import ctypes
 import numpy as np
 
 # package level
-import data
-import cell
-import host
-import kernel
-import mpi
-import runtime
-import halo
-import opt
+from ppmd import data, cell, host, kernel, mpi, runtime, halo, opt
+
 
 _MPI = mpi.MPI
 SUM = _MPI.SUM

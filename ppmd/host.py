@@ -1,4 +1,4 @@
-from __future__ import division, print_function
+from __future__ import division, print_function, absolute_import
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -9,7 +9,7 @@ import numpy as np
 import collections
 
 # package level
-import access
+from ppmd import access
 
 int32 = ctypes.c_int32
 int32_str = 'int'
