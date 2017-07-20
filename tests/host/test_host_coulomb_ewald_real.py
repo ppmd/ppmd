@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 
@@ -7,7 +8,6 @@ import scipy.constants
 from math import pi
 import pytest
 
-import ctypes
 import ppmd as md
 
 
@@ -62,7 +62,7 @@ def test_ewald_energy_python_nacl_1():
     localsr = rs * c.internal_to_ev()
     selfij = selfinteraction * c.internal_to_ev()
 
-    print selfij, localsr
+    print(selfij, localsr)
 
     # the tolerance here is about 6 decimal places
     assert abs(selfij + localsr + 0.4194069853E+04)< 10.**-2, "real + self error"

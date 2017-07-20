@@ -5,9 +5,12 @@ __license__ = "GPL"
 
 # system level
 import os
+import sys
 
 # package level
 import ppmd.config as config
+
+PY_MAJOR_VERSION = sys.version_info[0]
 
 OPT = config.MAIN_CFG['opt-level'][1]
 DEBUG = config.MAIN_CFG['debug-level'][1]
@@ -34,6 +37,7 @@ else:
     NUM_THREADS = 1
 
 MPI_DIMS = None
+
 
 
 

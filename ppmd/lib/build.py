@@ -42,6 +42,10 @@ _MPIBARRIER()
 
 def _md5(string):
     """Create unique hex digest"""
+
+    if ppmd.runtime.PY_MAJOR_VERSION > 2:
+        string = string.encode('utf-8')
+
     m = hashlib.md5()
     m.update(string)
     return m.hexdigest()

@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 
@@ -52,7 +53,7 @@ def test_ewald_energy_python_nacl_1():
 
     rs = c.test_evaluate_python_lr(positions=positions, charges=charges)
 
-    print rs[0]*c.internal_to_ev(), rs[1]*c.internal_to_ev()
+    print(rs[0]*c.internal_to_ev(), rs[1]*c.internal_to_ev())
     assert abs(rs[0]*c.internal_to_ev() - 0.5223894616E-26) < 10.**-3, "Energy from loop back over particles"
     assert abs(rs[1]*c.internal_to_ev() - 0.5223894616E-26) < 10.**-3, "Energy from structure factor"
 
