@@ -4,4 +4,4 @@ scipy
 mpi4py
 pytest
 pymbolic
-
+ConfigParser

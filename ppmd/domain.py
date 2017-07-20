@@ -1,3 +1,5 @@
+import ppmd.shared_lib
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -695,8 +697,8 @@ class BoundaryTypePeriodic(object):
                                        ['stdio.h'],
                                        static_args={'_end': ctypes.c_int})
 
-        self._escape_guard_lib = build.SharedLib(_escape_kernel,
-                                                 _escape_dat_dict)
+        self._escape_guard_lib = ppmd.shared_lib.SharedLib(_escape_kernel,
+                                                           _escape_dat_dict)
 
 
     def _init_one_proc_lib(self):
@@ -756,7 +758,7 @@ class BoundaryTypePeriodic(object):
         '''
 
         _one_proc_pbc_kernel = kernel.Kernel('_one_proc_pbc_kernel', _one_proc_pbc_code, None,['math.h', 'stdio.h'], static_args={'_end':ctypes.c_int})
-        self._one_process_pbc_lib = build.SharedLib(_one_proc_pbc_kernel, {'P': self.state.get_position_dat(),
+        self._one_process_pbc_lib = ppmd.shared_lib.SharedLib(_one_proc_pbc_kernel, {'P': self.state.get_position_dat(),
                                                                            'E': self.state.domain.extent,
                                                                            'F': self._flag})
 

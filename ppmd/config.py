@@ -13,7 +13,7 @@ import mpi4py
 import shlex
 
 # package level imports
-import compiler
+from ppmd import compiler
 
 def str_to_bool(s="0"):
     return bool(int(s))

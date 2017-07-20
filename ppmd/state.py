@@ -1,3 +1,5 @@
+import ppmd.shared_lib
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -604,7 +606,7 @@ class _move_controller(object):
 
             # make kernel
             _unpacking_kernel = kernel.Kernel('state_move_unpacking' + _name, _unpacking_code, None, _unpacking_headers, None, _unpacking_static_args)
-            self._move_unpacking_lib = build.SharedLib(_unpacking_kernel, _unpacking_dynamic_args)
+            self._move_unpacking_lib = ppmd.shared_lib.SharedLib(_unpacking_kernel, _unpacking_dynamic_args)
 
     def _exchange_move_send_recv_buffers(self):
 
@@ -771,7 +773,7 @@ class _move_controller(object):
         _packing_kernel_shift = kernel.Kernel('state_move_packing_shift' + _name, _packing_code_shift, None, ['stdio.h', 'string.h'], None, None)
 
         # make packing library
-        self._move_packing_shift_lib = build.SharedLib(_packing_kernel_shift, self._packing_args_shift)
+        self._move_packing_shift_lib = ppmd.shared_lib.SharedLib(_packing_kernel_shift, self._packing_args_shift)
         self._move_packing_lib = True
 
 
@@ -880,7 +882,7 @@ class _move_controller(object):
 
         _compressing_kernel = kernel.Kernel('ParticleDat_compressing_lib', _compressing_code, headers=['stdio.h'], static_args=_static_args)
 
-        self._compressing_lib = build.SharedLib(_compressing_kernel, self._compressing_dyn_args)
+        self._compressing_lib = ppmd.shared_lib.SharedLib(_compressing_kernel, self._compressing_dyn_args)
 
 
 
