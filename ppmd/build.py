@@ -561,39 +561,6 @@ def build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
 
 
 
-###############################################################################
-# block of code class to be phased out
-###############################################################################
-
-class Code(object):
-    def __init__(self, init=''):
-        self._c = str(init)
-
-    @property
-    def string(self):
-        return self._c
-
-    def add_line(self, line=''):
-        self._c += '\n' + str(line)
-
-    def add(self, code=''):
-        self._c += str(code)
-
-    def __iadd__(self, other):
-        self.add(code=str(other))
-        return self
-
-    def __str__(self):
-        return str(self._c)
-
-    def __add__(self, other):
-        return Code(self.string + str(other))
-
-
-
-
-
-
 
 
 

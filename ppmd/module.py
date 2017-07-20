@@ -1,12 +1,14 @@
+from __future__ import division, print_function#, absolute_import
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
-import build
 import cgen
 import ctypes
 import numpy as np
 import time
+
+import build
 
 class Module(object):
 
@@ -82,7 +84,7 @@ class Cpp11MT19937(Module):
             return rr;
         }
         '''
-    
+
         lib = build.simple_lib_creator(
             header,
             src,

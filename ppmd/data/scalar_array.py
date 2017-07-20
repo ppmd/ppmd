@@ -7,15 +7,11 @@ __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
 # system level
-import sys
 import ctypes
 import numpy as np
-import math
 
 # package level
-from ppmd import access
-from ppmd import mpi
-from ppmd import host
+from ppmd import access, mpi, host
 
 np.set_printoptions(threshold=1000)
 
@@ -25,7 +21,6 @@ _MPIWORLD = mpi.MPI.COMM_WORLD
 _MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
 _MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
 _MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
-
 
 
 #####################################################################################

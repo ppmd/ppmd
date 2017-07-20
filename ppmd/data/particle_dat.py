@@ -7,10 +7,9 @@ __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
 # system level
-import sys
 import ctypes
 import numpy as np
-import math
+np.set_printoptions(threshold=1000)
 
 # package level
 from ppmd import access
@@ -19,9 +18,8 @@ from ppmd import runtime
 from ppmd import host
 from ppmd import opt
 from ppmd import build
-from scalar_array import ScalarArray
 
-np.set_printoptions(threshold=1000)
+from ppmd.data.scalar_array import ScalarArray
 
 _MPI = mpi.MPI
 SUM = _MPI.SUM
@@ -29,7 +27,6 @@ _MPIWORLD = mpi.MPI.COMM_WORLD
 _MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
 _MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
 _MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
-
 
 """
 rst_doc{

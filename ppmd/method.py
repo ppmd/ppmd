@@ -1,3 +1,4 @@
+from __future__ import division, print_function#, absolute_import
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -28,17 +29,10 @@ import re
 import datetime
 import inspect
 import cProfile
+import time
 
 # package level
-import kernel
-import time
-import build
-import data
-import runtime
-import pio
-import mpi
-import opt
-import access
+from ppmd import kernel, build, data, runtime, pio, mpi, opt, access
 np.set_printoptions(threshold='nan')
 
 _MPI = mpi.MPI
@@ -136,10 +130,10 @@ class ListUpdateController(object):
         self._moved_distance += self._get_max_moved_distance()
 
         if self._moved_distance >= 0.5 * self._delta:
-            print "RANK %(RK)s  WARNING: Max velocity triggered list rebuild |" % \
+            print("RANK %(RK)s  WARNING: Max velocity triggered list rebuild |" % \
                   {'RK':_MPIRANK}, _MPIRANK, "distance",\
                   self._moved_distance, "times reused", self._test_count, \
-                  "dist:", 0.5 * self._delta
+                  "dist:", 0.5 * self._delta)
 
         _ret = 0
 
@@ -159,7 +153,7 @@ class ListUpdateController(object):
         _ret = _tmpr[0]
 
         if _ret_old == 1 and _ret != 1:
-            print "update status reductypes.on error, rank:", _MPIRANK
+            print("update status reductypes.on error, rank:", _MPIRANK)
 
         # print "_ret", _ret, self._delta, self._step_counter, self._step_count
         self.check_status_timer.pause()
@@ -201,7 +195,7 @@ class ListUpdateController(object):
             ] = (self.boundary_method_timer.time())
 
         else:
-            print "WARNING NO BOUNDARY CONDITION TO APPLY"
+            print("WARNING NO BOUNDARY CONDITION TO APPLY")
 ###############################################################################
 # New Velocity Verlet Method
 ###############################################################################
@@ -287,7 +281,7 @@ class IntegratorRange(object):
 
             if self.verbose:
                 if _MPIRANK == 0:
-                    print 60*'='
+                    print(60*'=')
                 tt = self.timer.stop(str='Integration time:')
                 opt.PROFILE[
                     self.__class__.__name__+':loop_time'
@@ -295,9 +289,9 @@ class IntegratorRange(object):
 
 
                 if _MPIRANK == 0:
-                    print 60*'-'
+                    print(60*'-')
                     opt.print_profile()
-                    print 60*'='
+                    print(60*'=')
 
             raise StopIteration
 
@@ -537,7 +531,7 @@ class VelocityVerlet(object):
         :arg double dt: Time step size.
         :arg double t: End time.
         """
-        print "starting integration"
+        print("starting integration")
         if dt is not None:
             self._dt = dt
         if t is not None:
@@ -657,7 +651,7 @@ class VelocityVerletAnderson(VelocityVerlet):
 
         }
         else {
-            const double M_tmp = 1/M(0);
+            const double M_tmp = 1./M(0);
             V(0) += dht*A(0)*M_tmp;
             V(1) += dht*A(1)*M_tmp;
             V(2) += dht*A(2)*M_tmp;
@@ -891,7 +885,7 @@ class RadialDistributionPeriodicNVE(object):
                 _ax.set_ylabel('G(r)')
                 plt.show()
             else:
-                print "Warning: run evaluate() at least once before plotting."
+                print("Warning: run evaluate() at least once before plotting.")
 
     def reset(self):
         self._gr.scale(0.0)
@@ -1049,7 +1043,7 @@ class Schedule(object):
                                          " number of steps and number of items."
         for ix in zip(steps, items):
             if ix[0] < 1:
-                print "Schedule warning: 0 step items will be ignored."
+                print("Schedule warning: 0 step items will be ignored.")
             else:
                 self._s[ix[0]].append(ix[1])
 
@@ -1169,7 +1163,7 @@ class VelocityAutoCorrelation(object):
             _Vloc = np.array(self._V)
             _V = np.zeros(len(self._T))
 
-            print _Vloc
+            print(_Vloc)
 
             _MPI.COMM_WORLD.Reduce(_Vloc, _V, _MPI.SUM, 0)
 
@@ -1184,7 +1178,7 @@ class VelocityAutoCorrelation(object):
                 _ax.set_ylabel('VAF')
                 plt.show()
             else:
-                print "Warning: run evaluate() at least once before plotting."
+                print("Warning: run evaluate() at least once before plotting.")
 
 
 ################################################################################################################
@@ -1274,7 +1268,7 @@ class DrawParticles(object):
 
                     for ix in range(1, _MPISIZE):
                         _MPIWORLD.Recv(self._Dat.data[_i::, ::], ix, ix, _MS)
-                        _i += _MS.Get_count(mpi.mpi_map[self._Dat.dtype]) / 3
+                        _i += _MS.Get_count(mpi.mpi_map[self._Dat.dtype]) // 3
 
                         _MPIWORLD.Recv(self._gids.data[_ig::], ix, ix, _MS)
                         _ig += _MS.Get_count(mpi.mpi_map[self._gids.dtype])
@@ -1440,13 +1434,13 @@ class EnergyStore(object):
 
 
         if (_MPIRANK == 0) and _GRAPHICS:
-            print "last total", _Q[-1]
-            print "last kinetic", _K[-1]
-            print "last potential", _U[-1]
-            print "============================================="
-            print "first total", _Q[0]
-            print "first kinetic", _K[0]
-            print "first potential", _U[0]
+            print("last total", _Q[-1])
+            print("last kinetic", _K[-1])
+            print("last potential", _U[-1])
+            print("=============================================")
+            print("first total", _Q[0])
+            print("first kinetic", _K[0])
+            print("first potential", _U[0])
 
             if _plot:
 
@@ -1477,13 +1471,13 @@ class EnergyStore(object):
             _fh.close()
 
         if (_MPIRANK == 0) and not _GRAPHICS:
-            print "last total", _Q[-1]
-            print "last kinetic", _K[-1]
-            print "last potential", _U[-1]
-            print "============================================="
-            print "first total", _Q[0]
-            print "first kinetic", _K[0]
-            print "first potential", _U[0]
+            print("last total", _Q[-1])
+            print("last kinetic", _K[-1])
+            print("last potential", _U[-1])
+            print("=============================================")
+            print("first total", _Q[0])
+            print("first kinetic", _K[0])
+            print("first potential", _U[0])
 
 ####################################################################################################
 # Percentage Printer

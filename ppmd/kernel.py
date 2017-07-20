@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import print_function, division#, absolute_import
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -7,6 +7,7 @@ __license__ = "GPL"
 import hashlib
 import re
 import cgen
+
 import access
 
 

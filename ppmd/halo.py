@@ -273,8 +273,8 @@ class CartesianHaloSix(object):
         local boundary cell list, Exchange sizes for each halo.
         """
         if not self._init:
-            print "cuda_halo.CartesianHalo error. Library not initalised, " \
-                  "this error means the internal setup failed."
+            print("cuda_halo.CartesianHalo error. Library not initalised, " \
+                  "this error means the internal setup failed.")
             quit()
 
         self._exchange_sizes.zero()

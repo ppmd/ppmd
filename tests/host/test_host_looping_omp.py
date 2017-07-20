@@ -163,8 +163,6 @@ def test_host_looping_2(s_nd):
     loop = md.loop.ParticleLoopOMP(kernel=kernel, dat_dict=kernel_map)
     loop.execute(n=N)
 
-    # relies on floating point equality
-
     assert abs(gid_sum[0] - np.sum(
         2.*np.sin(s_nd.p[0:N:,0]) + np.sin(s_nd.p[0:N:, 1]) + np.sin(s_nd.p[0:N:,2])
     )*nproc) < 10.**-10, "critical GlobalArray Failure"

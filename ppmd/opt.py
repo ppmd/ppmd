@@ -1,7 +1,7 @@
 """
 Optimisation and profiling tools
 """
-from __future__ import division, print_function
+from __future__ import division, print_function#, absolute_import
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -18,11 +18,7 @@ import datetime
 import glob
 
 # package level imports
-import build
-import mpi
-import pio
-import host
-import module
+import mpi, pio, host, module
 
 
 _MPI = mpi.MPI
@@ -33,6 +29,8 @@ _MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
 _MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
 
 def get_timer_accuracy():
+
+    from ppmd import build
 
     t = ctypes.c_double(0.0)
 
@@ -137,6 +135,34 @@ class Timer(object):
 
 
 
+###############################################################################
+# block of code class to be phased out
+###############################################################################
+
+class Code(object):
+    def __init__(self, init=''):
+        self._c = str(init)
+
+    @property
+    def string(self):
+        return self._c
+
+    def add_line(self, line=''):
+        self._c += '\n' + str(line)
+
+    def add(self, code=''):
+        self._c += str(code)
+
+    def __iadd__(self, other):
+        self.add(code=str(other))
+        return self
+
+    def __str__(self):
+        return str(self._c)
+
+    def __add__(self, other):
+        return Code(self.string + str(other))
+
 
 
 class LoopTimer(module.Module):
@@ -184,7 +210,7 @@ class LoopTimer(module.Module):
         """
         Return the code to include the required header file(s).
         """
-        return build.Code('#include <chrono>\n')
+        return Code('#include <chrono>\n')
 
     def get_cpp_headers_ast(self):
         """
@@ -196,7 +222,7 @@ class LoopTimer(module.Module):
         """
         Return the code to define arguments to add to the library.
         """
-        return build.Code('double* _loop_timer_return')
+        return Code('double* _loop_timer_return')
 
     def get_cpp_arguments_ast(self):
         """
@@ -212,7 +238,7 @@ class LoopTimer(module.Module):
         _s = 'std::chrono::high_resolution_clock::time_point _loop_timer_t0 ='\
              ' std::chrono::high_resolution_clock::now(); \n'
 
-        return build.Code(_s)
+        return Code(_s)
 
     def get_cpp_pre_loop_code_ast(self):
         """
@@ -233,7 +259,7 @@ class LoopTimer(module.Module):
              ' - _loop_timer_t0; \n' \
              '*_loop_timer_return += (double) _loop_timer_res.count(); \n'
 
-        return build.Code(_s)
+        return Code(_s)
 
 
     def get_cpp_post_loop_code_ast(self):

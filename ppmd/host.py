@@ -1,3 +1,4 @@
+from __future__ import division, print_function
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
