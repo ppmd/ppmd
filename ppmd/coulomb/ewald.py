@@ -9,6 +9,8 @@ __license__ = "GPL"
 from math import sqrt, log, ceil, pi, exp, cos, sin, erfc
 import numpy as np
 import ctypes
+import os
+
 import ppmd.kernel
 import ppmd.loop
 import ppmd.runtime
@@ -26,6 +28,7 @@ from ppmd import host
 
 _charge_coulomb = scipy.constants.physical_constants['atomic unit of charge'][0]
 
+_SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
 def compute_alpha(N, L, ratio):
     """
@@ -230,12 +233,12 @@ class EwaldOrthoganal(object):
 
         # reciprocal contribution calculation
         with open(str(
-                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/AccumulateRecip.h', 'r') as fh:
+                _SRC_DIR) + '/EwaldOrthSource/AccumulateRecip.h', 'r') as fh:
             _cont_header_src = fh.read()
         _cont_header = ppmd.kernel.Header(block=_cont_header_src % self._subvars)
 
         with open(str(
-                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/AccumulateRecip.cpp', 'r') as fh:
+                _SRC_DIR) + '/EwaldOrthSource/AccumulateRecip.cpp', 'r') as fh:
             _cont_source = fh.read()
 
         _cont_kernel = ppmd.kernel.Kernel(
@@ -264,12 +267,12 @@ class EwaldOrthoganal(object):
 
         # reciprocal extract forces plus energy
         with open(str(
-                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/ExtractForceEnergy.h', 'r') as fh:
+                _SRC_DIR) + '/EwaldOrthSource/ExtractForceEnergy.h', 'r') as fh:
             _cont_header_src = fh.read()
         _cont_header = ppmd.kernel.Header(block=_cont_header_src % self._subvars)
 
         with open(str(
-                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/ExtractForceEnergy.cpp', 'r') as fh:
+                _SRC_DIR) + '/EwaldOrthSource/ExtractForceEnergy.cpp', 'r') as fh:
             _cont_source = fh.read()
 
         _cont_kernel = ppmd.kernel.Kernel(
@@ -296,12 +299,12 @@ class EwaldOrthoganal(object):
 
         # real space energy and force kernel
         with open(str(
-                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/RealSpaceForceEnergy.h', 'r') as fh:
+                _SRC_DIR) + '/EwaldOrthSource/RealSpaceForceEnergy.h', 'r') as fh:
             _cont_header_src = fh.read()
         _cont_header = (ppmd.kernel.Header(block=_cont_header_src % self._subvars),)
 
         with open(str(
-                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/RealSpaceForceEnergy.cpp', 'r') as fh:
+                _SRC_DIR) + '/EwaldOrthSource/RealSpaceForceEnergy.cpp', 'r') as fh:
             _cont_source = fh.read()
 
         _real_kernel = ppmd.kernel.Kernel(
@@ -441,12 +444,12 @@ class EwaldOrthoganal(object):
             PL = ppmd.loop.ParticleLoop
 
         with open(str(
-            ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/SelfInteraction.h', 'r') as fh:
+            _SRC_DIR) + '/EwaldOrthSource/SelfInteraction.h', 'r') as fh:
             _cont_header_src = fh.read()
         _cont_header = (ppmd.kernel.Header(block=_cont_header_src % self._subvars),)
 
         with open(str(
-            ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/SelfInteraction.cpp', 'r') as fh:
+            _SRC_DIR) + '/EwaldOrthSource/SelfInteraction.cpp', 'r') as fh:
             _cont_source = fh.read()
 
         _real_kernel = ppmd.kernel.Kernel(

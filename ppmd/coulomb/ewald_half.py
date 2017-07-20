@@ -6,7 +6,7 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
-import ctypes
+import ctypes, os
 import ppmd.kernel
 import ppmd.loop
 import ppmd.runtime
@@ -15,18 +15,20 @@ import ppmd.access
 
 from ewald import EwaldOrthoganal
 
+_SRC_DIR = os.path.dirname(os.path.realpath(__file__))
+
 class EwaldOrthoganalHalf(EwaldOrthoganal):
 
     def _init_libs(self):
 
         # reciprocal contribution calculation
         with open(str(
-                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/AccumulateRecipHalf.h', 'r') as fh:
+                _SRC_DIR) + '/EwaldOrthSource/AccumulateRecipHalf.h', 'r') as fh:
             _cont_header_src = fh.read()
         _cont_header = ppmd.kernel.Header(block=_cont_header_src % self._subvars)
 
         with open(str(
-                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/AccumulateRecipHalf.cpp', 'r') as fh:
+                _SRC_DIR) + '/EwaldOrthSource/AccumulateRecipHalf.cpp', 'r') as fh:
             _cont_source = fh.read()
 
         _cont_kernel = ppmd.kernel.Kernel(
@@ -54,12 +56,12 @@ class EwaldOrthoganalHalf(EwaldOrthoganal):
 
         # reciprocal extract forces plus energy
         with open(str(
-                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/ExtractForceEnergyHalf.h', 'r') as fh:
+                _SRC_DIR) + '/EwaldOrthSource/ExtractForceEnergyHalf.h', 'r') as fh:
             _cont_header_src = fh.read()
         _cont_header = ppmd.kernel.Header(block=_cont_header_src % self._subvars)
 
         with open(str(
-                ppmd.runtime.LIB_DIR) + '/EwaldOrthSource/ExtractForceEnergyHalf.cpp', 'r') as fh:
+                _SRC_DIR) + '/EwaldOrthSource/ExtractForceEnergyHalf.cpp', 'r') as fh:
             _cont_source = fh.read()
 
         _cont_kernel = ppmd.kernel.Kernel(
