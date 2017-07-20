@@ -9,5 +9,5 @@ __all__ = [
     'particle_loop_omp'
 ]
 
-from particle_loop import ParticleLoop
-from particle_loop_omp import ParticleLoopOMP
+from ppmd.loop.particle_loop import ParticleLoop
+from ppmd.loop.particle_loop_omp import ParticleLoopOMP

@@ -7,12 +7,12 @@ __all__ = [
     #'ewald_fft'
 ]
 
-import ewald
+#import ewald
 #import ewald_fft
 
 
-from ewald import *
-from ewald_half import *
+from ppmd.coulomb.ewald import *
+from ppmd.coulomb.ewald_half import *
 #from ewald_fft import *
 #from fmm import PyFMM
 #from cuda_ewald import *

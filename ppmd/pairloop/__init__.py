@@ -11,7 +11,8 @@ __all__ = [
 ]
 
 
-from alltoall import *
+from ppmd.pairloop.alltoall import *
 # from cellbycell import *
-from neighbourlist import *
-from neighbourlist_omp import *
+from ppmd.pairloop.neighbourlist import *
+from ppmd.pairloop.neighbourlist_omp import *
+

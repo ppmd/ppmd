@@ -11,8 +11,8 @@ import ctypes
 
 from ppmd import data, runtime, host, access
 
-from neighbourlist import PairLoopNeighbourListNS, Restrict
-from neighbour_matrix_omp import NeighbourListOMP
+from ppmd.pairloop.neighbourlist import PairLoopNeighbourListNS, Restrict
+from ppmd.pairloop.neighbour_matrix_omp import NeighbourListOMP
 
 
 class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):

@@ -13,7 +13,6 @@ import ctypes
 from ppmd import data, host, kernel, mpi, runtime, pio, opt
 import ppmd.lib.shared_lib
 
-
 _MPI = mpi.MPI
 _MPIWORLD = _MPI.COMM_WORLD
 _MPIRANK = _MPIWORLD.Get_rank()

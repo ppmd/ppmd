@@ -7,9 +7,8 @@ __all__ = [
     'sym_potential'
 ]
 
-import c_potential
-import sym_potential
+from ppmd.utility.potential import c_potential
+from ppmd.utility.potential import sym_potential
 
-
-from c_potential import *
-from sym_potential import *
+from ppmd.utility.potential.c_potential import *
+from ppmd.utility.potential.sym_potential import *

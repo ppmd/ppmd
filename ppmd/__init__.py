@@ -24,23 +24,24 @@ __all__ = [ 'mpi',
             'module',
             'coulomb']
 
+import utility
+import coulomb
+import pairloop
+import loop
+import data
 import access
 import cell
-import coulomb
-import data
 import domain
 import halo
 import host
 import kernel
-import loop
 import method
 import module
 import mpi
 import opt
-import pairloop
 import pio
 import runtime
 import state
-import utility
-from ppmd.utility import potential
+
+
 

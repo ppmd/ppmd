@@ -7,7 +7,7 @@ __license__ = "GPL"
 import cgen
 import os
 
-from base import *
+from ppmd.pairloop.base import *
 # package level
 from ppmd import data, runtime, access
 from ppmd.pairloop import lists

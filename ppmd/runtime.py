@@ -7,7 +7,7 @@ __license__ = "GPL"
 import os
 
 # package level
-import ppmd.config.config as config
+import ppmd.config as config
 
 OPT = config.MAIN_CFG['opt-level'][1]
 DEBUG = config.MAIN_CFG['debug-level'][1]
