@@ -802,7 +802,7 @@ class VLennardJonesNoU(LennardJones):
 
     def get_data_map(self, positions=None, forces=None, potential_energy=None):
         if potential_energy is not None:
-            print "warning, kernel does not compute potential energy"
+            print("warning, kernel does not compute potential energy")
         return {'P': positions(access.R), 'A': forces(access.INC0)}
 
 
