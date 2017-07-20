@@ -117,21 +117,21 @@ def test_host_sim_1():
         shell_cutoff=potaa_rn
     )
 
-    potaa_kinetic_energy_updater = md.method.KineticEnergyTracker(
+    potaa_kinetic_energy_updater = md.utility.high_method.KineticEnergyTracker(
         velocities=A.v,
         masses=A.mass
     )
 
-    potaa_potential_energy = md.method.PotentialEnergyTracker(
+    potaa_potential_energy = md.utility.high_method.PotentialEnergyTracker(
         potential_energy_dat=A.u
     )
 
-    potaa_schedule = md.method.Schedule(
+    potaa_schedule = md.utility.high_method.Schedule(
         [1, 1],
         [potaa_kinetic_energy_updater.execute, potaa_potential_energy.execute]
     )
 
-    potaa_integrator = md.method.IntegratorVelocityVerlet(
+    potaa_integrator = md.utility.high_method.IntegratorVelocityVerlet(
         positions=A.p,
         forces=A.f,
         velocities=A.v,

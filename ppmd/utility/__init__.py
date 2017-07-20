@@ -8,6 +8,6 @@ __all__ = [
 import dl_poly
 import lattice
 import xyz
-
+import high_method
 
 
