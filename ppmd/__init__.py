@@ -17,7 +17,6 @@ __all__ = [ 'mpi',
             'method',
             'pairloop',
             'pio',
-            'potential',
             'runtime',
             'state',
             'opt',
@@ -27,6 +26,7 @@ __all__ = [ 'mpi',
 
 import access
 import cell
+import coulomb
 import data
 import domain
 import halo
@@ -39,8 +39,8 @@ import mpi
 import opt
 import pairloop
 import pio
-import potential
+import runtime
 import state
 import utility
-import coulomb
-import runtime
+from ppmd.utility import potential
+

@@ -1,11 +1,9 @@
 #!/usr/bin/python
 
-import pytest
 import ctypes
+
 import numpy as np
-import math
-import os
-import sys
+import pytest
 
 import ppmd as md
 
@@ -144,7 +142,7 @@ def test_host_sim_1(directiong):
     potaa_rn = potaa_rc * 1.1
     delta = potaa_rn - potaa_rc
 
-    potaa = md.potential.VLennardJones(
+    potaa = ppmd.utility.potential.VLennardJones(
         epsilon=1.0,
         sigma=1.0,
         rc=potaa_rc
@@ -253,7 +251,7 @@ def test_host_sim_2(directiona):
     potaa_rn = potaa_rc * 1.1
     delta = potaa_rn - potaa_rc
 
-    potaa = md.potential.VLennardJones(
+    potaa = ppmd.utility.potential.VLennardJones(
         epsilon=1.0,
         sigma=1.0,
         rc=potaa_rc

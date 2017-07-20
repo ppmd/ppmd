@@ -1,11 +1,10 @@
 #!/usr/bin/python
 
-import pytest
 import ctypes
-import numpy as np
-import math
-import os
 
+import numpy as np
+import os
+import pytest
 
 import ppmd as md
 
@@ -101,7 +100,7 @@ def test_host_sim_1():
 
     potaa_rc = float(md.utility.dl_poly.get_control_value(rCONTROL, 'cutoff')[0][0])
     potaa_rn = potaa_rc * 1.1
-    potaa = md.potential.Buckingham(
+    potaa = ppmd.utility.potential.Buckingham(
         a=1.69*10**-8.0,
         b=1.0/0.273,
         c=102*10**-12,
