@@ -1,4 +1,4 @@
-import ppmd.lib.shared_lib
+from __future__ import print_function, division, absolute_import
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
@@ -11,6 +11,7 @@ import ctypes
 
 # package level
 from ppmd import data, host, kernel, mpi, runtime, pio, opt
+import ppmd.lib.shared_lib
 
 
 _MPI = mpi.MPI
@@ -349,14 +350,14 @@ class BaseDomainHalo(object):
         return self._cell_array[0] * self._cell_array[1] * self._cell_array[2]
 
 def factor(n):
-    return [ix for ix in range(1, n / 2 + 1) if not n % ix] + [n]
+    return [ix for ix in range(1, n // 2 + 1) if not n % ix] + [n]
 
 def pfactor(n):
     lst = []
     l = 2
     while l <= n:
         if n % l == 0:
-            n /= l
+            n //= l
             lst.append(l)
         else:
             l += 1
@@ -449,7 +450,7 @@ def _get_cell_distribution(global_cell_array=None, dims=None, top=None):
             for iy in range(R):
                 _tmp.append(_bsc[ix])
             for iy in range(dims[ix] - R):
-                _tmp.append((global_cell_array[ix] - R * _bsc[ix])/ (dims[ix] - R) )
+                _tmp.append((global_cell_array[ix] - R * _bsc[ix]) // (dims[ix] - R) )
 
         assert len(_tmp) == dims[ix], "DD size missmatch, dim: " + str(ix) + " " + str(_tmp[:])
         _tsum = 0
