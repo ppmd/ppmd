@@ -10,6 +10,7 @@ import os
 
 # package level
 from ppmd import data, runtime, access , cell
+from ppmd.lib import build
 
 from base import _Base
 

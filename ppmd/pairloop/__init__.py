@@ -6,7 +6,7 @@ __copyright__ = "Copyright 2016, W.R.Saunders"
 
 __all__ = [
     'alltoall',
-    'cellbycell',
+    #'cellbycell',
     'neighbourlist'
 ]
 

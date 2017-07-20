@@ -9,8 +9,8 @@ import os
 
 from base import *
 # package level
-from ppmd import data, runtime, cell, access
-
+from ppmd import data, runtime, access
+from ppmd.pairloop import lists
 
 def gather_matrix(obj, symbol_dat, symbol_tmp, loop_index):
     nc = obj.ncomp
@@ -88,7 +88,7 @@ class PairLoopNeighbourListNS(object):
 
         if flag:
             for key in _nd.keys():
-                _nd[key] = cell.NeighbourListNonN3(
+                _nd[key] = lists.NeighbourListNonN3(
                     group.get_cell_to_particle_map()
                 )
                 _nd[key].setup(group.get_npart_local_func(),
@@ -102,7 +102,7 @@ class PairLoopNeighbourListNS(object):
 
 
         if not _key in _nd.keys():
-            _nd[_key] = cell.NeighbourListNonN3(
+            _nd[_key] = lists.NeighbourListNonN3(
                 group.get_cell_to_particle_map()
             )
 
@@ -571,7 +571,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
 
         if flag:
             for key in _nd.keys():
-                _nd[key] = cell.NeighbourListv2(
+                _nd[key] = lists.NeighbourListv2(
                     self._group.get_cell_to_particle_map()
                 )
                 _nd[key].setup(self._group.get_npart_local_func(),
@@ -586,7 +586,7 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
 
         if not self._key in _nd.keys():
 
-            _nd[self._key] = cell.NeighbourListv2(
+            _nd[self._key] = lists.NeighbourListv2(
                 self._group.get_cell_to_particle_map()
             )
 
