@@ -6,7 +6,8 @@ __license__ = "GPL"
 
 import ctypes, os
 
-from ppmd import build, host, runtime, opt
+from ppmd import host, runtime, opt
+from ppmd.lib import build
 
 
 ################################################################################################################

@@ -2,8 +2,6 @@
 
 # system level imports
 import numpy as np
-import os
-
 
 class XYZ(object):
     """

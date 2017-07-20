@@ -4,15 +4,12 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
-
-import ctypes
-import os
 import cgen
-
-# package level
-from ppmd import data, build, runtime, host, opt, access
+import os
 
 from base import *
+# package level
+from ppmd import data, runtime, access
 
 
 ###############################################################################

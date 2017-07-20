@@ -30,7 +30,7 @@ _MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
 
 def get_timer_accuracy():
 
-    from ppmd import build
+    from ppmd.lib import build
 
     t = ctypes.c_double(0.0)
 

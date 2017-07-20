@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 
 from ppmd import opt, runtime, host
-from ppmd.build import simple_lib_creator, TMPCC, TMPCC_OpenMP
+from ppmd.lib.build import simple_lib_creator, TMPCC, TMPCC_OpenMP
 
 __author__      = "W.R.Saunders"
 __copyright__   = "Copyright 2016, W.R.Saunders"

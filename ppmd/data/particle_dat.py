@@ -8,7 +8,9 @@ __license__ = "GPL"
 
 # system level
 import ctypes
+
 import numpy as np
+
 np.set_printoptions(threshold=1000)
 
 # package level
@@ -17,7 +19,7 @@ from ppmd import mpi
 from ppmd import runtime
 from ppmd import host
 from ppmd import opt
-from ppmd import build
+from ppmd.lib import build
 
 from ppmd.data.scalar_array import ScalarArray
 

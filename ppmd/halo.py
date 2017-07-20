@@ -5,14 +5,15 @@ __license__ = "GPL"
 
 # system level
 import ctypes
+
 import numpy as np
 
-# package level
-import build
-import runtime
-import mpi
 import host
+import mpi
 import opt
+import runtime
+# package level
+from ppmd.lib import build
 
 
 # ===========================================================================

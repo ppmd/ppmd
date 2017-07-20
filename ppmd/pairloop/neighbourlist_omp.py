@@ -9,7 +9,7 @@ import ctypes
 
 # package level
 
-from ppmd import data, runtime, host, access, build
+from ppmd import data, runtime, host, access
 
 from neighbourlist import PairLoopNeighbourListNS, Restrict
 from neighbour_matrix_omp import NeighbourListOMP

@@ -1,13 +1,12 @@
 from __future__ import print_function, division
 
-import ppmd.shared_lib
+import ppmd.lib.shared_lib
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
 # system level imports
-import sys
 import ctypes as ct
 import math
 import numpy as np
@@ -16,7 +15,7 @@ import itertools
 # package level imports
 import host
 import runtime
-import build
+from ppmd.lib import build
 import kernel
 import opt
 
@@ -332,7 +331,7 @@ class CellList(object):
 
 
         _cell_sort_kernel = kernel.Kernel('cell_class_cell_list_method', _cell_sort_code, headers=['stdio.h'], static_args=_static_args)
-        self._cell_sort_lib = ppmd.shared_lib.SharedLib(_cell_sort_kernel, _dat_dict)
+        self._cell_sort_lib = ppmd.lib.shared_lib.SharedLib(_cell_sort_kernel, _dat_dict)
 
         self._init = True
 
@@ -471,7 +470,7 @@ class CellList(object):
 
         _cell_sort_kernel = kernel.Kernel('halo_cell_list_method', _cell_sort_code, headers=['stdio.h'],
                                           static_args=_static_args)
-        self._halo_cell_sort_loop = ppmd.shared_lib.SharedLib(_cell_sort_kernel, _cell_sort_dict)
+        self._halo_cell_sort_loop = ppmd.lib.shared_lib.SharedLib(_cell_sort_kernel, _cell_sort_dict)
 
 
     def prepare_halo_sort(self, total_size):
@@ -693,7 +692,7 @@ class GroupByCell(object):
             _name += '_' + str(ix)
 
         _kernel = kernel.Kernel('CellGroupCollect' + _name, _code, None, _headers, None, _static_args)
-        self._group_by_cell_lib = ppmd.shared_lib.SharedLib(_kernel, _args)
+        self._group_by_cell_lib = ppmd.lib.shared_lib.SharedLib(_kernel, _args)
         self.swaptimer = opt.Timer(runtime.TIMER, 0)
 
 
@@ -929,7 +928,7 @@ class NeighbourList(object):
 
 
         _kernel = kernel.Kernel('cell_neighbour_list_method', _code, headers=['stdio.h'], static_args=_static_args)
-        self._neighbour_lib = ppmd.shared_lib.SharedLib(_kernel, _dat_dict)
+        self._neighbour_lib = ppmd.lib.shared_lib.SharedLib(_kernel, _dat_dict)
 
 
     def update(self, _attempt=1):
@@ -1247,7 +1246,7 @@ class NeighbourListv2(NeighbourList):
 
 
         _kernel = kernel.Kernel('neighbour_list_v2', _code, headers=['stdio.h'], static_args=_static_args)
-        self._neighbour_lib = ppmd.shared_lib.SharedLib(_kernel, _dat_dict)
+        self._neighbour_lib = ppmd.lib.shared_lib.SharedLib(_kernel, _dat_dict)
 
 
 
@@ -1496,7 +1495,7 @@ class NeighbourMatrix(object):
 
 
         _kernel = kernel.Kernel('cell_neighbour_matrix_method', _code, headers=['stdio.h'], static_args=_static_args)
-        self._neighbour_lib = ppmd.shared_lib.SharedLib(_kernel, _dat_dict)
+        self._neighbour_lib = ppmd.lib.shared_lib.SharedLib(_kernel, _dat_dict)
 
 
     def update(self, _attempt=1):
@@ -1709,7 +1708,7 @@ class NeighbourListHaloAware(object):
 
 
         _kernel = kernel.Kernel('cell_neighbour_list_method', _code, headers=['stdio.h'], static_args=_static_args)
-        self._neighbour_lib = ppmd.shared_lib.SharedLib(_kernel, _dat_dict)
+        self._neighbour_lib = ppmd.lib.shared_lib.SharedLib(_kernel, _dat_dict)
 
 
         #----------------- halo lib ----------------------------
@@ -1854,7 +1853,7 @@ class NeighbourListHaloAware(object):
                              }
 
         _halo_kernel = kernel.Kernel('cell_neighbour_list_method_halo', _code, headers=['stdio.h'], static_args=_halo_static_args)
-        self._halo_neighbour_lib = ppmd.shared_lib.SharedLib(_halo_kernel, _halo_dat_dict)
+        self._halo_neighbour_lib = ppmd.lib.shared_lib.SharedLib(_halo_kernel, _halo_dat_dict)
 
 
 
@@ -2058,7 +2057,7 @@ class NeighbourListNonN3(NeighbourList):
                         'n': ct.c_int}       # start of cell point in list.
 
         _kernel = kernel.Kernel('cell_neighbour_list_method', _code, headers=['stdio.h'], static_args=_static_args)
-        self._neighbour_lib = ppmd.shared_lib.SharedLib(_kernel, _dat_dict)
+        self._neighbour_lib = ppmd.lib.shared_lib.SharedLib(_kernel, _dat_dict)
 
         self.domain_id = self._domain.version_id
 
@@ -2192,7 +2191,7 @@ class CellLayerSort(object):
 
         _kernel = kernel.Kernel('layers_sort_method', _code, headers=['stdio.h'], static_args=_statics)
 
-        self._lib = ppmd.shared_lib.SharedLib(_kernel, _dynamics, openmp)
+        self._lib = ppmd.lib.shared_lib.SharedLib(_kernel, _dynamics, openmp)
 
         _code2 = '''
 
@@ -2227,7 +2226,7 @@ class CellLayerSort(object):
         }
 
         _kernel2 = kernel.Kernel('cell__layer_occupancy', _code2, headers=['stdio.h'], static_args=_statics2)
-        self._lib2 = ppmd.shared_lib.SharedLib(_kernel2, _dynamics2, openmp)
+        self._lib2 = ppmd.lib.shared_lib.SharedLib(_kernel2, _dynamics2, openmp)
 
     def update(self):
         assert self._lib is not None, "CellLayerSort error: setup not ran or failed."
@@ -2402,7 +2401,7 @@ class NeighbourListLayerBased(object):
         }
 
         _kernel = kernel.Kernel('neighbour_matrix_creation', _code, headers=['stdio.h'], static_args=_statics)
-        self._lib = ppmd.shared_lib.SharedLib(_kernel, _dynamics, openmp)
+        self._lib = ppmd.lib.shared_lib.SharedLib(_kernel, _dynamics, openmp)
 
 
     def update(self):

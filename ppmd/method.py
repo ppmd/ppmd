@@ -32,7 +32,8 @@ import cProfile
 import time
 
 # package level
-from ppmd import kernel, build, data, runtime, pio, mpi, opt, access
+from ppmd import kernel, data, runtime, pio, mpi, opt, access
+
 np.set_printoptions(threshold='nan')
 
 _MPI = mpi.MPI

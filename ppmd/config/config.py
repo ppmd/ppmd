@@ -13,7 +13,8 @@ import mpi4py
 import shlex
 
 # package level imports
-from ppmd import compiler
+from ppmd.lib import compiler
+
 
 def str_to_bool(s="0"):
     return bool(int(s))
@@ -37,7 +38,7 @@ MAIN_CFG['cc-mpi'] = (str, 'MPI4PY')
 
 def load_config(dir=None):
     if dir is None:
-        CFG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config_dir')
+        CFG_DIR = os.path.dirname(os.path.realpath(__file__))
     else:
         CFG_DIR = os.path.abspath(dir)
 

@@ -5,11 +5,13 @@ __license__ = "GPL"
 
 # system level
 import ctypes
+
 import cgen
 import os
 
 # package level
-from ppmd import build, runtime, host, opt, data, access
+from ppmd import runtime, host, opt, data, access
+from ppmd.lib import build
 
 
 def Restrict(keyword, symbol):

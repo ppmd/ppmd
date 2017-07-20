@@ -10,26 +10,25 @@ import hashlib
 import subprocess
 
 # package level imports
-import config
-import runtime
-import mpi
+import ppmd.config
+import ppmd.runtime
+import ppmd.mpi
 
-BUILD_PER_PROC = False
 
-_MPIWORLD = mpi.MPI.COMM_WORLD
-_MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
-_MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
-_MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
+_MPIWORLD = ppmd.mpi.MPI.COMM_WORLD
+_MPIRANK = ppmd.mpi.MPI.COMM_WORLD.Get_rank()
+_MPISIZE = ppmd.mpi.MPI.COMM_WORLD.Get_size()
+_MPIBARRIER = ppmd.mpi.MPI.COMM_WORLD.Barrier
 
 ###############################################################################
 # COMPILERS START
 ###############################################################################
 
-TMPCC = config.COMPILERS[config.MAIN_CFG['cc-main'][1]]
-TMPCC_OpenMP = config.COMPILERS[config.MAIN_CFG['cc-openmp'][1]]
-MPI_CC = config.COMPILERS[config.MAIN_CFG['cc-mpi'][1]]
+TMPCC = ppmd.config.COMPILERS[ppmd.config.MAIN_CFG['cc-main'][1]]
+TMPCC_OpenMP = ppmd.config.COMPILERS[ppmd.config.MAIN_CFG['cc-openmp'][1]]
+MPI_CC = ppmd.config.COMPILERS[ppmd.config.MAIN_CFG['cc-mpi'][1]]
 
-build_dir = os.path.abspath(config.MAIN_CFG['build-dir'][1])
+build_dir = os.path.abspath(ppmd.config.MAIN_CFG['build-dir'][1])
 
 # make the tmp build directory
 if not os.path.exists(build_dir) and _MPIRANK == 0:
@@ -47,14 +46,14 @@ def _md5(string):
     m.update(string)
     return m.hexdigest()
 
-def _source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR, CC=TMPCC):
+def _source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC):
 
 
     _filename = 'HOST_' + str(name)
     _filename += '_' + _md5(_filename + str(header_code) + str(src_code) +
                             str(name))
 
-    if BUILD_PER_PROC:
+    if ppmd.runtime.BUILD_PER_PROC:
         _filename += '_' + str(_MPIRANK)
 
     _fh = open(os.path.join(dst_dir, _filename + extensions[0]), 'w')
@@ -94,7 +93,7 @@ def _check_file_existance(abs_path=None):
                                  "No absolute path passed."
     return os.path.exists(abs_path)
 
-def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=runtime.BUILD_DIR, CC=TMPCC):
+def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC):
     if not os.path.exists(dst_dir) and _MPIRANK == 0:
         os.mkdir(dst_dir)
 
@@ -103,23 +102,23 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
     _filename += '_' + _md5(_filename + str(header_code) + str(src_code) +
                             str(name))
 
-    if BUILD_PER_PROC:
+    if ppmd.runtime.BUILD_PER_PROC:
         _filename += '_' + str(_MPIRANK)
 
     _lib_filename = os.path.join(dst_dir, _filename + '.so')
 
     if not _check_file_existance(_lib_filename):
 
-        if (_MPIRANK == 0)  or BUILD_PER_PROC:
-            _source_write(header_code, src_code, name, extensions=extensions, dst_dir=runtime.BUILD_DIR, CC=CC)
+        if (_MPIRANK == 0)  or ppmd.runtime.BUILD_PER_PROC:
+            _source_write(header_code, src_code, name, extensions=extensions, dst_dir=ppmd.runtime.BUILD_DIR, CC=CC)
         _build_lib(_filename, extensions=extensions, CC=CC, hash=False)
 
     return _load(_lib_filename)
 
-def _build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
-               CC=TMPCC, dst_dir=runtime.BUILD_DIR, hash=True):
+def _build_lib(lib, extensions=('.h', '.cpp'), source_dir=ppmd.runtime.BUILD_DIR,
+               CC=TMPCC, dst_dir=ppmd.runtime.BUILD_DIR, hash=True):
 
-    if not BUILD_PER_PROC:
+    if not ppmd.runtime.BUILD_PER_PROC:
         _MPIBARRIER()
 
     with open(os.path.join(source_dir, lib + extensions[1]), "r") as fh:
@@ -139,26 +138,26 @@ def _build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
     _lib_filename = os.path.join(dst_dir, lib + str(_m) + '.so')
 
 
-    if (_MPIRANK == 0) or BUILD_PER_PROC:
+    if (_MPIRANK == 0) or ppmd.runtime.BUILD_PER_PROC:
         if not os.path.exists(_lib_filename):
 
             _lib_src_filename = os.path.join(source_dir, lib + extensions[1])
 
             _c_cmd = CC.binary + [_lib_src_filename] + ['-o'] + \
                      [_lib_filename] + CC.c_flags  + CC.l_flags + \
-                     ['-I' + str(runtime.LIB_DIR)] + \
+                     ['-I' + str(ppmd.runtime.LIB_DIR)] + \
                      ['-I' + str(source_dir)]
 
-            if runtime.DEBUG > 0:
+            if ppmd.runtime.DEBUG > 0:
                 _c_cmd += CC.dbg_flags
-            if runtime.OPT > 0:
+            if ppmd.runtime.OPT > 0:
                 _c_cmd += CC.opt_flags
             
             _c_cmd += CC.shared_lib_flag
 
             #print("CCMD", _c_cmd)
 
-            if runtime.VERBOSE > 2:
+            if ppmd.runtime.VERBOSE > 2:
                 print("Building", _lib_filename, _MPIRANK)
 
             stdout_filename = os.path.join(dst_dir, lib + str(_m) + '.log')
@@ -178,7 +177,7 @@ def _build_lib(lib, extensions=('.h', '.cpp'), source_dir=runtime.BUILD_DIR,
                 raise RuntimeError('build error: library not built.')
 
 
-    if not BUILD_PER_PROC:
+    if not ppmd.runtime.BUILD_PER_PROC:
         _MPIBARRIER()
 
 

@@ -4,15 +4,13 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
-
-import os
 import cgen
-
-# package level
-
-from ppmd import data, runtime, cell, access
+import os
 
 from base import *
+# package level
+from ppmd import data, runtime, cell, access
+
 
 def gather_matrix(obj, symbol_dat, symbol_tmp, loop_index):
     nc = obj.ncomp

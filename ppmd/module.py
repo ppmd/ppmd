@@ -8,7 +8,7 @@ import ctypes
 import numpy as np
 import time
 
-import build
+from ppmd.lib import build
 
 class Module(object):
 

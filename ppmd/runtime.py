@@ -7,7 +7,7 @@ __license__ = "GPL"
 import os
 
 # package level
-import config
+import config.config as config
 
 OPT = config.MAIN_CFG['opt-level'][1]
 DEBUG = config.MAIN_CFG['debug-level'][1]
@@ -18,6 +18,8 @@ ERROR_LEVEL = config.MAIN_CFG['error-level'][1]
 
 BUILD_DIR = os.path.abspath(config.MAIN_CFG['build-dir'][1])
 LIB_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib/'))
+
+BUILD_PER_PROC = False
 
 MPI_SHARED_MEM = True
 

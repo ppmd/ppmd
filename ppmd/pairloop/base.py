@@ -1,7 +1,8 @@
-
 import ctypes
 
-from ppmd import build, host, opt
+from ppmd import host, opt
+from ppmd.lib import build
+
 
 def Restrict(keyword, symbol):
     return str(keyword) + ' ' + str(symbol)

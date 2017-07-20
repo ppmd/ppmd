@@ -8,7 +8,6 @@ import ctypes
 import numpy as np
 import collections
 
-
 # package level
 import access
 

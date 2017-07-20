@@ -15,8 +15,7 @@ PositionDat = md.data.PositionDat
 ParticleDat = md.data.ParticleDat
 ScalarArray = md.data.ScalarArray
 
-md.build.BUILD_PER_PROC = True
-
+md.runtime.BUILD_PER_PROC = True
 
 def test_host_all_to_all_NS():
 

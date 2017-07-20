@@ -27,7 +27,7 @@ CUDA_CFG['cc-mpi'] = (str, 'NVCC')
 
 def load_config(dir=None):
     if dir is None:
-        CFG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../config_dir')
+        CFG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../config')
     else:
         CFG_DIR = os.path.abspath(dir)
 

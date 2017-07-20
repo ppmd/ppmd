@@ -6,9 +6,7 @@ __license__ = "GPL"
 
 
 __all__ = [ 'mpi',
-            'config',
             'access',
-            'build',
             'cell',
             'data',
             'domain',
@@ -28,9 +26,7 @@ __all__ = [ 'mpi',
             'coulomb']
 
 import access
-import build
 import cell
-import config
 import data
 import domain
 import halo
