@@ -78,7 +78,6 @@ class AccessType(object):
 
     def __init__(self, mode):
 
-
         self._mode = mode
 
     def __str__(self):
@@ -87,6 +86,9 @@ class AccessType(object):
     def __repr__(self):
 
         return "%(MODE)s." % {'MODE':_lookup[self._mode]}
+
+    def __eq__(self, other):
+        return other.mode == self._mode
 
     @property
     def mode(self):
@@ -172,7 +174,6 @@ class DatArgStore(object):
         self.dats = tuple()
         self._register_initial()
 
-
     def _register_initial(self):
         """Hash the properties of the initial args to allow checking of alternate
         args, plus determine an order for args for consistent looping"""
@@ -208,9 +209,10 @@ class DatArgStore(object):
             symbol = ax[0]
             obj = type(ax[1][0])
             mode = ax[1][1]
+
             assert obj in self.allow.keys(), "Passed Dat is not a compatible type: " + str(obj)
-            assert mode in self.allow[obj], "Passed access descriptor is not compatible: " + \
-                                            str(mode)
+            assert mode in self.allow[obj], "Passed access descriptor is " \
+                "not compatible, access: " + str(mode) + ", symbol: " + symbol
             assert type(symbol) is str, "Passed symbol is not a str: " + str(symbol)
 
     def _check_new_dats(self, new_dats):

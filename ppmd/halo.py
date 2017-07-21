@@ -7,6 +7,7 @@ __license__ = "GPL"
 # system level
 import ctypes
 import numpy as np
+import collections
 
 # package level
 from ppmd import host, mpi, opt, runtime
@@ -40,11 +41,11 @@ def create_halo_pairs_slice_halo(domain_in, slicexyz, direction):
     yr = range(0, cell_array[1])[slicexyz[1]]
     zr = range(0, cell_array[2])[slicexyz[2]]
 
-    if type(xr) is not list:
+    if not isinstance(xr, collections.Iterable):
         xr = [xr]
-    if type(yr) is not list:
+    if not isinstance(yr, collections.Iterable):
         yr = [yr]
-    if type(zr) is not list:
+    if not isinstance(zr, collections.Iterable):
         zr = [zr]
 
     l = len(xr) * len(yr) * len(zr)

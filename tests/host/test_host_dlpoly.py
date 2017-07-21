@@ -23,7 +23,7 @@ def nacl_lattice(crn, e, sd=0.1, seed=87712846):
 
     charges = np.zeros(N)
     raw_labels = ('Na', 'Cl')
-    labels = np.zeros(N, dtype='|S2')
+    labels = [ix for ix in range(N)]
 
     raw_charges = (1.0, -1.0)
     counts = [0, 0]
@@ -51,10 +51,9 @@ def nacl_lattice(crn, e, sd=0.1, seed=87712846):
         labels[idx] = raw_labels[t]
         counts[t] += 1
 
-
     rng = np.random.RandomState(seed=seed)
     velocities = rng.normal(0.0, sd, size=(N,3))
-
+    labels = np.array(labels)
     return lattice, velocities, charges, labels, counts
 
 def test_dlpoly_config_read():

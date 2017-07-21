@@ -96,7 +96,7 @@ def read_symbols(filename):
             if (i > 4) and ((i - 5) % 4 == 0):
                 data.append(line.strip().split()[0])
                 #id = line.strip().split()[1]
-    return np.array(data)
+    return np.array(data, dtype=np.str)
 
 def read_ids(filename):
     """

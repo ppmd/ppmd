@@ -25,7 +25,7 @@ __all__ = [ 'mpi',
             'coulomb']
 
 import utility
-import coulomb
+from . import coulomb
 import pairloop
 import loop
 import data
