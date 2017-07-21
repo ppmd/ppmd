@@ -111,7 +111,7 @@ def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR, CC=NVCC, dst_dir=cuda
 
             _lib_src_filename = os.path.join(source_dir, lib + '.cu')
 
-            _c_cmd = [CC.binary] + [_lib_src_filename] + ['-o'] + [_lib_filename] + CC.c_flags \
+            _c_cmd = CC.binary + [_lib_src_filename] + ['-o'] + [_lib_filename] + CC.c_flags \
                      + CC.l_flags + ['-I ' + str(cuda_runtime.LIB_DIR)] + ['-I ' + str(source_dir)]
             if cuda_runtime.DEBUG > 0:
                 _c_cmd += CC.dbg_flags

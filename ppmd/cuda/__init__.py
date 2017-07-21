@@ -19,8 +19,6 @@ CUDA_IMPORT_ERROR = None
 
 import cuda_config
 
-
-
 try:
     import cuda_runtime
     import cuda_build
