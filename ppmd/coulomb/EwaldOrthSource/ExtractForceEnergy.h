@@ -22,7 +22,9 @@
 // maximum reciprocal vector length
 #define MAX_RECIP (%(SUB_MAX_RECIP)s)
 #define MAX_RECIP_SQ (%(SUB_MAX_RECIP_SQ)s)
-
+#define ENERGY_UNIT (%(SUB_ENERGY_UNIT)s)
+#define ENERGY_UNITO2 (%(SUB_ENERGY_UNITO2)s)
+#define FORCE_UNIT (%(SUB_FORCE_UNIT)s)
 
 // other defines  -------------------------------------
 //space allocated for planes in reciprocal space

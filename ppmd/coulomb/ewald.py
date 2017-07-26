@@ -47,7 +47,7 @@ def compute_rc_nc_cutoff(alpha, L, eps=10.**-6):
 
 class EwaldOrthoganal(object):
 
-    def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None, recip_cutoff=None, recip_nmax=None, shared_memory=False, shell_width=None, work_ratio=1.0):
+    def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None, recip_cutoff=None, recip_nmax=None, shared_memory=False, shell_width=None, work_ratio=1.0, force_unit=1.0, energy_unit=1.0):
 
         self.domain = domain
         self.eps = float(eps)
@@ -217,6 +217,9 @@ class EwaldOrthoganal(object):
         self._subvars['SUB_M_SQRT_ALPHA_O_PI'] = str(-1.0*sqrt(alpha/pi))
         self._subvars['SUB_M2_SQRT_ALPHAOPI'] = str(-2.0*sqrt(alpha/pi))
         self._subvars['SUB_MALPHA'] = str(-1.0*alpha)
+        self._subvars['SUB_ENERGY_UNIT'] = str(energy_unit)
+        self._subvars['SUB_ENERGY_UNITO2'] = str(energy_unit*0.5)
+        self._subvars['SUB_FORCE_UNIT'] = str(force_unit)
 
         self._real_space_pairloop = None
         self._init_libs()
@@ -342,7 +345,6 @@ class EwaldOrthoganal(object):
         base_coeff1 = 4.*pi*ivolume
         base_coeff2 = -1./(4.*alpha)
 
-
         coeff_space[0,0,0] = 0.0
 
         count = 0
@@ -358,7 +360,7 @@ class EwaldOrthoganal(object):
                         if rlen2 > max_recip2:
                             coeff_space[rz,ry,rx] = 0.0
                         else:
-                            count += 8
+                            count += 1
                             coeff_space[rz,ry,rx] = (base_coeff1/rlen2)*exp(rlen2*base_coeff2)
 
         opt.PROFILE[self.__class__.__name__+':recip_vector_count'] = \

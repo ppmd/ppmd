@@ -234,9 +234,9 @@ for(int iz=0 ; iz<NM ; iz++ ){
     }
 }
 
-Energy[0] += tmp_energy;
-Forces.i[0] += tmp_forcex;
-Forces.i[1] += tmp_forcey;
-Forces.i[2] += tmp_forcez;
+Energy[0] += ENERGY_UNIT*tmp_energy;
+Forces.i[0] += FORCE_UNIT*tmp_forcex;
+Forces.i[1] += FORCE_UNIT*tmp_forcey;
+Forces.i[2] += FORCE_UNIT*tmp_forcez;
 
 // kernel end -----------------------------------------

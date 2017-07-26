@@ -16,12 +16,12 @@ const double sqrtalpha_r = SQRT_ALPHA*r;
 // (qi*qj/rij) * erfc(sqrt(alpha)*rij)
 const double term1 = qiqj_rm1*erfc(sqrtalpha_r);
 
-u[0] += 0.5*term1;
+u[0] += ENERGY_UNITO2*term1;
 //term2 = term1*(1/rij) = (qi*qj/(rij**2)) * erfc(sqrt(alpha)*rij)
 const double term2 = r_m1*term1;
 //term3 = (qi*qj/rij)*(sqrt(alpha/pi) * -2)*(exp(-alpha*(rij**2))) - term2
 const double term3 = r_m1*(qiqj_rm1 * M2_SQRT_ALPHAOPI * exp(MALPHA*r2) - term2);
 
-F.i[0] += term3 * R0;
-F.i[1] += term3 * R1;
-F.i[2] += term3 * R2;
+F.i[0] += FORCE_UNIT*term3 * R0;
+F.i[1] += FORCE_UNIT*term3 * R1;
+F.i[2] += FORCE_UNIT*term3 * R2;
