@@ -257,7 +257,8 @@ class IntegratorRange(object):
             self._pr.enable()
         self.timer.start()
         return self
-
+    def __next__(self):
+        return self.next()
     def next(self):
         if self._ix < self._nm1:
             self._update_controller.increment_step_count()

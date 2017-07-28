@@ -7,7 +7,7 @@ import pytest
 
 import ppmd as md
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 VERBOSE = True
 

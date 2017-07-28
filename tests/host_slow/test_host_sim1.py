@@ -148,7 +148,7 @@ def test_host_sim_1():
         potaa_kinetic_energy_updater.get_kinetic_energy_array()[-1] - \
         potaa_potential_energy.get_potential_energy_array()[-1])
 
-    print "err:", eng_err
+    print("err:", eng_err)
 
 
 
