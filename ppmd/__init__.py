@@ -24,24 +24,24 @@ __all__ = [ 'mpi',
             'module',
             'coulomb']
 
-import utility
+from . import utility
 from . import coulomb
-import pairloop
-import loop
-import data
-import access
-import cell
-import domain
-import halo
-import host
-import kernel
-import method
-import module
-import mpi
-import opt
-import pio
-import runtime
-import state
+from . import pairloop
+from . import loop
+from . import data
+from . import access
+from . import cell
+from . import domain
+from . import halo
+from . import host
+from . import kernel
+from . import method
+from . import module
+from . import mpi
+from . import opt
+from . import pio
+from . import runtime
+from . import state
 
 
 

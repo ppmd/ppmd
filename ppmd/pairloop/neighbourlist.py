@@ -614,6 +614,12 @@ class PairLoopNeighbourList(PairLoopNeighbourListNS):
         for dat in self._dat_dict.values(new_dats=dat_dict):
             obj = dat[0]
             mode = dat[1]
+            obj.ctypes_data_access(mode, pair=True)
+
+        # Add pointer arguments to launch command
+        for dat in self._dat_dict.values(new_dats=dat_dict):
+            obj = dat[0]
+            mode = dat[1]
             args.append(obj.ctypes_data_access(mode, pair=True))
 
         # Rebuild neighbour list potentially
