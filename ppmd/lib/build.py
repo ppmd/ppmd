@@ -44,14 +44,14 @@ def _md5(string):
     """Create unique hex digest"""
 
     if ppmd.runtime.PY_MAJOR_VERSION > 2:
-        string = string.encode('utf-8')
+        string = string.encode('utf8')
 
     m = hashlib.md5()
     m.update(string)
-    return m.hexdigest()
+    m = m.hexdigest()
+    return m
 
 def _source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC):
-
 
     _filename = 'HOST_' + str(name)
     _filename += '_' + _md5(_filename + str(header_code) + str(src_code) +
@@ -101,7 +101,6 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
     if not os.path.exists(dst_dir) and _MPIRANK == 0:
         os.mkdir(dst_dir)
 
-
     _filename = 'HOST_' + str(name)
     _filename += '_' + _md5(_filename + str(header_code) + str(src_code) +
                             str(name))
@@ -115,32 +114,14 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
 
         if (_MPIRANK == 0)  or ppmd.runtime.BUILD_PER_PROC:
             _source_write(header_code, src_code, name, extensions=extensions, dst_dir=ppmd.runtime.BUILD_DIR, CC=CC)
-        _build_lib(_filename, extensions=extensions, CC=CC, hash=False)
+        _build_lib(_filename, extensions=extensions, CC=CC)
 
     return _load(_lib_filename)
 
 def _build_lib(lib, extensions=('.h', '.cpp'), source_dir=ppmd.runtime.BUILD_DIR,
-               CC=TMPCC, dst_dir=ppmd.runtime.BUILD_DIR, hash=True):
+               CC=TMPCC, dst_dir=ppmd.runtime.BUILD_DIR):
 
-    if not ppmd.runtime.BUILD_PER_PROC:
-        _MPIBARRIER()
-
-    with open(os.path.join(source_dir, lib + extensions[1]), "r") as fh:
-        _code = fh.read()
-        fh.close()
-    with open(os.path.join(source_dir, lib + extensions[0]), "r") as fh:
-        _code += fh.read()
-        fh.close()
-
-    if hash:
-        _m = hashlib.md5()
-        _m.update(_code)
-        _m = '_' + _m.hexdigest()
-    else:
-        _m = ''
-
-    _lib_filename = os.path.join(dst_dir, lib + str(_m) + '.so')
-
+    _lib_filename = os.path.join(dst_dir, lib + '.so')
 
     if (_MPIRANK == 0) or ppmd.runtime.BUILD_PER_PROC:
         if not os.path.exists(_lib_filename):
@@ -164,8 +145,8 @@ def _build_lib(lib, extensions=('.h', '.cpp'), source_dir=ppmd.runtime.BUILD_DIR
             if ppmd.runtime.VERBOSE > 2:
                 print("Building", _lib_filename, _MPIRANK)
 
-            stdout_filename = os.path.join(dst_dir, lib + str(_m) + '.log')
-            stderr_filename = os.path.join(dst_dir,  lib + str(_m) + '.err')
+            stdout_filename = os.path.join(dst_dir, lib + '.log')
+            stderr_filename = os.path.join(dst_dir,  lib + '.err')
             try:
                 with open(stdout_filename, 'w') as stdout:
                     with open(stderr_filename, 'w') as stderr:
@@ -190,7 +171,7 @@ def _build_lib(lib, extensions=('.h', '.cpp'), source_dir=ppmd.runtime.BUILD_DIR
                    _lib_filename + "\n rank:", _MPIRANK)
 
         if _MPIRANK == 0:
-            with open(os.path.join(dst_dir, lib + str(_m) + '.err'), 'r') as stderr:
+            with open(os.path.join(dst_dir, lib + '.err'), 'r') as stderr:
                 print(stderr.read())
 
         quit()

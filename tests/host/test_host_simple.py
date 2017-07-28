@@ -131,7 +131,7 @@ def test_host_scatter_gather(state, base_rank):
 
     s = np.array([state.npart_local])
     r = np.array([0])
-    md.mpi.MPI.COMM_WORLD.Allreduce(s[0], r, MPI.SUM)
+    md.mpi.MPI.COMM_WORLD.Allreduce(s, r, MPI.SUM)
 
     # globally we should still have N particles
     assert r[0] == state.npart
