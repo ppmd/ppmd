@@ -1,5 +1,7 @@
 from __future__ import print_function, division, absolute_import
 
+import collections
+
 from ppmd import opt, runtime, host
 from ppmd.lib.build import simple_lib_creator, TMPCC, TMPCC_OpenMP
 
@@ -11,7 +13,6 @@ class SharedLib(object):
     """
     Generic base class to loop over all particles once.
     
-    :arg int n: Number of elements to loop over.
     :arg kernel kernel:  Kernel to apply at each element.
     :arg dict dat_dict: Dictonary storing map between kernel variables
     and state variables.
@@ -41,7 +42,7 @@ class SharedLib(object):
 
         self._kernel = kernel
 
-        self._dat_dict = dat_dict
+        self._dat_dict = collections.OrderedDict(dat_dict)
         self._nargs = len(self._dat_dict)
 
         self._code_init()
@@ -119,7 +120,6 @@ class SharedLib(object):
     def execute(self, dat_dict=None, static_args=None):
         # Timing block 1
         self.execute_overhead_timer.start()
-
 
         """Allow alternative pointers"""
         if dat_dict is not None:
