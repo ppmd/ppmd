@@ -1,5 +1,9 @@
 # system level
 from __future__ import division, print_function
+
+import ppmd.opt
+import ppmd.runtime
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -24,7 +28,7 @@ class NeighbourListOMP(object):
         self.version_id = 0
         self.domain_id = 0
         self.n_local = None
-        self.timer_update = opt.Timer(runtime.TIMER)
+        self.timer_update = ppmd.opt.Timer(runtime.TIMER)
         self.matrix = host.Array(ncomp=1, dtype=ctypes.c_int)
         self.ncount = host.Array(ncomp=1, dtype=ctypes.c_int)
         self.stride = ctypes.c_int(0)

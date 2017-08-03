@@ -1,5 +1,7 @@
 from __future__ import print_function, division
 
+import ppmd.opt
+import ppmd.runtime
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
@@ -22,7 +24,7 @@ class NeighbourList(object):
     def __init__(self, list=None):
 
         # timer inits
-        self.timer_update = opt.Timer()
+        self.timer_update = ppmd.opt.Timer()
 
 
         self._cell_list_func = list

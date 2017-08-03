@@ -2,6 +2,8 @@ from __future__ import print_function, division, absolute_import
 
 import collections
 
+import ppmd.opt
+import ppmd.runtime
 from ppmd import opt, runtime, host
 from ppmd.lib.build import simple_lib_creator, TMPCC, TMPCC_OpenMP
 
@@ -22,16 +24,16 @@ class SharedLib(object):
     def __init__(self, kernel, dat_dict, openmp=False):
 
         # Timers
-        self.creation_timer = opt.Timer(runtime.BUILD_TIMER, 2, start=True)
+        self.creation_timer = ppmd.opt.Timer(runtime.BUILD_TIMER, 2, start=True)
         """Timer that times the creation of the shared library if
         runtime.BUILD_TIMER > 2"""
 
-        self.execute_timer = opt.Timer(runtime.TIMER, 0, start=False)
+        self.execute_timer = ppmd.opt.Timer(runtime.TIMER, 0, start=False)
         """Timer that times the execution time of the shared library if
         runtime.BUILD_TIMER > 2"""
 
-        self.execute_overhead_timer = opt.Timer(runtime.BUILD_TIMER, 2,
-                                                    start=False)
+        self.execute_overhead_timer = ppmd.opt.Timer(runtime.BUILD_TIMER, 2,
+                                                     start=False)
         """Times the overhead required before the shared library is ran if
         runtime.BUILD_TIMER > 2. """
 

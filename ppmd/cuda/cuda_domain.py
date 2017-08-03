@@ -5,6 +5,8 @@ import numpy as np
 import ctypes
 
 # package level
+import ppmd.opt
+import ppmd.runtime
 from ppmd import opt, kernel, access
 
 
@@ -26,10 +28,10 @@ class BoundaryTypePeriodic(object):
         self.state = state_in
 
         # Initialise timers
-        self.timer_apply = opt.Timer(cuda_runtime.TIMER, 0)
-        self.timer_lib_overhead = opt.Timer(cuda_runtime.TIMER, 0)
-        self.timer_search = opt.Timer(cuda_runtime.TIMER, 0)
-        self.timer_move = opt.Timer(cuda_runtime.TIMER, 0)
+        self.timer_apply = ppmd.opt.Timer(cuda_runtime.TIMER, 0)
+        self.timer_lib_overhead = ppmd.opt.Timer(cuda_runtime.TIMER, 0)
+        self.timer_search = ppmd.opt.Timer(cuda_runtime.TIMER, 0)
+        self.timer_move = ppmd.opt.Timer(cuda_runtime.TIMER, 0)
 
         # One proc PBC lib
         self._one_process_pbc_lib = None

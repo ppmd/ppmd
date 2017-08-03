@@ -1,4 +1,8 @@
 from __future__ import division, print_function#, absolute_import
+
+import ppmd.opt
+import ppmd.runtime
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -403,7 +407,7 @@ class VelocityVerletAnderson(VelocityVerlet):
         self._kernel2_thermostat = kernel.Kernel('vv2_thermostat',self._kernel2_thermostat_code,self._constants2_thermostat, headers = ['math.h','stdlib.h','time.h','stdio.h'])
         self._p2_thermostat = loop.ParticleLoop(self._kernel2_thermostat,{'V':self._V,'A':self._A, 'M':self._M})
 
-        _t = opt.Timer(runtime.TIMER, 0, start=True)
+        _t = ppmd.opt.Timer(runtime.TIMER, 0, start=True)
         self._velocity_verlet_integration_thermostat()
         _t.stop("VelocityVerletAnderson")
     
@@ -588,7 +592,7 @@ class RadialDistributionPeriodicNVE(object):
 
         self._p = pairloop.DoubleAllParticleLoop(self._N, kernel=_grkernel, dat_dict=_datdict)
 
-        self.timer = opt.Timer(runtime.TIMER, 0)
+        self.timer = ppmd.opt.Timer(runtime.TIMER, 0)
 
     def evaluate(self):
         """
@@ -697,7 +701,7 @@ class WriteTrajectoryXYZ(object):
             self._fh = open(os.path.join(self._dn, self._fn), 'w')
             self._fh.close()
 
-        self.timer = opt.Timer(runtime.TIMER, 0)
+        self.timer = ppmd.opt.Timer(runtime.TIMER, 0)
 
     def write(self):
         """
@@ -1237,7 +1241,7 @@ class PercentagePrinter(object):
         self._max_it = math.ceil(_t/_dt)
         self._count = 0
         self._curr_p = percent
-        self.timer = opt.Timer(runtime.TIMER, 0, start=False)
+        self.timer = ppmd.opt.Timer(runtime.TIMER, 0, start=False)
         self._timing = False
 
     def tick(self):

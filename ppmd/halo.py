@@ -1,4 +1,8 @@
 from __future__ import print_function, division, absolute_import
+
+import ppmd.opt
+import ppmd.runtime
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -95,7 +99,7 @@ def create_halo_pairs_slice_halo(domain_in, slicexyz, direction):
 class CartesianHaloSix(object):
 
     def __init__(self, domain_func, cell_to_particle_map):
-        self._timer = opt.Timer(runtime.TIMER, 0, start=True)
+        self._timer = ppmd.opt.Timer(runtime.TIMER, 0, start=True)
         
         self._domain_func = domain_func
         self._domain = None

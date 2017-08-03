@@ -1,5 +1,6 @@
 import ctypes
 
+import ppmd.modules.code_timer
 from ppmd import host, opt
 from ppmd.lib import build
 
@@ -18,7 +19,7 @@ class _Base(object):
 
         self._dat_dict = dat_dict
 
-        self.loop_timer = opt.LoopTimer()
+        self.loop_timer = ppmd.modules.code_timer.LoopTimer()
 
         self._code_init()
 

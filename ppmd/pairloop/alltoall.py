@@ -1,4 +1,7 @@
 # system level
+import ppmd.modules.code_timer
+import ppmd.opt
+import ppmd.runtime
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
@@ -36,8 +39,8 @@ class AllToAllNS(object):
         self._kernel = kernel
 
 
-        self.loop_timer = opt.LoopTimer()
-        self.wrapper_timer = opt.Timer(runtime.TIMER)
+        self.loop_timer = ppmd.modules.code_timer.LoopTimer()
+        self.wrapper_timer = ppmd.opt.Timer(runtime.TIMER)
 
 
         self._components = {'LIB_PAIR_INDEX_0': '_i',

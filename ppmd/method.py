@@ -1,4 +1,8 @@
 from __future__ import division, print_function, absolute_import
+
+import ppmd.opt
+import ppmd.runtime
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -70,8 +74,8 @@ class ListUpdateController(object):
 
         self._step_index_func = step_index_func
 
-        self.boundary_method_timer = opt.Timer()
-        self.check_status_timer = opt.Timer()
+        self.boundary_method_timer = ppmd.opt.Timer()
+        self.check_status_timer = ppmd.opt.Timer()
 
     def set_timestep(self, val):
         self._dt = val

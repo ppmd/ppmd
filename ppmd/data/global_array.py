@@ -1,4 +1,8 @@
 from __future__ import print_function, division, absolute_import
+
+import ppmd.opt
+import ppmd.runtime
+
 """
 This module contains high level arrays and matrices.
 """
@@ -104,7 +108,7 @@ class GlobalArrayClassic(host._Array):
 
         self._data[:] = 0
 
-        self._timer = opt.Timer(runtime.TIMER)
+        self._timer = ppmd.opt.Timer(runtime.TIMER)
 
         self.thread_count = runtime.NUM_THREADS
         self._kdata = None
@@ -318,7 +322,7 @@ class GlobalArrayShared(host._Array):
         self._data_root_memview = [np.array(rwin_root_memview[ix], copy=False) for ix in range(self._lsize)]
         self._data_root = [self._data_root_memview[ix].view(dtype=self.dtype) for ix in range(self._lsize)]
 
-        self._timer = opt.Timer(runtime.TIMER)
+        self._timer = ppmd.opt.Timer(runtime.TIMER)
 
     @property
     def ncomp(self):

@@ -1,5 +1,7 @@
 from __future__ import print_function, division, absolute_import
 
+import ppmd.opt
+import ppmd.runtime
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
@@ -100,7 +102,7 @@ class CellList(object):
         self._init = False
 
         # Timer inits
-        self.timer_sort = opt.Timer()
+        self.timer_sort = ppmd.opt.Timer()
 
         # container for cell list.
         self._cell_list = None

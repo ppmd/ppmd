@@ -1,4 +1,7 @@
 # system level
+import ppmd.modules.code_timer
+import ppmd.opt
+import ppmd.runtime
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
@@ -54,9 +57,9 @@ class PairLoopNeighbourListNS(object):
 
         self.shell_cutoff = shell_cutoff
 
-        self.loop_timer = opt.LoopTimer()
-        self.wrapper_timer = opt.Timer(runtime.TIMER)
-        self.list_timer = opt.Timer(runtime.TIMER)
+        self.loop_timer = ppmd.modules.code_timer.LoopTimer()
+        self.wrapper_timer = ppmd.opt.Timer(runtime.TIMER)
+        self.list_timer = ppmd.opt.Timer(runtime.TIMER)
 
         self._gather_size_limit = 4
         self._generate()

@@ -10,6 +10,7 @@ import cgen
 # package level
 import ppmd.access as access
 import ppmd.host as host
+import ppmd.modules.code_timer
 import ppmd.runtime as runtime
 import ppmd.opt as opt
 
@@ -94,7 +95,7 @@ class ParticleLoop(object):
         # set compiler as NVCC default
         self._cc = cuda_build.NVCC
 
-        self.loop_timer = opt.LoopTimer()
+        self.loop_timer = ppmd.modules.code_timer.LoopTimer()
 
         self._components = {'LIB_PAIR_INDEX_0': '_i',
                             'LIB_NAME': str(self._kernel.name) + '_wrapper'}

@@ -24,6 +24,7 @@ __all__ = [ 'mpi',
             'module',
             'coulomb']
 
+from . import modules
 from . import utility
 from . import coulomb
 from . import pairloop
@@ -36,7 +37,6 @@ from . import halo
 from . import host
 from . import kernel
 from . import method
-from . import module
 from . import mpi
 from . import opt
 from . import pio

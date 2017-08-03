@@ -12,6 +12,7 @@ import ppmd.access as access
 import ppmd.mpi as mpi
 import ppmd.host as host
 import ppmd.data as data
+import ppmd.opt
 import ppmd.opt as opt
 
 # cuda imports
@@ -19,7 +20,7 @@ import cuda_base
 import cuda_build
 import cuda_mpi
 import cuda_runtime
-
+import ppmd.runtime
 
 _MPI = mpi.MPI
 SUM = _MPI.SUM
@@ -123,7 +124,7 @@ class ParticleDat(cuda_base.Matrix):
 
         self._norm_linf_lib = None
 
-        self._halo_timer = opt.Timer()
+        self._halo_timer = ppmd.opt.Timer()
 
 
     def zero(self, n=None):

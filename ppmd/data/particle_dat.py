@@ -1,4 +1,8 @@
 from __future__ import print_function, division, absolute_import
+
+import ppmd.opt
+import ppmd.runtime
+
 """
 This module contains high level arrays and matrices.
 """
@@ -94,12 +98,12 @@ class ParticleDat(host.Matrix):
         self.group = None
 
         # Initialise timers
-        self.timer_comm = opt.Timer()
-        self.timer_pack = opt.Timer()
-        self.timer_transfer = opt.Timer(runtime.TIMER, 0)
-        self.timer_transfer_1 = opt.Timer(runtime.TIMER, 0)
-        self.timer_transfer_2 = opt.Timer(runtime.TIMER, 0)
-        self.timer_transfer_resize = opt.Timer(runtime.TIMER, 0)
+        self.timer_comm = ppmd.opt.Timer()
+        self.timer_pack = ppmd.opt.Timer()
+        self.timer_transfer = ppmd.opt.Timer(runtime.TIMER, 0)
+        self.timer_transfer_1 = ppmd.opt.Timer(runtime.TIMER, 0)
+        self.timer_transfer_2 = ppmd.opt.Timer(runtime.TIMER, 0)
+        self.timer_transfer_resize = ppmd.opt.Timer(runtime.TIMER, 0)
 
         self.name = name
         """:return: The name of the ParticleDat instance."""

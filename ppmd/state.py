@@ -1,4 +1,8 @@
 from __future__ import print_function, division, absolute_import
+
+import ppmd.opt
+import ppmd.runtime
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -393,13 +397,13 @@ class _move_controller(object):
         self._total_ncomp = None
 
         # Timers
-        self.move_timer = opt.Timer(runtime.TIMER, 0)
+        self.move_timer = ppmd.opt.Timer(runtime.TIMER, 0)
 
         self._status = mpi.MPI.Status()
 
         # Timers
-        self.move_timer = opt.Timer(runtime.TIMER, 0)
-        self.compress_timer = opt.Timer(runtime.TIMER, 0)
+        self.move_timer = ppmd.opt.Timer(runtime.TIMER, 0)
+        self.compress_timer = ppmd.opt.Timer(runtime.TIMER, 0)
 
         self._status = mpi.MPI.Status()
 

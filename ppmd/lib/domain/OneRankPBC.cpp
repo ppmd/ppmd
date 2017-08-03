@@ -1,7 +1,7 @@
 
 
 
-
+extern "C"
 int OneRankPBC(
     INT _end,
     REAL *P,

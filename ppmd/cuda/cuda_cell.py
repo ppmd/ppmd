@@ -8,6 +8,7 @@ import math
 import numpy as np
 
 #package
+import ppmd.opt
 import ppmd.opt as opt
 import ppmd.host as host
 
@@ -15,7 +16,7 @@ import ppmd.host as host
 import cuda_runtime
 import cuda_base
 import cuda_build
-
+import ppmd.runtime
 
 
 class SubCellOccupancyMatrix(object):
@@ -213,7 +214,7 @@ class CellOccupancyMatrix(object):
         self.version_id_halo = 0
 
 
-        self._timer = opt.Timer()
+        self._timer = ppmd.opt.Timer()
 
         # scan vars
         self._ccc_scan = cuda_base.Array(ncomp=1, dtype=ctypes.c_int)
@@ -540,7 +541,7 @@ class NeighbourListLayerBased(object):
         _name = 'NeighbourList'
         self._lib = cuda_build.simple_lib_creator(_header, _code, _name)[_name]
 
-        self._timer = opt.Timer()
+        self._timer = ppmd.opt.Timer()
 
 
     def update(self):

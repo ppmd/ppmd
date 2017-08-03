@@ -1,4 +1,5 @@
 from __future__ import print_function, division, absolute_import
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -37,10 +38,6 @@ else:
     NUM_THREADS = 1
 
 MPI_DIMS = None
-
-
-
-
 
 
 

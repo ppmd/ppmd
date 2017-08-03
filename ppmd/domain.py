@@ -1,5 +1,8 @@
 from __future__ import print_function, division, absolute_import
 
+import ppmd.opt
+import ppmd.runtime
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -13,7 +16,7 @@ import os
 # package level
 from ppmd import data, host, kernel, mpi, runtime, pio, opt
 import ppmd.lib.shared_lib
-import ppmd.lib.build.lib_from_source
+from ppmd.lib import build
 
 _MPI = mpi.MPI
 _MPIWORLD = _MPI.COMM_WORLD
@@ -21,7 +24,7 @@ _MPIRANK = _MPIWORLD.Get_rank()
 _MPISIZE = _MPIWORLD.Get_size()
 _MPIBARRIER = _MPIWORLD.Barrier
 
-_LIB_SOURCES = os.path.join(os.path.dirname(__file__), 'lib/domain')
+_LIB_SOURCES = os.path.join(os.path.dirname(__file__), 'lib/domain/')
 
 
 ##############################################################################################################
@@ -484,10 +487,9 @@ class BoundaryTypePeriodic(object):
         self.state = state_in
 
         # Initialise timers
-        self.timer_apply = opt.Timer(runtime.TIMER, 0)
-        self.timer_lib_overhead = opt.Timer(runtime.TIMER, 0)
-        self.timer_search = opt.Timer(runtime.TIMER, 0)
-        self.timer_move = opt.Timer(runtime.TIMER, 0)
+        self.timer_apply = ppmd.opt.Timer(runtime.TIMER, 0)
+        self.timer_search = ppmd.opt.Timer(runtime.TIMER, 0)
+        self.timer_move = ppmd.opt.Timer(runtime.TIMER, 0)
 
         # One proc PBC lib
         self._one_process_pbc_lib = None
@@ -495,51 +497,38 @@ class BoundaryTypePeriodic(object):
         self._escape_guard_lib = None
         self._escape_count = None
         self._escape_linked_list = None
-
         self._flag = host.Array(ncomp=1, dtype=ctypes.c_int)
 
     def set_state(self, state_in=None):
         assert state_in is not None, "BoundaryTypePeriodic error: No state passed."
+        self._escape_guard_lib = None
+        self._one_process_pbc_lib = None
+        self._escape_linked_list = None
         self.state = state_in
 
     def apply(self):
         """
         Enforce the boundary conditions on the held state.
         """
-
         comm = self.state.domain.comm
-
         self.timer_apply.start()
 
         self._flag.data[0] = 0
 
         if comm.Get_size() == 1:
-            # no dynamic meory should need reallocing
-
-            self.timer_lib_overhead.start()
-
             if self._one_process_pbc_lib is None:
                 self._init_one_proc_lib()
-
-            self.timer_lib_overhead.pause()
-
-            self.timer_move.start()
-            self._one_process_pbc_lib.execute(
-                dat_dict={
-                    'P': self.state.get_position_dat(),
-                    'E': self.state.domain.extent,
-                    'F': self._flag},
-                static_args={'_end': ctypes.c_int(self.state.npart_local)},
+            self._one_process_pbc_lib(
+                ctypes.c_int(self.state.npart_local),
+                self.state.get_position_dat().ctypes_data,
+                self.state.domain.extent.ctypes_data,
+                self._flag.ctypes_data
             )
-            self.timer_move.pause()
 
         else:
-            self.timer_lib_overhead.start()
 
             if self._escape_guard_lib is None:
                 self._init_escape_lib()
-
-            self.timer_lib_overhead.pause()
 
             # reset linked list
             self._escape_linked_list[0:26:] = -1
@@ -551,18 +540,14 @@ class BoundaryTypePeriodic(object):
                 #  iteration
                 self._escape_linked_list.realloc(num_slots+16)
 
-            self.timer_search.start()
-            self._escape_guard_lib.execute(
-                dat_dict={
-                    'EC': self._escape_count,
-                    'BL': self._bin_to_lin,
-                    'ELL': self._escape_linked_list,
-                    'B': self.state.domain.boundary,
-                    'P': self.state.get_position_dat()
-                },
-                static_args={'_end': self.state.npart_local}
+            self._escape_guard_lib(
+                ctypes.c_int(self.state.npart_local),
+                self._escape_count.ctypes_data,
+                self._bin_to_lin.ctypes_data,
+                self._escape_linked_list.ctypes_data,
+                self.state.domain.boundary.ctypes_data,
+                self.state.get_position_dat().ctypes_data
             )
-            self.timer_search.pause()
 
             self.timer_move.start()
             self.state.move_to_neighbour(self._escape_linked_list,
@@ -575,11 +560,10 @@ class BoundaryTypePeriodic(object):
         return self._flag.data[0]
 
 
-
     def _init_escape_lib(self):
         ''' Create a lookup table between xor map and linear index for direction '''
         self._bin_to_lin = data.ScalarArray(ncomp=57, dtype=ctypes.c_int)
-        _lin_to_bin = data.ScalarArray(ncomp=26, dtype=ctypes.c_int)
+        _lin_to_bin = np.zeros(26, dtype=ctypes.c_int)
 
         '''linear to xor map'''
         _lin_to_bin[0] = 1 ^ 2 ^ 4
@@ -615,165 +599,40 @@ class BoundaryTypePeriodic(object):
         for ix in range(26):
             self._bin_to_lin[_lin_to_bin[ix]] = ix
 
-        _escape_guard_code = '''
-
-        int ELL_index = 26;
-
-        for(int _ix = 0; _ix < _end; _ix++){
-            int b = 0;
-
-            //Check x direction
-            if (P[3*_ix] < B[0]){
-                b ^= 4;
-            }else if (P[3*_ix] >= B[1]){
-                b ^= 32;
-            }
-
-            //printf("P[0]=%f, b=%d, B[0]=%f, B[1]=%f \\n", P[3*_ix], b, B[0], B[1]);
-
-            //check y direction
-            if (P[3*_ix+1] < B[2]){
-                b ^= 2;
-            }else if (P[3*_ix+1] >= B[3]){
-                b ^= 16;
-            }
-
-            //check z direction
-            if (P[3*_ix+2] < B[4]){
-                b ^= 1;
-            }else if (P[3*_ix+2] >= B[5]){
-                b ^= 8;
-            }
-
-            //If b > 0 then particle has escaped through some boundary
-            if (b>0){
-
-                /*
-                cout << "BC " << _ix << " dir " << BL[b] << " | B0-B5 " 
-                << B[0] << " " << B[1] << " "
-                << B[2] << " " << B[3] << " "
-                << B[4] << " " << B[5]
-                << " | Rxyz: "
-                << P[3*_ix] << ", "
-                << P[3*_ix + 1] << ", "
-                << P[3*_ix + 2]
-                << endl;
-                */
-
-                EC[BL[b]]++;        //lookup which direction then increment that direction escape count.
-
-                ELL[ELL_index] = _ix;            //Add current local id to linked list.
-                ELL[ELL_index+1] = ELL[BL[b]];   //Set previous index to be next element.
-                ELL[BL[b]] = ELL_index;          //Set current index in ELL to be the last index.
-
-                ELL_index += 2;
-            }
-
-        }
-
-        '''
-
-        '''Number of escaping particles in each direction'''
+        # Number of escaping particles in each direction
         self._escape_count = host.Array(np.zeros(26), dtype=ctypes.c_int)
 
-        '''Linked list to store the ids of escaping particles in a similar way to the cell list.
+        # Linked list to store the ids of escaping particles in a similar way
+        # to the cell list.
+        # | [0-25 escape directions, index of first in direction] [26-end
+        # current id and index of next id, (id, next_index) ]|
 
-        | [0-25 escape directions, index of first in direction] [26-end current id and index of next id, (id, next_index) ]|
-
-        '''
         self._escape_linked_list = host.Array(-1 * np.ones(26 + 2 * self.state.npart_local), dtype=ctypes.c_int)
 
-        _escape_dat_dict = {'EC': self._escape_count,
-                            'BL': self._bin_to_lin,
-                            'ELL': self._escape_linked_list,
-                            'B': self.state.domain.boundary,
-                            'P': self.state.get_position_dat()}
+        dtype = self.state.get_position_dat().dtype
+        assert self.state.domain.boundary.dtype == dtype
 
-        _escape_kernel = kernel.Kernel('find_escaping_particles',
-                                       _escape_guard_code,
-                                       None,
-                                       ['stdio.h'],
-                                       static_args={'_end': ctypes.c_int})
-
-        self._escape_guard_lib = ppmd.lib.shared_lib.SharedLib(_escape_kernel,
-                                                               _escape_dat_dict)
-
+        self._escape_guard_lib = ppmd.lib.build.lib_from_source(
+            _LIB_SOURCES + 'EscapeGuard',
+            'EscapeGuard',
+            {
+                'SUB_REAL': self.state.get_position_dat().ctype,
+                'SUB_INT': self._bin_to_lin.ctype
+            }
+        )
 
     def _init_one_proc_lib(self):
 
-        _one_proc_pbc_code = '''
-
-        int _F = 0;
-
-        for(int _ix = 0; _ix < _end; _ix++){
-
-            if (abs_md(P[3*_ix]) >= 0.5*E[0]){
-                const double E0_2 = 0.5*E[0];
-                const double x = P[3*_ix] + E0_2;
-
-                if (x < 0){
-                    P[3*_ix] = (E[0] - fmod(abs_md(x) , E[0])) - E0_2;
-                    _F = 1;
-                }
-                else{
-                    P[3*_ix] = fmod( x , E[0] ) - E0_2;
-                    _F = 1;
-                }
-            }
-
-            if (abs_md(P[3*_ix+1]) >= 0.5*E[1]){
-                const double E1_2 = 0.5*E[1];
-                const double x = P[3*_ix+1] + E1_2;
-
-                if (x < 0){
-                    P[3*_ix+1] = (E[1] - fmod(abs_md(x) , E[1])) - E1_2;
-                    _F = 1;
-                }
-                else{
-                    P[3*_ix+1] = fmod( x , E[1] ) - E1_2;
-                    _F = 1;
-                }
-            }
-
-            if (abs_md(P[3*_ix+2]) >= 0.5*E[2]){
-                const double E2_2 = 0.5*E[2];
-                const double x = P[3*_ix+2] + E2_2;
-
-                if (x < 0){
-                    P[3*_ix+2] = (E[2] - fmod(abs_md(x) , E[2])) - E2_2;
-                    _F = 1;
-                }
-                else{
-                    P[3*_ix+2] = fmod( x , E[2] ) - E2_2;
-                    _F = 1;
-                }
-            }
-
-        }
-
-        F[0] = _F;
-
-        '''
-
-
-        print("HERE")
         assert self.state.domain.extent.dtype == self.state.get_position_dat().dtype
-        self._one_process_pbc_lib = ppmd.lib.build.lib_from_source(
-            'OneRankPBC',
+        self._one_process_pbc_lib = build.lib_from_source(
+            _LIB_SOURCES + 'OneRankPBC',
             'OneRankPBC',
             {
-                'REAL': self.state.get_position_dat().ctype,
-                'INT': self._flag.ctype
+                'SUB_REAL': self.state.get_position_dat().ctype,
+                'SUB_INT': self._flag.ctype
             }
         )
-        '''
-        _one_proc_pbc_kernel = kernel.Kernel('_one_proc_pbc_kernel', _one_proc_pbc_code, None,['math.h', 'stdio.h'], static_args={'_end':ctypes.c_int})
-        self._one_process_pbc_lib = ppmd.lib.shared_lib.SharedLib(
-            _one_proc_pbc_kernel, {'P': self.state.get_position_dat(),
-                                   'E': self.state.domain.extent,
-                                   'F': self._flag}
-        )
-        '''
+
 
 
 

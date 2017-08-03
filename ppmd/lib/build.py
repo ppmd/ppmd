@@ -10,10 +10,9 @@ import hashlib
 import subprocess
 
 # package level imports
-import ppmd.config
-import ppmd.runtime
-import ppmd.mpi
+from ppmd import config, runtime, mpi, opt
 
+import ppmd.lib.slib
 
 _MPIWORLD = ppmd.mpi.MPI.COMM_WORLD
 _MPIRANK = ppmd.mpi.MPI.COMM_WORLD.Get_rank()
@@ -125,10 +124,15 @@ def lib_from_source(
     with open(base_filename + extensions[0]) as fh:
         hsrc = fh.read() % consts_dict
     with open(base_filename + extensions[1]) as fh:
-        src = fh.read() % consts_dict
-    return simple_lib_creator(hsrc, src, func_name, extensions,
-                              ppmd.runtime.BUILD_DIR, cc)[func_name]
+        s = fh.read()
+        src = s % consts_dict
+    return ppmd.lib.slib.Lib(
+        base_filename,
+        simple_lib_creator(hsrc, src, func_name, extensions,
+        ppmd.runtime.BUILD_DIR, cc)[func_name]
+    )
 
+_load_timer = opt.Timer()
 
 def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC):
     if not os.path.exists(dst_dir) and _MPIRANK == 0:
@@ -149,10 +153,21 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
             _source_write(header_code, src_code, name, extensions=extensions, dst_dir=ppmd.runtime.BUILD_DIR, CC=CC)
         _build_lib(_filename, extensions=extensions, CC=CC)
 
-    return _load(_lib_filename)
+    _load_timer.start()
+    lib = _load(_lib_filename)
+    _load_timer.pause()
+
+    opt.PROFILE['Lib-Load'] = _load_timer.time()
+
+    return lib
+
+
+_build_timer = opt.Timer()
 
 def _build_lib(lib, extensions=('.h', '.cpp'), source_dir=ppmd.runtime.BUILD_DIR,
                CC=TMPCC, dst_dir=ppmd.runtime.BUILD_DIR):
+
+    _build_timer.start()
 
     _lib_filename = os.path.join(dst_dir, lib + '.so')
 
@@ -172,8 +187,6 @@ def _build_lib(lib, extensions=('.h', '.cpp'), source_dir=ppmd.runtime.BUILD_DIR
                 _c_cmd += CC.opt_flags
             
             _c_cmd += CC.shared_lib_flag
-
-            #print("CCMD", _c_cmd)
 
             if ppmd.runtime.VERBOSE > 2:
                 print("Building", _lib_filename, _MPIRANK)
@@ -208,6 +221,9 @@ def _build_lib(lib, extensions=('.h', '.cpp'), source_dir=ppmd.runtime.BUILD_DIR
                 print(stderr.read())
 
         quit()
+
+    _build_timer.pause()
+    opt.PROFILE['Build:' + CC.binary[0] + ':'] = (_build_timer.time())
 
     return _lib_filename
 

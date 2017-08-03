@@ -12,6 +12,7 @@ import threading
 import ppmd.access as access
 import ppmd.host as host
 import ppmd.cell as cell
+import ppmd.modules.code_timer
 import ppmd.opt as opt
 import ppmd.runtime as runtime
 
@@ -326,7 +327,7 @@ class PairLoopNeighbourListNS(_Base):
         '''
         self.shell_cutoff = shell_cutoff
 
-        self.loop_timer = opt.LoopTimer()
+        self.loop_timer = ppmd.modules.code_timer.LoopTimer()
         self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
 
 
@@ -578,7 +579,7 @@ class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):
         '''
         self.shell_cutoff = shell_cutoff
 
-        self.loop_timer = opt.LoopTimer()
+        self.loop_timer = ppmd.modules.code_timer.LoopTimer()
         self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
 
 
@@ -735,7 +736,7 @@ class PairLoopCellByCell(_Base):
 
         #print "ACTUAL SUB CELL WIDTH", self.sub_divide_size
 
-        self.loop_timer = opt.LoopTimer()
+        self.loop_timer = ppmd.modules.code_timer.LoopTimer()
         self.wrapper_timer = opt.SynchronizedTimer(runtime.TIMER)
 
 
