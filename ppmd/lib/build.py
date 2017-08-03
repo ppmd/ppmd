@@ -97,6 +97,35 @@ def _check_file_existance(abs_path=None):
                                  "No absolute path passed."
     return os.path.exists(abs_path)
 
+def lib_from_source(
+        base_filename,
+        func_name,
+        consts_dict=None,
+        extensions=('.h', '.cpp'),
+        cc=TMPCC
+):
+    """
+    Compile and load a shared library from source files.
+    :param base_filename: Base file name of source files e.g. "ABC" for 
+    "ABC.cpp, ABC.h"
+    :param func_name: Name of function in source files to load.
+    :param consts_dict: Dictionary of form {'KEY': 'value'} that will be 
+    applied to both code sources.
+    :param extensions: Default ('.cpp', '.h') extensions to use with 
+    base_filename.
+    :param cc: Compiler to use, default set to default compiler.
+    :return: compiled loaded library.
+    """
+    if consts_dict is None:
+        consts_dict = {}
+    with open(base_filename + extensions[0]) as fh:
+        hsrc = fh.read() % consts_dict
+    with open(base_filename + extensions[1]) as fh:
+        src = fh.read() % consts_dict
+    return simple_lib_creator(hsrc, src, func_name, extensions,
+                              ppmd.runtime.BUILD_DIR, cc)[func_name]
+
+
 def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC):
     if not os.path.exists(dst_dir) and _MPIRANK == 0:
         os.mkdir(dst_dir)

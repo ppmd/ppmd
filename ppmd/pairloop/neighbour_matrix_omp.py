@@ -30,13 +30,11 @@ class NeighbourListOMP(object):
         self.stride = ctypes.c_int(0)
         self.total_num_neighbours = 0
         self.max_size = 0
-        src_dir = os.path.join(os.path.dirname(__file__), 'lib')
-        with open(src_dir + '/NeighbourMatrixSource.cpp') as fh:
-            src = fh.read()
-        with open(src_dir + '/NeighbourMatrixSource.h') as fh:
-            hsrc = fh.read()
 
-        self._lib = build.simple_lib_creator(hsrc, src, "OMP_N_MATRIX")['OMPNeighbourMatrix']
+        bn = os.path.join(os.path.dirname(__file__), 'lib')
+        bn += '/NeighbourMatrixSource'
+        self._lib = build.lib_from_source(bn, 'OMPNeighbourMatrix')
+
         self._lib.restype = ctypes.c_longlong
 
     def update_if_required(self):

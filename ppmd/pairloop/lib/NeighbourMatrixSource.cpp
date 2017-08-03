@@ -48,7 +48,7 @@ signed long long OMPNeighbourMatrix(
         }
 
         if (nn > STRIDE) {printf("bad neighbour count\n");}
-        if (ndx+((unsigned long long)nn) > STRIDE*NPART) {printf("bad neighbour index\n");}
+        if (ndx+((unsigned long long)nn) > ((unsigned long long)STRIDE)*((unsigned long long)NPART)) {printf("bad neighbour index\n");}
 
         NNEIG[px] = (int) nn;
         totaln += nn;
