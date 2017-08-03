@@ -117,7 +117,11 @@ def lib_from_source(
     :return: compiled loaded library.
     """
     if consts_dict is None:
-        consts_dict = {}
+        consts_dict = {'RESTRICT': cc.restrict_keyword}
+    else:
+        assert type(consts_dict) is dict, "const_dict is not a dict"
+        consts_dict['RESTRICT'] = cc.restrict_keyword
+
     with open(base_filename + extensions[0]) as fh:
         hsrc = fh.read() % consts_dict
     with open(base_filename + extensions[1]) as fh:

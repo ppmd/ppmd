@@ -8,16 +8,20 @@ __license__ = "GPL"
 import numpy as np
 import math
 import ctypes
+import os
 
 # package level
 from ppmd import data, host, kernel, mpi, runtime, pio, opt
 import ppmd.lib.shared_lib
+import ppmd.lib.build.lib_from_source
 
 _MPI = mpi.MPI
 _MPIWORLD = _MPI.COMM_WORLD
 _MPIRANK = _MPIWORLD.Get_rank()
 _MPISIZE = _MPIWORLD.Get_size()
 _MPIBARRIER = _MPIWORLD.Barrier
+
+_LIB_SOURCES = os.path.join(os.path.dirname(__file__), 'lib/domain')
 
 
 ##############################################################################################################
@@ -751,11 +755,25 @@ class BoundaryTypePeriodic(object):
 
         '''
 
-        _one_proc_pbc_kernel = kernel.Kernel('_one_proc_pbc_kernel', _one_proc_pbc_code, None,['math.h', 'stdio.h'], static_args={'_end':ctypes.c_int})
-        self._one_process_pbc_lib = ppmd.lib.shared_lib.SharedLib(_one_proc_pbc_kernel, {'P': self.state.get_position_dat(),
-                                                                           'E': self.state.domain.extent,
-                                                                           'F': self._flag})
 
+        print("HERE")
+        assert self.state.domain.extent.dtype == self.state.get_position_dat().dtype
+        self._one_process_pbc_lib = ppmd.lib.build.lib_from_source(
+            'OneRankPBC',
+            'OneRankPBC',
+            {
+                'REAL': self.state.get_position_dat().ctype,
+                'INT': self._flag.ctype
+            }
+        )
+        '''
+        _one_proc_pbc_kernel = kernel.Kernel('_one_proc_pbc_kernel', _one_proc_pbc_code, None,['math.h', 'stdio.h'], static_args={'_end':ctypes.c_int})
+        self._one_process_pbc_lib = ppmd.lib.shared_lib.SharedLib(
+            _one_proc_pbc_kernel, {'P': self.state.get_position_dat(),
+                                   'E': self.state.domain.extent,
+                                   'F': self._flag}
+        )
+        '''
 
 
 
