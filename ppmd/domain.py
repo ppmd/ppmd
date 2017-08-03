@@ -14,8 +14,7 @@ import ctypes
 import os
 
 # package level
-from ppmd import data, host, kernel, mpi, runtime, pio, opt
-import ppmd.lib.shared_lib
+from ppmd import data, host,  mpi, runtime, pio, opt
 from ppmd.lib import build
 
 _MPI = mpi.MPI

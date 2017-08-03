@@ -376,6 +376,7 @@ def test_host_pair_loop_NS_2(state):
     kernel_code = '''
     NC(0,0)+=1;
     '''
+    print("shell width", cell_width+tol)
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
@@ -388,6 +389,10 @@ def test_host_pair_loop_NS_2(state):
     state.nc.zero()
 
     loop.execute()
+
+    for ix in range(state.npart_local):
+        print(state.nc[ix])
+
     for ix in range(state.npart_local):
         assert state.nc[ix] == 6
 

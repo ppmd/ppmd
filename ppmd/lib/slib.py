@@ -14,10 +14,12 @@ class Lib(object):
         self.lib = lib
         self.timer = ppmd.opt.Timer()
 
-    def __call__(self, *args, **kwargs):
-
+    def __call__(self, *args):
         self.timer.start()
-        ret = self.lib(*args)
+        ret = self.execute_no_time(*args)
         self.timer.pause()
         opt.PROFILE[self.name] = self.timer.time()
         return ret
+
+    def execute_no_time(self, *args):
+        return self.lib(*args)

@@ -9,11 +9,13 @@ __license__ = "GPL"
 
 # system level imports
 import ctypes as ct
-import math
+import math, os
 
 # package level imports
 from ppmd import host, runtime, kernel, opt
-import ppmd.lib.shared_lib
+import ppmd.lib.shared_lib, ppmd.lib.build
+
+_LIB_SOURCES = os.path.join(os.path.dirname(__file__), 'lib/')
 
 ################################################################################################################
 # NeighbourList definition 14 cell version
@@ -563,116 +565,22 @@ class NeighbourListNonN3(NeighbourList):
 
         _initial_factor = math.ceil(27. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
 
-
-        self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_int)
-
+        self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_long)
         self.list = host.Array(ncomp=_initial_factor, dtype=ct.c_int)
-
 
         self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
         self._return_code.data[0] = -1
 
-        _code = '''
 
-        const double cutoff = CUTOFF[0];
-        const int max_len = MAX_LEN[0];
-
-        const int _h_map[27][3] = {
-                                            {-1,1,-1},
-                                            {-1,-1,-1},
-                                            {-1,0,-1},
-                                            {0,1,-1},
-                                            {0,-1,-1},
-                                            {0,0,-1},
-                                            {1,0,-1},
-                                            {1,1,-1},
-                                            {1,-1,-1},
-
-                                            {-1,1,0},
-                                            {-1,0,0},
-                                            {-1,-1,0},
-                                            {0,-1,0},
-                                            {0,0,0},
-                                            {0,1,0},
-                                            {1,0,0},
-                                            {1,1,0},
-                                            {1,-1,0},
-
-                                            {-1,0,1},
-                                            {-1,1,1},
-                                            {-1,-1,1},
-                                            {0,0,1},
-                                            {0,1,1},
-                                            {0,-1,1},
-                                            {1,0,1},
-                                            {1,1,1},
-                                            {1,-1,1}
-                                        };
-
-        int tmp_offset[27];
-        for(int ix=0; ix<27; ix++){
-            tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * CA[0] + _h_map[ix][2] * CA[0]* CA[1];
-        }
-
-
-        // loop over particles
-        int m = -1;
-        for (int ix=0; ix<end_ix; ix++) {
-
-            const int val = CRL[ix];
-
-            NEIGHBOUR_STARTS[ix] = m + 1;
-
-
-            for(int k = 0; k < 27; k++){
-
-                int iy = q[n + val + tmp_offset[k]];
-                while (iy > -1) {
-                    if (ix != iy){
-
-                        const double rj0 = P[iy*3] - P[ix*3];
-                        const double rj1 = P[iy*3+1] - P[ix*3 + 1];
-                        const double rj2 = P[iy*3+2] - P[ix*3 + 2];
-
-                        if ( (rj0*rj0 + rj1*rj1 + rj2*rj2) <= cutoff ) {
-                            m++;
-                            if (m < max_len){
-                                NEIGHBOUR_LIST[m] = iy;
-                            } else {
-                                RC[0] = -1;
-                                return;
-                            }
-                        }
-
-                    }
-
-                    iy = q[iy];
-                }
-
+        self._neighbour_lib = ppmd.lib.build.lib_from_source(
+            _LIB_SOURCES+'NeighbourListNonN3',
+            'NeighbourListNonN3',
+            {
+                'SUB_REAL': self._positions.ctype,
+                'SUB_INT': 'int',
+                'SUB_LONG': 'long'
             }
-        }
-        NEIGHBOUR_STARTS[end_ix] = m + 1;
-        //printf("Number of neighbours: %d\\n", m);
-        RC[0] = 0;
-        return;
-        '''
-        _dat_dict = {'B': self._domain.boundary,              # Inner boundary on local domain (inc halo cells)
-                     'P': self._positions,                    # positions
-                     'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
-                     'CA': self._domain.cell_array,           # local domain cell array
-                     'q': self.cell_list.cell_list,           # cell list
-                     'CRL': self.cell_list.cell_reverse_lookup,
-                     'CUTOFF': self.cell_width_squared,
-                     'NEIGHBOUR_STARTS': self.neighbour_starting_points,
-                     'NEIGHBOUR_LIST': self.list,
-                     'MAX_LEN': self.max_len,
-                     'RC': self._return_code}
-
-        _static_args = {'end_ix': ct.c_int,  # Number of particles.
-                        'n': ct.c_int}       # start of cell point in list.
-
-        _kernel = kernel.Kernel('cell_neighbour_list_method', _code, headers=['stdio.h'], static_args=_static_args)
-        self._neighbour_lib = ppmd.lib.shared_lib.SharedLib(_kernel, _dat_dict)
+        )
 
         self.domain_id = self._domain.version_id
 
@@ -692,6 +600,7 @@ class NeighbourListNonN3(NeighbourList):
             "Neighbourlist setup not ran, or failed."
 
         self.timer_update.start()
+
         self._update()
 
         self.version_id = self.cell_list.version_id
@@ -702,8 +611,16 @@ class NeighbourListNonN3(NeighbourList):
         ] = (self.timer_update.time())
 
 
-
     def _update(self, attempt=1):
+        dtype = self._positions.dtype
+        assert ct.c_int == self._domain.cell_array.dtype
+        assert ct.c_int == self.cell_list.cell_list.dtype
+        assert ct.c_int == self.cell_list.cell_reverse_lookup.dtype
+        assert dtype == self.cell_width_squared.dtype
+        assert ct.c_long == self.neighbour_starting_points.dtype
+        assert ct.c_int == self.list.dtype
+        assert ct.c_long == self.max_len.dtype
+        assert ct.c_int == self._return_code.dtype
 
         if self.neighbour_starting_points.ncomp < self._n() + 1:
             self.neighbour_starting_points.realloc(self._n() + 1)
@@ -711,8 +628,18 @@ class NeighbourListNonN3(NeighbourList):
             print("rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list")
 
         _n = self.cell_list.cell_list.end - self._domain.cell_count
-        self._neighbour_lib.execute(
-            static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)}
+        self._neighbour_lib.execute_no_time(
+            ct.c_int(self._n()),
+            ct.c_int(_n),
+            self._positions.ctypes_data,
+            self._domain.cell_array.ctypes_data,
+            self.cell_list.cell_list.ctypes_data,
+            self.cell_list.cell_reverse_lookup.ctypes_data,
+            self.cell_width_squared.ctypes_data,
+            self.neighbour_starting_points.ctypes_data,
+            self.list.ctypes_data,
+            self.max_len.ctypes_data,
+            self._return_code.ctypes_data
         )
 
         self.n_total = self._positions.npart_total
