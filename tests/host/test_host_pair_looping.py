@@ -372,11 +372,14 @@ def test_host_pair_loop_NS_2(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
 
-
     kernel_code = '''
-    NC(0,0)+=1;
-    '''
-    print("shell width", cell_width+tol)
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(cell_width+tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
@@ -389,9 +392,6 @@ def test_host_pair_loop_NS_2(state):
     state.nc.zero()
 
     loop.execute()
-
-    for ix in range(state.npart_local):
-        print(state.nc[ix])
 
     for ix in range(state.npart_local):
         assert state.nc[ix] == 6
@@ -419,8 +419,13 @@ def test_host_pair_loop_NS_3(state):
 
 
     kernel_code = '''
-    NC(0,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(2.)*cell_width-tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
@@ -457,10 +462,14 @@ def test_host_pair_loop_NS_4(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
 
-
     kernel_code = '''
-    NC(0,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(2.)*cell_width+tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
@@ -473,9 +482,9 @@ def test_host_pair_loop_NS_4(state):
     state.nc.zero()
 
     loop.execute()
+
     for ix in range(state.npart_local):
         assert state.nc[ix] == 18
-
 
 
 
@@ -501,8 +510,13 @@ def test_host_pair_loop_NS_5(state):
 
 
     kernel_code = '''
-    NC(0,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(3.)*cell_width-tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
@@ -542,8 +556,13 @@ def test_host_pair_loop_NS_6(state):
 
 
     kernel_code = '''
-    NC.i[0]+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(3.)*cell_width+tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_NS_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
@@ -587,10 +606,14 @@ def test_host_pair_loop_NS_FCC2():
     A.npart_local = (crN2**3)*4
     A.filter_on_domain_boundary()
 
-
     kernel_code = '''
-    NC.i[0]+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(cell_width-tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_NS_1',code=kernel_code)
     kernel_map = {'P': A.P(md.access.R),
@@ -635,8 +658,13 @@ def test_host_pair_loop_NS_FCC():
 
 
     kernel_code = '''
-    NC.i[0]+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(2.)*cell_width+tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_NS_1',code=kernel_code)
     kernel_map = {'P': A.P(md.access.R),
