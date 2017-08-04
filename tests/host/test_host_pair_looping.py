@@ -86,11 +86,15 @@ def test_host_pair_loop_1(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
 
-
     kernel_code = '''
-    NC(0,0)+=1;
-    NC(1,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+        NC.j[0]+=1;
+    }
+    ''' % {'CUTOFF': str(cell_width-tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
@@ -127,11 +131,15 @@ def test_host_pair_loop_2(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
 
-
     kernel_code = '''
-    NC(0,0)+=1;
-    NC(1,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+        NC.j[0]+=1;
+    }
+    ''' % {'CUTOFF': str(cell_width+tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
@@ -168,11 +176,15 @@ def test_host_pair_loop_3(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
 
-
     kernel_code = '''
-    NC(0,0)+=1;
-    NC(1,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+        NC.j[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(2.)*cell_width-tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
@@ -209,11 +221,15 @@ def test_host_pair_loop_4(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
 
-
     kernel_code = '''
-    NC(0,0)+=1;
-    NC(1,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+        NC.j[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(2.)*cell_width+tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
@@ -252,11 +268,15 @@ def test_host_pair_loop_5(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
 
-
     kernel_code = '''
-    NC(0,0)+=1;
-    NC(1,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+        NC.j[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(3.)*cell_width-tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
@@ -292,11 +312,15 @@ def test_host_pair_loop_6(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
 
-
     kernel_code = '''
-    NC(0,0)+=1;
-    NC(1,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+        NC.j[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(3.)*cell_width+tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),

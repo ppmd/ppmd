@@ -29,7 +29,6 @@ class NeighbourListNonN3(object):
         # timer inits
         self.timer_update = ppmd.opt.Timer()
 
-
         self._cell_list_func = list
         self.cell_list = list
         self.max_len = None
@@ -43,7 +42,6 @@ class NeighbourListNonN3(object):
         self.cell_width = None
         self.time = 0
         self._time_func = None
-
 
         self._positions = None
         self._domain = None
