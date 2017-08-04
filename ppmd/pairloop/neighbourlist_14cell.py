@@ -12,17 +12,16 @@ import ctypes as ct
 import math, os
 
 # package level imports
-from ppmd import host, runtime, kernel, opt
+from ppmd import host, runtime, kernel
 import ppmd.lib.shared_lib, ppmd.lib.build
 
 _LIB_SOURCES = os.path.join(os.path.dirname(__file__), 'lib/')
 
 ################################################################################################################
-# NeighbourList definition 14 cell version
+# NeighbourListv2 definition 14 cell version
 ################################################################################################################
 
-class NeighbourList(object):
-
+class NeighbourListv2(object):
     def __init__(self, list=None):
 
         # timer inits
@@ -55,169 +54,8 @@ class NeighbourList(object):
         self.n_total = None
 
         self._last_n = -1
-
         """Return the number of particle that have neighbours listed"""
-
         self._return_code = None
-
-
-    def setup(self, n, positions, domain, cell_width):
-
-        # setup the cell list if not done already (also handles domain decomp)
-        if self.cell_list.cell_list is None:
-            self.cell_list.setup(n, positions, domain, cell_width)
-
-        self.cell_width = cell_width
-
-        self.cell_width_squared = host.Array(initial_value=cell_width ** 2, dtype=ct.c_double)
-        self._domain = domain
-        self._positions = positions
-        self._n = n
-
-        # assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
-
-        self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_int)
-
-        _n = n()
-        if _n < 10:
-            _n = 10
-
-        _initial_factor = math.ceil(15. * (_n ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
-
-        if _initial_factor < 100:
-            _initial_factor = 100
-
-
-        self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_int)
-
-        self.list = host.Array(ncomp=_initial_factor, dtype=ct.c_int)
-
-
-        self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
-        self._return_code.data[0] = -1
-
-        _code = '''
-
-        const double cutoff = CUTOFF[0];
-        const int max_len = MAX_LEN[0];
-
-        const int _h_map[27][3] = {
-                                            {-1,1,-1},
-                                            {-1,-1,-1},
-                                            {-1,0,-1},
-                                            {0,1,-1},
-                                            {0,-1,-1},
-                                            {0,0,-1},
-                                            {1,0,-1},
-                                            {1,1,-1},
-                                            {1,-1,-1},
-
-                                            {-1,1,0},
-                                            {-1,0,0},
-                                            {-1,-1,0},
-                                            {0,-1,0},
-                                            {0,0,0},
-                                            {0,1,0},
-                                            {1,0,0},
-                                            {1,1,0},
-                                            {1,-1,0},
-
-                                            {-1,0,1},
-                                            {-1,1,1},
-                                            {-1,-1,1},
-                                            {0,0,1},
-                                            {0,1,1},
-                                            {0,-1,1},
-                                            {1,0,1},
-                                            {1,1,1},
-                                            {1,-1,1}
-                                        };
-
-        int tmp_offset[27];
-        for(int ix=0; ix<27; ix++){
-            tmp_offset[ix] = _h_map[ix][0] + _h_map[ix][1] * CA[0] + _h_map[ix][2] * CA[0]* CA[1];
-        }
-
-        const double _b0 = B[0];
-        const double _b2 = B[2];
-        const double _b4 = B[4];
-
-        const double _icel0 = 1.0/CEL[0];
-        const double _icel1 = 1.0/CEL[1];
-        const double _icel2 = 1.0/CEL[2];
-
-        const int _ca0 = CA[0];
-        const int _ca1 = CA[1];
-        const int _ca2 = CA[2];
-
-
-
-        // loop over particles
-        int m = -1;
-        for (int ix=0; ix<end_ix; ix++) {
-
-            const double pi0 = P[ix*3];
-            const double pi1 = P[ix*3 + 1];
-            const double pi2 = P[ix*3 + 2];
-
-            const int C0 = 1 + (int)((pi0 - _b0)*_icel0);
-            const int C1 = 1 + (int)((pi1 - _b2)*_icel1);
-            const int C2 = 1 + (int)((pi2 - _b4)*_icel2);
-
-            const int val = (C2*_ca1 + C1)*_ca0 + C0;
-
-            NEIGHBOUR_STARTS[ix] = m + 1;
-
-            for(int k = 0; k < 27; k++){
-
-                int iy = q[n + val + tmp_offset[k]];
-                while (iy > -1) {
-                    if (ix < iy){
-
-                        const double rj0 = P[iy*3]   - pi0;
-                        const double rj1 = P[iy*3+1] - pi1;
-                        const double rj2 = P[iy*3+2] - pi2;
-
-                        if ( (rj0*rj0 + rj1*rj1 + rj2*rj2) <= cutoff ) {
-
-                            m++;
-                            if (m >= max_len){
-                                RC[0] = -1;
-                                return;
-                            }
-
-                            NEIGHBOUR_LIST[m] = iy;
-                        }
-
-                    }
-
-                    iy = q[iy];
-                }
-
-            }
-        }
-        NEIGHBOUR_STARTS[end_ix] = m + 1;
-
-        RC[0] = 0;
-        return;
-        '''
-        _dat_dict = {'B': self._domain.boundary,              # Inner boundary on local domain (inc halo cells)
-                     'P': self._positions,                    # positions
-                     'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
-                     'CA': self._domain.cell_array,           # local domain cell array
-                     'q': self.cell_list.cell_list,           # cell list
-                     'CUTOFF': self.cell_width_squared,
-                     'NEIGHBOUR_STARTS': self.neighbour_starting_points,
-                     'NEIGHBOUR_LIST': self.list,
-                     'MAX_LEN': self.max_len,
-                     'RC': self._return_code}
-
-        _static_args = {'end_ix': ct.c_int,  # Number of particles.
-                        'n': ct.c_int}       # start of cell point in list.
-
-
-        _kernel = kernel.Kernel('cell_neighbour_list_method', _code, headers=['stdio.h'], static_args=_static_args)
-        self._neighbour_lib = ppmd.lib.shared_lib.SharedLib(_kernel, _dat_dict)
 
 
     def update(self, _attempt=1):
@@ -256,14 +94,6 @@ class NeighbourList(object):
         self.version_id = self.cell_list.version_id
 
         self.timer_update.pause()
-
-################################################################################################################
-# NeighbourListv2 definition 14 cell version
-################################################################################################################
-
-
-class NeighbourListv2(NeighbourList):
-
 
     def setup(self, n, positions, domain, cell_width):
 
@@ -537,131 +367,5 @@ class NeighbourListv2(NeighbourList):
         _kernel = kernel.Kernel('neighbour_list_v2', _code, headers=['stdio.h'], static_args=_static_args)
         self._neighbour_lib = ppmd.lib.shared_lib.SharedLib(_kernel, _dat_dict)
 
-
-
-################################################################################################################
-# NeighbourList definition 27 cell version
-################################################################################################################
-
-class NeighbourListNonN3(NeighbourList):
-
-
-    def setup(self, n, positions, domain, cell_width):
-
-        # setup the cell list if not done already (also handles domain decomp)
-        if self.cell_list.cell_list is None:
-            self.cell_list.setup(n, positions, domain, cell_width)
-
-        self.cell_width = cell_width
-
-        self.cell_width_squared = host.Array(initial_value=cell_width ** 2, dtype=ct.c_double)
-        self._domain = domain
-        self._positions = positions
-        self._n = n
-
-        # assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
-
-        self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_long)
-
-        _initial_factor = math.ceil(27. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
-
-        self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_long)
-        self.list = host.Array(ncomp=_initial_factor, dtype=ct.c_int)
-
-        self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
-        self._return_code.data[0] = -1
-
-
-        self._neighbour_lib = ppmd.lib.build.lib_from_source(
-            _LIB_SOURCES+'NeighbourListNonN3',
-            'NeighbourListNonN3',
-            {
-                'SUB_REAL': self._positions.ctype,
-                'SUB_INT': 'int',
-                'SUB_LONG': 'long'
-            }
-        )
-
-        self.domain_id = self._domain.version_id
-
-    def check_lib_rebuild(self):
-        """return true if lib needs remaking"""
-
-        return self.domain_id < self._domain.version_id
-
-    def update_if_required(self):
-        if self.version_id < self.cell_list.version_id:
-            self.update()
-
-    def update(self):
-        assert self.max_len is not None and \
-               self.list is not None and \
-               self._neighbour_lib is not None, \
-            "Neighbourlist setup not ran, or failed."
-
-        self.timer_update.start()
-
-        self._update()
-
-        self.version_id = self.cell_list.version_id
-
-        self.timer_update.pause()
-        opt.PROFILE[
-            self.__class__.__name__+':update'
-        ] = (self.timer_update.time())
-
-
-    def _update(self, attempt=1):
-        dtype = self._positions.dtype
-        assert ct.c_int == self._domain.cell_array.dtype
-        assert ct.c_int == self.cell_list.cell_list.dtype
-        assert ct.c_int == self.cell_list.cell_reverse_lookup.dtype
-        assert dtype == self.cell_width_squared.dtype
-        assert ct.c_long == self.neighbour_starting_points.dtype
-        assert ct.c_int == self.list.dtype
-        assert ct.c_long == self.max_len.dtype
-        assert ct.c_int == self._return_code.dtype
-
-        if self.neighbour_starting_points.ncomp < self._n() + 1:
-            self.neighbour_starting_points.realloc(self._n() + 1)
-        if runtime.VERBOSE > 3:
-            print("rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list")
-
-        _n = self.cell_list.cell_list.end - self._domain.cell_count
-        self._neighbour_lib.execute_no_time(
-            ct.c_int(self._n()),
-            ct.c_int(_n),
-            self._positions.ctypes_data,
-            self._domain.cell_array.ctypes_data,
-            self.cell_list.cell_list.ctypes_data,
-            self.cell_list.cell_reverse_lookup.ctypes_data,
-            self.cell_width_squared.ctypes_data,
-            self.neighbour_starting_points.ctypes_data,
-            self.list.ctypes_data,
-            self.max_len.ctypes_data,
-            self._return_code.ctypes_data
-        )
-
-        self.n_total = self._positions.npart_total
-        self.n_local = self._n()
-        self._last_n = self._n()
-
-        if self._return_code[0] < 0:
-
-            if runtime.VERBOSE > 2:
-                print("rank:",\
-                    self._domain.comm.Get_rank(),\
-                    "neighbour list resizing",\
-                    "old",\
-                    self.max_len[0],\
-                    "new",\
-                    2 * self.max_len[0])
-
-            self.max_len[0] *= 2
-            self.list.realloc(self.max_len[0])
-
-            assert attempt < 20, "Tried to create neighbour list too many times."
-
-            self._update(attempt + 1)
 
 
