@@ -15,7 +15,7 @@ E = 8.
 
 Eo2 = E/2.
 
-tol = 10.**(-14)
+tol = 10.**(-12)
 
 rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 nproc = md.mpi.MPI.COMM_WORLD.Get_size()
@@ -365,7 +365,7 @@ def test_host_pair_loop_NS_2(state):
     for ix in range(crN):
         for iy in range(crN):
             for iz in range(crN):
-                pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
+                pi[px,:] = cell_width*np.array([ix, iy, iz]) - 0.5*(E-cell_width)*np.ones(3)
                 px += 1
 
     state.p[:] = pi
@@ -381,7 +381,7 @@ def test_host_pair_loop_NS_2(state):
     }
     ''' % {'CUTOFF': str(cell_width+tol)}
 
-    kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
+    kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code, headers=[md.kernel.Header('stdio.h')])
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 

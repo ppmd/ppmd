@@ -1,4 +1,5 @@
-
+import os
+os.environ["PYTHONHASHSEED"] = "0"
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"

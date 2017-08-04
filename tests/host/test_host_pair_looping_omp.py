@@ -15,7 +15,7 @@ E = 8.
 
 Eo2 = E/2.
 
-tol = 10.**(-14)
+tol = 10.**(-12)
 
 rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 nproc = md.mpi.MPI.COMM_WORLD.Get_size()
@@ -92,15 +92,21 @@ def test_host_pair_loop_NS_1(state):
 
 
     kernel_code = '''
-    NC(0,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(cell_width-tol)}
+
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
     loop = PairLoop(kernel=kernel,
-                                             dat_dict=kernel_map,
-                                             shell_cutoff=cell_width-tol)
+                    dat_dict=kernel_map,
+                    shell_cutoff=cell_width-tol)
 
     state.nc.zero()
 
@@ -129,18 +135,22 @@ def test_host_pair_loop_NS_2(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
 
-
     kernel_code = '''
-    NC(0,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(cell_width+tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
     loop = PairLoop(kernel=kernel,
-                                             dat_dict=kernel_map,
-                                             shell_cutoff=cell_width+tol)
+                    dat_dict=kernel_map,
+                    shell_cutoff=cell_width+tol)
 
     state.nc.zero()
 
@@ -169,18 +179,22 @@ def test_host_pair_loop_NS_3(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
 
-
     kernel_code = '''
-    NC(0,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(2.)*cell_width-tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
     loop = PairLoop(kernel=kernel,
-                                             dat_dict=kernel_map,
-                                             shell_cutoff=math.sqrt(2.)*cell_width-tol)
+                    dat_dict=kernel_map,
+                    shell_cutoff=math.sqrt(2.)*cell_width-tol)
 
     state.nc.zero()
 
@@ -209,18 +223,22 @@ def test_host_pair_loop_NS_4(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
 
-
     kernel_code = '''
-    NC(0,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(2.)*cell_width+tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
     loop = PairLoop(kernel=kernel,
-                                             dat_dict=kernel_map,
-                                             shell_cutoff=math.sqrt(2.)*cell_width+tol)
+                    dat_dict=kernel_map,
+                    shell_cutoff=math.sqrt(2.)*cell_width+tol)
 
     state.nc.zero()
 
@@ -251,18 +269,22 @@ def test_host_pair_loop_NS_5(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
 
-
     kernel_code = '''
-    NC(0,0)+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(3.)*cell_width-tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
     loop = PairLoop(kernel=kernel,
-                                             dat_dict=kernel_map,
-                                             shell_cutoff=math.sqrt(3.)*cell_width-tol)
+                    dat_dict=kernel_map,
+                    shell_cutoff=math.sqrt(3.)*cell_width-tol)
 
     state.nc.zero()
 
@@ -294,16 +316,21 @@ def test_host_pair_loop_NS_6(state):
 
 
     kernel_code = '''
-    NC.i[0]+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(3.)*cell_width+tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_NS_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
     loop = PairLoop(kernel=kernel,
-                                               dat_dict=kernel_map,
-                                               shell_cutoff=math.sqrt(3.)*cell_width+tol)
+                    dat_dict=kernel_map,
+                    shell_cutoff=math.sqrt(3.)*cell_width+tol)
 
     state.nc.zero()
 
@@ -341,16 +368,21 @@ def test_host_pair_loop_NS_FCC2():
 
 
     kernel_code = '''
-    NC.i[0]+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(cell_width-tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_NS_1',code=kernel_code)
     kernel_map = {'P': A.P(md.access.R),
                   'NC': A.nc(md.access.INC0)}
 
     loop = PairLoop(kernel=kernel,
-                                               dat_dict=kernel_map,
-                                               shell_cutoff=cell_width-tol)
+                    dat_dict=kernel_map,
+                    shell_cutoff=cell_width-tol)
 
     A.nc.zero()
 
@@ -387,16 +419,21 @@ def test_host_pair_loop_NS_FCC():
 
 
     kernel_code = '''
-    NC.i[0]+=1;
-    '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+    }
+    ''' % {'CUTOFF': str(math.sqrt(2.)*cell_width+tol)}
 
-    kernel = md.kernel.Kernel('test_host_pair_loop_NS_1',code=kernel_code)
+    kernel = md.kernel.Kernel('test_host_pair_loop_NS_1', code=kernel_code)
     kernel_map = {'P': A.P(md.access.R),
                   'NC': A.nc(md.access.INC0)}
 
     loop = PairLoop(kernel=kernel,
-                                               dat_dict=kernel_map,
-                                               shell_cutoff=math.sqrt(2.)*cell_width+tol)
+                    dat_dict=kernel_map,
+                    shell_cutoff=math.sqrt(2.)*cell_width+tol)
 
     A.nc.zero()
 
