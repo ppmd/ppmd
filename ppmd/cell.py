@@ -293,7 +293,7 @@ class CellList(object):
         )
 
         if err < 0:
-            ppmd.runtime.abort()
+            ppmd.abort()
 
         self.version_id += 1
         self.update_required = False

@@ -43,4 +43,4 @@ from . import runtime
 from . import state
 
 
-
+abort = mpi.abort
