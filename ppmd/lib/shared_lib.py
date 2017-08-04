@@ -16,7 +16,7 @@ class SharedLib(object):
     Generic base class to loop over all particles once.
     
     :arg kernel kernel:  Kernel to apply at each element.
-    :arg dict dat_dict: Dictonary storing map between kernel variables
+    :arg dict dat_dict: Dictionary storing map between kernel variables
     and state variables.
     :arg bool runtime.DEBUG: Flag to enable runtime.DEBUG flags.
     """

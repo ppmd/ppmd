@@ -299,7 +299,7 @@ class CellOccupancyMatrix(object):
 
     def check(self):
         """
-        Check if the cell_list needs updating and update if required.
+        Check if the cell_linked_list needs updating and update if required.
         :return:
         """
 

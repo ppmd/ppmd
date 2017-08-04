@@ -5,10 +5,9 @@ __license__ = "GPL"
 
 # system level
 from mpi4py import MPI
-import sys
+import sys, atexit, traceback
 import ctypes as ct
 import numpy as np
-import atexit
 
 if sys.version_info[0] >= 3:
     import queue as Queue
@@ -308,3 +307,11 @@ def cartcomm_periods(comm):
         return comm.Get_topo()[1][::-1]
     else:
         return 1,1,1
+
+def abort(err=0):
+    print(80*"=")
+    print("MPI:Abort --- COMM_WORLD Rank:", MPI.COMM_WORLD.Get_rank(), '---')
+    print(80*"=")
+    traceback.print_stack()
+    print(80*"=")
+    MPI.COMM_WORLD.Abort(err)

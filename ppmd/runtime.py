@@ -40,5 +40,9 @@ else:
 MPI_DIMS = None
 
 
+import ppmd.mpi
+
+abort = ppmd.mpi.abort
+
 
 

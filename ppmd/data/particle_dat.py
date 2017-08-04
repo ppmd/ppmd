@@ -429,7 +429,7 @@ class ParticleDat(host.Matrix):
             const int sort_flag,              // does the cl require updating
             int * RESTRICT ccc,               // cell contents count
             int * RESTRICT crl,               // cell reverse lookup
-            int * RESTRICT cell_list,         // cell list
+            int * RESTRICT cell_linked_list,         // cell list
             %(DTYPE)s * RESTRICT b_tmp        // tmp space for sending
             ''' % {'DTYPE': host.ctypes_map[self.dtype]}
 
@@ -483,7 +483,7 @@ class ParticleDat(host.Matrix):
                         const int ci = b_arr[b_s + cx];
 
                         // loop over contents of cell.
-                        int ix = cell_list[cell_offset + ci];
+                        int ix = cell_linked_list[cell_offset + ci];
                         while(ix > -1){
 
                             p_index ++;
@@ -500,7 +500,7 @@ class ParticleDat(host.Matrix):
                                 //cout << " p_shifted: " << b_tmp[p_index * %(NCOMP)s +iy] << endl;
                             }
 
-                        ix = cell_list[ix];}
+                        ix = cell_linked_list[ix];}
                     }
 
                     /*
@@ -545,16 +545,16 @@ class ParticleDat(host.Matrix):
                             if (hx_count > 0) {
 
                             //cout << "\tsorting cell: " << hx << " ccc: " << hx_count << endl;
-                                cell_list[cell_offset + hx] = DAT_END_T;
+                                cell_linked_list[cell_offset + hx] = DAT_END_T;
 
                                 for( int iy=0 ; iy<(hx_count-1) ; iy++ ){
 
-                                    cell_list[ DAT_END_T+iy ] = DAT_END_T + iy + 1;
+                                    cell_linked_list[ DAT_END_T+iy ] = DAT_END_T + iy + 1;
                                     crl[ DAT_END_T+iy ] = hx;
 
                                 }
 
-                                cell_list[ DAT_END_T + hx_count - 1 ] = -1;
+                                cell_linked_list[ DAT_END_T + hx_count - 1 ] = -1;
                                 crl[ DAT_END_T + hx_count -1 ] = hx;
 
                                 DAT_END_T += hx_count;
@@ -669,7 +669,7 @@ class ParticleDat(host.Matrix):
         const int sort_flag,              // does the cl require updating
         int * RESTRICT ccc,               // cell contents count
         int * RESTRICT crl,               // cell reverse lookup
-        int * RESTRICT cell_list,         // cell list
+        int * RESTRICT cell_linked_list,         // cell list
         int * RESTRICT b_tmp              // tmp space for sending
         '''
 

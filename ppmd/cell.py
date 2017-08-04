@@ -9,13 +9,15 @@ __license__ = "GPL"
 
 # system level imports
 import ctypes as ct
-import math
+import math, os, itertools
 import numpy as np
-import itertools
 
 # package level imports
 from ppmd import host, runtime, kernel, opt
 import ppmd.lib.shared_lib
+import ppmd.lib.build
+
+_LIB_SOURCES = os.path.join(os.path.dirname(__file__), 'lib/cell_linked_list/')
 
 def radius_cell_decompose(rc, rd, verbose=False):
     """
@@ -38,7 +40,6 @@ def radius_cell_decompose(rc, rd, verbose=False):
     argy = (-1*maxdy, maxdy+1)
     argz = (-1*maxdz, maxdz+1)
 
-
     offsets2 = []
 
     # create the axis directions first as moving along the axis is tedious
@@ -49,24 +50,29 @@ def radius_cell_decompose(rc, rd, verbose=False):
     # planes
     for ix in itertools.product([0], range(1, maxdy), range(1, maxdz)):
         if ((ix[1]-1)*rd[1])**2. + ((ix[2]-1)*rd[2])**2. < rc2:
-            offsets2 += [(ix[0], ix[1]*s[0], ix[2]*s[1]) for s in itertools.product([-1, 1], [-1, 1]) ]
+            offsets2 += [(ix[0], ix[1]*s[0], ix[2]*s[1]) for s in
+                         itertools.product([-1, 1], [-1, 1]) ]
 
     for ix in itertools.product( range(1, maxdx), [0], range(1, maxdz)):
         if ((ix[0]-1)*rd[0])**2. + ((ix[2]-1)*rd[2])**2. < rc2:
-            offsets2 += [(ix[0]*s[0], ix[1], ix[2]*s[1]) for s in itertools.product([-1, 1], [-1, 1]) ]
+            offsets2 += [(ix[0]*s[0], ix[1], ix[2]*s[1]) for s in
+                         itertools.product([-1, 1], [-1, 1]) ]
 
     for ix in itertools.product( range(1, maxdx), range(1, maxdy), [0]):
         if ((ix[0]-1)*rd[0])**2. + ((ix[1]-1)*rd[1])**2. < rc2:
-            offsets2 += [(ix[0]*s[0], ix[1]*s[1], ix[2]) for s in itertools.product([-1, 1], [-1, 1]) ]
+            offsets2 += [(ix[0]*s[0], ix[1]*s[1], ix[2]) for s in
+                         itertools.product([-1, 1], [-1, 1]) ]
 
     # quadrants
-    for ix in itertools.product(range(1, maxdx), range(1, maxdy), range(1, maxdz)):
-        if ((ix[0]-1)*rd[0])**2. + ((ix[1]-1)*rd[0])**2. + ((ix[2]-1)*rd[0])**2. < rc2:
-            offsets2 += [
-                (ix[0]*s[0], ix[1]*s[1], ix[2]*s[2]) for s in itertools.product(
+    for ix in itertools.product(range(1, maxdx), range(1, maxdy),
+                                range(1, maxdz)):
+        if ((ix[0]-1)*rd[0])**2. + ((ix[1]-1)*rd[0])**2. + \
+                        ((ix[2]-1)*rd[0])**2. < rc2:
+
+            offsets2 += [(ix[0]*s[0], ix[1]*s[1], ix[2]*s[2]) for s in
+                itertools.product(
                     [-1, 1], [-1, 1], [-1, 1]
-                )
-            ]
+                )]
 
     return set(offsets2)
 
@@ -148,10 +154,8 @@ class CellList(object):
         Get the values/function handles used to setup the cell list.
         :return:
         """
-
         assert (None in (self._n, self._positions, self._domain)) is False, "get_setup_parameters Error: cell list not setup."
         return self._n, self._positions, self._domain
-
 
     def create(self):
         self._cell_sort_setup()
@@ -198,7 +202,7 @@ class CellList(object):
 
     def check(self):
         """
-        Check if the cell_list needs updating and update if required.
+        Check if the cell_linked_list needs updating and update if required.
         :return:
         """
         if not self._init:
@@ -219,105 +223,31 @@ class CellList(object):
         else:
             return False
 
-
     def _cell_sort_setup(self):
         """
         Creates looping for cell list creation
         """
+        # Construct initial cell list
+        self._cell_list = host.Array(dtype=ct.c_int,
+            ncomp=self._positions.max_npart + self._domain.cell_count + 1)
 
-        '''Construct initial cell list'''
-        self._cell_list = host.Array(dtype=ct.c_int, ncomp=self._positions.max_npart + self._domain.cell_count + 1)
+        # Keep track of number of particles per cell
+        self._cell_contents_count = host.Array(
+            np.zeros([self._domain.cell_count]), dtype=ct.c_int)
 
-        '''Keep track of number of particles per cell'''
-        self._cell_contents_count = host.Array(np.zeros([self._domain.cell_count]), dtype=ct.c_int)
+        # Reverse lookup, given a local particle id, get containing cell.
+        self._cell_reverse_lookup = host.Array(dtype=ct.c_int,
+                                               ncomp=self._positions.max_npart)
 
-        '''Reverse lookup, given a local particle id, get containing cell.'''
-        self._cell_reverse_lookup = host.Array(dtype=ct.c_int, ncomp=self._positions.max_npart)
-        
-        
-
-        _cell_sort_code = '''
-
-        int ix;
-
-        const double _icel0 = 1.0/CEL[0];
-        const double _icel1 = 1.0/CEL[1];
-        const double _icel2 = 1.0/CEL[2];
-
-        const double _b0 = B[0];
-        const double _b2 = B[2];
-        const double _b4 = B[4];
-
-
-        for (ix=0; ix<end_ix; ix++) {
-
-        int C0 = 1 + (int)((P[ix*3]     - _b0)*_icel0);
-        int C1 = 1 + (int)((P[ix*3 + 1] - _b2)*_icel1);
-        int C2 = 1 + (int)((P[ix*3 + 2] - _b4)*_icel2);
-
-
-        if ((C0 < 1) || (C0 > (CA[0]-2))) {
-
-            if ( (C0 > (CA[0]-2)) && (P[ix*3] <= B[1]  )) {
-
-                C0 = CA[0]-2;
-
-            } else {
-                cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C0 " << C0 << endl;
-                cout << "B[0] " << B[0] << " B[1] " << B[1] << " Px " << P[ix*3+0] << " " << (P[ix*3]-_b0)*_icel0 << endl;
+        self._cell_sort_lib = ppmd.lib.build.lib_from_source(
+            _LIB_SOURCES + 'CellLinkedList',
+            'CellLinkedList',
+            {
+                'SUB_REAL': 'double',
+                'SUB_INT': 'int',
+                'SUB_LONG': 'long'
             }
-        }
-        if ((C1 < 1) || (C1 > (CA[1]-2))) {
-
-            if ( (C1 > (CA[1]-2)) && (P[ix*3+1] <= B[3]  )) {
-
-                C1 = CA[1]-2;
-
-            } else {
-
-                cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C1 " << C1 << endl;
-                cout << "B[2] " << B[2] << " B[3] " << B[3] << " Py " << P[ix*3+1]<< " " << (P[ix*3+1]-_b2)*_icel1 << endl;
-            }
-        }
-        if ((C2 < 1) || (C2 > (CA[2]-2))) {
-
-            if ( (C2 > (CA[2]-2)) && (P[ix*3+2] <= B[5]  )) {
-
-                C2 = CA[2]-2;
-
-            } else {
-
-                cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C2 " << C2 << endl;
-                cout << "B[4] " << B[4] << " B[5] " << B[5] << " Pz " << P[ix*3+2]<< " " << (P[ix*3 + 2]-_b4)*_icel2 << endl;
-            }
-        }
-
-
-        const int val = (C2*CA[1] + C1)*CA[0] + C0;
-        CCC[val]++;
-        CRL[ix] = val;
-        
-
-        q[ix] = q[n + val];
-        q[n + val] = ix;
-
-        }
-        '''
-        _dat_dict = {'B': self._domain.boundary,              # Inner boundary on local domain (inc halo cells)
-                     'P': self._positions,                    # positions
-                     'CEL': self._domain.cell_edge_lengths,   # cell edge lengths
-                     'CA': self._domain.cell_array,           # local domain cell array
-                     'q': self._cell_list,                    # cell list
-                     'CCC': self._cell_contents_count,        # contents count for each cell
-                     'CRL': self._cell_reverse_lookup}        # reverse cell lookup map
-
-        _static_args = {'end_ix': ct.c_int,  # Number of particles.
-                        'n': ct.c_int}       # start of cell point in list.
-
-
-
-        _cell_sort_kernel = kernel.Kernel('cell_class_cell_list_method', _cell_sort_code, headers=['stdio.h'], static_args=_static_args)
-        self._cell_sort_lib = ppmd.lib.shared_lib.SharedLib(_cell_sort_kernel, _dat_dict)
+        )
 
         self._init = True
 
@@ -333,43 +263,46 @@ class CellList(object):
         Sort local particles into cell list.
         :return:
         """
-        if self._init:
+        assert self._init, "cell list not intialised"
+        assert ct.c_double == self._domain.boundary.dtype
+        assert ct.c_double == self._positions.dtype
+        assert ct.c_double == self._domain.cell_edge_lengths.dtype
+        assert ct.c_int == self._domain.cell_array.dtype
+        assert ct.c_int == self._cell_list.dtype
+        assert ct.c_int == self._cell_contents_count.dtype
+        assert ct.c_int == self._cell_reverse_lookup.dtype
 
-            _dat_dict = {'B': self._domain.boundary,
-                         'P': self._positions,
-                         'CEL': self._domain.cell_edge_lengths,
-                         'CA': self._domain.cell_array,
-                         'q': self._cell_list,
-                         'CCC': self._cell_contents_count,
-                         'CRL': self._cell_reverse_lookup}
+        self.timer_sort.start()
 
+        _n = self._cell_list.end - self._domain.cell_count
 
-            self.timer_sort.start()
+        self._cell_list[self._cell_list.end] = _n
+        self._cell_list.data[_n:self._cell_list.end:] = ct.c_int(-1)
+        self._cell_contents_count.zero()
 
-            _n = self._cell_list.end - self._domain.cell_count
+        err = self._cell_sort_lib.execute_no_time(
+            ct.c_int(self._n()),
+            ct.c_int(_n),
+            self._domain.boundary.ctypes_data,
+            self._positions.ctypes_data,
+            self._domain.cell_edge_lengths.ctypes_data,
+            self._domain.cell_array.ctypes_data,
+            self._cell_list.ctypes_data,
+            self._cell_contents_count.ctypes_data,
+            self._cell_reverse_lookup.ctypes_data
+        )
 
-            self._cell_list[self._cell_list.end] = _n
-            self._cell_list.data[_n:self._cell_list.end:] = ct.c_int(-1)
-            self._cell_contents_count.zero()
+        if err < 0:
+            ppmd.runtime.abort()
 
-            self._cell_sort_lib.execute(
-                static_args={'end_ix': ct.c_int(self._n()), 'n': ct.c_int(_n)},
-                dat_dict=_dat_dict
-            )
+        self.version_id += 1
+        self.update_required = False
 
-            self.version_id += 1
-            self.update_required = False
+        self.timer_sort.pause()
 
-            self.timer_sort.pause()
-
-            opt.PROFILE[
-                self.__class__.__name__+':sort'
-            ] = (self.timer_sort.time())
-
-
-        else:
-            print("CELL LIST NOT INITIALISED")
-
+        opt.PROFILE[
+            self.__class__.__name__+':sort'
+        ] = (self.timer_sort.time())
 
     @property
     def cell_list(self):
