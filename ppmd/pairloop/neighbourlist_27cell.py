@@ -66,18 +66,22 @@ class NeighbourListNonN3(object):
 
         self.cell_width = cell_width
 
-        self.cell_width_squared = host.Array(initial_value=cell_width ** 2, dtype=ct.c_double)
+        self.cell_width_squared = host.Array(initial_value=cell_width ** 2,
+                                             dtype=ct.c_double)
         self._domain = domain
         self._positions = positions
         self._n = n
 
-        # assert self._domain.halos is True, "Neighbour list error: Only valid for domains with halos."
+        self.neighbour_starting_points = host.Array(ncomp=n() + 1,
+                                                    dtype=ct.c_long)
 
-        self.neighbour_starting_points = host.Array(ncomp=n() + 1, dtype=ct.c_long)
+        _initial_factor = math.ceil(
+            27. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] *
+                                domain.cell_array[2])
+        )
 
-        _initial_factor = math.ceil(27. * (n() ** 2) / (domain.cell_array[0] * domain.cell_array[1] * domain.cell_array[2]))
-
-        self.max_len = host.Array(initial_value=_initial_factor, dtype=ct.c_long)
+        self.max_len = host.Array(initial_value=_initial_factor,
+                                  dtype=ct.c_long)
         self.list = host.Array(ncomp=_initial_factor, dtype=ct.c_int)
 
         self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
@@ -137,7 +141,8 @@ class NeighbourListNonN3(object):
         if self.neighbour_starting_points.ncomp < self._n() + 1:
             self.neighbour_starting_points.realloc(self._n() + 1)
         if runtime.VERBOSE > 3:
-            print("rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list")
+            print("rank:", self._domain.comm.Get_rank(),
+                  "rebuilding neighbour list")
 
         _n = self.cell_list.cell_list.end - self._domain.cell_count
         self._neighbour_lib.execute_no_time(
@@ -172,6 +177,5 @@ class NeighbourListNonN3(object):
             self.max_len[0] *= 2
             self.list.realloc(self.max_len[0])
 
-            assert attempt < 20, "Tried to create neighbour list too many times."
-
+            assert attempt < 20, "Tried to create list too many times."
             self._update(attempt + 1)

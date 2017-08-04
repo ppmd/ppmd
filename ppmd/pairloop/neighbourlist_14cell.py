@@ -23,10 +23,7 @@ _LIB_SOURCES = os.path.join(os.path.dirname(__file__), 'lib/')
 
 class NeighbourListv2(object):
     def __init__(self, list=None):
-
-        # timer inits
         self.timer_update = ppmd.opt.Timer()
-
 
         self._cell_list_func = list
         self.cell_list = list
@@ -57,19 +54,18 @@ class NeighbourListv2(object):
         """Return the number of particle that have neighbours listed"""
         self._return_code = None
 
-
     def update(self, _attempt=1):
 
         assert self.max_len is not None and self.list is not None and self._neighbour_lib is not None, "Neighbourlist setup not ran, or failed."
 
         self.timer_update.start()
 
-
         if self.neighbour_starting_points.ncomp < self._n() + 1:
             # print "resizing"
             self.neighbour_starting_points.realloc(self._n() + 1)
         if runtime.VERBOSE > 3:
-            print("rank:", self._domain.comm.Get_rank(), "rebuilding neighbour list")
+            print("rank:", self._domain.comm.Get_rank(),
+                  "rebuilding neighbour list")
 
         assert ct.c_double == self._domain.boundary.dtype
         assert ct.c_double == self._positions.dtype

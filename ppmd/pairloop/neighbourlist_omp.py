@@ -14,7 +14,6 @@ from ppmd import data, runtime, host, access
 from ppmd.pairloop.neighbourlist import PairLoopNeighbourListNS, Restrict
 from ppmd.pairloop.neighbour_matrix_omp import NeighbourListOMP
 
-
 class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
     _neighbour_list_dict_OMP = {}
