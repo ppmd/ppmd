@@ -14,8 +14,7 @@ import ctypes as ct
 import math, os
 
 # package level imports
-from ppmd import host, runtime, opt
-import ppmd.lib.shared_lib, ppmd.lib.build
+from ppmd import host, runtime, opt, lib.build
 
 _LIB_SOURCES = os.path.join(os.path.dirname(__file__), 'lib/')
 
