@@ -29,29 +29,22 @@ int CellLinkedList(
         if ((C0 < 1) || (C0 > (CA[0]-2))) {
             if ( (C0 > (CA[0]-2)) && (P[ix*3] <= B[1]  )) {
                 C0 = CA[0]-2;
-
             } else {
-                cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C0 " << C0 << endl;
-                cout << "B[0] " << B[0] << " B[1] " << B[1] << " Px " << P[ix*3+0] << " " << (P[ix*3]-_b0)*_icel0 << endl;
-                return -1;
+                return -1*(ix+1);
             }
         }
         if ((C1 < 1) || (C1 > (CA[1]-2))) {
             if ( (C1 > (CA[1]-2)) && (P[ix*3+1] <= B[3]  )) {
                 C1 = CA[1]-2;
             } else {
-                cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C1 " << C1 << endl;
-                cout << "B[2] " << B[2] << " B[3] " << B[3] << " Py " << P[ix*3+1]<< " " << (P[ix*3+1]-_b2)*_icel1 << endl;
-                return -1;
+                return -1*(ix+1);
             }
         }
         if ((C2 < 1) || (C2 > (CA[2]-2))) {
             if ( (C2 > (CA[2]-2)) && (P[ix*3+2] <= B[5]  )) {
                 C2 = CA[2]-2;
             } else {
-                cout << "!! PARTICLE OUTSIDE DOMAIN IN CELL LIST REBUILD !! " << ix << " C2 " << C2 << endl;
-                cout << "B[4] " << B[4] << " B[5] " << B[5] << " Pz " << P[ix*3+2]<< " " << (P[ix*3 + 2]-_b4)*_icel2 << endl;
-                return -1;
+                return -1*(ix+1);
             }
         }
 

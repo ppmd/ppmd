@@ -293,6 +293,12 @@ class CellList(object):
         )
 
         if err < 0:
+            ix = (err*-1)-1
+            print("Error: particle outside domain")
+            print("Index:", ix)
+            print("Position:", self._positions[ix, :])
+            print("Boundary:", self._domain.boundary[:])
+            print("abort will now be called")
             ppmd.abort()
 
         self.version_id += 1
