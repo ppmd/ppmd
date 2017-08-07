@@ -123,7 +123,7 @@ class CellList(object):
         # static args init.
         self._static_args = None
         self._cell_sort_lib = None
-        self._halo_cell_sort_loop = None
+        self._halo_cell_sort_lib = None
 
         self.halos_exist = True
 
@@ -135,14 +135,19 @@ class CellList(object):
         self.halo_version_id = 0
         """halo version id incremented when halo cell list is updated."""
 
-        # vars for automatic updating based on a counter
-
         self._update_set = False
         self._update_func = None
         self._update_func_pre = None
         self._update_func_post = None
 
         self.create()
+
+        self._cell_sort_lib = ppmd.lib.build.lib_from_source(
+            _LIB_SOURCES + 'CellLinkedList', 'CellLinkedList',
+            {'SUB_REAL': 'double', 'SUB_INT': 'int', 'SUB_LONG': 'long'})
+        self._halo_cell_sort_lib = ppmd.lib.build.lib_from_source(
+            _LIB_SOURCES + 'HaloCellLinkedList', 'HaloCellLinkedList',
+            {'SUB_INT': 'int'})
 
     def reset_callbacks(self):
         self._update_func = None
@@ -239,16 +244,6 @@ class CellList(object):
         self._cell_reverse_lookup = host.Array(dtype=ct.c_int,
                                                ncomp=self._positions.max_npart)
 
-        self._cell_sort_lib = ppmd.lib.build.lib_from_source(
-            _LIB_SOURCES + 'CellLinkedList',
-            'CellLinkedList',
-            {
-                'SUB_REAL': 'double',
-                'SUB_INT': 'int',
-                'SUB_LONG': 'long'
-            }
-        )
-
         self._init = True
 
     def trigger_update(self):
@@ -320,7 +315,8 @@ class CellList(object):
     @property
     def offset(self):
         """
-        Get the offset required to find the starting position of the cells in the cell list.
+        Get the offset required to find the starting position of the cells in
+        the cell list.
 
         :return: int start of cells in cell list.
         """
@@ -351,58 +347,12 @@ class CellList(object):
         """
         return self._domain
 
-    def _setup_halo_sorting_lib(self):
-        """
-        Setup the library to sort particles after halo transfer.
-        """
-        _cell_sort_code = '''
-
-        int index = shift;
-        for(int ix = 0; ix < CC; ix++){
-
-            //get number of particles
-            const int _tmp = CRC[ix];
-
-            if (_tmp>0){
-
-                //first index in cell region of cell list.
-                q[end+LCI[ix]] = index;
-                CCC[LCI[ix]] = _tmp;
-
-                //start at first particle in halo cell, work forwards
-                for(int iy = 0; iy < _tmp-1; iy++){
-                    q[index+iy]=index+iy+1;
-                    CRL[index+iy]=LCI[ix];
-                }
-                q[index+_tmp-1] = -1;
-                CRL[index+_tmp-1] = LCI[ix];
-            }
-
-
-            index += CRC[ix];
-        }
-        '''
-
-        _static_args = {'CC': ct.c_int, 'shift': ct.c_int, 'end': ct.c_int}
-
-        _cell_sort_dict = {
-            'q': host.NullIntArray,
-            'LCI': host.NullIntArray,
-            'CRC': host.NullIntArray,
-            'CCC': host.NullIntArray,
-            'CRL': self.cell_reverse_lookup
-        }
-
-        _cell_sort_kernel = kernel.Kernel('halo_cell_list_method', _cell_sort_code, headers=['stdio.h'],
-                                          static_args=_static_args)
-        self._halo_cell_sort_loop = ppmd.lib.shared_lib.SharedLib(_cell_sort_kernel, _cell_sort_dict)
-
-
     def prepare_halo_sort(self, total_size):
 
         # if the total size is larger than the current array we need to resize.
 
-        cell_count = self._domain.cell_array[0] * self._domain.cell_array[1] * self._domain.cell_array[2]
+        cell_count = self._domain.cell_array[0] *\
+                     self._domain.cell_array[1] * self._domain.cell_array[2]
 
         if total_size + cell_count + 1 > self._cell_list.ncomp:
             cell_start = self._cell_list[self._cell_list.end]
@@ -410,28 +360,25 @@ class CellList(object):
 
             self._cell_list.realloc(total_size + cell_count + 1)
 
-            self._cell_list.data[self._cell_list.end - cell_count: self._cell_list.end:] = self._cell_list.data[cell_start:cell_end:]
+            self._cell_list.data[self._cell_list.end - cell_count:
+            self._cell_list.end:] = self._cell_list.data[cell_start:cell_end:]
 
-            self._cell_list.data[self._cell_list.end] = self._cell_list.end - cell_count
+            self._cell_list.data[self._cell_list.end] = self._cell_list.end -\
+                                                        cell_count
 
             # cell reverse lookup
             self._cell_reverse_lookup.realloc(total_size)
 
-
     def post_halo_exchange(self):
-
         self.halo_version_id += 1
 
-
-
-    def sort_halo_cells(self,local_cell_indices_array, cell_contents_recv, npart, total_size):
-
-        # if the total size is larger than the current array we need to resize.
-
+    def sort_halo_cells(self,local_cell_indices_array, cell_contents_recv,
+                        npart, total_size):
 
         self.timer_sort.start()
 
-        cell_count = self._domain.cell_array[0] * self._domain.cell_array[1] * self._domain.cell_array[2]
+        cell_count = self._domain.cell_array[0] *\
+                     self._domain.cell_array[1] * self._domain.cell_array[2]
 
         if total_size + cell_count + 1 > self._cell_list.ncomp:
             cell_start = self._cell_list[self._cell_list.end]
@@ -439,33 +386,33 @@ class CellList(object):
 
             self._cell_list.realloc(total_size + cell_count + 1)
 
-            self._cell_list.data[self._cell_list.end - cell_count: self._cell_list.end:] = self._cell_list.data[cell_start:cell_end:]
+            self._cell_list.data[self._cell_list.end - cell_count:
+            self._cell_list.end:] = self._cell_list.data[cell_start:cell_end:]
 
-            self._cell_list.data[self._cell_list.end] = self._cell_list.end - cell_count
+            self._cell_list.data[self._cell_list.end] = self._cell_list.end - \
+                                                        cell_count
 
             # cell reverse lookup
             self._cell_reverse_lookup.realloc(total_size)
 
-        if self._halo_cell_sort_loop is None:
-            self._setup_halo_sorting_lib()
+        assert ct.c_int == self._cell_list.dtype
+        assert ct.c_int == local_cell_indices_array.dtype
+        assert ct.c_int == cell_contents_recv.dtype
+        assert ct.c_int == self._cell_contents_count.dtype
+        assert ct.c_int == self.cell_reverse_lookup.dtype
 
-        _cell_sort_dict = {
-            'q': self._cell_list,
-            'LCI': local_cell_indices_array,
-            'CRC': cell_contents_recv,
-            'CCC': self._cell_contents_count,
-            'CRL': self.cell_reverse_lookup
-        }
-
-        _cell_sort_static_args = {'CC': ct.c_int(cell_contents_recv.ncomp),
-                                  'shift': ct.c_int(npart),
-                                  'end': ct.c_int(self._cell_list[self._cell_list.end])}
-        
-        self._halo_cell_sort_loop.execute(static_args=_cell_sort_static_args,
-                                          dat_dict=_cell_sort_dict)
+        self._halo_cell_sort_lib.execute_no_time(
+            ct.c_int(cell_contents_recv.ncomp),
+            ct.c_int(npart),
+            ct.c_int(self._cell_list[self._cell_list.end]),
+            self._cell_list.ctypes_data,
+            local_cell_indices_array.ctypes_data,
+            cell_contents_recv.ctypes_data,
+            self._cell_contents_count.ctypes_data,
+            self.cell_reverse_lookup.ctypes_data
+        )
         
         self.halo_version_id += 1
-
         self.timer_sort.pause()
 
 
@@ -486,7 +433,8 @@ class CellList(object):
     @property
     def cell_width(self):
         """
-        Return the cell width used to setup the cell structure. N.B. cells may be larger than this.
+        Return the cell width used to setup the cell structure. N.B. cells may 
+        be larger than this.
         """
         return self._domain.cell_edge_lengths[0]
 

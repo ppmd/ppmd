@@ -44,7 +44,7 @@ k[0] += (V.i[0]*V.i[0] + V.i[1]*V.i[1] + V.i[2]*V.i[2])*0.5*M.i[0];
 '''
 
 
-#@pytest.mark.skip(reason='dev test')
+@pytest.mark.skip(reason='dev test')
 def test_host_sim_2():
 
     directiona = (1, 0, 0)
