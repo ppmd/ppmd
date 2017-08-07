@@ -55,9 +55,6 @@ class BaseMDState(object):
 
         self._position_dat = None
 
-        # We currently only work with one type at a time.
-        self._types = data.Type()
-
         # Registered particle dats.
         self.particle_dats = []
 
@@ -67,9 +64,6 @@ class BaseMDState(object):
         # Global number of particles
         self._npart = 0
 
-
-        # State time
-        self._time = 0.0
         self.version_id = 0
 
         self.invalidate_lists = False
@@ -343,7 +337,6 @@ class BaseMDState(object):
             getattr(self, px).npart_local = self.npart_local
 
 
-
     def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None, shifts=None):
         self._move_controller.move_to_neighbour(
             ids_directions_list,
@@ -372,7 +365,6 @@ class BaseMDState(object):
 
 class State(BaseMDState):
     pass
-
 
 
 
@@ -694,8 +686,6 @@ class _move_controller(object):
     def _ccbarrier(self):
         return self.state.domain.comm.Barrier()
 
-
-
     @staticmethod
     def build_unpack_lib(state):
 
@@ -805,6 +795,7 @@ class _move_controller(object):
 
     @staticmethod
     def build_compress_lib(state):
+
         dats = state.particle_dats
 
         g = lambda x: getattr(state, x)

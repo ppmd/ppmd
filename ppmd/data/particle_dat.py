@@ -608,8 +608,6 @@ class ParticleDat(host.Matrix):
 
         # End of creation code -----------------------------------------
 
-        # print "~~~~~~~~~~~~~~~~~~~preparing exxchange"
-
         comm = self.group.domain.comm
         _h = self.group._halo_manager.get_halo_cell_groups()
         _b = self.group._halo_manager.get_boundary_cell_groups()
@@ -618,15 +616,6 @@ class ParticleDat(host.Matrix):
             _sort_flag = ctypes.c_int(1)
         else:
             _sort_flag = ctypes.c_int(-1)
-
-        #print "SORT FLAG:", _sort_flag.value, "cell vid:", self.group._cell_to_particle_map.version_id, "halo vid:", self.group._cell_to_particle_map.halo_version_id
-
-        # print str(mpi.MPI_HANDLE.rank) + " -------------- before exchange lib ------------------"
-        # sys.stdout.flush()
-
-
-        # print "HALO_SEND", self.group._halo_manager.get_send_ranks().data
-        # print "HALO_RECV", self.group._halo_manager.get_recv_ranks().data
 
         self._exchange_lib(self.ctypes_data,
                            ctypes.c_int(self.npart_local),
@@ -647,44 +636,6 @@ class ParticleDat(host.Matrix):
                            self._tmp_halo_space.ctypes_data
                            )
 
-
-        # print str(mpi.MPI_HANDLE.rank) +  " --------------- after exchange lib ------------------"
-        # print self.npart
-        # print self._dat
-
-
-        '''
-        %(DTYPE)s * RESTRICT DAT,         // DAT pointer
-        int DAT_END,                      // end of dat.
-        const double * RESTRICT SHIFT,    // position shifts
-        const int f_MPI_COMM,             // F90 comm from mpi4py
-        const int * RESTRICT SEND_RANKS,  // send directions
-        onst int * RESTRICT RECV_RANKS,  // recv directions
-        const int * RESTRICT h_ind,       // halo indices
-        const int * RESTRICT b_ind,       // local b indices
-        const int * RESTRICT h_arr,       // h cell indices
-        const int * RESTRICT b_arr,       // b cell indices
-        const int * RESTRICT dir_counts,  // expected recv counts
-        const int cell_offset,            // offset for cell list
-        const int sort_flag,              // does the cl require updating
-        int * RESTRICT ccc,               // cell contents count
-        int * RESTRICT crl,               // cell reverse lookup
-        int * RESTRICT cell_linked_list,         // cell list
-        int * RESTRICT b_tmp              // tmp space for sending
-        '''
-
-    def remove_particles(self, index=None):
-        """
-        Remove particles based on host.Array index
-        :param index: host.Array with indices to remove
-        :return:
-        """
-
-        assert index is not None, "No index passed"
-
-
-
-
 #########################################################################
 # PositionDat.
 #########################################################################
@@ -692,97 +643,8 @@ class ParticleDat(host.Matrix):
 class PositionDat(ParticleDat):
     pass
 
-
-#########################################################################
-# TypedDat.
-#########################################################################
-
-class TypedDat(host.Matrix):
-    """
-    Base class to hold floating point properties in matrix form of particles based on particle type.
-
-    :arg int nrow: First dimension extent.
-    :arg int ncol: Second dimension extent.
-    :arg double initial_value: Value to initialise array with, default 0.0.
-    :arg str name: Collective name of stored vars eg positions.
-    """
-
-    def __init__(self, nrow=1, ncol=1, initial_value=None, name=None, dtype=ctypes.c_double, key=None):
-
-        assert key is not None, "No key passed to TypedDat"
-
-        self.key = key
-
-        self.name = str(name)
-        """:return: Name of TypedDat instance."""
-        self.idtype = dtype
-
-        self._dat = host._make_array(initial_value=initial_value,
-                                     dtype=dtype,
-                                     nrow=nrow,
-                                     ncol=ncol)
-
-        self._version = 0
-
-
-    def __call__(self, mode=access.RW, halo=True):
-
-        return self, mode
-
-    def __getitem__(self, ix):
-        return self.data[ix]
-
-    def __setitem__(self, ix, val):
-        self.data[ix] = val
-
-
-########################################################################
-# Type
-########################################################################
-class Type(object):
-    """
-    Object to store information such as number of 
-    particles in a type.
-    """
-    def __init__(self):
-        self._n = 0
-        self._h_n = 0
-        self._dats = []
-
-    @property
-    def n(self):
-        return self._n
-
-    @n.setter
-    def n(self, val):
-        # place code to call resize on dats here.
-        self._n = int(val)
-    
-    @property
-    def _hn(self):
-        return self._h_n
-
-    @_hn.setter
-    def _hn(self, val):
-        self._h_n = int(val)
-
-    @property
-    def _total_size(self):
-        return self._h_n + self._n
-
-    def _append_dat(self, dat=None):
-        assert dat is not None, "No dat added to Type instance"
-        self._dats.append(dat)
-
-
-
-
-
-
-
-
-
-
-
+# this needs deleting after cell by cell is updated
+class TypedDat(object):
+    pass
 
 
