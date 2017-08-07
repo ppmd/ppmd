@@ -14,7 +14,6 @@ import numpy as np
 
 # package level imports
 from ppmd import host, runtime, kernel, opt
-import ppmd.lib.shared_lib
 import ppmd.lib.build
 
 _LIB_SOURCES = os.path.join(os.path.dirname(__file__), 'lib/cell_linked_list/')

@@ -13,7 +13,7 @@ import math, os
 
 # package level imports
 from ppmd import host, runtime
-import ppmd.lib.shared_lib, ppmd.lib.build
+import ppmd.lib.build
 
 _LIB_SOURCES = os.path.join(os.path.dirname(__file__), 'lib/')
 
