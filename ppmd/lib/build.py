@@ -12,7 +12,7 @@ import subprocess
 # package level imports
 from ppmd import config, runtime, mpi, opt
 
-import ppmd.lib.slib
+import ppmd.lib
 
 _MPIWORLD = ppmd.mpi.MPI.COMM_WORLD
 _MPIRANK = ppmd.mpi.MPI.COMM_WORLD.Get_rank()
@@ -126,11 +126,9 @@ def lib_from_file_source(
     with open(base_filename + extensions[1]) as fh:
         s = fh.read()
         src = s % consts_dict
-    return ppmd.lib.slib.Lib(
-        base_filename,
-        simple_lib_creator(hsrc, src, func_name, extensions,
-        ppmd.runtime.BUILD_DIR, cc)[func_name]
-    )
+    return simple_lib_creator(hsrc, src, func_name, extensions,
+        ppmd.runtime.BUILD_DIR, cc)
+
 
 _load_timer = opt.Timer()
 

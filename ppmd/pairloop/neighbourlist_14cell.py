@@ -80,7 +80,7 @@ class NeighbourListv2(object):
         assert ct.c_int == self._return_code.dtype
 
         _n = self.cell_list.cell_list.end - self._domain.cell_count
-        self._neighbour_lib.execute_no_time(
+        self._neighbour_lib(
             ct.c_int(self._n()),
             ct.c_int(_n),
             self._domain.boundary.ctypes_data,
@@ -156,13 +156,12 @@ class NeighbourListv2(object):
         self._return_code.data[0] = -1
 
         self._neighbour_lib = ppmd.lib.build.lib_from_file_source(
-            _LIB_SOURCES+'NeighbourListv2',
-            'NeighbourListv2',
+            _LIB_SOURCES+'NeighbourListv2', 'NeighbourListv2',
             {
                 'SUB_REAL': 'double',
                 'SUB_INT': 'int',
                 'SUB_LONG': 'long'
             }
-        )
+        )['NeighbourListv2']
 
 

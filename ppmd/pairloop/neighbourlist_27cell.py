@@ -96,7 +96,7 @@ class NeighbourListNonN3(object):
                 'SUB_INT': 'int',
                 'SUB_LONG': 'long'
             }
-        )
+        )['NeighbourListNonN3']
 
         self.domain_id = self._domain.version_id
 
@@ -145,7 +145,7 @@ class NeighbourListNonN3(object):
                   "rebuilding neighbour list")
 
         _n = self.cell_list.cell_list.end - self._domain.cell_count
-        self._neighbour_lib.execute_no_time(
+        self._neighbour_lib(
             ct.c_int(self._n()),
             ct.c_int(_n),
             self._positions.ctypes_data,

@@ -618,7 +618,7 @@ class BoundaryTypePeriodic(object):
                 'SUB_REAL': self.state.get_position_dat().ctype,
                 'SUB_INT': self._bin_to_lin.ctype
             }
-        )
+        )['EscapeGuard']
 
     def _init_one_proc_lib(self):
 
@@ -630,7 +630,7 @@ class BoundaryTypePeriodic(object):
                 'SUB_REAL': self.state.get_position_dat().ctype,
                 'SUB_INT': self._flag.ctype
             }
-        )
+        )['OneRankPBC']
 
 
 

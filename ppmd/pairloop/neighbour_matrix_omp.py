@@ -37,7 +37,9 @@ class NeighbourListOMP(object):
 
         bn = os.path.join(os.path.dirname(__file__), 'lib')
         bn += '/NeighbourMatrixSource'
-        self._lib = build.lib_from_file_source(bn, 'OMPNeighbourMatrix')
+        self._lib = build.lib_from_file_source(bn, 'OMPNeighbourMatrix')[
+            'OMPNeighbourMatrix'
+        ]
 
         self._lib.restype = ctypes.c_longlong
 

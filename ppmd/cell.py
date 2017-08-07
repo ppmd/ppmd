@@ -144,10 +144,12 @@ class CellList(object):
 
         self._cell_sort_lib = ppmd.lib.build.lib_from_file_source(
             _LIB_SOURCES + 'CellLinkedList', 'CellLinkedList',
-            {'SUB_REAL': 'double', 'SUB_INT': 'int', 'SUB_LONG': 'long'})
+            {'SUB_REAL': 'double', 'SUB_INT': 'int', 'SUB_LONG': 'long'})[
+            'CellLinkedList'
+        ]
         self._halo_cell_sort_lib = ppmd.lib.build.lib_from_file_source(
             _LIB_SOURCES + 'HaloCellLinkedList', 'HaloCellLinkedList',
-            {'SUB_INT': 'int'})
+            {'SUB_INT': 'int'})['HaloCellLinkedList']
 
     def reset_callbacks(self):
         self._update_func = None
@@ -275,7 +277,7 @@ class CellList(object):
         self._cell_list.data[_n:self._cell_list.end:] = ct.c_int(-1)
         self._cell_contents_count.zero()
 
-        err = self._cell_sort_lib.execute_no_time(
+        err = self._cell_sort_lib(
             ct.c_int(self._n()),
             ct.c_int(_n),
             self._domain.boundary.ctypes_data,
@@ -401,7 +403,7 @@ class CellList(object):
         assert ct.c_int == self._cell_contents_count.dtype
         assert ct.c_int == self.cell_reverse_lookup.dtype
 
-        self._halo_cell_sort_lib.execute_no_time(
+        self._halo_cell_sort_lib(
             ct.c_int(cell_contents_recv.ncomp),
             ct.c_int(npart),
             ct.c_int(self._cell_list[self._cell_list.end]),
