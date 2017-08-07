@@ -611,7 +611,7 @@ class BoundaryTypePeriodic(object):
         dtype = self.state.get_position_dat().dtype
         assert self.state.domain.boundary.dtype == dtype
 
-        self._escape_guard_lib = ppmd.lib.build.lib_from_source(
+        self._escape_guard_lib = ppmd.lib.build.lib_from_file_source(
             _LIB_SOURCES + 'EscapeGuard',
             'EscapeGuard',
             {
