@@ -803,9 +803,8 @@ class _move_controller(object):
         return 0;}''' % {'DYNAMIC_DATS': _dynamic_dats_shift, 'ARGS': args}
         return build.simple_lib_creator(hsrc, src, 'move_pack')['move_pack']
 
-
     @staticmethod
-    def build_compress_lib(state):
+    def build_compress_lib_old(state):
         dats = state.particle_dats
 
         g = lambda x: getattr(state, x)
@@ -841,7 +840,8 @@ class _move_controller(object):
 
         int dest = -1;
 
-        // Whilst there are slots to fill and the current slot is not past the end of the array.
+        // Whilst there are slots to fill and the current slot is not past the
+        // end of the array.
         if (n_new > 0) {
             while ( (dest_index <= last_slot_lookup_index) && (slots[dest_index] < n_new) ){
 
@@ -883,6 +883,74 @@ class _move_controller(object):
             }
         }
 
+        n_new_out[0] = n_new;
+        return 0;}
+        ''' % {'DYN_DAT_CODE': dyn, 'ARGS': args}
+
+        return build.simple_lib_creator(hsrc, src, 'compress')['compress']
+
+
+
+    @staticmethod
+    def build_compress_lib_old(state):
+        dats = state.particle_dats
+
+        g = lambda x: getattr(state, x)
+        hsrc = ''''''
+        args = ','.join(['{} * D_{}'.format(g(n).ctype, n) for n in dats])
+        dyn = '\n'.join(
+            ['''
+             for(int ix=0 ; ix<{0} ; ix++){{
+             {1}[dest*{0}+ix] = {1}[src*{0}+ix];}}
+             '''.format(
+                str(g(n).ncomp),
+                'D_{}'.format(n)
+            ) for n in dats]
+        )
+
+        src = '''
+        extern "C"
+        int compress(
+            const int slots_to_fill_in,
+            const int n_new_in,     
+            const int * slots,
+            int * n_new_out,
+            %(ARGS)s
+        ){
+        int slots_to_fill = slots_to_fill_in;
+        int n_new = n_new_in;
+        int last_slot;
+        int last_slot_lookup_index = slots_to_fill - 1;
+        int dest_index = 0;
+        int dest = -1;
+        // Whilst there are slots to fill and the current slot is not past the
+        // end of the array.
+        if (n_new > 0) {
+            while ( (dest_index <= last_slot_lookup_index) && (slots[dest_index] < n_new) ){
+                // get first empty slot in particle dats.
+                dest = slots[dest_index];
+                int src = -1;
+                //loop from end to empty slot
+                for (int iy = n_new - 1; iy > dest; iy--){
+                    if (iy == slots[last_slot_lookup_index]){
+                        n_new = iy;
+                        last_slot_lookup_index--;
+                        //printf("n_new=%%d \\n", n_new);
+                    } else {
+                        src = iy;
+                        break;
+                    }
+                }
+                if (src > 0){
+                    \n%(DYN_DAT_CODE)s
+                    n_new = src;
+                } else {
+                    n_new = slots[last_slot_lookup_index];
+                    break;
+                }
+                dest_index++;
+            }
+        }
         n_new_out[0] = n_new;
         return 0;}
         ''' % {'DYN_DAT_CODE': dyn, 'ARGS': args}
