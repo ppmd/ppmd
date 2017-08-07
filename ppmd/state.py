@@ -430,14 +430,16 @@ class _move_controller(object):
             _dat = getattr(self.state, ix)
             self._total_ncomp += _dat.ncomp*ctypes.sizeof(_dat.dtype)
 
-
-    def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None, shifts=None):
+    def move_to_neighbour(self, ids_directions_list=None,
+                          dir_send_totals=None, shifts=None):
         """
         Move particles using the linked list.
-
-        :arg host.Array ids_directions_list(int): Linked list of ids from directions.
-        :arg host.Array dir_send_totals(int): 26 Element array of number of particles traveling in each direction.
-        :arg host.Array shifts(double): 73 element array of the shifts to apply when moving particles for the 26 directions.
+        :arg host.Array ids_directions_list(int): Linked list of ids from
+         directions.
+        :arg host.Array dir_send_totals(int): 26 Element array of number of 
+        particles traveling in each direction.
+        :arg host.Array shifts(double): 73 element array of the shifts to 
+        apply when moving particles for the 26 directions.
         """
 
         self.move_timer.start()
@@ -559,7 +561,6 @@ class _move_controller(object):
                 ''' % sub_dict
 
                 cumulative_ncomp += dat.ncomp*ctypes.sizeof(dat.dtype)
-
 
             _unpacking_code = '''
 

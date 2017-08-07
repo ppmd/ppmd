@@ -623,7 +623,7 @@ class BoundaryTypePeriodic(object):
     def _init_one_proc_lib(self):
 
         assert self.state.domain.extent.dtype == self.state.get_position_dat().dtype
-        self._one_process_pbc_lib = build.lib_from_source(
+        self._one_process_pbc_lib = build.lib_from_file_source(
             _LIB_SOURCES + 'OneRankPBC',
             'OneRankPBC',
             {

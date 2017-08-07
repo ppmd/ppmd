@@ -96,7 +96,7 @@ def _check_file_existance(abs_path=None):
                                  "No absolute path passed."
     return os.path.exists(abs_path)
 
-def lib_from_source(
+def lib_from_file_source(
         base_filename,
         func_name,
         consts_dict=None,

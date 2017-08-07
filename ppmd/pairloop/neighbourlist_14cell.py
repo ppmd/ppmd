@@ -155,7 +155,7 @@ class NeighbourListv2(object):
         self._return_code = host.Array(ncomp=1, dtype=ct.c_int)
         self._return_code.data[0] = -1
 
-        self._neighbour_lib = ppmd.lib.build.lib_from_source(
+        self._neighbour_lib = ppmd.lib.build.lib_from_file_source(
             _LIB_SOURCES+'NeighbourListv2',
             'NeighbourListv2',
             {

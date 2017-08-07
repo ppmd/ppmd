@@ -142,10 +142,10 @@ class CellList(object):
 
         self.create()
 
-        self._cell_sort_lib = ppmd.lib.build.lib_from_source(
+        self._cell_sort_lib = ppmd.lib.build.lib_from_file_source(
             _LIB_SOURCES + 'CellLinkedList', 'CellLinkedList',
             {'SUB_REAL': 'double', 'SUB_INT': 'int', 'SUB_LONG': 'long'})
-        self._halo_cell_sort_lib = ppmd.lib.build.lib_from_source(
+        self._halo_cell_sort_lib = ppmd.lib.build.lib_from_file_source(
             _LIB_SOURCES + 'HaloCellLinkedList', 'HaloCellLinkedList',
             {'SUB_INT': 'int'})
 
