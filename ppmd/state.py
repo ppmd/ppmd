@@ -838,7 +838,8 @@ class _move_controller(object):
         // Whilst there are slots to fill and the current slot is not past the
         // end of the array.
         if (n_new > 0) {
-            while ( (dest_index <= last_slot_lookup_index) && (slots[dest_index] < n_new) ){
+            while ( (dest_index <= last_slot_lookup_index) &&
+             (slots[dest_index] < n_new) ){
                 // get first empty slot in particle dats.
                 dest = slots[dest_index];
                 int src = -1;
