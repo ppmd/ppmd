@@ -8,6 +8,7 @@ import numpy as np
 
 # package level imports
 import ppmd.mpi as mpi
+from ppmd import abort
 
 # cuda level imports
 import cuda_runtime
@@ -248,9 +249,9 @@ class CartesianHalo(object):
         :return: Tuple: Cell contents count for each cell in same order as local boundary cell list, Exchange sizes for each halo.
         """
         if not self._init:
-            print "cuda_halo.CartesianHalo error. Library not initalised, this error means the internal" \
-                  "setup failed."
-            quit()
+            print("cuda_halo.CartesianHalo error. Library not initalised,"
+                  " this error means the internal setup failed.")
+            abort()
 
         # TODO: run sizes calculation here
         self._exchange_sizes.zero()

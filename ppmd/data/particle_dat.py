@@ -429,7 +429,7 @@ class ParticleDat(host.Matrix):
             const int sort_flag,              // does the cl require updating
             int * RESTRICT ccc,               // cell contents count
             int * RESTRICT crl,               // cell reverse lookup
-            int * RESTRICT cell_linked_list,         // cell list
+            int * RESTRICT cell_linked_list,  // cell list
             %(DTYPE)s * RESTRICT b_tmp        // tmp space for sending
             ''' % {'DTYPE': host.ctypes_map[self.dtype]}
 

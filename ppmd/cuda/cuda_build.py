@@ -4,7 +4,8 @@ import subprocess
 import ctypes
 
 from ppmd import mpi, pio, config
-import cuda_config
+from ppmd.cuda import cuda_config
+from ppmd.lib import build
 import cuda_runtime
 
 
@@ -50,14 +51,15 @@ def source_write(header_code, src_code, name, extensions=('.h', '.cu'), dst_dir=
     _fh.close()
 
     return _filename, dst_dir
+    return build.
 
 
 def load(filename):
     try:
         return ctypes.cdll.LoadLibrary(str(filename))
     except Exception as e:
-        print "cuda_build:load error. Could not load following library,", str(filename)
-        print e
+        print("cuda_build:load error. Could not load following library,", str(filename))
+        print(e)
         quit()
 
 def check_file_existance(abs_path=None):
@@ -122,7 +124,7 @@ def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR, CC=NVCC, dst_dir=cuda
             _c_cmd += CC.shared_lib_flag
 
             if cuda_runtime.VERBOSE > 1:
-                print "Building", _lib_filename
+                print("Building", _lib_filename)
 
             stdout_filename = os.path.join(dst_dir, lib + str(_m) + '.log')
             stderr_filename = os.path.join(dst_dir, lib + str(_m) + '.err')
@@ -143,7 +145,7 @@ def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR, CC=NVCC, dst_dir=cuda
                 if cuda_runtime.ERROR_LEVEL > 2:
                     raise RuntimeError('cuda_build error: Shared library not built.')
                 elif cuda_runtime.VERBOSE > 2:
-                    print "cuda_build warning: Shared library not built:", lib
+                    print("cuda_build warning: Shared library not built:", lib)
 
     _MPIBARRIER()
 
@@ -152,7 +154,7 @@ def cuda_build_lib(lib, source_dir=cuda_runtime.BUILD_DIR, CC=NVCC, dst_dir=cuda
 
         if _MPIRANK == 0:
             with open(os.path.join(dst_dir, lib + str(_m) + '.err'), 'r') as stderr:
-                print stderr.read()
+                print(stderr.read())
 
         _MPIBARRIER()
 

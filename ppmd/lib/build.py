@@ -50,52 +50,6 @@ def _md5(string):
     m = m.hexdigest()
     return m
 
-def _source_write(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC):
-
-    _filename = 'HOST_' + str(name)
-    _filename += '_' + _md5(_filename + str(header_code) + str(src_code) +
-                            str(name))
-
-    if ppmd.runtime.BUILD_PER_PROC:
-        _filename += '_' + str(_MPIRANK)
-
-    _fh = open(os.path.join(dst_dir, _filename + extensions[0]), 'w')
-
-    _fh.write('''
-        #ifndef %(UNIQUENAME)s_H
-        #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
-        #define RESTRICT %(RESTRICT_FLAG)s
-        ''' % {'UNIQUENAME':_filename, 'RESTRICT_FLAG':str(CC.restrict_keyword)})
-
-    _fh.write(str(header_code))
-
-    _fh.write('''
-        #endif
-        ''' % {'UNIQUENAME':_filename})
-
-    _fh.close()
-
-    _fh = open(os.path.join(dst_dir, _filename + extensions[1]), 'w')
-    _fh.write('#include <' + _filename + extensions[0] + '>\n\n')
-    _fh.write(str(src_code))
-    _fh.close()
-
-    return _filename, dst_dir
-
-def _load(filename):
-    try:
-        return ctypes.cdll.LoadLibrary(str(filename))
-    except Exception as e:
-        print("build:load error. Could not load following library,", \
-            str(filename))
-        print(e)
-        raise RuntimeError
-
-def _check_file_existance(abs_path=None):
-    assert abs_path is not None, "build:check_file_existance error. " \
-                                 "No absolute path passed."
-    return os.path.exists(abs_path)
-
 def lib_from_file_source(
         base_filename,
         func_name,
@@ -129,17 +83,57 @@ def lib_from_file_source(
     return simple_lib_creator(hsrc, src, func_name, extensions,
         ppmd.runtime.BUILD_DIR, cc)
 
+def _source_write(header_code, src_code, filename, extensions, dst_dir, CC):
+    with open(os.path.join(dst_dir, filename + extensions[0]), 'w') as fh:
+        fh.write('''
+            #ifndef %(UNIQUENAME)s_H
+            #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
+            #define RESTRICT %(RESTRICT_FLAG)s
+            
+            %(HEADER_CODE)s
+            
+            #endif
+            ''' % {
+            'UNIQUENAME':filename,
+            'RESTRICT_FLAG':str(CC.restrict_keyword),
+            'HEADER_CODE': str(header_code)
+        })
+
+    with open(os.path.join(dst_dir, filename + extensions[1]), 'w') as fh:
+        fh.write('#include <' + filename + extensions[0] + '>\n\n')
+        fh.write(str(src_code))
+    return filename, dst_dir
+
+def _load(filename):
+    try:
+        return ctypes.cdll.LoadLibrary(str(filename))
+    except Exception as e:
+        print("build:load error. Could not load following library,", \
+            str(filename))
+        ppmd.abort(e)
+
+def _check_file_existance(abs_path=None):
+    assert abs_path is not None, "build:check_file_existance error. " \
+                                 "No absolute path passed."
+    return os.path.exists(abs_path)
+
 
 _load_timer = opt.Timer()
 
-def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC):
+def simple_lib_creator(
+        header_code, src_code, name, extensions=('.h', '.cpp'),
+        dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC, prefix='HOST',
+        inc_dirs=(runtime.LIB_DIR,)
+):
+
+    # make build dir
     if not os.path.exists(dst_dir) and _MPIRANK == 0:
         os.mkdir(dst_dir)
 
-    _filename = 'HOST_' + str(name)
+    # create a base filename for the library
+    _filename = prefix + '_' + str(name)
     _filename += '_' + _md5(_filename + str(header_code) + str(src_code) +
                             str(name))
-
     if ppmd.runtime.BUILD_PER_PROC:
         _filename += '_' + str(_MPIRANK)
 
@@ -148,8 +142,12 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
     if not _check_file_existance(_lib_filename):
 
         if (_MPIRANK == 0)  or ppmd.runtime.BUILD_PER_PROC:
-            _source_write(header_code, src_code, name, extensions=extensions, dst_dir=ppmd.runtime.BUILD_DIR, CC=CC)
-        _build_lib(_filename, extensions=extensions, CC=CC)
+            _source_write(header_code, src_code, _filename,
+                          extensions=extensions,
+                          dst_dir=ppmd.runtime.BUILD_DIR, CC=CC)
+
+        _build_lib(_filename, extensions=extensions, source_dir=dst_dir,
+                   CC=CC, dst_dir=dst_dir, inc_dirs=inc_dirs)
 
     _load_timer.start()
     lib = _load(_lib_filename)
@@ -162,67 +160,60 @@ def simple_lib_creator(header_code, src_code, name, extensions=('.h', '.cpp'), d
 
 _build_timer = opt.Timer()
 
-def _build_lib(lib, extensions=('.h', '.cpp'), source_dir=ppmd.runtime.BUILD_DIR,
-               CC=TMPCC, dst_dir=ppmd.runtime.BUILD_DIR):
-
+def _build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
     _build_timer.start()
 
     _lib_filename = os.path.join(dst_dir, lib + '.so')
 
     if (_MPIRANK == 0) or ppmd.runtime.BUILD_PER_PROC:
-        if not os.path.exists(_lib_filename):
 
-            _lib_src_filename = os.path.join(source_dir, lib + extensions[1])
+        _lib_src_filename = os.path.join(source_dir, lib + extensions[1])
 
-            _c_cmd = CC.binary + [_lib_src_filename] + ['-o'] + \
-                     [_lib_filename] + CC.c_flags  + CC.l_flags + \
-                     ['-I' + str(ppmd.runtime.LIB_DIR)] + \
-                     ['-I' + str(source_dir)]
+        _c_cmd = CC.binary + [_lib_src_filename] + ['-o'] + \
+                 [_lib_filename] + CC.c_flags  + CC.l_flags + \
+                 ['-I' + str(d) for d in inc_dirs] + \
+                 ['-I' + str(source_dir)]
 
-            if ppmd.runtime.DEBUG > 0:
-                _c_cmd += CC.dbg_flags
-            if ppmd.runtime.OPT > 0:
-                _c_cmd += CC.opt_flags
-            
-            _c_cmd += CC.shared_lib_flag
+        if ppmd.runtime.DEBUG > 0:
+            _c_cmd += CC.dbg_flags
+        if ppmd.runtime.OPT > 0:
+            _c_cmd += CC.opt_flags
+        _c_cmd += CC.shared_lib_flag
 
-            if ppmd.runtime.VERBOSE > 2:
-                print("Building", _lib_filename, _MPIRANK)
+        stdout_filename = os.path.join(dst_dir, lib + '.log')
+        stderr_filename = os.path.join(dst_dir,  lib + '.err')
+        try:
+            with open(stdout_filename, 'w') as stdout:
+                with open(stderr_filename, 'w') as stderr:
+                    stdout.write('#Compilation command:\n')
+                    stdout.write(' '.join(_c_cmd))
+                    stdout.write('\n\n')
+                    p = subprocess.Popen(_c_cmd,
+                                         stdout=stdout,
+                                         stderr=stderr)
+                    p.communicate()
 
-            stdout_filename = os.path.join(dst_dir, lib + '.log')
-            stderr_filename = os.path.join(dst_dir,  lib + '.err')
-            try:
-                with open(stdout_filename, 'w') as stdout:
-                    with open(stderr_filename, 'w') as stderr:
-                        stdout.write('#Compilation command:\n')
-                        stdout.write(' '.join(_c_cmd))
-                        stdout.write('\n\n')
-                        p = subprocess.Popen(_c_cmd,
-                                             stdout=stdout,
-                                             stderr=stderr)
-                        p.communicate()
-            except Exception as e:
-                print(e)
-                raise RuntimeError('build error: library not built.')
-
+        except Exception as e:
+            print(e)
+            ppmd.abort('build error: library not built.')
 
     if not ppmd.runtime.BUILD_PER_PROC:
         _MPIBARRIER()
 
-
+    # try to provide useful compile errors
     if not os.path.exists(_lib_filename):
         print("Critical build Error: Library not built,\n" + \
                    _lib_filename + "\n rank:", _MPIRANK)
-
         if _MPIRANK == 0:
-            with open(os.path.join(dst_dir, lib + '.err'), 'r') as stderr:
-                print(stderr.read())
-
-        quit()
+            try:
+                with open(os.path.join(dst_dir, lib + '.err'), 'r') as stderr:
+                    print(stderr.read())
+            except Exception as e:
+                print("Error printing failed:", e)
+        ppmd.abort()
 
     _build_timer.pause()
     opt.PROFILE['Build:' + CC.binary[0] + ':'] = (_build_timer.time())
-
     return _lib_filename
 
 

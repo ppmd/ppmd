@@ -15,10 +15,10 @@ PositionDat = md.data.PositionDat
 ParticleDat = md.data.ParticleDat
 ScalarArray = md.data.ScalarArray
 
-md.runtime.BUILD_PER_PROC = True
 
 def test_host_all_to_all_NS():
 
+    md.runtime.BUILD_PER_PROC = True
     if rank == 0:
         A = ParticleDat(
             npart=1000,
@@ -60,9 +60,12 @@ def test_host_all_to_all_NS():
         for i in range(N):
             assert B[i] == C[i]
 
+    md.runtime.BUILD_PER_PROC = False
 
 
 def test_host_all_to_all():
+
+    md.runtime.BUILD_PER_PROC = True
     if rank == 0:
         A = ParticleDat(
             npart=1000,
@@ -104,3 +107,6 @@ def test_host_all_to_all():
 
         for i in range(N):
             assert B[i] == C[i]
+
+    md.runtime.BUILD_PER_PROC = False
+

@@ -4,7 +4,8 @@ Configuration handling for package
 
 # system level imports
 import os
-import ConfigParser
+import configparser as ConfigParser
+
 
 # package level imports
 import ppmd.config as config

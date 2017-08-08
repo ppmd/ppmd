@@ -4,8 +4,6 @@ import pytest
 import ctypes
 import numpy as np
 
-
-
 import ppmd as md
 import ppmd.cuda as mdc
 
@@ -44,7 +42,7 @@ h_State = md.state.State
 @pytest.fixture
 def state(request):
     if mdc.CUDA_IMPORT_ERROR is not None:
-        print mdc.CUDA_IMPORT_ERROR
+        print(mdc.CUDA_IMPORT_ERROR)
 
     A = State()
     A.npart = N

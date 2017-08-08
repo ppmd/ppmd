@@ -44,7 +44,7 @@ h_State = md.state.State
 @pytest.fixture
 def state(request):
     if mdc.CUDA_IMPORT_ERROR is not None:
-        print mdc.CUDA_IMPORT_ERROR
+        print(mdc.CUDA_IMPORT_ERROR)
 
     A = State()
     A.npart = N

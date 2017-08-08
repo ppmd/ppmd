@@ -308,10 +308,11 @@ def cartcomm_periods(comm):
     else:
         return 1,1,1
 
-def abort(err=0):
+def abort(err='-', err_code=0):
     print(80*"=")
     print("MPI:Abort --- COMM_WORLD Rank:", MPI.COMM_WORLD.Get_rank(), '---')
+    print(err)
     print(80*"=")
     traceback.print_stack()
     print(80*"=")
-    MPI.COMM_WORLD.Abort(err)
+    MPI.COMM_WORLD.Abort(err_code)

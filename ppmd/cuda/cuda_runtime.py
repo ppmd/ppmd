@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 """
 Module to handle the cuda runtime environment.
 """
@@ -11,8 +13,8 @@ import pycuda.driver as cudadrv
 
 
 #package level imports
-import cuda_config
-from ppmd import runtime, pio, mpi
+from ppmd.cuda import cuda_config
+from ppmd import runtime, pio, mpi, abort
 
 CUDA_ENABLED = cuda_config.CUDA_CFG['enable-cuda'][1]
 
@@ -27,18 +29,22 @@ ERROR_LEVEL = cuda_config.CUDA_CFG['error-level'][1]
 
 BUILD_DIR = runtime.BUILD_DIR
 
-LIB_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib/'))
+LIB_DIR = os.path.abspath(os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), 'lib/'))
 
 # Init cuda
 cudadrv.init()
 
-import cuda_build
+from ppmd.cuda import cuda_build
 
 try:
-    LIB_HELPER = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaHelperLib'))
+    LIB_HELPER = ctypes.cdll.LoadLibrary(
+        cuda_build.build_static_libs('cudaHelperLib'))
 except Exception as e:
-    print e
-    raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA helper lib not loaded')
+    print(e)
+    abort('cuda_runtime error: Module is not initialised correctly, '
+          'CUDA helper lib not loaded')
+
 
 _MPI = mpi.MPI
 SUM = _MPI.SUM
@@ -58,11 +64,14 @@ def cuda_err_check(err_code):
     :return:
     """
 
-    assert LIB_HELPER is not None, "cuda_runtime error: No error checking library"
+    if LIB_HELPER is None:
+        print("cuda_runtime error: No error checking library")
 
     if LIB_HELPER is not None:
         err = LIB_HELPER['cudaErrorCheck'](err_code)
-        assert err == 0, "Non-zero CUDA error:" + str(err_code) + 'rank: ' + str(_MPIRANK)
+        if err != 0:
+            abort("Non-zero CUDA error:" + str(err_code) + 'rank: ' + \
+                  str(_MPIRANK))
 
 def cuda_set_device(device=None):
     """
@@ -100,10 +109,13 @@ def cuda_set_device(device=None):
         elif _ompr is not None:
             _r = int(_ompr) % device_count.value
         else:
-            print "could not determine local rank, using CUDA device 0"
+            print("could not determine local rank, using CUDA device 0")
             _r = 0
 
-        print _r, device_count.value, _MPIRANK, _MPISIZE
+        print("Device:", _r,
+              "Device count:", device_count.value,
+              "MPI rank:", _MPIRANK,
+              "MPI size:", _MPISIZE)
         return cudadrv.Device(_r)
 
     else:
@@ -289,7 +301,9 @@ def cuda_mem_cpy(d_ptr=None, s_ptr=None, size=None, cpy_type=None):
         cuda_err_check(LIB_HELPER['cudaCpyDeviceToDevice'](d_ptr, s_ptr, size))
 
     else:
-        print "cuda_mem_cpy error: Something failed.", cpy_type, d_ptr, s_ptr, size
+        print("cuda_mem_cpy error: Something failed.",
+              cpy_type, d_ptr, s_ptr, size)
+        abort()
 
 
 ###############################################################################
@@ -317,8 +331,7 @@ def cuda_exclusive_scan(array, length):
         LIB_CUDA_MISC['cudaExclusiveScanDouble'](array.ctypes_data,
                                                  ctypes.c_int(length))
     else:
-        print "Fatal error: Array type does not have a corresponding exclusive" \
-              "scan. Type is:", array.dtype
-        quit()
+        abort("Fatal error: Array type does not have a corresponding " \
+              "exclusive scan. Type is:", array.dtype)
 
 
