@@ -1,20 +1,19 @@
-
+from __future__ import print_function, division, absolute_import
 
 # system level
 import numpy as np
-import ctypes
+import ctypes, os
 
 # package level
+import ppmd.cuda
 import ppmd.opt
 import ppmd.runtime
-from ppmd import opt, kernel, access
+from ppmd import kernel, access
 
 
 # cuda level
-import cuda_runtime
-import cuda_loop
-import cuda_base
-import cuda_build
+from ppmd.cuda import cuda_runtime, cuda_loop, cuda_base, cuda_build,\
+    cuda_config
 
 
 class BoundaryTypePeriodic(object):
@@ -68,7 +67,7 @@ class BoundaryTypePeriodic(object):
             self.timer_lib_overhead.start()
 
             if self._one_process_pbc_lib is None:
-                with open(str(cuda_runtime.LIB_DIR) +
+                with open(str(cuda_config.LIB_DIR) +
                                   '/cudaOneProcPBCSource.cu','r') as fh:
                     _one_proc_pbc_code = fh.read()
 
@@ -114,9 +113,7 @@ class BoundaryTypePeriodic(object):
             if self._escape_guard_lib is None:
                 # build lib
                 self._escape_guard_lib = \
-                    ctypes.cdll.LoadLibrary(
-                        cuda_build.build_static_libs('cudaNProcPBC')
-                    )
+                    cuda_build.build_static_libs('cudaNProcPBC')
 
             # --- init escape count ----
             if self._escape_count is None:
@@ -190,8 +187,6 @@ class BoundaryTypePeriodic(object):
                 directions_matrix=self._escape_matrix,
                 dir_counts=self._escape_dir_count
             )
-
-
 
             self.state.filter_on_domain_boundary(self.state.npart_local)
 

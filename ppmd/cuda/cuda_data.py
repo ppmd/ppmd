@@ -1,3 +1,4 @@
+from __future__ import print_function, division, absolute_import
 """
 CUDA version of the package level data.py
 """
@@ -9,6 +10,8 @@ import pycuda.gpuarray as gpuarray
 
 #package level imports
 import ppmd.access as access
+import ppmd.cuda
+import ppmd.cuda.cuda_config
 import ppmd.mpi as mpi
 import ppmd.host as host
 import ppmd.data as data
@@ -16,11 +19,7 @@ import ppmd.opt
 import ppmd.opt as opt
 
 # cuda imports
-import cuda_base
-import cuda_build
-import cuda_mpi
-import cuda_runtime
-import ppmd.runtime
+from ppmd.cuda import cuda_base, cuda_build, cuda_mpi, cuda_runtime
 
 _MPI = mpi.MPI
 SUM = _MPI.SUM
@@ -635,9 +634,9 @@ class TypedDat(cuda_base.Matrix):
 
 
 def _build_exchange_lib(dat):
-    with open(str(cuda_runtime.LIB_DIR) + '/cudaHaloExchangeSource.cu','r') as fh:
+    with open(str(ppmd.cuda.cuda_config.LIB_DIR) + '/cudaHaloExchangeSource.cu', 'r') as fh:
         code = fh.read()
-    with open(str(cuda_runtime.LIB_DIR) + '/cudaHaloExchangeSource.h','r') as fh:
+    with open(str(ppmd.cuda.cuda_config.LIB_DIR) + '/cudaHaloExchangeSource.h', 'r') as fh:
         hcode = fh.read()
     assert code is not None, "Failure to read CUDA MPI packing code source"
 
@@ -662,9 +661,9 @@ def _build_norm_linf_lib(dtype):
     """
 
 
-    with open(str(cuda_runtime.LIB_DIR) + '/cudaLInfNormSource.cu','r') as fh:
+    with open(str(ppmd.cuda.cuda_config.LIB_DIR) + '/cudaLInfNormSource.cu', 'r') as fh:
         code = fh.read()
-    with open(str(cuda_runtime.LIB_DIR) + '/cudaLInfNormSource.h','r') as fh:
+    with open(str(ppmd.cuda.cuda_config.LIB_DIR) + '/cudaLInfNormSource.h', 'r') as fh:
         hcode = fh.read()
     assert code is not None, "Failure to read CUDA L inf NORM packing code source"
 

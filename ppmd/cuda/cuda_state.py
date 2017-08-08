@@ -1,3 +1,4 @@
+from __future__ import print_function, division, absolute_import
 
 # system level
 import ctypes
@@ -12,16 +13,9 @@ import ppmd.access
 import ppmd.pio
 import ppmd.host
 
-
 # cuda level
-import cuda_cell
-import cuda_halo
-import cuda_data
-import cuda_runtime
-import cuda_mpi
-import cuda_loop
-import cuda_build
-import cuda_base
+from ppmd.cuda import cuda_cell, cuda_halo, cuda_data, cuda_runtime, \
+    cuda_mpi, cuda_loop, cuda_build, cuda_base
 
 _AsFunc = ppmd.state._AsFunc
 _MPI = ppmd.mpi.MPI
@@ -505,16 +499,11 @@ class BaseMDState(object):
         """
         Move particles using the passed matrix where rows correspond to
         directions.
-
         """
 
-
         if self._move_lib is None:
-            self._move_lib = ctypes.cdll.LoadLibrary(
+            self._move_lib = \
                 cuda_build.build_static_libs('cudaMoveLib')
-            )
-
-
 
         self._move_send_ranks, self._move_recv_ranks = \
             ppmd.mpi.cartcomm_get_move_send_recv_ranks(self._ccomm)

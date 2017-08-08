@@ -233,8 +233,8 @@ def create_cartcomm(comm, dims, periods, reorder_flag):
 
 def cartcomm_get_move_send_recv_ranks(comm):
 
-    send_ranks = range(26)
-    recv_ranks = range(26)
+    send_ranks = 26*[-1]
+    recv_ranks = 26*[-1]
 
     for ix in range(26):
         direction = recv_modifiers[ix]

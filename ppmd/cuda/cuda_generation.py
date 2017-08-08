@@ -1,9 +1,8 @@
+from __future__ import print_function, division, absolute_import
 import ppmd.access as access
 import ppmd.host as host
 
-import cuda_data
-import cuda_base
-import cuda_build
+from ppmd.cuda import cuda_data, cuda_base, cuda_build
 
 _nl = '\n'
 

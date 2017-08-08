@@ -1,3 +1,4 @@
+from __future__ import print_function, division, absolute_import
 """
 CUDA implementations of methods to handle the cell decomposition of a domain.
 """
@@ -8,15 +9,14 @@ import math
 import numpy as np
 
 #package
+import ppmd.cuda
+import ppmd.cuda.cuda_config
 import ppmd.opt
 import ppmd.opt as opt
 import ppmd.host as host
 
 #cuda
-import cuda_runtime
-import cuda_base
-import cuda_build
-import ppmd.runtime
+from ppmd.cuda import cuda_runtime, cuda_base, cuda_build
 
 
 class SubCellOccupancyMatrix(object):
@@ -83,9 +83,11 @@ class SubCellOccupancyMatrix(object):
                                        dtype=ctypes.c_int)
         self.num_layers = 0
 
-        with open(str(cuda_runtime.LIB_DIR) + '/cudaSubCellOccupancyMatrixSource.cu','r') as fh:
+        with open(str(
+                ppmd.cuda.cuda_config.LIB_DIR) + '/cudaSubCellOccupancyMatrixSource.cu', 'r') as fh:
             _code = fh.read()
-        with open(str(cuda_runtime.LIB_DIR) + '/cudaSubCellOccupancyMatrixSource.h','r') as fh:
+        with open(str(
+                ppmd.cuda.cuda_config.LIB_DIR) + '/cudaSubCellOccupancyMatrixSource.h', 'r') as fh:
             _header = fh.read()
         _name = 'SubCellOccupancyMatrix'
         lib = cuda_build.simple_lib_creator(_header, _code, _name)
@@ -350,7 +352,7 @@ class CellOccupancyMatrix(object):
         self.cell_reverse_lookup = cuda_base.Array(ncomp=self._n_func(), dtype=ctypes.c_int)
         self.cell_contents_count = cuda_base.Array(ncomp=self._domain.cell_count, dtype=ctypes.c_int)
         self.matrix = cuda_base.device_buffer_2d(nrow=self._domain.cell_count,
-                                                 ncol=self._n_func()/self._domain.cell_count,
+                                                 ncol=self._n_func()//self._domain.cell_count,
                                                  dtype=ctypes.c_int)
 
 
@@ -375,9 +377,11 @@ class CellOccupancyMatrix(object):
         """
         assert self._setup is not False, "Run CellOccupancyMatrix.setup() first."
 
-        with open(str(cuda_runtime.LIB_DIR) + '/cudaCellOccupancyMatrixSource.cu','r') as fh:
+        with open(str(
+                ppmd.cuda.cuda_config.LIB_DIR) + '/cudaCellOccupancyMatrixSource.cu', 'r') as fh:
             _code = fh.read()
-        with open(str(cuda_runtime.LIB_DIR) + '/cudaCellOccupancyMatrixSource.h','r') as fh:
+        with open(str(
+                ppmd.cuda.cuda_config.LIB_DIR) + '/cudaCellOccupancyMatrixSource.h', 'r') as fh:
             _header = fh.read()
         _name = 'CellOccupancyMatrix'
 
@@ -534,9 +538,11 @@ class NeighbourListLayerBased(object):
 
         self.list = cuda_base.Matrix(nrow=1, ncol=1, dtype=ctypes.c_int)
 
-        with open(str(cuda_runtime.LIB_DIR) + '/cudaNeighbourListGenericSource.cu','r') as fh:
+        with open(str(
+                ppmd.cuda.cuda_config.LIB_DIR) + '/cudaNeighbourListGenericSource.cu', 'r') as fh:
             _code = fh.read()
-        with open(str(cuda_runtime.LIB_DIR) + '/cudaNeighbourListGenericSource.h','r') as fh:
+        with open(str(
+                ppmd.cuda.cuda_config.LIB_DIR) + '/cudaNeighbourListGenericSource.h', 'r') as fh:
             _header = fh.read()
         _name = 'NeighbourList'
         self._lib = cuda_build.simple_lib_creator(_header, _code, _name)[_name]
@@ -633,9 +639,11 @@ class NeighbourListLayerSplit(object):
         self.list1 = cuda_base.Matrix(nrow=1, ncol=1, dtype=ctypes.c_int)
         self.list2 = cuda_base.Matrix(nrow=1, ncol=1, dtype=ctypes.c_int)
 
-        with open(str(cuda_runtime.LIB_DIR) + '/cudaNeighbourListSplitSource.cu','r') as fh:
+        with open(str(
+                ppmd.cuda.cuda_config.LIB_DIR) + '/cudaNeighbourListSplitSource.cu', 'r') as fh:
             _code = fh.read()
-        with open(str(cuda_runtime.LIB_DIR) + '/cudaNeighbourListSplitSource.h','r') as fh:
+        with open(str(
+                ppmd.cuda.cuda_config.LIB_DIR) + '/cudaNeighbourListSplitSource.h', 'r') as fh:
             _header = fh.read()
         _name1 = 'NeighbourList'
         _name2 = 'NeighbourList2'

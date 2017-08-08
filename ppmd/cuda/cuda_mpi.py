@@ -1,15 +1,15 @@
+from __future__ import print_function, division, absolute_import
 #system level imports
 import ctypes
 
 #package level imports
 
-
 #cuda level imports
-import cuda_build
+from ppmd.cuda import cuda_build
 
 
 try:
-    LIB_CUDA_MPI = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaMPILib'))
+    LIB_CUDA_MPI = cuda_build.build_static_libs('cudaMPILib')
 except Exception as e:
     raise e
     # raise RuntimeError('cuda_mpi error: Module is not initialised correctly,'

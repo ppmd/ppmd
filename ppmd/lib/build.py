@@ -146,8 +146,8 @@ def simple_lib_creator(
                           extensions=extensions,
                           dst_dir=ppmd.runtime.BUILD_DIR, CC=CC)
 
-        _build_lib(_filename, extensions=extensions, source_dir=dst_dir,
-                   CC=CC, dst_dir=dst_dir, inc_dirs=inc_dirs)
+        build_lib(_filename, extensions=extensions, source_dir=dst_dir,
+                  CC=CC, dst_dir=dst_dir, inc_dirs=inc_dirs)
 
     _load_timer.start()
     lib = _load(_lib_filename)
@@ -160,7 +160,7 @@ def simple_lib_creator(
 
 _build_timer = opt.Timer()
 
-def _build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
+def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
     _build_timer.start()
 
     _lib_filename = os.path.join(dst_dir, lib + '.so')

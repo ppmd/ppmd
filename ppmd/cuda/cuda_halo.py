@@ -1,9 +1,10 @@
+from __future__ import print_function, division, absolute_import
 """
 Methods to aid CUDA halo exchanges.
 """
 
 # system level imports
-import ctypes
+import ctypes, collections
 import numpy as np
 
 # package level imports
@@ -11,10 +12,7 @@ import ppmd.mpi as mpi
 from ppmd import abort
 
 # cuda level imports
-import cuda_runtime
-import cuda_mpi
-import cuda_cell
-import cuda_base
+from ppmd.cuda import cuda_runtime, cuda_mpi, cuda_cell, cuda_base
 
 class CellSlice(object):
     def __getitem__(self, item):
@@ -38,11 +36,11 @@ def create_halo_pairs(domain_in, slicexyz, direction):
     yr = range(1, cell_array[1] - 1)[slicexyz[1]]
     zr = range(1, cell_array[2] - 1)[slicexyz[2]]
 
-    if type(xr) is not list:
+    if not isinstance(xr, collections.Iterable):
         xr = [xr]
-    if type(yr) is not list:
+    if not isinstance(yr, collections.Iterable):
         yr = [yr]
-    if type(zr) is not list:
+    if not isinstance(zr, collections.Iterable):
         zr = [zr]
 
     l = len(xr) * len(yr) * len(zr)

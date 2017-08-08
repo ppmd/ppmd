@@ -1,3 +1,4 @@
+from __future__ import print_function, division, absolute_import
 """
 cuda looping code
 """
@@ -9,16 +10,14 @@ import cgen
 
 # package level
 import ppmd.access as access
+import ppmd.cuda
 import ppmd.host as host
 import ppmd.modules.code_timer
 import ppmd.runtime as runtime
 import ppmd.opt as opt
 
 # CUDA level
-import cuda_build
-import cuda_runtime
-import cuda_base
-import cuda_data
+from ppmd.cuda import cuda_build, cuda_base, cuda_data
 
 def generate_reduction_final_stage(symbol_external, symbol_internal, dat):
     """
@@ -410,7 +409,7 @@ class ParticleLoop(object):
     def _generate_kernel_headers(self):
 
         s = [
-            cgen.Include(cuda_runtime.LIB_DIR + '/cuda_generic.h',
+            cgen.Include('cuda_generic.h',
                          system=False)
         ]
 

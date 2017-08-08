@@ -145,7 +145,7 @@ def test_cuda_sim_1(directiong):
     potaa_rn = potaa_rc * 1.1
     delta = potaa_rn - potaa_rc
 
-    potaa = ppmd.utility.potential.VLennardJones(
+    potaa = md.utility.potential.VLennardJones(
         epsilon=1.0,
         sigma=1.0,
         rc=potaa_rc
@@ -253,7 +253,7 @@ def test_cuda_sim_2(directiona):
     potaa_rn = potaa_rc * 1.1
     delta = potaa_rn - potaa_rc
 
-    potaa = ppmd.utility.potential.VLennardJones(
+    potaa = md.utility.potential.VLennardJones(
         epsilon=1.0,
         sigma=1.0,
         rc=potaa_rc

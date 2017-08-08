@@ -1,3 +1,4 @@
+from __future__ import print_function, division, absolute_import
 """
 Contains the code to generate cuda pairloops
 """
@@ -10,6 +11,7 @@ import threading
 
 # package level
 import ppmd.access as access
+import ppmd.cuda
 import ppmd.host as host
 import ppmd.cell as cell
 import ppmd.modules.code_timer
@@ -17,13 +19,9 @@ import ppmd.opt as opt
 import ppmd.runtime as runtime
 
 # CUDA level
-import cuda_build
-import cuda_runtime
-import cuda_data
-import cuda_cell
-import cuda_base
+from ppmd.cuda import cuda_build, cuda_data, cuda_cell, cuda_base
 
-from cuda_loop import generate_reduction_final_stage
+from ppmd.cuda.cuda_loop import generate_reduction_final_stage
 
 def Restrict(keyword, symbol):
     return str(keyword) + ' ' + str(symbol)
@@ -249,7 +247,7 @@ class _Base(object):
     def _generate_kernel_headers(self):
 
         s = [
-            cgen.Include(cuda_runtime.LIB_DIR + '/cuda_generic.h',
+            cgen.Include('cuda_generic.h',
                          system=False)
         ]
 
@@ -657,7 +655,6 @@ class PairLoopNeighbourListNSSplit(PairLoopNeighbourListNS):
 
 
         '''Pass access descriptor to dat'''
-
         for dat_orig in self._dat_dict.values(dat_dict):
             dat_orig[0].ctypes_data_access(dat_orig[1],
                                            pair=True,
@@ -1021,6 +1018,13 @@ class PairLoopCellByCell(_Base):
             assert static_args is not None, "Error: static arguments not " \
                                             "passed to loop."
             dargs += self._kernel.static_args.get_args(static_args)
+        '''Pass access descriptor to dat'''
+
+        # pointer args
+        for dat in self._dat_dict.items(new_dats=dat_dict):
+            obj = dat[1][0]
+            mode = dat[1][1]
+            obj.ctypes_data_access(mode, pair=True)
 
         # pointer args
         for dat in self._dat_dict.items(new_dats=dat_dict):

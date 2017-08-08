@@ -1,3 +1,4 @@
+from __future__ import print_function, division, absolute_import
 """
 Configuration handling for package
 """
@@ -50,6 +51,7 @@ def load_config(dir=None):
     assert CUDA_CFG['cc-mpi'][1] in config.COMPILERS.keys(), "cc-mpi CUDA compiler config not found"
 
 
-
-
 load_config()
+
+LIB_DIR = os.path.abspath(os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), 'lib/'))

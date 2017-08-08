@@ -1,3 +1,4 @@
+from __future__ import print_function, division, absolute_import
 """
 CUDA equivalent of the "host" module at package level.
 """
@@ -12,7 +13,7 @@ import ppmd.access
 import ppmd.host
 
 # cuda imports
-import cuda_runtime
+from ppmd.cuda import cuda_runtime
 
 ###############################################################################
 # Get available memory.
@@ -203,7 +204,8 @@ class Array(object):
         """
         Set all the values in the array to zero.
         """
-        self._dat.fill(np.array([0], dtype=self.dtype))
+        #self._dat.fill(np.array([0], dtype=self.dtype))
+        self._dat.fill(0)
         #print self[0]
 
     @property

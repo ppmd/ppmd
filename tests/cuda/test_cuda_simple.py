@@ -3,16 +3,11 @@
 import pytest
 import ctypes
 import numpy as np
-import sys
-
-
 
 import ppmd as md
 import ppmd.cuda as mdc
 
-
 cuda = pytest.mark.skipif("mdc.CUDA_IMPORT is False")
-
 
 N = 1000
 E = 8.

@@ -143,7 +143,8 @@ def test_cuda_pair_loop_2(state, tolset, sub_cell_factor):
     NC.i[0] += (r2 < %(TOL)s) ? 1 : 0 ;
     ''' % {'TOL': str(RC**2.)}
 
-    kernel = md.kernel.Kernel('test_cuda_pair_loop_1',code=kernel_code)
+    kernel = md.kernel.Kernel('test_cuda_pair_loop_1',code=kernel_code,
+                              headers=(md.kernel.Header('stdio.h'),))
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
@@ -158,11 +159,9 @@ def test_cuda_pair_loop_2(state, tolset, sub_cell_factor):
 
     loop.execute()
 
-    #print state.p[:10:,:]
-    #print state.nc[:N:,0]
 
     for ix in range(state.npart_local):
-        assert state.nc[ix] == tolset[1], "ix={}".format(ix)
+        assert state.nc[ix, 0] == tolset[1]
 
 
 

@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, division, absolute_import
 
 """
 Module to handle the cuda runtime environment.
@@ -29,19 +29,15 @@ ERROR_LEVEL = cuda_config.CUDA_CFG['error-level'][1]
 
 BUILD_DIR = runtime.BUILD_DIR
 
-LIB_DIR = os.path.abspath(os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'lib/'))
-
 # Init cuda
 cudadrv.init()
 
-from ppmd.cuda import cuda_build
+from . import cuda_build
 
 try:
-    LIB_HELPER = ctypes.cdll.LoadLibrary(
-        cuda_build.build_static_libs('cudaHelperLib'))
+    LIB_HELPER = cuda_build.build_static_libs('cudaHelperLib')
 except Exception as e:
-    print(e)
+    print("LIB_HELPER load error", e)
     abort('cuda_runtime error: Module is not initialised correctly, '
           'CUDA helper lib not loaded')
 
@@ -76,7 +72,8 @@ def cuda_err_check(err_code):
 def cuda_set_device(device=None):
     """
     Set the cuda device.
-    :param int device: Dev id to use. If not set a device will be chosen based on rank.
+    :param int device: Dev id to use. If not set a device will be chosen based
+    on rank.
     :return:
     """
     if device is None:
@@ -93,15 +90,18 @@ def cuda_set_device(device=None):
             _ompr = None
 
         if (_mv2r is None) and (_ompr is None):
-            print("cuda_runtime warning: Did not find local rank, defaulting to device 0")
+            print("cuda_runtime warning: Did not find local rank, "
+                  "defaulting to device 0")
 
         if (_mv2r is not None) and (_ompr is not None):
-            print("cuda_runtime warning: Found two local ranks, defaulting to device 0")
+            print("cuda_runtime warning: Found two local ranks, "
+                  "defaulting to device 0")
 
 
         device_count = ctypes.c_int()
         device_count.value = 0
-        cuda_err_check(LIB_HELPER['cudaGetDeviceCountWrapper'](ctypes.byref(device_count)))
+        cuda_err_check(LIB_HELPER['cudaGetDeviceCountWrapper'](
+            ctypes.byref(device_count)))
         assert device_count != 0, "CUDA Device count query returned zero!"
 
         if _mv2r is not None:
@@ -148,7 +148,8 @@ try:
     CUDA_INC_PATH = os.environ['CUDA_INSTALL_PATH']
 except KeyError:
     if ERROR_LEVEL > 2:
-        raise RuntimeError('cuda_runtime error: cuda toolkit environment path not found, expecting CUDA_INSTALL_PATH')
+        abort('cuda_runtime error: cuda toolkit environment path not found,'
+              ' expecting CUDA_INSTALL_PATH')
     CUDA_INC_PATH = None
 
 try:
@@ -156,19 +157,15 @@ try:
 
 except:
     if ERROR_LEVEL > 2:
-        raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA runtime not loaded')
+        abort('cuda_runtime error: Module is not initialised correctly,'
+              ' CUDA runtime not loaded')
     LIB_CUDART = None
 
 try:
-    LIB_CUDA_MISC = ctypes.cdll.LoadLibrary(cuda_build.build_static_libs('cudaMisc'))
+    LIB_CUDA_MISC = cuda_build.build_static_libs('cudaMisc')
 except:
-    raise RuntimeError('cuda_runtime error: Module is not initialised correctly, CUDA Misc lib not loaded')
-
-
-
-
-
-
+    abort('cuda_runtime error: Module is not initialised correctly, '
+          'CUDA Misc lib not loaded')
 
 
 ###############################################################################
@@ -182,13 +179,13 @@ def libcudart(*args):
     :return:
     """
 
-    assert LIB_CUDART is not None, "cuda_runtime error: No CUDA Runtime library loaded"
+    assert LIB_CUDART is not None, "cuda_runtime error: " \
+                                   "No CUDA Runtime library loaded"
 
     if VERBOSE > 2:
         pio.rprint(args)
 
     cuda_err_check(LIB_CUDART[args[0]](*args[1::]))
-
 
 
 ###############################################################################
@@ -209,7 +206,6 @@ def INIT_STATUS():
         return True
     else:
         return False
-
 
 
 ###############################################################################
@@ -245,12 +241,14 @@ def cuda_malloc(d_ptr=None, num=None, dtype=None):
     """
     # TODO: make return error code.
 
-    assert d_ptr is not None, "cuda_runtime:cuda_malloc error: no device pointer."
+    assert d_ptr is not None, "cuda_runtime:cuda_malloc error: no device " \
+                              "pointer."
     assert num is not None, "cuda_runtime:cuda_malloc error: no length."
     assert dtype is not None, "cuda_runtime:cuda_malloc error: no type."
 
 
-    libcudart('cudaMalloc', ctypes.byref(d_ptr), ctypes.c_size_t(num * ctypes.sizeof(dtype)))
+    libcudart('cudaMalloc', ctypes.byref(d_ptr), ctypes.c_size_t(
+        num * ctypes.sizeof(dtype)))
 
 
 ###############################################################################
@@ -264,7 +262,8 @@ def cuda_free(d_ptr=None):
     """
     # TODO: make return error code.
 
-    assert d_ptr is not None, "cuda_runtime:cuda_malloc error: no device pointer."
+    assert d_ptr is not None, "cuda_runtime:cuda_malloc error: no device " \
+                              "pointer."
 
     libcudart('cudaFree', d_ptr)
 
