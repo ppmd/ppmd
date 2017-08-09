@@ -46,6 +46,7 @@ _MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
 ###############################################################################
 # Cell to Particle map handler for MD integrators
 ###############################################################################
+
 class ListUpdateController(object):
     """
     The framework does not assume that it is employed in a MD simulation
@@ -169,34 +170,23 @@ class ListUpdateController(object):
         self._moved_distance = 0.0
         self._state.invalidate_lists = False
 
-
     def execute_boundary_conditions(self):
         """
         Execute the boundary conditions for the simulation.
         """
-
         if self._state.domain.boundary_condition is not None:
-
             self.boundary_method_timer.start()
-
-
-            flag = self._state.domain.boundary_condition.apply()
-
-            if flag > 0:
-                # print "invalidating lists on BCs"
-                self._state.invalidate_lists = True
-
-
+            self._state.domain.boundary_condition.apply()
             self.boundary_method_timer.pause()
             opt.PROFILE[
                 self.__class__.__name__+':execute_boundary_conditions'
             ] = (self.boundary_method_timer.time())
-
         else:
-            print("WARNING NO BOUNDARY CONDITION TO APPLY")
+            print("WARNING NO BOUNDARY CONDITION TO APPLY",
+                  "This may be a critical error depending on your simulation.")
 
 ###############################################################################
-# New Velocity Verlet Method
+# Integrator range class
 ###############################################################################
 
 class IntegratorRange(object):

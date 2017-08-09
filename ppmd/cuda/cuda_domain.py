@@ -156,8 +156,6 @@ class BoundaryTypePeriodic(object):
                     )
                 )
 
-
-
             dir_max = np.max(self._escape_dir_count[:]) + 1
 
             if self._escape_matrix is None:
@@ -167,7 +165,6 @@ class BoundaryTypePeriodic(object):
 
             elif self._escape_matrix.ncol < dir_max:
                 self._escape_matrix.realloc(nrow=26, ncol=dir_max)
-
 
             # --- Populate escape matrix (essentially sort by direction)
 
@@ -181,7 +178,6 @@ class BoundaryTypePeriodic(object):
                         self._escape_matrix.ctypes_data
                     )
                 )
-
 
             self.state.move_to_neighbour(
                 directions_matrix=self._escape_matrix,

@@ -308,6 +308,12 @@ def cartcomm_periods(comm):
     else:
         return 1,1,1
 
+
+def check(statement, message):
+    if not statement:
+        abort(err=message)
+
+
 def abort(err='-', err_code=0):
     print(80*"=")
     print("MPI:Abort --- COMM_WORLD Rank:", MPI.COMM_WORLD.Get_rank(), '---')

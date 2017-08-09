@@ -44,3 +44,4 @@ from . import state
 
 
 abort = mpi.abort
+check = mpi.check

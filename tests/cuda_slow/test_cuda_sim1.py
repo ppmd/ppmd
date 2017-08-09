@@ -32,27 +32,6 @@ if mdc.CUDA_IMPORT:
     State = mdc.cuda_state.State
 
 
-@skip
-@cuda
-@pytest.fixture
-def state(request):
-    if mdc.CUDA_IMPORT_ERROR is not None:
-        print(mdc.CUDA_IMPORT_ERROR)
-
-    A = State()
-    A.npart = N
-    A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
-    A.p = PositionDat(ncomp=3)
-    A.v = ParticleDat(ncomp=3)
-    A.f = ParticleDat(ncomp=3)
-    A.u = ScalarArray(ncomp=2)
-    A.u.halo_aware = True
-    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
-    A.nc = ParticleDat(ncomp=1, dtype=ctypes.c_int)
-    return A
-
-
 
 @pytest.fixture(scope="module", params=list({0, nproc-1}))
 def base_rank(request):
@@ -136,23 +115,23 @@ def test_host_sim_1():
 
 
 
-    potaa_kinetic_energy_updater = md.method.KineticEnergyTracker(
+    potaa_kinetic_energy_updater = md.utility.high_method.KineticEnergyTracker(
         velocities=A.v,
         masses=A.mass,
         kinetic_energy_dat=A.ke,
         looping_method=mdc.cuda_loop.ParticleLoop
     )
 
-    potaa_potential_energy = md.method.PotentialEnergyTracker(
+    potaa_potential_energy = md.utility.high_method.PotentialEnergyTracker(
         potential_energy_dat=A.u
     )
 
-    potaa_schedule = md.method.Schedule(
+    potaa_schedule = md.utility.high_method.Schedule(
         [1, 1],
         [potaa_kinetic_energy_updater.execute, potaa_potential_energy.execute]
     )
 
-    potaa_integrator = md.method.IntegratorVelocityVerlet(
+    potaa_integrator = md.utility.high_method.IntegratorVelocityVerlet(
         positions=A.p,
         forces=A.f,
         velocities=A.v,

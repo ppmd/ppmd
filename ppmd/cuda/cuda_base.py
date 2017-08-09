@@ -52,12 +52,14 @@ def _make_gpu_array(initial_value=None, dtype=None, nrow=None, ncol=None):
         return _create_zeros(nrow=nrow, ncol=ncol, dtype=dtype)
 
 
-def _create_zeros(nrow=None, ncol=None, dtype=ctypes.c_double):
-    assert ncol is not None, "Make 1D arrays using ncol not nrow"
+def _create_zeros(nrow=None, ncol=None, dtype=None):
+    ppmd.check(ncol is not None, "Make 1D arrays using ncol not nrow")
+    ppmd.check(dtype is not None, "No data type passed")
+
     if nrow is not None:
-        return gpuarray.zeros([nrow, ncol], dtype=dtype)
+        return gpuarray.zeros([int(nrow), int(ncol)], dtype=dtype)
     else:
-        return gpuarray.zeros(ncol, dtype=dtype)
+        return gpuarray.zeros(int(ncol), dtype=dtype)
 
 
 def _create_from_existing(ndarray=None, dtype=ctypes.c_double):
@@ -295,23 +297,16 @@ class Matrix(object):
         """
         Re allocate memory for a matrix.
         """
-
-        assert (nrow>=self._nrow.value and ncol >= self._ncol.value) or \
-               (copy is False), "resizing to a smaller size in any dimension not supported with copy=True"
+        if not((nrow>=self._nrow.value and ncol >= self._ncol.value) or
+               (copy is False)):
+            ppmd.abort("resizing to a smaller size in any dimension not"
+                       " supported with copy=True")
 
         if (nrow != self._nrow.value) or (ncol != self._ncol.value):
             _new = _create_zeros(nrow=nrow, ncol=ncol, dtype=self.dtype)
 
-            #print self._nrow.value, nrow, self._ncol.value, ncol, _new[:self._nrow.value:, :self._ncol.value:].shape, self._dat.shape
-
             if copy:
-                OR = self._nrow.value
-                OC = self._ncol.value
-                NR = nrow
-                NC = ncol
-
                 _new[:self._nrow.value:, :self._ncol.value:] = self._dat[:,:]
-
 
             self._dat = _new
 
@@ -440,7 +435,6 @@ class _MatrixMirror(object):
                                   self._d_matrix.ctypes_data,
                                   ctypes.c_size_t(self._h_matrix.size),
                                   'cudaMemcpyDeviceToHost')
-
 
     @property
     def mirror(self):
