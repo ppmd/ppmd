@@ -18,31 +18,25 @@ Dependencies
 
 Required System tools:
 
-* Python 2.7
+* Python 2.7.8 (Tests pass on Python 3.4)
 * mpi4py compatible MPI
 * A C compiler, preferably intel
 * CUDA Toolkit if targeting CUDA.
 
-Required Python Packages
+To pip install python packages:
+``pip install --no-cache-dir -r requirements.txt"
 
-* NumPy
-* MPI4Py
-* ctypes
-* cgen
-* PyCUDA (If targeting CUDA)
+For CUDA support:
+``pip install --no-cache-dir -r requirements_cuda.txt"
 
-
-Optional Python Packages
-
-* matplotlib (if plotting is required)
 
 Environment Variables
 ---------------------
+Set the following environment variables.
 
 * ``MPI_HOME``: Used by the default CUDA and MPI compiler configurations to locate the desired MPI implementation.
-* ``BUILD_DIR``: The directory used as a storage location for generated libraries.
-
-
+* ``BUILD_DIR``: The directory used as a storage location for generated libraries. For example: ``mkdir /tmp/build; export BUILD_DIR=/tmp/build``
+* ``CUDA_SDK``: location of CUDA_SDK (or path containing the helper header files form the sdk).
 
 License
 -------
