@@ -247,12 +247,10 @@ def cartcomm_get_move_send_recv_ranks(comm):
     return send_ranks, recv_ranks
 
 
-
-
 def cartcomm_shift(comm, offset=(0, 0, 0), ignore_periods=False):
     """
-    Returns rank of process found at a given offset, will return -1 if no process exists.
-
+    Returns rank of process found at a given offset, will return -1 if no 
+    process exists.
     :arg tuple offset: 3-tuple offset from current process.
     """
 
