@@ -37,9 +37,9 @@ def create_halo_pairs_slice_halo(domain_in, slicexyz, direction):
     cell_array = domain_in.cell_array
     extent = domain_in.extent
     comm = domain_in.comm
-    dims = mpi.cartcomm_dims(comm)
-    top = mpi.cartcomm_top(comm)
-    periods = mpi.cartcomm_periods(comm)
+    dims = mpi.cartcomm_dims_xyz(comm)
+    top = mpi.cartcomm_top_xyz(comm)
+    periods = mpi.cartcomm_periods_xyz(comm)
 
     xr = range(0, cell_array[0])[slicexyz[0]]
     yr = range(0, cell_array[1])[slicexyz[1]]

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+from __future__ import print_function
 
 import pytest
 import ctypes
@@ -6,6 +6,10 @@ import numpy as np
 import ppmd as md
 
 from ppmd.coulomb.octal import *
+
+MPISIZE = md.mpi.MPI.COMM_WORLD.Get_size()
+MPIRANK = md.mpi.MPI.COMM_WORLD.Get_rank()
+
 
 @pytest.fixture
 def state():
@@ -37,8 +41,7 @@ class _fake_cartcomm(object):
 def fake_cartcomm(request):
     return request.param
 
-
-def test_octal_cube_owner_map(fake_cartcomm):
+def test_octal_cube_owner_map_1(fake_cartcomm):
 
     cc = _fake_cartcomm(fake_cartcomm[0])
     cube_count = fake_cartcomm[1]
@@ -56,13 +59,27 @@ def test_octal_cube_owner_map(fake_cartcomm):
         assert ox == expected_contribs[ix]
 
 
+def test_octal_cube_owner_map_2():
+    ncube = 2
+    dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
 
+    if MPIRANK == 0:
+        print("DIMS", dims)
 
+    cc = md.mpi.create_cartcomm(md.mpi.MPI.COMM_WORLD, dims, (1,1,1), True)
+    o = cube_owner_map(cc, ncube)
+    owners, contribs = o.compute_grid_ownership(
+        cc.Get_topo()[0], ncube)
 
+    if MPIRANK == 0:
+        print(owners, contribs)
 
+    cube_to_mpi = o.compute_map_product(cc, owners, contribs)
 
+    if MPIRANK == 0:
+        print(cube_to_mpi)
 
-
+    md.mpi.MPI.COMM_WORLD.Barrier()
 
 
 

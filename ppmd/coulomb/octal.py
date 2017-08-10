@@ -3,6 +3,9 @@ from __future__ import print_function, division, absolute_import
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 
+import itertools, ctypes
+import numpy as np
+
 class cube_owner_map(object):
     """
     Compute the global map from cube index (lexicographic) to owning MPI rank
@@ -19,14 +22,20 @@ class cube_owner_map(object):
 
         self.cart_comm = cart_comm
         topo = self.cart_comm.Get_topo()
-        dims= topo[0][::-1]
+        dims= topo[0]
         self.cube_count = cube_side_count**len(dims)
         self.cube_side_count = cube_side_count
-
-        # self.compute_grid_ownership(dims, cube_side_count)
+        owners, contribs = self.compute_grid_ownership(dims, cube_side_count)
 
     @staticmethod
     def compute_grid_ownership(dims, cube_side_count):
+        """
+        For each dimension compute the owner and contributing ranks. Does
+        not perform out product to compute the full map.
+        :param dims: tuple of mpi dims.
+        :param cube_side_count: int, number of cubes in each dimension
+        :return: tuple: ranks of each cube owner, contributing ranks.
+        """
 
         ndim = len(dims)
         oocsc = 1.0 / cube_side_count
@@ -64,11 +73,39 @@ class cube_owner_map(object):
         return dim_owners, dim_contribs
 
 
+    @staticmethod
+    def compute_map_product(cart_comm, dim_owners, dim_contribs):
+        """
+        Compute the full map from cube index to mpi rank owner, cube index to
+        mpi ranks of contributors.
+        :param: MPI cart_comm to use for logical coord to rank conversion.
+        :param dim_owners: ndims x cube_side_count tuple representing cube to 
+        owner map per dimension, elements are ints.
+        :param dim_contribs: tuple ndims x cube_side_count tuple containing
+        lists of contributors.
+        :return: full map.
+        """
+        # domain is a cube therefore we can inspect one dimension
+        ncubes_per_side = len(dim_owners[0])
+        ndim = len(dim_owners)
+        ncubes = ncubes_per_side**ndim
+        iterset = [range(ncubes_per_side) for i in range(ndim)]
+        cube_to_mpi = np.zeros(ncubes, dtype=ctypes.c_uint64)
 
+        tuple_to_lin_coeff = [
+            ncubes_per_side**(ndim-dx-1) for dx in range(ndim)]
 
+        cube_tuple_to_lin = lambda X: sum([i[0]*i[1] for i in zip(
+            X,tuple_to_lin_coeff)])
 
+        # loop over cube indexes
+        for cube_tuple in itertools.product(*iterset):
+            cx = cube_tuple_to_lin(cube_tuple)
+            ompi = cart_comm.Get_cart_rank([
+                dim_owners[i][cube_tuple[i]] for i in range(ndim)])
+            cube_to_mpi[cx] = ompi
 
-
+        return cube_to_mpi
 
 
 

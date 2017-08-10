@@ -38,6 +38,7 @@ mpi_map = {
     ct.c_byte: MPI.BYTE
 }
 
+# shifts defined as (x, y, z)
 recv_modifiers = [
     [-1, -1, -1],  # 0
     [0, -1, -1],  # 1
@@ -257,9 +258,9 @@ def cartcomm_shift(comm, offset=(0, 0, 0), ignore_periods=False):
     if type(offset) is int:
         offset = recv_modifiers[offset]
 
-    _top = comm.Get_topo()[2][::-1]
-    _per = comm.Get_topo()[1][::-1]
-    _dims = comm.Get_topo()[0][::-1]
+    _top = cartcomm_top_xyz(comm)
+    _per = cartcomm_periods_xyz(comm)
+    _dims = cartcomm_dims_xyz(comm)
 
     _x = _top[0] + offset[0]
     _y = _top[1] + offset[1]
@@ -279,32 +280,25 @@ def cartcomm_shift(comm, offset=(0, 0, 0), ignore_periods=False):
     return _r[0] + _r[1] * _dims[0] + _r[2] * _dims[0] * _dims[1]
 
 
-def cartcomm_top(comm):
+def cartcomm_top_xyz(comm):
     """
     Return the current topology.
     """
-    if comm is not None:
-        return comm.Get_topo()[2][::-1]
-    else:
-        return 0, 0, 0
+    return comm.Get_topo()[2][::-1]
 
-def cartcomm_dims(comm):
+def cartcomm_dims_xyz(comm):
     """
     Return the current dimensions.
     """
-    if comm is not None:
-        return comm.Get_topo()[0][::-1]
-    else:
-        return 1, 1, 1
+    return comm.Get_topo()[0][::-1]
 
-def cartcomm_periods(comm):
+
+def cartcomm_periods_xyz(comm):
     """
     Return the current periods.
     """
-    if comm is not None:
-        return comm.Get_topo()[1][::-1]
-    else:
-        return 1,1,1
+    return comm.Get_topo()[1][::-1]
+
 
 
 def check(statement, message):

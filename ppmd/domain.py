@@ -198,8 +198,8 @@ class BaseDomainHalo(object):
 
     def _distribute_domain(self):
 
-        _top = mpi.cartcomm_top(self.comm)
-        _dims = mpi.cartcomm_dims(self.comm)
+        _top = mpi.cartcomm_top_xyz(self.comm)
+        _dims = mpi.cartcomm_dims_xyz(self.comm)
 
         opt.PROFILE[self.__class__.__name__+':mpi_dims'] = (_dims)
 
@@ -313,9 +313,9 @@ class BaseDomainHalo(object):
 
         _sfd = host.Array(ncomp=26*3, dtype=ctypes.c_double)
 
-        dims = mpi.cartcomm_dims(self.comm)
-        top = mpi.cartcomm_top(self.comm)
-        periods = mpi.cartcomm_periods(self.comm)
+        dims = mpi.cartcomm_dims_xyz(self.comm)
+        top = mpi.cartcomm_top_xyz(self.comm)
+        periods = mpi.cartcomm_periods_xyz(self.comm)
 
         for dx in range(26):
             dir = mpi.recv_modifiers[dx]
@@ -331,13 +331,9 @@ class BaseDomainHalo(object):
                 elif top[ix] == dims[ix] - 1 and \
                    periods[ix] == 1 and \
                    dir[ix] == 1:
-
                     _sfd[dx*3 + ix] = -1. * self.extent[ix]
-
                 else:
                     _sfd[dx*3 + ix] = 0.0
-
-
         return _sfd
 
     @property
