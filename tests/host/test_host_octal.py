@@ -64,9 +64,9 @@ def test_octal_cube_owner_map_2():
     dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
 
     if MPIRANK == 0:
-        print("DIMS", dims)
+        print("DIMS", dims[::-1])
 
-    cc = md.mpi.create_cartcomm(md.mpi.MPI.COMM_WORLD, dims, (1,1,1), True)
+    cc = md.mpi.create_cartcomm(md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
     o = cube_owner_map(cc, ncube)
     owners, contribs = o.compute_grid_ownership(
         cc.Get_topo()[0], ncube)

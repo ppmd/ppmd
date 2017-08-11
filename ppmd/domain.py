@@ -170,7 +170,7 @@ class BaseDomainHalo(object):
 
                 _dims = _find_domain_decomp(sc, _MPISIZE)
             else:
-                 _dims = _find_domain_decomp_no_extent(_MPISIZE)
+                _dims = _find_domain_decomp_no_extent(_MPISIZE)
 
         else:
             assert mpi_grid[0]*mpi_grid[1]*mpi_grid[2]==_MPISIZE,\

@@ -22,7 +22,7 @@ class cube_owner_map(object):
 
         self.cart_comm = cart_comm
         topo = self.cart_comm.Get_topo()
-        dims= topo[0]
+        dims= topo[0] # dim order here is z, y, x
         self.cube_count = cube_side_count**len(dims)
         self.cube_side_count = cube_side_count
         owners, contribs = self.compute_grid_ownership(dims, cube_side_count)
@@ -70,6 +70,7 @@ class cube_owner_map(object):
                         # rank intersects cube's upper edge
                         dim_contribs[dx][cx].append(mx)
 
+        # dim owner orders is z dim then y dim ...
         return dim_owners, dim_contribs
 
 
@@ -95,6 +96,7 @@ class cube_owner_map(object):
         tuple_to_lin_coeff = [
             ncubes_per_side**(ndim-dx-1) for dx in range(ndim)]
 
+        # should convert an z,y,x tuple to lexicographic linear index
         cube_tuple_to_lin = lambda X: sum([i[0]*i[1] for i in zip(
             X,tuple_to_lin_coeff)])
 
