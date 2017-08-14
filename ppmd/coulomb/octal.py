@@ -21,11 +21,31 @@ class cube_owner_map(object):
     def __init__(self, cart_comm, cube_side_count):
 
         self.cart_comm = cart_comm
+        """Cartesian communicator used"""
         topo = self.cart_comm.Get_topo()
         dims= topo[0] # dim order here is z, y, x
+
         self.cube_count = cube_side_count**len(dims)
+        """Total number of cubes"""
         self.cube_side_count = cube_side_count
+        """Side count of octal tree on domain"""
+
         owners, contribs = self.compute_grid_ownership(dims, cube_side_count)
+        cube_to_mpi = self.compute_map_product_owners(cart_comm, owners)
+        starts, con_ranks, send_ranks = self.compute_map_product_contribs(cart_comm,
+            cube_to_mpi, contribs)
+
+        self.cube_to_mpi = cube_to_mpi
+        """Array from cube global index to owning mpi rank"""
+        self.contrib_mpi = con_ranks
+        """Array containing ranks contributing to a cube"""
+        self.contrib_starts = starts
+        """Cube i has contributing coeffients from ranks x_s_i to x_s_{i-1}
+        where s is contrib_starts and x is contrib_mpi"""
+        self.cube_to_send = send_ranks
+        """Array if this mpi rank contributes to cube i then x_i is owning
+        rank of cube i else x_i = -1"""
+
 
     @staticmethod
     def compute_grid_ownership(dims, cube_side_count):
@@ -59,7 +79,7 @@ class cube_owner_map(object):
                         # this rank is the cube's unique owner
                         dim_owners[dx][cx] = mx
 
-                    elif (ubound(mx) > cube_lower_edge(cmid)) and \
+                    if (ubound(mx) > cube_lower_edge(cmid)) and \
                             (lbound(mx) < cube_upper_edge(cmid)):
                         # this rank's subdomain intersects the cube's lower
                         # bound
@@ -75,16 +95,15 @@ class cube_owner_map(object):
 
 
     @staticmethod
-    def compute_map_product(cart_comm, dim_owners, dim_contribs):
+    def compute_map_product_owners(cart_comm, dim_owners):
         """
-        Compute the full map from cube index to mpi rank owner, cube index to
-        mpi ranks of contributors.
+        Compute the full map from cube index to mpi rank owner.
         :param: MPI cart_comm to use for logical coord to rank conversion.
         :param dim_owners: ndims x cube_side_count tuple representing cube to 
         owner map per dimension, elements are ints.
-        :param dim_contribs: tuple ndims x cube_side_count tuple containing
         lists of contributors.
-        :return: full map.
+        :return: array, length number of cubes, cube global index to mpi rank
+        owner.
         """
         # domain is a cube therefore we can inspect one dimension
         ncubes_per_side = len(dim_owners[0])
@@ -109,22 +128,64 @@ class cube_owner_map(object):
 
         return cube_to_mpi
 
+    @staticmethod
+    def compute_map_product_contribs(cart_comm, cube_to_mpi, dim_contribs):
+        """
+        Compute the full map from cube index to mpi rank owner, cube index to
+        mpi ranks of contributors.
+        :param: MPI cart_comm to use for logical coord to rank conversion.
+        owner map per dimension, elements are ints.
+        :param cube_to_mpi: ndims x cube_side_count tuple representing cube to 
+        owner map per dimension, elements are ints.        
+        :param dim_contribs: tuple ndims x cube_side_count tuple containing
+        lists of contributors.
+        :return: 
+        """
+        ncubes_per_side = len(dim_contribs[0])
+        ndim = len(dim_contribs)
+        my_rank = cart_comm.Get_rank()
 
+        # duplicate function (makes testing easier)
+        tuple_to_lin_coeff = [
+            ncubes_per_side**(ndim-dx-1) for dx in range(ndim)]
 
-    @property
-    def get_cube_to_owner(self):
-        """
-        :return: Array ctypes.c_int, index i contains MPI rank owning cube i.
-        """
-        return
+        # should convert an z,y,x tuple to lexicographic linear index
+        cube_tuple_to_lin = lambda X: sum([i[0]*i[1] for i in zip(
+            X,tuple_to_lin_coeff)])
 
-    @property
-    def get_cube_to_contributors(self):
-        """
-        :return: tuple: [0] Array length ncubes+1 of start points in [1] 
-        array of contributors.
-        """
-        return
+        # loop over the cubes, then loop over contributors and add to contrib
+        # list if contributing mpi rank is not owning rank.
+
+        curr_start = 0
+        starts = np.zeros(ncubes_per_side**ndim + 1, dtype=ctypes.c_uint64)
+        con_ranks = list()
+        send_ranks = np.zeros(ncubes_per_side**ndim, dtype=ctypes.c_int64)
+        send_ranks[:] = -1
+
+        iterset = [range(ncubes_per_side) for i in range(ndim)]
+        for ctx in itertools.product(*iterset):
+            cx = cube_tuple_to_lin(ctx)
+            owner = cube_to_mpi[cx]
+
+            # loop over contributing ranks
+            for con in itertools.product(
+                    *[dim_contribs[i][j] for i, j in enumerate(ctx)]):
+                con_rank = cart_comm.Get_cart_rank(con)
+
+                # build list this rank sends to
+                if con_rank != owner:
+                    if con_rank == my_rank:
+                        send_ranks[cx] = owner
+                    elif my_rank == owner:
+                        curr_start += 1
+                        con_ranks.append(con_rank)
+
+            starts[cx + 1] = curr_start
+
+        starts = np.array(starts, dtype=ctypes.c_uint64)
+        con_ranks = np.array(con_ranks, dtype=ctypes.c_uint64)
+
+        return starts, con_ranks, send_ranks
 
 
 
