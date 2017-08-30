@@ -59,19 +59,23 @@ class cube_owner_map(object):
         ndim = len(dims)
         oocsc = 1.0 / cube_side_count
         hoocsc = 0.5 / cube_side_count
-        cube_mids = [ hoocsc + oocsc*ix for ix in range(cube_side_count) ]
-        cube_lower_edge = lambda x: x - hoocsc
-        cube_upper_edge = lambda x: x + hoocsc
+        cube_mids = [hoocsc + oocsc*ix for ix in range(cube_side_count)]
+
+        def cube_lower_edge(x): return x - hoocsc
+
+        def cube_upper_edge(x): return x + hoocsc
 
         dim_owners = [[-1 for iy in range(cube_side_count)] for
                       ix in range(ndim)]
 
-        dim_contribs = [[[] for iy in range(cube_side_count) ] for
+        dim_contribs = [[[] for iy in range(cube_side_count)] for
                         ix in range(ndim)]
 
         for dx in range(ndim):
-            lbound = lambda argx: float(argx)/dims[dx]
-            ubound = lambda argx: float(argx+1)/dims[dx]
+
+            def lbound(argx): return float(argx)/dims[dx]
+            def ubound(argx): return float(argx+1)/dims[dx]
+
             for mx in range(dims[dx]):
                 for cx, cmid in enumerate(cube_mids):
                     if (lbound(mx) <= cmid) and (cmid < ubound(mx)):
@@ -114,7 +118,7 @@ class cube_owner_map(object):
             ncubes_per_side**(ndim-dx-1) for dx in range(ndim)]
 
         # should convert an z,y,x tuple to lexicographic linear index
-        cube_tuple_to_lin = lambda X: sum([i[0]*i[1] for i in zip(
+        def cube_tuple_to_lin(X): return sum([i[0]*i[1] for i in zip(
             X,tuple_to_lin_coeff)])
 
         # loop over cube indexes
@@ -148,7 +152,7 @@ class cube_owner_map(object):
             ncubes_per_side**(ndim-dx-1) for dx in range(ndim)]
 
         # should convert an z,y,x tuple to lexicographic linear index
-        cube_tuple_to_lin = lambda X: sum([i[0]*i[1] for i in zip(
+        def cube_tuple_to_lin(X): return sum([i[0]*i[1] for i in zip(
             X,tuple_to_lin_coeff)])
 
         # loop over the cubes, then loop over contributors and add to contrib
@@ -216,6 +220,44 @@ def compute_interaction_offsets(cube_index):
     if ri != 189:
         raise RuntimeError('Expected 189 cube offsets but recorded ' + str(ri))
     return ro
+
+
+def compute_interaction_lists(local_size):
+    """
+    Compute the local interaction offset lists for a local domain. Child cubes
+    are indexed lexicographically from 0.
+    :param local_size: tuple of local cube domain dimensions.
+    :return: 6x189 ctypes.c_int32 offsets numpy array.
+    """
+
+    if not local_size[0] > 5 or not local_size[1] > 5 \
+            or not local_size[2] > 5:
+        raise RuntimeError(
+            "local size too small in a dimension: " + str(local_size))
+
+    def tuple_to_lin(x): return x[:, 2]*local_size[0]*local_size[1] + \
+        x[:, 1]*local_size[0] + x[:, 0]
+
+    ro = np.zeros(shape=(8, 189), dtype=ctypes.c_int32)
+    ri = 0
+    for iz in (0, 1):
+        for iy in (0, 1):
+            for ix in (0, 1):
+                ro[ri, :] = tuple_to_lin(
+                    compute_interaction_offsets((ix, iy, iz)))
+                ri += 1
+
+    if ri != 8:
+        raise RuntimeError("unexpected number of offset lists " + str(ri))
+
+    return ro
+
+
+
+
+
+
+
 
 
 
