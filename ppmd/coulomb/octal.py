@@ -193,6 +193,9 @@ def compute_interaction_offsets(cube_index):
     :param cube_index: Tuple of child cube to compute offsets for.
     :return: numpy array type ctypes.c_int32 size 189x3 of offsets.
     """
+    ox = np.array((cube_index[0], cube_index[1], cube_index[2]))
+    if np.sum(ox**2) > 3 or not np.all(np.abs(ox) == ox):
+        raise RuntimeError("unexpected cube_index" + str(cube_index))
 
     # get 6x6x6 array of all offsets for the child cube.
     ogrid = np.array([range(-2 - cube_index[0], 4 - cube_index[0]),
@@ -209,6 +212,9 @@ def compute_interaction_offsets(cube_index):
                 if not np.sum(ox**2) <= 3:
                     ro[ri, :] = ox
                     ri += 1
+
+    if ri != 189:
+        raise RuntimeError('Expected 189 cube offsets but recorded ' + str(ri))
     return ro
 
 

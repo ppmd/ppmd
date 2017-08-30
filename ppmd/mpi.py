@@ -299,12 +299,9 @@ def cartcomm_periods_xyz(comm):
     """
     return comm.Get_topo()[1][::-1]
 
-
-
 def check(statement, message):
     if not statement:
         abort(err=message)
-
 
 def abort(err='-', err_code=0):
     print(80*"=")
@@ -314,3 +311,13 @@ def abort(err='-', err_code=0):
     traceback.print_stack()
     print(80*"=")
     MPI.COMM_WORLD.Abort(err_code)
+
+if MPI.COMM_WORLD.size > 1:
+    except_hook = sys.excepthook
+
+    def mpi_excepthook(typ, value, traceback):
+        except_hook(typ, value, traceback)
+        sys.stderr.flush()
+        abort()
+
+    sys.excepthook = mpi_excepthook
