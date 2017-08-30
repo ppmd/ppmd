@@ -1,10 +1,10 @@
 from __future__ import print_function, division, absolute_import
+import itertools
+import ctypes
+import numpy as np
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
-
-import itertools, ctypes
-import numpy as np
 
 class cube_owner_map(object):
     """
@@ -32,20 +32,19 @@ class cube_owner_map(object):
 
         owners, contribs = self.compute_grid_ownership(dims, cube_side_count)
         cube_to_mpi = self.compute_map_product_owners(cart_comm, owners)
-        starts, con_ranks, send_ranks = self.compute_map_product_contribs(cart_comm,
-            cube_to_mpi, contribs)
+        starts, con_ranks, send_ranks = self.compute_map_product_contribs(
+            cart_comm,cube_to_mpi, contribs)
 
         self.cube_to_mpi = cube_to_mpi
         """Array from cube global index to owning mpi rank"""
         self.contrib_mpi = con_ranks
         """Array containing ranks contributing to a cube"""
         self.contrib_starts = starts
-        """Cube i has contributing coeffients from ranks x_s_i to x_s_{i-1}
+        """Cube i has contributing coefficients from ranks x_s_i to x_s_{i-1}
         where s is contrib_starts and x is contrib_mpi"""
         self.cube_to_send = send_ranks
         """Array if this mpi rank contributes to cube i then x_i is owning
         rank of cube i else x_i = -1"""
-
 
     @staticmethod
     def compute_grid_ownership(dims, cube_side_count):
@@ -92,7 +91,6 @@ class cube_owner_map(object):
 
         # dim owner orders is z dim then y dim ...
         return dim_owners, dim_contribs
-
 
     @staticmethod
     def compute_map_product_owners(cart_comm, dim_owners):
@@ -186,6 +184,50 @@ class cube_owner_map(object):
         con_ranks = np.array(con_ranks, dtype=ctypes.c_uint64)
 
         return starts, con_ranks, send_ranks
+
+
+def compute_interaction_offsets(cube_index):
+    """
+    Compute the interaction offsets for a given child cube. Child cubes are
+    indexed with a tuple.
+    :param cube_index: Tuple of child cube to compute offsets for.
+    :return: numpy array type ctypes.c_int32 size 189x3 of offsets.
+    """
+
+    # get 6x6x6 array of all offsets for the child cube.
+    ogrid = np.array([range(-2 - cube_index[0], 4 - cube_index[0]),
+                      range(-2 - cube_index[1], 4 - cube_index[1]),
+                      range(-2 - cube_index[2], 4 - cube_index[2])])
+
+    # loop over all offsets, ignore the 27 nearest neighbours.
+    ro = np.zeros(shape=(189, 3), dtype=ctypes.c_int32)
+    ri = 0
+    for iz in range(6):
+        for iy in range(6):
+            for ix in range(6):
+                ox = np.array((ogrid[0, ix], ogrid[1, iy], ogrid[2, iz]))
+                if not np.sum(ox**2) <= 3:
+                    ro[ri, :] = ox
+                    ri += 1
+    return ro
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

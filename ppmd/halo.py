@@ -14,7 +14,7 @@ import numpy as np
 import collections
 
 # package level
-from ppmd import host, mpi, opt, runtime
+from ppmd import host, mpi, runtime
 from ppmd.lib import build
 
 
