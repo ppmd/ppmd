@@ -3,6 +3,8 @@ import itertools
 import ctypes
 import numpy as np
 
+import ppmd.mpi.MPI as MPI
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 
@@ -256,32 +258,55 @@ def compute_interaction_lists(local_size):
     return ro
 
 
+class OctalGridLevel(object):
+    def __init__(self, level, parent_comm):
+        """
+        Level in the octal tree.  
+        :param level: Non-negative integer subdivision level.
+        :param parent_comm: Cartesian communicator to potentially split to 
+        form the cartesian communicator for this level.
+        """
+        if level < 0:
+            raise RuntimeError("Expected non-negative level integer.")
+
+        self.level = level
+        self.parent_comm = parent_comm
+        self.ncubes_global = (2**level)**3
+        self.ncubes_side_global = 2**level
+
+        self.comm = parent_comm
+        self.new_comm = False
+
+        if parent_comm != MPI.COMM_NULL:
+            self._init_comm(parent_comm)
+
+    def _init_comm(self, parent_comm):
+        # set the min work per process at a 2x2x2 block of cubes for levels>1.
+        work_units = (2 ** (self.level - 1)) ** 3 if self.level > 1 else 1
+
+        parent_size = parent_comm.Get_size()
+        parent_rank = parent_comm.Get_rank()
+
+        # is the parent communicator too large?
+        if parent_size > work_units:
+            color = 0 if parent_rank < work_units else MPI.UNDEFINED
+            tmp_comm = parent_comm.Split(color=color, key=parent_rank)
+            dims = MPI.Compute_dims(work_units, 3)
+            self.comm = tmp_comm.Create_cart(dims=dims, periods=(1, 1, 1),
+                                             bool_reorder=False)
+            self.new_comm = True
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+class OctalTree(object):
+    def __init__(self, num_levels, cart_comm):
+        self.num_levels = num_levels
+        self.cart_comm = cart_comm
+        self.levels = []
+        comm_tmp = cart_comm
+        for lx in range(self.num_levels):
+            level_tmp = OctalGridLevel(level=lx, parent_comm=comm_tmp)
+            self.levels.append(level_tmp)
+            comm_tmp = level_tmp.comm
 
 
 
