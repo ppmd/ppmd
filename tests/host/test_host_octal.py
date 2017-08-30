@@ -28,6 +28,9 @@ class _fake_cartcomm(object):
         print(index, lindex)
         return lindex
 
+    def Get_rank(self):
+        return 0
+
 @pytest.fixture(
     scope="module",
     params=(
@@ -46,6 +49,7 @@ class _fake_cartcomm(object):
 def fake_cartcomm(request):
     return request.param
 
+@pytest.mark.skip('dev test')
 def test_octal_cube_owner_map_1(fake_cartcomm):
 
     cc = _fake_cartcomm(fake_cartcomm[0])

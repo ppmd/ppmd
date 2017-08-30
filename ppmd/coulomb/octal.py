@@ -6,6 +6,7 @@ import numpy as np
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 
+
 class cube_owner_map(object):
     """
     Compute the global map from cube index (lexicographic) to owning MPI rank
@@ -23,7 +24,8 @@ class cube_owner_map(object):
         self.cart_comm = cart_comm
         """Cartesian communicator used"""
         topo = self.cart_comm.Get_topo()
-        dims= topo[0] # dim order here is z, y, x
+        # dim order here is z, y, x
+        dims = topo[0]
 
         self.cube_count = cube_side_count**len(dims)
         """Total number of cubes"""
@@ -33,7 +35,7 @@ class cube_owner_map(object):
         owners, contribs = self.compute_grid_ownership(dims, cube_side_count)
         cube_to_mpi = self.compute_map_product_owners(cart_comm, owners)
         starts, con_ranks, send_ranks = self.compute_map_product_contribs(
-            cart_comm,cube_to_mpi, contribs)
+            cart_comm, cube_to_mpi, contribs)
 
         self.cube_to_mpi = cube_to_mpi
         """Array from cube global index to owning mpi rank"""
@@ -65,8 +67,7 @@ class cube_owner_map(object):
 
         def cube_upper_edge(x): return x + hoocsc
 
-        dim_owners = [[-1 for iy in range(cube_side_count)] for
-                      ix in range(ndim)]
+        dim_owners = [[-1] * cube_side_count] * ndim
 
         dim_contribs = [[[] for iy in range(cube_side_count)] for
                         ix in range(ndim)]
@@ -74,6 +75,7 @@ class cube_owner_map(object):
         for dx in range(ndim):
 
             def lbound(argx): return float(argx)/dims[dx]
+
             def ubound(argx): return float(argx+1)/dims[dx]
 
             for mx in range(dims[dx]):
@@ -100,7 +102,8 @@ class cube_owner_map(object):
     def compute_map_product_owners(cart_comm, dim_owners):
         """
         Compute the full map from cube index to mpi rank owner.
-        :param: MPI cart_comm to use for logical coord to rank conversion.
+        :param cart_comm: MPI cart_comm to use for logical coord to rank 
+        conversion.
         :param dim_owners: ndims x cube_side_count tuple representing cube to 
         owner map per dimension, elements are ints.
         lists of contributors.
@@ -111,15 +114,15 @@ class cube_owner_map(object):
         ncubes_per_side = len(dim_owners[0])
         ndim = len(dim_owners)
         ncubes = ncubes_per_side**ndim
-        iterset = [range(ncubes_per_side) for i in range(ndim)]
+        iterset = [range(ncubes_per_side)] * ndim
         cube_to_mpi = np.zeros(ncubes, dtype=ctypes.c_uint64)
 
         tuple_to_lin_coeff = [
             ncubes_per_side**(ndim-dx-1) for dx in range(ndim)]
 
         # should convert an z,y,x tuple to lexicographic linear index
-        def cube_tuple_to_lin(X): return sum([i[0]*i[1] for i in zip(
-            X,tuple_to_lin_coeff)])
+        def cube_tuple_to_lin(xarg): return sum([k[0]*k[1] for k in zip(
+            xarg, tuple_to_lin_coeff)])
 
         # loop over cube indexes
         for cube_tuple in itertools.product(*iterset):
@@ -135,8 +138,8 @@ class cube_owner_map(object):
         """
         Compute the full map from cube index to mpi rank owner, cube index to
         mpi ranks of contributors.
-        :param: MPI cart_comm to use for logical coord to rank conversion.
-        owner map per dimension, elements are ints.
+        :param cart_comm: MPI cart_comm to use for logical coord to rank 
+        conversion. Owner map per dimension, elements are ints.
         :param cube_to_mpi: ndims x cube_side_count tuple representing cube to 
         owner map per dimension, elements are ints.        
         :param dim_contribs: tuple ndims x cube_side_count tuple containing
@@ -152,8 +155,8 @@ class cube_owner_map(object):
             ncubes_per_side**(ndim-dx-1) for dx in range(ndim)]
 
         # should convert an z,y,x tuple to lexicographic linear index
-        def cube_tuple_to_lin(X): return sum([i[0]*i[1] for i in zip(
-            X,tuple_to_lin_coeff)])
+        def cube_tuple_to_lin(xarg): return sum([k[0]*k[1] for k in zip(
+            xarg, tuple_to_lin_coeff)])
 
         # loop over the cubes, then loop over contributors and add to contrib
         # list if contributing mpi rank is not owning rank.
@@ -164,7 +167,7 @@ class cube_owner_map(object):
         send_ranks = np.zeros(ncubes_per_side**ndim, dtype=ctypes.c_int64)
         send_ranks[:] = -1
 
-        iterset = [range(ncubes_per_side) for i in range(ndim)]
+        iterset = [range(ncubes_per_side)] * ndim
         for ctx in itertools.product(*iterset):
             cx = cube_tuple_to_lin(ctx)
             owner = cube_to_mpi[cx]
