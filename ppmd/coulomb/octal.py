@@ -3,7 +3,7 @@ import itertools
 import ctypes
 import numpy as np
 
-import ppmd.mpi.MPI as MPI
+from mpi4py import MPI
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
@@ -20,8 +20,11 @@ class cube_owner_map(object):
     
     :param cart_comm: MPI cartesian communicator.
     :param cube_side_count: Integer subdivision level of domain.
+    :param group_children: Consider cube subdivision to be the final mesh l of
+    an octal tree and group cubes such that all children of cubes in mesh l-1
+    are on the same MPI rank.
     """
-    def __init__(self, cart_comm, cube_side_count):
+    def __init__(self, cart_comm, cube_side_count, group_children=False):
 
         self.cart_comm = cart_comm
         """Cartesian communicator used"""
@@ -34,7 +37,11 @@ class cube_owner_map(object):
         self.cube_side_count = cube_side_count
         """Side count of octal tree on domain"""
 
-        owners, contribs = self.compute_grid_ownership(dims, cube_side_count)
+        if group_children and not cube_side_count % 2 == 0:
+            raise RuntimeError("Side length must be even with group_children")
+
+        owners, contribs = self.compute_grid_ownership(
+            dims, cube_side_count, group_children)
         cube_to_mpi = self.compute_map_product_owners(cart_comm, owners)
         starts, con_ranks, send_ranks = self.compute_map_product_contribs(
             cart_comm, cube_to_mpi, contribs)
@@ -51,26 +58,33 @@ class cube_owner_map(object):
         rank of cube i else x_i = -1"""
 
     @staticmethod
-    def compute_grid_ownership(dims, cube_side_count):
+    def compute_grid_ownership(dims, cube_side_count, group_children=False):
         """
         For each dimension compute the owner and contributing ranks. Does
         not perform out product to compute the full map.
         :param dims: tuple of mpi dims.
         :param cube_side_count: int, number of cubes in each dimension
+        :param group_children: See class doc string.
         :return: tuple: ranks of each cube owner, contributing ranks.
         """
 
         ndim = len(dims)
         oocsc = 1.0 / cube_side_count
         hoocsc = 0.5 / cube_side_count
-        cube_mids = [hoocsc + oocsc*ix for ix in range(cube_side_count)]
 
-        def cube_lower_edge(x): return x - hoocsc
+        if group_children:
+            cube_mids = [oocsc*ix + ((ix + 1) % 2) * oocsc
+                         for ix in range(cube_side_count)]
+        else:
+            cube_mids = [hoocsc + oocsc*ix for ix in range(cube_side_count)]
 
-        def cube_upper_edge(x): return x + hoocsc
+        def cube_lower_edge(x): return x * oocsc
+
+        def cube_upper_edge(x): return (x + 1) * oocsc
 
         dim_owners = [[-1] * cube_side_count] * ndim
 
+        # expanding empty lists with []*n gives [] not [[],...,[]]
         dim_contribs = [[[] for iy in range(cube_side_count)] for
                         ix in range(ndim)]
 
@@ -82,19 +96,15 @@ class cube_owner_map(object):
 
             for mx in range(dims[dx]):
                 for cx, cmid in enumerate(cube_mids):
-                    if (lbound(mx) <= cmid) and (cmid < ubound(mx)):
+                    if (lbound(mx) < cmid) and (cmid <= ubound(mx)):
                         # this rank is the cube's unique owner
                         dim_owners[dx][cx] = mx
 
-                    if (ubound(mx) > cube_lower_edge(cmid)) and \
-                            (lbound(mx) < cube_upper_edge(cmid)):
+                    if (ubound(mx) > cube_lower_edge(cx)) and \
+                            (lbound(mx) < cube_upper_edge(cx)):
+
                         # this rank's subdomain intersects the cube's lower
                         # bound
-                        dim_contribs[dx][cx].append(mx)
-
-                    elif (lbound(mx) < cube_upper_edge(cmid)) and \
-                            (ubound(mx) > cube_lower_edge(cmid)):
-                        # rank intersects cube's upper edge
                         dim_contribs[dx][cx].append(mx)
 
         # dim owner orders is z dim then y dim ...
