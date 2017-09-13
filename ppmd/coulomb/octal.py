@@ -286,25 +286,54 @@ class OctalGridLevel(object):
 
         self.comm = parent_comm
         self.new_comm = False
+        self.local_grid_cube_size = None
+        self.grid_cube_size = None
 
         if parent_comm != MPI.COMM_NULL:
             self._init_comm(parent_comm)
+            self._init_decomp()
 
     def _init_comm(self, parent_comm):
         # set the min work per process at a 2x2x2 block of cubes for levels>1.
-        work_units = (2 ** (self.level - 1)) ** 3 if self.level > 1 else 1
+        work_units_per_side = 2 ** (self.level - 1) if self.level > 1 else 1
 
-        parent_size = parent_comm.Get_size()
         parent_rank = parent_comm.Get_rank()
 
+        current_dims = parent_comm.Get_topo()[0]
+        new_dims = (min(current_dims[0], work_units_per_side),
+                    min(current_dims[1], work_units_per_side),
+                    min(current_dims[2], work_units_per_side))
+
         # is the parent communicator too large?
-        if parent_size > work_units:
+        if not(new_dims[0] == current_dims[0] and
+                new_dims[1] == current_dims[1] and
+                new_dims[2] == current_dims[2]):
+
+            work_units = new_dims[0] * new_dims[1] * new_dims[2]
+
             color = 0 if parent_rank < work_units else MPI.UNDEFINED
             tmp_comm = parent_comm.Split(color=color, key=parent_rank)
-            dims = MPI.Compute_dims(work_units, 3)
-            self.comm = tmp_comm.Create_cart(dims=dims, periods=(1, 1, 1),
+
+            self.comm = tmp_comm.Create_cart(dims=new_dims, periods=(1, 1, 1),
                                              bool_reorder=False)
             self.new_comm = True
+
+    def _init_decomp(self):
+        work_units_per_side = 2 ** (self.level - 1) if self.level > 1 else 1
+        dims = self.comm.Get_topo()[0]
+        top = self.comm.Get_topo()[2]
+        lt = [-1, -1, -1]
+        for dx in range(3):
+            wk = int(work_units_per_side/dims[dx])
+            rd = work_units_per_side - dims[dx]*wk
+            lt[dx] = wk + 1 if top[dx] < rd else wk
+
+        self.local_grid_cube_size = np.array(lt, dtype=ctypes.c_uint32)
+        self.grid_cube_size = np.array((lt[0] + 4, lt[1] + 4, lt[2] + 4),
+                                       dtype=ctypes.c_uint32)
+
+    def _compute_lparent_to_lchildren(self):
+        pass
 
 
 class OctalTree(object):
