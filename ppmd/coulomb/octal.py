@@ -287,6 +287,7 @@ class OctalGridLevel(object):
         self.comm = parent_comm
         self.new_comm = False
         self.local_grid_cube_size = None
+        self.local_grid_offset = None
         self.grid_cube_size = None
 
         if parent_comm != MPI.COMM_NULL:
@@ -322,19 +323,27 @@ class OctalGridLevel(object):
         work_units_per_side = 2 ** (self.level - 1) if self.level > 1 else 1
         dims = self.comm.Get_topo()[0]
         top = self.comm.Get_topo()[2]
+        # compute the local domain size (no halos included)
         lt = [-1, -1, -1]
+        lo = [-1, -1, -1]
         for dx in range(3):
             wk = int(work_units_per_side/dims[dx])
+            wkl = [wk] * dims[dx]
             rd = work_units_per_side - dims[dx]*wk
-            lt[dx] = wk + 1 if top[dx] < rd else wk
+            # get the global distribution
+            wkl = [wkl[wi] + 1 if wi < rd else wkl[wi] for wi in range(dims[dx])]
+            # extract the local dim
+            lt[dx] = wkl[top[dx]]
+            # compute the offsets to the local section
+            lo[dx] = sum(wkl[0:top[dx]])
+            
+            if lo[dx] < 0 or lt[dx] < 0:
+                raise RuntimeError('Octal MPI decompostion error.')
 
         self.local_grid_cube_size = np.array(lt, dtype=ctypes.c_uint32)
         self.grid_cube_size = np.array((lt[0] + 4, lt[1] + 4, lt[2] + 4),
                                        dtype=ctypes.c_uint32)
-
-    def _compute_lparent_to_lchildren(self):
-        pass
-
+        self.local_grid_offset = np.array(lo, dtype=ctypes.c_uint32)
 
 class OctalTree(object):
     def __init__(self, num_levels, cart_comm):
