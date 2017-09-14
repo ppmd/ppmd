@@ -290,6 +290,9 @@ class OctalGridLevel(object):
         self.local_grid_offset = None
         self.grid_cube_size = None
 
+        self.owners = np.zeros(shape=(2**level, 2**level, 2**level),
+                               dtype=ctypes.c_uint32)
+
         if parent_comm != MPI.COMM_NULL:
             self._init_comm(parent_comm)
             self._init_decomp()
@@ -326,12 +329,14 @@ class OctalGridLevel(object):
         # compute the local domain size (no halos included)
         lt = [-1, -1, -1]
         lo = [-1, -1, -1]
+        wkld = [[],[],[]]
         for dx in range(3):
             wk = int(work_units_per_side/dims[dx])
             wkl = [wk] * dims[dx]
             rd = work_units_per_side - dims[dx]*wk
             # get the global distribution
-            wkl = [wkl[wi] + 1 if wi < rd else wkl[wi] for wi in range(dims[dx])]
+            wkl = [2 * (wkl[wi] + 1) if wi < rd else 2 * wkl[wi] for wi in range(dims[dx])]
+            wkld[dx] = wkl
             # extract the local dim
             lt[dx] = wkl[top[dx]]
             # compute the offsets to the local section
@@ -344,6 +349,22 @@ class OctalGridLevel(object):
         self.grid_cube_size = np.array((lt[0] + 4, lt[1] + 4, lt[2] + 4),
                                        dtype=ctypes.c_uint32)
         self.local_grid_offset = np.array(lo, dtype=ctypes.c_uint32)
+        
+        # owners along each dimension
+        owners = [[],[],[]]
+        for dx in range(3):
+            for nx in range(dims[dx]):
+                owners[dx] += [nx] * wkld[nx]
+        
+        # outer product
+        wups2 = work_units_per_side * 2
+        for iz in range(wups2):
+            for iy in range(wups2):
+                for ix in range(wups2):
+                    self.owners[iz, iy, ix] = owners[ix] + \
+                                              wups2 * (owners[iy] + \
+                                              wups2 * owners[iz])
+
 
 class OctalTree(object):
     def __init__(self, num_levels, cart_comm):
