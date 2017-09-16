@@ -302,6 +302,8 @@ class OctalGridLevel(object):
         work_units_per_side = 2 ** (self.level - 1) if self.level > 1 else 1
 
         parent_rank = parent_comm.Get_rank()
+        
+        print('parent_rank', parent_rank)
 
         current_dims = parent_comm.Get_topo()[0]
         new_dims = (min(current_dims[0], work_units_per_side),
@@ -317,55 +319,63 @@ class OctalGridLevel(object):
 
             color = 0 if parent_rank < work_units else MPI.UNDEFINED
             tmp_comm = parent_comm.Split(color=color, key=parent_rank)
-
-            self.comm = tmp_comm.Create_cart(dims=new_dims, periods=(1, 1, 1),
-                                             bool_reorder=False)
+            
+            if tmp_comm != MPI.COMM_NULL:
+                self.comm = tmp_comm.Create_cart(dims=new_dims, periods=(1, 1, 1),
+                                                reorder=False)
+            else:
+                self.comm = MPI.COMM_NULL
             self.new_comm = True
 
+
     def _init_decomp(self):
-        work_units_per_side = 2 ** (self.level - 1) if self.level > 1 else 1
-        dims = self.comm.Get_topo()[0]
-        top = self.comm.Get_topo()[2]
-        # compute the local domain size (no halos included)
-        lt = [-1, -1, -1]
-        lo = [-1, -1, -1]
-        wkld = [[],[],[]]
-        for dx in range(3):
-            wk = int(work_units_per_side/dims[dx])
-            wkl = [wk] * dims[dx]
-            rd = work_units_per_side - dims[dx]*wk
-            # get the global distribution
-            wkl = [2 * (wkl[wi] + 1) if wi < rd else 2 * wkl[wi] for wi in range(dims[dx])]
-            wkld[dx] = wkl
-            # extract the local dim
-            lt[dx] = wkl[top[dx]]
-            # compute the offsets to the local section
-            lo[dx] = sum(wkl[0:top[dx]])
+        if self.comm != MPI.COMM_NULL:
+            work_units_per_side = 2 ** (self.level - 1) if self.level > 1 else 1
+            dims = self.comm.Get_topo()[0]
+            top = self.comm.Get_topo()[2]
+            # compute the local domain size (no halos included)
+            lt = [-1, -1, -1]
+            lo = [-1, -1, -1]
+            wkld = [[],[],[]]
+            for dx in range(3):
+                wk = int(work_units_per_side/dims[dx])
+                wkl = [wk] * dims[dx]
+                rd = work_units_per_side - dims[dx]*wk
+                # get the global distribution
+                wkl = [2 * (wkl[wi] + 1) if wi < rd else 2 * wkl[wi] for wi in range(dims[dx])]
+                wkld[dx] = wkl
+                # extract the local dim
+                lt[dx] = wkl[top[dx]]
+                # compute the offsets to the local section
+                lo[dx] = sum(wkl[0:top[dx]])
+                
+                if lo[dx] < 0 or lt[dx] < 0:
+                    raise RuntimeError('Octal MPI decompostion error.')
+
+            self.local_grid_cube_size = np.array(lt, dtype=ctypes.c_uint32)
+            self.grid_cube_size = np.array((lt[0] + 4, lt[1] + 4, lt[2] + 4),
+                                           dtype=ctypes.c_uint32)
+            self.local_grid_offset = np.array(lo, dtype=ctypes.c_uint32)
             
-            if lo[dx] < 0 or lt[dx] < 0:
-                raise RuntimeError('Octal MPI decompostion error.')
+            # owners along each dimension
+            owners = [[],[],[]]
+            for dx in range(3):
+                for nx in range(dims[dx]):
+                    owners[dx] += [nx] * wkld[dx][nx]
+            
+            # outer product
+            wups2 = work_units_per_side * 2
+            for iz in range(wups2):
+                for iy in range(wups2):
+                    for ix in range(wups2):
+                        if top[2] == 0:
+                            print(iz, iy, ix, owners[0][ix], owners[1][iy], owners[2][iz])
 
-        self.local_grid_cube_size = np.array(lt, dtype=ctypes.c_uint32)
-        self.grid_cube_size = np.array((lt[0] + 4, lt[1] + 4, lt[2] + 4),
-                                       dtype=ctypes.c_uint32)
-        self.local_grid_offset = np.array(lo, dtype=ctypes.c_uint32)
+                        self.owners[iz, iy, ix] = owners[0][ix] + \
+                                                  dims[1] * (owners[1][iy] + \
+                                                  dims[2] * owners[2][iz])
         
-        # owners along each dimension
-        owners = [[],[],[]]
-        for dx in range(3):
-            for nx in range(dims[dx]):
-                owners[dx] += [nx] * wkld[nx]
-        
-        # outer product
-        wups2 = work_units_per_side * 2
-        for iz in range(wups2):
-            for iy in range(wups2):
-                for ix in range(wups2):
-                    self.owners[iz, iy, ix] = owners[ix] + \
-                                              wups2 * (owners[iy] + \
-                                              wups2 * owners[iz])
-
-
+            print(dims)
 class OctalTree(object):
     def __init__(self, num_levels, cart_comm):
         self.num_levels = num_levels

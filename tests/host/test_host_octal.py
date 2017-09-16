@@ -249,7 +249,25 @@ def test_octal_cube_owner_map_3(cube_size2):
 
 
 
+def test_octal_grid_level_1():
+    level = 2
+    dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
 
+    if MPIRANK == 0 and DEBUG:
+        print("DIMS", dims[::-1])
+
+    cc = md.mpi.create_cartcomm(
+        md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
+
+
+    grid_level = OctalGridLevel(level=level, parent_comm=cc)
+    print('--')
+    print(MPIRANK, grid_level.owners)
+
+    #print(MPIRANK, 'new_comm', grid_level.new_comm)
+    #print(MPIRANK, 'local_cube_size', grid_level.local_grid_cube_size)
+    #print(MPIRANK, 'local_offset', grid_level.local_grid_offset)
+    #print(MPIRANK, 'local_size_halo', grid_level.grid_cube_size)
 
 
 
