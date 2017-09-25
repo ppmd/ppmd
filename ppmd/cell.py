@@ -160,7 +160,8 @@ class CellList(object):
         Get the values/function handles used to setup the cell list.
         :return:
         """
-        assert (None in (self._n, self._positions, self._domain)) is False, "get_setup_parameters Error: cell list not setup."
+        assert (None in (self._n, self._positions, self._domain)) is False,\
+            "get_setup_parameters Error: cell list not setup."
         return self._n, self._positions, self._domain
 
     def create(self):

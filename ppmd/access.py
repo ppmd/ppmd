@@ -1,6 +1,7 @@
 """
-This module contains the access descriptor class and the pre-defined access descriptors to use when passing
-instances of ParticleDat and ScalarArray to the build system.
+This module contains the access descriptor class and the pre-defined access
+descriptors to use when passing instances of ParticleDat and ScalarArray to the
+build system.
 """
 from __future__ import division, print_function, absolute_import
 import ctypes
@@ -31,8 +32,8 @@ Predefined Access Modes
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 These should be used when passing instances of :class:`~data.ParticleDat` or
-:class:`~data.ScalarArray` to the build system to declare the access mode required
-by the associated kernel.
+:class:`~data.ScalarArray` to the build system to declare the access mode
+required by the associated kernel.
 
 .. autodata:: RW
 .. autodata:: R
@@ -160,7 +161,8 @@ class DatArgStore(object):
         """
         Provide compatibility checking of passed initial dats with allowed dats
         and provide consistent looping over dats.
-        :param allow: Dictionary, form {dat-type: tuple of allowed access descriptors)}
+        :param allow: Dictionary, form {dat-type: tuple of allowed access
+        descriptors)}
         :param initial: initial dat dict
         """
         assert type(allow) is dict, "expected a dict"
@@ -175,8 +177,10 @@ class DatArgStore(object):
         self._register_initial()
 
     def _register_initial(self):
-        """Hash the properties of the initial args to allow checking of alternate
-        args, plus determine an order for args for consistent looping"""
+        """
+        Hash the properties of the initial args to allow checking of 
+        alternate args, plus determine an order for args for consistent 
+        looping"""
 
         dats = []
         objs = []
@@ -204,24 +208,29 @@ class DatArgStore(object):
         """Check args are in the set of allowed args and access descriptors"""
         for ax in args.items():
             assert len(ax) == 2, "error in passed dat, missing symbol or dat?"
-            assert len(ax[1]) > 1, "error in passed dat, missing access descriptor?" + str(ax[1])
+            assert len(ax[1]) > 1,\
+                "error in passed dat, missing access descriptor?" + str(ax[1])
 
             symbol = ax[0]
             obj = type(ax[1][0])
             mode = ax[1][1]
 
-            assert obj in self.allow.keys(), "Passed Dat is not a compatible type: " + str(obj)
+            assert obj in self.allow.keys(),\
+                "Passed Dat is not a compatible type: " + str(obj)
             assert mode in self.allow[obj], "Passed access descriptor is " \
                 "not compatible, access: " + str(mode) + ", symbol: " + symbol
-            assert type(symbol) is str, "Passed symbol is not a str: " + str(symbol)
+            assert type(symbol) is str,\
+                "Passed symbol is not a str: " + str(symbol)
 
     def _check_new_dats(self, new_dats):
-        assert len(new_dats.items()) == len(self.dats), "incorrect number of dats"
+        assert len(new_dats.items()) == len(self.dats),\
+            "incorrect number of dats"
         assert type(new_dats) is dict, "expected a dictonary of new dats"
         objs = []
         for ax in new_dats.items():
             assert len(ax) == 2, "error in passed dat, missing symbol or dat?"
-            assert len(ax[1]) > 1, "error in passed dat, missing access descriptor?"
+            assert len(ax[1]) > 1,\
+                "error in passed dat, missing access descriptor?"
 
             symbol = ax[0]
             obj = ax[1][0]
@@ -230,12 +239,16 @@ class DatArgStore(object):
             assert obj not in objs, "dats may not be passed twice"
             objs.append(obj)
 
-            assert symbol in self.symbols.keys(), "unexpected symbol in dat dict"
+            assert symbol in self.symbols.keys(),\
+                "unexpected symbol in dat dict"
             assert mode == self.register[symbol][0], "incorrect access mode"
-            assert issubclass(type(obj), self.register[symbol][1]), "incompatible dat passed"+\
+            assert issubclass(type(obj), self.register[symbol][1]),\
+                "incompatible dat passed"+\
                 str(type(obj)) + " != " + str(self.register[symbol][1])
-            assert obj.dtype == self.register[symbol][2], "incompatible dat data type"
-            assert obj.ncomp == self.register[symbol][3], "incompatible dat ncomp"
+            assert obj.dtype == self.register[symbol][2],\
+                "incompatible dat data type"
+            assert obj.ncomp == self.register[symbol][3],\
+                "incompatible dat ncomp"
 
     def items(self, new_dats=None):
         """return the dats in a consistent order"""
@@ -275,8 +288,9 @@ class StaticArgStore(object):
         self._register_initial()
 
     def _register_initial(self):
-        """Hash the properties of the initial args to allow checking of alternate
-        args, plus determine an order for args for consistent looping"""
+        """Hash the properties of the initial args to allow checking of 
+        alternate args, plus determine an order for args for consistent 
+        looping"""
 
         dats = []
         objs = []
@@ -299,15 +313,17 @@ class StaticArgStore(object):
             assert len(ax) == 2, "error in passed dat, missing symbol"
             symbol = ax[0]
             ctype = ax[1]
-            assert ctype in self.allow, "Passed arg is not a compatible type: " + str(type)
-            assert type(symbol) is str, "Passed symbol is not a str: " + str(symbol)
+            assert ctype in self.allow, \
+                "Passed arg is not a compatible type: " + str(type)
+            assert type(symbol) is str, \
+                "Passed symbol is not a str: " + str(symbol)
 
     def _check_new_dats(self, new_dats):
-        assert len(new_dats.items()) == len(self.dats), "incorrect number of dats"
+        assert len(new_dats.items()) == len(self.dats), "bad number of dats"
         assert type(new_dats) is dict, "expected a dictonary of new dats"
         objs = []
         for ax in new_dats.items():
-            assert len(ax) == 2, "error in passed dict, missing symbol or dat?"
+            assert len(ax) == 2, "error in dict, missing symbol or dat?"
             symbol = ax[0]
             assert symbol not in objs, "dats may not be passed twice"
             objs.append(symbol)

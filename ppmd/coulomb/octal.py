@@ -368,14 +368,19 @@ class OctalGridLevel(object):
             for iz in range(wups2):
                 for iy in range(wups2):
                     for ix in range(wups2):
-                        if top[2] == 0:
-                            print(iz, iy, ix, owners[0][ix], owners[1][iy], owners[2][iz])
+                        # if top[2] == 0:
+                        #     print(iz, iy, ix, owners[0][ix], owners[1][iy], owners[2][iz])
 
-                        self.owners[iz, iy, ix] = owners[0][ix] + \
+                        # dim ordering is z,y,x in owners and dims
+                        self.owners[iz, iy, ix] = owners[2][ix] + \
                                                   dims[1] * (owners[1][iy] + \
-                                                  dims[2] * owners[2][iz])
+                                                  dims[0] * owners[0][iz])
         
             print(dims)
+
+
+
+
 class OctalTree(object):
     def __init__(self, num_levels, cart_comm):
         self.num_levels = num_levels

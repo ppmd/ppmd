@@ -123,7 +123,7 @@ def test_octal_cube_owner_map_1(fake_cartcomm):
 def cube_size(request):
     return request.param
 
-DEBUG = False
+DEBUG = True
 
 @pytest.mark.skipif("MPISIZE != 4")
 def test_octal_cube_owner_map_2(cube_size):
