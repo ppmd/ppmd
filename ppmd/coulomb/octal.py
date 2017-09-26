@@ -287,8 +287,12 @@ class OctalGridLevel(object):
         self.comm = parent_comm
         self.new_comm = False
         self.local_grid_cube_size = None
+        """Size of grid"""
+        self.parent_local_size = None
+        """Size of parent grid with matching ownership"""
         self.local_grid_offset = None
         self.grid_cube_size = None
+        """Size of grid plus halos"""
 
         self.owners = np.zeros(shape=(2**level, 2**level, 2**level),
                                dtype=ctypes.c_uint32)
@@ -330,29 +334,40 @@ class OctalGridLevel(object):
 
     def _init_decomp(self):
         if self.comm != MPI.COMM_NULL:
-            work_units_per_side = 2 ** (self.level - 1) if self.level > 1 else 1
             dims = self.comm.Get_topo()[0]
             top = self.comm.Get_topo()[2]
-            # compute the local domain size (no halos included)
-            lt = [-1, -1, -1]
-            lo = [-1, -1, -1]
-            wkld = [[],[],[]]
-            for dx in range(3):
-                wk = int(work_units_per_side/dims[dx])
-                wkl = [wk] * dims[dx]
-                rd = work_units_per_side - dims[dx]*wk
-                # get the global distribution
-                wkl = [2 * (wkl[wi] + 1) if wi < rd else 2 * wkl[wi] for wi in range(dims[dx])]
-                wkld[dx] = wkl
-                # extract the local dim
-                lt[dx] = wkl[top[dx]]
-                # compute the offsets to the local section
-                lo[dx] = sum(wkl[0:top[dx]])
-                
-                if lo[dx] < 0 or lt[dx] < 0:
-                    raise RuntimeError('Octal MPI decompostion error.')
+            work_units_per_side = 2 ** (self.level - 1) if self.level > 0 \
+                                  else 1
+
+            if self.level > 0:
+                # compute the local domain size (no halos included)
+                lt = [-1, -1, -1]
+                lo = [-1, -1, -1]
+                wkld = [[],[],[]]
+                for dx in range(3):
+                    wk = int(work_units_per_side/dims[dx])
+                    wkl = [wk] * dims[dx]
+                    rd = work_units_per_side - dims[dx]*wk
+                    # get the global distribution
+                    wkl = [2 * (wkl[wi] + 1) if wi < rd else 2 * wkl[wi] for wi in range(dims[dx])]
+                    wkld[dx] = wkl
+                    # extract the local dim
+                    lt[dx] = wkl[top[dx]]
+                    # compute the offsets to the local section
+                    lo[dx] = sum(wkl[0:top[dx]])
+
+                    if lo[dx] < 0 or lt[dx] < 0:
+                        raise RuntimeError('Octal MPI decompostion error.')
+
+            else:
+                lt = (1, 1, 1)
+                lo = (0, 0, 0)
+                wkld = ([0], [0], [0])
 
             self.local_grid_cube_size = np.array(lt, dtype=ctypes.c_uint32)
+            self.parent_local_size = np.array(
+                (int(lt[0]//2), int(lt[1]//2), int(lt[2]//2)),
+                dtype=ctypes.c_uint32)
             self.grid_cube_size = np.array((lt[0] + 4, lt[1] + 4, lt[2] + 4),
                                            dtype=ctypes.c_uint32)
             self.local_grid_offset = np.array(lo, dtype=ctypes.c_uint32)
@@ -362,23 +377,22 @@ class OctalGridLevel(object):
             for dx in range(3):
                 for nx in range(dims[dx]):
                     owners[dx] += [nx] * wkld[dx][nx]
-            
+
             # outer product
-            wups2 = work_units_per_side * 2
-            for iz in range(wups2):
-                for iy in range(wups2):
-                    for ix in range(wups2):
-                        # if top[2] == 0:
-                        #     print(iz, iy, ix, owners[0][ix], owners[1][iy], owners[2][iz])
+            if self.level > 0:
+                wups2 = work_units_per_side * 2
+                for iz in range(wups2):
+                    for iy in range(wups2):
+                        for ix in range(wups2):
+                            # if top[2] == 0:
+                            #     print(iz, iy, ix, owners[0][ix], owners[1][iy], owners[2][iz])
 
-                        # dim ordering is z,y,x in owners and dims
-                        self.owners[iz, iy, ix] = owners[2][ix] + \
-                                                  dims[1] * (owners[1][iy] + \
-                                                  dims[0] * owners[0][iz])
-        
-            print(dims)
-
-
+                            # dim ordering is z,y,x in owners and dims
+                            self.owners[iz, iy, ix] = owners[2][ix] + \
+                                                      dims[1] * (owners[1][iy] +
+                                                      dims[0] * owners[0][iz])
+            else:
+                self.owners[0, 0, 0] = 0
 
 
 class OctalTree(object):
@@ -387,10 +401,52 @@ class OctalTree(object):
         self.cart_comm = cart_comm
         self.levels = []
         comm_tmp = cart_comm
-        for lx in range(self.num_levels):
+        # work up tree from finest level
+        for lx in range(self.num_levels - 1, -1, -1):
+            print('LEVEL', lx)
             level_tmp = OctalGridLevel(level=lx, parent_comm=comm_tmp)
             self.levels.append(level_tmp)
             comm_tmp = level_tmp.comm
+        self.levels.reverse()
+
+
+class OctalDataTree(object):
+    def __init__(self, tree, ncomp, mode=None, dtype=ctypes.c_double):
+        """
+        Attach data to an OctalTree.
+        :param tree: octal tree to use.
+        :param ncomp: number of components per cell.
+        :param mode: 'plain', 'halo' or 'parent'. 'plain' assigns ncomp to 
+        each cube. 'halo' like 'plain' but with space for halo data. 'parent' 
+        allocates to level l the cell count of level l-1.
+        :param dtype: data type of elements.
+        """
+        if not mode in ('plain', 'halo', 'parent'):
+            raise RuntimeError('bad mode passed')
+        self.tree = tree
+        self.ncomp = ncomp
+        self.dtype = dtype
+        self.mode = mode
+        if self.mode == 'plain':
+            self.data = [
+                np.zeros(lvl.local_grid_cube_size) for lvl in self.tree.levels]
+        elif self.mode == 'halo':
+            self.data = [
+                np.zeros(lvl.grid_cube_size) for lvl in self.tree.levels]
+        else:
+            self.data = [
+                np.zeros(lvl.parent_local_size) for lvl in self.tree.levels]
+
+
+
+
+
+
+
+
+
+
+
 
 
 
