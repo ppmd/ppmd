@@ -4,6 +4,7 @@ import ctypes
 import numpy as np
 
 from mpi4py import MPI
+from ppmd import pygcl
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
@@ -291,8 +292,10 @@ class OctalGridLevel(object):
         self.parent_local_size = None
         """Size of parent grid with matching ownership"""
         self.local_grid_offset = None
+        """Offset in global coodinates to the local sub-domain"""
         self.grid_cube_size = None
         """Size of grid plus halos"""
+        self._halo_exchange_method = None
 
         self.owners = np.zeros(shape=(2**level, 2**level, 2**level),
                                dtype=ctypes.c_uint32)
@@ -300,6 +303,10 @@ class OctalGridLevel(object):
         if parent_comm != MPI.COMM_NULL:
             self._init_comm(parent_comm)
             self._init_decomp()
+
+        if self.comm != MPI.COMM_NULL:
+            self._init_halo_exchange_method()
+
 
     def _init_comm(self, parent_comm):
         # set the min work per process at a 2x2x2 block of cubes for levels>1.
@@ -394,6 +401,18 @@ class OctalGridLevel(object):
             else:
                 self.owners[0, 0, 0] = 0
 
+    def _init_halo_exchange_method(self):
+        self._halo_exchange_method = pygcl.HaloExchange3D(self.comm,
+                                                          self.grid_cube_size)
+
+    def halo_exchange(self, arr):
+        """
+        Halo exchange the passed numpy array of shape self.grid_cube_size.
+        :param arr: numpy array to exchange.
+        """
+        if self.comm != MPI.COMM_NULL:
+            self._halo_exchange_method.exchange(arr)
+
 
 class OctalTree(object):
     def __init__(self, num_levels, cart_comm):
@@ -423,6 +442,10 @@ class OctalDataTree(object):
         """
         if not mode in ('plain', 'halo', 'parent'):
             raise RuntimeError('bad mode passed')
+        if ncomp != int(ncomp) or ncomp < 1:
+            raise RuntimeError('bad ncomp passed')
+
+
         self.tree = tree
         self.ncomp = ncomp
         self.dtype = dtype
@@ -437,7 +460,16 @@ class OctalDataTree(object):
             self.data = [
                 np.zeros(lvl.parent_local_size) for lvl in self.tree.levels]
 
+    def halo_exchange_level(self, level):
+        if level < 1:
+            raise RuntimeError('Cannot exchange levels < 1')
+        elif level >= self.tree.num_levels:
+            raise RuntimeError('Cannot exchange levels > {}'.format(
+                self.tree.num_levels-1))
+        elif self.mode != 'halo':
+            raise RuntimeError("Can only halo exchange if mode == halo")
 
+        self.tree.levels[level].halo_exchange(self.data[level])
 
 
 
