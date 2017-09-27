@@ -332,8 +332,8 @@ class OctalGridLevel(object):
             tmp_comm = parent_comm.Split(color=color, key=parent_rank)
             
             if tmp_comm != MPI.COMM_NULL:
-                self.comm = tmp_comm.Create_cart(dims=new_dims, periods=(1, 1, 1),
-                                                reorder=False)
+                self.comm = tmp_comm.Create_cart(dims=new_dims,
+                    periods=(1, 1, 1), reorder=False)
             else:
                 self.comm = MPI.COMM_NULL
             self.new_comm = True
@@ -356,7 +356,8 @@ class OctalGridLevel(object):
                     wkl = [wk] * dims[dx]
                     rd = work_units_per_side - dims[dx]*wk
                     # get the global distribution
-                    wkl = [2 * (wkl[wi] + 1) if wi < rd else 2 * wkl[wi] for wi in range(dims[dx])]
+                    wkl = [2 * (wkl[wi] + 1) if wi < rd else
+                           2 * wkl[wi] for wi in range(dims[dx])]
                     wkld[dx] = wkl
                     # extract the local dim
                     lt[dx] = wkl[top[dx]]
@@ -392,7 +393,8 @@ class OctalGridLevel(object):
                     for iy in range(wups2):
                         for ix in range(wups2):
                             # if top[2] == 0:
-                            #     print(iz, iy, ix, owners[0][ix], owners[1][iy], owners[2][iz])
+                            #     print(iz, iy, ix, owners[0][ix],
+                            # owners[1][iy], owners[2][iz])
 
                             # dim ordering is z,y,x in owners and dims
                             self.owners[iz, iy, ix] = owners[2][ix] + \
@@ -403,7 +405,8 @@ class OctalGridLevel(object):
 
     def _init_halo_exchange_method(self):
         self._halo_exchange_method = pygcl.HaloExchange3D(self.comm,
-                                                          self.grid_cube_size)
+                                                          self.grid_cube_size,
+                                                          (2,2,2))
 
     def halo_exchange(self, arr):
         """
@@ -414,13 +417,38 @@ class OctalGridLevel(object):
             self._halo_exchange_method.exchange(arr)
 
 
+def compute_mpi_maps(parent_level, child_level):
+    """
+    Compute the map from cube index to mpi rank containing the parent mirror on
+    the child level and cube index to mpi rank owning the cube on the parent
+    level.
+    :param parent_level: OctalGridLevel to take as parent level.
+    :param child_level: OctalGridLevel to take as child level.
+    :return: map from cube to mpi send rank, mpi recv rank format tbd.
+    """
+    if type(parent_level) is not OctalGridLevel or \
+        type(child_level) is not OctalGridLevel:
+        raise RuntimeError('parent_level or child_level is not an instance' +\
+                           'of OctalGridLevel')
+    if parent_level.level != (child_level.level - 1):
+        raise RuntimeError('passed levels are not a parent-child combination')
+
+    for lz in range(parent_level.ncubes_side_global):
+        for ly in range(parent_level.ncubes_side_global):
+            for lx in range(parent_level.ncubes_side_global):
+                print(parent_level.owners[lz, ly, lx],
+                      child_level.owners[lz * 2, ly * 2, lx * 2])
+
+
+
 class OctalTree(object):
     def __init__(self, num_levels, cart_comm):
         self.num_levels = num_levels
         self.cart_comm = cart_comm
         self.levels = []
         comm_tmp = cart_comm
-        # work up tree from finest level
+        # work up tree from finest level as largest cart_comm is on the finest
+        # level
         for lx in range(self.num_levels - 1, -1, -1):
             print('LEVEL', lx)
             level_tmp = OctalGridLevel(level=lx, parent_comm=comm_tmp)
@@ -445,20 +473,26 @@ class OctalDataTree(object):
         if ncomp != int(ncomp) or ncomp < 1:
             raise RuntimeError('bad ncomp passed')
 
-
         self.tree = tree
         self.ncomp = ncomp
         self.dtype = dtype
         self.mode = mode
-        if self.mode == 'plain':
-            self.data = [
-                np.zeros(lvl.local_grid_cube_size) for lvl in self.tree.levels]
-        elif self.mode == 'halo':
-            self.data = [
-                np.zeros(lvl.grid_cube_size) for lvl in self.tree.levels]
-        else:
-            self.data = [
-                np.zeros(lvl.parent_local_size) for lvl in self.tree.levels]
+        self.data = []
+
+        for lvl in self.tree.levels:
+            if self.mode == 'plain' and \
+                lvl.local_grid_cube_size is not None:
+                    shape = list(lvl.local_grid_cube_size) + [ncomp]
+            elif self.mode == 'halo' and \
+                lvl.grid_cube_size is not None:
+                    shape = list(lvl.grid_cube_size) + [ncomp]
+            elif self.mode == 'parent' and \
+                lvl.parent_local_size is not None:
+                    shape = list(lvl.parent_local_size) + [ncomp]
+            else:
+                shape = 0
+
+            self.data.append(np.zeros(shape=shape, dtype=dtype))
 
     def halo_exchange_level(self, level):
         if level < 1:
@@ -471,15 +505,8 @@ class OctalDataTree(object):
 
         self.tree.levels[level].halo_exchange(self.data[level])
 
-
-
-
-
-
-
-
-
-
+    def __getitem__(self, item):
+        return self.data[item]
 
 
 

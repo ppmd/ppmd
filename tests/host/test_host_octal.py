@@ -5,6 +5,7 @@ import ctypes
 import numpy as np
 import ppmd as md
 import sys
+np.set_printoptions(linewidth=200)
 
 from ppmd.coulomb.octal import *
 
@@ -298,7 +299,7 @@ def test_octal_tree_1():
 def test_octal_data_tree_1():
     dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
 
-    nlevels = 3
+    nlevels = 4
 
     if MPIRANK == 0 and DEBUG:
         print("DIMS", dims[::-1])
@@ -316,7 +317,8 @@ def test_octal_data_tree_1():
         if rx == MPIRANK:
             print('RANK:', MPIRANK)
             for li, lx in enumerate(tree.levels):
-                print(li, lx.local_grid_cube_size, '\n', datatree.data[li].shape)
+                print(li)
+                print(lx.local_grid_cube_size, '\n', datatree.data[li].shape)
             print(40*'-')
             sys.stdout.flush()
         MPIBARRIER()
@@ -325,7 +327,8 @@ def test_octal_data_tree_1():
         print(80*'=')
         sys.stdout.flush()
 
-    datatreehalo = OctalDataTree(tree=tree, ncomp=1, mode='halo')
+    datatreehalo = OctalDataTree(tree=tree, ncomp=1, mode='halo',
+                                 dtype=ctypes.c_int)
 
     if MPIRANK == 0:
         print(40*'-')
@@ -339,18 +342,91 @@ def test_octal_data_tree_1():
         MPIBARRIER()
 
 
+    test_level = 3
+    arr = datatreehalo[test_level][2:-2:, 2:-2:, 2:-2:].view()
+    harr = datatreehalo[test_level].view()
+
+    #rng = np.random.RandomState(seed=3857293)
+    #arr[:] = rng.uniform(MPIRANK, MPIRANK+1, size=arr.shape)
+
+    #arr[:] = np.random.uniform(MPIRANK, MPIRANK+1, size=arr.shape)
+    arr[:] = MPIRANK + 1
+
+    if MPIRANK == 0:
+        print(40*'-')
+    for rx in range(MPISIZE):
+        if rx == MPIRANK:
+            print('RANK:', MPIRANK, arr.shape)
+            print(harr[:,:,:,0])
+            print(40*'-')
+            sys.stdout.flush()
+        MPIBARRIER()
+
+    datatreehalo.halo_exchange_level(test_level)
+
+    if MPIRANK == 0:
+        print(40*'-')
+    for rx in range(MPISIZE):
+        if rx == MPIRANK:
+            print('RANK:', MPIRANK)
+            print(harr[:,:,:,0])
+            print(40*'-')
+            sys.stdout.flush()
+        MPIBARRIER()
+
+
+def test_octal_data_tree_2():
+    dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
+
+    nlevels = 4
+
+    if MPIRANK == 0 and DEBUG:
+        print("DIMS", dims[::-1])
+
+    cc = md.mpi.create_cartcomm(
+        md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
+
+    tree = OctalTree(num_levels=nlevels, cart_comm=cc)
+
+    datatree = OctalDataTree(tree=tree, ncomp=1, mode='parent')
+
+    if MPIRANK == 0:
+        print(40*'-')
+    for rx in range(MPISIZE):
+        if rx == MPIRANK:
+            print('RANK:', MPIRANK)
+            for li, lx in enumerate(tree.levels):
+                print(li)
+                print(lx.local_grid_cube_size, '\n', datatree.data[li].shape)
+            print(40*'-')
+            sys.stdout.flush()
+        MPIBARRIER()
 
 
 
+def test_octal_data_tree_3():
+    dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
+
+    nlevels = 4
+
+    if MPIRANK == 0 and DEBUG:
+        print("DIMS", dims[::-1])
+
+    cc = md.mpi.create_cartcomm(
+        md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
+
+    tree = OctalTree(num_levels=nlevels, cart_comm=cc)
 
 
-
-
-
-
-
-
-
+    if MPIRANK == 0:
+        print(40*'-')
+    for rx in range(MPISIZE):
+        if rx == MPIRANK:
+            print('RANK:', MPIRANK)
+            compute_mpi_maps(tree.levels[2], tree.levels[3])
+            print(40*'-')
+            sys.stdout.flush()
+        MPIBARRIER()
 
 
 
