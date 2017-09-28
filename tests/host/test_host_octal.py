@@ -417,13 +417,12 @@ def test_octal_data_tree_3():
 
     tree = OctalTree(num_levels=nlevels, cart_comm=cc)
 
-
     if MPIRANK == 0:
         print(40*'-')
     for rx in range(MPISIZE):
         if rx == MPIRANK:
             print('RANK:', MPIRANK)
-            compute_mpi_maps(tree.levels[2], tree.levels[3])
+            print(tree[2].global_to_local_halo[:])
             print(40*'-')
             sys.stdout.flush()
         MPIBARRIER()

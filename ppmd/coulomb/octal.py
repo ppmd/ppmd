@@ -269,6 +269,23 @@ def compute_interaction_lists(local_size):
     return ro
 
 
+def cube_tuple_to_lin_xyz(ii, n):
+    """
+    convert xyz tuple ii to linear index in cube of side length n.
+    :param ii:  (x,y,z) tuple.
+    :param n: side length
+    """
+    return ii[0] + n*(ii[1] + n*ii[2])
+
+
+def cube_tuple_to_lin_zyx(ii, n):
+    """
+    convert xyz tuple ii to linear index in cube of side length n.
+    :param ii:  (z,y,x) tuple.
+    :param n: side length
+    """
+    return ii[2] + n*(ii[1] + n*ii[0])
+
 class OctalGridLevel(object):
     def __init__(self, level, parent_comm):
         """
@@ -296,25 +313,27 @@ class OctalGridLevel(object):
         self.grid_cube_size = None
         """Size of grid plus halos"""
         self._halo_exchange_method = None
-
         self.owners = np.zeros(shape=(2**level, 2**level, 2**level),
                                dtype=ctypes.c_uint32)
+        """Map from global cube index to owning MPI rank"""
+        self.global_to_local = np.zeros(shape=(2**level, 2**level, 2**level),
+                               dtype=ctypes.c_uint32)
+        """Map from global cube index to local cube index"""
+        self.global_to_local_halo = np.zeros(
+            shape=(2**level, 2**level, 2**level), dtype=ctypes.c_uint32)
+        """Map from global cube index to local cube index with halos"""
 
         if parent_comm != MPI.COMM_NULL:
             self._init_comm(parent_comm)
             self._init_decomp()
-
         if self.comm != MPI.COMM_NULL:
             self._init_halo_exchange_method()
-
 
     def _init_comm(self, parent_comm):
         # set the min work per process at a 2x2x2 block of cubes for levels>1.
         work_units_per_side = 2 ** (self.level - 1) if self.level > 1 else 1
 
         parent_rank = parent_comm.Get_rank()
-        
-        print('parent_rank', parent_rank)
 
         current_dims = parent_comm.Get_topo()[0]
         new_dims = (min(current_dims[0], work_units_per_side),
@@ -379,7 +398,22 @@ class OctalGridLevel(object):
             self.grid_cube_size = np.array((lt[0] + 4, lt[1] + 4, lt[2] + 4),
                                            dtype=ctypes.c_uint32)
             self.local_grid_offset = np.array(lo, dtype=ctypes.c_uint32)
-            
+
+            # compute the maps from global id to local id by looping over local
+            # ids
+            for ii in itertools.product(
+                    range(lt[0]), range(lt[1]), range(lt[2])):
+                gid_tuple = (ii[0] + lo[0], ii[1] + lo[1], ii[2] + lo[2])
+                gid = cube_tuple_to_lin_zyx(gid_tuple,
+                                            self.ncubes_side_global)
+
+                self.global_to_local.ravel()[gid] = ii[2] + \
+                                                    lt[2]*(ii[1] + lt[1]*ii[0])
+
+                self.global_to_local_halo.ravel()[gid] = ii[2] + 2 +\
+                                                 (lt[2] + 4)*(ii[1] + 2 +
+                                                 (lt[1] + 4)*(ii[0] + 2))
+
             # owners along each dimension
             owners = [[],[],[]]
             for dx in range(3):
@@ -417,30 +451,6 @@ class OctalGridLevel(object):
             self._halo_exchange_method.exchange(arr)
 
 
-def compute_mpi_maps(parent_level, child_level):
-    """
-    Compute the map from cube index to mpi rank containing the parent mirror on
-    the child level and cube index to mpi rank owning the cube on the parent
-    level.
-    :param parent_level: OctalGridLevel to take as parent level.
-    :param child_level: OctalGridLevel to take as child level.
-    :return: map from cube to mpi send rank, mpi recv rank format tbd.
-    """
-    if type(parent_level) is not OctalGridLevel or \
-        type(child_level) is not OctalGridLevel:
-        raise RuntimeError('parent_level or child_level is not an instance' +\
-                           'of OctalGridLevel')
-    if parent_level.level != (child_level.level - 1):
-        raise RuntimeError('passed levels are not a parent-child combination')
-
-    for lz in range(parent_level.ncubes_side_global):
-        for ly in range(parent_level.ncubes_side_global):
-            for lx in range(parent_level.ncubes_side_global):
-                print(parent_level.owners[lz, ly, lx],
-                      child_level.owners[lz * 2, ly * 2, lx * 2])
-
-
-
 class OctalTree(object):
     def __init__(self, num_levels, cart_comm):
         self.num_levels = num_levels
@@ -450,11 +460,13 @@ class OctalTree(object):
         # work up tree from finest level as largest cart_comm is on the finest
         # level
         for lx in range(self.num_levels - 1, -1, -1):
-            print('LEVEL', lx)
             level_tmp = OctalGridLevel(level=lx, parent_comm=comm_tmp)
             self.levels.append(level_tmp)
             comm_tmp = level_tmp.comm
         self.levels.reverse()
+
+    def __getitem__(self, item):
+        return self.levels[item]
 
 
 class OctalDataTree(object):

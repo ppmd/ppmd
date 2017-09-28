@@ -126,6 +126,8 @@ class HaloExchange3D(object):
         hs = np.zeros(1, dtype=c_uint64)
         h = np.zeros(0, dtype=c_uint64)
 
+
+
         tnb = 1
         tnh = 1
 
@@ -134,8 +136,8 @@ class HaloExchange3D(object):
             tnb = max(tnb, len(bhx[0]))
             tnh = max(tnh, len(bhx[1]))
 
-            bs = np.append(bs, c_uint64(int(len(bhx[0]) + bs[-1])))
-            hs = np.append(hs, c_uint64(int(len(bhx[1]) + hs[-1])))
+            bs = np.append(bs, np.array(len(bhx[0]) + bs[-1], dtype=c_uint64))
+            hs = np.append(hs, np.array(len(bhx[1]) + hs[-1], dtype=c_uint64))
 
             # Actual cell indices
             b = np.append(b, bhx[0])
