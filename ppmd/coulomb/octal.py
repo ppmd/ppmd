@@ -329,6 +329,9 @@ class OctalGridLevel(object):
         if self.comm != MPI.COMM_NULL:
             self._init_halo_exchange_method()
 
+        self.nbytes = self.owners.nbytes + self.global_to_local.nbytes +\
+            self.global_to_local_halo.nbytes
+
     def _init_comm(self, parent_comm):
         # set the min work per process at a 2x2x2 block of cubes for levels>1.
         work_units_per_side = 2 ** (self.level - 1) if self.level > 1 else 1
@@ -465,6 +468,8 @@ class OctalTree(object):
             comm_tmp = level_tmp.comm
         self.levels.reverse()
 
+        self.nbytes = sum([lx.nbytes for lx in self.levels])
+
     def __getitem__(self, item):
         return self.levels[item]
 
@@ -503,8 +508,9 @@ class OctalDataTree(object):
                     shape = list(lvl.parent_local_size) + [ncomp]
             else:
                 shape = 0
-
             self.data.append(np.zeros(shape=shape, dtype=dtype))
+
+        self.nbytes = sum([dx.nbytes for dx in self.data])
 
     def halo_exchange_level(self, level):
         if level < 1:
@@ -519,6 +525,76 @@ class OctalDataTree(object):
 
     def __getitem__(self, item):
         return self.data[item]
+
+
+def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
+    """
+    Copy the data from parent mode OctalDataTree to halo mode OctalDataTree.
+    
+    This function enables the movement of data up the octal tree. Data is sent
+    from src_level to src_level - 1.
+    
+    :param src_level: parent level to send into the halo level
+    :param parent_data_tree: OctalDataTree of mode parent.
+    :param halo_data_tree: OctalDataTree of mode plain
+    :return: halo_data_tree will be modified.
+    """
+    if halo_data_tree.ncomp != parent_data_tree.ncomp:
+        raise RuntimeError('number of components is not consistent between' +\
+                           ' trees')
+    if src_level < 1 or src_level >= parent_data_tree.tree.num_levels:
+        raise RuntimeError('bad src_level passed: {}'.format(src_level))
+    if halo_data_tree.tree is not parent_data_tree.tree:
+        raise RuntimeError('Passed OctalDataTree instances are not defined' +\
+                           ' on the same OctalTree')
+
+    # TODO: move this to C once working.
+    tree = halo_data_tree.tree
+    ns = tree[src_level - 1].ncubes_side_global
+    ncomp = parent_data_tree.ncomp
+    # use the cart_comm on the fine level.
+    comm = tree[src_level].comm
+    rank = comm.Get_rank()
+
+    print(rank, "parent shape", parent_data_tree[src_level].shape)
+    print(rank, "halo shape", halo_data_tree[src_level - 1].shape)
+
+
+    for cxt in itertools.product(range(ns), range(ns), range(ns)):
+
+        cx = cube_tuple_to_lin_zyx(cxt, ns)
+        cxc = cube_tuple_to_lin_zyx((cxt[0]*2, cxt[1]*2, cxt[2]*2), ns*2)
+        dst_owner = tree[src_level - 1].owners.ravel()[cx]
+        src_owner = tree[src_level].owners.ravel()[cxc]
+
+        # TODO: trim excess looping here with more refined maps
+        if src_owner != rank and dst_owner != rank:
+            continue
+        if src_owner == rank and dst_owner == rank:
+            # can do direct copy
+            halo_data_tree[src_level-1][cxt[0]+2, cxt[1]+2, cxt[2]+2, :] = \
+                parent_data_tree[src_level][cxt[0], cxt[1], cxt[2], :]
+        elif src_owner == rank:
+            # we are sending
+            index_b = tree[src_level].global_to_local[cxt]
+            index_e = ncomp + index_b
+            comm.Send(parent_data_tree[src_level].ravel()[index_b:index_e:],
+                      dst_owner)
+        elif dst_owner == rank:
+            # we are recving
+            index_b = tree[src_level-1].global_to_local_halo[cxt]
+            index_e = ncomp + index_b
+            comm.Recv(halo_data_tree[src_level - 1].ravel()[index_b:index_e:],
+                src_owner)
+        else:
+            raise RuntimeError('Unknown data movement error.')
+
+
+
+
+
+
+
 
 
 
