@@ -43,9 +43,7 @@ class BoundaryTypePeriodic(object):
 
         self._flag = cuda_base.Array(ncomp=1, dtype=ctypes.c_int)
 
-    def set_state(self, state_in=None):
-        assert state_in is not None, "BoundaryTypePeriodic error: No state" \
-                                     " passed."
+    def set_state(self, state_in):
         self.state = state_in
 
     def apply(self):

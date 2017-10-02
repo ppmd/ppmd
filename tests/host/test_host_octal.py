@@ -449,20 +449,62 @@ def test_octal_data_tree_4():
                              dtype=ctypes.c_int)
 
     src_level = 2
-    dataparent[2].ravel()[:] = MPIRANK+1
-    print(dataparent[2][:,:,:,0])
+    dataparent[src_level].ravel()[:] = MPIRANK+1
+    print(dataparent[src_level][:,:,:,0])
     send_parent_to_halo(src_level, dataparent, datahalo)
 
     if MPIRANK == 0:
         print(80*'=')
         #print(datahalo[1][2:-2:, 2:-2:, 2:-2:, 0])
-        print(datahalo[1][:, :, : , 0])
+        print(datahalo[src_level - 1][:, :, : , 0])
     MPIBARRIER()
 
+def test_octal_data_tree_5():
+    dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
 
+    nlevels = 4
+    ncomp = 1
 
+    if MPIRANK == 0 and DEBUG:
+        print("DIMS", dims[::-1])
 
+    cc = md.mpi.create_cartcomm(
+        md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
 
+    tree = OctalTree(num_levels=nlevels, cart_comm=cc)
+    dataparent = OctalDataTree(tree=tree, ncomp=ncomp, mode='parent',
+                               dtype=ctypes.c_int)
+    datahalo = OctalDataTree(tree=tree, ncomp=ncomp, mode='halo',
+                             dtype=ctypes.c_int)
+
+    datahalo[nlevels-1][2:-2:, 2:-2:, 2:-2, :] = 1
+
+    for ix in range(nlevels-1, 0, -1):
+        lsize = tree[ix].parent_local_size
+        print(lsize)
+        if lsize is not None:
+            for kz in range(lsize[0]):
+                for ky in range(lsize[1]):
+                    for kx in range(lsize[2]):
+                        X = 2*kx + 2
+                        Y = 2*ky + 2
+                        Z = 2*kz + 2
+                        tsum = 0
+                        tsum += datahalo[ix][Z,   Y,   X, :]
+                        tsum += datahalo[ix][Z,   Y,   X+1, :]
+                        tsum += datahalo[ix][Z,   Y+1, X, :]
+                        tsum += datahalo[ix][Z,   Y+1, X+1, :]
+                        tsum += datahalo[ix][Z+1, Y,   X, :]
+                        tsum += datahalo[ix][Z+1, Y,   X+1, :]
+                        tsum += datahalo[ix][Z+1, Y+1, X, :]
+                        tsum += datahalo[ix][Z+1, Y+1, X+1, :]
+                        dataparent[ix][kz, ky, kx, :] += tsum
+
+        send_parent_to_halo(ix, dataparent, datahalo)
+
+    if MPIRANK == 0:
+        print(datahalo[0][:,:,:,0])
+    MPIBARRIER()
 
 
 

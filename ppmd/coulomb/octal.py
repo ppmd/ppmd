@@ -275,7 +275,7 @@ def cube_tuple_to_lin_xyz(ii, n):
     :param ii:  (x,y,z) tuple.
     :param n: side length
     """
-    return ii[0] + n*(ii[1] + n*ii[2])
+    return int(ii[0] + n*(ii[1] + n*ii[2]))
 
 
 def cube_tuple_to_lin_zyx(ii, n):
@@ -284,7 +284,7 @@ def cube_tuple_to_lin_zyx(ii, n):
     :param ii:  (z,y,x) tuple.
     :param n: side length
     """
-    return ii[2] + n*(ii[1] + n*ii[0])
+    return int(ii[2] + n*(ii[1] + n*ii[0]))
 
 class OctalGridLevel(object):
     def __init__(self, level, parent_comm):
@@ -322,6 +322,10 @@ class OctalGridLevel(object):
         self.global_to_local_halo = np.zeros(
             shape=(2**level, 2**level, 2**level), dtype=ctypes.c_uint32)
         """Map from global cube index to local cube index with halos"""
+        self.global_to_local_parent = np.zeros(
+            shape=(int(2**(level-1)), int(2**(level-1)), int(2**(level-1))),
+            dtype=ctypes.c_uint32)
+        """Map from global cube index to local parent index"""
 
         if parent_comm != MPI.COMM_NULL:
             self._init_comm(parent_comm)
@@ -416,6 +420,16 @@ class OctalGridLevel(object):
                 self.global_to_local_halo.ravel()[gid] = ii[2] + 2 +\
                                                  (lt[2] + 4)*(ii[1] + 2 +
                                                  (lt[1] + 4)*(ii[0] + 2))
+            for ii in itertools.product(
+                    range(lt[0]//2), range(lt[1]//2), range(lt[2]//2)):
+                gid_tuple = (ii[0] + lo[0]/2,
+                             ii[1] + lo[1]/2,
+                             ii[2] + lo[2]/2)
+                gid = cube_tuple_to_lin_zyx(gid_tuple,
+                                            self.ncubes_side_global/2)
+                self.global_to_local_parent.ravel()[gid] = ii[2] + \
+                    lt[2]*(ii[1] + (lt[1]//2)*ii[0])//2
+
 
             # owners along each dimension
             owners = [[],[],[]]
@@ -539,6 +553,8 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
     :param halo_data_tree: OctalDataTree of mode plain
     :return: halo_data_tree will be modified.
     """
+
+
     if halo_data_tree.ncomp != parent_data_tree.ncomp:
         raise RuntimeError('number of components is not consistent between' +\
                            ' trees')
@@ -547,6 +563,8 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
     if halo_data_tree.tree is not parent_data_tree.tree:
         raise RuntimeError('Passed OctalDataTree instances are not defined' +\
                            ' on the same OctalTree')
+    if halo_data_tree.tree[src_level].comm is MPI.COMM_NULL:
+        return
 
     # TODO: move this to C once working.
     tree = halo_data_tree.tree
@@ -556,13 +574,25 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
     comm = tree[src_level].comm
     rank = comm.Get_rank()
 
-    print(rank, "parent shape", parent_data_tree[src_level].shape)
-    print(rank, "halo shape", halo_data_tree[src_level - 1].shape)
+    dst = halo_data_tree[src_level - 1].ravel()
+    src = parent_data_tree[src_level].ravel()
 
+    dst_g2l = tree[src_level - 1].global_to_local_halo
+    src_g2l = tree[src_level].global_to_local_parent
+
+    # print(rank, "parent shape", parent_data_tree[src_level].shape)
+    # print(rank, "halo shape", halo_data_tree[src_level - 1].shape)
+
+    # print(rank, "dst_g2l", dst_g2l.shape)
+    # print(rank, "src_g2l", src_g2l.shape, src_g2l)
+    # print(rank, 'ns', ns)
 
     for cxt in itertools.product(range(ns), range(ns), range(ns)):
 
         cx = cube_tuple_to_lin_zyx(cxt, ns)
+
+        # print('tuple to lin', cxt, cx)
+
         cxc = cube_tuple_to_lin_zyx((cxt[0]*2, cxt[1]*2, cxt[2]*2), ns*2)
         dst_owner = tree[src_level - 1].owners.ravel()[cx]
         src_owner = tree[src_level].owners.ravel()[cxc]
@@ -572,20 +602,28 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
             continue
         if src_owner == rank and dst_owner == rank:
             # can do direct copy
-            halo_data_tree[src_level-1][cxt[0]+2, cxt[1]+2, cxt[2]+2, :] = \
-                parent_data_tree[src_level][cxt[0], cxt[1], cxt[2], :]
+            src_index_b = src_g2l[cxt]
+            src_index_e = src_index_b + ncomp
+
+            # print("src=", src_index_b, src_index_e, src.shape)
+
+            dst_index_b = dst_g2l[cxt]
+            dst_index_e = dst_index_b + ncomp
+
+            # print("dst", dst_index_b, dst_index_e, dst.shape)
+
+            dst[dst_index_b:dst_index_e:] = src[src_index_b: src_index_e:]
+
         elif src_owner == rank:
             # we are sending
-            index_b = tree[src_level].global_to_local[cxt]
+            index_b = src_g2l[cxt[0], cxt[1], cxt[2]]
             index_e = ncomp + index_b
-            comm.Send(parent_data_tree[src_level].ravel()[index_b:index_e:],
-                      dst_owner)
+            comm.Send(src[index_b:index_e:], dst_owner)
         elif dst_owner == rank:
             # we are recving
-            index_b = tree[src_level-1].global_to_local_halo[cxt]
+            index_b = dst_g2l[cxt]
             index_e = ncomp + index_b
-            comm.Recv(halo_data_tree[src_level - 1].ravel()[index_b:index_e:],
-                src_owner)
+            comm.Recv(dst[index_b:index_e:], src_owner)
         else:
             raise RuntimeError('Unknown data movement error.')
 
