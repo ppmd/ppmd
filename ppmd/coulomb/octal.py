@@ -329,7 +329,7 @@ class OctalGridLevel(object):
 
         if parent_comm != MPI.COMM_NULL:
             self._init_comm(parent_comm)
-            self._init_decomp()
+            self._init_decomp(parent_comm)
         if self.comm != MPI.COMM_NULL:
             self._init_halo_exchange_method()
 
@@ -365,7 +365,7 @@ class OctalGridLevel(object):
             self.new_comm = True
 
 
-    def _init_decomp(self):
+    def _init_decomp(self, parent_comm):
         if self.comm != MPI.COMM_NULL:
             dims = self.comm.Get_topo()[0]
             top = self.comm.Get_topo()[2]
@@ -430,12 +430,12 @@ class OctalGridLevel(object):
                 self.global_to_local_parent.ravel()[gid] = ii[2] + \
                     lt[2]*(ii[1] + (lt[1]//2)*ii[0])//2
 
-
             # owners along each dimension
             owners = [[],[],[]]
             for dx in range(3):
                 for nx in range(dims[dx]):
                     owners[dx] += [nx] * wkld[dx][nx]
+                owners[dx] = np.array(owners[dx], dtype=ctypes.c_uint32)
 
             # outer product
             if self.level > 0:
@@ -443,16 +443,27 @@ class OctalGridLevel(object):
                 for iz in range(wups2):
                     for iy in range(wups2):
                         for ix in range(wups2):
-                            # if top[2] == 0:
-                            #     print(iz, iy, ix, owners[0][ix],
-                            # owners[1][iy], owners[2][iz])
 
-                            # dim ordering is z,y,x in owners and dims
                             self.owners[iz, iy, ix] = owners[2][ix] + \
-                                                      dims[1] * (owners[1][iy] +
-                                                      dims[0] * owners[0][iz])
+                                                      dims[2] * (owners[1][iy] +
+                                                      dims[1] * owners[0][iz])
+
             else:
                 self.owners[0, 0, 0] = 0
+
+        # need the owner map on the parent comm ranks to send data up and down
+        # the tree
+        color = MPI.UNDEFINED
+        if self.comm != MPI.COMM_NULL:
+            if self.comm.Get_rank() == 0: color = 0
+        else:
+            color = 0
+        remain_comm = parent_comm.Split(color=color,
+                                        key=parent_comm.Get_rank())
+        if color != MPI.UNDEFINED:
+            remain_comm.Bcast(self.owners[:], root=0)
+            remain_comm.Free()
+
 
     def _init_halo_exchange_method(self):
         self._halo_exchange_method = pygcl.HaloExchange3D(self.comm,
@@ -580,12 +591,19 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
     dst_g2l = tree[src_level - 1].global_to_local_halo
     src_g2l = tree[src_level].global_to_local_parent
 
-    # print(rank, "parent shape", parent_data_tree[src_level].shape)
-    # print(rank, "halo shape", halo_data_tree[src_level - 1].shape)
+    src_owners = tree[src_level].owners.ravel()
+    dst_owners = tree[src_level-1].owners.ravel()
 
-    # print(rank, "dst_g2l", dst_g2l.shape)
-    # print(rank, "src_g2l", src_g2l.shape, src_g2l)
-    # print(rank, 'ns', ns)
+    #for rx in range(comm.Get_size()):
+    #    if comm.Get_rank() == rx:
+    #        print(rank, "parent shape", parent_data_tree[src_level].shape)
+    #        print(rank, "halo shape", halo_data_tree[src_level - 1].shape)
+    #        print(rank, "dst_g2l", dst_g2l.shape)
+    #        print(rank, "src_g2l", src_g2l.shape)
+    #        print(rank, 'ns', ns)
+    #        print(rank, 'owners-1', dst_owners[:])
+
+    #    comm.Barrier()
 
     for cxt in itertools.product(range(ns), range(ns), range(ns)):
 
@@ -594,8 +612,18 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
         # print('tuple to lin', cxt, cx)
 
         cxc = cube_tuple_to_lin_zyx((cxt[0]*2, cxt[1]*2, cxt[2]*2), ns*2)
-        dst_owner = tree[src_level - 1].owners.ravel()[cx]
-        src_owner = tree[src_level].owners.ravel()[cxc]
+        dst_owner = dst_owners[cx]
+        src_owner = src_owners[cxc]
+
+        #if comm.Get_rank() == 0:
+        #    print(cxt, 60*'=')
+        #comm.Barrier()
+
+        #for rx in range(comm.Get_size()):
+        #    if comm.Get_rank() == rx:
+        #        print(rank, src_owner, dst_owner)
+        #    comm.Barrier()
+
 
         # TODO: trim excess looping here with more refined maps
         if src_owner != rank and dst_owner != rank:

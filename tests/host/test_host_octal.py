@@ -459,29 +459,36 @@ def test_octal_data_tree_4():
         print(datahalo[src_level - 1][:, :, : , 0])
     MPIBARRIER()
 
+
+
 def test_octal_data_tree_5():
     dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
 
-    nlevels = 4
+    nlevels = 6
     ncomp = 1
 
     if MPIRANK == 0 and DEBUG:
         print("DIMS", dims[::-1])
 
+    MPIBARRIER()
+
     cc = md.mpi.create_cartcomm(
         md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
 
     tree = OctalTree(num_levels=nlevels, cart_comm=cc)
+
     dataparent = OctalDataTree(tree=tree, ncomp=ncomp, mode='parent',
                                dtype=ctypes.c_int)
     datahalo = OctalDataTree(tree=tree, ncomp=ncomp, mode='halo',
                              dtype=ctypes.c_int)
 
-    datahalo[nlevels-1][2:-2:, 2:-2:, 2:-2, :] = 1
+
+    if tree[nlevels-1].local_grid_cube_size is not None:
+        datahalo[nlevels-1][2:-2:, 2:-2:, 2:-2, :] = 1
 
     for ix in range(nlevels-1, 0, -1):
         lsize = tree[ix].parent_local_size
-        print(lsize)
+
         if lsize is not None:
             for kz in range(lsize[0]):
                 for ky in range(lsize[1]):
@@ -503,12 +510,8 @@ def test_octal_data_tree_5():
         send_parent_to_halo(ix, dataparent, datahalo)
 
     if MPIRANK == 0:
-        print(datahalo[0][:,:,:,0])
+        assert datahalo[0][2,2,2,0] == 8**(nlevels-1)
     MPIBARRIER()
-
-
-
-
 
 
 
