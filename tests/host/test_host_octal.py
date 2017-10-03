@@ -465,7 +465,7 @@ def test_octal_data_tree_5():
     dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
 
     nlevels = 6
-    ncomp = 1
+    ncomp = 10
 
     cc = md.mpi.create_cartcomm(
         md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
@@ -478,7 +478,10 @@ def test_octal_data_tree_5():
                              dtype=ctypes.c_int)
 
     if tree[nlevels-1].local_grid_cube_size is not None:
-        datahalo[nlevels-1][2:-2:, 2:-2:, 2:-2, :] = 1
+        datahalo[nlevels-1][2:-2:, 2:-2:, 2:-2, :] = np.arange(1, ncomp+1)
+        #print(datahalo[nlevels-1][:,:,:,1])
+
+    tsum = np.zeros(ncomp, dtype=ctypes.c_int)
 
     for ix in range(nlevels-1, 0, -1):
         lsize = tree[ix].parent_local_size
@@ -490,7 +493,7 @@ def test_octal_data_tree_5():
                         X = 2*kx + 2
                         Y = 2*ky + 2
                         Z = 2*kz + 2
-                        tsum = 0
+                        tsum[:] = 0
                         tsum += datahalo[ix][Z,   Y,   X, :]
                         tsum += datahalo[ix][Z,   Y,   X+1, :]
                         tsum += datahalo[ix][Z,   Y+1, X, :]
@@ -499,12 +502,14 @@ def test_octal_data_tree_5():
                         tsum += datahalo[ix][Z+1, Y,   X+1, :]
                         tsum += datahalo[ix][Z+1, Y+1, X, :]
                         tsum += datahalo[ix][Z+1, Y+1, X+1, :]
-                        dataparent[ix][kz, ky, kx, :] += tsum
+                        dataparent[ix][kz, ky, kx, :] += tsum[:]
 
         send_parent_to_halo(ix, dataparent, datahalo)
 
     if MPIRANK == 0:
-        assert datahalo[0][2,2,2,0] == 8**(nlevels-1)
+        #print("ANS", datahalo[0][2,2,2,:])
+        for ix in range(ncomp):
+            assert datahalo[0][2,2,2,ix] == 8**(nlevels-1) * (ix+1)
     MPIBARRIER()
 
 

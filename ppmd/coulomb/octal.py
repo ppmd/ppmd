@@ -630,12 +630,12 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
             continue
         if src_owner == rank and dst_owner == rank:
             # can do direct copy
-            src_index_b = src_g2l[cxt]
+            src_index_b = src_g2l[cxt]*ncomp
             src_index_e = src_index_b + ncomp
 
             # print("src=", src_index_b, src_index_e, src.shape)
 
-            dst_index_b = dst_g2l[cxt]
+            dst_index_b = dst_g2l[cxt]*ncomp
             dst_index_e = dst_index_b + ncomp
 
             # print("dst", dst_index_b, dst_index_e, dst.shape)
@@ -644,17 +644,16 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
 
         elif src_owner == rank:
             # we are sending
-            index_b = src_g2l[cxt[0], cxt[1], cxt[2]]
+            index_b = src_g2l[cxt[0], cxt[1], cxt[2]]*ncomp
             index_e = ncomp + index_b
             comm.Send(src[index_b:index_e:], dst_owner)
         elif dst_owner == rank:
             # we are recving
-            index_b = dst_g2l[cxt]
+            index_b = dst_g2l[cxt]*ncomp
             index_e = ncomp + index_b
             comm.Recv(dst[index_b:index_e:], src_owner)
         else:
             raise RuntimeError('Unknown data movement error.')
-
 
 
 
