@@ -126,7 +126,7 @@ def test_octal_cube_owner_map_1(fake_cartcomm):
 def cube_size(request):
     return request.param
 
-DEBUG = True
+DEBUG = False
 
 @pytest.mark.skipif("MPISIZE != 4")
 def test_octal_cube_owner_map_2(cube_size):
@@ -251,7 +251,7 @@ def test_octal_cube_owner_map_3(cube_size2):
 
 
 
-
+@pytest.mark.skip
 def test_octal_grid_level_1():
     level = 2
     dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
@@ -271,7 +271,7 @@ def test_octal_grid_level_1():
     # print(MPIRANK, 'local_offset', grid_level.local_grid_offset)
     # print(MPIRANK, 'local_size_halo', grid_level.grid_cube_size)
 
-
+@pytest.mark.skip
 def test_octal_tree_1():
     dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
 
@@ -295,7 +295,7 @@ def test_octal_tree_1():
             print(40*'-')
         MPIBARRIER()
 
-
+@pytest.mark.skip
 def test_octal_data_tree_1():
     dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
 
@@ -374,7 +374,7 @@ def test_octal_data_tree_1():
             sys.stdout.flush()
         MPIBARRIER()
 
-
+@pytest.mark.skip
 def test_octal_data_tree_2():
     dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
 
@@ -404,7 +404,7 @@ def test_octal_data_tree_2():
         MPIBARRIER()
 
 
-
+@pytest.mark.skip
 def test_octal_data_tree_3():
     dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
 
@@ -428,7 +428,7 @@ def test_octal_data_tree_3():
             sys.stdout.flush()
         MPIBARRIER()
 
-
+@pytest.mark.skip
 def test_octal_data_tree_4():
     dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
 
@@ -467,11 +467,6 @@ def test_octal_data_tree_5():
     nlevels = 6
     ncomp = 1
 
-    if MPIRANK == 0 and DEBUG:
-        print("DIMS", dims[::-1])
-
-    MPIBARRIER()
-
     cc = md.mpi.create_cartcomm(
         md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
 
@@ -481,7 +476,6 @@ def test_octal_data_tree_5():
                                dtype=ctypes.c_int)
     datahalo = OctalDataTree(tree=tree, ncomp=ncomp, mode='halo',
                              dtype=ctypes.c_int)
-
 
     if tree[nlevels-1].local_grid_cube_size is not None:
         datahalo[nlevels-1][2:-2:, 2:-2:, 2:-2, :] = 1
