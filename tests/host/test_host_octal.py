@@ -62,8 +62,8 @@ def test_octal_cube_owner_map_1(fake_cartcomm):
 
     o = cube_owner_map(cc, cube_count)
 
-    owners, contribs = o.compute_grid_ownership(
-        cc.Get_topo()[0], cube_count)
+    owners, contribs, _, _ = o.compute_grid_ownership(
+        cc.Get_topo()[0], cc.Get_topo()[2], cube_count)
 
     for ix, ox in enumerate(owners):
         assert ox == expected_owners[ix]
@@ -141,8 +141,8 @@ def test_octal_cube_owner_map_2(cube_size):
         md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
 
     o = cube_owner_map(cc, ncube)
-    owners, contribs = o.compute_grid_ownership(
-        cc.Get_topo()[0], ncube)
+    owners, contribs, _, _ = o.compute_grid_ownership(
+        cc.Get_topo()[0], cc.Get_topo()[2], ncube)
 
     for rx in range(cc.Get_size()):
         if MPIRANK == rx and DEBUG:
@@ -216,8 +216,8 @@ def test_octal_cube_owner_map_3(cube_size2):
         md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
 
     o = cube_owner_map(cc, ncube, True)
-    owners, contribs = o.compute_grid_ownership(
-        cc.Get_topo()[0], ncube, True)
+    owners, contribs, _, _ = o.compute_grid_ownership(
+        cc.Get_topo()[0], cc.Get_topo()[2], ncube, True)
 
     for rx in range(cc.Get_size()):
         if MPIRANK == rx and DEBUG:
@@ -510,7 +510,46 @@ def test_octal_data_tree_5():
         #print("ANS", datahalo[0][2,2,2,:])
         for ix in range(ncomp):
             assert datahalo[0][2,2,2,ix] == 8**(nlevels-1) * (ix+1)
-    MPIBARRIER()
+
+
+
+def test_entry_data_1():
+    dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
+
+    nlevels = 3
+    ncomp = 1
+    dtype = ctypes.c_int
+
+    cc = md.mpi.create_cartcomm(
+        md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
+
+    tree = OctalTree(num_levels=nlevels, cart_comm=cc)
+    datahalo = OctalDataTree(tree=tree, ncomp=ncomp, mode='halo',
+                             dtype=dtype)
+    entrydata = EntryData(tree, ncomp, dtype)
+
+    if MPIRANK == 0:
+        print('\n', 40*'-')
+    for rx in range(MPISIZE):
+        if rx == MPIRANK:
+            print(MPIRANK, entrydata.local_size, entrydata.local_offset)
+            sys.stdout.flush()
+        MPIBARRIER()
+
+
+    entrydata[:] = MPIRANK + 1
+    entrydata.push_onto(datahalo)
+
+
+    if MPIRANK == 0:
+        print(40*'-')
+    for rx in range(MPISIZE):
+        if rx == MPIRANK:
+            if datahalo.num_data[-1] > 0:
+                print(MPIRANK, entrydata[:,:,:,0], datahalo[-1][:,:,:,0])
+                sys.stdout.flush()
+        MPIBARRIER()
+
 
 
 

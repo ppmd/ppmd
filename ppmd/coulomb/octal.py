@@ -32,6 +32,7 @@ class cube_owner_map(object):
         topo = self.cart_comm.Get_topo()
         # dim order here is z, y, x
         dims = topo[0]
+        top = topo[2]
 
         self.cube_count = cube_side_count**len(dims)
         """Total number of cubes"""
@@ -41,8 +42,8 @@ class cube_owner_map(object):
         if group_children and not cube_side_count % 2 == 0:
             raise RuntimeError("Side length must be even with group_children")
 
-        owners, contribs = self.compute_grid_ownership(
-            dims, cube_side_count, group_children)
+        owners, contribs, lsize, loffset = self.compute_grid_ownership(
+            dims, top, cube_side_count, group_children)
         cube_to_mpi = self.compute_map_product_owners(cart_comm, owners)
         starts, con_ranks, send_ranks = self.compute_map_product_contribs(
             cart_comm, cube_to_mpi, contribs)
@@ -57,13 +58,27 @@ class cube_owner_map(object):
         self.cube_to_send = send_ranks
         """Array if this mpi rank contributes to cube i then x_i is owning
         rank of cube i else x_i = -1"""
+        self.local_size = np.array(lsize, dtype=ctypes.c_uint64)
+        self.local_offset = np.array(loffset, dtype=ctypes.c_uint64)
+
+    def local_to_tree(self, data, octalhalotree):
+        if data.shape[-1] != octalhalotree.ncomp:
+            raise RuntimeError('number of components missmatch')
+        if data.dtype != octalhalotree.dtype:
+            raise RuntimeError('data type missmatch')
+        if octalhalotree.tree[-1].comm is not self.cart_comm:
+            raise RuntimeError('cart_comm missmatch')
+        if octalhalotree.tree[-1].ncubes_side_global != self.cube_side_count:
+            raise RuntimeError('side length missmatch')
+
 
     @staticmethod
-    def compute_grid_ownership(dims, cube_side_count, group_children=False):
+    def compute_grid_ownership(dims, top, cube_side_count, group_children=False):
         """
         For each dimension compute the owner and contributing ranks. Does
         not perform out product to compute the full map.
         :param dims: tuple of mpi dims.
+        :param top: tuple of top.
         :param cube_side_count: int, number of cubes in each dimension
         :param group_children: See class doc string.
         :return: tuple: ranks of each cube owner, contributing ranks.
@@ -89,11 +104,15 @@ class cube_owner_map(object):
         dim_contribs = [[[] for iy in range(cube_side_count)] for
                         ix in range(ndim)]
 
+        loffset = [-1] * ndim
+        lsize = [-1] * ndim
+
         for dx in range(ndim):
 
             def lbound(argx): return float(argx)/dims[dx]
-
             def ubound(argx): return float(argx+1)/dims[dx]
+
+            inter = []
 
             for mx in range(dims[dx]):
                 for cx, cmid in enumerate(cube_mids):
@@ -108,8 +127,16 @@ class cube_owner_map(object):
                         # bound
                         dim_contribs[dx][cx].append(mx)
 
+                        # if the rank we are inspecting is this rank
+                        if top[dx] == mx:
+                            inter.append(cx)
+
+                if top[dx] == mx:
+                    loffset[dx] = inter[0]
+                    lsize[dx] = len(inter)
+
         # dim owner orders is z dim then y dim ...
-        return dim_owners, dim_contribs
+        return dim_owners, dim_contribs, lsize, loffset
 
     @staticmethod
     def compute_map_product_owners(cart_comm, dim_owners):
@@ -481,6 +508,11 @@ class OctalGridLevel(object):
 
 class OctalTree(object):
     def __init__(self, num_levels, cart_comm):
+        """
+        Create an octal tree as a list of OctalLevels.
+        :param num_levels: Number of levels in tree.
+        :param cart_comm: comm to use at finest level.
+        """
         self.num_levels = num_levels
         self.cart_comm = cart_comm
         self.levels = []
@@ -495,8 +527,103 @@ class OctalTree(object):
 
         self.nbytes = sum([lx.nbytes for lx in self.levels])
 
+        self.entry_map = cube_owner_map(cart_comm,
+                                        self.levels[-1].ncubes_side_global,
+                                        True)
+
     def __getitem__(self, item):
         return self.levels[item]
+
+
+class EntryData(object):
+    def __init__(self, tree, ncomp, dtype=ctypes.c_double):
+        self.tree = tree
+        self.dtype = dtype
+        self.ncomp = ncomp
+        self.data = np.zeros(list(tree.entry_map.local_size) + [ncomp],
+                             dtype=dtype)
+        self.local_offset = tree.entry_map.local_offset
+        self.local_size = tree.entry_map.local_size
+
+        self._start = (self.local_offset[0],
+                       self.local_offset[1],
+                       self.local_offset[2])
+
+        self._end = (self._start[0] + self.local_size[0],
+                     self._start[1] + self.local_size[1],
+                     self._start[2] + self.local_size[2])
+
+    def push_onto(self, octal_data_tree):
+        """
+        Push data onto a OctalDataTree of mode='halo'
+        :param octal_data_tree: 
+        """
+        if octal_data_tree.tree is not self.tree:
+            raise RuntimeError('cannot push data onto different tree')
+        if octal_data_tree.ncomp != self.ncomp:
+            raise RuntimeError('number of components mismatch')
+        if octal_data_tree.dtype != self.dtype:
+            raise RuntimeError('data type miss-match')
+
+        ns = 2 ** (self.tree.num_levels - 1)
+        comm = self.tree.cart_comm
+        rank = comm.Get_rank()
+        ncomp = self.ncomp
+
+        dst_owners = self.tree[-1].owners.ravel()
+        dst_g2l = self.tree[-1].global_to_local_halo
+
+        dst = octal_data_tree[-1].ravel()
+        src = self.data.ravel()
+
+        for cxt in itertools.product(range(ns), range(ns), range(ns)):
+            cx = cube_tuple_to_lin_zyx(cxt, ns)
+            dst_owner = dst_owners[cx]
+            src_bool = self._inside_entry(cxt)
+
+            if src_bool is False and dst_owner != rank:
+                continue
+
+            elif src_bool is not False and dst_owner == rank:
+                # local copy
+                dst_index_b = dst_g2l[cxt]*ncomp
+                dst_index_e = dst_index_b + ncomp
+
+                src_index_b = src_bool * ncomp
+                src_index_e = src_index_b + ncomp
+
+                dst[dst_index_b:dst_index_e:] = src[src_index_b: src_index_e:]
+
+            elif src_bool is not False:
+                # this rank is sending
+                src_index_b = src_bool * ncomp
+                src_index_e = src_index_b + ncomp
+                comm.Send(src[src_index_b: src_index_e:], dst_owner)
+
+            elif dst_owner == rank:
+                dst_index_b = dst_g2l[cxt]*ncomp
+                dst_index_e = dst_index_b + ncomp
+                comm.Recv(dst[dst_index_b:dst_index_e:], MPI.ANY_SOURCE)
+
+
+    def _inside_entry(self, p):
+        if self._start[0] <= p[0] < self._end[0] and \
+            self._start[1] <= p[1] < self._end[1] and \
+            self._start[2] <= p[2] < self._end[2]:
+
+            x0 = p[0] - self._start[0]
+            x1 = p[1] - self._start[1]
+            x2 = p[2] - self._start[2]
+
+            return int(x2 + self.local_size[2] * (
+                x1 + self.local_size[1] * x0))
+        else:
+            return False
+
+    def __getitem__(self, item):
+        return self.data[item]
+    def __setitem__(self, key, value):
+        self.data[key] = value
 
 
 class OctalDataTree(object):
@@ -520,6 +647,7 @@ class OctalDataTree(object):
         self.dtype = dtype
         self.mode = mode
         self.data = []
+        self.num_data = []
 
         for lvl in self.tree.levels:
             if self.mode == 'plain' and \
@@ -532,8 +660,9 @@ class OctalDataTree(object):
                 lvl.parent_local_size is not None:
                     shape = list(lvl.parent_local_size) + [ncomp]
             else:
-                shape = 0
+                shape = (0,0,0,0)
             self.data.append(np.zeros(shape=shape, dtype=dtype))
+            self.num_data.append(shape[0]*shape[1]*shape[2]*shape[3])
 
         self.nbytes = sum([dx.nbytes for dx in self.data])
 
@@ -552,6 +681,8 @@ class OctalDataTree(object):
         return self.data[item]
 
 
+
+
 def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
     """
     Copy the data from parent mode OctalDataTree to halo mode OctalDataTree.
@@ -564,7 +695,6 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
     :param halo_data_tree: OctalDataTree of mode plain
     :return: halo_data_tree will be modified.
     """
-
 
     if halo_data_tree.ncomp != parent_data_tree.ncomp:
         raise RuntimeError('number of components is not consistent between' +\
