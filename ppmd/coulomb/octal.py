@@ -44,9 +44,12 @@ class cube_owner_map(object):
 
         owners, contribs, lsize, loffset = self.compute_grid_ownership(
             dims, top, cube_side_count, group_children)
+
         cube_to_mpi = self.compute_map_product_owners(cart_comm, owners)
         starts, con_ranks, send_ranks = self.compute_map_product_contribs(
             cart_comm, cube_to_mpi, contribs)
+
+        self.owners = owners
 
         self.cube_to_mpi = cube_to_mpi
         """Array from cube global index to owning mpi rank"""
@@ -60,17 +63,6 @@ class cube_owner_map(object):
         rank of cube i else x_i = -1"""
         self.local_size = np.array(lsize, dtype=ctypes.c_uint64)
         self.local_offset = np.array(loffset, dtype=ctypes.c_uint64)
-
-    def local_to_tree(self, data, octalhalotree):
-        if data.shape[-1] != octalhalotree.ncomp:
-            raise RuntimeError('number of components missmatch')
-        if data.dtype != octalhalotree.dtype:
-            raise RuntimeError('data type missmatch')
-        if octalhalotree.tree[-1].comm is not self.cart_comm:
-            raise RuntimeError('cart_comm missmatch')
-        if octalhalotree.tree[-1].ncubes_side_global != self.cube_side_count:
-            raise RuntimeError('side length missmatch')
-
 
     @staticmethod
     def compute_grid_ownership(dims, top, cube_side_count, group_children=False):
@@ -98,14 +90,14 @@ class cube_owner_map(object):
 
         def cube_upper_edge(x): return (x + 1) * oocsc
 
-        dim_owners = [[-1] * cube_side_count] * ndim
+        dim_owners = [[-1] * cube_side_count for nx in range(ndim)]
 
         # expanding empty lists with []*n gives [] not [[],...,[]]
         dim_contribs = [[[] for iy in range(cube_side_count)] for
                         ix in range(ndim)]
 
-        loffset = [-1] * ndim
-        lsize = [-1] * ndim
+        loffset = [[-1] for nx in range(ndim)]
+        lsize = [[-1] for nx in range(ndim)]
 
         for dx in range(ndim):
 
@@ -233,6 +225,25 @@ class cube_owner_map(object):
         return starts, con_ranks, send_ranks
 
 
+def compute_local_size_offset(owners, dims, top):
+
+    ndim = len(owners)
+    sizes = [[] for dx in range(ndim)]
+    offsets = [[] for dx in range(ndim)]
+    for d in range(ndim):
+        for rx in range(dims[d]):
+            offsets[d].append(sum(sizes[d]))
+            sizes[d].append(owners[d].count(rx))
+
+    mysize = []
+    myoffset = []
+    for d in range(ndim):
+        mysize.append(sizes[d][top[d]])
+        myoffset.append(offsets[d][top[d]])
+
+    return mysize, myoffset
+
+
 def compute_interaction_offsets(cube_index):
     """
     Compute the interaction offsets for a given child cube. Child cubes are
@@ -314,7 +325,7 @@ def cube_tuple_to_lin_zyx(ii, n):
     return int(ii[2] + n*(ii[1] + n*ii[0]))
 
 class OctalGridLevel(object):
-    def __init__(self, level, parent_comm):
+    def __init__(self, level, parent_comm, entry_map=None):
         """
         Level in the octal tree.  
         :param level: Non-negative integer subdivision level.
@@ -356,7 +367,7 @@ class OctalGridLevel(object):
 
         if parent_comm != MPI.COMM_NULL:
             self._init_comm(parent_comm)
-            self._init_decomp(parent_comm)
+            self._init_decomp(parent_comm, entry_map)
         if self.comm != MPI.COMM_NULL:
             self._init_halo_exchange_method()
 
@@ -392,38 +403,40 @@ class OctalGridLevel(object):
             self.new_comm = True
 
 
-    def _init_decomp(self, parent_comm):
+    def _init_decomp(self, parent_comm, entry_map=None):
         if self.comm != MPI.COMM_NULL:
             dims = self.comm.Get_topo()[0]
             top = self.comm.Get_topo()[2]
             work_units_per_side = 2 ** (self.level - 1) if self.level > 0 \
                                   else 1
+            ndim = len(dims)
 
             if self.level > 0:
-                # compute the local domain size (no halos included)
-                lt = [-1, -1, -1]
-                lo = [-1, -1, -1]
-                wkld = [[],[],[]]
-                for dx in range(3):
-                    wk = int(work_units_per_side/dims[dx])
-                    wkl = [wk] * dims[dx]
-                    rd = work_units_per_side - dims[dx]*wk
-                    # get the global distribution
-                    wkl = [2 * (wkl[wi] + 1) if wi < rd else
-                           2 * wkl[wi] for wi in range(dims[dx])]
-                    wkld[dx] = wkl
-                    # extract the local dim
-                    lt[dx] = wkl[top[dx]]
-                    # compute the offsets to the local section
-                    lo[dx] = sum(wkl[0:top[dx]])
+                if entry_map is None:
+                    owners = [[] for nx in range(ndim)]
+                    # need to compute owners
+                    for d in range(ndim):
+                        base_size = work_units_per_side // dims[d]
+                        sizes = [base_size for nx in range(dims[d])]
+                        for ex in range(work_units_per_side \
+                                                - base_size*dims[d]):
+                            sizes[ex] += 1
 
-                    if lo[dx] < 0 or lt[dx] < 0:
-                        raise RuntimeError('Octal MPI decompostion error.')
+                        for nx in range(dims[d]):
+                            for mx in range(sizes[nx]):
+                                owners[d] += [nx, nx]
+
+                else:
+                    owners = entry_map.owners
+
+                lt, lo = compute_local_size_offset(
+                    owners, dims, top)
 
             else:
                 lt = (1, 1, 1)
                 lo = (0, 0, 0)
-                wkld = ([0], [0], [0])
+                owners = ([0], [0], [0])
+
 
             self.local_grid_cube_size = np.array(lt, dtype=ctypes.c_uint32)
             self.parent_local_size = np.array(
@@ -457,15 +470,9 @@ class OctalGridLevel(object):
                 self.global_to_local_parent.ravel()[gid] = ii[2] + \
                     lt[2]*(ii[1] + (lt[1]//2)*ii[0])//2
 
-            # owners along each dimension
-            owners = [[],[],[]]
-            for dx in range(3):
-                for nx in range(dims[dx]):
-                    owners[dx] += [nx] * wkld[dx][nx]
-                owners[dx] = np.array(owners[dx], dtype=ctypes.c_uint32)
-
             # outer product
             if self.level > 0:
+
                 wups2 = work_units_per_side * 2
                 for iz in range(wups2):
                     for iy in range(wups2):
@@ -517,19 +524,22 @@ class OctalTree(object):
         self.cart_comm = cart_comm
         self.levels = []
         comm_tmp = cart_comm
+
+        self.entry_map = cube_owner_map(cart_comm, 2 ** (num_levels - 1), True)
+
         # work up tree from finest level as largest cart_comm is on the finest
         # level
         for lx in range(self.num_levels - 1, -1, -1):
-            level_tmp = OctalGridLevel(level=lx, parent_comm=comm_tmp)
+            m = self.entry_map if lx == self.num_levels - 1 else None
+            level_tmp = OctalGridLevel(level=lx, parent_comm=comm_tmp,
+                                       entry_map=m)
+
             self.levels.append(level_tmp)
             comm_tmp = level_tmp.comm
         self.levels.reverse()
 
         self.nbytes = sum([lx.nbytes for lx in self.levels])
 
-        self.entry_map = cube_owner_map(cart_comm,
-                                        self.levels[-1].ncubes_side_global,
-                                        True)
 
     def __getitem__(self, item):
         return self.levels[item]
@@ -569,9 +579,16 @@ class EntryData(object):
         comm = self.tree.cart_comm
         rank = comm.Get_rank()
         ncomp = self.ncomp
+        entry_map = self.tree.entry_map
 
         dst_owners = self.tree[-1].owners.ravel()
         dst_g2l = self.tree[-1].global_to_local_halo
+
+
+        dst_owners_test = entry_map.cube_to_mpi
+        dst_contribs = entry_map.contrib_mpi
+        dst_contribs_starts = entry_map.contrib_starts
+        dst_sends = entry_map.cube_to_send
 
         dst = octal_data_tree[-1].ravel()
         src = self.data.ravel()
@@ -579,31 +596,10 @@ class EntryData(object):
         for cxt in itertools.product(range(ns), range(ns), range(ns)):
             cx = cube_tuple_to_lin_zyx(cxt, ns)
             dst_owner = dst_owners[cx]
+
+            print(dst_owners[cx], dst_owners_test[cx])
             src_bool = self._inside_entry(cxt)
 
-            if src_bool is False and dst_owner != rank:
-                continue
-
-            elif src_bool is not False and dst_owner == rank:
-                # local copy
-                dst_index_b = dst_g2l[cxt]*ncomp
-                dst_index_e = dst_index_b + ncomp
-
-                src_index_b = src_bool * ncomp
-                src_index_e = src_index_b + ncomp
-
-                dst[dst_index_b:dst_index_e:] = src[src_index_b: src_index_e:]
-
-            elif src_bool is not False:
-                # this rank is sending
-                src_index_b = src_bool * ncomp
-                src_index_e = src_index_b + ncomp
-                comm.Send(src[src_index_b: src_index_e:], dst_owner)
-
-            elif dst_owner == rank:
-                dst_index_b = dst_g2l[cxt]*ncomp
-                dst_index_e = dst_index_b + ncomp
-                comm.Recv(dst[dst_index_b:dst_index_e:], MPI.ANY_SOURCE)
 
 
     def _inside_entry(self, p):

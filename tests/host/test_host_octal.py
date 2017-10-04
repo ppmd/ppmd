@@ -513,42 +513,93 @@ def test_octal_data_tree_5():
 
 
 
-def test_entry_data_1():
+def test_entry_data_map_1():
+
+    nlevels = 5
+    ncomp = 1
+    dtype = ctypes.c_int
+
     dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
+    cc = md.mpi.create_cartcomm(MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
+
+    tree = OctalTree(num_levels=nlevels, cart_comm=cc)
+
+    ns = 2**(nlevels-1)
+
+    dst_owners = tree[-1].owners.ravel()
+    dst_owners_map = tree.entry_map.cube_to_mpi
+
+    for cxt in itertools.product(range(ns), range(ns), range(ns)):
+        cx = cube_tuple_to_lin_zyx(cxt, ns)
+
+        assert dst_owners[cx] == dst_owners_map[cx]
+
+
+
+def test_entry_data_1():
 
     nlevels = 3
     ncomp = 1
     dtype = ctypes.c_int
 
-    cc = md.mpi.create_cartcomm(
-        md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
+    dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
+    cc = md.mpi.create_cartcomm(MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
 
     tree = OctalTree(num_levels=nlevels, cart_comm=cc)
     datahalo = OctalDataTree(tree=tree, ncomp=ncomp, mode='halo',
                              dtype=dtype)
     entrydata = EntryData(tree, ncomp, dtype)
 
-    if MPIRANK == 0:
-        print('\n', 40*'-')
-    for rx in range(MPISIZE):
-        if rx == MPIRANK:
-            print(MPIRANK, entrydata.local_size, entrydata.local_offset)
-            sys.stdout.flush()
-        MPIBARRIER()
-
-
-    entrydata[:] = MPIRANK + 1
+    for nx in range(ncomp):
+        entrydata[:,:,:,nx] = (MPIRANK + 1)*ncomp
     entrydata.push_onto(datahalo)
-
 
     if MPIRANK == 0:
         print(40*'-')
-    for rx in range(MPISIZE):
-        if rx == MPIRANK:
+    for rx in range(3):
+        if rx == cc.Get_rank():
             if datahalo.num_data[-1] > 0:
-                print(MPIRANK, entrydata[:,:,:,0], datahalo[-1][:,:,:,0])
+                print(cc.Get_rank(), datahalo[-1][2:-2,2:-2,2:-2,0])
                 sys.stdout.flush()
-        MPIBARRIER()
+        cc.Barrier()
+
+
+
+
+
+
+def test_entry_data_2():
+
+    nlevels = 3
+    ncomp = 1
+    dtype = ctypes.c_int
+
+    colour = 0 if MPIRANK < 3 else MPI.UNDEFINED
+    cc1 = MPI.COMM_WORLD.Split(colour, MPIRANK)
+    dims = md.mpi.MPI.Compute_dims(3, 3)
+
+    if cc1 != MPI.COMM_NULL:
+        cc = md.mpi.create_cartcomm(cc1, dims[::-1], (1,1,1), True)
+
+        tree = OctalTree(num_levels=nlevels, cart_comm=cc)
+        datahalo = OctalDataTree(tree=tree, ncomp=ncomp, mode='halo',
+                                 dtype=dtype)
+        entrydata = EntryData(tree, ncomp, dtype)
+
+        for nx in range(ncomp):
+            entrydata[:,:,:,nx] = (MPIRANK + 1)*ncomp
+        entrydata.push_onto(datahalo)
+
+        if MPIRANK == 0:
+            print(40*'-')
+        for rx in range(3):
+            if rx == cc.Get_rank():
+                if datahalo.num_data[-1] > 0:
+                    print(cc.Get_rank(), datahalo[-1][2:-2,2:-2,2:-2,0])
+                    sys.stdout.flush()
+            cc.Barrier()
+
+
 
 
 
