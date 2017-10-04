@@ -8,16 +8,13 @@ import sys
 np.set_printoptions(linewidth=200)
 
 from ppmd.coulomb.octal import *
+from ppmd import *
+
 
 MPISIZE = md.mpi.MPI.COMM_WORLD.Get_size()
 MPIRANK = md.mpi.MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = md.mpi.MPI.COMM_WORLD.Barrier
 
-
-@pytest.fixture
-def state():
-    A = 1
-    return A
 
 class _fake_cartcomm(object):
     def __init__(self, dims):
@@ -535,7 +532,7 @@ def test_entry_data_map_1():
         assert dst_owners[cx] == dst_owners_map[cx]
 
 
-
+@pytest.mark.skip
 def test_entry_data_1():
 
     nlevels = 4
@@ -574,10 +571,7 @@ def test_entry_data_1():
         cc.Barrier()
 
 
-
-
-
-
+@pytest.mark.skip
 def test_entry_data_2():
 
     nlevels = 3
@@ -610,10 +604,76 @@ def test_entry_data_2():
             cc.Barrier()
 
 
+def test_entry_data_3():
+
+    nlevels = 5
+    ncomp = 10
+    dtype = ctypes.c_int
+
+    E = 10.
+    N = 1000
+
+    A = state.State()
+    A.npart = N
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    rng = np.random.RandomState(seed=1234)
+
+    A.P = data.PositionDat(ncomp=3)
+    A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
+    A.scatter_data_from(0)
 
 
+    tree = OctalTree(num_levels=nlevels, cart_comm=A.domain.comm)
+    datahalo = OctalDataTree(tree=tree, ncomp=ncomp, mode='halo',
+                             dtype=dtype)
+    dataparent = OctalDataTree(tree=tree, ncomp=ncomp, mode='parent',
+                               dtype=ctypes.c_int)
 
+    entrydata = EntryData(tree, ncomp, dtype)
 
+    ncells = 2**(nlevels-1)
+    i_cell_width = ncells/E
+
+    boundary = np.array((A.domain.boundary[0], A.domain.boundary[2],
+                A.domain.boundary[4]))
+
+    for px in range(A.npart_local):
+        cell = np.array((A.P[px, :] - boundary)*i_cell_width,
+                        dtype='uint32')
+
+        entrydata[cell[2], cell[1], cell[0], :] += 1
+
+    entrydata.add_onto(datahalo)
+    tsum = np.zeros(ncomp, dtype=ctypes.c_int)
+
+    for ix in range(nlevels-1, 0, -1):
+        lsize = tree[ix].parent_local_size
+
+        if lsize is not None:
+            for kz in range(lsize[0]):
+                for ky in range(lsize[1]):
+                    for kx in range(lsize[2]):
+                        X = 2*kx + 2
+                        Y = 2*ky + 2
+                        Z = 2*kz + 2
+                        tsum[:] = 0
+                        tsum += datahalo[ix][Z,   Y,   X, :]
+                        tsum += datahalo[ix][Z,   Y,   X+1, :]
+                        tsum += datahalo[ix][Z,   Y+1, X, :]
+                        tsum += datahalo[ix][Z,   Y+1, X+1, :]
+                        tsum += datahalo[ix][Z+1, Y,   X, :]
+                        tsum += datahalo[ix][Z+1, Y,   X+1, :]
+                        tsum += datahalo[ix][Z+1, Y+1, X, :]
+                        tsum += datahalo[ix][Z+1, Y+1, X+1, :]
+                        dataparent[ix][kz, ky, kx, :] += tsum[:]
+
+        send_parent_to_halo(ix, dataparent, datahalo)
+
+    if MPIRANK == 0:
+        for nx in range(ncomp):
+            assert datahalo[0][2,2,2,nx] == N
 
 
 

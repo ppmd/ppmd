@@ -69,6 +69,10 @@ class BaseDomainHalo(object):
 
         self.comm = _MPIWORLD
 
+    @property
+    def dims(self):
+        return mpi.cartcomm_dims_xyz(self.comm)
+
 
     def get_boundary_cells(self):
         """
@@ -207,7 +211,6 @@ class BaseDomainHalo(object):
         self._extent[1] = self._extent_global[1] / _dims[1]
         self._extent[2] = self._extent_global[2] / _dims[2]
 
-
         _boundary = (
             -0.5 * self._extent_global[0] + _top[0] * self._extent[0],
             -0.5 * self._extent_global[0] + (_top[0] + 1.) * self._extent[0],
@@ -219,7 +222,6 @@ class BaseDomainHalo(object):
 
         self._boundary = data.ScalarArray(_boundary, dtype=ctypes.c_double)
         self._boundary_outer = data.ScalarArray(_boundary, dtype=ctypes.c_double)
-
 
 
     def cell_decompose(self, cell_width=None):

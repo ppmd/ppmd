@@ -20,7 +20,6 @@ __all__ = [ 'mpi',
             'state',
             'opt',
             'utility',
-            'module',
             'coulomb']
 
 from . import modules
