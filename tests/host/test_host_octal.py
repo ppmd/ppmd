@@ -539,7 +539,7 @@ def test_entry_data_map_1():
 def test_entry_data_1():
 
     nlevels = 4
-    ncomp = 1
+    ncomp = 2
     dtype = ctypes.c_int
 
     dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
