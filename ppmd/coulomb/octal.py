@@ -540,6 +540,12 @@ class OctalTree(object):
 
         self.nbytes = sum([lx.nbytes for lx in self.levels])
 
+        if self.cart_comm is not self.levels[-1].comm:
+            raise NotImplementedError(
+                '''Finest level must use domain cart_comm, use more levels 
+                or less MPI ranks.'''
+            )
+
 
     def __getitem__(self, item):
         return self.levels[item]
@@ -563,9 +569,9 @@ class EntryData(object):
                      self._start[1] + self.local_size[1],
                      self._start[2] + self.local_size[2])
 
-    def push_onto(self, octal_data_tree):
+    def add_onto(self, octal_data_tree):
         """
-        Push data onto a OctalDataTree of mode='halo'
+        add data onto a OctalDataTree of mode='halo'
         :param octal_data_tree: 
         """
         if octal_data_tree.tree is not self.tree:
@@ -584,8 +590,6 @@ class EntryData(object):
         dst_owners = self.tree[-1].owners.ravel()
         dst_g2l = self.tree[-1].global_to_local_halo
 
-
-        dst_owners_test = entry_map.cube_to_mpi
         dst_contribs = entry_map.contrib_mpi
         dst_contribs_starts = entry_map.contrib_starts
         dst_sends = entry_map.cube_to_send
@@ -593,13 +597,34 @@ class EntryData(object):
         dst = octal_data_tree[-1].ravel()
         src = self.data.ravel()
 
+        tmp = np.zeros(ncomp, dtype=self.dtype)
+
         for cxt in itertools.product(range(ns), range(ns), range(ns)):
             cx = cube_tuple_to_lin_zyx(cxt, ns)
+
+            local_ind = self._inside_entry(cxt)
             dst_owner = dst_owners[cx]
 
-            print(dst_owners[cx], dst_owners_test[cx])
-            src_bool = self._inside_entry(cxt)
+            if dst_owner == rank:
+                dst_ind_b = dst_g2l[cxt]*ncomp
+                dst_ind_e = dst_ind_b + ncomp
 
+                # start by copying the local data
+                src_ind_b = local_ind * ncomp
+                src_ind_e = src_ind_b + ncomp
+                dst[dst_ind_b: dst_ind_e:] = src[src_ind_b:src_ind_e:]
+
+                # need to copy in data from surrounding contributors
+                for nx in range(dst_contribs_starts[cx],
+                                dst_contribs_starts[cx+1]):
+                    comm.Recv(tmp[:], MPI.ANY_SOURCE)
+                    dst[dst_ind_b: dst_ind_e:] += tmp[:]
+
+            elif dst_sends[cx] > -1:
+                # this rank needs to send it's contribution
+                src_ind_b = local_ind * ncomp
+                src_ind_e = src_ind_b + ncomp
+                comm.Send(src[src_ind_b:src_ind_e:], dst_sends[cx])
 
 
     def _inside_entry(self, p):

@@ -538,7 +538,7 @@ def test_entry_data_map_1():
 
 def test_entry_data_1():
 
-    nlevels = 3
+    nlevels = 4
     ncomp = 1
     dtype = ctypes.c_int
 
@@ -551,12 +551,22 @@ def test_entry_data_1():
     entrydata = EntryData(tree, ncomp, dtype)
 
     for nx in range(ncomp):
-        entrydata[:,:,:,nx] = (MPIRANK + 1)*ncomp
-    entrydata.push_onto(datahalo)
+        # entrydata[:,:,:,nx] = (MPIRANK + 1)*ncomp
+        entrydata[:,:,:,nx] = 1
 
     if MPIRANK == 0:
         print(40*'-')
     for rx in range(3):
+        if rx == cc.Get_rank():
+            print(cc.Get_rank(), entrydata[:,:,:,0])
+            sys.stdout.flush()
+        cc.Barrier()
+
+    entrydata.add_onto(datahalo)
+
+    if MPIRANK == 0:
+        print(40*'-')
+    for rx in range(9):
         if rx == cc.Get_rank():
             if datahalo.num_data[-1] > 0:
                 print(cc.Get_rank(), datahalo[-1][2:-2,2:-2,2:-2,0])
@@ -588,7 +598,7 @@ def test_entry_data_2():
 
         for nx in range(ncomp):
             entrydata[:,:,:,nx] = (MPIRANK + 1)*ncomp
-        entrydata.push_onto(datahalo)
+        entrydata.add_onto(datahalo)
 
         if MPIRANK == 0:
             print(40*'-')
