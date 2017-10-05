@@ -750,36 +750,16 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
     src_owners = tree[src_level].owners.ravel()
     dst_owners = tree[src_level-1].owners.ravel()
 
-    #for rx in range(comm.Get_size()):
-    #    if comm.Get_rank() == rx:
-    #        print(rank, "parent shape", parent_data_tree[src_level].shape)
-    #        print(rank, "halo shape", halo_data_tree[src_level - 1].shape)
-    #        print(rank, "dst_g2l", dst_g2l.shape)
-    #        print(rank, "src_g2l", src_g2l.shape)
-    #        print(rank, 'ns', ns)
-    #        print(rank, 'owners-1', dst_owners[:])
-
-    #    comm.Barrier()
+    send_req = None
+    recv_req = None
 
     for cxt in itertools.product(range(ns), range(ns), range(ns)):
 
         cx = cube_tuple_to_lin_zyx(cxt, ns)
 
-        # print('tuple to lin', cxt, cx)
-
         cxc = cube_tuple_to_lin_zyx((cxt[0]*2, cxt[1]*2, cxt[2]*2), ns*2)
         dst_owner = dst_owners[cx]
         src_owner = src_owners[cxc]
-
-        #if comm.Get_rank() == 0:
-        #    print(cxt, 60*'=')
-        #comm.Barrier()
-
-        #for rx in range(comm.Get_size()):
-        #    if comm.Get_rank() == rx:
-        #        print(rank, src_owner, dst_owner)
-        #    comm.Barrier()
-
 
         # TODO: trim excess looping here with more refined maps
         if src_owner != rank and dst_owner != rank:
@@ -789,12 +769,8 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
             src_index_b = src_g2l[cxt]*ncomp
             src_index_e = src_index_b + ncomp
 
-            # print("src=", src_index_b, src_index_e, src.shape)
-
             dst_index_b = dst_g2l[cxt]*ncomp
             dst_index_e = dst_index_b + ncomp
-
-            # print("dst", dst_index_b, dst_index_e, dst.shape)
 
             dst[dst_index_b:dst_index_e:] = src[src_index_b: src_index_e:]
 
@@ -802,17 +778,19 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
             # we are sending
             index_b = src_g2l[cxt[0], cxt[1], cxt[2]]*ncomp
             index_e = ncomp + index_b
-            comm.Send(src[index_b:index_e:], dst_owner)
+            if send_req is not None: send_req.wait()
+            send_req = comm.Isend(src[index_b:index_e:], dst_owner, tag=cx)
         elif dst_owner == rank:
             # we are recving
             index_b = dst_g2l[cxt]*ncomp
             index_e = ncomp + index_b
-            comm.Recv(dst[index_b:index_e:], src_owner)
+            if recv_req is not None: recv_req.wait()
+            recv_req = comm.Irecv(dst[index_b:index_e:], src_owner, tag=cx)
         else:
             raise RuntimeError('Unknown data movement error.')
 
-
-
+    if send_req is not None: send_req.wait()
+    if recv_req is not None: recv_req.wait()
 
 
 
