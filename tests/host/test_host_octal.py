@@ -606,7 +606,7 @@ def test_entry_data_2():
 
 def test_entry_data_3():
 
-    nlevels = 5
+    nlevels = 6
     ncomp = 10
     dtype = ctypes.c_int
 
@@ -618,7 +618,9 @@ def test_entry_data_3():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-    rng = np.random.RandomState(seed=1234)
+    #rng = np.random.RandomState(seed=1234)
+    rng = np.random
+
 
     A.P = data.PositionDat(ncomp=3)
     A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))

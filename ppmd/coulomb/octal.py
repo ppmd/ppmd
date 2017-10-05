@@ -599,6 +599,8 @@ class EntryData(object):
 
         tmp = np.zeros(ncomp, dtype=self.dtype)
 
+        send_req = None
+
         for cxt in itertools.product(range(ns), range(ns), range(ns)):
             cx = cube_tuple_to_lin_zyx(cxt, ns)
 
@@ -617,15 +619,18 @@ class EntryData(object):
                 # need to copy in data from surrounding contributors
                 for nx in range(dst_contribs_starts[cx],
                                 dst_contribs_starts[cx+1]):
-                    comm.Recv(tmp[:], MPI.ANY_SOURCE)
+                    comm.Recv(tmp[:], MPI.ANY_SOURCE, tag=cx)
                     dst[dst_ind_b: dst_ind_e:] += tmp[:]
 
             elif dst_sends[cx] > -1:
                 # this rank needs to send it's contribution
                 src_ind_b = local_ind * ncomp
                 src_ind_e = src_ind_b + ncomp
-                comm.Send(src[src_ind_b:src_ind_e:], dst_sends[cx])
+                if send_req is not None: send_req.wait()
+                send_req = comm.Isend(src[src_ind_b:src_ind_e:],
+                                      dst_sends[cx], tag=cx)
 
+        if send_req is not None: send_req.wait()
 
     def _inside_entry(self, p):
         if self._start[0] <= p[0] < self._end[0] and \
