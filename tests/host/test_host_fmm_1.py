@@ -9,7 +9,8 @@ import numpy as np
 
 np.set_printoptions(linewidth=200)
 
-import ppmd as md
+
+from ppmd import *
 from ppmd.coulomb.fmm import *
 
 
@@ -19,26 +20,27 @@ MPIBARRIER = MPI.COMM_WORLD.Barrier()
 DEBUG = True
 
 
-class FakeDomain(object):
-    def __init__(self, extent, cart_comm):
-        self.comm = cart_comm
-        self.extent = extent
-
 def test_fmm_init_1():
-    dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
-    if MPIRANK == 0 and DEBUG:
-        print("DIMS", dims[::-1])
-    cc = md.mpi.create_cartcomm(
-        md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
-
-    domain = FakeDomain(extent=10, cart_comm=cc)
-
-    fmm = PyFMM(domain=domain, N=1000)
 
 
+    E = 10.
+    N = 1000
+
+    A = state.State()
+    A.npart = N
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    #rng = np.random.RandomState(seed=1234)
+    rng = np.random
 
 
+    A.P = data.PositionDat(ncomp=3)
+    A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
+    A.scatter_data_from(0)
 
+    fmm = PyFMM(domain=A.domain, N=1000)
+    fmm._compute_cube_contrib(A.P)
 
 
 
