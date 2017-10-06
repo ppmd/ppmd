@@ -31,9 +31,8 @@ def test_fmm_init_1():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-    #rng = np.random.RandomState(seed=1234)
-    rng = np.random
-
+    rng = np.random.RandomState(seed=1234)
+    #rng = np.random
 
     A.P = data.PositionDat(ncomp=3)
     A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
@@ -42,7 +41,7 @@ def test_fmm_init_1():
     fmm = PyFMM(domain=A.domain, N=1000)
     fmm._compute_cube_contrib(A.P)
 
-
+    print(np.sum(fmm.entry_data[:]))
 
 
 
