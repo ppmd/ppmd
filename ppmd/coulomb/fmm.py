@@ -64,13 +64,14 @@ class PyFMM(object):
 
 
 
-    def _compute_cube_contrib(self, positions):
+    def _compute_cube_contrib(self, positions, charges):
 
 
         '''
         const UINT64 npart,
         const INT32 thread_max,
         const REAL * RESTRICT position,             // xyz
+        const REAL * RESTRICT charge,
         const REAL * RESTRICT boundary,             // xl. xu, yl, yu, zl, zu
         const UINT64 * RESTRICT cube_offset,        // zyx (slowest to fastest)
         const UINT64 * RESTRICT cube_dim,           // as above
@@ -88,6 +89,7 @@ class PyFMM(object):
             self._thread_allocation[:self._tcount:] = 0
 
         _check_dtype(positions, REAL)
+        _check_dtype(charges, REAL)
         _check_dtype(self.domain.extent_internal, REAL)
         _check_dtype(self.entry_data.local_offset, UINT64)
         _check_dtype(self.entry_data.local_size, UINT64)
@@ -99,6 +101,7 @@ class PyFMM(object):
             UINT64(positions.npart_local),
             INT32(self._tcount),
             positions.ctypes_data,
+            charges.ctypes_data,
             self.domain.extent_internal.ctypes_data,
             _numpy_ptr(self.entry_data.local_offset),
             _numpy_ptr(self.entry_data.local_size),

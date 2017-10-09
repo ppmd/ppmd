@@ -35,11 +35,17 @@ def test_fmm_init_1():
     #rng = np.random
 
     A.P = data.PositionDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+
     A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
+    A.Q[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,1))
+    bias = np.sum(A.Q[:])/N
+    A.Q[:] -= bias
     A.scatter_data_from(0)
 
     fmm = PyFMM(domain=A.domain, N=1000)
-    fmm._compute_cube_contrib(A.P)
+    fmm._compute_cube_contrib(A.P, A.Q)
 
     print(np.sum(fmm.entry_data[:]))
 
