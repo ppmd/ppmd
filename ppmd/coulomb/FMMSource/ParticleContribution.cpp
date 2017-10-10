@@ -34,28 +34,37 @@ static inline INT64 compute_cell_spherical(
     REAL * RESTRICT radius,
     REAL * RESTRICT ctheta,
     REAL * RESTRICT cphi,
-    REAL * RESTRICT sphi
+    REAL * RESTRICT sphi,
+    REAL * RESTRICT msphi
 ){
     const REAL pxs = px + 0.5 * boundary[0];
     const REAL pys = py + 0.5 * boundary[1];
     const REAL pzs = pz + 0.5 * boundary[2];
 
-    const UINT64 cx = ((UINT64) pxs*cube_inverse_len[0]) - cube_offset[2];
-    const UINT64 cy = ((UINT64) pys*cube_inverse_len[1]) - cube_offset[1];
-    const UINT64 cz = ((UINT64) pzs*cube_inverse_len[2]) - cube_offset[0];
+    const UINT64 cxt = (UINT64) pxs*cube_inverse_len[0];
+    const UINT64 cyt = (UINT64) pys*cube_inverse_len[1];
+    const UINT64 czt = (UINT64) pzs*cube_inverse_len[2];
+
+    const UINT64 cx = cxt - cube_offset[2];
+    const UINT64 cy = cyt - cube_offset[1];
+    const UINT64 cz = czt - cube_offset[0];
 
     if (cx >= cube_dim[2] || cy >= cube_dim[1] || cz >= cube_dim[0] ){
         return (INT64) -1;}
     const int cell_idx = cx + cube_dim[2] * (cy + cube_dim[1] * cz);
     // now compute the vector between particle and cell center in spherical coords
     // cell center
-    const REAL ccx = cx * boundary[0] + cube_half_len[0]; 
-    const REAL ccy = cy * boundary[1] + cube_half_len[1]; 
-    const REAL ccz = cz * boundary[2] + cube_half_len[2]; 
+    const REAL ccx = (cxt * 2 + 1) * cube_half_len[0] - 0.5 * boundary[0]; 
+    const REAL ccy = (cyt * 2 + 1) * cube_half_len[1] - 0.5 * boundary[1]; 
+    const REAL ccz = (czt * 2 + 1) * cube_half_len[2] - 0.5 * boundary[2]; 
+    //printf("px %f cx %d mid %f\n", px, cxt, ccx);
+    //printf("py %f cy %d mid %f\n", py, cyt, ccy);
+    //printf("pz %f cz %d mid %f\n", pz, czt, ccz);
+    //printf("cube_half_len %f %f %f %f\n", cube_half_len[0], cube_half_len[1], cube_half_len[2], (cyt * 2 + 1) + cube_half_len[1]);
     // compute Cartesian displacement vector
-    const REAL dx = px - cx;
-    const REAL dy = py - cy;
-    const REAL dz = pz - cz;
+    const REAL dx = px - ccx;
+    const REAL dy = py - ccy;
+    const REAL dz = pz - ccz;
     // convert to spherical
     const REAL dx2 = dx*dx;
     const REAL dx2_p_dy2 = dx2 + dy*dy;
@@ -70,6 +79,7 @@ static inline INT64 compute_cell_spherical(
     *cphi = dx / sqrt_dx2pdy2;
     const REAL sp1 = sqrt(1.0 - dx2/dx2_p_dy2);
     *sphi = (dy > 0) ? sp1 : -1.0 * sp1; 
+    *msphi = -1.0 * (*sphi);
     return cell_idx;
 }
 
@@ -89,6 +99,10 @@ INT32 particle_contribution(
 ){
     INT32 err = 0;
     omp_set_num_threads(thread_max);
+    
+    //printf("%f | %f | %f\n", boundary[0], boundary[1], boundary[2]);
+
+
 
     const REAL cube_ilen[3] = {
         cube_side_counts[2]/boundary[0],
@@ -141,11 +155,11 @@ INT32 particle_contribution(
     for(UINT32 tx=0 ; tx<thread_max ; tx++){
         for(UINT64 px=0 ; px<thread_assign[tx] ; px++){
             UINT64 ix = thread_assign[thread_max + npart*tx + px];
-            REAL radius, ctheta, cphi, sphi;
+            REAL radius, ctheta, cphi, sphi, msphi;
             const INT64 ix_cell = compute_cell_spherical(
                 cube_ilen, cube_half_side_len, position[ix*3], position[ix*3+1], 
                 position[ix*3+2], boundary, cube_offset, cube_dim,
-                &radius, &ctheta, &cphi, &sphi
+                &radius, &ctheta, &cphi, &sphi, &msphi
             );
             
             if (tx != ix_cell % thread_max) {           
@@ -153,6 +167,7 @@ INT32 particle_contribution(
                 {err = -3;}
             }
 
+            //printf("%f, %f, %f, %f, %f\n", radius, ctheta, cphi, sphi, msphi);
 
 
 
