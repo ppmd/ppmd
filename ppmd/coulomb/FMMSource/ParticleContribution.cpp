@@ -265,7 +265,8 @@ INT32 particle_contribution(
                     P_SPACE[P_SPACE_IND(nlevel, lx+1, lx+1)] = (-1.0 - 2.0*lx) * sqrt_1m2lx * \ 
                         P_SPACE[P_SPACE_IND(nlevel, lx, lx)];
 
-                    P_SPACE[P_SPACE_IND(nlevel, lx+1, lx)] = ctheta * (2*lx + 1) * P_SPACE[P_SPACE_IND(nlevel, lx, lx)];
+                    P_SPACE[P_SPACE_IND(nlevel, lx+1, lx)] = ctheta * (2*lx + 1) * \
+                        P_SPACE[P_SPACE_IND(nlevel, lx, lx)];
 
                     for( int mx=0 ; mx<lx ; mx++ ){
                         P_SPACE[P_SPACE_IND(nlevel, lx+1, mx)] = \
@@ -275,10 +276,10 @@ INT32 particle_contribution(
 
                 }
 
-                for (int mx=0 ; mx<=lx ; mx++){
-                    printf("l %d, m %d P %.50f\n", lx, mx, P_SPACE[P_SPACE_IND(nlevel, lx, mx)]); 
-                }
-                printf("-----------------------------\n");
+                //for (int mx=0 ; mx<=lx ; mx++){
+                //    printf("l %d, m %d P %.50f\n", lx, mx, P_SPACE[P_SPACE_IND(nlevel, lx, mx)]); 
+                //}
+                //printf("-----------------------------\n");
 
             }
 
