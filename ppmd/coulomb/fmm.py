@@ -38,12 +38,14 @@ class PyFMM(object):
         """Floating point datatype used."""
         self.domain = domain
 
+
+        ncomp = (self.L + 1)**2
         # define the octal tree and attach data to the tree.
         self.tree = OctalTree(self.R, domain.comm)
-        self.tree_plain = OctalDataTree(self.tree, self.L, 'plain', dtype)
-        self.tree_halo = OctalDataTree(self.tree, self.L, 'halo', dtype)
-        self.tree_parent = OctalDataTree(self.tree, self.L, 'parent', dtype)
-        self.entry_data = EntryData(self.tree, self.L, ctypes.c_double)
+        self.tree_plain = OctalDataTree(self.tree, ncomp, 'plain', dtype)
+        self.tree_halo = OctalDataTree(self.tree, ncomp, 'halo', dtype)
+        self.tree_parent = OctalDataTree(self.tree, ncomp, 'parent', dtype)
+        self.entry_data = EntryData(self.tree, ncomp, dtype)
 
         self._tcount = runtime.OMP_NUM_THREADS if runtime.OMP_NUM_THREADS is \
             not None else 1
@@ -66,20 +68,6 @@ class PyFMM(object):
 
     def _compute_cube_contrib(self, positions, charges):
 
-
-        '''
-        const UINT64 npart,
-        const INT32 thread_max,
-        const REAL * RESTRICT position,             // xyz
-        const REAL * RESTRICT charge,
-        const REAL * RESTRICT boundary,             // xl. xu, yl, yu, zl, zu
-        const UINT64 * RESTRICT cube_offset,        // zyx (slowest to fastest)
-        const UINT64 * RESTRICT cube_dim,           // as above
-        const UINT64 * RESTRICT cube_side_counts,   // as above
-        REAL * RESTRICT cube_data,                  // lexicographic
-        INT32 * RESTRICT thread_assign
-        '''
-
         ns = self.tree.entry_map.cube_side_count
         cube_side_counts = np.array((ns, ns, ns), dtype=UINT64)
         if self._thread_allocation.size < self._tcount*positions.npart_local:
@@ -98,6 +86,7 @@ class PyFMM(object):
         _check_dtype(self._thread_allocation, INT32)
 
         err = self._contribution_lib(
+            UINT64(self.L),
             UINT64(positions.npart_local),
             INT32(self._tcount),
             positions.ctypes_data,

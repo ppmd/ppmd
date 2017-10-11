@@ -24,7 +24,7 @@ def test_fmm_init_1():
 
 
     E = 10.
-    N = 1000
+    N = 1
 
     A = state.State()
     A.npart = N
@@ -44,8 +44,9 @@ def test_fmm_init_1():
     A.Q[:] -= bias
     A.scatter_data_from(0)
 
-    fmm = PyFMM(domain=A.domain, N=N)
+    fmm = PyFMM(domain=A.domain, N=1000)
     print("cube_side_len", 2**(fmm.R-1), "extent", E)
+    print("ncomp", fmm.L)
     fmm._compute_cube_contrib(A.P, A.Q)
 
     print(np.sum(fmm.entry_data[:]))
