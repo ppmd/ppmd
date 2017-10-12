@@ -18,6 +18,7 @@ using namespace std;
 #define EXP_IM_IND(L, M) ((2*(L))+1 + EXP_RE_IND((L),(M)))
 
 #define CUBE_RE_IND(L, M) ( (L) * ( (L) + 1 ) + (M) )
+#define CUBE_IND(L, M) ( (L) * ( (L) + 1 ) + (M) )
 #define CUBE_IM_IND(LMAX, L, M) ( ((LMAX)+1) * ((LMAX)+1) + CUBE_RE_IND((L),(M)) )
 
 #define P_SPACE_IND(LMAX, L, M) (((LMAX)+1)*(L) + (M))
@@ -41,7 +42,7 @@ and
 
 extern "C"
 INT32 particle_contribution(
-    const UINT64 nlevel,
+    const INT64 nlevel,
     const UINT64 npart,
     const INT32 thread_max,
     const REAL * RESTRICT position,             // xyz

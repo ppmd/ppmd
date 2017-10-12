@@ -12,9 +12,9 @@ static inline INT64 compute_cell(
     const REAL pys = py + 0.5 * boundary[1];
     const REAL pzs = pz + 0.5 * boundary[2];
 
-    const UINT64 cx = ((UINT64) pxs*cube_inverse_len[0]) - cube_offset[2];
-    const UINT64 cy = ((UINT64) pys*cube_inverse_len[1]) - cube_offset[1];
-    const UINT64 cz = ((UINT64) pzs*cube_inverse_len[2]) - cube_offset[0];
+    const UINT64 cx = ((UINT64) (pxs*cube_inverse_len[0])) - cube_offset[2];
+    const UINT64 cy = ((UINT64) (pys*cube_inverse_len[1])) - cube_offset[1];
+    const UINT64 cz = ((UINT64) (pzs*cube_inverse_len[2])) - cube_offset[0];
 
     if (cx >= cube_dim[2] || cy >= cube_dim[1] || cz >= cube_dim[0] ){
         return (INT64) -1;}
@@ -41,9 +41,9 @@ static inline INT64 compute_cell_spherical(
     const REAL pys = py + 0.5 * boundary[1];
     const REAL pzs = pz + 0.5 * boundary[2];
 
-    const UINT64 cxt = (UINT64) pxs*cube_inverse_len[0];
-    const UINT64 cyt = (UINT64) pys*cube_inverse_len[1];
-    const UINT64 czt = (UINT64) pzs*cube_inverse_len[2];
+    const UINT64 cxt = pxs*cube_inverse_len[0];
+    const UINT64 cyt = pys*cube_inverse_len[1];
+    const UINT64 czt = pzs*cube_inverse_len[2];
 
     const UINT64 cx = cxt - cube_offset[2];
     const UINT64 cy = cyt - cube_offset[1];
@@ -57,9 +57,10 @@ static inline INT64 compute_cell_spherical(
     const REAL ccx = (cxt * 2 + 1) * cube_half_len[0] - 0.5 * boundary[0]; 
     const REAL ccy = (cyt * 2 + 1) * cube_half_len[1] - 0.5 * boundary[1]; 
     const REAL ccz = (czt * 2 + 1) * cube_half_len[2] - 0.5 * boundary[2]; 
-    //printf("px %f cx %d mid %f\n", px, cxt, ccx);
-    //printf("py %f cy %d mid %f\n", py, cyt, ccy);
-    //printf("pz %f cz %d mid %f\n", pz, czt, ccz);
+    //printf("cube_inverse_lens %f %f %f\n", cube_inverse_len[0], cube_inverse_len[1], cube_inverse_len[2]);
+    printf("pxs %f cx %d mid %f\n", pxs, cxt, ccx);
+    printf("pys %f cy %d mid %f\n", pys, cyt, ccy);
+    printf("pzs %f cz %d mid %f\n", pzs, czt, ccz);
     //printf("cube_half_len %f %f %f %f\n", cube_half_len[0], cube_half_len[1], cube_half_len[2], (cyt * 2 + 1) + cube_half_len[1]);
     // compute Cartesian displacement vector
     const REAL dx = px - ccx;
@@ -86,27 +87,25 @@ static inline INT64 compute_cell_spherical(
 static inline void next_pos_exp(
     const REAL cphi,
     const REAL sphi,
-    const REAL * RESTRICT rpe,
-    const REAL * RESTRICT ipe,
+    const REAL rpe,
+    const REAL ipe,
     REAL * RESTRICT nrpe,
     REAL * RESTRICT nipe
 ){
-    const REAL tmp_rpe = *rpe;
-    *nrpe = tmp_rpe*cphi - (*ipe)*sphi;
-    *nipe = tmp_rpe*sphi + (*ipe)*cphi;
+    *nrpe = rpe*cphi - ipe*sphi;
+    *nipe = rpe*sphi + ipe*cphi;
 }
 
 static inline void next_neg_exp(
     const REAL cphi,
     const REAL msphi,
-    const REAL * RESTRICT rne,
-    const REAL * RESTRICT ine,
+    const REAL rne,
+    const REAL ine,
     REAL * RESTRICT nrne,
     REAL * RESTRICT nine
 ){
-    const REAL tmp_rne = *rne;
-    *nrne = tmp_rne*cphi - (*ine)*cphi;
-    *nine = tmp_rne*msphi + (*ine)*cphi;
+    *nrne = rne*cphi  - ine*msphi;
+    *nine = rne*msphi + ine*cphi;
 }
 
 static inline REAL m1_m(int m){
@@ -114,7 +113,7 @@ static inline REAL m1_m(int m){
 }
 
 INT32 particle_contribution(
-    const UINT64 nlevel,
+    const INT64 nlevel,
     const UINT64 npart,
     const INT32 thread_max,
     const REAL * RESTRICT position,             // xyz
@@ -161,6 +160,7 @@ INT32 particle_contribution(
             #pragma omp critical
             {thread_layer = ++thread_assign[thread_owner];}
             thread_assign[thread_max + npart*thread_owner + thread_layer - 1] = ix;
+            //printf("index %d\n", thread_max + npart*thread_owner + thread_layer - 1);
         }
     }
  
@@ -177,7 +177,7 @@ INT32 particle_contribution(
     // implementation deciding to launch less threads here than thread_max (which it
     // is entitled to do).
     
-    REAL exp_space[thread_max][(nlevel-1)*4 + 2];
+    REAL exp_space[thread_max][nlevel*4 + 2];
     // pre compute factorial and double factorial
     const UINT64 nfact = (2*nlevel > 4) ? 2*nlevel : 4;
     REAL factorial_vec[nfact];
@@ -195,7 +195,7 @@ INT32 particle_contribution(
         double_factorial_vec[lx] = lx * double_factorial_vec[lx-2];
     }
     
-    REAL P_SPACE_VEC[thread_max][nlevel*(nlevel+1)];
+    REAL P_SPACE_VEC[thread_max][nlevel*nlevel*2];
 
 
     UINT32 count = 0;
@@ -203,12 +203,12 @@ INT32 particle_contribution(
         cube_offset, cube_dim, err, cube_data, exp_space, factorial_vec, double_factorial_vec, P_SPACE_VEC) \
         schedule(static,1) \
         reduction(+: count)
-    for(UINT32 tx=0 ; tx<thread_max ; tx++){
+    for(INT32 tx=0 ; tx<thread_max ; tx++){
         const int tid = omp_get_thread_num();
-        const UINT64 ncomp = (nlevel+1)*(nlevel+1);
+        const UINT64 ncomp = nlevel*nlevel*2;
         REAL * P_SPACE = P_SPACE_VEC[tid];
-        for(UINT64 px=0 ; px<thread_assign[tx] ; px++){
-            UINT64 ix = thread_assign[thread_max + npart*tx + px];
+        for(INT64 px=0 ; px<thread_assign[tx] ; px++){
+            INT64 ix = thread_assign[thread_max + npart*tx + px];
             REAL radius, ctheta, cphi, sphi, msphi;
             const INT64 ix_cell = compute_cell_spherical(
                 cube_ilen, cube_half_side_len, position[ix*3], position[ix*3+1], 
@@ -220,37 +220,42 @@ INT32 particle_contribution(
                 #pragma omp critical
                 {err = -3;}
             }
-            //printf("%f, %f, %f, %f, %f\n", radius, ctheta, cphi, sphi, msphi);
+            printf("radius %f, ctheta %f, cphi %f, sphi %f, msphi %f\n", radius, ctheta, cphi, sphi, msphi);
             //compute spherical harmonic moments
             
+            //printf("px= %d, cell= %d\n", ix, ix_cell);
+
             // start with the complex exponential (will not vectorise)
-            REAL * exp_vec = exp_space[tid]; 
-            REAL * cube_start = &cube_data[ix_cell*ncomp];
+            REAL * RESTRICT exp_vec = exp_space[tid]; 
+            REAL * RESTRICT cube_start = &cube_data[ix_cell*ncomp];
+            REAL * RESTRICT cube_start_im = &cube_data[ix_cell*ncomp + nlevel*nlevel];
 
 
             exp_vec[EXP_RE_IND(nlevel, 0)] = 1.0;
             exp_vec[EXP_IM_IND(nlevel, 0)] = 0.0;
-            for (int lx=1 ; lx<=nlevel ; lx++){
+            for (INT32 lx=1 ; lx<=((INT32)nlevel) ; lx++){
                 next_pos_exp(
                     cphi, sphi,
-                    &exp_vec[EXP_RE_IND(nlevel, lx-1)],
-                    &exp_vec[EXP_IM_IND(nlevel, lx-1)],
+                    exp_vec[EXP_RE_IND(nlevel, lx-1)],
+                    exp_vec[EXP_IM_IND(nlevel, lx-1)],
                     &exp_vec[EXP_RE_IND(nlevel, lx)],
                     &exp_vec[EXP_IM_IND(nlevel, lx)]);
                 next_neg_exp(
-                    cphi, sphi,
-                    &exp_vec[EXP_RE_IND(nlevel, -1*(lx-1))],
-                    &exp_vec[EXP_IM_IND(nlevel, -1*(lx-1))],
+                    cphi, msphi,
+                    exp_vec[EXP_RE_IND(nlevel, -1*(lx-1))],
+                    exp_vec[EXP_IM_IND(nlevel, -1*(lx-1))],
                     &exp_vec[EXP_RE_IND(nlevel, -1*lx)],
                     &exp_vec[EXP_IM_IND(nlevel, -1*lx)]);
             }
 
 
 
-            for (int lx=0 ; lx<nlevel ; lx++){
-                printf("%f %f\n", exp_vec[EXP_RE_IND(nlevel, lx)], exp_vec[EXP_IM_IND(nlevel, lx)]);
+            for (int lx=-1*((int)nlevel)+1 ; lx<((int)nlevel) ; lx++){
+                printf("%d, %f %f\n", lx, exp_vec[EXP_RE_IND(nlevel, lx)], exp_vec[EXP_IM_IND(nlevel, lx)]);
             }
             
+
+
             const REAL sqrt_1m2lx = sqrt(1.0 - ctheta*ctheta);
             printf("sqrt(1 - 2l) = %f, cos(theta) = %f\n", sqrt_1m2lx, ctheta);
 
@@ -258,7 +263,7 @@ INT32 particle_contribution(
             // P_0^0 = 1;
             P_SPACE[P_SPACE_IND(nlevel, 0, 0)] = 1.0;
             
-            for( int lx=0 ; lx<nlevel ; lx++){
+            for( int lx=0 ; lx<((int)nlevel) ; lx++){
 
                 //compute the (lx+1)th P values using the lx-th values
                 if (lx<(nlevel-1) ){ 
@@ -275,19 +280,37 @@ INT32 particle_contribution(
                     }
 
                 }
+            }
 
-                //for (int mx=0 ; mx<=lx ; mx++){
-                //    printf("l %d, m %d P %.50f\n", lx, mx, P_SPACE[P_SPACE_IND(nlevel, lx, mx)]); 
-                //}
-                //printf("-----------------------------\n");
+            //for (int mx=0 ; mx<=lx ; mx++){
+            //    printf("l %d, m %d P %.50f\n", lx, mx, P_SPACE[P_SPACE_IND(nlevel, lx, mx)]); 
+            //}
+            //printf("-----------------------------\n");
+            
+            
+            //loop over l and m
+            for( int lx=0 ; lx<((int)nlevel) ; lx++ ){
+                for( int mx=-1*lx ; mx<=lx ; mx++ ){
+                    const UINT32 abs_mx = abs(mx);
+                    const REAL coeff = sqrt(factorial_vec[lx - abs_mx]/factorial_vec[lx + abs_mx]);
+                    const REAL plm = P_SPACE[P_SPACE_IND(nlevel, lx, abs_mx)];
 
+                    cube_start[CUBE_IND(lx, mx)] += coeff * plm * exp_vec[EXP_RE_IND(nlevel, mx)];
+                    cube_start_im[CUBE_IND(lx, mx)] += coeff * plm * exp_vec[EXP_IM_IND(nlevel, mx)];
+
+                    //if(lx==0 && mx==0) {
+                        printf("%d %d %d = %f %f\n",px, lx, mx, cube_start[CUBE_IND(lx, mx)], cube_start_im[CUBE_IND(lx, mx)]);
+                    //}
+
+
+                }
             }
 
             count++;
         }
     }   
 
-    printf("npart %d count %d\n", npart, count);
+    // printf("npart %d count %d\n", npart, count);
     
     if (count != npart) {err = -4;}
     return err;

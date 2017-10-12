@@ -16,6 +16,7 @@ _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
 REAL = ctypes.c_double
 UINT64 = ctypes.c_uint64
+INT64 = ctypes.c_int64
 INT32 = ctypes.c_int32
 
 def _numpy_ptr(arr):
@@ -39,7 +40,7 @@ class PyFMM(object):
         self.domain = domain
 
 
-        ncomp = (self.L + 1)**2
+        ncomp = (self.L**2) * 2
         # define the octal tree and attach data to the tree.
         self.tree = OctalTree(self.R, domain.comm)
         self.tree_plain = OctalDataTree(self.tree, ncomp, 'plain', dtype)
@@ -64,15 +65,14 @@ class PyFMM(object):
 
 
 
-
-
     def _compute_cube_contrib(self, positions, charges):
 
         ns = self.tree.entry_map.cube_side_count
         cube_side_counts = np.array((ns, ns, ns), dtype=UINT64)
-        if self._thread_allocation.size < self._tcount*positions.npart_local:
+        if self._thread_allocation.size < self._tcount * \
+                positions.npart_local + 1:
             self._thread_allocation = np.zeros(
-                self._tcount*positions.npart_local,dtype=INT32)
+                int(self._tcount*positions.npart_local*1.1 + 1),dtype=INT32)
         else:
             self._thread_allocation[:self._tcount:] = 0
 
@@ -86,7 +86,7 @@ class PyFMM(object):
         _check_dtype(self._thread_allocation, INT32)
 
         err = self._contribution_lib(
-            UINT64(self.L),
+            INT64(self.L),
             UINT64(positions.npart_local),
             INT32(self._tcount),
             positions.ctypes_data,
