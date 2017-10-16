@@ -15,7 +15,9 @@ static inline INT64 compute_cell(
     const UINT64 cx = ((UINT64) (pxs*cube_inverse_len[0])) - cube_offset[2];
     const UINT64 cy = ((UINT64) (pys*cube_inverse_len[1])) - cube_offset[1];
     const UINT64 cz = ((UINT64) (pzs*cube_inverse_len[2])) - cube_offset[0];
-
+    //printf("px %f pxs %f boudary %f \n", px, pxs, boundary[0]);
+    //printf("py %f pys %f boudary %f \n", py, pys, boundary[0]);
+    //printf("pz %f pzs %f boudarz %f \n", pz, pzs, boundary[0]);
     if (cx >= cube_dim[2] || cy >= cube_dim[1] || cz >= cube_dim[0] ){
         return (INT64) -1;}
     
@@ -58,14 +60,18 @@ static inline INT64 compute_cell_spherical(
     const REAL ccy = (cyt * 2 + 1) * cube_half_len[1] - 0.5 * boundary[1]; 
     const REAL ccz = (czt * 2 + 1) * cube_half_len[2] - 0.5 * boundary[2]; 
     //printf("cube_inverse_lens %f %f %f\n", cube_inverse_len[0], cube_inverse_len[1], cube_inverse_len[2]);
-    printf("px %f cx %d mid %f\n", px, cxt, ccx);
-    printf("py %f cy %d mid %f\n", py, cyt, ccy);
-    printf("pz %f cz %d mid %f\n", pz, czt, ccz);
+
     //printf("cube_half_len %f %f %f %f\n", cube_half_len[0], cube_half_len[1], cube_half_len[2], (cyt * 2 + 1) + cube_half_len[1]);
     // compute Cartesian displacement vector
     const REAL dx = px - ccx;
     const REAL dy = py - ccy;
     const REAL dz = pz - ccz;
+    
+    //printf("px %f cx %d mid %f\n", px, cxt, ccx);
+    //printf("py %f cy %d mid %f\n", py, cyt, ccy);
+    //printf("pz %f cz %d mid %f\n", pz, czt, ccz);
+    
+
     // convert to spherical
     const REAL dx2 = dx*dx;
     const REAL dx2_p_dy2 = dx2 + dy*dy;
@@ -74,18 +80,17 @@ static inline INT64 compute_cell_spherical(
 
     const REAL dx2_p_dy2_o_d2 = dx2_p_dy2 / d2;
     // theta part
-    *ctheta = isnormal(dx2_p_dy2_o_d2) ? sqrt(1.0 - dx2_p_dy2_o_d2) : 1.0;
+    const REAL ct1 = isnormal(dx2_p_dy2_o_d2) ? sqrt(1.0 - dx2_p_dy2_o_d2) : 1.0;
+    *ctheta = (dz >= 0.0) ? ct1 : -1.0 * ct1;
+
+
+
     // phi part
     const REAL sqrt_dx2pdy2 = sqrt(dx2_p_dy2);
-
     const REAL dx_o_sqrt_dx2pdy2 = dx / sqrt_dx2pdy2;
-    
     *cphi = isnormal(dx_o_sqrt_dx2pdy2) ? dx_o_sqrt_dx2pdy2 : 1.0;
-
     const REAL dx2_o_dx2_p_dy2 = dx2/dx2_p_dy2;
-
     const REAL sp1 = isnormal(dx2_o_dx2_p_dy2) ? sqrt(1.0 - dx2_o_dx2_p_dy2) : 0.0;
-
 
     *sphi = (dy > 0) ? sp1 : -1.0 * sp1; 
     *msphi = -1.0 * (*sphi);
@@ -135,7 +140,6 @@ INT32 particle_contribution(
 ){
     INT32 err = 0;
     omp_set_num_threads(thread_max);
-    
     //printf("%f | %f | %f\n", boundary[0], boundary[1], boundary[2]);
 
 
@@ -158,6 +162,7 @@ INT32 particle_contribution(
         const INT64 ix_cell = compute_cell(cube_ilen, position[ix*3], position[ix*3+1], 
                 position[ix*3+2], boundary, cube_offset, cube_dim);
 
+        //printf("ix %d, ix_cell %d \n", ix, ix_cell);
         if (ix_cell < 0) {
             #pragma omp critical
             {err = -1;}
@@ -168,7 +173,7 @@ INT32 particle_contribution(
             #pragma omp critical
             {thread_layer = ++thread_assign[thread_owner];}
             thread_assign[thread_max + npart*thread_owner + thread_layer - 1] = ix;
-            //printf("index %d\n", thread_max + npart*thread_owner + thread_layer - 1);
+            //printf("thread %d, ix_cell %d, index %d\n",thread_layer, ix_cell, thread_max + npart*thread_owner + thread_layer - 1);
         }
     }
  
@@ -228,7 +233,7 @@ INT32 particle_contribution(
                 #pragma omp critical
                 {err = -3;}
             }
-            printf("radius %f, ctheta %f, cphi %f, sphi %f, msphi %f\n", radius, ctheta, cphi, sphi, msphi);
+            //printf("radius %f, ctheta %f, cphi %f, sphi %f, msphi %f\n", radius, ctheta, cphi, sphi, msphi);
             //compute spherical harmonic moments
             
             //printf("px= %d, cell= %d\n", ix, ix_cell);
@@ -257,15 +262,15 @@ INT32 particle_contribution(
             }
 
 
-
+/*
             for (int lx=-1*((int)nlevel)+1 ; lx<((int)nlevel) ; lx++){
                 printf("%d, %f %f\n", lx, exp_vec[EXP_RE_IND(nlevel, lx)], exp_vec[EXP_IM_IND(nlevel, lx)]);
             }
-            
+*/            
 
 
             const REAL sqrt_1m2lx = sqrt(1.0 - ctheta*ctheta);
-            printf("sqrt(1 - 2l) = %f, cos(theta) = %f\n", sqrt_1m2lx, ctheta);
+ //           printf("sqrt(1 - 2l) = %f, cos(theta) = %f\n", sqrt_1m2lx, ctheta);
 
 
             // P_0^0 = 1;

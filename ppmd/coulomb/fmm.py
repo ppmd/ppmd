@@ -91,7 +91,7 @@ class PyFMM(object):
             INT32(self._tcount),
             positions.ctypes_data,
             charges.ctypes_data,
-            self.domain.extent_internal.ctypes_data,
+            self.domain.extent.ctypes_data,
             _numpy_ptr(self.entry_data.local_offset),
             _numpy_ptr(self.entry_data.local_size),
             _numpy_ptr(cube_side_counts),

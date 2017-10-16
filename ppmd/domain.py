@@ -297,7 +297,7 @@ class BaseDomainHalo(object):
     @property
     def extent(self):
         """
-        Returns list of domain extents including halo regions.
+        Returns list of domain extents.
         """
         # return self._extent_outer
         return self._extent_global
