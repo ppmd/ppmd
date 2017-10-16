@@ -10,7 +10,8 @@ from ppmd import runtime
 from ppmd.lib import build
 import ctypes
 import os
-
+import math
+from scipy.special import sph_harm, lpmv
 
 _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -52,7 +53,7 @@ class PyFMM(object):
             not None else 1
         self._thread_allocation = np.zeros(1, dtype=INT32)
 
-        # load contribution conputation
+        # load contribution computation library
         with open(str(_SRC_DIR) + \
                           '/FMMSource/ParticleContribution.cpp') as fh:
             cpp = fh.read()
@@ -62,7 +63,48 @@ class PyFMM(object):
         self._contribution_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_contrib')['particle_contribution']
 
+        # pre compute A_n^m and 1/(A_n^m)
+        self._a = np.zeros(shape=(self.L, self.L), dtype=dtype)
+        self._ar = np.zeros(shape=(self.L, self.L), dtype=dtype)
+        for lx in range(self.L):
+            for mx in range(lx+1):
+                a_l_m = ((-1.) ** lx)/math.sqrt(math.factorial(lx - mx) *\
+                                                math.factorial(lx+mx))
+                self._a[lx, mx] = a_l_m
+                self._ar[lx, mx] = 1.0/a_l_m
 
+        # As we have a "uniform" octal tree the values Y_l^m(\alpha, \beta)
+        # can be pre-computed for the 8 children of a parent cell. Indexed
+        # lexicographically.
+        pi = math.pi
+        alpha_beta = (
+            (1.25 * pi, 0.75 * pi),
+            (1.75 * pi, 0.75 * pi),
+            (0.75 * pi, 0.75 * pi),
+            (0.25 * pi, 0.75 * pi),
+            (1.25 * pi, 0.25 * pi),
+            (1.75 * pi, 0.25 * pi),
+            (0.75 * pi, 0.25 * pi),
+            (0.25 * pi, 0.25 * pi)
+        )
+
+        def re_lm(l,m): return (l**2) + l + m
+        def im_lm(l,m): return (l**2) + l +  m + self.L**2
+
+        self._yab = np.zeros(shape=(8, ncomp), dtype=dtype)
+        for cx, child in enumerate(alpha_beta):
+            for lx in range(self.L):
+                mval = list(range(-1*lx, 1)) + list(range(1, lx+1))
+                mxval = list(range(lx, -1, -1)) + list(range(1, lx+1))
+                scipy_p = lpmv(mxval, lx, child[1])
+                for mxi, mx in enumerate(mval):
+                    val = math.sqrt(math.factorial(
+                        lx - abs(mx))/math.factorial(lx + abs(mx)))
+                    re_exp = np.cos(mx*child[0]) * val
+                    im_exp = np.sin(mx*child[0]) * val
+
+                    self._yab[cx, re_lm(lx, mx)] = scipy_p[mxi].real * re_exp
+                    self._yab[cx, im_lm(lx, mx)] = scipy_p[mxi].imag * im_exp
 
 
     def _compute_cube_contrib(self, positions, charges):
@@ -101,6 +143,8 @@ class PyFMM(object):
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 
 
+    def _translate_m_to_m(self):
+        pass
 
 
 
