@@ -32,12 +32,17 @@ def test_fmm_init_1():
 
 
     E = 10.
-    N = 1
 
     A = state.State()
-    A.npart = N
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+
+    fmm = PyFMM(domain=A.domain, N=1000, eps=10.**-2)
+    ncubeside = 2**(fmm.R-1)
+    N = ncubeside ** 3
+    A.npart = 1
+
 
     rng = np.random.RandomState(seed=1234)
     #rng = np.random
@@ -46,14 +51,19 @@ def test_fmm_init_1():
     A.Q = data.ParticleDat(ncomp=1)
 
 
-    A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
-    A.Q[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,1))
+    # A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
+    A.P[:] = utility.lattice.cubic_lattice((ncubeside, ncubeside, ncubeside),
+                                           (E, E, E))[0,:]
+
+    A.Q[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,1))[0,:]
+
+
     bias = np.sum(A.Q[:])/N
     A.Q[:] -= bias
     A.scatter_data_from(0)
 
-    fmm = PyFMM(domain=A.domain, N=1000, eps=10.**-2)
-    print("cube_side_len", 2**(fmm.R-1), "extent", E)
+
+    print("cube_side_len", ncubeside, "extent", E)
     print("ncomp", fmm.L)
     ncomp = fmm.L**2
     fmm._compute_cube_contrib(A.P, A.Q)

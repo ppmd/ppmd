@@ -58,9 +58,9 @@ static inline INT64 compute_cell_spherical(
     const REAL ccy = (cyt * 2 + 1) * cube_half_len[1] - 0.5 * boundary[1]; 
     const REAL ccz = (czt * 2 + 1) * cube_half_len[2] - 0.5 * boundary[2]; 
     //printf("cube_inverse_lens %f %f %f\n", cube_inverse_len[0], cube_inverse_len[1], cube_inverse_len[2]);
-    printf("pxs %f cx %d mid %f\n", pxs, cxt, ccx);
-    printf("pys %f cy %d mid %f\n", pys, cyt, ccy);
-    printf("pzs %f cz %d mid %f\n", pzs, czt, ccz);
+    printf("px %f cx %d mid %f\n", px, cxt, ccx);
+    printf("py %f cy %d mid %f\n", py, cyt, ccy);
+    printf("pz %f cz %d mid %f\n", pz, czt, ccz);
     //printf("cube_half_len %f %f %f %f\n", cube_half_len[0], cube_half_len[1], cube_half_len[2], (cyt * 2 + 1) + cube_half_len[1]);
     // compute Cartesian displacement vector
     const REAL dx = px - ccx;
@@ -70,15 +70,28 @@ static inline INT64 compute_cell_spherical(
     const REAL dx2 = dx*dx;
     const REAL dx2_p_dy2 = dx2 + dy*dy;
     const REAL d2 = dx2_p_dy2 + dz*dz;
-    const REAL dx2_p_dy2_o_d2 = dx2_p_dy2 / d2;
     *radius = sqrt(d2);
+
+    REAL dx2_p_dy2_o_d2 = dx2_p_dy2 / d2;
     // theta part
-    const REAL ct1 = sqrt(1.0 - dx2_p_dy2_o_d2);
-    *ctheta = (dz > 0) ? ct1 : -1.0 * ct1;
+    
+    if(!(isnormal(dx2_p_dy2_o_d2))){
+        dx2_p_dy2_o_d2 = 0.0;
+    }
+
+    *ctheta = sqrt(1.0 - dx2_p_dy2_o_d2);
     // phi part
     const REAL sqrt_dx2pdy2 = sqrt(dx2_p_dy2);
-    *cphi = dx / sqrt_dx2pdy2;
-    const REAL sp1 = sqrt(1.0 - dx2/dx2_p_dy2);
+
+    const REAL dx_o_sqrt_dx2pdy2 = dx / sqrt_dx2pdy2;
+    
+    *cphi = isnormal(dx_o_sqrt_dx2pdy2) ? dx_o_sqrt_dx2pdy2 : 1.0;
+
+    const REAL dx2_o_dx2_p_dy2 = dx2/dx2_p_dy2;
+
+    const REAL sp1 = isnormal(dx2_o_dx2_p_dy2) ? sqrt(1.0 - dx2_o_dx2_p_dy2) : 0.0;
+
+
     *sphi = (dy > 0) ? sp1 : -1.0 * sp1; 
     *msphi = -1.0 * (*sphi);
     return cell_idx;
@@ -298,10 +311,7 @@ INT32 particle_contribution(
                     cube_start[CUBE_IND(lx, mx)] += coeff * plm * exp_vec[EXP_RE_IND(nlevel, mx)];
                     cube_start_im[CUBE_IND(lx, mx)] += coeff * plm * exp_vec[EXP_IM_IND(nlevel, mx)];
 
-                    //if(lx==0 && mx==0) {
-                        printf("%d %d %d = %f %f\n",px, lx, mx, cube_start[CUBE_IND(lx, mx)], cube_start_im[CUBE_IND(lx, mx)]);
-                    //}
-
+                    //printf("%d %d %d = %f %f\n",px, lx, mx, cube_start[CUBE_IND(lx, mx)], cube_start_im[CUBE_IND(lx, mx)]);
 
                 }
             }
