@@ -72,14 +72,9 @@ static inline INT64 compute_cell_spherical(
     const REAL d2 = dx2_p_dy2 + dz*dz;
     *radius = sqrt(d2);
 
-    REAL dx2_p_dy2_o_d2 = dx2_p_dy2 / d2;
+    const REAL dx2_p_dy2_o_d2 = dx2_p_dy2 / d2;
     // theta part
-    
-    if(!(isnormal(dx2_p_dy2_o_d2))){
-        dx2_p_dy2_o_d2 = 0.0;
-    }
-
-    *ctheta = sqrt(1.0 - dx2_p_dy2_o_d2);
+    *ctheta = isnormal(dx2_p_dy2_o_d2) ? sqrt(1.0 - dx2_p_dy2_o_d2) : 1.0;
     // phi part
     const REAL sqrt_dx2pdy2 = sqrt(dx2_p_dy2);
 
