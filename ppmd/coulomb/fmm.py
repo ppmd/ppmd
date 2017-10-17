@@ -75,6 +75,7 @@ class PyFMM(object):
                 self._a[lx, mx] = a_l_m
                 self._ar[lx, mx] = 1.0/a_l_m
 
+
         # As we have a "uniform" octal tree the values Y_l^m(\alpha, \beta)
         # can be pre-computed for the 8 children of a parent cell. Indexed
         # lexicographically.
@@ -98,15 +99,15 @@ class PyFMM(object):
             for lx in range(self.L):
                 mval = list(range(-1*lx, 1)) + list(range(1, lx+1))
                 mxval = list(range(lx, -1, -1)) + list(range(1, lx+1))
-                scipy_p = lpmv(mxval, lx, child[1])
+                scipy_p = lpmv(mxval, lx, math.cos(child[1]))
                 for mxi, mx in enumerate(mval):
-                    val = math.sqrt(math.factorial(
-                        lx - abs(mx))/math.factorial(lx + abs(mx)))
+                    val = math.sqrt(float(math.factorial(
+                        lx - abs(mx)))/math.factorial(lx + abs(mx)))
                     re_exp = np.cos(mx*child[0]) * val
                     im_exp = np.sin(mx*child[0]) * val
 
                     self._yab[cx, re_lm(lx, mx)] = scipy_p[mxi].real * re_exp
-                    self._yab[cx, im_lm(lx, mx)] = scipy_p[mxi].imag * im_exp
+                    self._yab[cx, im_lm(lx, mx)] = scipy_p[mxi].real * im_exp
 
         # load multipole to multipole translation library
         with open(str(_SRC_DIR) + \
@@ -198,3 +199,6 @@ class PyFMM(object):
         )
 
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
+        print(self._a)
+        print("="*60)
+        print(self._yab)

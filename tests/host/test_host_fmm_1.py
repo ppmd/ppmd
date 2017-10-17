@@ -234,12 +234,41 @@ def test_fmm_init_2():
     ncomp = fmm.L**2
     fmm._compute_cube_contrib(A.P, A.Q)
 
+    pi = math.pi
+    alpha_beta = (
+        (1.25 * pi, 0.75 * pi),
+        (1.75 * pi, 0.75 * pi),
+        (0.75 * pi, 0.75 * pi),
+        (0.25 * pi, 0.75 * pi),
+        (1.25 * pi, 0.25 * pi),
+        (1.75 * pi, 0.25 * pi),
+        (0.75 * pi, 0.25 * pi),
+        (0.25 * pi, 0.25 * pi)
+    )
+
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + fmm.L**2
+
+    # can check the positive m values match scipy's version for ylm
+    for cx, child in enumerate(alpha_beta):
+        for lx in range(fmm.L):
+            mval = list(range(0, lx+1))
+
+            scipy_sph = math.sqrt(4.*math.pi/(2.*lx + 1.)) * \
+                        sph_harm(mval, lx, child[0], child[1])
+
+            for mxi, mx in enumerate(mval):
+                assert abs(scipy_sph[mxi].real - \
+                           fmm._yab[cx, re_lm(lx, mx)]) < 10.**-15, \
+                'real ylm error l {} m {}'.format(lx, mx)
+
+                assert abs(scipy_sph[mxi].imag - \
+                           fmm._yab[cx, im_lm(lx, mx)]) < 10.**-15, \
+                'imag ylm error l {} m {}'.format(lx, mx)
+
+
 
     fmm._translate_m_to_m(fmm.R-1)
-
-
-
-
 
 
 
