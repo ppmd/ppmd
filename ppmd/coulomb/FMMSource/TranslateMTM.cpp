@@ -23,8 +23,18 @@ static inline INT64 xyz_to_lin(
 }
 
 
-
-
+static inline void cplx_mul(
+    const REAL a,
+    const REAL b,
+    const REAL x,
+    const REAL y,
+    REAL * RESTRICT g,
+    REAL * RESTRICT h
+){
+   // ( a + bi) * (x + yi) = (ax - by) + (xb + ay)i
+   *g = a * x - b * y;
+   *h = x * b + a * y;
+}
 
 extern "C"
 int translate_mtm(
@@ -59,7 +69,7 @@ int translate_mtm(
 
 
     #pragma omp parallel for default(none) schedule(dynamic) shared(dim_parent,\
-    dim_child,moments_child,moments_parent,ylm,alm,almr, radius_n)
+    dim_child,moments_child,moments_parent,ylm,alm,almr, radius_n, ipow_re, ipow_im)
     for( INT64 pcx=0 ; pcx<nparent_cells ; pcx++ ){
         INT64 cx, cy, cz;
         lin_to_xyz(dim_parent, pcx, &cx, &cy, &cz);
@@ -111,27 +121,38 @@ int translate_mtm(
                     const REAL coeff = ajkr * radius_n[nx] * alm[nx*nlevel + abs(mx)] * \
                                        alm[(jx - nx)*nlevel + abs(kx - mx)];
                     const INT64 child_ind = CUBE_IND(jx - nx, kx - mx);
-                    /*
-                    const REAL child_re = \
-                        cd0_re[child_ind] * ylm[0*ncomp + child_ind] + \
-                        cd1_re[child_ind] * ylm[1*ncomp + child_ind] + \
-                        cd2_re[child_ind] * ylm[2*ncomp + child_ind] + \
-                        cd3_re[child_ind] * ylm[3*ncomp + child_ind] + \
-                        cd4_re[child_ind] * ylm[4*ncomp + child_ind] + \
-                        cd5_re[child_ind] * ylm[5*ncomp + child_ind] + \
-                        cd6_re[child_ind] * ylm[6*ncomp + child_ind] + \
-                        cd7_re[child_ind] * ylm[7*ncomp + child_ind];
-                    */
-                    const REAL child_re = \
-                        ylm[0*ncomp + child_ind] + \
-                        ylm[1*ncomp + child_ind] + \
-                        ylm[2*ncomp + child_ind] + \
-                        ylm[3*ncomp + child_ind] + \
-                        ylm[4*ncomp + child_ind] + \
-                        ylm[5*ncomp + child_ind] + \
-                        ylm[6*ncomp + child_ind] + \
-                        ylm[7*ncomp + child_ind];                   
-                    //printf("%f\n", child_re);
+                    const INT64 child_ind_im = CUBE_IND(jx - nx, kx - mx) + im_offset;
+
+                    const INT64 ychild_ind = CUBE_IND(nx, -1*mx);
+                    const INT64 ychild_ind_im = CUBE_IND(nx, -1*mx) + im_offset;
+
+
+                    const REAL child_re = (\
+                        cd0_re[child_ind] * ylm[0*ncomp + ychild_ind] + \
+                        cd1_re[child_ind] * ylm[1*ncomp + ychild_ind] + \
+                        cd2_re[child_ind] * ylm[2*ncomp + ychild_ind] + \
+                        cd3_re[child_ind] * ylm[3*ncomp + ychild_ind] + \
+                        cd4_re[child_ind] * ylm[4*ncomp + ychild_ind] + \
+                        cd5_re[child_ind] * ylm[5*ncomp + ychild_ind] + \
+                        cd6_re[child_ind] * ylm[6*ncomp + ychild_ind] + \
+                        cd7_re[child_ind] * ylm[7*ncomp + ychild_ind]) * coeff;
+                    
+                    const REAL child_im = (\
+                        cd0_im[child_ind] * ylm[0*ncomp + ychild_ind_im] + \
+                        cd1_im[child_ind] * ylm[1*ncomp + ychild_ind_im] + \
+                        cd2_im[child_ind] * ylm[2*ncomp + ychild_ind_im] + \
+                        cd3_im[child_ind] * ylm[3*ncomp + ychild_ind_im] + \
+                        cd4_im[child_ind] * ylm[4*ncomp + ychild_ind_im] + \
+                        cd5_im[child_ind] * ylm[5*ncomp + ychild_ind_im] + \
+                        cd6_im[child_ind] * ylm[6*ncomp + ychild_ind_im] + \
+                        cd7_im[child_ind] * ylm[7*ncomp + ychild_ind_im]) * coeff;
+
+                    REAL re_mom, im_mom;
+                    const INT64 ip = abs(kx) - abs(mx) - abs(kx - mx);
+                    cplx_mul(child_re, child_im, IPOW_RE(ip), IPOW_IM(ip), &re_mom, &im_mom);
+                    
+                    pd_re[CUBE_IND(jx, kx)] = re_mom;
+                    pd_im[CUBE_IND(jx, kx)] = im_mom;
 
                 }}
         }}
@@ -140,6 +161,17 @@ int translate_mtm(
 
 
     }
+/*
+    printf("----------------\n");
+    const INT64 ccc = 0;
+    for(INT64 lx=0 ; lx<nlevel ; lx++){
+        for(INT64 mx=-1*lx ; mx<=lx ; mx++){
+            printf("l %d m %d ylm %f\n", lx, mx, ylm[ccc*ncomp + CUBE_IND(lx, mx)]);
+        }
+    }
+*/
+
+
 
     return err;
 }
