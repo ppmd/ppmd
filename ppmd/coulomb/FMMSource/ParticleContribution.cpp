@@ -157,7 +157,7 @@ INT32 particle_contribution(
 
     // loop over particle and assign them to threads based on cell
     #pragma omp parallel for default(none) shared(thread_assign, position, boundary, \
-     cube_offset, cube_dim, err) 
+     cube_offset, cube_dim, err, cube_ilen) 
     for(UINT64 ix=0 ; ix<npart ; ix++){
         const INT64 ix_cell = compute_cell(cube_ilen, position[ix*3], position[ix*3+1], 
                 position[ix*3+2], boundary, cube_offset, cube_dim);
@@ -213,7 +213,8 @@ INT32 particle_contribution(
 
     UINT32 count = 0;
     #pragma omp parallel for default(none) shared(thread_assign, position, boundary, \
-        cube_offset, cube_dim, err, cube_data, exp_space, factorial_vec, double_factorial_vec, P_SPACE_VEC) \
+        cube_offset, cube_dim, err, cube_data, exp_space, factorial_vec, double_factorial_vec, P_SPACE_VEC, \
+        cube_half_side_len, cube_ilen) \
         schedule(static,1) \
         reduction(+: count)
     for(INT32 tx=0 ; tx<thread_max ; tx++){

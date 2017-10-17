@@ -133,7 +133,8 @@ def test_fmm_init_1():
     for px in range(A.npart_local):
         for lx in range(fmm.L):
             scipy_sph = sph_harm(range(0, lx+1), lx, sph[px,2], sph[px,1])
-            scipy_sph = [math.sqrt(4.*math.pi/(2.*lx + 1.)) * sx for sx in scipy_sph]
+            scipy_sph = [math.sqrt(4.*math.pi/(2.*lx + 1.)) * sx for sx in \
+                         scipy_sph]
 
             #print(60*"-")
 

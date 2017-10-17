@@ -157,6 +157,15 @@ def simple_lib_creator(
 
     return lib
 
+def _check_compiler(name):
+    with  open(os.devnull, 'w') as DEV_NULL:
+        try:
+            p = subprocess.Popen(name, stdout=DEV_NULL,
+                                 stderr=subprocess.STDOUT)
+        except Exception as e:
+            raise RuntimeError('Compiler binary "{}" cannot be ran.'.format(
+                name))
+
 
 _build_timer = opt.Timer()
 
@@ -166,6 +175,7 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
     _lib_filename = os.path.join(dst_dir, lib + '.so')
 
     if (_MPIRANK == 0) or ppmd.runtime.BUILD_PER_PROC:
+        _check_compiler(CC.binary)
 
         _lib_src_filename = os.path.join(source_dir, lib + extensions[1])
 
