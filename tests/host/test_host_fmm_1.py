@@ -221,7 +221,7 @@ def test_fmm_init_2():
                                            (E, E, E))#[0,:]
 
     # perturb the positions away from the cube centers
-    max_dev = 0.4*E/ncubeside
+    max_dev = 0.0*E/ncubeside
     A.P[:] += rng.uniform(low=-1. * max_dev, high=max_dev, size=(N,3))#[0,:]
 
     A.Q[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,1))#[0,:]
@@ -272,13 +272,16 @@ def test_fmm_init_2():
                 'imag ylm error l {} m {}'.format(lx, mx)
 
     fmm.tree_halo[fmm.R-1][2:-2:, 2:-2:, 2:-2:, :] = fmm.entry_data[:,:,:,:]
+    print('\n')
     fmm._translate_m_to_m(fmm.R-1)
 
 
     print(fmm.tree_halo[fmm.R-1][2:-2,2:-2,2:-2,1])
     for lx in range(fmm.L):
         print(lx, 60*'-')
-        print(fmm.tree_parent[fmm.R-1][:,:,:,lx])
+        for mx in range(-1*lx, lx+1):
+            print(mx)
+            print(fmm.tree_parent[fmm.R-1][:,:,:, re_lm(lx, mx)])
 
 
 
