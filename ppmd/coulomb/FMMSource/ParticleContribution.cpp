@@ -214,7 +214,7 @@ INT32 particle_contribution(
     UINT32 count = 0;
     #pragma omp parallel for default(none) shared(thread_assign, position, boundary, \
         cube_offset, cube_dim, err, cube_data, exp_space, factorial_vec, double_factorial_vec, P_SPACE_VEC, \
-        cube_half_side_len, cube_ilen) \
+        cube_half_side_len, cube_ilen, charge) \
         schedule(static,1) \
         reduction(+: count)
     for(INT32 tx=0 ; tx<thread_max ; tx++){
@@ -306,7 +306,8 @@ INT32 particle_contribution(
             for( int lx=0 ; lx<((int)nlevel) ; lx++ ){
                 for( int mx=-1*lx ; mx<=lx ; mx++ ){
                     const UINT32 abs_mx = abs(mx);
-                    const REAL coeff = sqrt(factorial_vec[lx - abs_mx]/factorial_vec[lx + abs_mx]);
+                    const REAL coeff = sqrt(factorial_vec[lx - abs_mx]/factorial_vec[lx + abs_mx]) \
+                                       * charge[ix];
                     const REAL plm = P_SPACE[P_SPACE_IND(nlevel, lx, abs_mx)];
 
                     cube_start[CUBE_IND(lx, mx)] += coeff * plm * exp_vec[EXP_RE_IND(nlevel, mx)];

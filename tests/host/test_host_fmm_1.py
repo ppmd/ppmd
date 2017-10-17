@@ -133,8 +133,8 @@ def test_fmm_init_1():
     for px in range(A.npart_local):
         for lx in range(fmm.L):
             scipy_sph = sph_harm(range(0, lx+1), lx, sph[px,2], sph[px,1])
-            scipy_sph = [math.sqrt(4.*math.pi/(2.*lx + 1.)) * sx for sx in \
-                         scipy_sph]
+            scipy_sph = [A.Q[px] * math.sqrt(4.*math.pi/(2.*lx + 1.)) * \
+                         sx for sx in scipy_sph]
 
             #print(60*"-")
 
@@ -163,7 +163,7 @@ def test_fmm_init_1():
             #print(60*"=")
 
             # test the negative values
-            scipy_p = lpmv(range(1, lx+1), lx, np.cos(sph[px, 1]))
+            scipy_p = A.Q[px] * lpmv(range(1, lx+1), lx, np.cos(sph[px, 1]))
             for mxi, mx in enumerate(range(-1, -1*lx - 1,-1)):
 
                 re_exp = np.cos(mx*sph[px, 2])
@@ -228,6 +228,11 @@ def test_fmm_init_2():
 
     bias = np.sum(A.Q[:])/N
     A.Q[:] -= bias
+
+    # override random charges
+    A.Q[:] = 1.0;
+
+
     A.scatter_data_from(0)
 
 
@@ -266,10 +271,14 @@ def test_fmm_init_2():
                            fmm._yab[cx, im_lm(lx, mx)]) < 10.**-15, \
                 'imag ylm error l {} m {}'.format(lx, mx)
 
-
-
+    fmm.tree_halo[fmm.R-1][2:-2:, 2:-2:, 2:-2:, :] = fmm.entry_data[:,:,:,:]
     fmm._translate_m_to_m(fmm.R-1)
 
+
+    print(fmm.tree_halo[fmm.R-1][2:-2,2:-2,2:-2,1])
+    for lx in range(fmm.L):
+        print(lx, 60*'-')
+        print(fmm.tree_parent[fmm.R-1][:,:,:,lx])
 
 
 

@@ -175,7 +175,7 @@ class PyFMM(object):
         )
         '''
         _check_dtype(self.tree[child_level].parent_local_size, UINT32)
-        _check_dtype(self.tree[child_level].local_grid_cube_size, UINT32)
+        _check_dtype(self.tree[child_level].grid_cube_size, UINT32)
         _check_dtype(self.tree_halo[child_level], REAL)
         _check_dtype(self.tree_parent[child_level], REAL)
         _check_dtype(self._yab, REAL)
@@ -186,9 +186,10 @@ class PyFMM(object):
                  self.tree[child_level].ncubes_side_global
         radius = math.sqrt(2) * 0.5 * radius
 
+
         err = self._translate_mtm_lib(
             _numpy_ptr(self.tree[child_level].parent_local_size),
-            _numpy_ptr(self.tree[child_level].local_grid_cube_size),
+            _numpy_ptr(self.tree[child_level].grid_cube_size),
             _numpy_ptr(self.tree_halo[child_level]),
             _numpy_ptr(self.tree_parent[child_level]),
             _numpy_ptr(self._yab),
@@ -199,6 +200,3 @@ class PyFMM(object):
         )
 
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
-        print(self._a)
-        print("="*60)
-        print(self._yab)
