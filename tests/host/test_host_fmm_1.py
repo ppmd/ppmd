@@ -195,6 +195,48 @@ def test_fmm_init_1():
                 #    lx, mx, scipy_real, scipy_imag, ppmd_real, ppmd_imag
                 #))
 
+def test_fmm_init_2():
+
+    E = 10.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+
+    fmm = PyFMM(domain=A.domain, N=1000, eps=10.**-2)
+    ncubeside = 2**(fmm.R-1)
+    N = ncubeside ** 3
+    A.npart = N
+
+
+    rng = np.random.RandomState(seed=1234)
+    #rng = np.random
+
+    A.P = data.PositionDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    # A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
+    A.P[:] = utility.lattice.cubic_lattice((ncubeside, ncubeside, ncubeside),
+                                           (E, E, E))#[0,:]
+
+    # perturb the positions away from the cube centers
+    max_dev = 0.4*E/ncubeside
+    A.P[:] += rng.uniform(low=-1. * max_dev, high=max_dev, size=(N,3))#[0,:]
+
+    A.Q[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,1))#[0,:]
+
+    bias = np.sum(A.Q[:])/N
+    A.Q[:] -= bias
+    A.scatter_data_from(0)
+
+
+    ncomp = fmm.L**2
+    fmm._compute_cube_contrib(A.P, A.Q)
+
+
+    fmm._translate_m_to_m(fmm.R-1)
+
 
 
 

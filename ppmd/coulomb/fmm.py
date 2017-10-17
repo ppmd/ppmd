@@ -17,6 +17,7 @@ _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
 REAL = ctypes.c_double
 UINT64 = ctypes.c_uint64
+UINT32 = ctypes.c_uint32
 INT64 = ctypes.c_int64
 INT32 = ctypes.c_int32
 
@@ -29,8 +30,9 @@ def _check_dtype(arr, dtype):
             str(dtype), str(arr.dtype)))
 
 class PyFMM(object):
-    def __init__(self, domain, N, eps=10.**-6, shared_memory=False,
-                 dtype=ctypes.c_double):
+    def __init__(self, domain, N, eps=10.**-6, shared_memory=False):
+
+        dtype = REAL
 
         self.L = int(-1*log(eps,2))
         """Number of multipole expansion coefficients"""
@@ -106,6 +108,16 @@ class PyFMM(object):
                     self._yab[cx, re_lm(lx, mx)] = scipy_p[mxi].real * re_exp
                     self._yab[cx, im_lm(lx, mx)] = scipy_p[mxi].imag * im_exp
 
+        # load multipole to multipole translation library
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/TranslateMTM.cpp') as fh:
+            cpp = fh.read()
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/TranslateMTM.h') as fh:
+            hpp = fh.read()
+        self._translate_mtm_lib = build.simple_lib_creator(hpp, cpp,
+            'fmm_translate_mtm')['translate_mtm']
+
 
     def _compute_cube_contrib(self, positions, charges):
 
@@ -143,19 +155,46 @@ class PyFMM(object):
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 
 
-    def _translate_m_to_m(self):
-        pass
+    def _translate_m_to_m(self, child_level):
+        """
+        Translate the child expansions to their parent cells
+        :return:
+        """
+        '''
+        int translate_mtm(
+            const UINT32 * RESTRICT dim_parent,     // slowest to fastest
+            const UINT32 * RESTRICT dim_child,      // slowest to fastest
+            const REAL * RESTRICT moments_child,
+            REAL * RESTRICT moments_parent,
+            const REAL * RESTRICT ylm,
+            const REAL * RESTRICT alm,
+            const REAL * RESTRICT almr,
+            const REAL radius,
+            const INT64 nlevel
+        )
+        '''
+        _check_dtype(self.tree[child_level].parent_local_size, UINT32)
+        _check_dtype(self.tree[child_level].local_grid_cube_size, UINT32)
+        _check_dtype(self.tree_halo[child_level], REAL)
+        _check_dtype(self.tree_parent[child_level], REAL)
+        _check_dtype(self._yab, REAL)
+        _check_dtype(self._a, REAL)
+        _check_dtype(self._ar, REAL)
 
+        radius = self.domain.extent[0] / \
+                 self.tree[child_level].ncubes_side_global
+        radius = math.sqrt(2) * 0.5 * radius
 
+        err = self._translate_mtm_lib(
+            _numpy_ptr(self.tree[child_level].parent_local_size),
+            _numpy_ptr(self.tree[child_level].local_grid_cube_size),
+            _numpy_ptr(self.tree_halo[child_level]),
+            _numpy_ptr(self.tree_parent[child_level]),
+            _numpy_ptr(self._yab),
+            _numpy_ptr(self._a),
+            _numpy_ptr(self._ar),
+            ctypes.c_double(radius),
+            ctypes.c_int64(self.L)
+        )
 
-
-
-
-
-
-
-
-
-
-
-
+        if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
