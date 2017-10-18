@@ -35,9 +35,7 @@ def spherical(xyz):
 
     return sph
 
-
 def test_fmm_init_1():
-
 
     E = 10.
 
@@ -135,13 +133,14 @@ def test_fmm_init_1():
             scipy_sph = [A.Q[px] * math.sqrt(4.*math.pi/(2.*lx + 1.)) * \
                          sx for sx in scipy_sph]
 
+            rhol = sph[px, 0]**lx
             #print(60*"-")
 
             # the negative m values will never match scipy as we use P^|m|_l
             for mxi, mx in enumerate(range(0, -1*lx-1, -1)):
 
-                scipy_real = scipy_sph[mxi].real
-                scipy_imag = scipy_sph[mxi].imag
+                scipy_real = scipy_sph[mxi].real * rhol
+                scipy_imag = scipy_sph[mxi].imag * rhol
 
                 ppmd_real = fmm.entry_data[shift_pos[px,2], shift_pos[px, 1],
                                            shift_pos[px, 0], re_lm(lx, mx)]
@@ -154,12 +153,6 @@ def test_fmm_init_1():
                     "pos im fail (m,l) {} {} px {}". format(lx, mx, px)
 
 
-                #print("l {} m {} sci {} {} ppmd {} {}".format(
-                #    lx, mx, scipy_real, scipy_imag, ppmd_real, ppmd_imag
-                #))
-
-
-            #print(60*"=")
 
             # test the negative values
             scipy_p = A.Q[px] * lpmv(range(1, lx+1), lx, np.cos(sph[px, 1]))
@@ -168,12 +161,10 @@ def test_fmm_init_1():
                 re_exp = np.cos(-1.*mx*sph[px, 2])
                 im_exp = np.sin(-1.*mx*sph[px, 2])
 
-                #print("exp ", mx, re_exp, im_exp)
-
 
                 val = math.sqrt(math.factorial(
                     lx - abs(mx))/math.factorial(lx + abs(mx)))
-                val *= scipy_p[mxi]
+                val *= scipy_p[mxi] * rhol
 
                 scipy_real = re_exp * val
                 scipy_imag = im_exp * val
@@ -190,9 +181,6 @@ def test_fmm_init_1():
                     "neg im fail {} {}". format(lx, mx)
 
 
-                #print("l {} m {} sci {} {} ppmd {} {}".format(
-                #    lx, mx, scipy_real, scipy_imag, ppmd_real, ppmd_imag
-                #))
 
 def test_fmm_init_2():
 
@@ -203,7 +191,7 @@ def test_fmm_init_2():
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
 
-    fmm = PyFMM(domain=A.domain, N=1000, eps=10.**-2)
+    fmm = PyFMM(domain=A.domain, N=1000, eps=10.**-3)
     ncubeside = 2**(fmm.R-1)
     N = ncubeside ** 3
     A.npart = N
@@ -229,11 +217,44 @@ def test_fmm_init_2():
     A.Q[:] -= bias
 
     # override random charges
-    A.Q[:] = 1.0;
+    # A.Q[:] = 1.0
 
+    ind = np.logical_and(A.P[:,0] < -2.5, A.P[:,1] < -2.5)
+    ind = np.logical_and(A.P[:,2] < -2.5, ind)
+
+
+
+    ind2 = np.array([ 0,  1,  8,  9, 64, 65, 72, 73])
+
+    for px in range(8):
+        print(px, A.P[ind2[px],:])
+
+    print(np.nonzero(ind))
+
+    # create a dipole moment
+
+
+
+
+    A.Q[:] = 0.
+    A.Q[0] = 1.
+    A.Q[1] = 0.
+    A.Q[8] = 0.
+    A.Q[9] = 0.
+    A.Q[64] = -0.
+    A.Q[65] = -0.
+    A.Q[72] = -0.
+    A.Q[73] = -0.
+
+    #A.P[0,:] = [-3.75, -4.375, -3.75]
+    #A.P[73,:] = [-3.75, -3.125, -3.75]
+
+
+
+    pcell = A.P[ind, :]
+    qcell = A.Q[ind]
 
     A.scatter_data_from(0)
-
 
     ncomp = fmm.L**2
     fmm._compute_cube_contrib(A.P, A.Q)
@@ -309,7 +330,7 @@ def test_fmm_init_2():
 
     print(60*'~')
 
-    point = np.array((-8., -8., -8.))
+    point = np.array((-7., -7., -7.))
 
     phi = A.Q[0] / np.linalg.norm(point - A.P[0, :])
 
@@ -331,14 +352,12 @@ def test_fmm_init_2():
     phi_sph_re = 0.
     phi_sph_im = 0.
 
-    llimit = 2
+    llimit = fmm.L
 
     for lx in range(llimit):
         mrange = list(range(lx, -1, -1)) + list(range(1, lx+1))
         mrange2 = list(range(-1*lx, 1)) + list(range(1, lx+1))
         scipy_p = lpmv(mrange, lx, np.cos(disp_sph[0,1]))
-
-        print(lx, scipy_p)
 
         for mxi, mx in enumerate(mrange2):
 
@@ -360,9 +379,9 @@ def test_fmm_init_2():
             phi_sph_re += scipy_real*ppmd_mom_re - scipy_imag*ppmd_mom_im
             phi_sph_im += scipy_real*ppmd_mom_im + ppmd_mom_re*scipy_imag
 
-    print("phi_sph", phi_sph_re, '+', phi_sph_im, 'i')
+    print("phi_sph", phi_sph_re, '+', phi_sph_im, 'i', )
 
-    print(moments[:llimit**2:])
+    # print(moments[:llimit**2:])
     print(60*'~')
 
 
@@ -383,50 +402,60 @@ def test_fmm_init_2():
 
 
 
-    ind = np.logical_and(A.P[:,0] < -2.5, A.P[:,1] < -2.5)
-    ind = np.logical_and(A.P[:,2] < -2.5, ind)
-
-    pcell = A.P[ind, :]
-    qcell = A.Q[ind]
-
-    point = np.array((-8., -8., -8.))
+    point = np.array((-7., -7., -7.))
 
     phi = 0.
+    charge_total = 0.
 
     for px in range(8):
+        print("Q:", qcell[px], "\tPOS:", pcell[px,:])
         phi += qcell[px] / np.linalg.norm(point - pcell[px])
+        charge_total += qcell[px, 0]
 
-    print("phi_direct", phi)
+
+
 
 
     moments = fmm.tree_parent[fmm.R-1][0,0,0,:]
+
+
     center = np.array((-3.75, -3.75, -3.75))
     disp = point - center
 
     disp_sph = spherical(np.reshape(disp, (1, 3)))
 
+    phi = 1.0/disp_sph[0,0]
+
+    print("phi_direct", phi)
     print("sph", disp_sph)
+    print("charge_total", charge_total)
+
 
     phi_sph_re = 0.
     phi_sph_im = 0.
 
     for lx in range(llimit):
+        print(lx,  '----------------')
         mrange = list(range(lx, -1, -1)) + list(range(1, lx+1))
         mrange2 = list(range(-1*lx, 1)) + list(range(1, lx+1))
         scipy_p = lpmv(mrange, lx, np.cos(disp_sph[0,1]))
+
+        irad = 1. / (disp_sph[0,0] ** (lx+1.))
+
+
+
         for mxi, mx in enumerate(mrange2):
+
 
             re_exp = np.cos(mx*disp_sph[0,2])
             im_exp = np.sin(mx*disp_sph[0,2])
 
             val = math.sqrt(math.factorial(
                 lx - abs(mx))/math.factorial(lx + abs(mx)))
-            val *= scipy_p[mxi]
+            val *= scipy_p[mxi] * irad
 
-            irad = 1. / (disp_sph[0,0] ** (lx+1.))
-
-            scipy_real = re_exp * val * irad
-            scipy_imag = im_exp * val * irad
+            scipy_real = re_exp * val
+            scipy_imag = im_exp * val
 
             ppmd_mom_re = moments[re_lm(lx, mx)]
             ppmd_mom_im = moments[im_lm(lx, mx)]
@@ -434,13 +463,17 @@ def test_fmm_init_2():
             phi_sph_re += scipy_real*ppmd_mom_re - scipy_imag*ppmd_mom_im
             phi_sph_im += scipy_real*ppmd_mom_im + ppmd_mom_re*scipy_imag
 
+            print(mx, ppmd_mom_re, ppmd_mom_im)
+
+
     print("phi_sph", phi_sph_re, '+', phi_sph_im, 'i')
 
 
 
-    print(moments[:llimit**2:])
+    # print(moments[:llimit**2:])
     print(60*'~')
-
+    print("ERR:", abs(phi_sph_re - phi))
+    print(60*'~')
 
 
 

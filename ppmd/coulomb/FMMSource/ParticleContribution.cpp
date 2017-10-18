@@ -301,21 +301,22 @@ INT32 particle_contribution(
             //}
             //printf("-----------------------------\n");
             
-            
+            REAL rhol = 1.0;
             //loop over l and m
             for( int lx=0 ; lx<((int)nlevel) ; lx++ ){
+                rhol = (lx > 0) ? rhol*radius : 1.0;
+
                 for( int mx=-1*lx ; mx<=lx ; mx++ ){
                     const UINT32 abs_mx = abs(mx);
                     const REAL coeff = sqrt(factorial_vec[lx - abs_mx]/factorial_vec[lx + abs_mx]) \
-                                       * charge[ix];
-
+                                       * charge[ix] * rhol;
 
                     const REAL plm = P_SPACE[P_SPACE_IND(nlevel, lx, abs_mx)];
 
                     cube_start[CUBE_IND(lx, mx)] += coeff * plm * exp_vec[EXP_RE_IND(nlevel, -1*mx)];
                     cube_start_im[CUBE_IND(lx, mx)] += coeff * plm * exp_vec[EXP_IM_IND(nlevel, -1*mx)];
 
-                    if(lx == 1) {printf("%d %f\n", mx, plm);}
+                    //if(lx == 1) {printf("%d %f\n", mx, plm);}
 
                     //printf("%d %d %d = %f %f\n",px, lx, mx, cube_start[CUBE_IND(lx, mx)], cube_start_im[CUBE_IND(lx, mx)]);
 

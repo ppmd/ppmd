@@ -106,6 +106,9 @@ class PyFMM(object):
                     re_exp = np.cos(mx*child[0]) * val
                     im_exp = np.sin(mx*child[0]) * val
 
+                    assert abs(scipy_p[mxi].imag) < 10.**-16
+
+
                     self._yab[cx, re_lm(lx, mx)] = scipy_p[mxi].real * re_exp
                     self._yab[cx, im_lm(lx, mx)] = scipy_p[mxi].real * im_exp
 
@@ -182,10 +185,12 @@ class PyFMM(object):
         _check_dtype(self._a, REAL)
         _check_dtype(self._ar, REAL)
 
-        radius = self.domain.extent[0] / \
-                 self.tree[child_level].ncubes_side_global
-        radius = math.sqrt(2) * 0.5 * radius
+        radius = (self.domain.extent[0] /
+                 self.tree[child_level].ncubes_side_global) * 0.5
 
+        radius = math.sqrt(radius*radius*3)
+
+        print(radius)
 
         err = self._translate_mtm_lib(
             _numpy_ptr(self.tree[child_level].parent_local_size),
