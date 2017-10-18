@@ -66,8 +66,8 @@ class PyFMM(object):
             'fmm_contrib')['particle_contribution']
 
         # pre compute A_n^m and 1/(A_n^m)
-        self._a = np.zeros(shape=(self.L, self.L), dtype=dtype)
-        self._ar = np.zeros(shape=(self.L, self.L), dtype=dtype)
+        self._a = np.zeros(shape=(self.L, self.L*4), dtype=dtype)
+        self._ar = np.zeros(shape=(self.L, self.L*4), dtype=dtype)
         for lx in range(self.L):
             for mx in range(lx+1):
                 a_l_m = ((-1.) ** lx)/math.sqrt(math.factorial(lx - mx) *\

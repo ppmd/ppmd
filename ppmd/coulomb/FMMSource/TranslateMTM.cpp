@@ -114,12 +114,12 @@ int translate_mtm(
         // loop over parent moments
         for(INT64 jx=0     ; jx<nlevel ; jx++ ){
         for(INT64 kx=-1*jx ; kx<=jx    ; kx++){
-                const REAL ajkr = almr[jx*nlevel + abs(kx)];
+                const REAL ajkr = almr[jx*4*nlevel + abs(kx)];
                 for(INT64 nx=0     ; nx<=jx ; nx++){
                 for(INT64 mx=-1*nx ; mx<=nx ; mx++){
 
-                    const REAL coeff = ajkr * radius_n[nx] * alm[nx*nlevel + abs(mx)] * \
-                                       alm[(jx - nx)*nlevel + abs(kx - mx)];
+                    const REAL coeff = ajkr * radius_n[nx] * alm[nx*4*nlevel + abs(mx)] * \
+                                       alm[(jx - nx)*4*nlevel + abs(kx - mx)];
 
 
                     const INT64 child_ind = CUBE_IND(jx - nx, kx - mx);
@@ -154,6 +154,8 @@ int translate_mtm(
                     const INT64 ip = abs(kx) - abs(mx) - abs(kx - mx);
                     cplx_mul(child_re, child_im, IPOW_RE(ip), IPOW_IM(ip), &re_mom, &im_mom);
                     
+                    //printf("n=%d; m=%d | A_n^m = %f\n", jx - nx, kx - mx, alm[(jx - nx)*4*nlevel + abs(kx - mx)]);
+
                     pd_re[CUBE_IND(jx, kx)] += re_mom;
                     pd_im[CUBE_IND(jx, kx)] += im_mom;
 

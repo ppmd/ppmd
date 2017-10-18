@@ -112,7 +112,6 @@ def test_fmm_init_1():
     shift_pos[:,2] -= fmm.entry_data.local_offset[0]
 
 
-
     lsize = fmm.entry_data.local_size
     for px in range(A.npart_local):
         pcells[px] = shift_pos[px, 0] + lsize[2]*(shift_pos[px, 1] +
@@ -139,7 +138,7 @@ def test_fmm_init_1():
             #print(60*"-")
 
             # the negative m values will never match scipy as we use P^|m|_l
-            for mxi, mx in enumerate(range(0, lx+1)):
+            for mxi, mx in enumerate(range(0, -1*lx-1, -1)):
 
                 scipy_real = scipy_sph[mxi].real
                 scipy_imag = scipy_sph[mxi].imag
@@ -164,10 +163,10 @@ def test_fmm_init_1():
 
             # test the negative values
             scipy_p = A.Q[px] * lpmv(range(1, lx+1), lx, np.cos(sph[px, 1]))
-            for mxi, mx in enumerate(range(-1, -1*lx - 1,-1)):
+            for mxi, mx in enumerate(range(1, lx)):
 
-                re_exp = np.cos(mx*sph[px, 2])
-                im_exp = np.sin(mx*sph[px, 2])
+                re_exp = np.cos(-1.*mx*sph[px, 2])
+                im_exp = np.sin(-1.*mx*sph[px, 2])
 
                 #print("exp ", mx, re_exp, im_exp)
 
@@ -271,18 +270,176 @@ def test_fmm_init_2():
                            fmm._yab[cx, im_lm(lx, mx)]) < 10.**-15, \
                 'imag ylm error l {} m {}'.format(lx, mx)
 
+    # check the A_n^m coefficients.
+    for nx in range(fmm.L):
+        for mx in range(-1*fmm.L, fmm.L+1):
+            if abs(mx) > nx:
+                cval = 0.0
+            else:
+                cval = ((-1.0)**nx) / math.sqrt(
+                    math.factorial(nx - mx)*math.factorial(nx + mx))
+
+            assert abs(cval - fmm._a[nx, abs(mx)]) < 10.**-15, \
+                "failed n, m {}, {}".format(nx, mx)
+
+
     fmm.tree_halo[fmm.R-1][2:-2:, 2:-2:, 2:-2:, :] = fmm.entry_data[:,:,:,:]
     print('\n')
     fmm._translate_m_to_m(fmm.R-1)
 
 
-    print(fmm.tree_halo[fmm.R-1][2:-2,2:-2,2:-2,1])
-    for lx in range(fmm.L):
-        print(lx, 60*'-')
-        for mx in range(-1*lx, lx+1):
-            print(mx)
-            print(fmm.tree_parent[fmm.R-1][:,:,:, re_lm(lx, mx)])
+    #print(fmm.tree_halo[fmm.R-1][2:-2,2:-2,2:-2,1])
+    #for lx in range(fmm.L):
+    #    print(lx, 60*'-')
+    #    for mx in range(-1*lx, lx+1):
+    #        print(mx)
+    #        print(fmm.tree_parent[fmm.R-1][:,:,:, re_lm(lx, mx)])
 
+
+
+
+
+
+
+
+
+
+
+
+
+    print(60*'~')
+
+    point = np.array((-8., -8., -8.))
+
+    phi = A.Q[0] / np.linalg.norm(point - A.P[0, :])
+
+    print("phi_direct", phi, '\t\t', A.P[0,:], A.Q[0])
+
+
+
+    moments = fmm.entry_data[0,0,0,:]
+
+
+
+    center = np.array((-4.375, -4.375, -4.375))
+    disp = point - center
+
+    disp_sph = spherical(np.reshape(disp, (1, 3)))
+
+    print("sph", disp_sph)
+
+    phi_sph_re = 0.
+    phi_sph_im = 0.
+
+    llimit = 2
+
+    for lx in range(llimit):
+        mrange = list(range(lx, -1, -1)) + list(range(1, lx+1))
+        mrange2 = list(range(-1*lx, 1)) + list(range(1, lx+1))
+        scipy_p = lpmv(mrange, lx, np.cos(disp_sph[0,1]))
+
+        print(lx, scipy_p)
+
+        for mxi, mx in enumerate(mrange2):
+
+            re_exp = np.cos(mx*disp_sph[0,2])
+            im_exp = np.sin(mx*disp_sph[0,2])
+
+            val = math.sqrt(math.factorial(
+                lx - abs(mx))/math.factorial(lx + abs(mx)))
+            val *= scipy_p[mxi]
+
+            irad = 1. / (disp_sph[0,0] ** (lx+1.))
+
+            scipy_real = re_exp * val * irad
+            scipy_imag = im_exp * val * irad
+
+            ppmd_mom_re = moments[re_lm(lx, mx)]
+            ppmd_mom_im = moments[im_lm(lx, mx)]
+
+            phi_sph_re += scipy_real*ppmd_mom_re - scipy_imag*ppmd_mom_im
+            phi_sph_im += scipy_real*ppmd_mom_im + ppmd_mom_re*scipy_imag
+
+    print("phi_sph", phi_sph_re, '+', phi_sph_im, 'i')
+
+    print(moments[:llimit**2:])
+    print(60*'~')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    ind = np.logical_and(A.P[:,0] < -2.5, A.P[:,1] < -2.5)
+    ind = np.logical_and(A.P[:,2] < -2.5, ind)
+
+    pcell = A.P[ind, :]
+    qcell = A.Q[ind]
+
+    point = np.array((-8., -8., -8.))
+
+    phi = 0.
+
+    for px in range(8):
+        phi += qcell[px] / np.linalg.norm(point - pcell[px])
+
+    print("phi_direct", phi)
+
+
+    moments = fmm.tree_parent[fmm.R-1][0,0,0,:]
+    center = np.array((-3.75, -3.75, -3.75))
+    disp = point - center
+
+    disp_sph = spherical(np.reshape(disp, (1, 3)))
+
+    print("sph", disp_sph)
+
+    phi_sph_re = 0.
+    phi_sph_im = 0.
+
+    for lx in range(llimit):
+        mrange = list(range(lx, -1, -1)) + list(range(1, lx+1))
+        mrange2 = list(range(-1*lx, 1)) + list(range(1, lx+1))
+        scipy_p = lpmv(mrange, lx, np.cos(disp_sph[0,1]))
+        for mxi, mx in enumerate(mrange2):
+
+            re_exp = np.cos(mx*disp_sph[0,2])
+            im_exp = np.sin(mx*disp_sph[0,2])
+
+            val = math.sqrt(math.factorial(
+                lx - abs(mx))/math.factorial(lx + abs(mx)))
+            val *= scipy_p[mxi]
+
+            irad = 1. / (disp_sph[0,0] ** (lx+1.))
+
+            scipy_real = re_exp * val * irad
+            scipy_imag = im_exp * val * irad
+
+            ppmd_mom_re = moments[re_lm(lx, mx)]
+            ppmd_mom_im = moments[im_lm(lx, mx)]
+
+            phi_sph_re += scipy_real*ppmd_mom_re - scipy_imag*ppmd_mom_im
+            phi_sph_im += scipy_real*ppmd_mom_im + ppmd_mom_re*scipy_imag
+
+    print("phi_sph", phi_sph_re, '+', phi_sph_im, 'i')
+
+
+
+    print(moments[:llimit**2:])
+    print(60*'~')
 
 
 

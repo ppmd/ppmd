@@ -308,10 +308,14 @@ INT32 particle_contribution(
                     const UINT32 abs_mx = abs(mx);
                     const REAL coeff = sqrt(factorial_vec[lx - abs_mx]/factorial_vec[lx + abs_mx]) \
                                        * charge[ix];
+
+
                     const REAL plm = P_SPACE[P_SPACE_IND(nlevel, lx, abs_mx)];
 
-                    cube_start[CUBE_IND(lx, mx)] += coeff * plm * exp_vec[EXP_RE_IND(nlevel, mx)];
-                    cube_start_im[CUBE_IND(lx, mx)] += coeff * plm * exp_vec[EXP_IM_IND(nlevel, mx)];
+                    cube_start[CUBE_IND(lx, mx)] += coeff * plm * exp_vec[EXP_RE_IND(nlevel, -1*mx)];
+                    cube_start_im[CUBE_IND(lx, mx)] += coeff * plm * exp_vec[EXP_IM_IND(nlevel, -1*mx)];
+
+                    if(lx == 1) {printf("%d %f\n", mx, plm);}
 
                     //printf("%d %d %d = %f %f\n",px, lx, mx, cube_start[CUBE_IND(lx, mx)], cube_start_im[CUBE_IND(lx, mx)]);
 
