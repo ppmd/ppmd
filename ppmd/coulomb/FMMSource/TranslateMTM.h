@@ -3,6 +3,7 @@
 #include <omp.h>
 #include <stdio.h>
 #include <math.h>
+#include <iostream>
 
 #define REAL double
 #define UINT64 uint64_t
@@ -21,6 +22,7 @@ using namespace std;
 
 #define P_SPACE_IND(LMAX, L, M) (((LMAX)+1)*(L) + (M))
 
+#define MIN(x, y) ((x < y) ? x : y)
 
 /*
 Layout of memory used by above macros.

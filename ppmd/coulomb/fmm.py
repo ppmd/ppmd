@@ -80,15 +80,17 @@ class PyFMM(object):
         # can be pre-computed for the 8 children of a parent cell. Indexed
         # lexicographically.
         pi = math.pi
+        #     (1.25 * pi, 0.75 * pi),
+
         alpha_beta = (
-            (1.25 * pi, 0.75 * pi),
-            (1.75 * pi, 0.75 * pi),
-            (0.75 * pi, 0.75 * pi),
-            (0.25 * pi, 0.75 * pi),
-            (1.25 * pi, 0.25 * pi),
-            (1.75 * pi, 0.25 * pi),
-            (0.75 * pi, 0.25 * pi),
-            (0.25 * pi, 0.25 * pi)
+            (1.25 * pi, -1./math.sqrt(3.)),
+            (1.75 * pi, -1./math.sqrt(3.)),
+            (0.75 * pi, -1./math.sqrt(3.)),
+            (0.25 * pi, -1./math.sqrt(3.)),
+            (1.25 * pi, 1./math.sqrt(3.)),
+            (1.75 * pi, 1./math.sqrt(3.)),
+            (0.75 * pi, 1./math.sqrt(3.)),
+            (0.25 * pi, 1./math.sqrt(3.))
         )
 
         def re_lm(l,m): return (l**2) + l + m
@@ -99,7 +101,7 @@ class PyFMM(object):
             for lx in range(self.L):
                 mval = list(range(-1*lx, 1)) + list(range(1, lx+1))
                 mxval = list(range(lx, -1, -1)) + list(range(1, lx+1))
-                scipy_p = lpmv(mxval, lx, math.cos(child[1]))
+                scipy_p = lpmv(mxval, lx, child[1])
                 for mxi, mx in enumerate(mval):
                     val = math.sqrt(float(math.factorial(
                         lx - abs(mx)))/math.factorial(lx + abs(mx)))
@@ -142,6 +144,7 @@ class PyFMM(object):
         _check_dtype(cube_side_counts, UINT64)
         _check_dtype(self.entry_data.data, REAL)
         _check_dtype(self._thread_allocation, INT32)
+
 
         err = self._contribution_lib(
             INT64(self.L),
@@ -189,8 +192,8 @@ class PyFMM(object):
                  self.tree[child_level].ncubes_side_global) * 0.5
 
         radius = math.sqrt(radius*radius*3)
-
-        print(radius)
+        #radius = 0.
+        print("pre launch", radius, self.L)
 
         err = self._translate_mtm_lib(
             _numpy_ptr(self.tree[child_level].parent_local_size),
