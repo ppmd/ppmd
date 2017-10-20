@@ -67,9 +67,9 @@ static inline INT64 compute_cell_spherical(
     const REAL dy = py - ccy;
     const REAL dz = pz - ccz;
     
-    printf("dx %f px %f mid %f\n", dx, px, ccx);
-    printf("dy %f py %f mid %f\n", dy, py, ccy);
-    printf("dz %f pz %f mid %f\n", dz, pz, ccz);
+    //printf("dx %f px %f mid %f\n", dx, px, ccx);
+    //printf("dy %f py %f mid %f\n", dy, py, ccy);
+    //printf("dz %f pz %f mid %f\n", dz, pz, ccz);
     
 
     // convert to spherical
@@ -234,9 +234,9 @@ INT32 particle_contribution(
                 #pragma omp critical
                 {err = -3;}
             }
-            if (ix == 0){
-            printf("radius %f, ctheta %f, cphi %f, sphi %f, msphi %f\n", radius, ctheta, cphi, sphi, msphi);
-            }
+            //if (ix == 0){
+            //printf("radius %f, ctheta %f, cphi %f, sphi %f, msphi %f\n", radius, ctheta, cphi, sphi, msphi);
+            //}
             //compute spherical harmonic moments
             
             //printf("px= %d, cell= %d\n", ix, ix_cell);

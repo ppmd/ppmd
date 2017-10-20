@@ -10,6 +10,9 @@ import numpy as np
 np.set_printoptions(linewidth=200)
 #from ppmd_vis import plot_spheres
 
+import itertools
+
+
 from ppmd import *
 from ppmd.coulomb.fmm import *
 from scipy.special import sph_harm, lpmv
@@ -182,9 +185,6 @@ def test_fmm_init_1():
 
 def compute_phi(llimit, moments, disp_sph):
 
-    print("moments:")
-    print(moments[:4])
-
     phi_sph_re = 0.
     phi_sph_im = 0.
     def re_lm(l,m): return (l**2) + l + m
@@ -229,7 +229,7 @@ def test_fmm_init_2():
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
 
-    fmm = PyFMM(domain=A.domain, N=1000, eps=10.**-6)
+    fmm = PyFMM(domain=A.domain, N=1000, eps=10.**-3)
     ncubeside = 2**(fmm.R-1)
     N = ncubeside ** 3
     A.npart = N
@@ -252,6 +252,7 @@ def test_fmm_init_2():
     A.Q[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,1))#[0,:]
 
     bias = np.sum(A.Q[:])/N
+
     A.Q[:] -= bias
 
     # override random charges
@@ -259,24 +260,21 @@ def test_fmm_init_2():
 
     ind = np.logical_and(A.P[:,0] < -2.5, A.P[:,1] < -2.5)
     ind = np.logical_and(A.P[:,2] < -2.5, ind)
-
-
-
     ind2 = np.array([ 0,  1,  8,  9, 64, 65, 72, 73])
 
-    for px in range(8):
-        print(px, A.P[ind2[px],:])
+    #for px in range(8):
+    #    print(px, A.P[ind2[px],:])
 
-    print(np.nonzero(ind))
+    #print(np.nonzero(ind))
 
     # create a dipole moment
 
 
     #A.Q[:] = 0.
     #A.Q[0] = 1.
-    #A.Q[1] = 0.
-    #A.Q[8] = 0.
-    #A.Q[9] = 0.
+    #A.Q[1] = 1.
+    #A.Q[8] = 1.
+    #A.Q[9] = 1.
     #A.Q[64] = -0.
     #A.Q[65] = -0.
     #A.Q[72] = -0.
@@ -341,9 +339,6 @@ def test_fmm_init_2():
                 "failed n, m {}, {}".format(nx, mx)
 
 
-    fmm.tree_halo[fmm.R-1][2:-2:, 2:-2:, 2:-2:, :] = fmm.entry_data[:,:,:,:]
-    print('\n')
-    fmm._translate_m_to_m(fmm.R-1)
 
 
     #print(fmm.tree_halo[fmm.R-1][2:-2,2:-2,2:-2,1])
@@ -353,26 +348,15 @@ def test_fmm_init_2():
     #        print(mx)
     #        print(fmm.tree_parent[fmm.R-1][:,:,:, re_lm(lx, mx)])
 
+    point = np.array((-15., -15., -15.))
 
-
-
-
-
-
-
-
-
-
-
-
+    """
     print(60*'~')
 
-    point = np.array((-7., -7., -7.))
 
     phi = A.Q[0] / np.linalg.norm(point - A.P[0, :])
 
     print("phi_direct", phi, '\t\t', A.P[0,:], A.Q[0])
-
 
 
     moments = fmm.entry_data[0,0,0,:]
@@ -398,48 +382,76 @@ def test_fmm_init_2():
     print("ERR:", abs(phi_sph_re - phi))
     # print(moments[:llimit**2:])
     print(60*'~')
+    """
 
 
-
-    #phi = 0.
-    charge_total = 0.
-
-    for px in range(8):
-        print("Q:", qcell[px], "\tPOS:", pcell[px,:])
-        #phi += qcell[px] / np.linalg.norm(point - pcell[px])
-        charge_total += qcell[px, 0]
-
-
-
-    moments = fmm.tree_parent[fmm.R-1][0,0,0,:]
-
-    print("Y_1^1", fmm._yab[0, 0:4: ])
-    print("SRC_MOMENTS", fmm.tree_halo[fmm.R-1][2,2,2,:4])
-    print("NEW_MOMENTS", fmm.tree_parent[fmm.R-1][0,0,0,:4])
-
+    # compute potential energy to point across all charges directly
+    src = """
+    const double d0 = P.i[0] - {};
+    const double d1 = P.i[1] - {};
+    const double d2 = P.i[2] - {};
+    phi[0] += Q.i[0] / sqrt(d0*d0 + d1*d1 + d2*d2);
+    """.format(point[0], point[1], point[2])
+    phi_kernel = kernel.Kernel('point_phi', src,
+                               headers=(kernel.Header('math.h'),))
+    phi_ga = data.GlobalArray(ncomp=1, dtype=ctypes.c_double)
+    phi_loop = loop.ParticleLoopOMP(kernel=phi_kernel,
+                                    dat_dict={'P': A.P(access.READ),
+                                              'Q': A.Q(access.READ),
+                                              'phi': phi_ga(access.INC_ZERO)})
+    phi_loop.execute()
 
 
-    center = np.array((-3.75, -3.75, -3.75))
-    disp = point - center
+    for level in range(fmm.R - 1, 0, -1):
+        #if MPIRANK == 0:
+        #    print(level)
+        phi_sph_re = 0.0
+        phi_sph_im = 0.0
 
-    disp_sph = spherical(np.reshape(disp, (1, 3)))
+        lsize = fmm.tree[level].parent_local_size
 
-    #phi = 1.0/disp_sph[0,0]
+        #print(MPIRANK, lsize, fmm.tree[level-1].parent_local_size)
 
-    print("phi_direct", phi)
-    print("sph", disp_sph)
-    print("charge_total", charge_total)
+        if lsize is not None:
+            fmm._translate_m_to_m(level)
+            fmm._fine_to_course(level)
 
-    phi_sph_re, phi_sph_im = compute_phi(llimit, moments, disp_sph)
+            parent_shape = fmm.tree_plain[level][:,:,:,0].shape
 
-    print("phi_sph", phi_sph_re, '+', phi_sph_im, 'i')
+            sep = A.domain.extent[0] / float(2.**(level - 1.))
+            start_point = -0.5*E + 0.5*sep
+
+            offset = fmm.tree[level].local_grid_offset
+
+            if lsize is not None:
+                for momx in itertools.product(range(parent_shape[0]//2),
+                                              range(parent_shape[1]//2),
+                                              range(parent_shape[2]//2)):
+
+                    center = np.array(
+                        (start_point + (offset[2]//2 + momx[2])*sep,
+                        start_point + (offset[1]//2 + momx[1])*sep,
+                        start_point + (offset[0]//2 + momx[0])*sep))
+                    disp = point - center
+                    moments = fmm.tree_parent[level][
+                              momx[0], momx[1], momx[2], :]
+                    disp_sph = spherical(np.reshape(disp, (1, 3)))
+
+                    phi_sph_re1, phi_sph_im1 = compute_phi(fmm.L, moments,
+                                                           disp_sph)
+                    phi_sph_re += phi_sph_re1
+                    phi_sph_im += phi_sph_im1
 
 
+        red_re = mpi.all_reduce(np.array((phi_sph_re)))
+        red_im = mpi.all_reduce(np.array((phi_sph_im)))
 
-    # print(moments[:llimit**2:])
-    print(60*'~')
-    print("ERR:", abs(phi_sph_re - phi))
-    print(60*'~')
+        # print(moments[:llimit**2:])
+        if MPIRANK == 0:
+            print(60*'~')
+            print("ERR RE:", abs(red_re - phi_ga[0]))
+            print("ERR IM:", abs(red_im))
+            print(60*'~')
 
 
 

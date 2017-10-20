@@ -36,6 +36,19 @@ static inline void cplx_mul(
     *h = x * b + a * y;
 }
 
+static inline void cplx_mul_add(
+    const REAL a,
+    const REAL b,
+    const REAL x,
+    const REAL y,
+    REAL * RESTRICT g,
+    REAL * RESTRICT h
+){
+   // ( a + bi) * (x + yi) = (ax - by) + (xb + ay)i
+    *g += a * x - b * y;
+    *h += x * b + a * y;
+}
+
 static inline double J(
     const INT64 m, 
     const INT64 mp
@@ -73,19 +86,13 @@ int translate_mtm(
     
     REAL radius_n[nlevel];
     radius_n[0] = 1.0;
-    cout << radius_n[0] << endl;
     for(INT64 nx=1 ; nx<nlevel ; nx++){
         radius_n[nx] = radius_n[nx-1] * radius;
-        cout << nx << " " << radius_n[nx] << endl;
-
     } 
 
-
-    printf("Warning loop bounds overrode!\n");
     #pragma omp parallel for default(none) schedule(dynamic) shared(dim_parent,\
     dim_child,moments_child,moments_parent,ylm,alm,almr, radius_n, ipow_re, ipow_im)
-    //for( INT64 pcx=0 ; pcx<nparent_cells ; pcx++ ){
-    for( INT64 pcx=0 ; pcx<1 ; pcx++ ){
+    for( INT64 pcx=0 ; pcx<nparent_cells ; pcx++ ){
         INT64 cx, cy, cz;
         lin_to_xyz(dim_parent, pcx, &cx, &cy, &cz);
         
@@ -99,34 +106,42 @@ int translate_mtm(
 
         //children are labeled lexicographically
         const INT64 cc0 = ncomp * xyz_to_lin(dim_child, ccx, ccy, ccz);
-        //const INT64 cc1 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy, ccz);
-        //const INT64 cc2 = ncomp * xyz_to_lin(dim_child, ccx, ccy+1, ccz);
-        //const INT64 cc3 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy+1, ccz);
-        //const INT64 cc4 = ncomp * xyz_to_lin(dim_child, ccx, ccy, ccz+1);
-        //const INT64 cc5 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy, ccz+1);
-        //const INT64 cc6 = ncomp * xyz_to_lin(dim_child, ccx, ccy+1, ccz+1);
-        //const INT64 cc7 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy+1, ccz+1);
+        const INT64 cc1 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy, ccz);
+        const INT64 cc2 = ncomp * xyz_to_lin(dim_child, ccx, ccy+1, ccz);
+        const INT64 cc3 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy+1, ccz);
+        const INT64 cc4 = ncomp * xyz_to_lin(dim_child, ccx, ccy, ccz+1);
+        const INT64 cc5 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy, ccz+1);
+        const INT64 cc6 = ncomp * xyz_to_lin(dim_child, ccx, ccy+1, ccz+1);
+        const INT64 cc7 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy+1, ccz+1);
         
-        const REAL * RESTRICT cd0_re = &moments_child[cc0];
-        //const REAL * RESTRICT cd1_re = &moments_child[cc1];
-        //const REAL * RESTRICT cd2_re = &moments_child[cc2];
-        //const REAL * RESTRICT cd3_re = &moments_child[cc3];
-        //const REAL * RESTRICT cd4_re = &moments_child[cc4];
-        //const REAL * RESTRICT cd5_re = &moments_child[cc5];
-        //const REAL * RESTRICT cd6_re = &moments_child[cc6];
-        //const REAL * RESTRICT cd7_re = &moments_child[cc7];
+        const REAL * RESTRICT cd_re[8] = {
+            &moments_child[cc0],
+            &moments_child[cc1],
+            &moments_child[cc2],
+            &moments_child[cc3],
+            &moments_child[cc4],
+            &moments_child[cc5],
+            &moments_child[cc6],
+            &moments_child[cc7]
+        };
+
         
         // loop over parent moments
         for(INT64 jx=0     ; jx<nlevel ; jx++ ){
         for(INT64 kx=-1*jx ; kx<=jx    ; kx++){
                 const REAL ajkr = almr[jx*4*nlevel + abs(kx)];
+                REAL jk_re = 0.0;
+                REAL jk_im = 0.0;
+
                 for(INT64 nx=0     ; nx<=jx ; nx++){
                 for(INT64 mx=-1*nx ; mx<=nx ; mx++){
                     
                     const bool km_jn = abs(kx - mx) <= (jx-nx);
-                    const REAL a_jnkm = km_jn ? alm[(jx - nx)*4*nlevel + abs(kx - mx)] : 0.0;
+                    const REAL mask = (km_jn) ? 1.0 : 0.0;
 
-                    const REAL coeff = ajkr * radius_n[nx] * alm[nx*4*nlevel + abs(mx)] * a_jnkm;
+                    const REAL a_jnkm = alm[(jx - nx)*4*nlevel + abs(kx - mx)] * mask;
+
+                    const REAL coeff = ajkr * radius_n[nx] * alm[nx*4*nlevel + abs(mx)] * a_jnkm * mask;
 
                     const INT64 child_ind = CUBE_IND(jx - nx, kx - mx);
                     const INT64 child_ind_im = child_ind + im_offset;
@@ -136,23 +151,33 @@ int translate_mtm(
 
                     REAL child_re = 0.0;
                     REAL child_im = 0.0;
-                    
-                    REAL mul_re;
-                    REAL mul_im;
-                    
-                    REAL child_val_re;
-                    REAL child_val_im;
-                    child_val_re = km_jn ? cd0_re[child_ind] : 0.0;
-                    child_val_im = km_jn ? cd0_re[child_ind_im] : 0.0;
 
-                    cplx_mul(child_val_re, child_val_im, ylm[0*ncomp + ychild_ind], ylm[0*ncomp + ychild_ind_im], &mul_re, &mul_im);
+                    cplx_mul_add(   cd_re[0][child_ind], cd_re[0][child_ind_im], 
+                                        ylm[0*ncomp + ychild_ind], ylm[0*ncomp + ychild_ind_im], 
+                                        &child_re, &child_im);
+                    cplx_mul_add(   cd_re[1][child_ind], cd_re[1][child_ind_im], 
+                                        ylm[1*ncomp + ychild_ind], ylm[1*ncomp + ychild_ind_im], 
+                                        &child_re, &child_im);
+                    cplx_mul_add(   cd_re[2][child_ind], cd_re[2][child_ind_im], 
+                                        ylm[2*ncomp + ychild_ind], ylm[2*ncomp + ychild_ind_im], 
+                                        &child_re, &child_im);
+                    cplx_mul_add(   cd_re[3][child_ind], cd_re[3][child_ind_im], 
+                                        ylm[3*ncomp + ychild_ind], ylm[3*ncomp + ychild_ind_im], 
+                                        &child_re, &child_im);
+                    cplx_mul_add(   cd_re[4][child_ind], cd_re[4][child_ind_im], 
+                                        ylm[4*ncomp + ychild_ind], ylm[4*ncomp + ychild_ind_im], 
+                                        &child_re, &child_im);
+                    cplx_mul_add(   cd_re[5][child_ind], cd_re[5][child_ind_im], 
+                                        ylm[5*ncomp + ychild_ind], ylm[5*ncomp + ychild_ind_im], 
+                                        &child_re, &child_im);
+                    cplx_mul_add(   cd_re[6][child_ind], cd_re[6][child_ind_im], 
+                                        ylm[6*ncomp + ychild_ind], ylm[6*ncomp + ychild_ind_im], 
+                                        &child_re, &child_im);
+                    cplx_mul_add(   cd_re[7][child_ind], cd_re[7][child_ind_im], 
+                                        ylm[7*ncomp + ychild_ind], ylm[7*ncomp + ychild_ind_im], 
+                                        &child_re, &child_im);
 
 
-
-                    child_re+=mul_re;
-                    child_im+=mul_im;
-
-                
                     child_re*=coeff;
                     child_im*=coeff;
 
@@ -166,14 +191,16 @@ int translate_mtm(
                     //const REAL jim = jre;
 
                     cplx_mul(child_re, child_im, jre, jim, &re_mom, &im_mom);
-                    if (jx<2){
-                        printf("j = %d\tk = %d\tn = %d\tm = %d\t| j-n=%d\tk-m=%d\tO= %f\t| val = %f \n", jx, kx, nx, mx, jx-nx, kx-mx, cd0_re[child_ind], re_mom);
-                    }                    
 
-                    pd_re[CUBE_IND(jx, kx)] += re_mom;
-                    pd_im[CUBE_IND(jx, kx)] += im_mom;
+                    jk_re += re_mom;
+                    jk_im += im_mom;
+
 
                 }}
+
+                pd_re[CUBE_IND(jx, kx)] = jk_re;
+                pd_im[CUBE_IND(jx, kx)] = jk_im;
+
         }}
 /*
         for(INT64 jx=0     ; jx<nlevel ; jx++ ){

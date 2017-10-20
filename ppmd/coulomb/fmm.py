@@ -161,6 +161,8 @@ class PyFMM(object):
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 
+        self.tree_halo[self.R-1][2:-2:, 2:-2:, 2:-2:, :] = \
+            self.entry_data[:,:,:,:]
 
     def _translate_m_to_m(self, child_level):
         """
@@ -192,8 +194,6 @@ class PyFMM(object):
                  self.tree[child_level].ncubes_side_global) * 0.5
 
         radius = math.sqrt(radius*radius*3)
-        #radius = 0.
-        print("pre launch", radius, self.L)
 
         err = self._translate_mtm_lib(
             _numpy_ptr(self.tree[child_level].parent_local_size),
@@ -208,3 +208,12 @@ class PyFMM(object):
         )
 
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
+
+    def _fine_to_course(self, src_level):
+        if src_level < 1:
+            raise RuntimeError('cannot copy from a level lower than 1')
+
+        send_parent_to_halo(src_level, self.tree_parent, self.tree_halo)
+
+
+
