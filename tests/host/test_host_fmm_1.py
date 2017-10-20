@@ -228,8 +228,9 @@ def test_fmm_init_2():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
+    eps = 10.**-3
 
-    fmm = PyFMM(domain=A.domain, N=1000, eps=10.**-3)
+    fmm = PyFMM(domain=A.domain, N=1000, eps=eps)
     ncubeside = 2**(fmm.R-1)
     N = ncubeside ** 3
     A.npart = N
@@ -442,17 +443,27 @@ def test_fmm_init_2():
                     phi_sph_re += phi_sph_re1
                     phi_sph_im += phi_sph_im1
 
+        if level < fmm.R-1:
+            last_re = red_re
+        else:
+            last_re = 0.0
 
         red_re = mpi.all_reduce(np.array((phi_sph_re)))
         red_im = mpi.all_reduce(np.array((phi_sph_im)))
 
+        red_re = abs(red_re - phi_ga[0])
+        red_im = abs(red_im)
+
         # print(moments[:llimit**2:])
         if MPIRANK == 0:
             print(60*'~')
-            print("ERR RE:", abs(red_re - phi_ga[0]))
-            print("ERR IM:", abs(red_im))
+            print("ERR RE:", red_re)
+            print("ERR IM:", red_im)
             print(60*'~')
 
+        assert red_im < 10.**-15, "bad imaginary part"
+        assert red_re > last_re, "Errors do not get better as level -> 0"
+        assert red_re < eps, "error did not meet tol"
 
 
 
