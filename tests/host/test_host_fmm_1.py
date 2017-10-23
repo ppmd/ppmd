@@ -25,16 +25,25 @@ MPIBARRIER = MPI.COMM_WORLD.Barrier()
 DEBUG = True
 
 def spherical(xyz):
-    sph = np.zeros(xyz.shape)
-    xy = xyz[:,0]**2 + xyz[:,1]**2
-    # r
-    sph[:,0] = np.sqrt(xy + xyz[:,2]**2)
-    # polar angle
-    sph[:,1] = np.arctan2(np.sqrt(xy), xyz[:,2])
-    # longitude angle
-    sph[:,2] = np.arctan2(xyz[:,1], xyz[:,0])
+    if type(xyz) is tuple:
+        sph = np.zeros(3)
+        xy = xyz[0]**2 + xyz[1]**2
+        # r
+        sph[0] = np.sqrt(xy + xyz[2]**2)
+        # polar angle
+        sph[1] = np.arctan2(np.sqrt(xy), xyz[2])
+        # longitude angle
+        sph[2] = np.arctan2(xyz[1], xyz[0])
 
-    #print(xyz, sph)
+    else:
+        sph = np.zeros(xyz.shape)
+        xy = xyz[:,0]**2 + xyz[:,1]**2
+        # r
+        sph[:,0] = np.sqrt(xy + xyz[:,2]**2)
+        # polar angle
+        sph[:,1] = np.arctan2(np.sqrt(xy), xyz[:,2])
+        # longitude angle
+        sph[:,2] = np.arctan2(xyz[:,1], xyz[:,0])
 
     return sph
 
@@ -455,7 +464,126 @@ def test_fmm_init_2():
         red_im = abs(red_im)
 
         # print(moments[:llimit**2:])
-        if MPIRANK == 0:
+        if MPIRANK == 0 and DEBUG:
+            print(60*'~')
+            print("ERR RE:", red_re)
+            print("ERR IM:", red_im)
+            print(60*'~')
+
+        assert red_im < 10.**-15, "bad imaginary part"
+        assert red_re > last_re, "Errors do not get better as level -> 0"
+        assert red_re < eps, "error did not meet tol"
+
+
+def test_fmm_init_3():
+
+    E = 10.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-3
+
+    fmm = PyFMM(domain=A.domain, N=1000, eps=eps)
+    ncubeside = 2**(fmm.R-1)
+    N = ncubeside ** 3
+    A.npart = N
+
+
+    rng = np.random.RandomState(seed=1234)
+    #rng = np.random
+
+    A.P = data.PositionDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
+
+
+    A.Q[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,1))#[0,:]
+
+    bias = np.sum(A.Q[:])/N
+
+    A.Q[:] -= bias
+
+    A.scatter_data_from(0)
+
+    fmm._compute_cube_contrib(A.P, A.Q)
+
+    pi = math.pi
+
+    point = np.array((-15., -15., -15.))
+
+    # compute potential energy to point across all charges directly
+    src = """
+    const double d0 = P.i[0] - {};
+    const double d1 = P.i[1] - {};
+    const double d2 = P.i[2] - {};
+    phi[0] += Q.i[0] / sqrt(d0*d0 + d1*d1 + d2*d2);
+    """.format(point[0], point[1], point[2])
+    phi_kernel = kernel.Kernel('point_phi', src,
+                               headers=(kernel.Header('math.h'),))
+    phi_ga = data.GlobalArray(ncomp=1, dtype=ctypes.c_double)
+    phi_loop = loop.ParticleLoopOMP(kernel=phi_kernel,
+                                    dat_dict={'P': A.P(access.READ),
+                                              'Q': A.Q(access.READ),
+                                              'phi': phi_ga(access.INC_ZERO)})
+    phi_loop.execute()
+
+
+    for level in range(fmm.R - 1, 0, -1):
+        #if MPIRANK == 0:
+        #    print(level)
+        phi_sph_re = 0.0
+        phi_sph_im = 0.0
+
+        lsize = fmm.tree[level].parent_local_size
+
+        #print(MPIRANK, lsize, fmm.tree[level-1].parent_local_size)
+
+        if lsize is not None:
+            fmm._translate_m_to_m(level)
+            fmm._fine_to_course(level)
+
+            parent_shape = fmm.tree_plain[level][:,:,:,0].shape
+
+            sep = A.domain.extent[0] / float(2.**(level - 1.))
+            start_point = -0.5*E + 0.5*sep
+
+            offset = fmm.tree[level].local_grid_offset
+
+            if lsize is not None:
+                for momx in itertools.product(range(parent_shape[0]//2),
+                                              range(parent_shape[1]//2),
+                                              range(parent_shape[2]//2)):
+
+                    center = np.array(
+                        (start_point + (offset[2]//2 + momx[2])*sep,
+                        start_point + (offset[1]//2 + momx[1])*sep,
+                        start_point + (offset[0]//2 + momx[0])*sep))
+                    disp = point - center
+                    moments = fmm.tree_parent[level][
+                              momx[0], momx[1], momx[2], :]
+                    disp_sph = spherical(np.reshape(disp, (1, 3)))
+
+                    phi_sph_re1, phi_sph_im1 = compute_phi(fmm.L, moments,
+                                                           disp_sph)
+                    phi_sph_re += phi_sph_re1
+                    phi_sph_im += phi_sph_im1
+
+        if level < fmm.R-1:
+            last_re = red_re
+        else:
+            last_re = 0.0
+
+        red_re = mpi.all_reduce(np.array((phi_sph_re)))
+        red_im = mpi.all_reduce(np.array((phi_sph_im)))
+
+        red_re = abs(red_re - phi_ga[0])
+        red_im = abs(red_im)
+
+        # print(moments[:llimit**2:])
+        if MPIRANK == 0 and DEBUG:
             print(60*'~')
             print("ERR RE:", red_re)
             print("ERR IM:", red_im)
@@ -467,17 +595,50 @@ def test_fmm_init_2():
 
 
 
+def test_fmm_init_4():
+
+    E = 10.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-6
+
+    fmm = PyFMM(domain=A.domain, N=1000, eps=eps)
+    ncubeside = 2**(fmm.R-1)
+    N = ncubeside ** 3
+    A.npart = N
 
 
+    rng = np.random.RandomState(seed=1234)
+    #rng = np.random
 
+    A.P = data.PositionDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
 
+    A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
 
+    A.Q[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,1))
 
+    bias = np.sum(A.Q[:])/N
 
+    A.Q[:] -= bias
 
+    A.scatter_data_from(0)
 
+    maxt = 5
 
+    for tx in itertools.product(
+            range(-1*maxt, maxt+1), range(-1*maxt, maxt+1),
+            range(-1*maxt, maxt+1)):
 
+        dispt = (tx[0]*E, tx[1]*E, tx[2]*E)
+        dispt_sph = spherical(dispt)
+        dispt_fmm = fmm._image_to_sph(tx)
+        assert abs(dispt_sph[0] - dispt_fmm[0]) < 10.**-16, "bad radius"
+        assert abs(dispt_sph[2] - dispt_fmm[1]) < 10.**-16, "bad phi"
+        assert abs(dispt_sph[1] - dispt_fmm[2]) < 10.**-16, "bad theta"
 
 
 

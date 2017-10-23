@@ -1,8 +1,8 @@
+from __future__ import division, print_function, absolute_import
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
-import scipy
 from math import log, ceil
 from ppmd.coulomb.octal import *
 import numpy as np
@@ -11,7 +11,8 @@ from ppmd.lib import build
 import ctypes
 import os
 import math
-from scipy.special import sph_harm, lpmv
+import cmath
+from scipy.special import lpmv, rgamma, gammaincc, lambertw
 
 _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -41,6 +42,8 @@ class PyFMM(object):
         self.dtype = dtype
         """Floating point datatype used."""
         self.domain = domain
+
+        self.eps = eps
 
 
         ncomp = (self.L**2) * 2
@@ -93,8 +96,7 @@ class PyFMM(object):
             (0.25 * pi, 1./math.sqrt(3.))
         )
 
-        def re_lm(l,m): return (l**2) + l + m
-        def im_lm(l,m): return (l**2) + l +  m + self.L**2
+
 
         self._yab = np.zeros(shape=(8, ncomp), dtype=dtype)
         for cx, child in enumerate(alpha_beta):
@@ -111,8 +113,10 @@ class PyFMM(object):
                     assert abs(scipy_p[mxi].imag) < 10.**-16
 
 
-                    self._yab[cx, re_lm(lx, mx)] = scipy_p[mxi].real * re_exp
-                    self._yab[cx, im_lm(lx, mx)] = scipy_p[mxi].real * im_exp
+                    self._yab[cx, self.re_lm(lx, mx)] = \
+                        scipy_p[mxi].real * re_exp
+                    self._yab[cx, self.im_lm(lx, mx)] = \
+                        scipy_p[mxi].real * im_exp
 
         # load multipole to multipole translation library
         with open(str(_SRC_DIR) + \
@@ -123,6 +127,22 @@ class PyFMM(object):
             hpp = fh.read()
         self._translate_mtm_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_translate_mtm')['translate_mtm']
+
+
+        # --- periodic boundaries ---
+        # "Precise and Efficient Ewald Summation for Periodic Fast Multipole
+        # Method", Takashi Amisaki, Journal of Computational Chemistry, Vol21,
+        # No 12, 1075-1087, 2000
+
+        self._boundary_terms = np.zeros(ncomp, dtype=dtype)
+
+        # pre compute the "periodic boundaries coefficients.
+        self._boundary_terms[:] += self._compute_f() + self._compute_g()
+
+
+    def re_lm(self, l,m): return (l**2) + l + m
+
+    def im_lm(self, l,m): return (l**2) + l +  m + self.L**2
 
 
     def _compute_cube_contrib(self, positions, charges):
@@ -214,6 +234,182 @@ class PyFMM(object):
             raise RuntimeError('cannot copy from a level lower than 1')
 
         send_parent_to_halo(src_level, self.tree_parent, self.tree_halo)
+
+    def _image_to_sph(self, ind):
+        """Convert tuple ind to spherical coordindates of periodic image."""
+
+        dx = ind[0] * self.domain.extent[0]
+        dy = ind[1] * self.domain.extent[1]
+        dz = ind[2] * self.domain.extent[2]
+
+        return self._cart_to_sph((dx, dy, dz))
+
+    @staticmethod
+    def _cart_to_sph(xyz):
+        dx = xyz[0]; dy = xyz[1]; dz = xyz[2]
+
+        dx2dy2 = dx*dx + dy*dy
+        radius = math.sqrt(dx2dy2 + dz*dz)
+        phi = math.atan2(dy, dx)
+        theta = math.atan2(math.sqrt(dx2dy2), dz)
+
+        return radius, phi, theta
+
+    def _compute_sn(self, lx):
+        vol = self.domain.extent[0] * self.domain.extent[1] * \
+              self.domain.extent[2]
+
+        kappa = math.sqrt(math.pi/(vol**(2./3.)))
+
+        if lx == 2:
+            return math.sqrt(3. * math.log(2. * kappa) - log(self.eps)), kappa
+        else:
+            n = float(lx)
+            return math.sqrt(0.5 * (2. - n) * lambertw(
+                    (2./(2. - n)) * \
+                    (
+                        (self.eps/( (2*kappa) ** (n + 1.) ))**(2./(n - 2.))
+                     )
+                ).real), kappa
+
+
+    def _compute_parameters(self, lx):
+        if lx < 2: raise RuntimeError('not valid for lx<2')
+        sn, kappa = self._compute_sn(lx)
+        # r_c, v_c, kappa
+        return sn/kappa, kappa*sn/math.pi, kappa
+
+
+    def _compute_f(self):
+        ncomp = (self.L**2) * 2
+        terms = np.zeros(ncomp, dtype=self.dtype)
+
+        min_len = min(
+            self.domain.extent[0],
+            self.domain.extent[1],
+            self.domain.extent[2]
+        )
+
+        for lx in range(2, self.L):
+            rc, vc, kappa = self._compute_parameters(lx)
+            kappa2 = kappa*kappa
+            maxt = int(math.ceil(rc/min_len))
+            iterset = range(-1 * maxt, maxt+1)
+
+            if len(iterset) < 4: print("Warning, small real space cutoff.")
+
+            for tx in itertools.product(iterset, iterset, iterset):
+                dispt = self._image_to_sph(tx)
+
+                nd1 = abs(tx[0]) > 1 or abs(tx[1]) > 1 or abs(tx[2])
+
+                if dispt[0] <= rc and nd1:
+                    iradius = 1./dispt[0]
+                    kappa2radius2 = kappa2 * dispt[0] * dispt[0]
+
+
+                    mval = list(range(-1*lx, 1)) + list(range(1, lx+1))
+                    mxval = list(range(lx, -1, -1)) + list(range(1, lx+1))
+                    scipy_p = lpmv(mxval, lx, math.cos(dispt[2]))
+
+                    radius_coeff = iradius ** (lx + 1.)
+
+                    for mxi, mx in enumerate(mval):
+                        val = math.sqrt(float(math.factorial(
+                            lx - abs(mx)))/math.factorial(lx + abs(mx)))
+                        re_exp = np.cos(mx * dispt[1]) * val
+                        im_exp = np.sin(mx * dispt[1]) * val
+
+                        assert abs(scipy_p[mxi].imag) < 10.**-16
+
+                        coeff = scipy_p[mxi].real * radius_coeff * \
+                                gammaincc(lx + 0.5, kappa2radius2)
+
+                        terms[self.re_lm(lx, mx)] += coeff * re_exp
+                        terms[self.im_lm(lx, mx)] += coeff * im_exp
+
+        print(terms[:ncomp:])
+
+        return terms
+
+    def _compute_g(self):
+        ncomp = (self.L**2) * 2
+        terms = np.zeros(ncomp, dtype=self.dtype)
+
+        extent = self.domain.extent
+        lx = (extent[0], 0., 0.)
+        ly = (0., extent[1], 0.)
+        lz = (0., 0., extent[2])
+        ivolume = 1./np.dot(lx, np.cross(ly, lz))
+
+        gx = np.cross(ly,lz)*ivolume * 2. * math.pi
+        gy = np.cross(lz,lx)*ivolume * 2. * math.pi
+        gz = np.cross(lx,ly)*ivolume * 2. * math.pi
+
+        gxl = np.linalg.norm(gx)
+        gyl = np.linalg.norm(gy)
+        gzl = np.linalg.norm(gz)
+
+
+        for lx in range(2, self.L):
+
+            rc, vc, kappa = self._compute_parameters(lx)
+            kappa2 = kappa * kappa
+            mpi2okappa2 = -1.0 * (math.pi ** 2.) / kappa2
+
+            nmax_x = int(ceil(vc/gxl))
+            nmax_y = int(ceil(vc/gyl))
+            nmax_z = int(ceil(vc/gzl))
+
+            for hxi in itertools.product(range(-1*nmax_z, nmax_z+1),
+                                          range(-1*nmax_y, nmax_y+1),
+                                          range(-1*nmax_x, nmax_x+1)):
+
+                hx = hxi[0]*gz + hxi[1]*gy + hxi[0]*gx
+
+                dispt = self._cart_to_sph(hx)
+
+                if 10.**-10 < dispt[0] <= vc:
+                    exp_coeff = cmath.exp(mpi2okappa2 * dispt[0] * dispt[0]) * \
+                                ivolume
+
+
+                    mval = list(range(-1*lx, 1)) + list(range(1, lx+1))
+                    mxval = list(range(lx, -1, -1)) + list(range(1, lx+1))
+                    scipy_p = lpmv(mxval, lx, math.cos(dispt[2]))
+
+                    vhnm2 = (dispt[0] ** (lx - 2.)) * ((0 + 1.j) ** lx) * \
+                            (math.pi ** (lx - 0.5))
+
+                    for mxi, mx in enumerate(mval):
+                        val = math.sqrt(float(math.factorial(
+                            lx - abs(mx)))/math.factorial(lx + abs(mx)))
+                        re_exp = np.cos(mx * dispt[1]) * val
+                        im_exp = np.sin(mx * dispt[1]) * val
+
+                        assert abs(scipy_p[mxi].imag) < 10.**-16
+                        sph_nm = re_exp * scipy_p[mxi].real + \
+                                 im_exp * scipy_p[mxi].real * 1.j
+
+                        contrib = vhnm2 * sph_nm * exp_coeff * rgamma(lx + 0.5)
+
+
+                        if abs(contrib.real) > 1.:
+                            print(hxi, contrib)
+
+                        terms[self.re_lm(lx, mx)] += contrib.real
+                        terms[self.im_lm(lx, mx)] += contrib.imag
+
+        print(terms[:ncomp:])
+
+        return terms
+
+
+
+
+
+
+
 
 
 
