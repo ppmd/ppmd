@@ -81,9 +81,15 @@ int translate_mtm(
     const REAL ipow_re[4] = {1.0, 0.0, -1.0, 0.0};
     const REAL ipow_im[4] = {0.0, 1.0, 0.0, -1.0};
 
-    #define IPOW_RE(n) (ipow_re[(n) & 3])
-    #define IPOW_IM(n) (ipow_im[(n) & 3])
+    //#define IPOW_RE(n) (ipow_re[(n) & 3])
+    //#define IPOW_IM(n) (ipow_im[(n) & 3])
     
+    //#define IPOW_RE(n) ((1. - ((n)&1)) * (1. - ((n)&2)))
+    //#define IPOW_IM(n) (((n)&1)*(1.- ((n)&2)))
+
+    #define IPOW_RE(n) (1.0 - ((n)&2))
+    #define IPOW_IM(n) (0.0)
+
     REAL radius_n[nlevel];
     radius_n[0] = 1.0;
     for(INT64 nx=1 ; nx<nlevel ; nx++){
@@ -183,10 +189,10 @@ int translate_mtm(
 
                     REAL re_mom, im_mom;
                     const INT64 ip = abs(kx) - abs(mx) - abs(kx - mx);
-                    const REAL icoeff = (ip < 0) ? -1.0 : 1.0;
+                    //const REAL icoeff = (ip < 0) ? -1.0 : 1.0;
                     const REAL jre = IPOW_RE(ip);
-                    const REAL jim = IPOW_IM(ip)*icoeff;
-                    
+                    const REAL jim = IPOW_IM(ip);//*icoeff;
+
                     //const REAL jre = J(mx, kx-mx);
                     //const REAL jim = jre;
 

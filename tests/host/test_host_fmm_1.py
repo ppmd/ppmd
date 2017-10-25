@@ -597,13 +597,13 @@ def test_fmm_init_3():
 
 def test_fmm_init_4():
 
-    E = 10.
+    E = 5.
 
     A = state.State()
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-    eps = 10.**-6
+    eps = 10.**-2
 
     fmm = PyFMM(domain=A.domain, N=1000, eps=eps)
     ncubeside = 2**(fmm.R-1)

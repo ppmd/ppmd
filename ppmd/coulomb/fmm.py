@@ -69,9 +69,9 @@ class PyFMM(object):
             'fmm_contrib')['particle_contribution']
 
         # pre compute A_n^m and 1/(A_n^m)
-        self._a = np.zeros(shape=(self.L, self.L*4), dtype=dtype)
-        self._ar = np.zeros(shape=(self.L, self.L*4), dtype=dtype)
-        for lx in range(self.L):
+        self._a = np.zeros(shape=(self.L*2, self.L*4), dtype=dtype)
+        self._ar = np.zeros(shape=(self.L*2, self.L*4), dtype=dtype)
+        for lx in range(self.L*2):
             for mx in range(lx+1):
                 a_l_m = ((-1.) ** lx)/math.sqrt(math.factorial(lx - mx) *\
                                                 math.factorial(lx+mx))
@@ -95,7 +95,6 @@ class PyFMM(object):
             (0.75 * pi, 1./math.sqrt(3.)),
             (0.25 * pi, 1./math.sqrt(3.))
         )
-
 
 
         self._yab = np.zeros(shape=(8, ncomp), dtype=dtype)
@@ -128,16 +127,37 @@ class PyFMM(object):
         self._translate_mtm_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_translate_mtm')['translate_mtm']
 
+        # load multipole to local lib
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/TranslateMTL.cpp') as fh:
+            cpp = fh.read()
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/TranslateMTL.h') as fh:
+            hpp = fh.read()
+        self._translate_mtl_lib = build.simple_lib_creator(hpp, cpp,
+            'fmm_translate_mtl')
+
+
+
 
         # --- periodic boundaries ---
         # "Precise and Efficient Ewald Summation for Periodic Fast Multipole
         # Method", Takashi Amisaki, Journal of Computational Chemistry, Vol21,
         # No 12, 1075-1087, 2000
 
-        self._boundary_terms = np.zeros(ncomp, dtype=dtype)
-
         # pre compute the "periodic boundaries coefficients.
-        self._boundary_terms[:] += self._compute_f() + self._compute_g()
+        # self._boundary_terms[:] += self._compute_f() + self._compute_g()
+        self._boundary_terms =  self._compute_f() + self._compute_g()
+
+        #for lx in range(0, self.L, 2):
+        #    print(20*('-{}-'.format(lx)))
+        #    for mx in range(-1*lx, lx+1):
+        #        print(mx, ":\t", self._boundary_terms[self.re_lm(lx, mx)])
+
+
+
+
+
 
 
     def re_lm(self, l,m): return (l**2) + l + m
@@ -265,6 +285,7 @@ class PyFMM(object):
             return math.sqrt(3. * math.log(2. * kappa) - log(self.eps)), kappa
         else:
             n = float(lx)
+            return self._compute_sn(2)
             return math.sqrt(0.5 * (2. - n) * lambertw(
                     (2./(2. - n)) * \
                     (
@@ -280,7 +301,7 @@ class PyFMM(object):
         return sn/kappa, kappa*sn/math.pi, kappa
 
 
-    def _compute_f(self):
+    def _compute_g(self):
         ncomp = (self.L**2) * 2
         terms = np.zeros(ncomp, dtype=self.dtype)
 
@@ -290,26 +311,29 @@ class PyFMM(object):
             self.domain.extent[2]
         )
 
-        for lx in range(2, self.L):
+        for lx in range(2, self.L, 2):
             rc, vc, kappa = self._compute_parameters(lx)
             kappa2 = kappa*kappa
             maxt = int(math.ceil(rc/min_len))
             iterset = range(-1 * maxt, maxt+1)
+            # if len(iterset) < 4: print("Warning, small real space cutoff.")
 
-            if len(iterset) < 4: print("Warning, small real space cutoff.")
+            #print(lx, rc, vc, kappa)
 
             for tx in itertools.product(iterset, iterset, iterset):
                 dispt = self._image_to_sph(tx)
 
-                nd1 = abs(tx[0]) > 1 or abs(tx[1]) > 1 or abs(tx[2])
+                nd1 = abs(tx[0]) > 1 or abs(tx[1]) > 1 or abs(tx[2]) > 1
 
                 if dispt[0] <= rc and nd1:
+                    #print(tx, dispt)
+
                     iradius = 1./dispt[0]
                     kappa2radius2 = kappa2 * dispt[0] * dispt[0]
 
+                    mval = list(range(-1*lx, 1, 2)) + list(range(2, lx+1, 2))
+                    mxval = [abs(mx) for mx in mval]
 
-                    mval = list(range(-1*lx, 1)) + list(range(1, lx+1))
-                    mxval = list(range(lx, -1, -1)) + list(range(1, lx+1))
                     scipy_p = lpmv(mxval, lx, math.cos(dispt[2]))
 
                     radius_coeff = iradius ** (lx + 1.)
@@ -324,15 +348,17 @@ class PyFMM(object):
 
                         coeff = scipy_p[mxi].real * radius_coeff * \
                                 gammaincc(lx + 0.5, kappa2radius2)
+                        #print(lx, mx, scipy_p[mxi].real * radius_coeff * \
+                        #        gammaincc(lx + 0.5, kappa2radius2))
 
                         terms[self.re_lm(lx, mx)] += coeff * re_exp
                         terms[self.im_lm(lx, mx)] += coeff * im_exp
 
-        print(terms[:ncomp:])
+
 
         return terms
 
-    def _compute_g(self):
+    def _compute_f(self):
         ncomp = (self.L**2) * 2
         terms = np.zeros(ncomp, dtype=self.dtype)
 
@@ -342,18 +368,25 @@ class PyFMM(object):
         lz = (0., 0., extent[2])
         ivolume = 1./np.dot(lx, np.cross(ly, lz))
 
-        gx = np.cross(ly,lz)*ivolume * 2. * math.pi
-        gy = np.cross(lz,lx)*ivolume * 2. * math.pi
-        gz = np.cross(lx,ly)*ivolume * 2. * math.pi
+        gx = np.cross(ly,lz)*ivolume #* 2. * math.pi
+        gy = np.cross(lz,lx)*ivolume #* 2. * math.pi
+        gz = np.cross(lx,ly)*ivolume #* 2. * math.pi
 
         gxl = np.linalg.norm(gx)
         gyl = np.linalg.norm(gy)
         gzl = np.linalg.norm(gz)
 
+        #print(gx, self.domain.extent[0], gyl , gzl)
 
-        for lx in range(2, self.L):
+        for lx in range(2, self.L, 2):
 
             rc, vc, kappa = self._compute_parameters(lx)
+
+            vc *= 4
+            kappa *= 10
+
+            #print(lx, rc, vc, kappa)
+
             kappa2 = kappa * kappa
             mpi2okappa2 = -1.0 * (math.pi ** 2.) / kappa2
 
@@ -361,25 +394,32 @@ class PyFMM(object):
             nmax_y = int(ceil(vc/gyl))
             nmax_z = int(ceil(vc/gzl))
 
+            igamma = rgamma(lx + 0.5)
+
             for hxi in itertools.product(range(-1*nmax_z, nmax_z+1),
                                           range(-1*nmax_y, nmax_y+1),
                                           range(-1*nmax_x, nmax_x+1)):
 
-                hx = hxi[0]*gz + hxi[1]*gy + hxi[0]*gx
-
+                hx = hxi[0]*gz + hxi[1]*gy + hxi[2]*gx
                 dispt = self._cart_to_sph(hx)
 
+
                 if 10.**-10 < dispt[0] <= vc:
+
+
                     exp_coeff = cmath.exp(mpi2okappa2 * dispt[0] * dispt[0]) * \
-                                ivolume
+                                ivolume * igamma
 
 
-                    mval = list(range(-1*lx, 1)) + list(range(1, lx+1))
-                    mxval = list(range(lx, -1, -1)) + list(range(1, lx+1))
+                    mval = list(range(-1*lx, 1, 2)) + list(range(2, lx+1, 2))
+                    mxval = [abs(mx) for mx in mval]
+
                     scipy_p = lpmv(mxval, lx, math.cos(dispt[2]))
 
                     vhnm2 = (dispt[0] ** (lx - 2.)) * ((0 + 1.j) ** lx) * \
                             (math.pi ** (lx - 0.5))
+
+                    #print(hx, dispt[0], "\t", abs(vhnm2*exp_coeff))
 
                     for mxi, mx in enumerate(mval):
                         val = math.sqrt(float(math.factorial(
@@ -391,16 +431,10 @@ class PyFMM(object):
                         sph_nm = re_exp * scipy_p[mxi].real + \
                                  im_exp * scipy_p[mxi].real * 1.j
 
-                        contrib = vhnm2 * sph_nm * exp_coeff * rgamma(lx + 0.5)
-
-
-                        if abs(contrib.real) > 1.:
-                            print(hxi, contrib)
+                        contrib = vhnm2 * sph_nm * exp_coeff
 
                         terms[self.re_lm(lx, mx)] += contrib.real
                         terms[self.im_lm(lx, mx)] += contrib.imag
-
-        print(terms[:ncomp:])
 
         return terms
 
