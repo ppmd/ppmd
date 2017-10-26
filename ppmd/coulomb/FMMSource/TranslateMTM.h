@@ -36,17 +36,3 @@ and
 
 */
 
-extern "C"
-int translate_mtm(
-    const UINT32 * RESTRICT dim_parent,     // slowest to fastest
-    const UINT32 * RESTRICT dim_child,      // slowest to fastest
-    const REAL * RESTRICT moments_child,
-    REAL * RESTRICT moments_parent,
-    const REAL * RESTRICT ylm,
-    const REAL * RESTRICT alm,
-    const REAL * RESTRICT almr,
-    const REAL radius,
-    const INT64 nlevel
-);
-
-

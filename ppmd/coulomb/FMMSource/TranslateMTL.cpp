@@ -59,19 +59,25 @@ static inline void cplx_mul_add(
 //#define IPOW_RE(n) ((1. - ((n)&1)) * (1. - ((n)&2)))
 //#define IPOW_IM(n) (((n)&1)*(1.- ((n)&2)))
 
-#define IPOW_RE(n) (1.0 - ((n)&2))
-#define IPOW_IM(n) (0.0)
+//static double factorial(const INT64 n) {
+//    REAL 
+//}
 
 
 static inline void mtl(
     const INT64             nlevel,
     const REAL              radius,
     const REAL * RESTRICT   odata,
-    const REAL * RESTRICT   ydata,
+    const REAL * RESTRICT   phi_data,
+    const REAL * RESTRICT   theta_data,
+    const REAL * RESTRICT   theta_coeff,
     const REAL * RESTRICT   a_array,
     const REAL * RESTRICT   ar_array,
+    const REAL * RESTRICT   i_array,
     REAL * RESTRICT         ldata
 ){
+    const INT64 ASTRIDE1 = 4*nlevel + 1;
+    const INT64 ASTRIDE2 = 2*nlevel;
 
     const INT64 ncomp = nlevel*nlevel*2;
     const INT64 nlevel4 = nlevel*4;
@@ -85,43 +91,47 @@ static inline void mtl(
 
     for(INT64 nx=1 ; nx<nblk ; nx++){
         iradius_n[nx] = iradius_n[nx-1] * iradius;
+        printf("%f\n", iradius_n[nx]);
     }
+
+    REAL * RESTRICT iradius_p1 = &iradius_n[1];
     
+
     // loop over parent moments
     for(INT32 jx=0     ; jx<nlevel ; jx++ ){
     for(INT32 kx=-1*jx ; kx<=jx    ; kx++){
-        const INT64 akx = abs(kx);
-        const REAL ajk = a_array[jx * nlevel4 + kx];     // A_j^k
+        const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
         REAL contrib_re = 0.0;
         REAL contrib_im = 0.0;
-        
 
         for(INT32 nx=0     ; nx<=jx ; nx++){
             const REAL m1tn = 1.0 - 2.0*((REAL)(nx & 1));   // -1^{n}
+            const INT64 jxpnx = jx + nx;
+            const INT64 p_ind_base = P_IND(jxpnx, 0);
+            const REAL rr_jn1 = iradius_p1[jxpnx];     // 1 / rho^{j + n + 1}
+
             for(INT64 mx=-1*nx ; mx<=nx ; mx++){
-                const INT64 abs_mx_kx = abs(mx - kx);
 
-                const REAL anm = a_array[nx * nlevel4 + mx];    // A_n^m
-                const REAL ra_jn_mk = ar_array[(jx + nx)*nlevel4 + abs_mx_kx];    // 1 / A_{j + n}^{m - k}
-                const REAL rr_jn1 = iradius_n[jx + nx + 1];     // 1 / rho^{j + n + 1}
+                const INT64 mxmkx = mx - kx;
+
+                // construct the spherical harmonic
+                const INT64 y_aind = p_ind_base + mxmkx;
+                const REAL y_coeff = theta_coeff[CUBE_IND(jx+nx,mx-kx)] * theta_data[CUBE_IND(jx+nx,mx-kx)];
+                const REAL y_re = y_coeff * phi_data[EXP_RE_IND(2*nlevel, mxmkx)];
+                const REAL y_im = y_coeff * phi_data[EXP_IM_IND(2*nlevel, mxmkx)];
+                // compute translation coefficient
+                const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + mx];    // A_n^m
+                const REAL ra_jn_mk = ar_array[(jxpnx)*ASTRIDE1 + ASTRIDE2 + mxmkx];    // 1 / A_{j + n}^{m - k}
                 
-                //const INT64 amx = ((mx < 0) ? -1 : 1) * mx;
-                const INT64 amx = abs(mx);
-
-                const INT64 ip = abs_mx_kx - akx - amx;
-                const REAL coeff_re = IPOW_RE(ip) * m1tn * anm * ajk * ra_jn_mk * rr_jn1;
-                //const REAL coeff_re = ((REAL)(ip & 2))*m1tn * anm * ajk * ra_jn_mk * rr_jn1;
-                //const REAL coeff_im1 = (ip < 0) ? -1.0: 1.0;
-                //const REAL coeff_im = IPOW_IM(ip) * coeff_im1;
-                const REAL coeff_im = 0.0;
+                const REAL coeff_re = i_array[(nlevel+kx)*(nlevel*2 + 1) + nlevel + mx] *\
+                    m1tn * anm * ajk * ra_jn_mk * rr_jn1;
                 
-                REAL ocoeff_re;
-                REAL ocoeff_im;
-                cplx_mul(       odata[CUBE_IND(nx, mx)], odata[CUBE_IND(nx, mx) + im_offset], 
-                                coeff_re, coeff_im, &ocoeff_re, &ocoeff_im);
+                const INT64 oind = CUBE_IND(nx, mx);
+                const REAL ocoeff_re = odata[oind]              * coeff_re;
+                const REAL ocoeff_im = odata[oind + im_offset]  * coeff_re;
 
-                cplx_mul_add(   ydata[CUBE_IND(jx+nx, mx-kx)], ydata[CUBE_IND(jx+nx, mx-kx) + im_offset],
-                                ocoeff_re, ocoeff_im, &contrib_re, &contrib_im);
+                printf("%.16f\n", rr_jn1);
+                cplx_mul_add(y_re, y_im, ocoeff_re, ocoeff_im, &contrib_re, &contrib_im);
                 
             }
         }
@@ -138,20 +148,43 @@ int mtl_test_wrapper(
     const INT64             nlevel,
     const REAL              radius,
     const REAL * RESTRICT   odata,
-    const REAL * RESTRICT   ydata,
+    const REAL * RESTRICT   phi_data,
+    const REAL * RESTRICT   theta_data,
+    const REAL * RESTRICT   theta_coeff,
     const REAL * RESTRICT   a_array,
     const REAL * RESTRICT   ar_array,
+    const REAL * RESTRICT   i_array,
     REAL * RESTRICT         ldata
 ){
     mtl(      
     nlevel,
     radius,
     odata,
-    ydata,
+    phi_data,
+    theta_data,
+    theta_coeff,
     a_array,
     ar_array,
+    i_array,
     ldata
     );
     return 0;
 }
+
+
+
+extern "C"
+int test_i_power(
+    const REAL * RESTRICT i_array,
+    const INT64 nlevel,
+    const INT64 kx,
+    const INT64 mx,
+    REAL * re_part
+){
+    *re_part = i_array[(nlevel+kx)*(nlevel*2 + 1) + nlevel + mx];
+    return 0;
+    
+}
+
+
 

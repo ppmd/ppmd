@@ -20,9 +20,12 @@ using namespace std;
 
 #define CUBE_IND(L, M) ((L) * ( (L) + 1 ) + (M) )
 
-#define P_SPACE_IND(LMAX, L, M) (((LMAX)+1)*(L) + (M))
+// defined for non-negative M
+#define P_IND(L, M) (((L)*((L) + 1)/2) + (M))
 
 #define MIN(x, y) ((x < y) ? x : y)
+
+#define I_IND(nlevel, kx, mx) ((2*(nlevel)+1)*(nlevel+(kx)) + nlevel + (mx) )
 
 /*
 Layout of memory used by above macros.

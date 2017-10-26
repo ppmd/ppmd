@@ -337,15 +337,15 @@ def test_fmm_init_2():
                 'imag ylm error l {} m {}'.format(lx, mx)
 
     # check the A_n^m coefficients.
-    for nx in range(fmm.L):
-        for mx in range(-1*fmm.L, fmm.L+1):
+    for nx in range(fmm.L*2):
+        for mx in range(-2*fmm.L, 2*fmm.L+1):
             if abs(mx) > nx:
                 cval = 0.0
             else:
                 cval = ((-1.0)**nx) / math.sqrt(
                     math.factorial(nx - mx)*math.factorial(nx + mx))
 
-            assert abs(cval - fmm._a[nx, abs(mx)]) < 10.**-15, \
+            assert abs(cval - fmm._a[nx, fmm.L*2 + mx]) < 10.**-15, \
                 "failed n, m {}, {}".format(nx, mx)
 
 
@@ -594,7 +594,6 @@ def test_fmm_init_3():
         assert red_re < eps, "error did not meet tol"
 
 
-
 def test_fmm_init_4():
 
     E = 5.
@@ -639,6 +638,141 @@ def test_fmm_init_4():
         assert abs(dispt_sph[0] - dispt_fmm[0]) < 10.**-16, "bad radius"
         assert abs(dispt_sph[2] - dispt_fmm[1]) < 10.**-16, "bad phi"
         assert abs(dispt_sph[1] - dispt_fmm[2]) < 10.**-16, "bad theta"
+
+
+    fmm._compute_cube_contrib(A.P, A.Q)
+
+    pi = math.pi
+
+    point = np.array((-15., -15., -15.))
+
+    # compute potential energy to point across all charges directly
+    src = """
+    const double d0 = P.i[0] - {};
+    const double d1 = P.i[1] - {};
+    const double d2 = P.i[2] - {};
+    phi[0] += Q.i[0] / sqrt(d0*d0 + d1*d1 + d2*d2);
+    """.format(point[0], point[1], point[2])
+    phi_kernel = kernel.Kernel('point_phi', src,
+                               headers=(kernel.Header('math.h'),))
+    phi_ga = data.GlobalArray(ncomp=1, dtype=ctypes.c_double)
+    phi_loop = loop.ParticleLoopOMP(kernel=phi_kernel,
+                                    dat_dict={'P': A.P(access.READ),
+                                              'Q': A.Q(access.READ),
+                                              'phi': phi_ga(access.INC_ZERO)})
+    phi_loop.execute()
+
+
+    for level in range(fmm.R - 1, 0, -1):
+        #if MPIRANK == 0:
+        #    print(level)
+        phi_sph_re = 0.0
+        phi_sph_im = 0.0
+
+        lsize = fmm.tree[level].parent_local_size
+
+        #print(MPIRANK, lsize, fmm.tree[level-1].parent_local_size)
+
+        if lsize is not None:
+            fmm._translate_m_to_m(level)
+            fmm._fine_to_course(level)
+
+            parent_shape = fmm.tree_plain[level][:,:,:,0].shape
+
+            sep = A.domain.extent[0] / float(2.**(level - 1.))
+            start_point = -0.5*E + 0.5*sep
+
+            offset = fmm.tree[level].local_grid_offset
+
+            if lsize is not None:
+                for momx in itertools.product(range(parent_shape[0]//2),
+                                              range(parent_shape[1]//2),
+                                              range(parent_shape[2]//2)):
+
+                    center = np.array(
+                        (start_point + (offset[2]//2 + momx[2])*sep,
+                        start_point + (offset[1]//2 + momx[1])*sep,
+                        start_point + (offset[0]//2 + momx[0])*sep))
+                    disp = point - center
+                    moments = fmm.tree_parent[level][
+                              momx[0], momx[1], momx[2], :]
+                    disp_sph = spherical(np.reshape(disp, (1, 3)))
+
+                    phi_sph_re1, phi_sph_im1 = compute_phi(fmm.L, moments,
+                                                           disp_sph)
+                    phi_sph_re += phi_sph_re1
+                    phi_sph_im += phi_sph_im1
+
+        if level < fmm.R-1:
+            last_re = red_re
+        else:
+            last_re = 0.0
+
+        red_re = mpi.all_reduce(np.array((phi_sph_re)))
+        red_im = mpi.all_reduce(np.array((phi_sph_im)))
+
+        red_re = abs(red_re - phi_ga[0])
+        red_im = abs(red_im)
+
+        # print(moments[:llimit**2:])
+        if MPIRANK == 0 and DEBUG:
+            print(60*'~')
+            print("ERR RE:", red_re)
+            print("ERR IM:", red_im)
+            print(60*'~')
+
+        assert red_im < 10.**-15, "bad imaginary part"
+        assert red_re > last_re, "Errors do not get better as level -> 0"
+        assert red_re < eps, "error did not meet tol"
+
+    # after traversing up tree
+    disp = point #  center is (0,0,0)
+    disp_sph = spherical(np.reshape(disp, (1, 3)))
+
+    # spherical harmonics needed for point
+
+    exp_array = np.zeros(fmm.L*8 + 2, dtype=ctypes.c_double)
+    p_array = np.zeros((fmm.L*2)**2, dtype=ctypes.c_double)
+
+    def re_lm(l,m): return (l**2) + l + m
+
+    for lx in range(fmm.L*2):
+        mrange = list(range(lx, -1, -1)) + list(range(1, lx+1))
+        mrange2 = list(range(-1*lx, 1)) + list(range(1, lx+1))
+        scipy_p = lpmv(mrange, lx, np.cos(disp_sph[0,1]))
+
+        for mxi, mx in enumerate(mrange2):
+            p_array[re_lm(lx, mx)] = scipy_p[mxi].real
+
+    for mxi, mx in enumerate(list(
+            range(-2*fmm.L, 1)) + list(range(1, 2*fmm.L+1))
+        ):
+
+        exp_array[mxi] = np.cos(mx*disp_sph[0,2])
+        exp_array[mxi + fmm.L*2 + 1] = np.sin(mx*disp_sph[0,2])
+
+    l_array = np.zeros((fmm.L**2)*2, dtype=ctypes.c_double)
+
+    print(fmm._ycoeff.ravel()[:18:])
+
+    moments = fmm.tree_parent[1][0, 0, 0, :]
+    fmm._translate_mtl_lib['mtl_test_wrapper'](
+        ctypes.c_int64(fmm.L),
+        ctypes.c_double(dispt[0]),
+        test_numpy_ptr(moments),
+        test_numpy_ptr(exp_array),
+        test_numpy_ptr(p_array),
+        test_numpy_ptr(fmm._ycoeff),
+        test_numpy_ptr(fmm._a),
+        test_numpy_ptr(fmm._ar),
+        test_numpy_ptr(fmm._ipower_mtl),
+        test_numpy_ptr(l_array)
+    )
+    print(moments[:])
+    print("---")
+    print(l_array[:])
+
+
 
 
 

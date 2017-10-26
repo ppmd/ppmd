@@ -67,6 +67,7 @@ int translate_mtm(
     const REAL * RESTRICT ylm,
     const REAL * RESTRICT alm,
     const REAL * RESTRICT almr,
+    const REAL * RESTRICT i_array,
     const REAL radius,
     const INT64 nlevel
 ){
@@ -88,7 +89,7 @@ int translate_mtm(
     //#define IPOW_IM(n) (((n)&1)*(1.- ((n)&2)))
 
     #define IPOW_RE(n) (1.0 - ((n)&2))
-    #define IPOW_IM(n) (0.0)
+    //#define IPOW_IM(n) (0.0)
 
     REAL radius_n[nlevel];
     radius_n[0] = 1.0;
@@ -97,7 +98,7 @@ int translate_mtm(
     } 
 
     #pragma omp parallel for default(none) schedule(dynamic) shared(dim_parent,\
-    dim_child,moments_child,moments_parent,ylm,alm,almr, radius_n, ipow_re, ipow_im)
+    dim_child,moments_child,moments_parent,ylm,alm,almr, radius_n, ipow_re, ipow_im, i_array)
     for( INT64 pcx=0 ; pcx<nparent_cells ; pcx++ ){
         INT64 cx, cy, cz;
         lin_to_xyz(dim_parent, pcx, &cx, &cy, &cz);
@@ -130,12 +131,14 @@ int translate_mtm(
             &moments_child[cc6],
             &moments_child[cc7]
         };
-
+        
+        const INT64 ASTRIDE1 = 4*nlevel + 1;
+        const INT64 ASTRIDE2 = 2*nlevel;
         
         // loop over parent moments
         for(INT64 jx=0     ; jx<nlevel ; jx++ ){
         for(INT64 kx=-1*jx ; kx<=jx    ; kx++){
-                const REAL ajkr = almr[jx*4*nlevel + abs(kx)];
+                const REAL ajkr = almr[jx*ASTRIDE1 + ASTRIDE2 + kx];
                 REAL jk_re = 0.0;
                 REAL jk_im = 0.0;
 
@@ -143,11 +146,12 @@ int translate_mtm(
                 for(INT64 mx=-1*nx ; mx<=nx ; mx++){
                     
                     const bool km_jn = abs(kx - mx) <= (jx-nx);
-                    const REAL mask = (km_jn) ? 1.0 : 0.0;
+                    //const REAL mask = (km_jn) ? 1.0 : 0.0;
+                    const REAL mask = 1.0;
 
-                    const REAL a_jnkm = alm[(jx - nx)*4*nlevel + abs(kx - mx)] * mask;
+                    const REAL a_jnkm = alm[(jx - nx)*ASTRIDE1 + ASTRIDE2 + kx - mx] * mask;
 
-                    const REAL coeff = ajkr * radius_n[nx] * alm[nx*4*nlevel + abs(mx)] * a_jnkm * mask;
+                    const REAL coeff = ajkr * radius_n[nx] * alm[nx*ASTRIDE1 + ASTRIDE2 + mx] * a_jnkm * mask;
 
                     const INT64 child_ind = CUBE_IND(jx - nx, kx - mx);
                     const INT64 child_ind_im = child_ind + im_offset;
@@ -188,13 +192,9 @@ int translate_mtm(
                     child_im*=coeff;
 
                     REAL re_mom, im_mom;
-                    const INT64 ip = abs(kx) - abs(mx) - abs(kx - mx);
-                    //const REAL icoeff = (ip < 0) ? -1.0 : 1.0;
-                    const REAL jre = IPOW_RE(ip);
-                    const REAL jim = IPOW_IM(ip);//*icoeff;
 
-                    //const REAL jre = J(mx, kx-mx);
-                    //const REAL jim = jre;
+                    const REAL jre = i_array[(nlevel+kx)*(nlevel*2 + 1) + nlevel + mx];
+                    const REAL jim = 0.0;
 
                     cplx_mul(child_re, child_im, jre, jim, &re_mom, &im_mom);
 

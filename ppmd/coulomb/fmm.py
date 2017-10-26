@@ -25,6 +25,9 @@ INT32 = ctypes.c_int32
 def _numpy_ptr(arr):
     return arr.ctypes.data_as(ctypes.c_void_p)
 
+def test_numpy_ptr(arr):
+    return _numpy_ptr(arr)
+
 def _check_dtype(arr, dtype):
     if arr.dtype != dtype:
         raise RuntimeError('Bad data type. Expected: {} Found: {}.'.format(
@@ -69,15 +72,46 @@ class PyFMM(object):
             'fmm_contrib')['particle_contribution']
 
         # pre compute A_n^m and 1/(A_n^m)
-        self._a = np.zeros(shape=(self.L*2, self.L*4), dtype=dtype)
-        self._ar = np.zeros(shape=(self.L*2, self.L*4), dtype=dtype)
+        self._a = np.zeros(shape=(self.L*2, (self.L*4)+1), dtype=dtype)
+        self._ar = np.zeros(shape=(self.L*2,(self.L*4)+1), dtype=dtype)
+
         for lx in range(self.L*2):
-            for mx in range(lx+1):
+            for mx in range(-1*lx, lx+1):
                 a_l_m = ((-1.) ** lx)/math.sqrt(math.factorial(lx - mx) *\
                                                 math.factorial(lx+mx))
-                self._a[lx, mx] = a_l_m
-                self._ar[lx, mx] = 1.0/a_l_m
+                self._a[lx, self.L*2 + mx] = a_l_m
+                self._ar[lx, self.L*2 + mx] = 1.0/a_l_m
 
+        # pre compute the powers of i
+        self._ipower_mtm = np.zeros(shape=(2*self.L+1, 2*self.L+1),
+                                    dtype=dtype)
+        self._ipower_mtl = np.zeros(shape=(2*self.L+1, 2*self.L+1),
+                                    dtype=dtype)
+        self._ipower_ltl = np.zeros(shape=(2*self.L+1, 2*self.L+1),
+                                    dtype=dtype)
+
+        for kxi, kx in enumerate(range(-1*self.L, self.L+1)):
+            for mxi, mx in enumerate(range(-1*self.L, self.L+1)):
+
+                self._ipower_mtm[kxi, mxi] = \
+                    ((1.j) ** (abs(kx) - abs(mx) - abs(kx - mx))).real
+
+                self._ipower_mtl[kxi, mxi] = \
+                    ((1.j) ** (abs(kx - mx) - abs(kx) - abs(mx))).real
+
+                self._ipower_ltl[kxi, mxi] = \
+                    ((1.j) ** (abs(mx) - abs(mx - kx) - abs(kx))).real
+
+
+        # pre compute the coefficients needed to compute spherical harmonics.
+        self._ycoeff = np.zeros(shape=(self.L*2)**2,
+                                dtype=dtype)
+        for nx in range(self.L*2):
+            for mx in range(-1*nx, nx):
+                self._ycoeff[self.re_lm(nx, mx)] = math.sqrt(
+                    float(math.factorial(nx - abs(mx))) /
+                    float(math.factorial(nx + abs(mx)))
+                )
 
         # As we have a "uniform" octal tree the values Y_l^m(\alpha, \beta)
         # can be pre-computed for the 8 children of a parent cell. Indexed
@@ -95,7 +129,6 @@ class PyFMM(object):
             (0.75 * pi, 1./math.sqrt(3.)),
             (0.25 * pi, 1./math.sqrt(3.))
         )
-
 
         self._yab = np.zeros(shape=(8, ncomp), dtype=dtype)
         for cx, child in enumerate(alpha_beta):
@@ -138,8 +171,6 @@ class PyFMM(object):
             'fmm_translate_mtl')
 
 
-
-
         # --- periodic boundaries ---
         # "Precise and Efficient Ewald Summation for Periodic Fast Multipole
         # Method", Takashi Amisaki, Journal of Computational Chemistry, Vol21,
@@ -153,11 +184,6 @@ class PyFMM(object):
         #    print(20*('-{}-'.format(lx)))
         #    for mx in range(-1*lx, lx+1):
         #        print(mx, ":\t", self._boundary_terms[self.re_lm(lx, mx)])
-
-
-
-
-
 
 
     def re_lm(self, l,m): return (l**2) + l + m
@@ -229,6 +255,7 @@ class PyFMM(object):
         _check_dtype(self._yab, REAL)
         _check_dtype(self._a, REAL)
         _check_dtype(self._ar, REAL)
+        _check_dtype(self._ipower_mtm, REAL)
 
         radius = (self.domain.extent[0] /
                  self.tree[child_level].ncubes_side_global) * 0.5
@@ -243,6 +270,7 @@ class PyFMM(object):
             _numpy_ptr(self._yab),
             _numpy_ptr(self._a),
             _numpy_ptr(self._ar),
+            _numpy_ptr(self._ipower_mtm),
             ctypes.c_double(radius),
             ctypes.c_int64(self.L)
         )
