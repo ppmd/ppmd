@@ -25,7 +25,7 @@ INT32 = ctypes.c_int32
 def _numpy_ptr(arr):
     return arr.ctypes.data_as(ctypes.c_void_p)
 
-def test_numpy_ptr(arr):
+def extern_numpy_ptr(arr):
     return _numpy_ptr(arr)
 
 def _check_dtype(arr, dtype):
@@ -106,8 +106,9 @@ class PyFMM(object):
         # pre compute the coefficients needed to compute spherical harmonics.
         self._ycoeff = np.zeros(shape=(self.L*2)**2,
                                 dtype=dtype)
+
         for nx in range(self.L*2):
-            for mx in range(-1*nx, nx):
+            for mx in range(-1*nx, nx+1):
                 self._ycoeff[self.re_lm(nx, mx)] = math.sqrt(
                     float(math.factorial(nx - abs(mx))) /
                     float(math.factorial(nx + abs(mx)))

@@ -229,6 +229,49 @@ def compute_phi(llimit, moments, disp_sph):
 
     return phi_sph_re, phi_sph_im
 
+
+
+def compute_phi_local(llimit, moments, disp_sph):
+
+    phi_sph_re = 0.
+    phi_sph_im = 0.
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + llimit**2
+
+    for lx in range(llimit):
+        mrange = list(range(lx, -1, -1)) + list(range(1, lx+1))
+        mrange2 = list(range(-1*lx, 1)) + list(range(1, lx+1))
+        scipy_p = lpmv(mrange, lx, np.cos(disp_sph[0,1]))
+
+        #print('lx', lx, '-------------')
+
+        for mxi, mx in enumerate(mrange2):
+            #print('mx', mx)
+
+            re_exp = np.cos(mx*disp_sph[0,2])
+            im_exp = np.sin(mx*disp_sph[0,2])
+
+            val = math.sqrt(math.factorial(
+                lx - abs(mx))/math.factorial(lx + abs(mx)))
+            val *= scipy_p[mxi]
+
+            irad = disp_sph[0,0] ** (lx)
+
+            scipy_real = re_exp * val * irad
+            scipy_imag = im_exp * val * irad
+
+            ppmd_mom_re = moments[re_lm(lx, mx)]
+            ppmd_mom_im = moments[im_lm(lx, mx)]
+
+            phi_sph_re += scipy_real*ppmd_mom_re - scipy_imag*ppmd_mom_im
+            phi_sph_im += scipy_real*ppmd_mom_im + ppmd_mom_re*scipy_imag
+
+    return phi_sph_re, phi_sph_im
+
+
+
+
+
 def test_fmm_init_2():
 
     E = 10.
@@ -596,7 +639,7 @@ def test_fmm_init_3():
 
 def test_fmm_init_4():
 
-    E = 5.
+    E = 10.
 
     A = state.State()
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
@@ -644,7 +687,7 @@ def test_fmm_init_4():
 
     pi = math.pi
 
-    point = np.array((-15., -15., -15.))
+    point = np.array((15., 0., 0.))
 
     # compute potential energy to point across all charges directly
     src = """
@@ -753,27 +796,39 @@ def test_fmm_init_4():
 
     l_array = np.zeros((fmm.L**2)*2, dtype=ctypes.c_double)
 
-    print(fmm._ycoeff.ravel()[:18:])
-
     moments = fmm.tree_parent[1][0, 0, 0, :]
+
+    print(moments[:])
+
     fmm._translate_mtl_lib['mtl_test_wrapper'](
         ctypes.c_int64(fmm.L),
-        ctypes.c_double(dispt[0]),
-        test_numpy_ptr(moments),
-        test_numpy_ptr(exp_array),
-        test_numpy_ptr(p_array),
-        test_numpy_ptr(fmm._ycoeff),
-        test_numpy_ptr(fmm._a),
-        test_numpy_ptr(fmm._ar),
-        test_numpy_ptr(fmm._ipower_mtl),
-        test_numpy_ptr(l_array)
+        ctypes.c_double(disp_sph[0, 0]),
+        extern_numpy_ptr(moments),
+        extern_numpy_ptr(exp_array),
+        extern_numpy_ptr(p_array),
+        extern_numpy_ptr(fmm._ycoeff),
+        extern_numpy_ptr(fmm._a),
+        extern_numpy_ptr(fmm._ar),
+        extern_numpy_ptr(fmm._ipower_mtl),
+        extern_numpy_ptr(l_array)
     )
-    print(moments[:])
+
     print("---")
     print(l_array[:])
 
+    eval_point = (0., 0., 0.)
+    eval_sph = spherical(np.reshape(eval_point, (1, 3)))
 
+    local_phi_re, local_phi_im = compute_phi_local(fmm.L, l_array, eval_sph)
 
+    err_re = abs(local_phi_re - phi_ga[0])
+    err_im = abs(local_phi_im)
+
+    if MPIRANK == 0 and DEBUG:
+        print('LOCAL ' + 60*'~')
+        print("ERR RE:", err_re, "\tcomputed:", local_phi_re, "\tdirect:", phi_ga[0])
+        print("ERR IM:", err_im)
+        print(60*'~')
 
 
 

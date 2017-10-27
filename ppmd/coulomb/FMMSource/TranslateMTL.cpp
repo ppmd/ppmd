@@ -91,7 +91,7 @@ static inline void mtl(
 
     for(INT64 nx=1 ; nx<nblk ; nx++){
         iradius_n[nx] = iradius_n[nx-1] * iradius;
-        printf("%f\n", iradius_n[nx]);
+        //printf("%f\n", iradius_n[nx]);
     }
 
     REAL * RESTRICT iradius_p1 = &iradius_n[1];
@@ -104,7 +104,7 @@ static inline void mtl(
         REAL contrib_re = 0.0;
         REAL contrib_im = 0.0;
 
-        for(INT32 nx=0     ; nx<=jx ; nx++){
+        for(INT32 nx=0     ; nx<nlevel ; nx++){
             const REAL m1tn = 1.0 - 2.0*((REAL)(nx & 1));   // -1^{n}
             const INT64 jxpnx = jx + nx;
             const INT64 p_ind_base = P_IND(jxpnx, 0);
@@ -130,14 +130,15 @@ static inline void mtl(
                 const REAL ocoeff_re = odata[oind]              * coeff_re;
                 const REAL ocoeff_im = odata[oind + im_offset]  * coeff_re;
 
-                printf("%.16f\n", rr_jn1);
                 cplx_mul_add(y_re, y_im, ocoeff_re, ocoeff_im, &contrib_re, &contrib_im);
-                
+                if (jx == 0 and kx == 0){
+                printf("%d %d %d\t%d\t%f\t%f\t%f\n",jx, kx, nx,mx, y_re, ocoeff_re, contrib_re);
+                }
             }
         }
         
-        ldata[CUBE_IND(jx, jx)] += contrib_re;
-        ldata[CUBE_IND(jx, jx) + im_offset] += contrib_im;
+        ldata[CUBE_IND(jx, kx)] += contrib_re;
+        ldata[CUBE_IND(jx, kx) + im_offset] += contrib_im;
 
     }}
 }
