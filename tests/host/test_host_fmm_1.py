@@ -22,7 +22,7 @@ import time
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = MPI.COMM_WORLD.Barrier()
-DEBUG = True
+DEBUG = False
 
 def spherical(xyz):
     if type(xyz) is tuple:
@@ -826,38 +826,39 @@ def test_fmm_init_4(offset):
 
     l_array = np.zeros((fmm.L**2)*2, dtype=ctypes.c_double)
 
-    moments = fmm.tree_parent[1][0, 0, 0, :]
+    lsize = fmm.tree[1].parent_local_size
+    if lsize is not None:
+        moments = fmm.tree_parent[1][0, 0, 0, :]
 
+        fmm._translate_mtl_lib['mtl_test_wrapper'](
+            ctypes.c_int64(fmm.L),
+            ctypes.c_double(disp_sph[0, 0]),
+            extern_numpy_ptr(moments),
+            extern_numpy_ptr(exp_array),
+            extern_numpy_ptr(p_array),
+            extern_numpy_ptr(fmm._ycoeff),
+            extern_numpy_ptr(fmm._a),
+            extern_numpy_ptr(fmm._ar),
+            extern_numpy_ptr(fmm._ipower_mtl),
+            extern_numpy_ptr(l_array)
+        )
 
-    fmm._translate_mtl_lib['mtl_test_wrapper'](
-        ctypes.c_int64(fmm.L),
-        ctypes.c_double(disp_sph[0, 0]),
-        extern_numpy_ptr(moments),
-        extern_numpy_ptr(exp_array),
-        extern_numpy_ptr(p_array),
-        extern_numpy_ptr(fmm._ycoeff),
-        extern_numpy_ptr(fmm._a),
-        extern_numpy_ptr(fmm._ar),
-        extern_numpy_ptr(fmm._ipower_mtl),
-        extern_numpy_ptr(l_array)
-    )
+        eval_point = (0, 0., 0.)
+        eval_sph = spherical(np.reshape(eval_point, (1, 3)))
 
-    print("---")
+        local_phi_re, local_phi_im = compute_phi_local(fmm.L, l_array, eval_sph)
 
-    eval_point = (0, 0., 0.)
-    eval_sph = spherical(np.reshape(eval_point, (1, 3)))
+        err_re = abs(local_phi_re - phi_ga[0])
+        err_im = abs(local_phi_im)
 
-    local_phi_re, local_phi_im = compute_phi_local(fmm.L, l_array, eval_sph)
+        if MPIRANK == 0 and DEBUG:
+            print('LOCAL ' + 60*'~')
+            print("ERR RE:", err_re, "\tcomputed:", local_phi_re, "\tdirect:", phi_ga[0])
+            print("ERR IM:", err_im)
+            print(60*'~')
 
-    err_re = abs(local_phi_re - phi_ga[0])
-    err_im = abs(local_phi_im)
-
-    if MPIRANK == 0 and DEBUG:
-        print('LOCAL ' + 60*'~')
-        print("ERR RE:", err_re, "\tcomputed:", local_phi_re, "\tdirect:", phi_ga[0])
-        print("ERR IM:", err_im)
-        print(60*'~')
-
+        assert err_re < eps, "bad real part"
+        assert err_im < 10.**-15, "bad imag part"
 
 
 
