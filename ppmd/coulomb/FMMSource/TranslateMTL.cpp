@@ -95,7 +95,7 @@ static inline void mtl(
     }
 
     REAL * RESTRICT iradius_p1 = &iradius_n[1];
-    
+
 
     // loop over parent moments
     for(INT32 jx=0     ; jx<nlevel ; jx++ ){
@@ -119,6 +119,8 @@ static inline void mtl(
                 const REAL y_coeff = theta_coeff[CUBE_IND(jx+nx,mx-kx)] * theta_data[CUBE_IND(jx+nx,mx-kx)];
                 const REAL y_re = y_coeff * phi_data[EXP_RE_IND(2*nlevel, mxmkx)];
                 const REAL y_im = y_coeff * phi_data[EXP_IM_IND(2*nlevel, mxmkx)];
+
+
                 // compute translation coefficient
                 const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + mx];    // A_n^m
                 const REAL ra_jn_mk = ar_array[(jxpnx)*ASTRIDE1 + ASTRIDE2 + mxmkx];    // 1 / A_{j + n}^{m - k}
@@ -131,9 +133,7 @@ static inline void mtl(
                 const REAL ocoeff_im = odata[oind + im_offset]  * coeff_re;
 
                 cplx_mul_add(y_re, y_im, ocoeff_re, ocoeff_im, &contrib_re, &contrib_im);
-                if (jx == 0 and kx == 0){
-                printf("%d %d %d\t%d\t%f\t%f\t%f\n",jx, kx, nx,mx, y_re, ocoeff_re, contrib_re);
-                }
+
             }
         }
         

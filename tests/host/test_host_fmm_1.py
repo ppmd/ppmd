@@ -246,10 +246,11 @@ def compute_phi_local(llimit, moments, disp_sph):
         #print('lx', lx, '-------------')
 
         for mxi, mx in enumerate(mrange2):
-            #print('mx', mx)
 
             re_exp = np.cos(mx*disp_sph[0,2])
             im_exp = np.sin(mx*disp_sph[0,2])
+
+            #print('mx', mx, im_exp)
 
             val = math.sqrt(math.factorial(
                 lx - abs(mx))/math.factorial(lx + abs(mx)))
@@ -637,7 +638,25 @@ def test_fmm_init_3():
         assert red_re < eps, "error did not meet tol"
 
 
-def test_fmm_init_4():
+
+
+@pytest.fixture(
+    scope="module",
+    params=(
+            (15.,0., 0.),
+            (-15.,0., 0.),
+            (15.,15., 0.),
+            (15.,-15., 0.),
+            (15.,-15., 15.)
+    )
+)
+def offset(request):
+    return request.param
+
+
+
+
+def test_fmm_init_4(offset):
 
     E = 10.
 
@@ -650,6 +669,7 @@ def test_fmm_init_4():
     fmm = PyFMM(domain=A.domain, N=1000, eps=eps)
     ncubeside = 2**(fmm.R-1)
     N = ncubeside ** 3
+    #N = 2
     A.npart = N
 
 
@@ -665,7 +685,17 @@ def test_fmm_init_4():
 
     bias = np.sum(A.Q[:])/N
 
-    A.Q[:] -= bias
+    # A.Q[:] -= bias
+
+    #A.P[0,:] = 0.0
+    #A.Q[0] = 1.0
+    #A.Q[1] = -1.0
+
+    #A.P[0, :] = (0.0, 4.999999999999, 0.)
+    #A.P[1, :] = (0.0, -4.999999999999, 0.)
+
+    #A.P[0, :] = (4.999999999999, 0., 0.)
+    #A.P[1, :] = (-4.999999999999, 0., 0.)
 
     A.scatter_data_from(0)
 
@@ -687,7 +717,7 @@ def test_fmm_init_4():
 
     pi = math.pi
 
-    point = np.array((15., 0., 0.))
+    point = np.array(offset)
 
     # compute potential energy to point across all charges directly
     src = """
@@ -765,11 +795,11 @@ def test_fmm_init_4():
             print(60*'~')
 
         assert red_im < 10.**-15, "bad imaginary part"
-        assert red_re > last_re, "Errors do not get better as level -> 0"
+        assert red_re >= last_re, "Errors do not get better as level -> 0"
         assert red_re < eps, "error did not meet tol"
 
     # after traversing up tree
-    disp = point #  center is (0,0,0)
+    disp = -1. * point #  center is (0,0,0)
     disp_sph = spherical(np.reshape(disp, (1, 3)))
 
     # spherical harmonics needed for point
@@ -792,13 +822,12 @@ def test_fmm_init_4():
         ):
 
         exp_array[mxi] = np.cos(mx*disp_sph[0,2])
-        exp_array[mxi + fmm.L*2 + 1] = np.sin(mx*disp_sph[0,2])
+        exp_array[mxi + fmm.L*4 + 1] = np.sin(mx*disp_sph[0,2])
 
     l_array = np.zeros((fmm.L**2)*2, dtype=ctypes.c_double)
 
     moments = fmm.tree_parent[1][0, 0, 0, :]
 
-    print(moments[:])
 
     fmm._translate_mtl_lib['mtl_test_wrapper'](
         ctypes.c_int64(fmm.L),
@@ -814,9 +843,8 @@ def test_fmm_init_4():
     )
 
     print("---")
-    print(l_array[:])
 
-    eval_point = (0., 0., 0.)
+    eval_point = (0, 0., 0.)
     eval_sph = spherical(np.reshape(eval_point, (1, 3)))
 
     local_phi_re, local_phi_im = compute_phi_local(fmm.L, l_array, eval_sph)
