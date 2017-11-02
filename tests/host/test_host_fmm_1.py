@@ -712,10 +712,7 @@ def test_fmm_init_4(offset):
         assert abs(dispt_sph[2] - dispt_fmm[1]) < 10.**-16, "bad phi"
         assert abs(dispt_sph[1] - dispt_fmm[2]) < 10.**-16, "bad theta"
 
-
     fmm._compute_cube_contrib(A.P, A.Q)
-
-    pi = math.pi
 
     point = np.array(offset)
 
@@ -843,7 +840,7 @@ def test_fmm_init_4(offset):
             extern_numpy_ptr(l_array)
         )
 
-        eval_point = (0, 0., 0.)
+        eval_point = (0, 0., 0.1)
         eval_sph = spherical(np.reshape(eval_point, (1, 3)))
 
         local_phi_re, local_phi_im = compute_phi_local(fmm.L, l_array, eval_sph)

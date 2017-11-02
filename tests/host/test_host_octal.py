@@ -509,6 +509,56 @@ def test_octal_data_tree_5():
             assert datahalo[0][2,2,2,ix] == 8**(nlevels-1) * (ix+1)
 
 
+def test_octal_data_tree_6():
+    dims = md.mpi.MPI.Compute_dims(MPISIZE, 3)
+
+    nlevels = 4
+    ncomp = 2
+
+    cc = md.mpi.create_cartcomm(
+        md.mpi.MPI.COMM_WORLD, dims[::-1], (1,1,1), True)
+
+    tree = OctalTree(num_levels=nlevels, cart_comm=cc)
+
+    dataparent = OctalDataTree(tree=tree, ncomp=ncomp, mode='parent',
+                               dtype=ctypes.c_int)
+    dataplain = OctalDataTree(tree=tree, ncomp=ncomp, mode='plain',
+                              dtype=ctypes.c_int)
+
+    if tree[0].local_grid_cube_size is not None:
+        dataplain[0][:, :, :, :] = np.arange(1, ncomp+1)
+
+    for ix in range(0, nlevels-1):
+
+        send_plain_to_parent(ix, dataplain, dataparent)
+        lsize = tree[ix+1].parent_local_size
+
+
+        if lsize is not None:
+            for kz in range(lsize[0]):
+                for ky in range(lsize[1]):
+                    for kx in range(lsize[2]):
+                        X = 2*kx
+                        Y = 2*ky
+                        Z = 2*kz
+
+                        tsum = dataparent[ix+1][kz, ky, kx, :]
+                        dataplain[ix+1][Z,   Y,   X, :]   = tsum
+                        dataplain[ix+1][Z,   Y,   X+1, :] = tsum
+                        dataplain[ix+1][Z,   Y+1, X, :]   = tsum
+                        dataplain[ix+1][Z,   Y+1, X+1, :] = tsum
+                        dataplain[ix+1][Z+1, Y,   X, :]   = tsum
+                        dataplain[ix+1][Z+1, Y,   X+1, :] = tsum
+                        dataplain[ix+1][Z+1, Y+1, X, :]   = tsum
+                        dataplain[ix+1][Z+1, Y+1, X+1, :] = tsum
+
+        if lsize is not None:
+            for nx in range(ncomp):
+                for ex in dataplain[ix+1][:,:,:,nx].ravel():
+                    assert ex == nx +1
+
+
+
 
 def test_entry_data_map_1():
 
@@ -622,6 +672,7 @@ def test_entry_data_3():
     rng = np.random
 
 
+
     A.P = data.PositionDat(ncomp=3)
     A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
     A.scatter_data_from(0)
@@ -634,6 +685,9 @@ def test_entry_data_3():
                                dtype=ctypes.c_int)
 
     entrydata = EntryData(tree, ncomp, dtype)
+
+
+
 
     ncells = 2**(nlevels-1)
     i_cell_width = ncells/E

@@ -96,11 +96,9 @@ class EwaldOrthoganal(object):
         nmax_y = round(ss*extent[1]*sqrtalpha/pi)
         nmax_z = round(ss*extent[2]*sqrtalpha/pi)
 
-
         #print gx, gy, gz
         #print 'nmax:', nmax_x, nmax_y, nmax_z
         #print "alpha", alpha, "sqrt(alpha)", sqrtalpha
-
 
         gxl = np.linalg.norm(gx)
         gyl = np.linalg.norm(gy)

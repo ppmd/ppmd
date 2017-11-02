@@ -365,6 +365,9 @@ class OctalGridLevel(object):
             dtype=ctypes.c_uint32)
         """Map from global cube index to local parent index"""
 
+        self.global_to_local_parent[:] = -1
+        self.global_to_local[:] = -1
+
         if parent_comm != MPI.COMM_NULL:
             self._init_comm(parent_comm)
             self._init_decomp(parent_comm, entry_map)
@@ -707,8 +710,6 @@ class OctalDataTree(object):
         return self.data[item]
 
 
-
-
 def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
     """
     Copy the data from parent mode OctalDataTree to halo mode OctalDataTree.
@@ -718,7 +719,7 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
     
     :param src_level: parent level to send into the halo level
     :param parent_data_tree: OctalDataTree of mode parent.
-    :param halo_data_tree: OctalDataTree of mode plain
+    :param halo_data_tree: OctalDataTree of mode halo
     :return: halo_data_tree will be modified.
     """
 
@@ -793,7 +794,90 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
     if recv_req is not None: recv_req.wait()
 
 
+def send_plain_to_parent(src_level, plain_data_tree, parent_data_tree):
+    """
+    Copy the data from plain mode OctalDataTree to parent mode OctalDataTree.
+    
+    This function enables the movement of data down the octal tree. Data is 
+    sent from src_level to src_level + 1.
+    
+    :param src_level: plain level to send into the parent level
+    :param plain_data_tree: OctalDataTree of mode plain.
+    :param parent_data_tree: OctalDataTree of mode parent
+    :return: parent_data_tree will be modified.
+    """
 
+    if parent_data_tree.ncomp != plain_data_tree.ncomp:
+        raise RuntimeError('number of components is not consistent between' +\
+                           ' trees')
+    if src_level < 0 or src_level >= plain_data_tree.tree.num_levels-1:
+        raise RuntimeError('bad src_level passed: {}'.format(src_level))
+    if parent_data_tree.tree is not plain_data_tree.tree:
+        raise RuntimeError('Passed OctalDataTree instances are not defined' +\
+                           ' on the same OctalTree')
+    if parent_data_tree.tree[src_level+1].comm is MPI.COMM_NULL:
+        return
+
+    # TODO: move this to C once working.
+    tree = parent_data_tree.tree
+    ns = tree[src_level].ncubes_side_global
+    ncomp = plain_data_tree.ncomp
+    # use the cart_comm on the fine level.
+    comm = tree[src_level+1].comm
+    rank = comm.Get_rank()
+
+    dst = parent_data_tree[src_level + 1].ravel()
+    src = plain_data_tree[src_level].ravel()
+
+    dst_g2l = tree[src_level + 1].global_to_local_parent
+    src_g2l = tree[src_level].global_to_local
+
+    src_owners = tree[src_level].owners.ravel()
+    dst_owners = tree[src_level+1].owners.ravel()
+
+    send_req = None
+    recv_req = None
+
+    for cxt in itertools.product(range(ns), range(ns), range(ns)):
+
+        cx = cube_tuple_to_lin_zyx(cxt, ns)
+        cxc = cube_tuple_to_lin_zyx((cxt[0]*2, cxt[1]*2, cxt[2]*2), ns*2)
+
+        dst_owner = dst_owners[cxc]
+        src_owner = src_owners[cx]
+
+        # TODO: trim excess looping here with more refined maps
+        if src_owner != rank and dst_owner != rank:
+            continue
+        if src_owner == rank and dst_owner == rank:
+            # can do direct copy
+            src_index_b = src_g2l[cxt]*ncomp
+            src_index_e = src_index_b + ncomp
+
+            dst_index_b = dst_g2l[cxt]*ncomp
+            dst_index_e = dst_index_b + ncomp
+
+            dst[dst_index_b:dst_index_e:] = src[src_index_b: src_index_e:]
+
+        elif src_owner == rank:
+            # we are sending
+            index_b = src_g2l[cxt[0], cxt[1], cxt[2]]*ncomp
+            index_e = ncomp + index_b
+
+            if send_req is not None: send_req.wait()
+            send_req = comm.Isend(src[index_b:index_e:], dst_owner, tag=cx)
+        elif dst_owner == rank:
+            # we are recving
+            index_b = dst_g2l[cxt]*ncomp
+
+            index_e = ncomp + index_b
+            if recv_req is not None: recv_req.wait()
+            recv_req = comm.Irecv(dst[index_b:index_e:], src_owner, tag=cx)
+        else:
+            raise RuntimeError('Unknown data movement error.')
+
+    if send_req is not None: send_req.wait()
+    if recv_req is not None: recv_req.wait()
 
 
 

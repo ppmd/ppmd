@@ -89,13 +89,9 @@ static inline void mtl(
     const REAL iradius = 1./radius;
     iradius_n[0] = 1.0;
 
-    for(INT64 nx=1 ; nx<nblk ; nx++){
-        iradius_n[nx] = iradius_n[nx-1] * iradius;
-        //printf("%f\n", iradius_n[nx]);
-    }
+    for(INT64 nx=1 ; nx<nblk ; nx++){ iradius_n[nx] = iradius_n[nx-1] * iradius; }
 
     REAL * RESTRICT iradius_p1 = &iradius_n[1];
-
 
     // loop over parent moments
     for(INT32 jx=0     ; jx<nlevel ; jx++ ){
@@ -119,7 +115,6 @@ static inline void mtl(
                 const REAL y_coeff = theta_coeff[CUBE_IND(jx+nx,mx-kx)] * theta_data[CUBE_IND(jx+nx,mx-kx)];
                 const REAL y_re = y_coeff * phi_data[EXP_RE_IND(2*nlevel, mxmkx)];
                 const REAL y_im = y_coeff * phi_data[EXP_IM_IND(2*nlevel, mxmkx)];
-
 
                 // compute translation coefficient
                 const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + mx];    // A_n^m
