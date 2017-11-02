@@ -465,9 +465,9 @@ class OctalGridLevel(object):
                                                  (lt[1] + 4)*(ii[0] + 2))
             for ii in itertools.product(
                     range(lt[0]//2), range(lt[1]//2), range(lt[2]//2)):
-                gid_tuple = (ii[0] + lo[0]/2,
-                             ii[1] + lo[1]/2,
-                             ii[2] + lo[2]/2)
+                gid_tuple = (ii[0] + lo[0]//2,
+                             ii[1] + lo[1]//2,
+                             ii[2] + lo[2]//2)
                 gid = cube_tuple_to_lin_zyx(gid_tuple,
                                             self.ncubes_side_global/2)
                 self.global_to_local_parent.ravel()[gid] = ii[2] + \

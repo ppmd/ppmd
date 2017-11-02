@@ -131,9 +131,9 @@ class PyFMM(object):
             (0.25 * pi, 1./math.sqrt(3.))
         )
 
-        self._yab = np.zeros(shape=(8, ncomp), dtype=dtype)
+        self._yab = np.zeros(shape=(8, ((self.L*2)**2)*2), dtype=dtype)
         for cx, child in enumerate(alpha_beta):
-            for lx in range(self.L):
+            for lx in range(self.L*2):
                 mval = list(range(-1*lx, 1)) + list(range(1, lx+1))
                 mxval = list(range(lx, -1, -1)) + list(range(1, lx+1))
                 scipy_p = lpmv(mxval, lx, child[1])
@@ -145,10 +145,9 @@ class PyFMM(object):
 
                     assert abs(scipy_p[mxi].imag) < 10.**-16
 
-
                     self._yab[cx, self.re_lm(lx, mx)] = \
                         scipy_p[mxi].real * re_exp
-                    self._yab[cx, self.im_lm(lx, mx)] = \
+                    self._yab[cx, (self.L*2)**2 + self.re_lm(lx, mx)] = \
                         scipy_p[mxi].real * im_exp
 
         # load multipole to multipole translation library
@@ -181,10 +180,42 @@ class PyFMM(object):
         # self._boundary_terms[:] += self._compute_f() + self._compute_g()
         self._boundary_terms =  self._compute_f() + self._compute_g()
 
-        #for lx in range(0, self.L, 2):
-        #    print(20*('-{}-'.format(lx)))
-        #    for mx in range(-1*lx, lx+1):
-        #        print(mx, ":\t", self._boundary_terms[self.re_lm(lx, mx)])
+        # pre-compute spherical harmonics for interaction lists.
+        # P_n^m and coefficient, 7*7*7*ncomp as offsets are in -3,3
+        self._interaction_p = np.zeros((7, 7, 7, (self.L * 2)**2), dtype=dtype)
+
+        # exp(m\phi) \phi is the longitudinal angle. 
+        self._interaction_e = np.zeros((7, 7, 8*self.L + 2), dtype=dtype)
+        
+        # compute the lengendre polynomial coefficients
+        for iz, pz in enumerate(range(-3, 4)):
+            for iy, py in enumerate(range(-3, 4)):
+                for ix, px in enumerate(range(-3, 4)):
+                    # get spherical coord of box
+                    sph = self._cart_to_sph((px, py, pz))
+                    
+                    for lx in range(self.L*2):
+                        msci_range = list(range(lx, -1, -1)) +\
+                                     list(range(1, lx+1))
+                        mact_range = list(range(-1*lx, 1)) +\
+                                     list(range(1, lx+1))
+                        scipy_p = lpmv(msci_range, lx, math.cos(sph[2]))
+                        for mxi, mx in enumerate(mact_range):
+                            val = math.sqrt(math.factorial(
+                                lx - abs(mx))/math.factorial(lx + abs(mx)))
+                            val *= scipy_p[mxi].real
+                            self._interaction_p[iz, iy, ix, 
+                                self.re_lm(lx, mx)] = val
+
+        # compute the exponential part
+        for iy, py in enumerate(range(-3, 4)):
+            for ix, px in enumerate(range(-3, 4)):
+                # get spherical coord of box
+                sph = self._cart_to_sph((px, py, 0))
+                for mxi, mx in enumerate(range(-2*self.L, 2*self.L+1)):
+                    self._interaction_e[iy, ix, mxi] = math.cos(mx*sph[1])
+                    self._interaction_e[iy, ix, (4*self.L + 1) + mxi] = \
+                        math.sin(mx*sph[1])
 
 
     def re_lm(self, l,m): return (l**2) + l + m

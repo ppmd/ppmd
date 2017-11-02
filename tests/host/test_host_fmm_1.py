@@ -365,7 +365,7 @@ def test_fmm_init_2():
 
     # can check the positive m values match scipy's version for ylm
     for cx, child in enumerate(alpha_beta):
-        for lx in range(fmm.L):
+        for lx in range(fmm.L*2):
             mval = list(range(0, lx+1))
 
             scipy_sph = math.sqrt(4.*math.pi/(2.*lx + 1.)) * \
@@ -377,8 +377,8 @@ def test_fmm_init_2():
                 'real ylm error l {} m {}'.format(lx, mx)
 
                 assert abs(scipy_sph[mxi].imag - \
-                           fmm._yab[cx, im_lm(lx, mx)]) < 10.**-15, \
-                'imag ylm error l {} m {}'.format(lx, mx)
+                           fmm._yab[cx, (fmm.L*2)**2 + re_lm(lx, mx)]) < \
+                       10.**-15, 'imag ylm error l {} m {}'.format(lx, mx)
 
     # check the A_n^m coefficients.
     for nx in range(fmm.L*2):

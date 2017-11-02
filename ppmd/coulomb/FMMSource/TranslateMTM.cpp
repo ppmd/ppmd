@@ -77,7 +77,9 @@ int translate_mtm(
     
 
     const INT64 ncomp = nlevel*nlevel*2;
+    const INT64 ncomp2 = nlevel*nlevel*8;
     const INT64 im_offset = nlevel*nlevel;
+    const INT64 im_offset2 = 4*nlevel*nlevel;
 
     const REAL ipow_re[4] = {1.0, 0.0, -1.0, 0.0};
     const REAL ipow_im[4] = {0.0, 1.0, 0.0, -1.0};
@@ -157,34 +159,34 @@ int translate_mtm(
                     const INT64 child_ind_im = child_ind + im_offset;
 
                     const INT64 ychild_ind = CUBE_IND(nx, -1*mx);
-                    const INT64 ychild_ind_im = ychild_ind + im_offset;
+                    const INT64 ychild_ind_im = ychild_ind + im_offset2;
 
                     REAL child_re = 0.0;
                     REAL child_im = 0.0;
 
                     cplx_mul_add(   cd_re[0][child_ind], cd_re[0][child_ind_im], 
-                                        ylm[0*ncomp + ychild_ind], ylm[0*ncomp + ychild_ind_im], 
+                                        ylm[0*ncomp2 + ychild_ind], ylm[0*ncomp2 + ychild_ind_im], 
                                         &child_re, &child_im);
                     cplx_mul_add(   cd_re[1][child_ind], cd_re[1][child_ind_im], 
-                                        ylm[1*ncomp + ychild_ind], ylm[1*ncomp + ychild_ind_im], 
+                                        ylm[1*ncomp2 + ychild_ind], ylm[1*ncomp2 + ychild_ind_im], 
                                         &child_re, &child_im);
                     cplx_mul_add(   cd_re[2][child_ind], cd_re[2][child_ind_im], 
-                                        ylm[2*ncomp + ychild_ind], ylm[2*ncomp + ychild_ind_im], 
+                                        ylm[2*ncomp2 + ychild_ind], ylm[2*ncomp2 + ychild_ind_im], 
                                         &child_re, &child_im);
                     cplx_mul_add(   cd_re[3][child_ind], cd_re[3][child_ind_im], 
-                                        ylm[3*ncomp + ychild_ind], ylm[3*ncomp + ychild_ind_im], 
+                                        ylm[3*ncomp2 + ychild_ind], ylm[3*ncomp2 + ychild_ind_im], 
                                         &child_re, &child_im);
                     cplx_mul_add(   cd_re[4][child_ind], cd_re[4][child_ind_im], 
-                                        ylm[4*ncomp + ychild_ind], ylm[4*ncomp + ychild_ind_im], 
+                                        ylm[4*ncomp2 + ychild_ind], ylm[4*ncomp2 + ychild_ind_im], 
                                         &child_re, &child_im);
                     cplx_mul_add(   cd_re[5][child_ind], cd_re[5][child_ind_im], 
-                                        ylm[5*ncomp + ychild_ind], ylm[5*ncomp + ychild_ind_im], 
+                                        ylm[5*ncomp2 + ychild_ind], ylm[5*ncomp2 + ychild_ind_im], 
                                         &child_re, &child_im);
                     cplx_mul_add(   cd_re[6][child_ind], cd_re[6][child_ind_im], 
-                                        ylm[6*ncomp + ychild_ind], ylm[6*ncomp + ychild_ind_im], 
+                                        ylm[6*ncomp2 + ychild_ind], ylm[6*ncomp2 + ychild_ind_im], 
                                         &child_re, &child_im);
                     cplx_mul_add(   cd_re[7][child_ind], cd_re[7][child_ind_im], 
-                                        ylm[7*ncomp + ychild_ind], ylm[7*ncomp + ychild_ind_im], 
+                                        ylm[7*ncomp2 + ychild_ind], ylm[7*ncomp2 + ychild_ind_im], 
                                         &child_re, &child_im);
 
 
