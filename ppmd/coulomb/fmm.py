@@ -323,11 +323,13 @@ class PyFMM(object):
             _check_dtype(self.tree[child_level].parent_local_size, UINT32),
             _check_dtype(self.tree[child_level].local_grid_cube_size, UINT32),
             _check_dtype(self.tree_plain[child_level], REAL),
+            _check_dtype(self.tree_parent[child_level], REAL),
             _check_dtype(self._yab, REAL),
             _check_dtype(self._a, REAL),
             _check_dtype(self._ar, REAL),
             _check_dtype(self._ipower_mtm, REAL),
-            REAL(radius)
+            REAL(radius),
+            INT64(self.L)
         )
 
         if err < 0: raise RuntimeError('negative return code: {}'.format(err))
