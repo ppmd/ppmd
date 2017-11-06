@@ -62,6 +62,78 @@ static inline void cplx_mul_add(
 //static double factorial(const INT64 n) {
 //    REAL 
 //}
+static inline void mtl_octal(
+    const INT64             nlevel,
+    const REAL              radius,
+    const REAL * RESTRICT   odata,
+    const REAL * RESTRICT   y_data,
+    const REAL * RESTRICT   a_array,
+    const REAL * RESTRICT   ar_array,
+    const REAL * RESTRICT   i_array,
+    REAL * RESTRICT         ldata
+){
+    const INT64 ASTRIDE1 = 4*nlevel + 1;
+    const INT64 ASTRIDE2 = 2*nlevel;
+
+    const INT64 ncomp = nlevel*nlevel*2;
+    const INT64 ncomp2 = nlevel*nlevel*8;
+    
+    const INT64 nlevel4 = nlevel*4;
+    const INT64 im_offset = nlevel*nlevel;
+    const INT64 im_offset2 = nlevel*nlevel*4;
+    
+    const INT64 nblk = 2*nlevel+2;
+    REAL iradius_n[nblk];
+    
+    const REAL iradius = 1./radius;
+    iradius_n[0] = 1.0;
+
+    for(INT64 nx=1 ; nx<nblk ; nx++){ iradius_n[nx] = iradius_n[nx-1] * iradius; }
+
+    REAL * RESTRICT iradius_p1 = &iradius_n[1];
+
+    // loop over parent moments
+    for(INT32 jx=0     ; jx<nlevel ; jx++ ){
+    for(INT32 kx=-1*jx ; kx<=jx    ; kx++){
+        const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
+        REAL contrib_re = 0.0;
+        REAL contrib_im = 0.0;
+
+        for(INT32 nx=0     ; nx<nlevel ; nx++){
+            const REAL m1tn = 1.0 - 2.0*((REAL)(nx & 1));   // -1^{n}
+            const INT64 jxpnx = jx + nx;
+            const INT64 p_ind_base = P_IND(jxpnx, 0);
+            const REAL rr_jn1 = iradius_p1[jxpnx];     // 1 / rho^{j + n + 1}
+
+            for(INT64 mx=-1*nx ; mx<=nx ; mx++){
+
+                const INT64 mxmkx = mx - kx;
+
+                // construct the spherical harmonic
+                const REAL y_re = y_data[CUBE_IND(jx+nx, mx-kx)];
+                const REAL y_im = y_data[im_offset2 + CUBE_IND(jx+nx, mx-kx)];
+
+                // compute translation coefficient
+                const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + mx];    // A_n^m
+                const REAL ra_jn_mk = ar_array[(jxpnx)*ASTRIDE1 + ASTRIDE2 + mxmkx];    // 1 / A_{j + n}^{m - k}
+                
+                const REAL coeff_re = i_array[(nlevel+kx)*(nlevel*2 + 1) + nlevel + mx] *\
+                    m1tn * anm * ajk * ra_jn_mk * rr_jn1;
+                
+                const INT64 oind = CUBE_IND(nx, mx);
+                const REAL ocoeff_re = odata[oind]              * coeff_re;
+                const REAL ocoeff_im = odata[oind + im_offset]  * coeff_re;
+
+                cplx_mul_add(y_re, y_im, ocoeff_re, ocoeff_im, &contrib_re, &contrib_im);
+
+            }
+        }
+        
+        ldata[CUBE_IND(jx, kx)] += contrib_re;
+        ldata[CUBE_IND(jx, kx) + im_offset] += contrib_im;
+
+    }}
+}
 
 
 static inline void mtl(
@@ -180,6 +252,70 @@ int test_i_power(
     *re_part = i_array[(nlevel+kx)*(nlevel*2 + 1) + nlevel + mx];
     return 0;
     
+}
+
+
+extern "C"
+int translate_mtl_octal(
+    const UINT32 * RESTRICT dim_parent,     // slowest to fastest
+    const UINT32 * RESTRICT dim_child,      // slowest to fastest
+    REAL * RESTRICT moments_child,
+    const REAL * RESTRICT moments_parent,
+    const REAL * RESTRICT ylm,
+    const REAL * RESTRICT alm,
+    const REAL * RESTRICT almr,
+    const REAL * RESTRICT i_array,
+    const REAL radius,
+    const INT64 nlevel
+){
+    int err = 0;
+    const INT64 nparent_cells = dim_parent[0] * dim_parent[1] * dim_parent[2];
+
+    const INT64 ncomp = nlevel*nlevel*2;
+    const INT64 ncomp2 = nlevel*nlevel*8;
+    const INT64 im_offset = nlevel*nlevel;
+    const INT64 im_offset2 = 4*nlevel*nlevel;
+
+    #pragma omp parallel for default(none) schedule(dynamic) shared(dim_parent, dim_child, moments_child, moments_parent, \
+    ylm, alm, almr, i_array)
+    for( INT64 pcx=0 ; pcx<nparent_cells ; pcx++ ){
+        INT64 cx, cy, cz;
+        lin_to_xyz(dim_parent, pcx, &cx, &cy, &cz);
+
+        const REAL * RESTRICT pd_re = &moments_parent[pcx*ncomp];
+
+        // child layer is type plain
+        const INT64 ccx = 2*cx;
+        const INT64 ccy = 2*cy;
+        const INT64 ccz = 2*cz;
+
+        //children are labeled lexicographically
+        const INT64 cc0 = ncomp * xyz_to_lin(dim_child, ccx, ccy, ccz);
+        const INT64 cc1 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy, ccz);
+        const INT64 cc2 = ncomp * xyz_to_lin(dim_child, ccx, ccy+1, ccz);
+        const INT64 cc3 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy+1, ccz);
+        const INT64 cc4 = ncomp * xyz_to_lin(dim_child, ccx, ccy, ccz+1);
+        const INT64 cc5 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy, ccz+1);
+        const INT64 cc6 = ncomp * xyz_to_lin(dim_child, ccx, ccy+1, ccz+1);
+        const INT64 cc7 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy+1, ccz+1);
+
+        REAL * RESTRICT cd_re[8] = {
+            &moments_child[cc0],
+            &moments_child[cc1],
+            &moments_child[cc2],
+            &moments_child[cc3],
+            &moments_child[cc4],
+            &moments_child[cc5],
+            &moments_child[cc6],
+            &moments_child[cc7]
+        };
+
+        for(INT32 childx=0 ; childx<8 ; childx++ ){
+            mtl_octal(nlevel, radius, pd_re, &ylm[childx*ncomp2], alm, almr, i_array, cd_re[childx]);
+        }
+    }
+
+    return err;
 }
 
 

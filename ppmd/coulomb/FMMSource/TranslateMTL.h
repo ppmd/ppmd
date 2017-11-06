@@ -24,6 +24,7 @@ using namespace std;
 #define P_IND(L, M) (((L)*((L) + 1)/2) + (M))
 
 #define MIN(x, y) ((x < y) ? x : y)
+#define MAX(x, y) ((x < y) ? y : x)
 
 #define I_IND(nlevel, kx, mx) ((2*(nlevel)+1)*(nlevel+(kx)) + nlevel + (mx) )
 

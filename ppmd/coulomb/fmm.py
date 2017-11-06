@@ -6,7 +6,7 @@ __license__ = "GPL"
 from math import log, ceil
 from ppmd.coulomb.octal import *
 import numpy as np
-from ppmd import runtime
+from ppmd import runtime, host
 from ppmd.lib import build
 import ctypes
 import os
@@ -32,6 +32,10 @@ def _check_dtype(arr, dtype):
     if arr.dtype != dtype:
         raise RuntimeError('Bad data type. Expected: {} Found: {}.'.format(
             str(dtype), str(arr.dtype)))
+    if issubclass(type(arr), np.ndarray): return _numpy_ptr(arr)
+    elif issubclass(type(arr), host.Matrix): return arr.ctypes_data
+    elif issubclass(type(arr), host.Array): return arr.ctypes_data
+    else: raise RuntimeError('unknown array type passed: {}'.format(type(arr)))
 
 class PyFMM(object):
     def __init__(self, domain, N, eps=10.**-6, shared_memory=False):
@@ -220,6 +224,7 @@ class PyFMM(object):
 
     def re_lm(self, l,m): return (l**2) + l + m
 
+
     def im_lm(self, l,m): return (l**2) + l +  m + self.L**2
 
 
@@ -234,28 +239,19 @@ class PyFMM(object):
         else:
             self._thread_allocation[:self._tcount:] = 0
 
-        _check_dtype(positions, REAL)
-        _check_dtype(charges, REAL)
-        _check_dtype(self.domain.extent_internal, REAL)
-        _check_dtype(self.entry_data.local_offset, UINT64)
-        _check_dtype(self.entry_data.local_size, UINT64)
-        _check_dtype(cube_side_counts, UINT64)
-        _check_dtype(self.entry_data.data, REAL)
-        _check_dtype(self._thread_allocation, INT32)
-
 
         err = self._contribution_lib(
             INT64(self.L),
             UINT64(positions.npart_local),
             INT32(self._tcount),
-            positions.ctypes_data,
-            charges.ctypes_data,
-            self.domain.extent.ctypes_data,
-            _numpy_ptr(self.entry_data.local_offset),
-            _numpy_ptr(self.entry_data.local_size),
-            _numpy_ptr(cube_side_counts),
-            _numpy_ptr(self.entry_data.data),
-            _numpy_ptr(self._thread_allocation)
+            _check_dtype(positions, REAL),
+            _check_dtype(charges, REAL),
+            _check_dtype(self.domain.extent, REAL),
+            _check_dtype(self.entry_data.local_offset, UINT64),
+            _check_dtype(self.entry_data.local_size, UINT64),
+            _check_dtype(cube_side_counts, UINT64),
+            _check_dtype(self.entry_data.data, REAL),
+            _check_dtype(self._thread_allocation, INT32)
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 
@@ -280,34 +276,65 @@ class PyFMM(object):
             const INT64 nlevel
         )
         '''
-        _check_dtype(self.tree[child_level].parent_local_size, UINT32)
-        _check_dtype(self.tree[child_level].grid_cube_size, UINT32)
-        _check_dtype(self.tree_halo[child_level], REAL)
-        _check_dtype(self.tree_parent[child_level], REAL)
-        _check_dtype(self._yab, REAL)
-        _check_dtype(self._a, REAL)
-        _check_dtype(self._ar, REAL)
-        _check_dtype(self._ipower_mtm, REAL)
-
         radius = (self.domain.extent[0] /
                  self.tree[child_level].ncubes_side_global) * 0.5
 
         radius = math.sqrt(radius*radius*3)
 
         err = self._translate_mtm_lib(
-            _numpy_ptr(self.tree[child_level].parent_local_size),
-            _numpy_ptr(self.tree[child_level].grid_cube_size),
-            _numpy_ptr(self.tree_halo[child_level]),
-            _numpy_ptr(self.tree_parent[child_level]),
-            _numpy_ptr(self._yab),
-            _numpy_ptr(self._a),
-            _numpy_ptr(self._ar),
-            _numpy_ptr(self._ipower_mtm),
-            ctypes.c_double(radius),
-            ctypes.c_int64(self.L)
+            _check_dtype(self.tree[child_level].parent_local_size, UINT32),
+            _check_dtype(self.tree[child_level].grid_cube_size, UINT32),
+            _check_dtype(self.tree_halo[child_level], REAL),
+            _check_dtype(self.tree_parent[child_level], REAL),
+            _check_dtype(self._yab, REAL),
+            _check_dtype(self._a, REAL),
+            _check_dtype(self._ar, REAL),
+            _check_dtype(self._ipower_mtm, REAL),
+            REAL(radius),
+            INT64(self.L)
         )
 
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
+
+
+    def _translate_l_to_l(self, child_level):
+        """
+        Translate parent expansion to child boxes on child_level. Takes parent
+        data from the parent data tree.
+        :param child_level: Level to translate on.
+        """
+        '''
+        const UINT32 * RESTRICT dim_parent,     // slowest to fastest
+        const UINT32 * RESTRICT dim_child,      // slowest to fastest
+        REAL * RESTRICT moments_child,
+        const REAL * RESTRICT moments_parent,
+        const REAL * RESTRICT ylm,
+        const REAL * RESTRICT alm,
+        const REAL * RESTRICT almr,
+        const REAL * RESTRICT i_array,
+        const REAL radius,
+        const INT64 nlevel
+        '''
+        radius = (self.domain.extent[0] /
+                 self.tree[child_level].ncubes_side_global) * 0.5
+
+        radius = math.sqrt(radius*radius*3)
+        err = self._translate_mtl_lib['translate_mtl_octal'](
+            _check_dtype(self.tree[child_level].parent_local_size, UINT32),
+            _check_dtype(self.tree[child_level].local_grid_cube_size, UINT32),
+            _check_dtype(self.tree_plain[child_level], REAL),
+            _check_dtype(self._yab, REAL),
+            _check_dtype(self._a, REAL),
+            _check_dtype(self._ar, REAL),
+            _check_dtype(self._ipower_mtm, REAL),
+            REAL(radius)
+        )
+
+        if err < 0: raise RuntimeError('negative return code: {}'.format(err))
+
+
+
+
 
     def _fine_to_course(self, src_level):
         if src_level < 1:
