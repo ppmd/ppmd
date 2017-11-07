@@ -6,7 +6,7 @@ __license__ = "GPL"
 from math import log, ceil
 from ppmd.coulomb.octal import *
 import numpy as np
-from ppmd import runtime, host
+from ppmd import runtime, host, kernel, pairloop, data, access
 from ppmd.lib import build
 import ctypes
 import os
@@ -38,7 +38,8 @@ def _check_dtype(arr, dtype):
     else: raise RuntimeError('unknown array type passed: {}'.format(type(arr)))
 
 class PyFMM(object):
-    def __init__(self, domain, N, eps=10.**-6, shared_memory=False):
+    def __init__(self, domain, N, eps=10.**-6, shared_memory=False,
+        free_space=False):
 
         dtype = REAL
 
@@ -230,6 +231,96 @@ class PyFMM(object):
                     self._interaction_e[iy, ix, mxi] = math.cos(mx*sph[1])
                     self._interaction_e[iy, ix, (4*self.L + 1) + mxi] = \
                         math.sin(mx*sph[1])
+
+        # create a pairloop for finest level part
+        P = data.ParticleDat(ncomp=3, dtype=dtype)
+        Q = data.ParticleDat(ncomp=1, dtype=dtype)
+        self.particle_phi = data.GlobalArray(ncomp=1, dtype=dtype)
+        ns = self.tree.entry_map.cube_side_count
+        maxe = np.max(self.domain.extent[:]) / ns
+        max_radius = 1.1 * (((maxe*2.)**2.)*3.)**0.5
+
+        # zero the mask if interacting over a periodic boundary
+        free_space_mod = ""
+        if free_space:
+            free_space_mod = """
+            #define ABS(x) ((x) > 0 ? (x) : (-1*(x)))
+            dr2 += (    (ABS(P.j[0]) > {hex}) || \
+                        (ABS(P.j[1]) > {hey}) || \
+                        (ABS(P.j[2]) > {hez})) ? 1000000 : 0;
+            """.format(**{
+                'hex': self.domain.extent[0] * 0.5,
+                'hey': self.domain.extent[1] * 0.5,
+                'hez': self.domain.extent[2] * 0.5
+            })
+
+        pair_kernel_src = """
+        const double ipx = P.i[0] + {hex}; 
+        const double ipy = P.i[1] + {hey}; 
+        const double ipz = P.i[2] + {hez};
+        const int icx = ipx*{lx};
+        const int icy = ipy*{ly};
+        const int icz = ipz*{lz};
+
+        const double jpx = P.j[0] + {hex}; 
+        const double jpy = P.j[1] + {hey}; 
+        const double jpz = P.j[2] + {hez};
+        const int jcx = jpx*{lx};
+        const int jcy = jpy*{ly};
+        const int jcz = jpz*{lz};
+        
+        const int dx = icx - jcx;
+        const int dy = icy - jcy;
+        const int dz = icz - jcz;
+
+        int dr2 = dx*dx + dy*dy + dz*dz;
+        
+        {FREE_SPACE}
+
+        const double mask = (dr2 > 3) ? 0.0 : 1.0;
+        
+        const double rx = P.j[0] - P.i[0];
+        const double ry = P.j[1] - P.i[1];
+        const double rz = P.j[2] - P.i[2];
+
+        const double r2 = rx*rx + ry*ry + rz*rz;
+        const double r = sqrt(r2);
+        
+        //printf("KERNEL: %f %f %d \\n", mask, r, dr2);
+        //printf("\t %d %d %d \\n", dx, dy, dz);
+        //printf("\tI %f %f %f \\n", P.i[0], P.i[1], P.i[2]);
+        //printf("\tJ %f %f %f \\n", P.j[0], P.j[1], P.j[2]);
+
+        PHI[0] += 0.5 * mask * Q.i[0] * Q.j[0] / r;
+        """.format(**{
+            'hex': self.domain.extent[0] * 0.5,
+            'hey': self.domain.extent[1] * 0.5,
+            'hez': self.domain.extent[2] * 0.5,
+            'lx': ns / self.domain.extent[0],
+            'ly': ns / self.domain.extent[1],
+            'lz': ns / self.domain.extent[2],
+            'FREE_SPACE': free_space_mod
+        })
+        pair_kernel = kernel.Kernel('fmm_pairwise', code=pair_kernel_src, 
+            headers=(kernel.Header('math.h'),))
+        self._pair_loop = pairloop.PairLoopNeighbourListNSOMP(
+            kernel=pair_kernel,
+            dat_dict={
+                'P':P(access.READ),
+                'Q':Q(access.READ),
+                'PHI':self.particle_phi(access.INC_ZERO)
+            },
+            shell_cutoff=max_radius
+        )
+    
+    def _compute_local_interaction(self, positions, charges):
+        self._pair_loop.execute(
+            dat_dict = {
+                'P':positions(access.READ),
+                'Q':charges(access.READ),
+                'PHI':self.particle_phi(access.INC_ZERO)
+            }
+        )
 
 
     def re_lm(self, l,m): return (l**2) + l + m

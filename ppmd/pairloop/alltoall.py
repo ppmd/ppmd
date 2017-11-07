@@ -442,7 +442,8 @@ class AllToAllNS(object):
             obj = dat[0]
             mode = dat[1]
             args.append(obj.ctypes_data_access(mode, pair=True))
-            _N = obj.npart_local
+            if issubclass(type(obj), host.Matrix):
+                _N = obj.npart_local
 
 
         # Create arg list
