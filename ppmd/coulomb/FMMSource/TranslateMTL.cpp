@@ -270,10 +270,10 @@ static inline void mtl_octal(
                                 ocoeff_re, ocoeff_im, 
                                 &contrib_re, &contrib_im);
 
-                if(jx == 0 && kx == 0){
-                    printf("nx\t%d\tmx\t%d:\t%f\t%f\n",
-                    nx, mx, rr_jn1,  y_re);
-                }
+                //if(jx == 0 && kx == 0){
+                //    printf("nx\t%d\tmx\t%d:\t%f\t%f\n",
+                //    nx, mx, rr_jn1,  y_re);
+                //}
 
             }
         }

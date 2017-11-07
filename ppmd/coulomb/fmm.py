@@ -174,6 +174,16 @@ class PyFMM(object):
         self._translate_mtl_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_translate_mtl')
 
+        # local to local lib
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/TranslateLTL.cpp') as fh:
+            cpp = fh.read()
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/TranslateLTL.h') as fh:
+            hpp = fh.read()
+        self._translate_mtl_lib = build.simple_lib_creator(hpp, cpp,
+            'fmm_translate_ltl')        
+
 
         # --- periodic boundaries ---
         # "Precise and Efficient Ewald Summation for Periodic Fast Multipole
@@ -319,7 +329,7 @@ class PyFMM(object):
                  self.tree[child_level].ncubes_side_global) * 0.5
 
         radius = math.sqrt(radius*radius*3)
-        err = self._translate_mtl_lib['translate_mtl_octal'](
+        err = self._translate_ltl_lib['translate_ltl'](
             _check_dtype(self.tree[child_level].parent_local_size, UINT32),
             _check_dtype(self.tree[child_level].local_grid_cube_size, UINT32),
             _check_dtype(self.tree_plain[child_level], REAL),
