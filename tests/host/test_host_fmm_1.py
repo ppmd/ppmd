@@ -21,8 +21,8 @@ import time
 
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
-MPIBARRIER = MPI.COMM_WORLD.Barrier()
-DEBUG = True
+MPIBARRIER = MPI.COMM_WORLD.Barrier
+DEBUG = False
 
 def spherical(xyz):
     if type(xyz) is tuple:
@@ -468,7 +468,7 @@ def test_fmm_init_2():
 
         if lsize is not None:
             fmm._translate_m_to_m(level)
-            fmm._fine_to_course(level)
+            fmm._fine_to_coarse(level)
 
             parent_shape = fmm.tree_plain[level][:,:,:,0].shape
 
@@ -587,7 +587,7 @@ def test_fmm_init_3():
 
         if lsize is not None:
             fmm._translate_m_to_m(level)
-            fmm._fine_to_course(level)
+            fmm._fine_to_coarse(level)
 
             parent_shape = fmm.tree_plain[level][:,:,:,0].shape
 
@@ -747,7 +747,7 @@ def test_fmm_init_4():
 
         if lsize is not None:
             fmm._translate_m_to_m(level)
-            fmm._fine_to_course(level)
+            fmm._fine_to_coarse(level)
 
             parent_shape = fmm.tree_plain[level][:,:,:,0].shape
 
@@ -794,8 +794,9 @@ def test_fmm_init_4():
             print(60*'~')
 
         assert red_im < 10.**-15, "bad imaginary part"
-        #assert red_re >= last_re, "Errors do not get better as level -> 0"
+        assert red_re >= last_re, "Errors do not get better as level -> 0"
         assert red_re < eps, "error did not meet tol"
+    
 
     # after traversing up tree
     disp = -1. * point #  center is (0,0,0)
@@ -826,6 +827,19 @@ def test_fmm_init_4():
     l_array = np.zeros((fmm.L**2)*2, dtype=ctypes.c_double)
 
     lsize = fmm.tree[1].parent_local_size
+
+    eval_point = (0., 0., 4.)
+    eval_sph = spherical(np.reshape(eval_point, (1, 3)))
+
+    local_phi_re, local_phi_im = compute_phi_local(
+        fmm.L, l_array, eval_sph)
+    
+    # print("l_array", l_array)
+
+    point_sa[:] = np.array(point) + np.array(eval_point)
+    # print("point_sa", point_sa[:])
+    phi_loop.execute()
+
     if lsize is not None:
         moments = fmm.tree_parent[1][0, 0, 0, :]
 
@@ -841,19 +855,6 @@ def test_fmm_init_4():
             extern_numpy_ptr(fmm._ipower_mtl),
             extern_numpy_ptr(l_array)
         )
-
-        eval_point = (0., 0., 4.)
-        eval_sph = spherical(np.reshape(eval_point, (1, 3)))
-
-        local_phi_re, local_phi_im = compute_phi_local(
-            fmm.L, l_array, eval_sph)
-        
-        # print("l_array", l_array)
-
-
-        point_sa[:] = np.array(point) + np.array(eval_point)
-        # print("point_sa", point_sa[:])
-        phi_loop.execute()
 
 
         err_re = abs(local_phi_re - phi_ga[0])
@@ -883,13 +884,13 @@ def test_fmm_init_5():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-    eps = 10.**-2
+    eps = 10.**-4
 
     fmm = PyFMM(domain=A.domain, N=1000, eps=eps)
 
     ncubeside = 2**(fmm.R-1)
     N = ncubeside ** 3
-    N = 1
+    #N = 1
     A.npart = N
 
 
@@ -906,8 +907,8 @@ def test_fmm_init_5():
     bias = np.sum(A.Q[:])/N
 
     #A.Q[:] -= bias
-    A.P[0,:] = 0.0
-    print(A.P[0,:], A.Q[0])
+    #A.P[0,:] = 0.0
+    #print(A.P[0,:], A.Q[0])
 
 
     A.scatter_data_from(0)
@@ -961,7 +962,7 @@ def test_fmm_init_5():
 
         if lsize is not None:
             fmm._translate_m_to_m(level)
-            fmm._fine_to_course(level)
+            fmm._fine_to_coarse(level)
 
             parent_shape = fmm.tree_plain[level][:,:,:,0].shape
 
@@ -1008,7 +1009,7 @@ def test_fmm_init_5():
             print(60*'~')
 
         assert red_im < 10.**-15, "bad imaginary part"
-        #assert red_re >= last_re, "Errors do not get better as level -> 0"
+        assert red_re >= last_re, "Errors do not get better as level -> 0"
         assert red_re < eps, "error did not meet tol"
 
     # after traversing up tree
@@ -1084,46 +1085,69 @@ def test_fmm_init_5():
     box2_start = (-0.5*E + point[0], -0.5*E + point[1], -0.5*E + point[2])
     
     #check copied moments
-    local_phi_re, local_phi_im = compute_phi_local(
-        fmm.L, fmm2.tree_parent[1][0,0,0,:], eval_sph)
-    print(local_phi_re, phi_ga[0])
+    #local_phi_re, local_phi_im = compute_phi_local(
+    #    fmm.L, fmm2.tree_parent[1][0,0,0,:], eval_sph)
+    #print(local_phi_re, phi_ga[0])
 
     # on level 1 translate parent to child
-    for level in range(1,2):
-        fmm2._translate_l_to_l(level)
+    for level in range(1, fmm2.R):
+        ls = fmm2.tree[level].local_grid_cube_size
+
+
+        if ls is not None:
+            fmm2._translate_l_to_l(level)
+        if level < fmm.R-1:
+            fmm2._coarse_to_fine(level)
 
         ncubes_s = 2**level
         cube_width = E/ncubes_s
-        cubex = (0,0,0)
-        mid = [box2_start[dx] + 0.5*cube_width + cubex[dx] for dx in range(3)]
-        
-        # execute the direct loop for this child box
-        point_sa[:] = mid
-        phi_loop.execute()
-        print("direct:", phi_ga[0])
+        lo = fmm2.tree[level].local_grid_offset
+        for cubex in itertools.product(range(ncubes_s), 
+            range(ncubes_s), range(ncubes_s)):
+            mid = [0.0, 0.0, 0.0]
+            mid[0] = box2_start[0] + (0.5 + cubex[0]) * cube_width
+            mid[1] = box2_start[1] + (0.5 + cubex[1]) * cube_width
+            mid[2] = box2_start[2] + (0.5 + cubex[2]) * cube_width
+            
+            
+            # execute the direct loop for this child box
+            point_sa[:] = mid
+            phi_loop.execute()
 
-        print(fmm2.tree_parent[level][0,0,0,:])
-        print(60*'-')
-        print(fmm2.tree_plain[level][0,0,0,:])
+            #eval_sph = spherical(np.zeros((1, 3)))
+            #local_phi_re, local_phi_im = compute_phi_local(
+            #    fmm.L, 
+            #    fmm2.tree_plain[level][cubex[2], cubex[1], cubex[0],:],
+            #    eval_sph)
+            
+            #if this rank is the owner get phi from moments
+            
+            owner = fmm2.tree[level].owners[cubex[2], cubex[1], cubex[0]]
+            if MPIRANK == owner:
 
+                # zyx
+                lind = (cubex[2] - lo[0], 
+                        cubex[1] - lo[1],
+                        cubex[0] - lo[2])
 
-        eval_sph = spherical(np.zeros((1, 3)))
-        local_phi_re, local_phi_im = compute_phi_local(
-            fmm.L, fmm2.tree_plain[level][0,0,0,:], eval_sph)
+                local_phi_re = fmm2.tree_plain[level][lind[0], lind[1],
+                    lind[2],0]
+                local_phi_im = 0.0
 
+                err_re = abs(phi_ga[0] - local_phi_re)
+                err_im = abs(local_phi_im)
 
-        err_re = abs(phi_ga[0] - local_phi_re)
-        err_im = abs(local_phi_im)
+                if DEBUG:
+                    print(cubex, mid)
+                    print("ERR RE:", err_re, "\tcomputed:", local_phi_re, 
+                    "\tdirect:", phi_ga[0])
+                    print("ERR IM:", err_im)
+                    print(60*'~')
 
-        if MPIRANK == 0 and DEBUG:
-            print('LOCAL ' + 60*'~')
-            print("ERR RE:", err_re, "\tcomputed:", local_phi_re, 
-            "\tdirect:", phi_ga[0])
-            print("ERR IM:", err_im)
-            print(60*'~')
+                assert err_re < eps, "bad real part"
+                assert err_im < 10.**-15, "bad imag part"
 
-
-
+            MPIBARRIER()
 
 
 

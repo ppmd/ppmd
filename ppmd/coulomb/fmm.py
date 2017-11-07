@@ -345,14 +345,26 @@ class PyFMM(object):
         if err < 0: raise RuntimeError('negative return code: {}'.format(err))
 
 
-
-
-
-    def _fine_to_course(self, src_level):
+    def _fine_to_coarse(self, src_level):
         if src_level < 1:
             raise RuntimeError('cannot copy from a level lower than 1')
+        elif src_level >= self.R:
+            raise RuntimeError('cannot copy from a greater than {}'.format(
+            self.R))
 
         send_parent_to_halo(src_level, self.tree_parent, self.tree_halo)
+
+    
+
+    def _coarse_to_fine(self, src_level):
+        if src_level < 1:
+            raise RuntimeError('cannot copy from a level lower than 1')
+        elif src_level >= self.R-1:
+            raise RuntimeError('cannot copy from a greater than {}'.format(
+            self.R-2))
+
+        send_plain_to_parent(src_level, self.tree_plain, self.tree_parent)
+
 
     def _image_to_sph(self, ind):
         """Convert tuple ind to spherical coordindates of periodic image."""
