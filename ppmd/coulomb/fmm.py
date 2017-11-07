@@ -181,7 +181,7 @@ class PyFMM(object):
         with open(str(_SRC_DIR) + \
                           '/FMMSource/TranslateLTL.h') as fh:
             hpp = fh.read()
-        self._translate_mtl_lib = build.simple_lib_creator(hpp, cpp,
+        self._translate_ltl_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_translate_ltl')        
 
 
@@ -337,7 +337,7 @@ class PyFMM(object):
             _check_dtype(self._yab, REAL),
             _check_dtype(self._a, REAL),
             _check_dtype(self._ar, REAL),
-            _check_dtype(self._ipower_mtm, REAL),
+            _check_dtype(self._ipower_ltl, REAL),
             REAL(radius),
             INT64(self.L)
         )
