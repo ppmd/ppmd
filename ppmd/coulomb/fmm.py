@@ -53,6 +53,8 @@ class PyFMM(object):
 
         self.eps = eps
 
+        self.free_space = free_space
+
 
         ncomp = (self.L**2) * 2
         # define the octal tree and attach data to the tree.
@@ -65,16 +67,6 @@ class PyFMM(object):
         self._tcount = runtime.OMP_NUM_THREADS if runtime.OMP_NUM_THREADS is \
             not None else 1
         self._thread_allocation = np.zeros(1, dtype=INT32)
-
-        # load contribution computation library
-        with open(str(_SRC_DIR) + \
-                          '/FMMSource/ParticleContribution.cpp') as fh:
-            cpp = fh.read()
-        with open(str(_SRC_DIR) + \
-                          '/FMMSource/ParticleContribution.h') as fh:
-            hpp = fh.read()
-        self._contribution_lib = build.simple_lib_creator(hpp, cpp,
-            'fmm_contrib')['particle_contribution']
 
         # pre compute A_n^m and 1/(A_n^m)
         self._a = np.zeros(shape=(self.L*2, (self.L*4)+1), dtype=dtype)
@@ -185,6 +177,25 @@ class PyFMM(object):
         self._translate_ltl_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_translate_ltl')        
 
+        # load contribution computation library
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/ParticleContribution.cpp') as fh:
+            cpp = fh.read()
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/ParticleContribution.h') as fh:
+            hpp = fh.read()
+        self._contribution_lib = build.simple_lib_creator(hpp, cpp,
+            'fmm_contrib')['particle_contribution']
+
+        # load extraction computation library
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/ParticleExtraction.cpp') as fh:
+            cpp = fh.read()
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/ParticleExtraction.h') as fh:
+            hpp = fh.read()
+        self._extraction_lib = build.simple_lib_creator(hpp, cpp,
+            'fmm_contrib')['particle_extraction']
 
         # --- periodic boundaries ---
         # "Precise and Efficient Ewald Summation for Periodic Fast Multipole
@@ -354,7 +365,7 @@ class PyFMM(object):
         if self._thread_allocation.size < self._tcount * \
                 positions.npart_local + 1:
             self._thread_allocation = np.zeros(
-                int(self._tcount*positions.npart_local*1.1 + 1),dtype=INT32)
+                int(self._tcount*(positions.npart_local*1.1 + 1)),dtype=INT32)
         else:
             self._thread_allocation[:self._tcount:] = 0
 
@@ -377,6 +388,47 @@ class PyFMM(object):
         self.tree_halo[self.R-1][2:-2:, 2:-2:, 2:-2:, :] = \
             self.entry_data[:,:,:,:]
 
+
+    def _compute_cube_extraction(self, positions, charges):
+
+        ns = self.tree.entry_map.cube_side_count
+        cube_side_counts = np.array((ns, ns, ns), dtype=UINT64)
+        '''
+        const INT64 nlevel,
+        const UINT64 npart,
+        const INT32 thread_max,
+        const REAL * RESTRICT position, 
+        const REAL * RESTRICT charge,
+        const REAL * RESTRICT boundary, 
+        const UINT64 * RESTRICT cube_offset,  // zyx (slowest to fastest)
+        const UINT64 * RESTRICT cube_dim,     // as above
+        const UINT64 * RESTRICT cube_side_counts,   // as above
+        const REAL * RESTRICT local_moments,
+        REAL * RESTRICT phi_data,              // lexicographic
+        const INT32 * RESTRICT thread_assign
+        '''
+
+        phi = REAL(0)
+        self.entry_data[:,:,:,:] = self.tree_plain[self.R-1][:,:,:,:]
+        err = self._extraction_lib(
+            INT64(self.L),
+            UINT64(positions.npart_local),
+            INT32(self._tcount),
+            _check_dtype(positions, REAL),
+            _check_dtype(charges, REAL),
+            _check_dtype(self.domain.extent, REAL),
+            _check_dtype(self.entry_data.local_offset, UINT64),
+            _check_dtype(self.entry_data.local_size, UINT64),
+            _check_dtype(cube_side_counts, UINT64),
+            _check_dtype(self.entry_data.data, REAL),
+            ctypes.byref(phi),
+            _check_dtype(self._thread_allocation, INT32)
+        )
+        if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
+
+        return phi.value
+
+
     def _translate_m_to_m(self, child_level):
         """
         Translate the child expansions to their parent cells
@@ -398,6 +450,8 @@ class PyFMM(object):
 
         if self.tree[child_level].parent_local_size is None:
             return 
+
+        self.tree_parent[child_level][:] = 0.0
 
         radius = (self.domain.extent[0] /
                  self.tree[child_level].ncubes_side_global) * 0.5
@@ -483,14 +537,20 @@ class PyFMM(object):
 	    const double * RESTRICT int_radius
         )
         '''
-        self.tree_halo.halo_exchange_level(level)
+        
+        #self.tree_halo.halo_exchange_level(level)
+        
+
+        self.tree_plain[level][:] = 0.0
+        if self.tree[level].local_grid_cube_size is None:
+            return
+
 
         radius = self.domain.extent[0] / \
                  self.tree[level].ncubes_side_global
 
-        radius = math.sqrt(radius*radius*3)
 
-        err = self._translate_mtm_lib(
+        err = self._translate_mtl_lib['translate_mtl'](
             _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
             _check_dtype(self.tree_halo[level], REAL),
             _check_dtype(self.tree_plain[level], REAL),

@@ -283,58 +283,6 @@ def test_fmm_init_2_1():
 
 
 
-def test_fmm_init_2_2():
-
-    offset = (20., 0., 0.)
-
-    E = 10.
-
-    A = state.State()
-    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
-    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
-
-    eps = 10.**-4
-
-    fmm = PyFMM(domain=A.domain, N=1000, eps=eps, free_space=True)
-
-    ncubeside = 2**(fmm.R-1)
-    N = ncubeside ** 3
-    #N = 1
-    A.npart = N
-
-
-    rng = np.random.RandomState(seed=1234)
-    #rng = np.random
-
-    A.P = data.PositionDat(ncomp=3)
-    A.Q = data.ParticleDat(ncomp=1)
-
-    A.P[:] = utility.lattice.cubic_lattice((ncubeside, ncubeside, ncubeside),
-                                           (E, E, E))
-    A.Q[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,1))
-
-    bias = np.sum(A.Q[:])/N
-
-    A.scatter_data_from(0)
-
-
-    fmm._compute_cube_contrib(A.P, A.Q)
-
-    for level in range(fmm.R - 1, 0, -1):
-
-        fmm._translate_m_to_m(level)
-        fmm._fine_to_coarse(level)
-
-
-    for level in range(1, fmm.R):
-
-        fmm._translate_l_to_l(level)
-        fmm._coarse_to_fine(level)
-
-
-
-
-
 
 
 

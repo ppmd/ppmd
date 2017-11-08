@@ -162,16 +162,17 @@ int translate_mtl(
     const INT64 ncomp2 = nlevel*nlevel*8;
     const INT64 im_offset = nlevel*nlevel;
     const INT64 im_offset2 = 4*nlevel*nlevel;
-    const UINT32 dim_halo[3] = {dim_child[0] + 2,
-        dim_child[1] + 2, dim_child[2] + 2};
+    const UINT32 dim_halo[3] = {dim_child[0] + 4,
+        dim_child[1] + 4, dim_child[2] + 4};
     const UINT32 dim_eight[3] = {2, 2, 2};
 
-    const INT32 phi_stride = 8*ncomp + 2;
-    const INT32 theta_stride = 4 * ncomp * ncomp;
+    const INT32 phi_stride = 8*nlevel + 2;
+    const INT32 theta_stride = 4 * nlevel * nlevel;
 
-    //#pragma omp parallel for default(none) schedule(dynamic) \
-    //shared(dim_child, multipole_moments, local_moments, \
-    //ylm, alm, almr, i_array, int_list, int_lookup)
+    #pragma omp parallel for default(none) schedule(dynamic) \
+    shared(dim_child, multipole_moments, local_moments, \
+    phi_data, theta_data, alm, almr, i_array, int_list, int_tlookup, \
+    int_plookup, int_radius)
     for( INT64 pcx=0 ; pcx<ncells ; pcx++ ){
         INT64 cx, cy, cz;
         lin_to_xyz(dim_child, pcx, &cx, &cy, &cz);
@@ -187,20 +188,39 @@ int translate_mtl(
         
         REAL * out_moments = &local_moments[ncomp * pcx];
         // loop over contributing nearby cells.
+        
+        //printf("Cell %d nlevel %d\n", pcx, nlevel);
+
+
         for( INT32 conx=octal_ind*189 ; conx<(octal_ind+1)*189 ; conx++ ){
             
             const REAL local_radius = int_radius[conx] * radius;
-            const INT32 jcell = int_list[conx] + pcx;
+            const INT32 jcell = int_list[conx] + halo_ind;
             const INT32 t_lookup = int_tlookup[conx];
             const INT32 p_lookup = int_plookup[conx];
+            
+            //if (pcx==0){
+            //    printf("radius %f local_radius %f\n", radius, local_radius);
+            //}
+
+            //printf("VAL %d\n", halo_ind);
+            //for (int jx=0 ; jx<nlevel ; jx++){
+            //    for(int kx=-1*jx ; kx<=jx ; kx++ ){
+            //        printf("j\t%d\tk\t%d\tval\t", jx, kx);
+            //        printf("val\t%f\n", 
+            //            multipole_moments[jcell*ncomp + CUBE_IND(jx, kx)]
+            //        );
+            //    }
+            //}
 
             mtl(nlevel, local_radius, &multipole_moments[jcell*ncomp],
                 &phi_data[p_lookup * phi_stride],
                 &theta_data[t_lookup * theta_stride],
                 alm, almr, i_array,
                 out_moments);
-
+            
         }
+        
     }
 
     return err;
