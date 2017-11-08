@@ -276,12 +276,65 @@ def compute_interaction_offsets(cube_index):
     return ro
 
 
+def compute_interaction_tlookup():
+    """
+    Compute the 8x189 lookup table to map from offset index to recomputed
+    spherical harmonics. Theta part.
+    """
+    def tuple_to_lin(x): return (x[:, 2]+3)*49 + (x[:, 1]+3)*7 + x[:, 0]+3
+
+    ro = np.zeros(shape=(8, 189), dtype=ctypes.c_int32)
+    ri = 0
+    for iz in (0, 1):
+        for iy in (0, 1):
+            for ix in (0, 1):
+                ro[ri, :] = tuple_to_lin(
+                    compute_interaction_offsets((ix, iy, iz)))
+                ri += 1
+    return ro
+
+
+def compute_interaction_plookup():
+    """
+    Compute the 8x189 lookup table to map from offset index to recomputed
+    spherical harmonics. Phi part.
+    """
+    def tuple_to_lin(x): return (x[:, 1]+3)*7 + x[:, 0]+3
+
+    ro = np.zeros(shape=(8, 189), dtype=ctypes.c_int32)
+    ri = 0
+    for iz in (0, 1):
+        for iy in (0, 1):
+            for ix in (0, 1):
+                ro[ri, :] = tuple_to_lin(
+                    compute_interaction_offsets((ix, iy, iz)))
+                ri += 1
+    return ro
+
+
+def compute_interaction_radius():
+    """
+    Compute the coefficients such that when multiplied by the cube with they 
+    give the radius to the box centre.
+    """
+    def tuple_to_coeff(x): return (x[:,0]**2. + x[:,1]**2. + x[:,2]**2.)**0.5
+    ro = np.zeros(shape=(8, 189), dtype=ctypes.c_double)
+    ri = 0
+    for iz in (0, 1):
+        for iy in (0, 1):
+            for ix in (0, 1):
+                ro[ri, :] = tuple_to_coeff(
+                    compute_interaction_offsets((ix, iy, iz)))
+                ri += 1
+    return ro
+
+
 def compute_interaction_lists(local_size):
     """
     Compute the local interaction offset lists for a local domain. Child cubes
     are indexed lexicographically from 0.
     :param local_size: tuple of local cube domain dimensions.
-    :return: 6x189 ctypes.c_int32 offsets numpy array.
+    :return: 8x189 ctypes.c_int32 offsets numpy array.
     """
 
     if not local_size[0] > 5 or not local_size[1] > 5 \

@@ -815,7 +815,9 @@ def test_fmm_init_4():
         scipy_p = lpmv(mrange, lx, np.cos(disp_sph[0,1]))
 
         for mxi, mx in enumerate(mrange2):
-            p_array[re_lm(lx, mx)] = scipy_p[mxi].real
+            coeff = math.sqrt(float(math.factorial(lx-abs(mx)))/
+                math.factorial(lx+abs(mx)))
+            p_array[re_lm(lx, mx)] = scipy_p[mxi].real*coeff
 
     for mxi, mx in enumerate(list(
             range(-2*fmm.L, 1)) + list(range(1, 2*fmm.L+1))
@@ -849,7 +851,6 @@ def test_fmm_init_4():
             extern_numpy_ptr(moments),
             extern_numpy_ptr(exp_array),
             extern_numpy_ptr(p_array),
-            extern_numpy_ptr(fmm._ycoeff),
             extern_numpy_ptr(fmm._a),
             extern_numpy_ptr(fmm._ar),
             extern_numpy_ptr(fmm._ipower_mtl),
@@ -1029,7 +1030,9 @@ def test_fmm_init_5():
         scipy_p = lpmv(mrange, lx, np.cos(disp_sph[0,1]))
 
         for mxi, mx in enumerate(mrange2):
-            p_array[re_lm(lx, mx)] = scipy_p[mxi].real
+            coeff = math.sqrt(float(math.factorial(lx-abs(mx)))/
+                math.factorial(lx+abs(mx)))
+            p_array[re_lm(lx, mx)] = scipy_p[mxi].real*coeff
 
     for mxi, mx in enumerate(list(
             range(-2*fmm.L, 1)) + list(range(1, 2*fmm.L+1))
@@ -1053,7 +1056,6 @@ def test_fmm_init_5():
             extern_numpy_ptr(moments),
             extern_numpy_ptr(exp_array),
             extern_numpy_ptr(p_array),
-            extern_numpy_ptr(fmm._ycoeff),
             extern_numpy_ptr(fmm._a),
             extern_numpy_ptr(fmm._ar),
             extern_numpy_ptr(fmm._ipower_mtl),

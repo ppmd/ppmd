@@ -195,6 +195,9 @@ class PyFMM(object):
         # self._boundary_terms[:] += self._compute_f() + self._compute_g()
         self._boundary_terms =  self._compute_f() + self._compute_g()
 
+
+
+
         # pre-compute spherical harmonics for interaction lists.
         # P_n^m and coefficient, 7*7*7*ncomp as offsets are in -3,3
         self._interaction_p = np.zeros((7, 7, 7, (self.L * 2)**2), dtype=dtype)
@@ -231,6 +234,9 @@ class PyFMM(object):
                     self._interaction_e[iy, ix, mxi] = math.cos(mx*sph[1])
                     self._interaction_e[iy, ix, (4*self.L + 1) + mxi] = \
                         math.sin(mx*sph[1])
+
+
+
 
         # create a pairloop for finest level part
         P = data.ParticleDat(ncomp=3, dtype=dtype)
@@ -312,7 +318,19 @@ class PyFMM(object):
             },
             shell_cutoff=max_radius
         )
-    
+ 
+        self._int_list = range(self.R)
+        for lvlx in range(1, self.R):
+            tsize = self.tree[lvlx].grid_cube_size
+            if tsize is not None:
+                self._int_list[lvlx] = compute_interaction_lists(tsize)
+            else: self._int_list[lvlx] = None
+         
+        self._int_tlookup = compute_interaction_tlookup()
+        self._int_plookup = compute_interaction_plookup()
+        self._int_radius = compute_interaction_radius()
+
+   
     def _compute_local_interaction(self, positions, charges):
         self._pair_loop.execute(
             dat_dict = {
@@ -377,6 +395,10 @@ class PyFMM(object):
             const INT64 nlevel
         )
         '''
+
+        if self.tree[child_level].parent_local_size is None:
+            return 
+
         radius = (self.domain.extent[0] /
                  self.tree[child_level].ncubes_side_global) * 0.5
 
@@ -416,6 +438,9 @@ class PyFMM(object):
         const REAL radius,
         const INT64 nlevel
         '''
+        if self.tree[child_level].local_grid_cube_size is None:
+            return
+
         radius = (self.domain.extent[0] /
                  self.tree[child_level].ncubes_side_global) * 0.5
 
@@ -436,6 +461,55 @@ class PyFMM(object):
         if err < 0: raise RuntimeError('negative return code: {}'.format(err))
 
 
+    def _translate_m_to_l(self, level):
+        """
+
+        """
+        '''
+        int translate_mtl(
+	    const UINT32 * RESTRICT dim_child,      // slowest to fastest
+	    const REAL * RESTRICT multipole_moments,
+	    REAL * RESTRICT local_moments,
+	    const REAL * RESTRICT phi_data,
+	    const REAL * RESTRICT theta_data,
+	    const REAL * RESTRICT alm,
+	    const REAL * RESTRICT almr,
+	    const REAL * RESTRICT i_array,
+	    const REAL radius,
+	    const INT64 nlevel,
+	    const INT32 * RESTRICT int_list,
+	    const INT32 * RESTRICT int_tlookup,
+	    const INT32 * RESTRICT int_plookup,
+	    const double * RESTRICT int_radius
+        )
+        '''
+        self.tree_halo.halo_exchange_level(level)
+
+        radius = self.domain.extent[0] / \
+                 self.tree[level].ncubes_side_global
+
+        radius = math.sqrt(radius*radius*3)
+
+        err = self._translate_mtm_lib(
+            _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
+            _check_dtype(self.tree_halo[level], REAL),
+            _check_dtype(self.tree_plain[level], REAL),
+	    _check_dtype(self._interaction_e, REAL),
+	    _check_dtype(self._interaction_p, REAL),
+            _check_dtype(self._a, REAL),
+            _check_dtype(self._ar, REAL),
+            _check_dtype(self._ipower_mtl, REAL),
+            REAL(radius),
+            INT64(self.L),
+            _check_dtype(self._int_list[level], INT32),
+            _check_dtype(self._int_tlookup, INT32),
+            _check_dtype(self._int_plookup, INT32),
+            _check_dtype(self._int_radius, ctypes.c_double)
+        )
+
+        if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
+
+
     def _fine_to_coarse(self, src_level):
         if src_level < 1:
             raise RuntimeError('cannot copy from a level lower than 1')
@@ -443,11 +517,15 @@ class PyFMM(object):
             raise RuntimeError('cannot copy from a greater than {}'.format(
             self.R))
 
+        if self.tree[src_level].parent_local_size is None:
+            return 
         send_parent_to_halo(src_level, self.tree_parent, self.tree_halo)
-
     
 
     def _coarse_to_fine(self, src_level):
+        if src_level == self.R - 1:
+            return
+
         if src_level < 1:
             raise RuntimeError('cannot copy from a level lower than 1')
         elif src_level >= self.R-1:
@@ -609,7 +687,7 @@ class PyFMM(object):
                 if 10.**-10 < dispt[0] <= vc:
 
 
-                    exp_coeff = cmath.exp(mpi2okappa2 * dispt[0] * dispt[0]) * \
+                    exp_coeff = cmath.exp(mpi2okappa2 * dispt[0] * dispt[0])*\
                                 ivolume * igamma
 
 
