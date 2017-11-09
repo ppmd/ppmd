@@ -602,7 +602,6 @@ class OctalTree(object):
                 or less MPI ranks.'''
             )
 
-
     def __getitem__(self, item):
         return self.levels[item]
 
@@ -636,6 +635,8 @@ class EntryData(object):
             raise RuntimeError('number of components mismatch')
         if octal_data_tree.dtype != self.dtype:
             raise RuntimeError('data type miss-match')
+        if octal_data_tree.mode != 'halo':
+            raise RuntimeError('DataTree is not of type halo')
 
         ns = 2 ** (self.tree.num_levels - 1)
         comm = self.tree.cart_comm
@@ -687,6 +688,78 @@ class EntryData(object):
                                       dst_sends[cx], tag=cx)
 
         if send_req is not None: send_req.wait()
+
+
+    def extract_from(self, octal_data_tree):
+        """
+        Extract data from a OctalDataTree of mode='plain'
+        :param octal_data_tree:
+        """
+        if octal_data_tree.tree is not self.tree:
+            raise RuntimeError('cannot extract from different tree')
+        if octal_data_tree.ncomp != self.ncomp:
+            raise RuntimeError('number of components mismatch')
+        if octal_data_tree.dtype != self.dtype:
+            raise RuntimeError('data type miss-match')
+        if octal_data_tree.mode != 'plain':
+            raise RuntimeError('DataTree is not of type plain')
+
+        ns = 2 ** (self.tree.num_levels - 1)
+        comm = self.tree.cart_comm
+        rank = comm.Get_rank()
+        ncomp = self.ncomp
+        entry_map = self.tree.entry_map
+
+        src_owners = self.tree[-1].owners.ravel()
+        src_g2l = self.tree[-1].global_to_local
+
+        dst_contribs = entry_map.contrib_mpi
+        dst_contribs_starts = entry_map.contrib_starts
+        dst_sends = entry_map.cube_to_send
+
+        src = octal_data_tree[-1].ravel()
+        dst = self.data.ravel()
+
+        tmp = np.zeros(ncomp, dtype=self.dtype)
+
+        send_req = None
+
+        for cxt in itertools.product(range(ns), range(ns), range(ns)):
+            cx = cube_tuple_to_lin_zyx(cxt, ns)
+
+            local_ind = self._inside_entry(cxt)
+            src_owner = src_owners[cx]
+
+            if src_owner == rank:
+                # this rank is sending
+                src_ind_b = src_g2l[cxt]*ncomp
+                src_ind_e = src_ind_b + ncomp
+
+                # start by copying the local data
+                dst_ind_b = local_ind * ncomp
+                dst_ind_e = dst_ind_b + ncomp
+
+                dst[dst_ind_b: dst_ind_e:] = src[src_ind_b:src_ind_e:]
+
+                # need to copy data to surrounding cells, these cells
+                # contributed in the upwards operation.
+                for nx in range(dst_contribs_starts[cx],
+                                dst_contribs_starts[cx+1]):
+                    recv_rank = dst_contribs[nx]
+                    if send_req is not None: send_req.wait()
+                    send_req = comm.Isend(src[src_ind_b:src_ind_e:],
+                                          recv_rank, tag=cx)
+                    # dst[dst_ind_b: dst_ind_e:] += tmp[:]
+
+            elif dst_sends[cx] > -1:
+                # this rank needs to recv its copy contribution
+                dst_ind_b = local_ind * ncomp
+                dst_ind_e = dst_ind_b + ncomp
+                comm.Recv(tmp[:], src_owner, tag=cx)
+                dst[dst_ind_b: dst_ind_e:] = tmp[:]
+
+        if send_req is not None: send_req.wait()
+
 
     def _inside_entry(self, p):
         if self._start[0] <= p[0] < self._end[0] and \

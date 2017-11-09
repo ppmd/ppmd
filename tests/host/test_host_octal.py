@@ -732,7 +732,44 @@ def test_entry_data_3():
             assert datahalo[0][2,2,2,nx] == N
 
 
+def test_entry_data_4():
 
+    nlevels = 6
+    ncomp = 10
+    dtype = ctypes.c_int
+
+    E = 10.
+    N = 1000
+
+    A = state.State()
+    A.npart = N
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    #rng = np.random.RandomState(seed=1234)
+    rng = np.random
+
+
+
+    A.P = data.PositionDat(ncomp=3)
+    A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
+    A.scatter_data_from(0)
+
+
+    tree = OctalTree(num_levels=nlevels, cart_comm=A.domain.comm)
+    dataplain = OctalDataTree(tree=tree, ncomp=ncomp, mode='plain',
+                             dtype=dtype)
+
+    entrydata = EntryData(tree, ncomp, dtype)
+    if dataplain.tree[-1].grid_cube_size is not None:
+        dataplain[-1][:] = np.arange(1, ncomp+1)
+    entrydata.extract_from(dataplain)
+    ls = entrydata.data.shape
+    for iz in range(ls[0]):
+        for iy in range(ls[1]):
+            for ix in range(ls[2]):
+                for nx in range(ncomp):
+                    assert entrydata[iz, iy, ix, nx] == nx + 1
 
 
 
