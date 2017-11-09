@@ -22,7 +22,7 @@ import time
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = MPI.COMM_WORLD.Barrier
-DEBUG = False
+DEBUG = True
 
 def spherical(xyz):
     if type(xyz) is tuple:

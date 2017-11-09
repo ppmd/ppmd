@@ -426,7 +426,6 @@ def test_fmm_init_3_3():
                                              'phi': phi_ga(access.INC_ZERO)})
     phi_loop.execute()
 
-
     fmm._compute_cube_contrib(A.P, A.Q)
 
     for level in range(fmm.R - 1, 0, -1):
@@ -453,7 +452,6 @@ def test_fmm_init_3_3():
     phi_local = fmm.particle_phi[0]
     
     phi_py = fmm._compute_cube_extraction(A.P, A.Q)
-
     
     phi_fmm = phi_local + phi_py
 

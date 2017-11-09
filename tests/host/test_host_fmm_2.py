@@ -219,12 +219,10 @@ def test_fmm_init_2_1():
     extent = A.domain.extent
     cube_ilen = 2**(fmm.R - 1) / extent[:]
     cube_half_len = 0.5*extent[:] / (2**(fmm.R - 1))
-
     shift_pos = A.P[:] + 0.5 * extent[:]
     shift_pos[:,0] = shift_pos[:,0] * cube_ilen[0]
     shift_pos[:,1] = shift_pos[:,1] * cube_ilen[1]
     shift_pos[:,2] = shift_pos[:,2] * cube_ilen[2]
-
     shift_pos = np.array(shift_pos, dtype='int') 
 
 
@@ -275,6 +273,7 @@ def test_fmm_init_2_1():
                                                        disp_sph)
                 phi_sph_re += phi_sph_re1 * charge * 0.5
                 phi_sph_im += phi_sph_im1 * charge * 0.5
+
     if DEBUG:
         print("direct:", phi_ga[0])
         print("multipole:", phi_sph_re + phi_local, "local:", phi_local, 

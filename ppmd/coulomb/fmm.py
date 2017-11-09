@@ -385,8 +385,10 @@ class PyFMM(object):
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 
-        self.tree_halo[self.R-1][2:-2:, 2:-2:, 2:-2:, :] = \
-            self.entry_data[:,:,:,:]
+        #self.tree_halo[self.R-1][2:-2:, 2:-2:, 2:-2:, :] = \
+        #    self.entry_data[:,:,:,:]
+        self.tree_halo[self.R-1][2:-2:, 2:-2:, 2:-2:, :] = 0.0
+        self.entry_data.add_onto(self.tree_halo)
 
 
     def _compute_cube_extraction(self, positions, charges):
