@@ -326,6 +326,7 @@ def compute_interaction_radius():
                 ro[ri, :] = tuple_to_coeff(
                     compute_interaction_offsets((ix, iy, iz)))
                 ri += 1
+
     return ro
 
 
@@ -333,17 +334,16 @@ def compute_interaction_lists(local_size):
     """
     Compute the local interaction offset lists for a local domain. Child cubes
     are indexed lexicographically from 0.
-    :param local_size: tuple of local cube domain dimensions.
+    :param local_size: tuple of local cube domain dimensions (fast to slow)
     :return: 8x189 ctypes.c_int32 offsets numpy array.
     """
-
     if not local_size[0] > 5 or not local_size[1] > 5 \
             or not local_size[2] > 5:
         raise RuntimeError(
             "local size too small in a dimension: " + str(local_size))
 
-    def tuple_to_lin(x): return x[:, 2]*local_size[0]*local_size[1] + \
-        x[:, 1]*local_size[0] + x[:, 0]
+    def tuple_to_lin(x): return x[:, 2]*local_size[2]*local_size[1] + \
+        x[:, 1]*local_size[2] + x[:, 0]
 
     ro = np.zeros(shape=(8, 189), dtype=ctypes.c_int32)
     ri = 0

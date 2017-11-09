@@ -6,7 +6,7 @@ __license__ = "GPL"
 from math import log, ceil
 from ppmd.coulomb.octal import *
 import numpy as np
-from ppmd import runtime, host, kernel, pairloop, data, access
+from ppmd import runtime, host, kernel, pairloop, data, access, mpi
 from ppmd.lib import build
 import ctypes
 import os
@@ -341,7 +341,6 @@ class PyFMM(object):
         self._int_plookup = compute_interaction_plookup()
         self._int_radius = compute_interaction_radius()
 
-   
     def _compute_local_interaction(self, positions, charges):
         self._pair_loop.execute(
             dat_dict = {
@@ -350,7 +349,7 @@ class PyFMM(object):
                 'PHI':self.particle_phi(access.INC_ZERO)
             }
         )
-
+        return self.particle_phi[0]
 
     def re_lm(self, l,m): return (l**2) + l + m
 
@@ -390,7 +389,6 @@ class PyFMM(object):
         self.tree_halo[self.R-1][2:-2:, 2:-2:, 2:-2:, :] = 0.0
         self.entry_data.add_onto(self.tree_halo)
 
-
     def _compute_cube_extraction(self, positions, charges):
 
         ns = self.tree.entry_map.cube_side_count
@@ -411,7 +409,9 @@ class PyFMM(object):
         '''
 
         phi = REAL(0)
-        self.entry_data[:,:,:,:] = self.tree_plain[self.R-1][:,:,:,:]
+        #self.entry_data[:,:,:,:] = self.tree_plain[self.R-1][:,:,:,:]
+        self.entry_data.extract_from(self.tree_plain)
+
         err = self._extraction_lib(
             INT64(self.L),
             UINT64(positions.npart_local),
@@ -428,7 +428,9 @@ class PyFMM(object):
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 
-        return phi.value
+        red_re = mpi.all_reduce(np.array((phi.value)))
+
+        return red_re
 
 
     def _translate_m_to_m(self, child_level):
@@ -539,13 +541,43 @@ class PyFMM(object):
 	    const double * RESTRICT int_radius
         )
         '''
-        
-        #self.tree_halo.halo_exchange_level(level)
-        
 
-        self.tree_plain[level][:] = 0.0
+        #if self.tree[level].local_grid_cube_size is not None:
+        #    print(level, 60*"-")
+        #    print(self.tree_halo[level][:,:,:,0])
+        #    print(60*"=")
+
+        self.tree_halo.halo_exchange_level(level)
+
         if self.tree[level].local_grid_cube_size is None:
             return
+
+        # if computing the free space solution we need to zero the outer
+        # halo regions
+
+        if self.free_space:
+            gs = self.tree[level].ncubes_side_global
+            lo = self.tree[level].local_grid_offset
+            ls = self.tree[level].local_grid_cube_size
+
+            if lo[2] == 0:
+                self.tree_halo[level][:,:,:2:,:] = 0.0
+            if lo[1] == 0:
+                self.tree_halo[level][:,:2:,:,:] = 0.0
+            if lo[0] == 0:
+                self.tree_halo[level][:2:,:,:,:] = 0.0
+            if lo[2] + ls[2] == gs:
+                self.tree_halo[level][:,:,-2::,:] = 0.0
+            if lo[1] + ls[1] == gs:
+                self.tree_halo[level][:,-2::,:,:] = 0.0
+            if lo[0] + ls[0] == gs:
+                self.tree_halo[level][-2::,:,:,:] = 0.0
+
+
+        #print(self.tree_halo[level][:,:,:,0])
+
+        self.tree_plain[level][:] = 0.0
+
 
 
         radius = self.domain.extent[0] / \
@@ -556,8 +588,8 @@ class PyFMM(object):
             _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
             _check_dtype(self.tree_halo[level], REAL),
             _check_dtype(self.tree_plain[level], REAL),
-	    _check_dtype(self._interaction_e, REAL),
-	    _check_dtype(self._interaction_p, REAL),
+	        _check_dtype(self._interaction_e, REAL),
+	        _check_dtype(self._interaction_p, REAL),
             _check_dtype(self._a, REAL),
             _check_dtype(self._ar, REAL),
             _check_dtype(self._ipower_mtl, REAL),

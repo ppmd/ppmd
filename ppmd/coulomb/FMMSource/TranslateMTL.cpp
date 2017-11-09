@@ -189,6 +189,8 @@ int translate_mtl(
         REAL * out_moments = &local_moments[ncomp * pcx];
         // loop over contributing nearby cells.
         
+
+        //printf("local size %d %d %d\n", dim_child[0], dim_child[1], dim_child[2]);
         //printf("Cell %d nlevel %d\n", pcx, nlevel);
 
 
@@ -196,6 +198,8 @@ int translate_mtl(
             
             const REAL local_radius = int_radius[conx] * radius;
             const INT32 jcell = int_list[conx] + halo_ind;
+
+            //printf("icell %d jcell %d halo_ind %d int_list[conx] %d\n", pcx, jcell, halo_ind, int_list[conx]);
             const INT32 t_lookup = int_tlookup[conx];
             const INT32 p_lookup = int_plookup[conx];
             
