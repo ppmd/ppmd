@@ -101,7 +101,7 @@ class PairLoopRapaportHalo(_Base):
         elif kernel is not None:
             self._kernel = kernel
         else:
-            print "pairloop error, no kernel passed."
+            print("pairloop error, no kernel passed.")
 
         self.loop_timer = opt.LoopTimer()
 
@@ -162,7 +162,14 @@ class PairLoopRapaportHalo(_Base):
         self._code = '''
         #include <stdio.h>
         
-        void cell_index_offset(const unsigned int cp_i, const unsigned int cpp_i, int* cell_array, unsigned int* cpp, unsigned int* cp_h_flag, unsigned int* cpp_h_flag){
+        void cell_index_offset(
+            const unsigned int cp_i,
+            const unsigned int cpp_i,
+            int* cell_array,
+            unsigned int* cpp,
+            unsigned int* cp_h_flag,
+            unsigned int* cpp_h_flag
+        ){
         
             const int cell_map[14][3] = {   {0,0,0},
                                             {1,0,0},
@@ -214,7 +221,11 @@ class PairLoopRapaportHalo(_Base):
             return;      
         }    
         
-        void %(KERNEL_NAME)s_wrapper(const int n, int* cell_array, int* q_list,%(ARGUMENTS)s) { 
+        void %(KERNEL_NAME)s_wrapper(
+        const int n,
+        int* cell_array,
+        int* q_list,
+        %(ARGUMENTS)s) { 
             
             //printf("starting");
             for(unsigned int cp = 0; cp < cell_array[0]*cell_array[1]*(cell_array[2]-1); cp++){

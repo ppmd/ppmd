@@ -118,6 +118,8 @@ class CellList(object):
         # container for reverse lookup. (If needed ?)
         self._cell_reverse_lookup = None
 
+        self._max_count = 0
+
 
         # static args init.
         self._static_args = None
@@ -303,6 +305,8 @@ class CellList(object):
 
         self.timer_sort.pause()
 
+        self._max_count = np.max(self.cell_contents_count[:])
+
         opt.PROFILE[
             self.__class__.__name__+':sort'
         ] = (self.timer_sort.time())
@@ -340,7 +344,7 @@ class CellList(object):
 
     @property
     def max_cell_contents_count(self):
-        return np.max(self.cell_contents_count[:])
+        return self._max_count
 
     @property
     def domain(self):
@@ -413,7 +417,8 @@ class CellList(object):
             self._cell_contents_count.ctypes_data,
             self.cell_reverse_lookup.ctypes_data
         )
-        
+
+        self._max_count = np.max(self.cell_contents_count[:])
         self.halo_version_id += 1
         self.timer_sort.pause()
 

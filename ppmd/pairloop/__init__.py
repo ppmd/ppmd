@@ -12,7 +12,7 @@ __all__ = [
 
 
 from ppmd.pairloop.alltoall import *
-# from cellbycell import *
+from cellbycell_omp import *
 from ppmd.pairloop.neighbourlist import *
 from ppmd.pairloop.neighbourlist_omp import *
 

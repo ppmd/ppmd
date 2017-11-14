@@ -17,6 +17,8 @@ from ppmd import data, runtime, access
 from ppmd.pairloop import neighbourlist_14cell
 from ppmd.pairloop import neighbourlist_27cell
 
+
+
 def gather_matrix(obj, symbol_dat, symbol_tmp, loop_index):
     nc = obj.ncomp
     t = '{'

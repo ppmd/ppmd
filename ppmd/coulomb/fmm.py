@@ -258,7 +258,7 @@ class PyFMM(object):
         self.particle_phi = data.GlobalArray(ncomp=1, dtype=dtype)
         ns = self.tree.entry_map.cube_side_count
         maxe = np.max(self.domain.extent[:]) / ns
-        max_radius = 1.1 * (((maxe*2.)**2.)*3.)**0.5
+
 
         # zero the mask if interacting over a periodic boundary
         free_space_mod = ""
@@ -323,7 +323,11 @@ class PyFMM(object):
         })
         pair_kernel = kernel.Kernel('fmm_pairwise', code=pair_kernel_src, 
             headers=(kernel.Header('math.h'),))
+
+        max_radius = 1.1 * (((maxe*2.)**2.)*3.)**0.5
+        #max_radius = 1.1 * maxe
         self._pair_loop = pairloop.PairLoopNeighbourListNSOMP(
+        #self._pair_loop = pairloop.CellByCellOMP(
             kernel=pair_kernel,
             dat_dict={
                 'P':P(access.READ),

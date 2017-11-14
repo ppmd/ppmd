@@ -51,6 +51,7 @@ class BaseMDState(object):
         self._base_cell_width = 0.0 # no cell structure imposed
 
         self._cell_to_particle_map = None
+        self.cell_to_particle_version = 0
         self._halo_manager = None
 
         self._position_dat = None
@@ -94,6 +95,7 @@ class BaseMDState(object):
             self._base_cell_width = cell_width
             self._cell_particle_map_setup()
             self.invalidate_lists = True
+            self.cell_to_particle_version += 1
 
             for dat in self.particle_dats:
                 getattr(self, dat).vid_halo_cell_list = -1
