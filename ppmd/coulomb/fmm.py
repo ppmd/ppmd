@@ -39,7 +39,7 @@ def _check_dtype(arr, dtype):
 
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6, shared_memory=False,
-        free_space=False, r=None):
+        free_space=False, r=None, shell_width=0.0):
 
         dtype = REAL
 
@@ -250,8 +250,6 @@ class PyFMM(object):
                         math.sin(mx*sph[1])
 
 
-
-
         # create a pairloop for finest level part
         P = data.ParticleDat(ncomp=3, dtype=dtype)
         Q = data.ParticleDat(ncomp=1, dtype=dtype)
@@ -324,8 +322,8 @@ class PyFMM(object):
         pair_kernel = kernel.Kernel('fmm_pairwise', code=pair_kernel_src, 
             headers=(kernel.Header('math.h'),))
 
-        max_radius = 1.1 * (((maxe*2.)**2.)*3.)**0.5
-        #max_radius = 1.1 * maxe
+        max_radius = 1. * ((((maxe+shell_width)*2.)**2.)*3.)**0.5
+        #max_radius = 2. * (maxe + shell_width)
         self._pair_loop = pairloop.PairLoopNeighbourListNSOMP(
         #self._pair_loop = pairloop.CellByCellOMP(
             kernel=pair_kernel,
