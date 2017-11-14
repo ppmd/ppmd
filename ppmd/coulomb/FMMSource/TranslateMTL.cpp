@@ -60,7 +60,9 @@ static inline void mtl(
     const REAL * RESTRICT   a_array,
     const REAL * RESTRICT   ar_array,
     const REAL * RESTRICT   i_array,
-    REAL * RESTRICT         ldata
+    REAL * RESTRICT         ldata,
+    const INT64 DEBUG0,
+    const INT64 DEBUG1
 ){
     const INT64 ASTRIDE1 = 4*nlevel + 1;
     const INT64 ASTRIDE2 = 2*nlevel;
@@ -123,9 +125,9 @@ static inline void mtl(
                 cplx_mul_add(y_re, y_im, 
                     ocoeff_re, ocoeff_im, &contrib_re, &contrib_im);
 
-                //if(jx == 0 && kx == 0){
-                //    printf("nx\t%d\tmx\t%d:\t%f\t%f\n", 
-                //        nx, mx, ocoeff_re, odata[oind]);
+                //if(DEBUG0 == 2 && DEBUG1 == 190 && jx == 0 && kx == 0){
+                //    printf("C nx\t%d\tmx\t%d:\t%f\t%f\n", 
+                //        nx, mx, contrib_re, odata[oind]);
                 //}
 
             }
@@ -133,6 +135,11 @@ static inline void mtl(
         
         ldata[CUBE_IND(jx, kx)] += contrib_re;
         ldata[CUBE_IND(jx, kx) + im_offset] += contrib_im;
+
+        //if(DEBUG0 == 2 && jx==0 && kx ==0){
+        ///    printf("C jx\t%d\tkx\t%d:\t%f\t%f\n", 
+        //        jx, kx, contrib_re, ldata[CUBE_IND(jx, kx)]);
+        //}       
 
     }}
 }
@@ -185,6 +192,8 @@ int translate_mtl(
         const INT64 halo_ind = xyz_to_lin(dim_halo, ccx, ccy, ccz);
         const INT64 octal_ind = xyz_to_lin(dim_eight, 
             cx & 1, cy & 1, cz & 1);
+
+        if (pcx==2) { printf("C lin_mask: %d\n", octal_ind);}
         
         REAL * out_moments = &local_moments[ncomp * pcx];
         // loop over contributing nearby cells.
@@ -203,9 +212,7 @@ int translate_mtl(
             const INT32 t_lookup = int_tlookup[conx];
             const INT32 p_lookup = int_plookup[conx];
             
-            //if (pcx==0){
-            //    printf("radius %f local_radius %f\n", radius, local_radius);
-            //}
+
 
             //printf("VAL %d\n", halo_ind);
             //for (int jx=0 ; jx<nlevel ; jx++){
@@ -216,12 +223,19 @@ int translate_mtl(
             //        );
             //    }
             //}
+            
 
             mtl(nlevel, local_radius, &multipole_moments[jcell*ncomp],
                 &phi_data[p_lookup * phi_stride],
                 &theta_data[t_lookup * theta_stride],
                 alm, almr, i_array,
-                out_moments);
+                out_moments, pcx, int_list[conx]);
+
+            //if (pcx==2){
+            //    printf("conx\t%d\toffset\t%d\tmm0\t%f\n", conx,
+            //        int_list[conx], multipole_moments[jcell*ncomp]);
+            //}
+
             
         }
         
@@ -269,7 +283,9 @@ int mtl_test_wrapper(
     a_array,
     ar_array,
     i_array,
-    ldata
+    ldata,
+    0,
+    0
     );
     return 0;
 }

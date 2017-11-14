@@ -56,7 +56,7 @@ def test_fmm_init_1():
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
 
-    fmm = PyFMM(domain=A.domain, N=1000, eps=10.**-2)
+    fmm = PyFMM(domain=A.domain, r=4, eps=10.**-2, free_space=True)
     ncubeside = 2**(fmm.R-1)
     N = ncubeside ** 3
     A.npart = N
@@ -281,9 +281,9 @@ def test_fmm_init_2():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-    eps = 10.**-3
+    eps = 10.**-4
 
-    fmm = PyFMM(domain=A.domain, N=1000, eps=eps)
+    fmm = PyFMM(domain=A.domain, r=4, eps=eps, free_space=True)
     ncubeside = 2**(fmm.R-1)
     N = ncubeside ** 3
     A.npart = N
@@ -467,6 +467,7 @@ def test_fmm_init_2():
         #print(MPIRANK, lsize, fmm.tree[level-1].parent_local_size)
 
         if lsize is not None:
+
             fmm._translate_m_to_m(level)
             fmm._fine_to_coarse(level)
 
@@ -655,9 +656,9 @@ def offset(request):
 
 
 def test_fmm_init_4():
-    offset = (20., 0., 0.)
+    offset = (30., 30., 30.)
 
-    E = 10.
+    E = 20.
 
     A = state.State()
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
@@ -665,7 +666,7 @@ def test_fmm_init_4():
 
     eps = 10.**-2
 
-    fmm = PyFMM(domain=A.domain, N=1000, eps=eps)
+    fmm = PyFMM(domain=A.domain, r=5, eps=eps, free_space=True)
     ncubeside = 2**(fmm.R-1)
     N = ncubeside ** 3
     #N = 1
@@ -734,6 +735,7 @@ def test_fmm_init_4():
                                               'phi': phi_ga(access.INC_ZERO)})
     phi_loop.execute()
 
+    print("\n")
 
     for level in range(fmm.R - 1, 0, -1):
         #if MPIRANK == 0:
@@ -788,13 +790,13 @@ def test_fmm_init_4():
 
         # print(moments[:llimit**2:])
         if MPIRANK == 0 and DEBUG:
-            print(60*'~')
+            print('MULTI', 60*'~')
             print("ERR RE:", red_re)
             print("ERR IM:", red_im)
             print(60*'~')
 
         assert red_im < 10.**-15, "bad imaginary part"
-        assert red_re >= last_re, "Errors do not get better as level -> 0"
+        #assert red_re >= last_re, "Errors do not get better as level -> 0"
         assert red_re < eps, "error did not meet tol"
     
 
@@ -830,12 +832,9 @@ def test_fmm_init_4():
 
     lsize = fmm.tree[1].parent_local_size
 
-    eval_point = (0., 0., 4.)
+    eval_point = (1., 3., 4.)
     eval_sph = spherical(np.reshape(eval_point, (1, 3)))
 
-    local_phi_re, local_phi_im = compute_phi_local(
-        fmm.L, l_array, eval_sph)
-    
     # print("l_array", l_array)
 
     point_sa[:] = np.array(point) + np.array(eval_point)
@@ -857,17 +856,20 @@ def test_fmm_init_4():
             extern_numpy_ptr(l_array)
         )
 
+        local_phi_re, local_phi_im = compute_phi_local(
+            fmm.L, l_array, eval_sph)
 
         err_re = abs(local_phi_re - phi_ga[0])
         err_im = abs(local_phi_im)
 
         if MPIRANK == 0 and DEBUG:
             print('LOCAL ' + 60*'~')
-            print("ERR RE:", err_re, "\tcomputed:", local_phi_re, "\tdirect:", phi_ga[0])
+            print("ERR RE:", err_re, "\tcomputed:", local_phi_re, "\tdirect:",
+                  phi_ga[0])
             print("ERR IM:", err_im)
             print(60*'~')
 
-        # assert err_re < eps, "bad real part"
+        assert err_re < eps, "bad real part"
         assert err_im < 10.**-15, "bad imag part"
 
 
@@ -877,9 +879,8 @@ def test_fmm_init_4():
 
 def test_fmm_init_5():
 
-    offset = (20., 0., 0.)
-
-    E = 10.
+    E = 30.
+    R = 5
 
     A = state.State()
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
@@ -887,7 +888,7 @@ def test_fmm_init_5():
 
     eps = 10.**-4
 
-    fmm = PyFMM(domain=A.domain, N=1000, eps=eps)
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps)
 
     ncubeside = 2**(fmm.R-1)
     N = ncubeside ** 3
@@ -929,7 +930,7 @@ def test_fmm_init_5():
 
     fmm._compute_cube_contrib(A.P, A.Q)
 
-    point = np.array(offset)
+    point = np.array([2*E,2*E,2*E])
 
     # compute potential energy to point across all charges directly
     src = """
@@ -1079,7 +1080,7 @@ def test_fmm_init_5():
         assert err_im < 10.**-15, "bad imag part"
 
     # create a second tree to traverse down.
-    fmm2 = PyFMM(domain=A.domain, N=1000, eps=eps)
+    fmm2 = PyFMM(domain=A.domain, r=R, eps=eps)
 
     if MPIRANK == 0:
         fmm2.tree_parent[1][0,0,0,:] = l_array[:]

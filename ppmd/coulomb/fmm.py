@@ -38,14 +38,16 @@ def _check_dtype(arr, dtype):
     else: raise RuntimeError('unknown array type passed: {}'.format(type(arr)))
 
 class PyFMM(object):
-    def __init__(self, domain, N, eps=10.**-6, shared_memory=False,
-        free_space=False):
+    def __init__(self, domain, N=None, eps=10.**-6, shared_memory=False,
+        free_space=False, r=None):
 
         dtype = REAL
 
         self.L = int(-1*log(eps,2))
         """Number of multipole expansion coefficients"""
-        self.R = int(ceil(log(N, 8)))
+        if r is None: self.R = int(log(N, 8))
+        else: self.R = int(r)
+
         """Number of levels in octal tree."""
         self.dtype = dtype
         """Floating point datatype used."""
@@ -204,7 +206,8 @@ class PyFMM(object):
 
         # pre compute the "periodic boundaries coefficients.
         # self._boundary_terms[:] += self._compute_f() + self._compute_g()
-        self._boundary_terms =  self._compute_f() + self._compute_g()
+        if not free_space:
+            self._boundary_terms =  self._compute_f() + self._compute_g()
 
 
 

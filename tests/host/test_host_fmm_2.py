@@ -22,7 +22,7 @@ import time
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = MPI.COMM_WORLD.Barrier
-DEBUG = False
+DEBUG = True
 
 def spherical(xyz):
     if type(xyz) is tuple:
@@ -127,7 +127,7 @@ def compute_phi_local(llimit, moments, disp_sph):
 @pytest.mark.skipif("MPISIZE > 1")
 def test_fmm_init_2_1():
 
-    E = 10.
+    E = 20.
 
     A = state.State()
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
@@ -135,7 +135,7 @@ def test_fmm_init_2_1():
 
     eps = 10.**-2
 
-    fmm = PyFMM(domain=A.domain, N=100, eps=eps, free_space=True)
+    fmm = PyFMM(domain=A.domain, r=3, eps=eps, free_space=True)
 
     ncubeside = 2**(fmm.R-1)
     N = ncubeside ** 3
