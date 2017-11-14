@@ -353,7 +353,7 @@ def test_fmm_init_4_2():
     Ns = 8
     E = 10.
 
-    SKIP_MTL = True
+    SKIP_MTL = False
 
     A = state.State()
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
