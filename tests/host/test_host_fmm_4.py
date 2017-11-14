@@ -728,8 +728,6 @@ def test_fmm_init_4_3():
     #N = 2
     A.npart = N
 
-    print("N", N)
-
     rng = np.random.RandomState(seed=1234)
 
     A.P = data.PositionDat(ncomp=3)
@@ -753,47 +751,51 @@ def test_fmm_init_4_3():
 
     A.Q[:] = 1.0
 
-    print("POS_S")
-    print(A.P[0:2:,:])
-    print("POS_E")
-
     #bias = np.sum(A.Q[:])/N
     #A.Q[:] -= bias
 
     A.scatter_data_from(0)
+    if MPIRANK == 0 and DEBUG:
 
-    print("L", fmm.L, "R", fmm.R)
+        print("N", N, "L", fmm.L, "R", fmm.R)
 
-    ### LOCAL PHI START ###
-    # compute potential energy to point across all charges directly
-    P2 = data.PositionDat(npart=N, ncomp=3)
-    Q2 = data.ParticleDat(npart=N, ncomp=1)
-    P2[:,:] = A.P[:N:,:]
-    Q2[:,:] = A.Q[:N:,:]
-    local_phi_ga = data.ScalarArray(ncomp=1, dtype=ctypes.c_double)
-    src = """
-    const double d0 = P.j[0] - P.i[0];
-    const double d1 = P.j[1] - P.i[1];
-    const double d2 = P.j[2] - P.i[2];
-    phi[0] += 0.5 * Q.i[0] * Q.j[0] / sqrt(d0*d0 + d1*d1 + d2*d2);
-    """
-    local_phi_kernel = kernel.Kernel('all_to_all_phi', src,
-                               headers=(kernel.Header('math.h'),))
+    if MPISIZE == 1:
+        ### LOCAL PHI START ###
+        # compute potential energy to point across all charges directly
+        P2 = data.PositionDat(npart=N, ncomp=3)
+        Q2 = data.ParticleDat(npart=N, ncomp=1)
+        P2[:,:] = A.P[:N:,:]
+        Q2[:,:] = A.Q[:N:,:]
+        local_phi_ga = data.ScalarArray(ncomp=1, dtype=ctypes.c_double)
+        src = """
+        const double d0 = P.j[0] - P.i[0];
+        const double d1 = P.j[1] - P.i[1];
+        const double d2 = P.j[2] - P.i[2];
+        phi[0] += 0.5 * Q.i[0] * Q.j[0] / sqrt(d0*d0 + d1*d1 + d2*d2);
+        """
+        local_phi_kernel = kernel.Kernel('all_to_all_phi', src,
+                                   headers=(kernel.Header('math.h'),))
 
 
-    local_phi_loop = pairloop.AllToAllNS(kernel=local_phi_kernel,
-                       dat_dict={'P': P2(access.READ),
-                                 'Q': Q2(access.READ),
-                                 'phi': local_phi_ga(access.INC_ZERO)})
-    local_phi_loop.execute()
-    local_phi_direct = local_phi_ga[0]
-    print("local_phi", local_phi_direct)
+        local_phi_loop = pairloop.AllToAllNS(kernel=local_phi_kernel,
+                           dat_dict={'P': P2(access.READ),
+                                     'Q': Q2(access.READ),
+                                     'phi': local_phi_ga(access.INC_ZERO)})
+        local_phi_loop.execute()
+        local_phi_direct = local_phi_ga[0]
+        print("local_phi {:.30f}".format(float(local_phi_direct)))
+    else:
+        local_phi_direct = 999739.276282914448529481887817382812
+
+
     ### LOCAL PHI END ###
 
     t0 = time.time()
     fmm._compute_cube_contrib(A.P, A.Q)
     for level in range(fmm.R - 1, 0, -1):
-        print("UP", yellow(level))
+
+        if MPIRANK == 0 and DEBUG:
+            print("UP", yellow(level))
 
         fmm._translate_m_to_l(level)
         fmm._translate_m_to_m(level)
@@ -805,7 +807,8 @@ def test_fmm_init_4_3():
     fmm.tree_plain[1][:] = 0.0
 
     for level in range(1, fmm.R):
-        print("DOWN", yellow(level))
+        if MPIRANK == 0 and DEBUG:
+            print("DOWN", yellow(level))
         fmm._translate_l_to_l(level)
         fmm._coarse_to_fine(level)
 
@@ -820,9 +823,10 @@ def test_fmm_init_4_3():
     if local_err > eps: serr = red(local_err)
     else: serr = yellow(local_err)
 
-    print("TIME:", t1 - t0)
-    print("LOCAL PHI ERR:", serr, phi_py, green(local_phi_direct))
-    print("NEARBY:", phi_near, "\tEXTRACT:", phi_extract)
+    if MPIRANK == 0 and DEBUG:
+        print("TIME:", t1 - t0)
+        print("LOCAL PHI ERR:", serr, phi_py, green(local_phi_direct))
+        print("NEARBY:", phi_near, "\tEXTRACT:", phi_extract)
 
 
 
