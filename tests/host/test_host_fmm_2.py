@@ -225,7 +225,6 @@ def test_fmm_init_2_1():
     shift_pos[:,2] = shift_pos[:,2] * cube_ilen[2]
     shift_pos = np.array(shift_pos, dtype='int') 
 
-
     fmm._compute_local_interaction(A.P, A.Q)
     phi_local = fmm.particle_phi[0]
     

@@ -193,7 +193,7 @@ int translate_mtl(
         const INT64 octal_ind = xyz_to_lin(dim_eight, 
             cx & 1, cy & 1, cz & 1);
 
-        if (pcx==2) { printf("C lin_mask: %d\n", octal_ind);}
+        //if (pcx==2) { printf("C lin_mask: %d\n", octal_ind);}
         
         REAL * out_moments = &local_moments[ncomp * pcx];
         // loop over contributing nearby cells.

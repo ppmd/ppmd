@@ -181,7 +181,6 @@ def test_fmm_init_4_1():
 
     offset = (20., 0., 0.)
 
-
     R = 3
     Ns = 2**(R-1)
     E = 10.
@@ -353,21 +352,21 @@ def test_fmm_init_4_2():
     Ns = 8
     E = 10.
 
-    SKIP_MTL = False
+    SKIP_MTL = True
 
     A = state.State()
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
     eps = 10.**-2
-    eps2 = 10.**-15
+    eps2 = 10.**-3
 
     N = Ns**3
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=True)
 
     print(fmm.R, fmm.L)
 
-    #N = 3
+    N = 2
     A.npart = N
 
     print("N", N)
@@ -622,11 +621,76 @@ def test_fmm_init_4_2():
     fmm.tree_plain[1][:] = 0.0
     for level in range(1, fmm.R):
         print("DOWN", yellow(level))
-        fmm._coarse_to_fine(level)
+
+        print("PRE", fmm.tree_plain[level][0,0,0,0],
+              fmm.tree_parent[level][0,0,0,0],
+              fmm.tree_plain[level-1][0,0,0,0])
+
+
         fmm._translate_l_to_l(level)
 
-    phi_py = fmm._compute_cube_extraction(A.P, A.Q)
-    phi_py += fmm._compute_local_interaction(A.P, A.Q)
+        fmm._coarse_to_fine(level)
+
+
+        print("POST", fmm.tree_plain[level][0,0,0,0],
+              fmm.tree_parent[level][0,0,0,0],
+              fmm.tree_plain[level-1][0,0,0,0])
+
+        ls = fmm.tree[level].local_grid_cube_size
+        lo = fmm.tree[level].local_grid_offset
+
+        cube_width = E/fmm.tree[level].ncubes_side_global
+        first_cube = -0.5*E + 0.5*cube_width
+
+        extent = A.domain.extent
+        cube_ilen = fmm.tree[level].ncubes_side_global / extent[:]
+        shift_pos = A.P[:] + 0.5 * extent[:]
+        shift_pos[:,0] = shift_pos[:,0] * cube_ilen[0]
+        shift_pos[:,1] = shift_pos[:,1] * cube_ilen[1]
+        shift_pos[:,2] = shift_pos[:,2] * cube_ilen[2]
+        shift_pos = np.array(shift_pos, dtype='int')
+        print(shift_pos)
+
+        # the local expansion should contain the "far away" particle
+        # contributions in the zero-th moment
+        for tx in tuple_it(ls):
+            txa = np.array(tx)
+
+            center = np.array(
+                (first_cube + (lo[2] + tx[2])*cube_width,
+                 first_cube + (lo[1] + tx[1])*cube_width,
+                 first_cube + (lo[0] + tx[0])*cube_width))
+
+            phi_far_local = 0.0
+            for px in range(N):
+                # dx is xyz
+                dx = np.array((0,0,0), dtype='int')
+                dx[0] = txa[2] - shift_pos[px, 0]
+                dx[1] = txa[1] - shift_pos[px, 1]
+                dx[2] = txa[0] - shift_pos[px, 2]
+                dx2 = dx[0]**2 + dx[1]**2 + dx[2]**2
+                if dx2 > 3:
+                    phi_far_local += A.Q[px, 0] / np.linalg.norm(
+                        A.P[px,:] - center)
+
+            ll = fmm.tree_plain[level][tx[0], tx[1], tx[2], 0]
+            err = abs(phi_far_local - ll)
+
+            if err > eps2: serr = red(err)
+            else: serr = err
+
+            print("Expected PHI", tx, "\t", center,"\t",serr,"\t", ll, green(phi_far_local))
+
+
+
+
+
+
+
+
+    phi_extract = fmm._compute_cube_extraction(A.P, A.Q)
+    phi_near = fmm._compute_local_interaction(A.P, A.Q)
+    phi_py = phi_extract + phi_near
 
     local_err = abs(phi_py - local_phi_direct)
 
@@ -634,9 +698,128 @@ def test_fmm_init_4_2():
     else: serr = yellow(local_err)
 
     print("LOCAL PHI ERR:", serr, phi_py, green(local_phi_direct))
+    print("NEARBY:", phi_near, "\tEXTRACT:", phi_extract)
 
 
 
+
+
+def test_fmm_init_4_3():
+
+    R = 3
+    Ns = 2**(R-1)
+    Ns = 8
+    E = 10.
+
+    SKIP_MTL = True
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-4
+    eps2 = 10.**-3
+
+    N = Ns**3
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=True)
+
+    print(fmm.R, fmm.L)
+
+    #N = 2
+    A.npart = N
+
+    print("N", N)
+
+    rng = np.random.RandomState(seed=1234)
+
+    A.P = data.PositionDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+    #A.P[:] = utility.lattice.cubic_lattice((Ns, Ns, Ns),
+    #                                       (E, E, E))
+    A.P[:] = rng.uniform(low=-0.499*E, high=0.499*E, size=(N,3))
+    A.Q[:] = rng.uniform(low=-1.0, high=1.0, size=(N,1))
+
+    #A.Q[::,0] = 1.
+    #A.P[0, :] = (-3.75, -3.75, -3.75)
+    #A.P[1, :] = (3.75, -3.75, 3.75)
+    #A.P[2, :] = (3.75, 3.75, 3.75)
+
+    # for last/first cube
+    cube_width = E/fmm.tree[R-1].ncubes_side_global
+    #A.P[0, :] = (-0.5*(E - cube_width), -0.5*(E - cube_width),
+    #             -0.5*(E - cube_width))
+    #A.P[1, :] = (0.5*(E - cube_width), 0.5*(E - cube_width),
+    #             0.5*(E - cube_width))
+
+    A.Q[:] = 1.0
+
+    print("POS_S")
+    print(A.P[0:2:,:])
+    print("POS_E")
+
+    #bias = np.sum(A.Q[:])/N
+    #A.Q[:] -= bias
+
+    A.scatter_data_from(0)
+
+    print("L", fmm.L, "R", fmm.R)
+
+    ### LOCAL PHI START ###
+    # compute potential energy to point across all charges directly
+    P2 = data.PositionDat(npart=N, ncomp=3)
+    Q2 = data.ParticleDat(npart=N, ncomp=1)
+    P2[:,:] = A.P[:N:,:]
+    Q2[:,:] = A.Q[:N:,:]
+    local_phi_ga = data.ScalarArray(ncomp=1, dtype=ctypes.c_double)
+    src = """
+    const double d0 = P.j[0] - P.i[0];
+    const double d1 = P.j[1] - P.i[1];
+    const double d2 = P.j[2] - P.i[2];
+    phi[0] += 0.5 * Q.i[0] * Q.j[0] / sqrt(d0*d0 + d1*d1 + d2*d2);
+    """
+    local_phi_kernel = kernel.Kernel('all_to_all_phi', src,
+                               headers=(kernel.Header('math.h'),))
+
+
+    local_phi_loop = pairloop.AllToAllNS(kernel=local_phi_kernel,
+                       dat_dict={'P': P2(access.READ),
+                                 'Q': Q2(access.READ),
+                                 'phi': local_phi_ga(access.INC_ZERO)})
+    local_phi_loop.execute()
+    local_phi_direct = local_phi_ga[0]
+    print("local_phi", local_phi_direct)
+    ### LOCAL PHI END ###
+
+    fmm._compute_cube_contrib(A.P, A.Q)
+    for level in range(fmm.R - 1, 0, -1):
+        print("UP", yellow(level))
+
+        fmm._translate_m_to_l(level)
+        fmm._translate_m_to_m(level)
+        fmm._fine_to_coarse(level)
+
+    fmm.tree_parent[0][:] = 0.0
+    fmm.tree_plain[0][:] = 0.0
+    fmm.tree_parent[1][:] = 0.0
+    fmm.tree_plain[1][:] = 0.0
+
+    for level in range(1, fmm.R):
+        print("DOWN", yellow(level))
+        fmm._translate_l_to_l(level)
+        fmm._coarse_to_fine(level)
+
+
+    phi_extract = fmm._compute_cube_extraction(A.P, A.Q)
+    phi_near = fmm._compute_local_interaction(A.P, A.Q)
+    phi_py = phi_extract + phi_near
+
+    local_err = abs(phi_py - local_phi_direct)
+
+    if local_err > eps: serr = red(local_err)
+    else: serr = yellow(local_err)
+
+    print("LOCAL PHI ERR:", serr, phi_py, green(local_phi_direct))
+    print("NEARBY:", phi_near, "\tEXTRACT:", phi_extract)
 
 
 
