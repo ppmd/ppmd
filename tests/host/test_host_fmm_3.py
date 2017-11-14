@@ -517,8 +517,8 @@ def test_fmm_init_3_3():
 
     for level in range(1, fmm.R):
         print("DOWN", level)
-        fmm._coarse_to_fine(level)
         fmm._translate_l_to_l(level)
+        fmm._coarse_to_fine(level)
 
         #print("PLAIN", level)
         #print(fmm.tree_plain[level][:,:,:,0])

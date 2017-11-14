@@ -706,10 +706,10 @@ def test_fmm_init_4_2():
 
 def test_fmm_init_4_3():
 
-    R = 3
+    R = 4
     Ns = 2**(R-1)
-    Ns = 8
-    E = 10.
+    Ns = 20
+    E = 3.*Ns
 
     SKIP_MTL = True
 
@@ -717,7 +717,7 @@ def test_fmm_init_4_3():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-    eps = 10.**-4
+    eps = 10.**-3
     eps2 = 10.**-3
 
     N = Ns**3
@@ -790,6 +790,7 @@ def test_fmm_init_4_3():
     print("local_phi", local_phi_direct)
     ### LOCAL PHI END ###
 
+    t0 = time.time()
     fmm._compute_cube_contrib(A.P, A.Q)
     for level in range(fmm.R - 1, 0, -1):
         print("UP", yellow(level))
@@ -808,9 +809,10 @@ def test_fmm_init_4_3():
         fmm._translate_l_to_l(level)
         fmm._coarse_to_fine(level)
 
-
     phi_extract = fmm._compute_cube_extraction(A.P, A.Q)
     phi_near = fmm._compute_local_interaction(A.P, A.Q)
+    t1 = time.time()
+
     phi_py = phi_extract + phi_near
 
     local_err = abs(phi_py - local_phi_direct)
@@ -818,6 +820,7 @@ def test_fmm_init_4_3():
     if local_err > eps: serr = red(local_err)
     else: serr = yellow(local_err)
 
+    print("TIME:", t1 - t0)
     print("LOCAL PHI ERR:", serr, phi_py, green(local_phi_direct))
     print("NEARBY:", phi_near, "\tEXTRACT:", phi_extract)
 

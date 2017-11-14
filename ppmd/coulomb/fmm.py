@@ -576,16 +576,12 @@ class PyFMM(object):
             if lo[0] + ls[0] == gs:
                 self.tree_halo[level][-2::,:,:,:] = 0.0
 
-
         #print(self.tree_halo[level][:,:,:,0])
 
         self.tree_plain[level][:] = 0.0
 
-
-
         radius = self.domain.extent[0] / \
                  self.tree[level].ncubes_side_global
-
 
         err = self._translate_mtl_lib['translate_mtl'](
             _check_dtype(self.tree[level].local_grid_cube_size, UINT32),

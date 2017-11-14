@@ -11,6 +11,7 @@ int CellLinkedList(
     INT * RESTRICT CCC,       // contents count for each cell
     INT * RESTRICT CRL        // reverse cell lookup map
 ){
+    int err = 0;
 
     const REAL _icel0 = 1.0/CEL[0];
     const REAL _icel1 = 1.0/CEL[1];
@@ -20,43 +21,54 @@ int CellLinkedList(
     const REAL _b2 = B[2];
     const REAL _b4 = B[4];
 
+    #pragma omp parallel for default(none) \
+     shared(err, q, CCC, CRL, B,P,CEL,CA)
     for (INT ix=0; ix<end_ix; ix++) {
 
         INT C0 = 1 + (INT)((P[ix*3]     - _b0)*_icel0);
         INT C1 = 1 + (INT)((P[ix*3 + 1] - _b2)*_icel1);
         INT C2 = 1 + (INT)((P[ix*3 + 2] - _b4)*_icel2);
 
+        INT write_ok = 1;
+
         if ((C0 < 1) || (C0 > (CA[0]-2))) {
             if ( (C0 > (CA[0]-2)) && (P[ix*3] <= B[1]  )) {
                 C0 = CA[0]-2;
             } else {
-                return -1*(ix+1);
+                err = -1*(ix+1);
+                write_ok = 0;
             }
         }
         if ((C1 < 1) || (C1 > (CA[1]-2))) {
             if ( (C1 > (CA[1]-2)) && (P[ix*3+1] <= B[3]  )) {
                 C1 = CA[1]-2;
             } else {
-                return -1*(ix+1);
+                err = -1*(ix+1);
+                write_ok = 0;
             }
         }
         if ((C2 < 1) || (C2 > (CA[2]-2))) {
             if ( (C2 > (CA[2]-2)) && (P[ix*3+2] <= B[5]  )) {
                 C2 = CA[2]-2;
             } else {
-                return -1*(ix+1);
+                err = -1*(ix+1);
+                write_ok = 0;
             }
         }
 
         const INT val = (C2*CA[1] + C1)*CA[0] + C0;
-        CCC[val]++;
-        CRL[ix] = val;
-
-        q[ix] = q[n + val];
-        q[n + val] = ix;
+        #pragma omp critical
+        {
+            if (write_ok == 1){
+                CCC[val]++;
+                CRL[ix] = val;
+                q[ix] = q[n + val];
+                q[n + val] = ix;
+            }
+        }
 
     }
 
-    return 0;
+    return err;
 }
 
