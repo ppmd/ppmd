@@ -69,6 +69,8 @@ class CellByCellOMP(object):
 
         self._offset_list = host.Array(ncomp=27, dtype=ctypes.c_int)
 
+        #print(self._components['LIB_SRC'])
+
         self._lib = build.simple_lib_creator(self._generate_header_source(),
                                              self._components['LIB_SRC'],
                                              self._kernel.name,
@@ -160,7 +162,6 @@ class CellByCellOMP(object):
         self._components['LIB_INNER_LOOP_BLOCK'] = \
             cgen.Block([
                 cgen.Line('const int _jcell = _icell + _OFFSET[_k];'),
-                cgen.Line('int _nn = 0;'),
                 cgen.Line('int '+j+' = _CELL_LIST[_jcell + _LIST_OFFSET];' ),
                 cgen.For(
                     'int _k2=0','_k2<_CCC[_jcell]','_k2++',
@@ -170,13 +171,6 @@ class CellByCellOMP(object):
                         cgen.Line(j+' = _CELL_LIST['+j+'];'),
                     ])
                 ),
-                cgen.For(
-                    'int _k2=0','_k2<_nn','_k2++',
-                    cgen.Block([
-                        cgen.Line(j+' = _JJSTORE[_k2];' ),
-                        self._components['LIB_KERNEL_CALL'],
-                    ])
-                )
             ])
 
     def _generate_kernel_scatter(self):
@@ -506,15 +500,25 @@ class CellByCellOMP(object):
 
     def _generate_lib_inner_loop(self):
         i = self._components['LIB_PAIR_INDEX_0']
+        j = self._components['LIB_PAIR_INDEX_1']
         self._components['LIB_LOOP_J_PREPARE'] = cgen.Module([
             cgen.Line('const int _icell = _CRL['+i+'];'),
             cgen.Line('int * _JJSTORE = _JSTORE['+self._components[
                 'OMP_THREAD_INDEX_SYM']+'];'),
+            cgen.Line('int _nn = 0;'),
         ])
 
         b = self._components['LIB_INNER_LOOP_BLOCK']
-        self._components['LIB_INNER_LOOP'] = cgen.For(
-            'int _k=0', '_k<27', '_k++', b)
+        self._components['LIB_INNER_LOOP'] = cgen.Module([
+                cgen.For('int _k=0', '_k<27', '_k++', b),
+                cgen.For(
+                    'int _k2=0','_k2<_nn','_k2++',
+                    cgen.Block([
+                        cgen.Line('const int '+j+' = _JJSTORE[_k2];' ),
+                        self._components['LIB_KERNEL_CALL'],
+                    ])
+                )
+            ])
 
     def _generate_lib_outer_loop(self):
 
@@ -546,9 +550,9 @@ class CellByCellOMP(object):
 
 
     def _init_jstore(self, cell2part):
-        n = cell2part.max_cell_contents_count
+        n = cell2part.max_cell_contents_count * 27
         if self._jstore[0].ncomp < n:
-            self._jstore = [host.Array(ncomp=100+n, dtype=ctypes.c_int) for tx \
+            self._jstore = [host.Array(ncomp=100+n, dtype=ctypes.c_int) for tx\
                             in range(runtime.NUM_THREADS)]
 
         return (ctypes.POINTER(ctypes.c_int) * runtime.NUM_THREADS)(*[

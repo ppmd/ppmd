@@ -68,7 +68,6 @@ class PairLoopNeighbourListNS(object):
         self._gather_size_limit = 4
         self._generate()
 
-
         self._lib = build.simple_lib_creator(self._generate_header_source(),
                                              self._components['LIB_SRC'],
                                              self._kernel.name,
