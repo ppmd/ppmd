@@ -407,6 +407,7 @@ class PyFMM(object):
         self._compute_cube_contrib(positions, charges)
         for level in range(self.R - 1, 0, -1):
 
+            self._halo_exchange(level)
             self._translate_m_to_l(level)
             self._translate_m_to_m(level)
             self._fine_to_coarse(level)
@@ -597,33 +598,7 @@ class PyFMM(object):
         if err < 0: raise RuntimeError('negative return code: {}'.format(err))
         self.timer_ltl.pause()
 
-    def _translate_m_to_l(self, level):
-        """
-
-        """
-        '''
-        int translate_mtl(
-	    const UINT32 * RESTRICT dim_child,      // slowest to fastest
-	    const REAL * RESTRICT multipole_moments,
-	    REAL * RESTRICT local_moments,
-	    const REAL * RESTRICT phi_data,
-	    const REAL * RESTRICT theta_data,
-	    const REAL * RESTRICT alm,
-	    const REAL * RESTRICT almr,
-	    const REAL * RESTRICT i_array,
-	    const REAL radius,
-	    const INT64 nlevel,
-	    const INT32 * RESTRICT int_list,
-	    const INT32 * RESTRICT int_tlookup,
-	    const INT32 * RESTRICT int_plookup,
-	    const double * RESTRICT int_radius
-        )
-        '''
-        #if self.tree[level].local_grid_cube_size is not None:
-        #    print(level, 60*"-")
-        #    print(self.tree_halo[level][:,:,:,0])
-        #    print(60*"=")
-
+    def _halo_exchange(self, level):
         self.timer_halo.start()
         self.tree_halo.halo_exchange_level(level)
 
@@ -653,6 +628,31 @@ class PyFMM(object):
 
         #print(self.tree_halo[level][:,:,:,0])
         self.timer_halo.pause()
+
+
+    def _translate_m_to_l(self, level):
+        """
+
+        """
+        '''
+        int translate_mtl(
+	    const UINT32 * RESTRICT dim_child,      // slowest to fastest
+	    const REAL * RESTRICT multipole_moments,
+	    REAL * RESTRICT local_moments,
+	    const REAL * RESTRICT phi_data,
+	    const REAL * RESTRICT theta_data,
+	    const REAL * RESTRICT alm,
+	    const REAL * RESTRICT almr,
+	    const REAL * RESTRICT i_array,
+	    const REAL radius,
+	    const INT64 nlevel,
+	    const INT32 * RESTRICT int_list,
+	    const INT32 * RESTRICT int_tlookup,
+	    const INT32 * RESTRICT int_plookup,
+	    const double * RESTRICT int_radius
+        )
+        '''
+
         self.timer_mtl.start()
         self.tree_plain[level][:] = 0.0
 

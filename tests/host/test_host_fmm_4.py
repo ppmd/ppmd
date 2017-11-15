@@ -240,6 +240,7 @@ def test_fmm_init_4_1():
     for level in range(fmm.R - 1, 0, -1):
 
         fmm._translate_m_to_m(level)
+        fmm._halo_exchange(level)
         fmm._translate_m_to_l(level)
         fmm._fine_to_coarse(level)
 
@@ -464,7 +465,7 @@ def test_fmm_init_4_2():
     fmm._compute_cube_contrib(A.P, A.Q)
     for level in range(fmm.R - 1, 0, -1):
         print("UP", yellow(level))
-
+        fmm._halo_exchange(level)
         fmm._translate_m_to_l(level)
         fmm._translate_m_to_m(level)
         fmm._fine_to_coarse(level)

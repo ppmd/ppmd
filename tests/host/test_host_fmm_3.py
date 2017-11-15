@@ -202,6 +202,7 @@ def test_fmm_init_3_1():
         #print("HALO", level)
         #print(fmm.tree_halo[level][:,:,:,0])
 
+        fmm._halo_exchange(level)
         fmm._translate_m_to_l(level)
         #fmm._fine_to_coarse(level)
 
@@ -313,7 +314,7 @@ def test_fmm_init_3_2():
 
         #print("HALO", level)
         #print(fmm.tree_halo[level][:,:,:,0])
-
+        fmm._halo_exchange(level)
         fmm._translate_m_to_l(level)
         fmm._fine_to_coarse(level)
 
@@ -509,7 +510,7 @@ def test_fmm_init_3_3():
 
         #print("HALO", level)
         #print(fmm.tree_halo[level][:,:,:,0])
-
+        fmm._halo_exchange(level)
         fmm._translate_m_to_l(level)
         fmm._fine_to_coarse(level)
 
