@@ -402,6 +402,32 @@ class PyFMM(object):
 
     def im_lm(self, l,m): return (l**2) + l +  m + self.L**2
 
+    def __call__(self, positions, charges, forces=None):
+
+        self._compute_cube_contrib(positions, charges)
+        for level in range(self.R - 1, 0, -1):
+
+            self._translate_m_to_l(level)
+            self._translate_m_to_m(level)
+            self._fine_to_coarse(level)
+
+        if self.free_space:
+            self.tree_parent[0][:] = 0.0
+            self.tree_plain[0][:] = 0.0
+            self.tree_parent[1][:] = 0.0
+            self.tree_plain[1][:] = 0.0
+
+        for level in range(1, self.R):
+
+            self._translate_l_to_l(level)
+            self._coarse_to_fine(level)
+
+        phi_extract = self._compute_cube_extraction(positions, charges)
+        phi_near = self._compute_local_interaction(positions, charges)
+
+        self._update_opt()
+
+        return phi_extract + phi_near
 
     def _compute_cube_contrib(self, positions, charges):
 

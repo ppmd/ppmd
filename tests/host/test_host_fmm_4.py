@@ -787,37 +787,9 @@ def test_fmm_init_4_3():
     A.scatter_data_from(0)
 
 
-
-    ### LOCAL PHI END ###
-
     t0 = time.time()
-    fmm._compute_cube_contrib(A.P, A.Q)
-    for level in range(fmm.R - 1, 0, -1):
-
-        if MPIRANK == 0 and DEBUG:
-            print("UP", yellow(level))
-
-        fmm._translate_m_to_l(level)
-        fmm._translate_m_to_m(level)
-        fmm._fine_to_coarse(level)
-
-    fmm.tree_parent[0][:] = 0.0
-    fmm.tree_plain[0][:] = 0.0
-    fmm.tree_parent[1][:] = 0.0
-    fmm.tree_plain[1][:] = 0.0
-
-    for level in range(1, fmm.R):
-        if MPIRANK == 0 and DEBUG:
-            print("DOWN", yellow(level))
-        fmm._translate_l_to_l(level)
-        fmm._coarse_to_fine(level)
-
-    phi_extract = fmm._compute_cube_extraction(A.P, A.Q)
-    phi_near = fmm._compute_local_interaction(A.P, A.Q)
+    phi_py = fmm(A.P, A.Q)
     t1 = time.time()
-
-    fmm._update_opt()
-    phi_py = phi_extract + phi_near
 
     local_err = abs(phi_py - local_phi_direct)
 
@@ -830,8 +802,6 @@ def test_fmm_init_4_3():
         print(60*"-")
         print("TIME:", t1 - t0)
         print("LOCAL PHI ERR:", serr, phi_py, green(local_phi_direct))
-        print("NEARBY:", phi_near, "\tEXTRACT:", phi_extract)
-
 
 
 
