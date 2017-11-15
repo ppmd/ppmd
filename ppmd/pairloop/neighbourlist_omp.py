@@ -18,35 +18,19 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
     _neighbour_list_dict_OMP = {}
 
-    def _neighbour_list_from_group(self, group):
-        _nd = PairLoopNeighbourListNSOMP._neighbour_list_dict_OMP
-        # if flag is true then a new cell list was created
-        flag = group.cell_decompose(self.shell_cutoff)
+    @staticmethod
+    def _get_n_dict():
+        return PairLoopNeighbourListNSOMP._neighbour_list_dict_OMP
 
-        if flag:
-            for key in _nd.keys():
-                _nd[key] = NeighbourListOMP(
-                    group.get_npart_local_func(),
-                    group.get_position_dat(),
-                    group.domain,
-                    key[0],
-                    group.get_cell_to_particle_map()
-                )
-
-        self._key = (self.shell_cutoff,
-                     group.domain,
-                     group.get_position_dat())
-
-        if not self._key in _nd.keys():
-
-            _nd[self._key] = NeighbourListOMP(
-                    group.get_npart_local_func(),
-                    group.get_position_dat(),
-                    group.domain,
-                    self.shell_cutoff,
-                    group.get_cell_to_particle_map()
-                )
-
+    @staticmethod
+    def _new_neighbour_list(shell_cutoff, group):
+        return NeighbourListOMP(
+            group.get_npart_local_func(),
+            group.get_position_dat(),
+            group.domain,
+            shell_cutoff,
+            group.get_cell_to_particle_map()
+        )
 
     @staticmethod
     def _get_allowed_types():
@@ -301,9 +285,8 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
         self._components['LIB_OUTER_LOOP'] = loop
 
 
-    def _get_class_lib_args(self):
+    def _get_class_lib_args(self, neighbour_list):
 
-        neighbour_list = PairLoopNeighbourListNSOMP._neighbour_list_dict_OMP[self._key]
         _N_LOCAL = ctypes.c_int(neighbour_list.n_local)
         _STRIDE = ctypes.c_int(neighbour_list.stride)
         _NN = neighbour_list.ncount.ctypes_data
@@ -355,8 +338,7 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
             self._neighbour_list_from_group(_group)
 
         assert _group is not None, "no group"
-        _key = (self.shell_cutoff, _group.domain, _group.get_position_dat())
-        neighbour_list = PairLoopNeighbourListNSOMP._neighbour_list_dict_OMP[_key]
+        neighbour_list = self._get_neighbour_list(_group)
 
         cell2part = _group.get_cell_to_particle_map()
         cell2part.check()
@@ -379,7 +361,7 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
         neighbour_list.update_if_required()
         self.list_timer.pause()
 
-        args2 = self._get_class_lib_args()
+        args2 = self._get_class_lib_args(neighbour_list)
 
         args = args2 + args
 

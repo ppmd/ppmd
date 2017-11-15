@@ -90,6 +90,8 @@ class CellList(object):
     Class to handle cell lists for a given domain.
     """
 
+    instance_id = 0
+
     def __init__(self, n_func, positions, domain):
         """
         Setup the cell list with a set of positions and a domain.
@@ -151,6 +153,10 @@ class CellList(object):
         self._halo_cell_sort_lib = ppmd.lib.build.lib_from_file_source(
             _LIB_SOURCES + 'HaloCellLinkedList', 'HaloCellLinkedList',
             {'SUB_INT': 'int'})['HaloCellLinkedList']
+
+        self.instance_id = CellList.instance_id
+        CellList.instance_id += 1
+
 
     def reset_callbacks(self):
         self._update_func = None
