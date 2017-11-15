@@ -708,7 +708,7 @@ def test_fmm_init_4_3():
 
     R = 4
     Ns = 2**(R-1)
-    Ns = 40
+    Ns = 32
     E = 3.*Ns
 
     SKIP_MTL = True
