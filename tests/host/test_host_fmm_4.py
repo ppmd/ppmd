@@ -708,7 +708,7 @@ def test_fmm_init_4_3():
 
     R = 4
     Ns = 2**(R-1)
-    Ns = 20
+    Ns = 40
     E = 3.*Ns
 
     SKIP_MTL = True
@@ -717,7 +717,7 @@ def test_fmm_init_4_3():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-    eps = 10.**-3
+    eps = 10.**-2
     eps2 = 10.**-3
 
     N = Ns**3
@@ -732,12 +732,12 @@ def test_fmm_init_4_3():
 
     A.P = data.PositionDat(ncomp=3)
     A.Q = data.ParticleDat(ncomp=1)
-    #A.P[:] = utility.lattice.cubic_lattice((Ns, Ns, Ns),
-    #                                       (E, E, E))
-    A.P[:] = rng.uniform(low=-0.499*E, high=0.499*E, size=(N,3))
+    A.P[:] = utility.lattice.cubic_lattice((Ns, Ns, Ns),
+                                           (E, E, E))
+    #A.P[:] = rng.uniform(low=-0.499*E, high=0.499*E, size=(N,3))
     A.Q[:] = rng.uniform(low=-1.0, high=1.0, size=(N,1))
 
-    #A.Q[::,0] = 1.
+    A.Q[::,0] = .1
     #A.P[0, :] = (-3.75, -3.75, -3.75)
     #A.P[1, :] = (3.75, -3.75, 3.75)
     #A.P[2, :] = (3.75, 3.75, 3.75)
@@ -749,17 +749,13 @@ def test_fmm_init_4_3():
     #A.P[1, :] = (0.5*(E - cube_width), 0.5*(E - cube_width),
     #             0.5*(E - cube_width))
 
-    A.Q[:] = 1.0
-
     #bias = np.sum(A.Q[:])/N
     #A.Q[:] -= bias
 
-    A.scatter_data_from(0)
     if MPIRANK == 0 and DEBUG:
-
         print("N", N, "L", fmm.L, "R", fmm.R)
 
-    if MPISIZE == 1:
+    if MPIRANK == 0:
         ### LOCAL PHI START ###
         # compute potential energy to point across all charges directly
         P2 = data.PositionDat(npart=N, ncomp=3)
@@ -785,7 +781,11 @@ def test_fmm_init_4_3():
         local_phi_direct = local_phi_ga[0]
         print("local_phi {:.30f}".format(float(local_phi_direct)))
     else:
-        local_phi_direct = 999739.276282914448529481887817382812
+        local_phi_direct = 0.0
+    local_phi_direct =  mpi.all_reduce(np.array([local_phi_direct]))[0]
+
+    A.scatter_data_from(0)
+
 
 
     ### LOCAL PHI END ###

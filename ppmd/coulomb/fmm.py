@@ -322,10 +322,15 @@ class PyFMM(object):
         pair_kernel = kernel.Kernel('fmm_pairwise', code=pair_kernel_src, 
             headers=(kernel.Header('math.h'),))
 
-        #max_radius = 1. * ((((maxe+shell_width)*2.)**2.)*3.)**0.5
-        max_radius = 2. * (maxe + shell_width)
-        #self._pair_loop = pairloop.PairLoopNeighbourListNSOMP(
-        self._pair_loop = pairloop.CellByCellOMP(
+        cell_by_cell = True
+        if cell_by_cell:
+            PL = pairloop.CellByCellOMP
+            max_radius = 2. * (maxe + shell_width)
+        else:
+            PL = pairloop.PairLoopNeighbourListNSOMP
+            max_radius = 1. * ((((maxe+shell_width)*2.)**2.)*3.)**0.5
+
+        self._pair_loop = PL(
             kernel=pair_kernel,
             dat_dict={
                 'P':P(access.READ),
