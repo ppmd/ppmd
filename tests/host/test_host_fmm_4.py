@@ -706,9 +706,9 @@ def test_fmm_init_4_2():
 
 def test_fmm_init_4_3():
 
-    R = 4
+    R = 5
     Ns = 2**(R-1)
-    Ns = 32
+    Ns = 40
     E = 3.*Ns
 
     SKIP_MTL = True
@@ -816,6 +816,7 @@ def test_fmm_init_4_3():
     phi_near = fmm._compute_local_interaction(A.P, A.Q)
     t1 = time.time()
 
+    fmm._update_opt()
     phi_py = phi_extract + phi_near
 
     local_err = abs(phi_py - local_phi_direct)
@@ -824,6 +825,9 @@ def test_fmm_init_4_3():
     else: serr = yellow(local_err)
 
     if MPIRANK == 0 and DEBUG:
+        print(60*"-")
+        opt.print_profile()
+        print(60*"-")
         print("TIME:", t1 - t0)
         print("LOCAL PHI ERR:", serr, phi_py, green(local_phi_direct))
         print("NEARBY:", phi_near, "\tEXTRACT:", phi_extract)

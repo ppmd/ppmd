@@ -6,7 +6,7 @@ __license__ = "GPL"
 from math import log, ceil
 from ppmd.coulomb.octal import *
 import numpy as np
-from ppmd import runtime, host, kernel, pairloop, data, access, mpi
+from ppmd import runtime, host, kernel, pairloop, data, access, mpi, opt
 from ppmd.lib import build
 import ctypes
 import os
@@ -351,7 +351,37 @@ class PyFMM(object):
         self._int_plookup = compute_interaction_plookup()
         self._int_radius = compute_interaction_radius()
 
+        # timers for profiling
+        self.timer_contrib = opt.Timer(runtime.TIMER)
+        self.timer_extract = opt.Timer(runtime.TIMER)
+
+        self.timer_mtm = opt.Timer(runtime.TIMER)
+        self.timer_mtl = opt.Timer(runtime.TIMER)
+        self.timer_ltl = opt.Timer(runtime.TIMER)
+        self.timer_local = opt.Timer(runtime.TIMER)
+
+        self.timer_halo = opt.Timer(runtime.TIMER)
+        self.timer_down = opt.Timer(runtime.TIMER)
+        self.timer_up = opt.Timer(runtime.TIMER)
+
+        self.execution_count = 0
+
+    def _update_opt(self):
+        p = opt.PROFILE
+        b = self.__class__.__name__ + ':'
+        p[b+'contrib'] = self.timer_contrib.time()
+        p[b+'extract'] = self.timer_extract.time()
+        p[b+'mtm'] = self.timer_mtm.time()
+        p[b+'mtl'] = self.timer_mtl.time()
+        p[b+'ltl'] = self.timer_ltl.time()
+        p[b+'local'] = self.timer_local.time()
+        p[b+'halo'] = self.timer_halo.time()
+        p[b+'down'] = self.timer_down.time()
+        p[b+'up'] = self.timer_up.time()
+        p[b+'exec_count'] = self.execution_count
+
     def _compute_local_interaction(self, positions, charges):
+        self.timer_local.start()
         self._pair_loop.execute(
             dat_dict = {
                 'P':positions(access.READ),
@@ -359,6 +389,7 @@ class PyFMM(object):
                 'PHI':self.particle_phi(access.INC_ZERO)
             }
         )
+        self.timer_local.pause()
         return self.particle_phi[0]
 
     def re_lm(self, l,m): return (l**2) + l + m
@@ -369,6 +400,7 @@ class PyFMM(object):
 
     def _compute_cube_contrib(self, positions, charges):
 
+        self.timer_contrib.start()
         ns = self.tree.entry_map.cube_side_count
         cube_side_counts = np.array((ns, ns, ns), dtype=UINT64)
         if self._thread_allocation.size < self._tcount * \
@@ -399,8 +431,11 @@ class PyFMM(object):
         self.tree_halo[self.R-1][2:-2:, 2:-2:, 2:-2:, :] = 0.0
         self.entry_data.add_onto(self.tree_halo)
 
+        self.timer_contrib.pause()
+
     def _compute_cube_extraction(self, positions, charges):
 
+        self.timer_extract.start()
         ns = self.tree.entry_map.cube_side_count
         cube_side_counts = np.array((ns, ns, ns), dtype=UINT64)
         '''
@@ -440,6 +475,7 @@ class PyFMM(object):
 
         red_re = mpi.all_reduce(np.array((phi.value)))
 
+        self.timer_extract.pause()
         return red_re
 
 
@@ -461,7 +497,7 @@ class PyFMM(object):
             const INT64 nlevel
         )
         '''
-
+        self.timer_mtm.start()
         if self.tree[child_level].parent_local_size is None:
             return 
 
@@ -486,7 +522,7 @@ class PyFMM(object):
         )
 
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
-
+        self.timer_mtm.pause()
 
     def _translate_l_to_l(self, child_level):
         """
@@ -506,6 +542,7 @@ class PyFMM(object):
         const REAL radius,
         const INT64 nlevel
         '''
+        self.timer_ltl.start()
         if self.tree[child_level].local_grid_cube_size is None:
             return
 
@@ -527,7 +564,7 @@ class PyFMM(object):
         )
 
         if err < 0: raise RuntimeError('negative return code: {}'.format(err))
-
+        self.timer_ltl.pause()
 
     def _translate_m_to_l(self, level):
         """
@@ -551,12 +588,12 @@ class PyFMM(object):
 	    const double * RESTRICT int_radius
         )
         '''
-
         #if self.tree[level].local_grid_cube_size is not None:
         #    print(level, 60*"-")
         #    print(self.tree_halo[level][:,:,:,0])
         #    print(60*"=")
 
+        self.timer_halo.start()
         self.tree_halo.halo_exchange_level(level)
 
         if self.tree[level].local_grid_cube_size is None:
@@ -584,7 +621,8 @@ class PyFMM(object):
                 self.tree_halo[level][-2::,:,:,:] = 0.0
 
         #print(self.tree_halo[level][:,:,:,0])
-
+        self.timer_halo.pause()
+        self.timer_mtl.start()
         self.tree_plain[level][:] = 0.0
 
         radius = self.domain.extent[0] / \
@@ -608,7 +646,7 @@ class PyFMM(object):
         )
 
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
-
+        self.timer_mtl.pause()
 
     def _fine_to_coarse(self, src_level):
         if src_level < 1:
@@ -618,8 +656,10 @@ class PyFMM(object):
             self.R))
 
         if self.tree[src_level].parent_local_size is None:
-            return 
+            return
+        self.timer_up.start()
         send_parent_to_halo(src_level, self.tree_parent, self.tree_halo)
+        self.timer_up.pause()
     
 
     def _coarse_to_fine(self, src_level):
@@ -632,8 +672,9 @@ class PyFMM(object):
             raise RuntimeError('cannot copy from a greater than {}'.format(
             self.R-2))
 
+        self.timer_down.start()
         send_plain_to_parent(src_level, self.tree_plain, self.tree_parent)
-
+        self.timer_down.pause()
 
     def _image_to_sph(self, ind):
         """Convert tuple ind to spherical coordindates of periodic image."""

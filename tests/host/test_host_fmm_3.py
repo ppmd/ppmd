@@ -532,16 +532,19 @@ def test_fmm_init_3_3():
 
 
     phi_py = fmm._compute_cube_extraction(A.P, A.Q)
-    
+
+
     phi_fmm = phi_local + phi_py
 
     if DEBUG and MPIRANK == 0:
+
         print("Time:", t1 - t0)
         print("Phi-local alltoall:", phi_local2, "Phi-local pair:", phi_local)
         print("phi_direct: {:.30f}".format(phi_direct))
         print("phi_local", phi_local, "phi_py", phi_py)
         print("direct:", phi_direct, "phi_fmm", phi_fmm)
         print("ERROR:", abs(phi_direct - phi_fmm))
+
 
     #assert abs(phi_ga[0] - phi_fmm) < eps
 
