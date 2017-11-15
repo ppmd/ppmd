@@ -259,13 +259,17 @@ class PyFMM(object):
 
 
         # zero the mask if interacting over a periodic boundary
-        free_space_mod = ""
+        free_space_mod = """
+        const int maskx = 1.0;
+        const int masky = 1.0;
+        const int maskz = 1.0;
+        """
         if free_space:
             free_space_mod = """
             #define ABS(x) ((x) > 0 ? (x) : (-1*(x)))
-            dr2 += (    (ABS(P.j[0]) > {hex}) || \
-                        (ABS(P.j[1]) > {hey}) || \
-                        (ABS(P.j[2]) > {hez})) ? 1000000 : 0;
+            const int maskx = (ABS(P.j[0]) > {hex}) ? 0.0 : 1.0;
+            const int masky = (ABS(P.j[1]) > {hey}) ? 0.0 : 1.0;
+            const int maskz = (ABS(P.j[2]) > {hez}) ? 0.0 : 1.0;
             """.format(**{
                 'hex': self.domain.extent[0] * 0.5,
                 'hey': self.domain.extent[1] * 0.5,
@@ -295,7 +299,8 @@ class PyFMM(object):
         
         {FREE_SPACE}
 
-        const double mask = (dr2 > 3) ? 0.0 : 1.0;
+        const double mask = ((dr2 > 3) ? 0.0 : 1.0) * \
+            maskx*masky*maskz;
         
         const double rx = P.j[0] - P.i[0];
         const double ry = P.j[1] - P.i[1];
