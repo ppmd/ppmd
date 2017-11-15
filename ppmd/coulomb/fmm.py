@@ -12,6 +12,7 @@ import ctypes
 import os
 import math
 import cmath
+from threading import Thread
 from scipy.special import lpmv, rgamma, gammaincc, lambertw
 
 _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -356,7 +357,7 @@ class PyFMM(object):
         self._int_plookup = compute_interaction_plookup()
         self._int_radius = compute_interaction_radius()
 
-        # timers for profiling
+        # profiling
         self.timer_contrib = opt.Timer(runtime.TIMER)
         self.timer_extract = opt.Timer(runtime.TIMER)
 
@@ -370,6 +371,9 @@ class PyFMM(object):
         self.timer_up = opt.Timer(runtime.TIMER)
 
         self.execution_count = 0
+
+        # threading
+        self._async_thread = None
 
     def _update_opt(self):
         p = opt.PROFILE
@@ -402,15 +406,17 @@ class PyFMM(object):
 
     def im_lm(self, l,m): return (l**2) + l +  m + self.L**2
 
-    def __call__(self, positions, charges, forces=None):
+    def __call__(self, positions, charges, forces=None, async=False):
 
         self._compute_cube_contrib(positions, charges)
         for level in range(self.R - 1, 0, -1):
 
+            self._level_call_async(self._translate_m_to_m, level, async)
             self._halo_exchange(level)
-            self._translate_m_to_l(level)
-            self._translate_m_to_m(level)
+            self._level_call_async(self._translate_m_to_l, level, async)
             self._fine_to_coarse(level)
+
+        self._join_async()
 
         if self.free_space:
             self.tree_parent[0][:] = 0.0
@@ -429,6 +435,23 @@ class PyFMM(object):
         self._update_opt()
 
         return phi_extract + phi_near
+
+    def _level_call_async(self, func, level, async):
+
+        # check previous call finished
+        if async and self._async_thread is not None:
+            self._async_thread.join()
+            self._async_thread = None
+        if async:
+            self._async_thread = Thread(target=func, args=(level,))
+            self._async_thread.start()
+        else:
+            func(level)
+
+    def _join_async(self):
+        if self._async_thread is not None:
+            self._async_thread.join()
+            self._async_thread = None
 
     def _compute_cube_contrib(self, positions, charges):
 

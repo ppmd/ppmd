@@ -707,12 +707,13 @@ def test_fmm_init_4_2():
 
 def test_fmm_init_4_3():
 
-    R = 5
+    R = 6
     Ns = 2**(R-1)
-    Ns = 40
+    Ns = 50
     E = 3.*Ns
 
-    SKIP_MTL = True
+    SKIP_DIRECT = True
+    ASYNC = False
 
     A = state.State()
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
@@ -756,7 +757,7 @@ def test_fmm_init_4_3():
     if MPIRANK == 0 and DEBUG:
         print("N", N, "L", fmm.L, "R", fmm.R)
 
-    if MPIRANK == 0:
+    if MPIRANK == 0 and not SKIP_DIRECT:
         ### LOCAL PHI START ###
         # compute potential energy to point across all charges directly
         P2 = data.PositionDat(npart=N, ncomp=3)
@@ -789,7 +790,7 @@ def test_fmm_init_4_3():
 
 
     t0 = time.time()
-    phi_py = fmm(A.P, A.Q)
+    phi_py = fmm(A.P, A.Q, async=ASYNC)
     t1 = time.time()
 
     local_err = abs(phi_py - local_phi_direct)
