@@ -210,7 +210,7 @@ class PyFMM(object):
 
         # pre compute the periodic boundaries coefficients.
         _false = False
-        if not free_space:
+        if free_space == False:
             self._boundary_terms = self._compute_f() + self._compute_g()
             #self._boundary_terms = np.zeros((self.L * 2)**2, dtype=dtype)
 
@@ -326,13 +326,13 @@ class PyFMM(object):
 
         const double r2 = rx*rx + ry*ry + rz*rz;
         const double r = sqrt(r2);
-        if (mask > 0) {{
-        printf("---------------------------\\n");
-        printf("KERNEL: %f %f %d \\n", mask, r, dr2);
-        printf("\t%d\t%d\t%d \\n", dx, dy, dz);
-        printf("\tI\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.i[0], P.i[1], P.i[2], icx, icy, icz);
-        printf("\tJ\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.j[0], P.j[1], P.j[2], jcx, jcy, jcz);
-        }}
+        //if (mask > 0) {{
+        //printf("---------------------------\\n");
+        //printf("KERNEL: %f %f %d \\n", mask, r, dr2);
+        //printf("\t%d\t%d\t%d \\n", dx, dy, dz);
+        //printf("\tI\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.i[0], P.i[1], P.i[2], icx, icy, icz);
+        //printf("\tJ\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.j[0], P.j[1], P.j[2], jcx, jcy, jcz);
+        //}}
         
         PHI[0] += mask * Q.i[0] * Q.j[0] / r;
         """.format(**{
@@ -438,17 +438,10 @@ class PyFMM(object):
 
         self._join_async()
 
+        self.tree_parent[0][:] = 0.0
+        self.tree_plain[0][:] = 0.0
 
-        if self.free_space:
-            self.tree_parent[0][:] = 0.0
-            self.tree_plain[0][:] = 0.0
-            self.tree_parent[1][:] = 0.0
-            self.tree_plain[1][:] = 0.0
-        else:
-            self.tree_parent[0][:] = 0.0
-            self.tree_plain[0][:] = 0.0
-
-            #self._compute_periodic_boundary()
+        self._compute_periodic_boundary()
             #print(self.tree_parent[1][:])
 
 
@@ -466,7 +459,7 @@ class PyFMM(object):
 
         self._update_opt()
 
-        print("Near:", phi_near, "Far:", phi_extract)
+        #print("Near:", phi_near, "Far:", phi_extract)
 
         return phi_extract + phi_near
 
@@ -484,6 +477,9 @@ class PyFMM(object):
 
 
     def _compute_periodic_boundary(self):
+        if self.free_space == '27' or self.free_space == True:
+            return
+
         lsize = self.tree[1].parent_local_size
         if lsize is not None:
             moments = np.copy(self.tree_parent[1][0, 0, 0, :])
@@ -685,7 +681,7 @@ class PyFMM(object):
         # if computing the free space solution we need to zero the outer
         # halo regions
 
-        if self.free_space:
+        if self.free_space == True:
             gs = self.tree[level].ncubes_side_global
             lo = self.tree[level].local_grid_offset
             ls = self.tree[level].local_grid_cube_size

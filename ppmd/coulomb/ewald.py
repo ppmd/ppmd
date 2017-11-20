@@ -15,6 +15,7 @@ import scipy
 import scipy.special
 from scipy.constants import epsilon_0
 import time
+import sys
 
 
 from ppmd import kernel, loop, data, access, opt, host, pairloop
@@ -54,6 +55,8 @@ class EwaldOrthoganal(object):
 
         self.domain = domain
         self.eps = float(eps)
+
+
 
 
         assert shared_memory in (False, 'omp', 'mpi')
@@ -224,6 +227,9 @@ class EwaldOrthoganal(object):
 
         self._real_space_pairloop = None
         self._init_libs()
+
+
+
         self._init_coeff_space()
         self._self_interaction_lib = None
 
@@ -278,6 +284,7 @@ class EwaldOrthoganal(object):
             code=_cont_source,
             headers=_cont_header
         )
+
 
 
         self._extract_force_energy_lib = PL(
