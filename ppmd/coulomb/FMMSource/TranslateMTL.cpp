@@ -125,9 +125,9 @@ static inline void mtl(
                 cplx_mul_add(y_re, y_im, 
                     ocoeff_re, ocoeff_im, &contrib_re, &contrib_im);
 
-                //if(DEBUG0 == 2 && DEBUG1 == 190 && jx == 0 && kx == 0){
-                //    printf("C nx\t%d\tmx\t%d:\t%f\t%f\n", 
-                //        nx, mx, contrib_re, odata[oind]);
+                //if(DEBUG0 == 0){
+                //    printf("C nx\t%d\tmx\t%d:\t%f\n", 
+                //        nx, mx, contrib_re);
                 //}
 
             }
@@ -136,9 +136,9 @@ static inline void mtl(
         ldata[CUBE_IND(jx, kx)] += contrib_re;
         ldata[CUBE_IND(jx, kx) + im_offset] += contrib_im;
 
-        //if(DEBUG0 == 2 && jx==0 && kx ==0){
-        ///    printf("C jx\t%d\tkx\t%d:\t%f\t%f\n", 
-        //        jx, kx, contrib_re, ldata[CUBE_IND(jx, kx)]);
+        //if(DEBUG0 == 0){
+        //    printf("C jx\t%d\tkx\t%d:\t%f\t%f\n", 
+        //    jx, kx, contrib_re, ldata[CUBE_IND(jx, kx)]);
         //}       
 
     }}
@@ -229,36 +229,20 @@ int translate_mtl(
                 &phi_data[p_lookup * phi_stride],
                 &theta_data[t_lookup * theta_stride],
                 alm, almr, i_array,
-                out_moments, pcx, int_list[conx]);
+                out_moments, 0, 0);
 
-            //if (pcx==2){
-            //    printf("conx\t%d\toffset\t%d\tmm0\t%f\n", conx,
-            //        int_list[conx], multipole_moments[jcell*ncomp]);
+            //if (pcx==0){
+            //    printf("conx\t%d\toffset\t%d\tmm0\t%f\tout%f\n", conx,
+            //        int_list[conx], multipole_moments[jcell*ncomp], out_moments[0]);
             //}
 
-            
         }
+                //printf("cell %d\t local %f\n", pcx, local_moments[ncomp * pcx]);
         
     }
 
     return err;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -284,12 +268,11 @@ int mtl_test_wrapper(
     ar_array,
     i_array,
     ldata,
-    0,
+    1,
     0
     );
     return 0;
 }
-
 
 
 extern "C"

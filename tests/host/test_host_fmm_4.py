@@ -707,9 +707,9 @@ def test_fmm_init_4_2():
 
 def test_fmm_init_4_3():
 
-    R = 6
+    R = 4
     Ns = 2**(R-1)
-    Ns = 50
+    Ns = 20
     E = 3.*Ns
 
     SKIP_DIRECT = True

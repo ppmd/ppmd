@@ -57,7 +57,8 @@ static inline void ltl_octal(
     const REAL * RESTRICT   a_array,
     const REAL * RESTRICT   ar_array,
     const REAL * RESTRICT   i_array,
-    REAL * RESTRICT         ldata
+    REAL * RESTRICT         ldata,
+    const int DEBUG0
 ){
     const INT64 ASTRIDE1 = 4*nlevel + 1;
     const INT64 ASTRIDE2 = 2*nlevel;
@@ -121,16 +122,19 @@ static inline void ltl_octal(
                                 ocoeff_re, ocoeff_im, 
                                 &contrib_re, &contrib_im);
 
-                //if(jx == 0 && kx == 0){
-                //    printf("nx\t%d\tmx\t%d:\t%f\t%f\n",
-                //    nx, mx, rr_jn1,  y_re);
-                //}
 
             }
         }
+
+                //if(jx == 0 && kx == 0){
+                //if(DEBUG0 == 7){
+                //    printf("jx\t%d\tkx\t%d:\t%f\t%f\n",
+                //    jx, kx, odata[oind],  contrib_re);
+                //}
         
         ldata[CUBE_IND(jx, kx)] += contrib_re;
         ldata[CUBE_IND(jx, kx) + im_offset] += contrib_im;
+        //printf("MTL jx %d\tkx\t%d\tval %f\n", jx,kx,odata[CUBE_IND(jx, kx)]);
         
     }}
     //printf("---- %f\n", radius);
@@ -194,10 +198,19 @@ int translate_ltl(
             &moments_child[cc0]
         };
 
+        //if( pcx == 7 ){
+        //    for (int testx=0 ; testx<ncomp ; testx++){
+        //        printf("PARENT DATA %d %f\n", testx, pd_re[testx]);
+        //    }
+        //}
+
         for(INT32 childx=0 ; childx<8 ; childx++ ){
-            ltl_octal(nlevel, radius, pd_re, &ylm[childx*ncomp2], alm, almr, i_array, cd_re[childx]);
-            //for(int tx=0 ; tx<4 ; tx++ ){
-            //    printf("%d %f\n", tx, ylm[childx*ncomp2 + tx]);
+
+               //printf("BEFORE LTL %d %d %f\n", pcx, childx, cd_re[childx][0]);
+               //printf("BEFORE LTL %d %d %f\n", pcx, childx, cd_re[childx][0]);
+            ltl_octal(nlevel, radius, pd_re, &ylm[childx*ncomp2], alm, almr, i_array, cd_re[childx], pcx);
+            //if( pcx == 7 ){
+            //    printf("AFTER LTL %d %d %f\n", pcx, childx, cd_re[childx][0]);
             //}
         }
 

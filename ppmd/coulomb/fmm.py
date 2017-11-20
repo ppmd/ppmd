@@ -3,6 +3,7 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
+
 from math import log, ceil
 from ppmd.coulomb.octal import *
 import numpy as np
@@ -23,6 +24,8 @@ UINT32 = ctypes.c_uint32
 INT64 = ctypes.c_int64
 INT32 = ctypes.c_int32
 
+np.set_printoptions(threshold=np.nan)
+
 def _numpy_ptr(arr):
     return arr.ctypes.data_as(ctypes.c_void_p)
 
@@ -39,7 +42,7 @@ def _check_dtype(arr, dtype):
     else: raise RuntimeError('unknown array type passed: {}'.format(type(arr)))
 
 class PyFMM(object):
-    def __init__(self, domain, N=None, eps=10.**-6, shared_memory=False,
+    def __init__(self, domain, N=None, eps=10.**-6,
         free_space=False, r=None, shell_width=0.0):
 
         dtype = REAL
@@ -205,13 +208,25 @@ class PyFMM(object):
         # Method", Takashi Amisaki, Journal of Computational Chemistry, Vol21,
         # No 12, 1075-1087, 2000
 
-        # pre compute the "periodic boundaries coefficients.
-        # self._boundary_terms[:] += self._compute_f() + self._compute_g()
+        # pre compute the periodic boundaries coefficients.
+        _false = False
         if not free_space:
-            self._boundary_terms =  self._compute_f() + self._compute_g()
+            self._boundary_terms = self._compute_f() + self._compute_g()
+            #self._boundary_terms = np.zeros((self.L * 2)**2, dtype=dtype)
+
+            #print(60*"-")
+            #print(self._boundary_terms)
+            #print("max:", np.max(self._boundary_terms))
+            #print(60*"-")
 
 
+        # create a vectors with ones for real part and zeros for imaginary part
+        # to feed into MTL translation. Use radius=1.
 
+        self._boundary_ident = np.zeros(8*self.L + 2, dtype=dtype)
+        self._boundary_ident[:4*self.L+1:] = 1.0
+
+        # --- end of periodic boundaries ---
 
         # pre-compute spherical harmonics for interaction lists.
         # P_n^m and coefficient, 7*7*7*ncomp as offsets are in -3,3
@@ -237,6 +252,8 @@ class PyFMM(object):
                             val = math.sqrt(math.factorial(
                                 lx - abs(mx))/math.factorial(lx + abs(mx)))
                             val *= scipy_p[mxi].real
+                            if abs(scipy_p[mxi].imag) > 10.**-15:
+                                raise RuntimeError('unexpected imag part')
                             self._interaction_p[iz, iy, ix, 
                                 self.re_lm(lx, mx)] = val
 
@@ -265,7 +282,7 @@ class PyFMM(object):
         const int masky = 1.0;
         const int maskz = 1.0;
         """
-        if free_space:
+        if free_space == True:
             free_space_mod = """
             #define ABS(x) ((x) > 0 ? (x) : (-1*(x)))
             const int maskx = (ABS(P.j[0]) > {hex}) ? 0.0 : 1.0;
@@ -281,16 +298,16 @@ class PyFMM(object):
         const double ipx = P.i[0] + {hex}; 
         const double ipy = P.i[1] + {hey}; 
         const double ipz = P.i[2] + {hez};
-        const int icx = ipx*{lx};
-        const int icy = ipy*{ly};
-        const int icz = ipz*{lz};
+        const int icx = 100. + ipx*{lx};
+        const int icy = 100. + ipy*{ly};
+        const int icz = 100. + ipz*{lz};
 
         const double jpx = P.j[0] + {hex}; 
         const double jpy = P.j[1] + {hey}; 
         const double jpz = P.j[2] + {hez};
-        const int jcx = jpx*{lx};
-        const int jcy = jpy*{ly};
-        const int jcz = jpz*{lz};
+        const int jcx = 100. + jpx*{lx};
+        const int jcy = 100. + jpy*{ly};
+        const int jcz = 100. + jpz*{lz};
         
         const int dx = icx - jcx;
         const int dy = icy - jcy;
@@ -300,7 +317,7 @@ class PyFMM(object):
         
         {FREE_SPACE}
 
-        const double mask = ((dr2 > 3) ? 0.0 : 1.0) * \
+        const double mask = ((dr2 > 3) ? 0.0 : 0.5) * \
             maskx*masky*maskz;
         
         const double rx = P.j[0] - P.i[0];
@@ -309,13 +326,15 @@ class PyFMM(object):
 
         const double r2 = rx*rx + ry*ry + rz*rz;
         const double r = sqrt(r2);
-        
+        //if (mask > 0) {{
+        //printf("---------------------------\\n");
         //printf("KERNEL: %f %f %d \\n", mask, r, dr2);
-        //printf("\t %d %d %d \\n", dx, dy, dz);
-        //printf("\tI %f %f %f \\n", P.i[0], P.i[1], P.i[2]);
-        //printf("\tJ %f %f %f \\n", P.j[0], P.j[1], P.j[2]);
-
-        PHI[0] += 0.5 * mask * Q.i[0] * Q.j[0] / r;
+        //printf("\t%d\t%d\t%d \\n", dx, dy, dz);
+        //printf("\tI\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.i[0], P.i[1], P.i[2], icx, icy, icz);
+        //printf("\tJ\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.j[0], P.j[1], P.j[2], jcx, jcy, jcz);
+        //}}
+        
+        PHI[0] += mask * Q.i[0] * Q.j[0] / r;
         """.format(**{
             'hex': self.domain.extent[0] * 0.5,
             'hey': self.domain.extent[1] * 0.5,
@@ -346,7 +365,7 @@ class PyFMM(object):
             shell_cutoff=max_radius
         )
  
-        self._int_list = range(self.R)
+        self._int_list = list(range(self.R))
         for lvlx in range(1, self.R):
             tsize = self.tree[lvlx].grid_cube_size
             if tsize is not None:
@@ -415,26 +434,96 @@ class PyFMM(object):
             self._halo_exchange(level)
             self._level_call_async(self._translate_m_to_l, level, async)
             self._fine_to_coarse(level)
+            self.tree_parent[level][:] = 0.0
 
         self._join_async()
+
 
         if self.free_space:
             self.tree_parent[0][:] = 0.0
             self.tree_plain[0][:] = 0.0
             self.tree_parent[1][:] = 0.0
             self.tree_plain[1][:] = 0.0
+        else:
+            self.tree_parent[0][:] = 0.0
+            self.tree_plain[0][:] = 0.0
+
+            #self._compute_periodic_boundary()
+            #print(self.tree_parent[1][:])
+
 
         for level in range(1, self.R):
 
             self._translate_l_to_l(level)
             self._coarse_to_fine(level)
 
+        #for level in range(self.R):
+        #    print(level, 60*'-')
+        #    print(self.tree_halo[level][:,:,:,0])
+
         phi_extract = self._compute_cube_extraction(positions, charges)
         phi_near = self._compute_local_interaction(positions, charges)
 
         self._update_opt()
 
+        print("Near:", phi_near, "Far:", phi_extract)
+
         return phi_extract + phi_near
+
+    def _test_call(self, positions, charges, forces=None, async=False):
+
+        self._compute_cube_contrib(positions, charges)
+        for level in range(self.R - 1, 0, -1):
+
+            self._level_call_async(self._translate_m_to_m, level, async)
+            self._test_double_halo_exchange(level)
+            self._level_call_async(self._translate_m_to_l, level, async)
+            self._fine_to_coarse(level)
+            self.tree_parent[level][:] = 0.0
+
+        self._join_async()
+
+        if self.free_space == True:
+            self.tree_parent[0][:] = 0.0
+            self.tree_plain[0][:] = 0.0
+            self.tree_parent[1][:] = 0.0
+            self.tree_plain[1][:] = 0.0
+        else:
+            self.tree_parent[0][:] = 0.0
+            self.tree_plain[0][:] = 0.0
+            self.tree_parent[1][:] = 0.0
+            #self.tree_plain[1][:] = 0.0
+            #self._compute_periodic_boundary()
+            #print(self.tree_parent[1][:])
+
+        for level in range(1, self.R):
+
+            print("BEFORE PARENT", level, self.tree_parent[level][:,:,:,0])
+            print("BEFORE PLAIN", level, self.tree_plain[level][:,:,:,0])
+            self._translate_l_to_l(level)
+            print("AFTER", level, self.tree_plain[level][:,:,:,0])
+            self._coarse_to_fine(level)
+
+
+        #for level in range(self.R):
+        #    print(level, 60*'-')
+        #    print(self.tree_halo[level][:,:,:,0])
+
+        print("PARENT R-1", self.tree_parent[self.R-1][:,:,:,0])
+        print("HALO R", self.tree_halo[self.R-1][:,:,:,0])
+        print("PLAIN R", self.tree_plain[self.R-1][:,:,:,0])
+
+        phi_extract = self._compute_cube_extraction(positions, charges)
+        phi_near = self._compute_local_interaction(positions, charges)
+
+        self._update_opt()
+
+        print("Near:", phi_near, "Far:", phi_extract)
+
+        return phi_extract + phi_near
+
+
+
 
     def _level_call_async(self, func, level, async):
 
@@ -447,6 +536,26 @@ class PyFMM(object):
             self._async_thread.start()
         else:
             func(level)
+
+
+    def _compute_periodic_boundary(self):
+        lsize = self.tree[1].parent_local_size
+        if lsize is not None:
+            moments = np.copy(self.tree_parent[1][0, 0, 0, :])
+            self.tree_parent[1][0, 0, 0, :] = 0.0
+
+            self._translate_mtl_lib['mtl_test_wrapper'](
+                ctypes.c_int64(self.L),
+                ctypes.c_double(1.),            #radius=1
+                extern_numpy_ptr(moments),
+                extern_numpy_ptr(self._boundary_ident),
+                extern_numpy_ptr(self._boundary_terms),
+                extern_numpy_ptr(self._a),
+                extern_numpy_ptr(self._ar),
+                extern_numpy_ptr(self._ipower_mtl),
+                extern_numpy_ptr(self.tree_parent[1][0, 0, 0, :])
+            )
+
 
     def _join_async(self):
         if self._async_thread is not None:
@@ -652,6 +761,38 @@ class PyFMM(object):
         #print(self.tree_halo[level][:,:,:,0])
         self.timer_halo.pause()
 
+    def _test_double_halo_exchange(self, level):
+        self.timer_halo.start()
+        self.tree_halo.halo_exchange_level(level)
+
+        if self.tree[level].local_grid_cube_size is None:
+            return
+
+        # if computing the free space solution we need to zero the outer
+        # halo regions
+
+        if self.free_space == True:
+            gs = self.tree[level].ncubes_side_global
+            lo = self.tree[level].local_grid_offset
+            ls = self.tree[level].local_grid_cube_size
+
+            if lo[2] == 0:
+                self.tree_halo[level][:,:,:2:,:] = 0.0
+            if lo[1] == 0:
+                self.tree_halo[level][:,:2:,:,:] = 0.0
+            if lo[0] == 0:
+                self.tree_halo[level][:2:,:,:,:] = 0.0
+            if lo[2] + ls[2] == gs:
+                self.tree_halo[level][:,:,-2::,:] = 0.0
+            if lo[1] + ls[1] == gs:
+                self.tree_halo[level][:,-2::,:,:] = 0.0
+            if lo[0] + ls[0] == gs:
+                self.tree_halo[level][-2::,:,:,:] = 0.0
+
+        #print(self.tree_halo[level][:,:,:,0])
+        self.timer_halo.pause()
+
+
 
     def _translate_m_to_l(self, level):
         """
@@ -682,12 +823,14 @@ class PyFMM(object):
         radius = self.domain.extent[0] / \
                  self.tree[level].ncubes_side_global
 
+        print("MTL in", self.tree_halo[level][:,:,:,0])
+
         err = self._translate_mtl_lib['translate_mtl'](
             _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
             _check_dtype(self.tree_halo[level], REAL),
             _check_dtype(self.tree_plain[level], REAL),
-	        _check_dtype(self._interaction_e, REAL),
-	        _check_dtype(self._interaction_p, REAL),
+	    _check_dtype(self._interaction_e, REAL),
+	    _check_dtype(self._interaction_p, REAL),
             _check_dtype(self._a, REAL),
             _check_dtype(self._ar, REAL),
             _check_dtype(self._ipower_mtl, REAL),
@@ -698,6 +841,7 @@ class PyFMM(object):
             _check_dtype(self._int_plookup, INT32),
             _check_dtype(self._int_radius, ctypes.c_double)
         )
+        print("MTL out", self.tree_plain[level][:,:,:,0])
 
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
         self.timer_mtl.pause()
@@ -725,7 +869,7 @@ class PyFMM(object):
         elif src_level >= self.R-1:
             raise RuntimeError('cannot copy from a greater than {}'.format(
             self.R-2))
-
+        
         self.timer_down.start()
         send_plain_to_parent(src_level, self.tree_plain, self.tree_parent)
         self.timer_down.pause()
@@ -755,29 +899,65 @@ class PyFMM(object):
               self.domain.extent[2]
 
         kappa = math.sqrt(math.pi/(vol**(2./3.)))
+        eps = min(10.**-8, self.eps)
+
+        #print("COMPUTE SN: \t\tkappa", kappa, "vol", (vol**(2./3.)), "extent", self.domain.extent[:])
 
         if lx == 2:
-            return math.sqrt(3. * math.log(2. * kappa) - log(self.eps)), kappa
+            tmp = 3. * math.log(2. * kappa)
+            logtmp = log(eps)
+            if logtmp > tmp:
+                s = 1.
+                print("BODGE WARNING")
+            else:
+                s = math.sqrt(3. * math.log(2. * kappa) - log(eps))
+                err = abs(s**(lx-2.) * math.exp(-1. * (s**2.)) -
+                ((2.*kappa)**(-1*lx - 1.))*eps)
+                assert err<10.**-14, "LAMBERT CHECK:{}".format(err)
+
+            return s, kappa
         else:
             n = float(lx)
-            return self._compute_sn(2)
-            return math.sqrt(0.5 * (2. - n) * lambertw(
+            tmp = 0.5 * (2. - n) * lambertw(
                     (2./(2. - n)) * \
                     (
-                        (self.eps/( (2*kappa) ** (n + 1.) ))**(2./(n - 2.))
+                        (eps/( (2*kappa) ** (n + 1.) ))**(2./(n - 2.))
                      )
-                ).real), kappa
+                ).real
+
+            #print("ARG", 0.5 * (2. - n) * lambertw(
+            #        (2./(2. - n)) * \
+            #        (
+            #            (eps/( (2*kappa) ** (n + 1.) ))**(2./(n - 2.))
+            #         )
+            #    ))
+
+            if tmp >= 0.0:
+                s = math.sqrt(tmp)
+                err = abs(s**(lx-2.) * math.exp(-1. * (s**2.)) -
+                ((2.*kappa)**(-1*lx - 1.))*eps)
+                #assert err<10.**-14, "LAMBERT CHECK: {}".format(err)
+            else:
+                print("BODGE WARNING")
+                s = self._compute_sn(2)[0]
+
+            return s, kappa
 
 
     def _compute_parameters(self, lx):
         if lx < 2: raise RuntimeError('not valid for lx<2')
         sn, kappa = self._compute_sn(lx)
+        sn, kappa = self._compute_sn(2)
         # r_c, v_c, kappa
         return sn/kappa, kappa*sn/math.pi, kappa
 
 
     def _compute_g(self):
-        ncomp = (self.L**2) * 2
+
+        print("G START ============================================")
+
+        ncomp = ((self.L * 2)**2) * 2
+
         terms = np.zeros(ncomp, dtype=self.dtype)
 
         min_len = min(
@@ -786,23 +966,32 @@ class PyFMM(object):
             self.domain.extent[2]
         )
 
-        for lx in range(2, self.L, 2):
+        for lx in range(2, self.L*2, 2):
             rc, vc, kappa = self._compute_parameters(lx)
+
+            rc*=3
+
             kappa2 = kappa*kappa
             maxt = int(math.ceil(rc/min_len))
             iterset = range(-1 * maxt, maxt+1)
-            # if len(iterset) < 4: print("Warning, small real space cutoff.")
+            if len(iterset) < 4: print("Warning, small real space cutoff.")
 
-            #print(lx, rc, vc, kappa)
+            #print(lx, rc, vc, kappa, maxt)
 
             for tx in itertools.product(iterset, iterset, iterset):
                 dispt = self._image_to_sph(tx)
 
                 nd1 = abs(tx[0]) > 1 or abs(tx[1]) > 1 or abs(tx[2]) > 1
 
+
                 if dispt[0] <= rc and nd1:
                     #print(tx, dispt)
-
+                    #print("\t\ttx", tx,
+                    #    "\tn+1/2", lx + 0.5,
+                    #    "\tk2", kappa2,
+                    #    "\tk2r2", kappa2*dispt[0] * dispt[0],
+                    #    "\tres", gammaincc(lx + 0.5, kappa2*dispt[0] * dispt[0])
+                    #)
                     iradius = 1./dispt[0]
                     kappa2radius2 = kappa2 * dispt[0] * dispt[0]
 
@@ -817,7 +1006,8 @@ class PyFMM(object):
                         val = math.sqrt(float(math.factorial(
                             lx - abs(mx)))/math.factorial(lx + abs(mx)))
                         re_exp = np.cos(mx * dispt[1]) * val
-                        im_exp = np.sin(mx * dispt[1]) * val
+                        #im_exp = np.sin(mx * dispt[1]) * val
+
 
                         assert abs(scipy_p[mxi].imag) < 10.**-16
 
@@ -827,14 +1017,17 @@ class PyFMM(object):
                         #        gammaincc(lx + 0.5, kappa2radius2))
 
                         terms[self.re_lm(lx, mx)] += coeff * re_exp
-                        terms[self.im_lm(lx, mx)] += coeff * im_exp
+                        # imag part is zero (indexing is wrong here)
+                        #terms[self.im_lm(lx, mx)] += coeff * im_exp
 
-
-
+        print("G END ============================================")
         return terms
 
     def _compute_f(self):
-        ncomp = (self.L**2) * 2
+        print("F START ============================================")
+
+
+        ncomp = ((self.L * 2)**2) * 2
         terms = np.zeros(ncomp, dtype=self.dtype)
 
         extent = self.domain.extent
@@ -851,14 +1044,14 @@ class PyFMM(object):
         gyl = np.linalg.norm(gy)
         gzl = np.linalg.norm(gz)
 
-        #print(gx, self.domain.extent[0], gyl , gzl)
+        #print(gx)
+        #print(self.domain.extent[0])
+        #print(gyl)
+        #print(gzl)
 
-        for lx in range(2, self.L, 2):
+        for lx in range(2, self.L*2, 2):
 
             rc, vc, kappa = self._compute_parameters(lx)
-
-            vc *= 4
-            kappa *= 10
 
             #print(lx, rc, vc, kappa)
 
@@ -871,6 +1064,10 @@ class PyFMM(object):
 
             igamma = rgamma(lx + 0.5)
 
+            #print("lx", lx, "\trgamma:", igamma)
+
+            #print("nmax_x", nmax_x, gx, vc)
+
             for hxi in itertools.product(range(-1*nmax_z, nmax_z+1),
                                           range(-1*nmax_y, nmax_y+1),
                                           range(-1*nmax_x, nmax_x+1)):
@@ -881,9 +1078,9 @@ class PyFMM(object):
 
                 if 10.**-10 < dispt[0] <= vc:
 
-
-                    exp_coeff = cmath.exp(mpi2okappa2 * dispt[0] * dispt[0])*\
+                    exp_coeff = math.exp(mpi2okappa2 * dispt[0] * dispt[0])*\
                                 ivolume * igamma
+
 
 
                     mval = list(range(-1*lx, 1, 2)) + list(range(2, lx+1, 2))
@@ -891,26 +1088,43 @@ class PyFMM(object):
 
                     scipy_p = lpmv(mxval, lx, math.cos(dispt[2]))
 
-                    vhnm2 = (dispt[0] ** (lx - 2.)) * ((0 + 1.j) ** lx) * \
-                            (math.pi ** (lx - 0.5))
+                    vhnm2 = ((dispt[0] ** (lx - 2.)) * ((0 + 1.j) ** lx) * \
+                            (math.pi ** (lx - 0.5))).real
 
-                    #print(hx, dispt[0], "\t", abs(vhnm2*exp_coeff))
+                    #print("lx", lx,
+                    #      "hx:", hx,
+                    #      "exp_coeff", math.exp(mpi2okappa2 * dispt[0] * dispt[0]),
+                    #      "v**2", dispt[0]**2.,
+                    #      "vc2", vc*vc,
+                    #      "vhnm2", vhnm2
+                    #      )
 
                     for mxi, mx in enumerate(mval):
                         val = math.sqrt(float(math.factorial(
                             lx - abs(mx)))/math.factorial(lx + abs(mx)))
                         re_exp = np.cos(mx * dispt[1]) * val
-                        im_exp = np.sin(mx * dispt[1]) * val
 
                         assert abs(scipy_p[mxi].imag) < 10.**-16
-                        sph_nm = re_exp * scipy_p[mxi].real + \
-                                 im_exp * scipy_p[mxi].real * 1.j
+                        sph_nm = re_exp * scipy_p[mxi].real
 
                         contrib = vhnm2 * sph_nm * exp_coeff
 
-                        terms[self.re_lm(lx, mx)] += contrib.real
-                        terms[self.im_lm(lx, mx)] += contrib.imag
+                        #print(lx, mx, "\trgamma, vhnm2:", vhnm2, "\t\t\tsph_nm:", sph_nm,
+                        #      "\texp_coeff", exp_coeff, "\tcontrib", contrib)
 
+                        #print("lx", lx, "contrib", contrib, "sph_nm", sph_nm,
+                        #     "vhnm2", vhnm2, "exp_coeff", exp_coeff)
+                        terms[self.re_lm(lx, mx)] += contrib.real
+
+
+                        # imag part is zero (also indexing is wrong here)
+                        #terms[self.im_lm(lx, mx)] += contrib.imag
+
+            #for mx in list(range(-1*lx, 1, 2)) + list(range(2, lx+1, 2)):
+            #    print("FINAL, lx", lx, "mx", mx, "val", terms[self.re_lm(lx, mx)] )
+
+
+        print("F END ============================================")
         return terms
 
 

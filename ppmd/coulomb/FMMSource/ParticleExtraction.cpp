@@ -322,6 +322,7 @@ INT32 particle_extraction(
             count++;
         }
         potential_energy += local_pe*0.5;
+        //potential_energy += local_pe;
     }   
 
     // printf("npart %d count %d\n", npart, count);

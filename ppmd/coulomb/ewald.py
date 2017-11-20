@@ -47,7 +47,10 @@ def compute_rc_nc_cutoff(alpha, L, eps=10.**-6):
 
 class EwaldOrthoganal(object):
 
-    def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None, recip_cutoff=None, recip_nmax=None, shared_memory=False, shell_width=None, work_ratio=1.0, force_unit=1.0, energy_unit=1.0):
+    def __init__(self, domain, eps=10.**-6, real_cutoff=None, alpha=None,
+                 recip_cutoff=None, recip_nmax=None, shared_memory=False,
+                 shell_width=None, work_ratio=1.0, force_unit=1.0,
+                 energy_unit=1.0):
 
         self.domain = domain
         self.eps = float(eps)
