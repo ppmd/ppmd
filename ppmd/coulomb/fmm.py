@@ -326,13 +326,13 @@ class PyFMM(object):
 
         const double r2 = rx*rx + ry*ry + rz*rz;
         const double r = sqrt(r2);
-        //if (mask > 0) {{
-        //printf("---------------------------\\n");
-        //printf("KERNEL: %f %f %d \\n", mask, r, dr2);
-        //printf("\t%d\t%d\t%d \\n", dx, dy, dz);
-        //printf("\tI\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.i[0], P.i[1], P.i[2], icx, icy, icz);
-        //printf("\tJ\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.j[0], P.j[1], P.j[2], jcx, jcy, jcz);
-        //}}
+        if (mask > 0) {{
+        printf("---------------------------\\n");
+        printf("KERNEL: %f %f %d \\n", mask, r, dr2);
+        printf("\t%d\t%d\t%d \\n", dx, dy, dz);
+        printf("\tI\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.i[0], P.i[1], P.i[2], icx, icy, icz);
+        printf("\tJ\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.j[0], P.j[1], P.j[2], jcx, jcy, jcz);
+        }}
         
         PHI[0] += mask * Q.i[0] * Q.j[0] / r;
         """.format(**{
@@ -469,61 +469,6 @@ class PyFMM(object):
         print("Near:", phi_near, "Far:", phi_extract)
 
         return phi_extract + phi_near
-
-    def _test_call(self, positions, charges, forces=None, async=False):
-
-        self._compute_cube_contrib(positions, charges)
-        for level in range(self.R - 1, 0, -1):
-
-            self._level_call_async(self._translate_m_to_m, level, async)
-            self._test_double_halo_exchange(level)
-            self._level_call_async(self._translate_m_to_l, level, async)
-            self._fine_to_coarse(level)
-            self.tree_parent[level][:] = 0.0
-
-        self._join_async()
-
-        if self.free_space == True:
-            self.tree_parent[0][:] = 0.0
-            self.tree_plain[0][:] = 0.0
-            self.tree_parent[1][:] = 0.0
-            self.tree_plain[1][:] = 0.0
-        else:
-            self.tree_parent[0][:] = 0.0
-            self.tree_plain[0][:] = 0.0
-            self.tree_parent[1][:] = 0.0
-            #self.tree_plain[1][:] = 0.0
-            #self._compute_periodic_boundary()
-            #print(self.tree_parent[1][:])
-
-        for level in range(1, self.R):
-
-            print("BEFORE PARENT", level, self.tree_parent[level][:,:,:,0])
-            print("BEFORE PLAIN", level, self.tree_plain[level][:,:,:,0])
-            self._translate_l_to_l(level)
-            print("AFTER", level, self.tree_plain[level][:,:,:,0])
-            self._coarse_to_fine(level)
-
-
-        #for level in range(self.R):
-        #    print(level, 60*'-')
-        #    print(self.tree_halo[level][:,:,:,0])
-
-        print("PARENT R-1", self.tree_parent[self.R-1][:,:,:,0])
-        print("HALO R", self.tree_halo[self.R-1][:,:,:,0])
-        print("PLAIN R", self.tree_plain[self.R-1][:,:,:,0])
-
-        phi_extract = self._compute_cube_extraction(positions, charges)
-        phi_near = self._compute_local_interaction(positions, charges)
-
-        self._update_opt()
-
-        print("Near:", phi_near, "Far:", phi_extract)
-
-        return phi_extract + phi_near
-
-
-
 
     def _level_call_async(self, func, level, async):
 
@@ -761,39 +706,6 @@ class PyFMM(object):
         #print(self.tree_halo[level][:,:,:,0])
         self.timer_halo.pause()
 
-    def _test_double_halo_exchange(self, level):
-        self.timer_halo.start()
-        self.tree_halo.halo_exchange_level(level)
-
-        if self.tree[level].local_grid_cube_size is None:
-            return
-
-        # if computing the free space solution we need to zero the outer
-        # halo regions
-
-        if self.free_space == True:
-            gs = self.tree[level].ncubes_side_global
-            lo = self.tree[level].local_grid_offset
-            ls = self.tree[level].local_grid_cube_size
-
-            if lo[2] == 0:
-                self.tree_halo[level][:,:,:2:,:] = 0.0
-            if lo[1] == 0:
-                self.tree_halo[level][:,:2:,:,:] = 0.0
-            if lo[0] == 0:
-                self.tree_halo[level][:2:,:,:,:] = 0.0
-            if lo[2] + ls[2] == gs:
-                self.tree_halo[level][:,:,-2::,:] = 0.0
-            if lo[1] + ls[1] == gs:
-                self.tree_halo[level][:,-2::,:,:] = 0.0
-            if lo[0] + ls[0] == gs:
-                self.tree_halo[level][-2::,:,:,:] = 0.0
-
-        #print(self.tree_halo[level][:,:,:,0])
-        self.timer_halo.pause()
-
-
-
     def _translate_m_to_l(self, level):
         """
 
@@ -817,20 +729,23 @@ class PyFMM(object):
         )
         '''
 
+        if self.tree[level].local_grid_cube_size is None:
+            return
+
         self.timer_mtl.start()
         self.tree_plain[level][:] = 0.0
 
         radius = self.domain.extent[0] / \
                  self.tree[level].ncubes_side_global
 
-        print("MTL in", self.tree_halo[level][:,:,:,0])
+        #print("MTL in", self.tree_halo[level][:,:,:,0])
 
         err = self._translate_mtl_lib['translate_mtl'](
             _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
             _check_dtype(self.tree_halo[level], REAL),
             _check_dtype(self.tree_plain[level], REAL),
-	    _check_dtype(self._interaction_e, REAL),
-	    _check_dtype(self._interaction_p, REAL),
+            _check_dtype(self._interaction_e, REAL),
+            _check_dtype(self._interaction_p, REAL),
             _check_dtype(self._a, REAL),
             _check_dtype(self._ar, REAL),
             _check_dtype(self._ipower_mtl, REAL),
@@ -841,7 +756,7 @@ class PyFMM(object):
             _check_dtype(self._int_plookup, INT32),
             _check_dtype(self._int_radius, ctypes.c_double)
         )
-        print("MTL out", self.tree_plain[level][:,:,:,0])
+        #print("MTL out", self.tree_plain[level][:,:,:,0])
 
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
         self.timer_mtl.pause()
@@ -908,7 +823,7 @@ class PyFMM(object):
             logtmp = log(eps)
             if logtmp > tmp:
                 s = 1.
-                print("BODGE WARNING")
+                #print("BODGE WARNING")
             else:
                 s = math.sqrt(3. * math.log(2. * kappa) - log(eps))
                 err = abs(s**(lx-2.) * math.exp(-1. * (s**2.)) -
@@ -938,7 +853,7 @@ class PyFMM(object):
                 ((2.*kappa)**(-1*lx - 1.))*eps)
                 #assert err<10.**-14, "LAMBERT CHECK: {}".format(err)
             else:
-                print("BODGE WARNING")
+                #print("BODGE WARNING")
                 s = self._compute_sn(2)[0]
 
             return s, kappa
@@ -954,7 +869,7 @@ class PyFMM(object):
 
     def _compute_g(self):
 
-        print("G START ============================================")
+        #print("G START ============================================")
 
         ncomp = ((self.L * 2)**2) * 2
 
@@ -1020,11 +935,11 @@ class PyFMM(object):
                         # imag part is zero (indexing is wrong here)
                         #terms[self.im_lm(lx, mx)] += coeff * im_exp
 
-        print("G END ============================================")
+        #print("G END ============================================")
         return terms
 
     def _compute_f(self):
-        print("F START ============================================")
+        #print("F START ============================================")
 
 
         ncomp = ((self.L * 2)**2) * 2
@@ -1124,7 +1039,7 @@ class PyFMM(object):
             #    print("FINAL, lx", lx, "mx", mx, "val", terms[self.re_lm(lx, mx)] )
 
 
-        print("F END ============================================")
+        #print("F END ============================================")
         return terms
 
 

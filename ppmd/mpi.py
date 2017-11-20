@@ -319,6 +319,7 @@ if MPI.COMM_WORLD.size > 1:
     except_hook = sys.excepthook
 
     def mpi_excepthook(typ, value, traceback):
+        print("ATTEMPTING TO TERMINATE")
         except_hook(typ, value, traceback)
         sys.stderr.flush()
         abort()

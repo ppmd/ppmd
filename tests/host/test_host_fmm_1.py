@@ -656,8 +656,6 @@ def test_fmm_init_3():
         assert red_re < eps, "error did not meet tol"
 
 
-
-
 @pytest.fixture(
     scope="module",
     params=(

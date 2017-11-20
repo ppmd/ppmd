@@ -416,9 +416,108 @@ def test_fmm_init_5_3():
         print("ERR:\t\t", serr)
 
 
+@pytest.fixture(
+    scope="module",
+    params=(10.**-2,10.**-4,10.**-6)
+)
+def tol_set(request):
+    return request.param
+
+@pytest.fixture(
+    scope="module",
+    params=(2,3,4)
+)
+def level_set(request):
+    return request.param
+
+#def test_fmm_init_5_4(level_set, tol_set):
 def test_fmm_init_5_4():
+
+    # cannot decompose the R=2 case on more than one process
+    #if MPISIZE > 1 and level_set < 3:
+    #    return
+
     rc = 5.
-    R = 2
+    R = level_set
+    R = 3
+    eps = 10.**-2
+    #eps = tol_set
+
+
+    N = 20
+    E = 50.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+
+
+    ASYNC = False
+    DIRECT = True if MPISIZE == 1 else False
+    free_space = False
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+
+    A.npart = N
+
+    rng = np.random.RandomState(seed=1234)
+
+    A.P = data.PositionDat(ncomp=3)
+    A.F = data.ParticleDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.crr = data.ScalarArray(ncomp=1)
+    A.cri = data.ScalarArray(ncomp=1)
+    A.crs = data.ScalarArray(ncomp=1)
+
+    rng = np.random.RandomState(seed=1234)
+    A.P[:] = rng.uniform(low=-0.4999*E, high=0.49999*E, size=(N,3))
+    A.Q[:] = rng.uniform(low=-1., high=1., size=(N,1))
+    bias = np.sum(A.Q[:])/N
+    A.Q[:] -= bias
+
+    A.scatter_data_from(0)
+
+    t0 = time.time()
+    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    t1 = time.time()
+
+    if DIRECT:
+        phi_direct = 0.0
+        # compute phi from image and surrounding 26 cells
+        for ix in range(N):
+            for jx in range(ix+1, N):
+                rij = np.linalg.norm(A.P[jx,:] - A.P[ix,:])
+                phi_direct += A.Q[ix, 0] * A.Q[jx, 0] /rij
+            if free_space == False:
+                for ofx in cube_offsets:
+                    cube_mid = np.array(ofx)*E
+                    for jx in range(N):
+                        rij = np.linalg.norm(A.P[jx,:] + cube_mid - A.P[ix, :])
+                        phi_direct += 0.5*A.Q[ix, 0] * A.Q[jx, 0] /rij
+    else:
+        phi_direct = -0.12867248123756441780
+
+    local_err = abs(phi_py - phi_direct)
+    if local_err > eps: serr = red(local_err)
+    else: serr = green(local_err)
+
+    if MPIRANK == 0 and DEBUG:
+        print(60*"-")
+        #opt.print_profile()
+        print(60*"-")
+        print("TIME FMM:\t", t1 - t0)
+        print("ENERGY DIRECT:\t{:.20f}".format(phi_direct))
+        print("ENERGY FMM:\t", phi_py)
+        print("ERR:\t\t", serr)
+
+    assert local_err < eps
+
+def test_fmm_init_5_5():
+    rc = 5.
+    R = 3
 
     Cdata = np.load(get_res_file_path('coulomb/CO2cuboid.npy'))
     N = Cdata.shape[0]
@@ -432,7 +531,7 @@ def test_fmm_init_5_4():
     eps = 10.**-3
 
     ASYNC = False
-    EWALD = False
+    EWALD = True
     DIRECT = False
     free_space = False
 
@@ -533,6 +632,41 @@ def test_fmm_init_5_4():
     print(fmm.tree_halo[1][:,:,:,0])
     print(fmm.tree_plain[1][:,:,:,0])
 
+
+
+
+
+
+
+
+def test_fmm_init_5_6():
+    rc = 5.
+    R = 3
+
+    Cdata = np.load(get_res_file_path('coulomb/CO2cuboid.npy'))
+    N = Cdata.shape[0]
+    #N = 10
+    E = 50.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-3
+
+    ASYNC = False
+    EWALD = True
+    DIRECT = False
+    free_space = False
+
+    #fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+    ewald = EwaldOrthoganal(
+        domain=A.domain,
+        real_cutoff=rc,
+        shared_memory=SHARED_MEMORY
+    )
+
+    #print(fmm.R, fmm.L)
 
 
 
