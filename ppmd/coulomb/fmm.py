@@ -16,6 +16,9 @@ import cmath
 from threading import Thread
 from scipy.special import lpmv, rgamma, gammaincc, lambertw
 
+
+import pytest
+
 _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
 REAL = ctypes.c_double
@@ -25,6 +28,13 @@ INT64 = ctypes.c_int64
 INT32 = ctypes.c_int32
 
 np.set_printoptions(threshold=np.nan)
+
+def _pdb_drop():
+    #import pytest; pytest.set_trace()
+    import ipdb; ipdb.set_trace()
+
+def _isnormal(arr):
+    return not (np.any(np.isinf(arr)) or np.any(np.isnan(arr)))
 
 def _numpy_ptr(arr):
     return arr.ctypes.data_as(ctypes.c_void_p)
@@ -428,12 +438,25 @@ class PyFMM(object):
     def __call__(self, positions, charges, forces=None, async=False):
 
         self._compute_cube_contrib(positions, charges)
+
         for level in range(self.R - 1, 0, -1):
 
             self._level_call_async(self._translate_m_to_m, level, async)
             self._halo_exchange(level)
+
+            #if not _isnormal(self.tree_halo[level]):
+            #    _pdb_drop()
+
             self._level_call_async(self._translate_m_to_l, level, async)
+
+            #if not _isnormal(self.tree_plain[level]):
+            #    _pdb_drop()
+
             self._fine_to_coarse(level)
+
+            #if not _isnormal(self.tree_parent[level]):
+            #    _pdb_drop()
+
             self.tree_parent[level][:] = 0.0
 
         self._join_async()
@@ -447,8 +470,18 @@ class PyFMM(object):
 
         for level in range(1, self.R):
 
+            #if not _isnormal(self.tree_plain[level]):
+            #    _pdb_drop()
+
             self._translate_l_to_l(level)
+            #if not _isnormal(self.tree_plain[level]):
+            #    _pdb_drop()
+
             self._coarse_to_fine(level)
+            #if level+1 != self.R:
+            #    if not _isnormal(self.tree_parent[level+1]):
+            #        _pdb_drop()
+
 
         #for level in range(self.R):
         #    print(level, 60*'-')
@@ -459,7 +492,11 @@ class PyFMM(object):
 
         self._update_opt()
 
-        #print("Near:", phi_near, "Far:", phi_extract)
+        #print("Near:", phi_near, "Far:", phi_extract,
+        #      "npart", positions.npart_local)
+
+        #if not _isnormal(np.array((phi_extract,))):
+        #    _pdb_drop()
 
         return phi_extract + phi_near
 
@@ -509,12 +546,15 @@ class PyFMM(object):
         ns = self.tree.entry_map.cube_side_count
         cube_side_counts = np.array((ns, ns, ns), dtype=UINT64)
         if self._thread_allocation.size < self._tcount * \
-                positions.npart_local + 1:
+                (positions.npart_local + 1):
             self._thread_allocation = np.zeros(
                 int(self._tcount*(positions.npart_local*1.1 + 1)),dtype=INT32)
-        else:
-            self._thread_allocation[:self._tcount:] = 0
 
+        self._thread_allocation[:self._tcount:] = 0
+
+        #print("allocated", self._thread_allocation.shape)
+        #print("thread_count", self._tcount)
+        #print("npart_local", positions.npart_local)
 
         err = self._contribution_lib(
             INT64(self.L),
@@ -577,6 +617,8 @@ class PyFMM(object):
             _check_dtype(self._thread_allocation, INT32)
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
+
+        #print("far", positions.npart_local, phi.value)
 
         red_re = mpi.all_reduce(np.array((phi.value)))
 

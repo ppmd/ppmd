@@ -175,10 +175,14 @@ INT32 particle_contribution(
                 = ix;
         }
     }
+    if (err < 0) { return err; }
  
     // check all particles were assigned to a thread
     UINT64 check_sum = 0;
-    for(INT32 ix=0 ; ix<thread_max ; ix++){check_sum += thread_assign[ix];}
+    for(INT32 ix=0 ; ix<thread_max ; ix++){
+        check_sum += thread_assign[ix]; 
+        //printf("tx %d val %d\n", ix, thread_assign[ix]);
+    }
     if (check_sum != npart) {printf("npart %d assigned %d\n", npart, check_sum); return -2;}
     
     // Above we assigned particles to threads in a way that avoids needing atomics here.

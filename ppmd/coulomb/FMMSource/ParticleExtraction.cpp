@@ -222,6 +222,16 @@ INT32 particle_extraction(
 
         for(INT64 px=0 ; px<thread_assign[tx] ; px++){
             INT64 ix = thread_assign[thread_max + npart*tx + px];
+            
+            if (ix<0) {
+                #pragma omp critical
+                {err = -5;}
+            } else if (ix >= npart) {
+                #pragma omp critical
+                {err = -6;}
+            }
+
+
             REAL radius, ctheta, cphi, sphi, msphi;
             const INT64 ix_cell = compute_cell_spherical(
                 cube_ilen, cube_half_side_len, position[ix*3], position[ix*3+1], 
@@ -326,7 +336,8 @@ INT32 particle_extraction(
     }   
 
     // printf("npart %d count %d\n", npart, count);
-    
+
+    if (err < 0){return err;}
     if (count != npart) {err = -4;}
 
     *phi_data = potential_energy;

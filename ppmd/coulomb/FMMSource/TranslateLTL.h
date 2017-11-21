@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <iostream>
+#include <cmath>
 
 #define REAL double
 #define UINT64 uint64_t
@@ -27,6 +28,13 @@ using namespace std;
 #define MAX(x, y) ((x < y) ? y : x)
 
 #define I_IND(nlevel, kx, mx) ((2*(nlevel)+1)*(nlevel+(kx)) + nlevel + (mx) )
+
+#define PRINT_NAN(x) if(std::isnan(x) || std::isinf(x)){printf(#x);printf(" is nan/inf %f\n", x);}
+
+
+#define ABS(x) ((x) > 0 ? (x) : -1*(x))
+
+
 
 /*
 Layout of memory used by above macros.

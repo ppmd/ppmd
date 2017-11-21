@@ -3,6 +3,7 @@
 #include <omp.h>
 #include <stdio.h>
 #include <math.h>
+#include <cmath>
 
 #define REAL double
 #define UINT64 uint64_t

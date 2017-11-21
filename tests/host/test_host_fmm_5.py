@@ -212,6 +212,7 @@ def get_p_exp(fmm, disp_sph):
     return p_array, exp_array
 
 
+@pytest.mark.skipif("True")
 def test_fmm_init_5_1():
     rc = 10.
     R = 3
@@ -304,6 +305,7 @@ def test_fmm_init_5_1():
 
 
 
+@pytest.mark.skipif("True")
 def test_fmm_init_5_2():
     rc = 10.
     R = 3
@@ -325,6 +327,7 @@ def test_fmm_init_5_2():
         print(lx, "parameters", fmm._compute_parameters(lx))
 
 
+@pytest.mark.skipif("True")
 def test_fmm_init_5_3():
     rc = 1.
     R = 2
@@ -439,6 +442,7 @@ def space_set(request):
 
 
 def test_fmm_init_5_4(level_set, tol_set, space_set):
+#def test_fmm_init_5_4():
 
     # cannot decompose the R=2 case on more than one process
     if MPISIZE > 1 and level_set < 3:
@@ -446,11 +450,16 @@ def test_fmm_init_5_4(level_set, tol_set, space_set):
 
     rc = 5.
     R = level_set
-    eps = 10.**-2
+    #R = 3
     eps = tol_set
+    #eps = 10.**-4
+    free_space = space_set
+    #free_space = True
 
 
     N = 20
+    #N = 50
+
     E = 50.
 
     A = state.State()
@@ -459,7 +468,6 @@ def test_fmm_init_5_4(level_set, tol_set, space_set):
 
     ASYNC = False
     DIRECT = True if MPISIZE == 1 else False
-    free_space = space_set
 
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
 
@@ -516,9 +524,10 @@ def test_fmm_init_5_4(level_set, tol_set, space_set):
     else: serr = green(local_err)
 
     if MPIRANK == 0 and DEBUG:
-        print(60*"-")
+        print("\n")
+        #print(60*"-")
         #opt.print_profile()
-        print(60*"-")
+        #print(60*"-")
         print("TIME FMM:\t", t1 - t0)
         print("ENERGY DIRECT:\t{:.20f}".format(phi_direct))
         print("ENERGY FMM:\t", phi_py)
@@ -526,6 +535,7 @@ def test_fmm_init_5_4(level_set, tol_set, space_set):
 
     assert local_err/Q < eps
 
+@pytest.mark.skipif("True")
 def test_fmm_init_5_5():
     rc = 5.
     R = 3

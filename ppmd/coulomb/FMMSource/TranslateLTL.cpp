@@ -84,43 +84,79 @@ static inline void ltl_octal(
     for(INT32 kx=-1*jx ; kx<=jx    ; kx++){
         // A_j^k
         const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];
+
+//PRINT_NAN(ajk)
+
         REAL contrib_re = 0.0;
         REAL contrib_im = 0.0;
 
         for(INT32 nx=jx ; nx<nlevel ; nx++){
             // -1^{n}
             const REAL m1tnpj = 1.0 - 2.0*((REAL)((nx+jx) & 1));
+
+//PRINT_NAN(m1tnpj)
+
             const INT64 jxpnx = jx + nx;
             const INT64 p_ind_base = P_IND(jxpnx, 0);
+
+//PRINT_NAN(p_ind_base)
+
             // 1 / rho^{j + n + 1}
             const REAL r_n_j = radius_n[nx-jx];
+
+//PRINT_NAN(r_n_j)
 
             for(INT64 mx=-1*nx ; mx<=nx ; mx++){
 
                 const INT64 mxmkx = mx - kx;
+                const INT64 nxmjx = nx - jx;
+
+                const bool valid_indices = ABS(mxmkx) <= ABS(nxmjx);
+
 
                 // construct the spherical harmonic
-                const REAL y_re = y_data[CUBE_IND(nx-jx, mx-kx)];
-                const REAL y_im = y_data[im_offset2 + \
-                    CUBE_IND(nx-jx, mx-kx)];
+                const REAL y_re = valid_indices ? y_data[CUBE_IND(nxmjx, mxmkx)] : 0.0;
+
+//PRINT_NAN(y_re)
+
+                const REAL y_im = valid_indices ? y_data[im_offset2 + \
+                    CUBE_IND(nxmjx, mxmkx)] : 0.0;
+
+//PRINT_NAN(y_im)
 
                 // A_n^m
                 const REAL a_nj_mk = a_array[
-                    (nx-jx)*ASTRIDE1 + ASTRIDE2 + (mx-kx)];
+                    (nx-jx)*ASTRIDE1 + ASTRIDE2 + (mxmkx)];
+
+//PRINT_NAN(a_nj_mk)
+
                 // 1 / A_{j + n}^{m - k}
                 const REAL ra_n_m = ar_array[nx*ASTRIDE1 +\
                     ASTRIDE2 + mx];
                 
+//PRINT_NAN(ra_n_m)
+
                 const REAL coeff_re = i_array[(nlevel+kx)*(nlevel*2 + 1)+\
                     nlevel + mx] *\
                     m1tnpj * a_nj_mk * ajk * ra_n_m * r_n_j;
-                
+
+//PRINT_NAN(coeff_re)
+
                 const INT64 oind = CUBE_IND(nx, mx);
                 const REAL ocoeff_re = odata[oind]              * coeff_re;
+
+//PRINT_NAN(ocoeff_re)
+                
                 const REAL ocoeff_im = odata[oind + im_offset]  * coeff_re;
+
+//PRINT_NAN(ocoeff_im)
+
                 cplx_mul_add(   y_re, y_im, 
                                 ocoeff_re, ocoeff_im, 
                                 &contrib_re, &contrib_im);
+
+//PRINT_NAN(contrib_re)
+//PRINT_NAN(contrib_im)
 
 
             }
@@ -133,6 +169,10 @@ static inline void ltl_octal(
                 //}
         
         ldata[CUBE_IND(jx, kx)] += contrib_re;
+
+//PRINT_NAN(ldata[CUBE_IND(jx, kx)])
+//PRINT_NAN(ldata[CUBE_IND(jx, kx) + im_offset])
+
         ldata[CUBE_IND(jx, kx) + im_offset] += contrib_im;
         //printf("MTL jx %d\tkx\t%d\tval %f\n", jx,kx,odata[CUBE_IND(jx, kx)]);
         
