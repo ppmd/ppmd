@@ -219,15 +219,10 @@ class PyFMM(object):
         # No 12, 1075-1087, 2000
 
         # pre compute the periodic boundaries coefficients.
-        _false = False
         if free_space == False:
             self._boundary_terms = self._compute_f() + self._compute_g()
             #self._boundary_terms = np.zeros((self.L * 2)**2, dtype=dtype)
 
-            #print(60*"-")
-            #print(self._boundary_terms)
-            #print("max:", np.max(self._boundary_terms))
-            #print(60*"-")
 
 
         # create a vectors with ones for real part and zeros for imaginary part
@@ -456,8 +451,8 @@ class PyFMM(object):
 
             #if not _isnormal(self.tree_parent[level]):
             #    _pdb_drop()
-
-            self.tree_parent[level][:] = 0.0
+            if level > 1:
+                self.tree_parent[level][:] = 0.0
 
         self._join_async()
 
@@ -465,8 +460,6 @@ class PyFMM(object):
         self.tree_plain[0][:] = 0.0
 
         self._compute_periodic_boundary()
-            #print(self.tree_parent[1][:])
-
 
         for level in range(1, self.R):
 
@@ -512,16 +505,24 @@ class PyFMM(object):
         else:
             func(level)
 
-
     def _compute_periodic_boundary(self):
         if self.free_space == '27' or self.free_space == True:
+            self.tree_parent[1][:] = 0
             return
 
         lsize = self.tree[1].parent_local_size
         if lsize is not None:
-            moments = np.copy(self.tree_parent[1][0, 0, 0, :])
-            self.tree_parent[1][0, 0, 0, :] = 0.0
 
+
+            #self.tree_parent[1][0,0,0,0:4:] = 0.0
+            moments = np.copy(self.tree_parent[1][0, 0, 0, :])
+
+
+            print("MOMENTS", moments)
+            print("BOUNDARY TERMS",self._boundary_terms)
+            print("MAX BOUNDARY TERM", np.max(abs(self._boundary_terms)))
+
+            self.tree_parent[1][0, 0, 0, :] = 0.0
             self._translate_mtl_lib['mtl_test_wrapper'](
                 ctypes.c_int64(self.L),
                 ctypes.c_double(1.),            #radius=1
@@ -533,6 +534,10 @@ class PyFMM(object):
                 extern_numpy_ptr(self._ipower_mtl),
                 extern_numpy_ptr(self.tree_parent[1][0, 0, 0, :])
             )
+
+            print("POST", self.tree_parent[1][0, 0, 0, :])
+
+
 
 
     def _join_async(self):
@@ -913,72 +918,96 @@ class PyFMM(object):
 
         terms = np.zeros(ncomp, dtype=self.dtype)
 
-        min_len = min(
-            self.domain.extent[0],
-            self.domain.extent[1],
-            self.domain.extent[2]
-        )
+        extent = self.domain.extent
+        min_len = min(extent[0], extent[1], extent[2])
+        bx = np.array((extent[0], 0.0, 0.0))
+        by = np.array((0.0, extent[1], 0.0))
+        bz = np.array((0.0, 0.0, extent[2]))
+
 
         for lx in range(2, self.L*2, 2):
             rc, vc, kappa = self._compute_parameters(lx)
 
-            rc*=3
-
             kappa2 = kappa*kappa
-            maxt = int(math.ceil(rc/min_len))
+            maxt = max(int(math.ceil(rc/min_len)), 5)
+
             iterset = range(-1 * maxt, maxt+1)
             if len(iterset) < 4: print("Warning, small real space cutoff.")
 
-            #print(lx, rc, vc, kappa, maxt)
-
             for tx in itertools.product(iterset, iterset, iterset):
-                dispt = self._image_to_sph(tx)
+                dx = tx[0]*bx + tx[1]*by + tx[2]*bz
 
-                nd1 = abs(tx[0]) > 1 or abs(tx[1]) > 1 or abs(tx[2]) > 1
+                dispt = self._image_to_sph(dx)
 
+                #if dispt[0] <= rc and nd1:
 
-                if dispt[0] <= rc and nd1:
-                    #print(tx, dispt)
-                    #print("\t\ttx", tx,
-                    #    "\tn+1/2", lx + 0.5,
-                    #    "\tk2", kappa2,
-                    #    "\tk2r2", kappa2*dispt[0] * dispt[0],
-                    #    "\tres", gammaincc(lx + 0.5, kappa2*dispt[0] * dispt[0])
-                    #)
+                if (tx[0] != 0) or (tx[1] != 0) or (tx[2] != 0):
+
                     iradius = 1./dispt[0]
-                    kappa2radius2 = kappa2 * dispt[0] * dispt[0]
-
-                    mval = list(range(-1*lx, 1, 2)) + list(range(2, lx+1, 2))
-                    mxval = [abs(mx) for mx in mval]
-
-                    scipy_p = lpmv(mxval, lx, math.cos(dispt[2]))
-
                     radius_coeff = iradius ** (lx + 1.)
 
+                    kappa2radius2 = kappa2 * dispt[0] * dispt[0]
+
+                    mval = list(range(0, lx+1, 2))
+
+                    scipy_p = lpmv(mval, lx, math.cos(dispt[2]))
+
                     for mxi, mx in enumerate(mval):
-                        val = math.sqrt(float(math.factorial(
-                            lx - abs(mx)))/math.factorial(lx + abs(mx)))
-                        re_exp = np.cos(mx * dispt[1]) * val
-                        #im_exp = np.sin(mx * dispt[1]) * val
-
-
                         assert abs(scipy_p[mxi].imag) < 10.**-16
 
-                        coeff = scipy_p[mxi].real * radius_coeff * \
+                        val = math.sqrt(float(math.factorial(
+                            lx - abs(mx)))/math.factorial(lx + abs(mx)))
+
+                        ynm = val * scipy_p[mxi].real * np.cos(mx * dispt[1])
+
+                        coeff = ynm * radius_coeff * \
                                 gammaincc(lx + 0.5, kappa2radius2)
-                        #print(lx, mx, scipy_p[mxi].real * radius_coeff * \
-                        #        gammaincc(lx + 0.5, kappa2radius2))
 
-                        terms[self.re_lm(lx, mx)] += coeff * re_exp
-                        # imag part is zero (indexing is wrong here)
-                        #terms[self.im_lm(lx, mx)] += coeff * im_exp
+                        #print("ynm", ynm, "radius_coeff", radius_coeff, "coeff", coeff)
+                        #print("lx+0.5", lx+0.5, "k2r2", kappa2radius2, "gammaincc", gammaincc(lx + 0.5, kappa2radius2))
 
+                        terms[self.re_lm(lx, mx)] += coeff
+
+        # explicitly extract the nearby cells
+
+        for lx in range(2, self.L*2, 2):
+
+            iterset = range(-1, 2, 1)
+
+            for tx in itertools.product(iterset, iterset, iterset):
+                if (tx[0] != 0) or (tx[1] != 0) or (tx[2] != 0):
+
+                    dx = tx[0]*bx + tx[1]*by + tx[2]*bz
+
+                    dispt = self._image_to_sph(dx)
+                    iradius = 1./dispt[0]
+                    radius_coeff = iradius ** (lx + 1.)
+
+                    mval = list(range(0, lx+1, 2))
+                    scipy_p = lpmv(mval, lx, math.cos(dispt[2]))
+
+                    for mxi, mx in enumerate(mval):
+                        assert abs(scipy_p[mxi].imag) < 10.**-16
+
+                        val = math.sqrt(float(math.factorial(
+                            lx - abs(mx)))/math.factorial(lx + abs(mx)))
+
+                        ynm = val * scipy_p[mxi].real * np.cos(mx * dispt[1])
+
+                        coeff = ynm * radius_coeff
+
+                        terms[self.re_lm(lx, mx)] -= coeff
+
+
+        for lx in range(2, self.L*2, 2):
+            for mx in range(0, lx+1, 2):
+                #print("lx", lx, "mx", mx, terms[self.re_lm(lx, mx)])
+                pass
         #print("G END ============================================")
         return terms
 
     def _compute_f(self):
         #print("F START ============================================")
-
 
         ncomp = ((self.L * 2)**2) * 2
         terms = np.zeros(ncomp, dtype=self.dtype)
@@ -987,20 +1016,19 @@ class PyFMM(object):
         lx = (extent[0], 0., 0.)
         ly = (0., extent[1], 0.)
         lz = (0., 0., extent[2])
-        ivolume = 1./np.dot(lx, np.cross(ly, lz))
+        ivolume = 1./(extent[0]*extent[1]*extent[2])
 
-        gx = np.cross(ly,lz)*ivolume #* 2. * math.pi
-        gy = np.cross(lz,lx)*ivolume #* 2. * math.pi
-        gz = np.cross(lx,ly)*ivolume #* 2. * math.pi
+        #gx = np.cross(ly,lz)*ivolume #* 2. * math.pi
+        #gy = np.cross(lz,lx)*ivolume #* 2. * math.pi
+        #gz = np.cross(lx,ly)*ivolume #* 2. * math.pi
+
+        gx = np.array((1./extent[0], 0., 0.))
+        gy = np.array((0., 1./extent[1], 0.))
+        gz = np.array((0., 0., 1./extent[2]))
 
         gxl = np.linalg.norm(gx)
         gyl = np.linalg.norm(gy)
         gzl = np.linalg.norm(gz)
-
-        #print(gx)
-        #print(self.domain.extent[0])
-        #print(gyl)
-        #print(gzl)
 
         for lx in range(2, self.L*2, 2):
 
@@ -1011,15 +1039,17 @@ class PyFMM(object):
             kappa2 = kappa * kappa
             mpi2okappa2 = -1.0 * (math.pi ** 2.) / kappa2
 
+            ll = 5
+            if int(ceil(vc/gxl)) < ll:
+                vc = gxl*ll
+
+
             nmax_x = int(ceil(vc/gxl))
             nmax_y = int(ceil(vc/gyl))
             nmax_z = int(ceil(vc/gzl))
 
-            igamma = rgamma(lx + 0.5)
-
-            #print("lx", lx, "\trgamma:", igamma)
-
             #print("nmax_x", nmax_x, gx, vc)
+            #print(range(-1*nmax_z, nmax_z+1))
 
             for hxi in itertools.product(range(-1*nmax_z, nmax_z+1),
                                           range(-1*nmax_y, nmax_y+1),
@@ -1028,29 +1058,19 @@ class PyFMM(object):
                 hx = hxi[0]*gz + hxi[1]*gy + hxi[2]*gx
                 dispt = self._cart_to_sph(hx)
 
-
                 if 10.**-10 < dispt[0] <= vc:
 
-                    exp_coeff = math.exp(mpi2okappa2 * dispt[0] * dispt[0])*\
-                                ivolume * igamma
+                    exp_coeff = math.exp(mpi2okappa2 * dispt[0] * dispt[0])
 
+                    mval = list(range(0, lx+1, 2))
 
-
-                    mval = list(range(-1*lx, 1, 2)) + list(range(2, lx+1, 2))
-                    mxval = [abs(mx) for mx in mval]
-
-                    scipy_p = lpmv(mxval, lx, math.cos(dispt[2]))
+                    scipy_p = lpmv(mval, lx, math.cos(dispt[2]))
 
                     vhnm2 = ((dispt[0] ** (lx - 2.)) * ((0 + 1.j) ** lx) * \
                             (math.pi ** (lx - 0.5))).real
 
-                    #print("lx", lx,
-                    #      "hx:", hx,
-                    #      "exp_coeff", math.exp(mpi2okappa2 * dispt[0] * dispt[0]),
-                    #      "v**2", dispt[0]**2.,
-                    #      "vc2", vc*vc,
-                    #      "vhnm2", vhnm2
-                    #      )
+                    coeff = vhnm2 * exp_coeff
+                    #print("lx", lx, "\thxi", hxi, "\thx", hx, "\tcoeff", coeff)
 
                     for mxi, mx in enumerate(mval):
                         val = math.sqrt(float(math.factorial(
@@ -1060,24 +1080,55 @@ class PyFMM(object):
                         assert abs(scipy_p[mxi].imag) < 10.**-16
                         sph_nm = re_exp * scipy_p[mxi].real
 
-                        contrib = vhnm2 * sph_nm * exp_coeff
-
-                        #print(lx, mx, "\trgamma, vhnm2:", vhnm2, "\t\t\tsph_nm:", sph_nm,
-                        #      "\texp_coeff", exp_coeff, "\tcontrib", contrib)
-
-                        #print("lx", lx, "contrib", contrib, "sph_nm", sph_nm,
-                        #     "vhnm2", vhnm2, "exp_coeff", exp_coeff)
+                        contrib = sph_nm * coeff
                         terms[self.re_lm(lx, mx)] += contrib.real
 
-
-                        # imag part is zero (also indexing is wrong here)
-                        #terms[self.im_lm(lx, mx)] += contrib.imag
-
-            #for mx in list(range(-1*lx, 1, 2)) + list(range(2, lx+1, 2)):
-            #    print("FINAL, lx", lx, "mx", mx, "val", terms[self.re_lm(lx, mx)] )
-
+        for lx in range(2, self.L*2, 2):
+            igamma = rgamma(lx + 0.5) * ivolume
+            for mx in range(0, lx+1, 2):
+                terms[self.re_lm(lx, mx)] *= igamma
+                #print("lx", lx, "mx", mx, terms[self.re_lm(lx, mx)])
 
         #print("F END ============================================")
+        return terms
+
+
+    def _test_shell_sum(self, limit, nl=8):
+        ncomp = ((self.L * 2)**2) * 2
+        terms = np.zeros(ncomp, dtype=self.dtype)
+        extent = self.domain.extent
+
+        iterset = range(-1*limit, limit+1)
+        for itx in itertools.product(iterset, iterset, iterset):
+            nd1 = abs(itx[0]) > 1 or abs(itx[1]) > 1 or abs(itx[2]) > 1
+            if nd1:
+                vec = np.array((itx[0]*extent[0], itx[1]*extent[1],
+                                itx[2]*extent[2]))
+                sph_vec = self._cart_to_sph(vec)
+                ir = 1./sph_vec[0]
+                for nx in range(2, nl, 2):
+                    irp = ir ** (nx + 1.)
+                    mval = list(range(0, nx+1, 2))
+                    scipy_p = lpmv(mval, nx, math.cos(sph_vec[2]))
+                    for mxi, mx in enumerate(mval):
+                        val = math.sqrt(float(math.factorial(
+                            nx - abs(mx)))/math.factorial(nx + abs(mx)))
+
+                        re_exp =  np.cos(mx * sph_vec[1]) * val
+                        sph_nm =  re_exp * scipy_p[mxi].real
+
+                        terms[self.re_lm(nx, mx)] += sph_nm * irp
+        print("\n")
+        print(30*"-", "shell terms", 30*'-')
+        print("radius:", limit)
+        for nx in range(2, nl, 2):
+            for mx in list(range(0, nx+1, 2)):
+                print("nx:", nx, "\tmx:", mx,
+                      "\tshell val:", terms[self.re_lm(nx, mx)],
+                      "\tewald val:", self._boundary_terms[self.re_lm(nx, mx)]
+                )
+
+        print(30*"-", "-----------", 30*'-')
         return terms
 
 

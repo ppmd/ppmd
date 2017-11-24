@@ -80,10 +80,10 @@ class NeighbourListOMP(object):
         if self.ncount.ncomp < n:
             self.ncount = host.Array(ncomp=n, dtype=ctypes.c_int)
         needed_stride = self.cell_list.max_cell_contents_count*27
-        if self.stride < needed_stride:
-            self.stride = needed_stride
-        if self.matrix.ncomp < n*self.stride:
-            self.matrix = host.Array(ncomp=n*self.stride, dtype=ctypes.c_int)
+        if self.stride.value < needed_stride:
+            self.stride.value = needed_stride
+        if self.matrix.ncomp < n*self.stride.value:
+            self.matrix = host.Array(ncomp=n*self.stride.value, dtype=ctypes.c_int)
 
 
         ret = self._lib(
@@ -95,7 +95,7 @@ class NeighbourListOMP(object):
             self._domain.cell_array.ctypes_data,
             self.matrix.ctypes_data,
             self.ncount.ctypes_data,
-            ctypes.c_int(self.stride),
+            ctypes.c_int(self.stride.value),
             ctypes.c_double(self.cell_width**2.0)
         )
 

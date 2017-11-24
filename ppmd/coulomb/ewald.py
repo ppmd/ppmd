@@ -268,7 +268,6 @@ class EwaldOrthoganal(object):
             }
         )
 
-
         # reciprocal extract forces plus energy
         with open(str(
                 _SRC_DIR) + '/EwaldOrthSource/ExtractForceEnergy.h', 'r') as fh:
@@ -285,8 +284,6 @@ class EwaldOrthoganal(object):
             headers=_cont_header
         )
 
-
-
         self._extract_force_energy_lib = PL(
             kernel=_cont_kernel,
             dat_dict={
@@ -298,7 +295,6 @@ class EwaldOrthoganal(object):
                 'CoeffSpace': self._vars['coeff_space_kernel'](access.READ)
             }
         )
-
 
     def _init_real_space_lib(self):
 

@@ -212,7 +212,7 @@ def get_p_exp(fmm, disp_sph):
     return p_array, exp_array
 
 
-@pytest.mark.skipif("True")
+#@pytest.mark.skipif("True")
 def test_fmm_init_5_1():
     rc = 10.
     R = 3
@@ -303,9 +303,7 @@ def test_fmm_init_5_1():
 
 
 
-
-
-@pytest.mark.skipif("True")
+#@pytest.mark.skipif("True")
 def test_fmm_init_5_2():
     rc = 10.
     R = 3
@@ -375,8 +373,6 @@ def test_fmm_init_5_3():
     A.Q[8, 0] = -8.0
 
     bias = np.sum(A.Q[:])/N
-
-    print(A.P[:])
 
     assert abs(bias) < 10.**-6
 
@@ -535,32 +531,37 @@ def test_fmm_init_5_4(level_set, tol_set, space_set):
 
     assert local_err/Q < eps
 
-@pytest.mark.skipif("True")
+
+#@pytest.mark.skipif("True")
 def test_fmm_init_5_5():
-    rc = 5.
     R = 3
 
-    Cdata = np.load(get_res_file_path('coulomb/CO2cuboid.npy'))
+    #Cdata = np.load(get_res_file_path('coulomb/CO2cuboid.npy'))
+    Cdata = np.load(get_res_file_path('coulomb/NACL.npy'))
     N = Cdata.shape[0]
-    #N = 10
-    E = 50.
+    #E = 50.
+    E = 4.
 
     A = state.State()
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-    eps = 10.**-3
+    eps = 10.**-5
 
     ASYNC = False
     EWALD = True
-    DIRECT = False
     free_space = False
 
+    rc = min(10, E/4.)
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+    shell_terms = fmm._test_shell_sum(26, fmm.L)
+    fmm._boundary_terms[:] = shell_terms[:]
+
     if EWALD:
         ewald = EwaldOrthoganalHalf(
             domain=A.domain,
             real_cutoff=rc,
+            eps=10.**-14,
             shared_memory=SHARED_MEMORY
         )
 
@@ -578,31 +579,37 @@ def test_fmm_init_5_5():
     A.cri = data.ScalarArray(ncomp=1)
     A.crs = data.ScalarArray(ncomp=1)
 
-    if N == Cdata.shape[0]:
-        A.P[:] = Cdata[:,0:3:]
-        A.Q[:,0] = Cdata[:,3]
-    elif N == 1:
-        A.P[0,:] = (0.,0.,0.)
-        A.Q[0,0] = 1.0
-    elif N == 2:
-        A.P[0,:] = (-0.25*E, 0, 0)
-        A.P[1,:] = (0.25*E, 0, 0)
-        A.Q[:] = 1.0
-        print(A.P[0:N:,:])
-    else:
-        rng = np.random.RandomState(seed=1234)
-        A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
-        A.Q[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,1))
-        bias = np.sum(A.Q[:])/N
-        A.Q[:] -= bias
+    A.P[:] = Cdata[:,0:3:]
+    A.P[:] -= 15.
+    A.P[:] *= E/30.
 
+    A.Q[:,0] = Cdata[:,3]
+
+    #print(A.P[:N:,:])
     A.scatter_data_from(0)
-
 
     t0 = time.time()
     #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
     phi_py = fmm(A.P, A.Q, async=ASYNC)
     t1 = time.time()
+
+    dipole_src = """
+    dipole[0] += P.i[0] * Q.i[0];
+    dipole[1] += P.i[1] * Q.i[0];
+    dipole[2] += P.i[2] * Q.i[0];
+    """
+    dipole_ga = data.GlobalArray(ncomp=3)
+    dipole_kernel = kernel.Kernel('dipole', dipole_src)
+    dipole_loop = loop.ParticleLoopOMP(kernel=dipole_kernel,
+                                       dat_dict={
+                                           'dipole': dipole_ga(access.INC_ZERO),
+                                           'P': A.P(access.READ),
+                                           'Q': A.Q(access.READ)
+                                       })
+    dipole_loop.execute()
+    if MPIRANK == 0 and DEBUG:
+        print("Dipole moment:", dipole_ga[:])
+
 
 
     t2 = time.time()
@@ -618,24 +625,7 @@ def test_fmm_init_5_5():
 
     phi_ewald = A.cri[0] + A.crr[0] + A.crs[0]
 
-
-    if DIRECT:
-        phi_direct = 0.0
-        # compute phi from image and surrounding 26 cells
-        for ix in range(N):
-            for jx in range(ix+1, N):
-                rij = np.linalg.norm(A.P[jx,:] - A.P[ix,:])
-                phi_direct += A.Q[ix, 0] * A.Q[jx, 0] /rij
-            if free_space == False:
-                for ofx in cube_offsets:
-                    cube_mid = np.array(ofx)*E
-                    for jx in range(N):
-                        rij = np.linalg.norm(A.P[jx,:] + cube_mid - A.P[ix, :])
-                        phi_direct += 0.5*A.Q[ix, 0] * A.Q[jx, 0] /rij
-    else:
-        phi_direct = -422.572495074
-
-    local_err = abs(phi_py - phi_direct)
+    local_err = abs(phi_py - phi_ewald)
     if local_err > eps: serr = red(local_err)
     else: serr = green(local_err)
 
@@ -645,13 +635,229 @@ def test_fmm_init_5_5():
         print(60*"-")
         print("TIME FMM:\t", t1 - t0)
         print("TIME EWALD:\t", t3 - t2)
-        print("ENERGY DIRECT:\t", phi_direct)
         print("ENERGY FMM:\t", phi_py)
         print("ENERGY EWALD:\t", phi_ewald, A.cri[0], A.crr[0], A.crs[0])
         print("ERR:\t\t", serr)
 
-    print(fmm.tree_halo[1][:,:,:,0])
-    print(fmm.tree_plain[1][:,:,:,0])
+
+    print(fmm.tree_parent[1][0,0,0,:])
+
+
+def test_fmm_init_5_6():
+    R = 2
+
+    N = 4
+    E = 2.
+
+    rc = E/4
+
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-5
+
+    ASYNC = False
+    EWALD = True
+    free_space = False
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+
+
+    shell_terms = None
+    #for limx in range(9, 10):
+    #   shell_terms = fmm._test_shell_sum(limx, fmm.L+1)
+
+    shell_terms = fmm._test_shell_sum(26, fmm.L)
+    fmm._boundary_terms[:] = shell_terms[:]
+
+    if EWALD:
+        ewald = EwaldOrthoganalHalf(
+            domain=A.domain,
+            real_cutoff=rc,
+            eps=10.**-14,
+            shared_memory=SHARED_MEMORY
+        )
+
+    print(fmm.R, fmm.L)
+
+    A.npart = N
+
+    rng = np.random.RandomState(seed=1234)
+
+    A.P = data.PositionDat(ncomp=3)
+    A.F = data.ParticleDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.crr = data.ScalarArray(ncomp=1)
+    A.cri = data.ScalarArray(ncomp=1)
+    A.crs = data.ScalarArray(ncomp=1)
+
+
+    rng = np.random.RandomState(seed=1234)
+    A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
+    A.Q[:] = rng.uniform(low=-1., high=1., size=(N,1))
+    bias = np.sum(A.Q[:])/N
+    A.Q[:] -= bias
+
+    if N == 2:
+        A.P[0,:] = (-0.25*E, 0.3*E, 0)
+        A.P[1,:] = (0.25*E, 0.2*E, 0)
+
+        A.Q[:,0] = 1.
+        A.Q[0,0] = -1.*(N-1)
+    if N == 3:
+        A.P[0,:] = (0, 0, 0)
+        A.P[1,:] = (-0.25*E, 0, 0)
+        A.P[2,:] = (0.25*E, 0, 0)
+        A.Q[:,0] = 1.
+        A.Q[0,0] = -1.*(N-1)
+    elif N == 4:
+        ra = 0.25 * E
+        nra = -0.4 * E
+
+        A.P[0,:] = (nra, nra, 0)
+        A.P[1,:] = (nra, ra, 0)
+        A.P[2,:] = (ra, nra, 0)
+        A.P[3,:] = (ra, ra, 0)
+
+        A.Q[0,0] = 1.
+        A.Q[3,0] = 0.75
+        A.Q[1,0] = -0.5
+        A.Q[2,0] = -1.25
+
+
+    print(A.P[:N:, :])
+    A.scatter_data_from(0)
+
+
+
+    dipole_src = """
+    dipole[0] += P.i[0] * Q.i[0];
+    dipole[1] += P.i[1] * Q.i[0];
+    dipole[2] += P.i[2] * Q.i[0];
+    """
+    dipole_ga = data.GlobalArray(ncomp=3)
+    dipole_kernel = kernel.Kernel('dipole', dipole_src)
+    dipole_loop = loop.ParticleLoopOMP(kernel=dipole_kernel,
+                                       dat_dict={
+                                           'dipole': dipole_ga(access.INC_ZERO),
+                                           'P': A.P(access.READ),
+                                           'Q': A.Q(access.READ)
+                                       })
+    dipole_loop.execute()
+
+
+
+
+
+    t0 = time.time()
+    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    t1 = time.time()
+
+    t2 = time.time()
+    if EWALD:
+        ewald.evaluate_contributions(positions=A.P, charges=A.Q)
+        A.cri[0] = 0.0
+        ewald.extract_forces_energy_reciprocal(A.P, A.Q, A.F, A.cri)
+        A.crr[0] = 0.0
+        ewald.extract_forces_energy_real(A.P, A.Q, A.F, A.crr)
+        A.crs[0] = 0.0
+        ewald.evaluate_self_interactions(A.Q, A.crs)
+    t3 = time.time()
+
+    phi_ewald = A.cri[0] + A.crr[0] + A.crs[0]
+
+
+    local_err = abs(phi_py - phi_ewald)
+    if local_err > eps: serr = red(local_err)
+    else: serr = green(local_err)
+
+    if MPIRANK == 0 and DEBUG:
+        print(60*"-")
+        #opt.print_profile()
+        print(60*"-")
+        print("TIME FMM:\t", t1 - t0)
+        print("TIME EWALD:\t", t3 - t2)
+        print("ENERGY FMM:\t", phi_py)
+        print("ENERGY EWALD:\t", phi_ewald, A.cri[0], A.crr[0], A.crs[0])
+        print("ERR:\t\t", serr)
+
+
+
+    N2 = 21
+    mid = 10
+    NB = N2 ** 3
+    step = E/N2
+    start = -0.5*E + 0.5*step
+    end = 0.5*E
+
+    X, Y, Z = np.mgrid[start:end:step, start:end:step, start:end:step]
+
+    B = state.State()
+    B.npart = NB + N
+    B.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    B.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    B.points = data.PositionDat(ncomp=3)
+    B.values = data.ParticleDat(ncomp=1)
+    B.charges = data.ParticleDat(ncomp=1)
+    B.masks = data.ParticleDat(ncomp=1, dtype=ctypes.c_int)
+
+    B.points[:NB:, 0] = X.ravel()
+    B.points[:NB:, 1] = Y.ravel()
+    B.points[:NB:, 2] = Z.ravel()
+    B.masks[:NB:, 0] = 1
+
+    # NB:NB: is the original charge positions
+    B.points[NB:NB+N:, :] = A.P[:N:,:]
+    B.charges[NB:NB+N:, 0] = A.Q[:N:, 0]
+
+    B.scatter_data_from(0)
+
+    ewald.evaluate_potential_field(B.charges, B.points, B.values, B.masks)
+
+    VB = np.array(B.values[:NB:], dtype='float64')
+    VB = VB.reshape((N2, N2, N2))
+    np.save('/tmp/field.npy', VB)
+
+
+    phi_direct = 0.0
+    # compute phi from image and surrounding 26 cells
+    for jx in range(0, N):
+        rij = np.linalg.norm(A.P[jx,:])
+        phi_direct += A.Q[jx, 0] / rij
+        for ofx in cube_offsets:
+            cube_mid = np.array(ofx)*E
+            rij = np.linalg.norm(A.P[jx,:] + cube_mid)
+            phi_direct += A.Q[jx, 0] / rij
+
+    mid_ind = mid + mid*N2 + mid*N2*N2
+    print("\newald centre:", B.values[mid_ind, 0])
+    print("direct centre:", phi_direct)
+    print("ewald - direct:", B.values[mid_ind, 0] - phi_direct)
+    zeroth = fmm.tree_parent[1][0,0,0,0]
+    print("fmm 0-th term:" , zeroth)
+
+    far_err = abs(zeroth - (B.values[mid_ind, 0] - phi_direct))
+    if far_err > eps: serr = red(far_err)
+    else: serr = green(far_err)
+    print("far err:", serr)
+
+    if MPIRANK == 0 and DEBUG:
+        print("Dipole moment:", dipole_ga[:])
+        print("charge sum:", np.sum(A.Q[:N:,0]))
+
+
+
+
+
+
+
+
+
 
 
 

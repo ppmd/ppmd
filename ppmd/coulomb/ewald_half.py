@@ -8,7 +8,7 @@ __license__ = "GPL"
 
 import ctypes, os
 
-from ppmd import kernel, loop, data, access
+from ppmd import kernel, loop, data, access, pairloop
 from ppmd.coulomb.ewald import EwaldOrthoganal
 
 _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -66,7 +66,6 @@ class EwaldOrthoganalHalf(EwaldOrthoganal):
             headers=_cont_header
         )
 
-
         self._extract_force_energy_lib = PL(
             kernel=_cont_kernel,
             dat_dict={
@@ -78,5 +77,110 @@ class EwaldOrthoganalHalf(EwaldOrthoganal):
                 'CoeffSpace': self._vars['coeff_space_kernel'](access.READ)
             }
         )
+
+        # reciprocal potential field
+        with open(str(
+                _SRC_DIR) + '/EwaldOrthSource/EvaluateFarPotentialField.h', 'r') as fh:
+            _cont_header_src = fh.read()
+        _cont_header = kernel.Header(block=_cont_header_src % self._subvars)
+
+        with open(str(
+                _SRC_DIR) + '/EwaldOrthSource/EvaluateFarPotentialField.cpp', 'r') as fh:
+            _cont_source = fh.read()
+
+        _cont_kernel = kernel.Kernel(
+            name='reciprocal_potential_field',
+            code=_cont_source,
+            headers=_cont_header
+        )
+
+        self._far_potential_field_lib = PL(
+            kernel=_cont_kernel,
+            dat_dict={
+                'Positions': data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(access.READ),
+                'Energy': data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(access.INC_ZERO),
+                'mask': data.ParticleDat(ncomp=1, dtype=ctypes.c_int)(access.READ),
+                'RecipSpace': self._vars['recip_space_kernel'](access.READ),
+                'CoeffSpace': self._vars['coeff_space_kernel'](access.READ)
+            }
+        )
+
+    def _init_near_potential_lib(self):
+
+        # real space energy and force kernel
+        with open(str(
+                _SRC_DIR) + '/EwaldOrthSource/EvaluateNearPotentialField.h',
+                'r') as fh:
+            _cont_header_src = fh.read()
+        _cont_header = (kernel.Header(block=_cont_header_src % self._subvars),)
+
+        with open(str(
+                _SRC_DIR) + '/EwaldOrthSource/EvaluateNearPotentialField.cpp',
+                'r') as fh:
+            _cont_source = fh.read()
+
+        _real_kernel = kernel.Kernel(
+            name='real_space_part',
+            code=_cont_source,
+            headers=_cont_header
+        )
+
+        if self.shell_width is None:
+            rn = self.real_cutoff*1.05
+        else:
+            rn = self.real_cutoff + self.shell_width
+
+        PPL = pairloop.CellByCellOMP
+
+        self._near_potential_field = PPL(
+            kernel=_real_kernel,
+            dat_dict={
+                'P': data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(access.READ),
+                'Q': data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(access.READ),
+                'M': data.ParticleDat(ncomp=1, dtype=ctypes.c_int)(access.READ),
+                'u': data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(access.INC),
+            },
+            shell_cutoff=rn
+        )
+
+
+    def evaluate_potential_field(self, charges, points, values, masks):
+
+        if self._real_space_pairloop is None:
+            self._init_real_space_lib()
+
+        NLOCAL = points.npart_local
+        re = self._vars['recip_space_energy']
+        self._far_potential_field_lib.execute(
+            n = NLOCAL,
+            dat_dict={
+                'mask': masks(access.READ),
+                'Positions': points(access.READ),
+                'RecipSpace': self._vars['recip_space_kernel'](access.READ),
+                'Energy': values(access.INC_ZERO),
+                'CoeffSpace': self._vars['coeff_space_kernel'](access.READ)
+            }
+        )
+
+        self._init_near_potential_lib()
+        self._near_potential_field.execute(
+            dat_dict={
+                'P': points(access.READ),
+                'Q': charges(access.READ),
+                'M': masks(access.READ),
+                'u': values(access.INC)
+            }
+        )
+
+
+
+
+
+
+
+
+
+
+
 
 

@@ -288,7 +288,7 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
     def _get_class_lib_args(self, neighbour_list):
 
         _N_LOCAL = ctypes.c_int(neighbour_list.n_local)
-        _STRIDE = ctypes.c_int(neighbour_list.stride)
+        _STRIDE = ctypes.c_int(neighbour_list.stride.value)
         _NN = neighbour_list.ncount.ctypes_data
         _LIST = neighbour_list.matrix.ctypes_data
 
