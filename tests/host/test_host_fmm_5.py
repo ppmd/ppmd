@@ -822,10 +822,8 @@ def test_fmm_init_5_6_1():
                     contrib_re += testo[fmm.re_lm(nx, mx)] * coeff
                     contrib_im += testo[fmm.im_lm(nx, mx)] * coeff
 
-            assert abs(contrib_re - l00[fmm.re_lm(jx, kx)]) < eps
-            assert abs(contrib_im - l00[fmm.im_lm(jx, kx)]) < eps
-
-
+            assert abs(contrib_re - l00[fmm.re_lm(jx, kx)]) < 10.**-15
+            assert abs(contrib_im - l00[fmm.im_lm(jx, kx)]) < 10.**-15
 
 
 def test_fmm_init_5_6_2():
