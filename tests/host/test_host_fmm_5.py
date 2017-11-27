@@ -8,7 +8,7 @@ from mpi4py import MPI
 import numpy as np
 
 np.set_printoptions(linewidth=200)
-#from ppmd_vis import plot_spheres
+from ppmd_vis import plot_spheres
 
 import itertools
 def get_res_file_path(filename):
@@ -532,6 +532,118 @@ def test_fmm_init_5_4(level_set, tol_set, space_set):
     assert local_err/Q < eps
 
 
+def test_fmm_init_5_4_quad(level_set, tol_set, space_set):
+#def test_fmm_init_5_4():
+
+    # cannot decompose the R=2 case on more than one process
+    if MPISIZE > 1 and level_set < 3:
+        return
+
+    rc = 5.
+    R = level_set
+    #R = 3
+    eps = tol_set
+    #eps = 10.**-4
+    free_space = space_set
+    #free_space = True
+
+    N = 4
+    #N = 50
+
+    E = 50.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    ASYNC = False
+    DIRECT = True if MPISIZE == 1 else False
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+
+    A.npart = N
+
+    rng = np.random.RandomState(seed=1234)
+
+    A.P = data.PositionDat(ncomp=3)
+    A.F = data.ParticleDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.crr = data.ScalarArray(ncomp=1)
+    A.cri = data.ScalarArray(ncomp=1)
+    A.crs = data.ScalarArray(ncomp=1)
+
+    rng = np.random.RandomState(seed=1234)
+
+    ra = 0.25 * E
+    nra = -0.25 * E
+
+    A.P[0,:] = (0, nra, nra)
+    A.P[1,:] = (0, nra, ra)
+    A.P[2,:] = (0, ra, nra)
+    A.P[3,:] = (0, ra, ra)
+
+    A.Q[0,0] = -1.
+    A.Q[3,0] = -1.
+    A.Q[1,0] = 1.
+    A.Q[2,0] = 1.
+
+    Q = np.sum(A.Q[:]**2.)
+
+    A.scatter_data_from(0)
+
+    t0 = time.time()
+    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    t1 = time.time()
+
+    if DIRECT:
+        phi_direct = 0.0
+        # compute phi from image and surrounding 26 cells
+        for ix in range(N):
+            for jx in range(ix+1, N):
+                rij = np.linalg.norm(A.P[jx,:] - A.P[ix,:])
+                phi_direct += A.Q[ix, 0] * A.Q[jx, 0] /rij
+            if free_space == '27':
+                for ofx in cube_offsets:
+                    cube_mid = np.array(ofx)*E
+                    for jx in range(N):
+                        rij = np.linalg.norm(A.P[jx,:] + cube_mid - A.P[ix, :])
+                        phi_direct += 0.5*A.Q[ix, 0] * A.Q[jx, 0] /rij
+    else:
+        if free_space == '27':
+            phi_direct = -0.12868996439494947981
+        elif free_space == True:
+            phi_direct = -0.12131955438932764957
+        else:
+            raise RuntimeError("bad parameter")
+
+    local_err = abs(phi_py - phi_direct)
+    if local_err/Q > eps: serr = red(local_err)
+    else: serr = green(local_err)
+
+    if MPIRANK == 0 and DEBUG:
+        print("\n")
+        #print(60*"-")
+        #opt.print_profile()
+        #print(60*"-")
+        print("TIME FMM:\t", t1 - t0)
+        print("ENERGY DIRECT:\t{:.20f}".format(phi_direct))
+        print("ENERGY FMM:\t", phi_py)
+        print("ERR:\t\t", serr)
+
+    assert local_err/Q < eps
+
+
+
+
+
+
+
+
+
+
+
 #@pytest.mark.skipif("True")
 def test_fmm_init_5_5():
     R = 3
@@ -643,10 +755,123 @@ def test_fmm_init_5_5():
     print(fmm.tree_parent[1][0,0,0,:])
 
 
-def test_fmm_init_5_6():
+def test_fmm_init_5_6_1():
+
+    E = 2.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-5
+    azero = 10.**-14
+
+    fmm = PyFMM(domain=A.domain, r=2, eps=eps, free_space=False)
+
+    shell_terms = np.load(get_res_file_path('coulomb/r_coeffs_e2_L32.npy'))
+    #shell_terms = fmm._test_shell_sum(30, fmm.L)
+
+    for nx in range(fmm.L*2):
+        for mx in range(-1*nx, nx+1):
+            ev = fmm._boundary_terms[fmm.re_lm(nx, mx)]
+            dv = shell_terms[fmm.re_lm(nx, mx)]
+
+            err = abs(ev - dv)
+            if DEBUG:
+                if err > eps: serr = red(err)
+                else: serr = green(err)
+                print(nx, mx, serr)
+
+            assert err < eps
+
+            if (nx % 2) == 1 or (mx % 2) == 1:
+                assert abs(ev) < azero
+            if (mx % 4) != 0:
+                assert abs(ev) < azero
+            if (mx < 0):
+                assert abs(ev) < azero
+            if (nx == 2):
+                assert abs(ev) < azero
+
+    #np.save('/tmp/r_coeffs.npy', shell_terms)
+
+    rterms = fmm._boundary_terms[:]
+
+    rng = np.random.RandomState(seed=1234)
+    testo = rng.uniform(low=-1., high=.1, size=(fmm.L**2)*2)
+
+    fmm.tree_parent[1][0, 0, 0, :] = testo[:]
+    fmm._compute_periodic_boundary()
+
+    def Afoo(n, m): return ((-1.)**n)/math.sqrt(math.factorial(n - m) * \
+                                                math.factorial(n + m))
+    def Ifoo(k, m): return ((1.j) ** (abs(k-m) - abs(k) - abs(m))).real
+
+    l00 = fmm.tree_parent[1][0, 0, 0, :]
+    for jx in range(fmm.L):
+        for kx in range(-1*jx, jx+1):
+            contrib_re = 0.0
+            contrib_im = 0.0
+            for nx in range(fmm.L):
+                for mx in range(-1*nx, nx+1):
+
+                    coeff = Ifoo(kx, mx) * Afoo(nx, mx) * Afoo(jx, kx) / \
+                        Afoo(jx + nx, mx - kx) * ((-1.)**nx) * \
+                        rterms[fmm.re_lm(jx+nx, mx-kx)]
+
+                    contrib_re += testo[fmm.re_lm(nx, mx)] * coeff
+                    contrib_im += testo[fmm.im_lm(nx, mx)] * coeff
+
+            assert abs(contrib_re - l00[fmm.re_lm(jx, kx)]) < eps
+            assert abs(contrib_im - l00[fmm.im_lm(jx, kx)]) < eps
+
+
+
+
+def test_fmm_init_5_6_2():
+
+    E = 50.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-5
+    azero = 10.**-14
+
+    fmm = PyFMM(domain=A.domain, r=2, eps=eps, free_space=False)
+
+    #shell_terms = np.load(get_res_file_path('coulomb/r_coeffs_e2_L32.npy'))
+    shell_terms = fmm._test_shell_sum(30, fmm.L)
+
+    for nx in range(fmm.L*2):
+        for mx in range(-1*nx, nx+1):
+            ev = fmm._boundary_terms[fmm.re_lm(nx, mx)]
+            dv = shell_terms[fmm.re_lm(nx, mx)]
+
+            err = abs(ev - dv)
+            if DEBUG:
+                if err > eps: serr = red(err)
+                else: serr = green(err)
+                print(nx, mx, serr)
+
+            assert err < eps
+
+            if (nx % 2) == 1 or (mx % 2) == 1:
+                assert abs(ev) < azero
+            if (mx % 4) != 0:
+                assert abs(ev) < azero
+            if (mx < 0):
+                assert abs(ev) < azero
+            if (nx == 2):
+                assert abs(ev) < azero
+
+    #np.save('/tmp/r_coeffs.npy', shell_terms)
+
+def test_fmm_init_5_7():
     R = 2
 
-    N = 4
+    N = 8
     E = 2.
 
     rc = E/4
@@ -664,13 +889,6 @@ def test_fmm_init_5_6():
 
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
 
-
-    shell_terms = None
-    #for limx in range(9, 10):
-    #   shell_terms = fmm._test_shell_sum(limx, fmm.L+1)
-
-    shell_terms = fmm._test_shell_sum(26, fmm.L)
-    fmm._boundary_terms[:] = shell_terms[:]
 
     if EWALD:
         ewald = EwaldOrthoganalHalf(
@@ -715,20 +933,41 @@ def test_fmm_init_5_6():
         A.Q[0,0] = -1.*(N-1)
     elif N == 4:
         ra = 0.25 * E
-        nra = -0.4 * E
+        nra = -0.25 * E
 
         A.P[0,:] = (nra, nra, 0)
         A.P[1,:] = (nra, ra, 0)
         A.P[2,:] = (ra, nra, 0)
         A.P[3,:] = (ra, ra, 0)
 
-        A.Q[0,0] = 1.
-        A.Q[3,0] = 0.75
-        A.Q[1,0] = -0.5
-        A.Q[2,0] = -1.25
+        A.Q[0,0] = -1.
+        A.Q[3,0] = -1.
+        A.Q[1,0] = 1.
+        A.Q[2,0] = 1.
+    elif N == 8:
+        for px in range(8):
+            phi = (float(px)/8) * 2. * math.pi
+            pxr = 0.25*E
+            pxx = pxr * math.cos(phi)
+            pxy = pxr * math.sin(phi)
+
+            A.P[px, :] = (0 , pxx, pxy)
+            A.Q[px, 0] = 1. - 2. * (px % 2)
 
 
-    print(A.P[:N:, :])
+    col = np.zeros((N, 3), dtype='int')
+    for px in range(N):
+        print(A.P[px, :], A.Q[px, 0])
+        if A.Q[px,0] < 0:
+            col[px] = (1, 0, 0)
+        else:
+            col[px] = (0, 1, 0)
+
+
+
+    plot_spheres.draw_points(A.P[:N:,:], col)
+
+
     A.scatter_data_from(0)
 
 
@@ -755,6 +994,9 @@ def test_fmm_init_5_6():
     t0 = time.time()
     #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
     phi_py = fmm(A.P, A.Q, async=ASYNC)
+
+
+
     t1 = time.time()
 
     t2 = time.time()
@@ -849,10 +1091,6 @@ def test_fmm_init_5_6():
     if MPIRANK == 0 and DEBUG:
         print("Dipole moment:", dipole_ga[:])
         print("charge sum:", np.sum(A.Q[:N:,0]))
-
-
-
-
 
 
 

@@ -100,7 +100,10 @@ static inline void mtl(
 
                 // construct the spherical harmonic
                 const INT64 y_aind = p_ind_base + mxmkx;
-                const REAL y_coeff = theta_data[CUBE_IND(jx+nx,mx-kx)];
+                const REAL y_coeff = theta_data[CUBE_IND(jxpnx, mxmkx)];
+                
+                //if (ABS(mxmkx)>ABS(jxpnx)){printf("\tARRRG\n");}
+
                 const REAL y_re = y_coeff * \
                     phi_data[EXP_RE_IND(2*nlevel, mxmkx)];
                 const REAL y_im = y_coeff * \

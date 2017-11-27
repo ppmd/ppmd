@@ -506,8 +506,17 @@ class PyFMM(object):
             func(level)
 
     def _compute_periodic_boundary(self):
+
+        for nx in range(self.L):
+            print("-----")
+            for mx in range(-1*nx, nx+1):
+                print(nx, mx,self.tree_parent[1][0, 0, 0, self.re_lm(nx, mx)],
+                      "\t", self.tree_parent[1][0, 0, 0, self.im_lm(nx, mx)])
+
         if self.free_space == '27' or self.free_space == True:
+
             self.tree_parent[1][:] = 0
+
             return
 
         lsize = self.tree[1].parent_local_size
@@ -519,6 +528,8 @@ class PyFMM(object):
 
 
             print("MOMENTS", moments)
+
+
             print("BOUNDARY TERMS",self._boundary_terms)
             print("MAX BOUNDARY TERM", np.max(abs(self._boundary_terms)))
 
@@ -832,15 +843,6 @@ class PyFMM(object):
         send_plain_to_parent(src_level, self.tree_plain, self.tree_parent)
         self.timer_down.pause()
 
-    def _image_to_sph(self, ind):
-        """Convert tuple ind to spherical coordindates of periodic image."""
-
-        dx = ind[0] * self.domain.extent[0]
-        dy = ind[1] * self.domain.extent[1]
-        dz = ind[2] * self.domain.extent[2]
-
-        return self._cart_to_sph((dx, dy, dz))
-
     @staticmethod
     def _cart_to_sph(xyz):
         dx = xyz[0]; dy = xyz[1]; dz = xyz[2]
@@ -937,7 +939,7 @@ class PyFMM(object):
             for tx in itertools.product(iterset, iterset, iterset):
                 dx = tx[0]*bx + tx[1]*by + tx[2]*bz
 
-                dispt = self._image_to_sph(dx)
+                dispt = self._cart_to_sph(dx)
 
                 #if dispt[0] <= rc and nd1:
 
@@ -979,7 +981,7 @@ class PyFMM(object):
 
                     dx = tx[0]*bx + tx[1]*by + tx[2]*bz
 
-                    dispt = self._image_to_sph(dx)
+                    dispt = self._cart_to_sph(dx)
                     iradius = 1./dispt[0]
                     radius_coeff = iradius ** (lx + 1.)
 
@@ -1101,7 +1103,11 @@ class PyFMM(object):
         iterset = range(-1*limit, limit+1)
         for itx in itertools.product(iterset, iterset, iterset):
             nd1 = abs(itx[0]) > 1 or abs(itx[1]) > 1 or abs(itx[2]) > 1
-            if nd1:
+
+            lenofvec = itx[0]**2 + itx[1]**2 + itx[2]**2
+            nd2 = lenofvec < (limit**2)
+
+            if nd1 and nd2:
                 vec = np.array((itx[0]*extent[0], itx[1]*extent[1],
                                 itx[2]*extent[2]))
                 sph_vec = self._cart_to_sph(vec)
