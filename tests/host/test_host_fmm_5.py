@@ -8,7 +8,7 @@ from mpi4py import MPI
 import numpy as np
 
 np.set_printoptions(linewidth=200)
-from ppmd_vis import plot_spheres
+#from ppmd_vis import plot_spheres
 
 import itertools
 def get_res_file_path(filename):
@@ -1287,17 +1287,14 @@ def test_fmm_init_5_7():
             A.Q[px, 0] = 1. - 2. * (px % 2)
 
 
-    col = np.zeros((N, 3), dtype='int')
-    for px in range(N):
-        print(A.P[px, :], A.Q[px, 0])
-        if A.Q[px,0] < 0:
-            col[px] = (0, 0, 1)
-        else:
-            col[px] = (1, 0, 0)
-
-
-
-    plot_spheres.draw_points(A.P[:N:,:], col)
+    #col = np.zeros((N, 3), dtype='int')
+    #for px in range(N):
+    #    print(A.P[px, :], A.Q[px, 0])
+    #    if A.Q[px,0] < 0:
+    #        col[px] = (0, 0, 1)
+    #    else:
+    #        col[px] = (1, 0, 0)
+    #plot_spheres.draw_points(A.P[:N:,:], col)
 
 
     A.scatter_data_from(0)
