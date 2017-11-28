@@ -507,7 +507,7 @@ class PyFMM(object):
         #if not _isnormal(np.array((phi_extract,))):
         #    _pdb_drop()
 
-        print("Far:", phi_extract, "Near:", phi_near)
+        #print("Far:", phi_extract, "Near:", phi_near)
 
         return phi_extract + phi_near
 
@@ -550,12 +550,12 @@ class PyFMM(object):
             #self.tree_parent[1][0,0,0,0:4:] = 0.0
             moments = np.copy(self.tree_parent[1][0, 0, 0, :])
 
-            print("MOMENTS", moments[:10:])
-            for lx in range(self.L):
-                print(lx, '----')
-                for mx in range(-1*lx, lx+1):
-                    print(lx, "\tre:", moments[self.re_lm(lx,mx)], "\tim:",
-                          moments[self.im_lm(lx, mx)])
+            #print("MOMENTS", moments[:10:])
+            #for lx in range(self.L):
+            #    print(lx, '----')
+            #    for mx in range(-1*lx, lx+1):
+            #        print(lx, "\tre:", moments[self.re_lm(lx,mx)], "\tim:",
+            #              moments[self.im_lm(lx, mx)])
 
 
             #print("BOUNDARY TERMS",self._boundary_terms)
@@ -574,7 +574,7 @@ class PyFMM(object):
                 extern_numpy_ptr(self.tree_parent[1][0, 0, 0, :])
             )
 
-            print("POST   ", self.tree_parent[1][0, 0, 0, :10:])
+            #print("POST   ", self.tree_parent[1][0, 0, 0, :10:])
 
 
 
@@ -1157,7 +1157,6 @@ class PyFMM(object):
                         sph_nm =  re_exp * scipy_p[mxi].real
 
                         terms[self.re_lm(nx, mx)] += sph_nm * irp
-
         print("\n")
         print(30*"-", "shell terms", 30*'-')
         print("radius:", limit)
