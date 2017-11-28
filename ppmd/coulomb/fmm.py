@@ -525,25 +525,26 @@ class PyFMM(object):
 
     def _compute_periodic_boundary(self):
 
-        for nx in range(self.L):
-            for mx in range(-1*nx, nx+1):
+        #for nx in range(self.L):
+        #    for mx in range(-1*nx, nx+1):
+        #
+        #        rev = self.tree_parent[1][0, 0, 0, self.re_lm(nx, mx)]
+        #        if abs(rev) > 10.**-3: srev = green(rev)
+        #        else: srev = str(rev)
+        #        iev = self.tree_parent[1][0, 0, 0, self.im_lm(nx, mx)]
+        #        if abs(iev) > 10.**-3: siev = green(iev)
+        #        else: siev = str(iev)
 
-                rev = self.tree_parent[1][0, 0, 0, self.re_lm(nx, mx)]
-                if abs(rev) > 10.**-3: srev = green(rev)
-                else: srev = str(rev)
-                iev = self.tree_parent[1][0, 0, 0, self.im_lm(nx, mx)]
-                if abs(iev) > 10.**-3: siev = green(iev)
-                else: siev = str(iev)
+        #        #print(nx, mx, srev,"\t", siev)
 
-                #print(nx, mx, srev,"\t", siev)
+        lsize = self.tree[1].parent_local_size
 
         if self.free_space == '27' or self.free_space == True:
-
-            self.tree_parent[1][:] = 0
+            if lsize is not None:
+                self.tree_parent[1][:] = 0
 
             return
 
-        lsize = self.tree[1].parent_local_size
         if lsize is not None:
 
 

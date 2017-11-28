@@ -1477,14 +1477,14 @@ def nacl_lattice(crn, e, sd=0.05, seed=87712846):
 
 
 def test_fmm_init_5_7_cube():
-    R = 2
+    R = 3
 
     crN = 20
     N = crN**3
 
     E = 3.*crN
 
-    rc = E/2
+    rc = 10.
 
     A = state.State()
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
