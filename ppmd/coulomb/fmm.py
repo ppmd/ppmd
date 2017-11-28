@@ -19,6 +19,22 @@ from scipy.special import lpmv, rgamma, gammaincc, lambertw
 
 import pytest
 
+def red(input):
+    try:
+        from termcolor import colored
+        return colored(input, 'red')
+    except Exception as e: return input
+def green(input):
+    try:
+        from termcolor import colored
+        return colored(input, 'green')
+    except Exception as e: return input
+def yellow(input):
+    try:
+        from termcolor import colored
+        return colored(input, 'yellow')
+    except Exception as e: return input
+
 _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
 REAL = ctypes.c_double
@@ -510,8 +526,15 @@ class PyFMM(object):
         for nx in range(self.L):
             print("-----")
             for mx in range(-1*nx, nx+1):
-                print(nx, mx,self.tree_parent[1][0, 0, 0, self.re_lm(nx, mx)],
-                      "\t", self.tree_parent[1][0, 0, 0, self.im_lm(nx, mx)])
+
+                rev = self.tree_parent[1][0, 0, 0, self.re_lm(nx, mx)]
+                if abs(rev) > 10.**-3: srev = green(rev)
+                else: srev = str(rev)
+                iev = self.tree_parent[1][0, 0, 0, self.im_lm(nx, mx)]
+                if abs(iev) > 10.**-3: siev = green(iev)
+                else: siev = str(iev)
+
+                print(nx, mx, srev,"\t", siev)
 
         if self.free_space == '27' or self.free_space == True:
 
@@ -950,9 +973,10 @@ class PyFMM(object):
 
                     kappa2radius2 = kappa2 * dispt[0] * dispt[0]
 
-                    mval = list(range(0, lx+1, 2))
-
-                    scipy_p = lpmv(mval, lx, math.cos(dispt[2]))
+                    #mval = list(range(0, lx+1, 2))
+                    mval = list(range(-1*lx, lx+1, 2))
+                    mxval = [abs(mx) for mx in mval]
+                    scipy_p = lpmv(mxval, lx, math.cos(dispt[2]))
 
                     for mxi, mx in enumerate(mval):
                         assert abs(scipy_p[mxi].imag) < 10.**-16
@@ -985,8 +1009,10 @@ class PyFMM(object):
                     iradius = 1./dispt[0]
                     radius_coeff = iradius ** (lx + 1.)
 
-                    mval = list(range(0, lx+1, 2))
-                    scipy_p = lpmv(mval, lx, math.cos(dispt[2]))
+                    #mval = list(range(0, lx+1, 2))
+                    mval = list(range(-1*lx, lx+1, 2))
+                    mxval = [abs(mx) for mx in mval]
+                    scipy_p = lpmv(mxval, lx, math.cos(dispt[2]))
 
                     for mxi, mx in enumerate(mval):
                         assert abs(scipy_p[mxi].imag) < 10.**-16
@@ -1064,9 +1090,10 @@ class PyFMM(object):
 
                     exp_coeff = math.exp(mpi2okappa2 * dispt[0] * dispt[0])
 
-                    mval = list(range(0, lx+1, 2))
-
-                    scipy_p = lpmv(mval, lx, math.cos(dispt[2]))
+                    #mval = list(range(0, lx+1, 2))
+                    mval = list(range(-1*lx, lx+1, 2))
+                    mxval = [abs(mx) for mx in mval]
+                    scipy_p = lpmv(mxval, lx, math.cos(dispt[2]))
 
                     vhnm2 = ((dispt[0] ** (lx - 2.)) * ((0 + 1.j) ** lx) * \
                             (math.pi ** (lx - 0.5))).real
@@ -1087,7 +1114,7 @@ class PyFMM(object):
 
         for lx in range(2, self.L*2, 2):
             igamma = rgamma(lx + 0.5) * ivolume
-            for mx in range(0, lx+1, 2):
+            for mx in range(-1*lx, lx+1, 2):
                 terms[self.re_lm(lx, mx)] *= igamma
                 #print("lx", lx, "mx", mx, terms[self.re_lm(lx, mx)])
 
@@ -1114,8 +1141,10 @@ class PyFMM(object):
                 ir = 1./sph_vec[0]
                 for nx in range(2, nl, 2):
                     irp = ir ** (nx + 1.)
-                    mval = list(range(0, nx+1, 2))
-                    scipy_p = lpmv(mval, nx, math.cos(sph_vec[2]))
+                    #mval = list(range(0, nx+1, 2))
+                    mval = list(range(-1*nx, nx+1, 2))
+                    mxval = [abs(mx) for mx in mval]
+                    scipy_p = lpmv(mxval, nx, math.cos(sph_vec[2]))
                     for mxi, mx in enumerate(mval):
                         val = math.sqrt(float(math.factorial(
                             nx - abs(mx)))/math.factorial(nx + abs(mx)))

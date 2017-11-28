@@ -149,6 +149,7 @@ class EwaldOrthoganalHalf(EwaldOrthoganal):
         if self._real_space_pairloop is None:
             self._init_real_space_lib()
 
+        print("0", values[0])
         NLOCAL = points.npart_local
         re = self._vars['recip_space_energy']
         self._far_potential_field_lib.execute(
@@ -162,6 +163,8 @@ class EwaldOrthoganalHalf(EwaldOrthoganal):
             }
         )
 
+        print("1", values[0])
+
         self._init_near_potential_lib()
         self._near_potential_field.execute(
             dat_dict={
@@ -172,6 +175,7 @@ class EwaldOrthoganalHalf(EwaldOrthoganal):
             }
         )
 
+        print("2", values[0])
 
 
 

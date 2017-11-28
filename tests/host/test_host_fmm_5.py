@@ -768,8 +768,8 @@ def test_fmm_init_5_6_1():
 
     fmm = PyFMM(domain=A.domain, r=2, eps=eps, free_space=False)
 
-    shell_terms = np.load(get_res_file_path('coulomb/r_coeffs_e2_L32.npy'))
-    #shell_terms = fmm._test_shell_sum(30, fmm.L)
+    #shell_terms = np.load(get_res_file_path('coulomb/r_coeffs_e2_L32.npy'))
+    shell_terms = fmm._test_shell_sum(26, fmm.L)
 
     for nx in range(fmm.L*2):
         for mx in range(-1*nx, nx+1):
@@ -780,16 +780,16 @@ def test_fmm_init_5_6_1():
             if DEBUG:
                 if err > eps: serr = red(err)
                 else: serr = green(err)
-                print(nx, mx, serr)
+                print(nx, mx, serr, ev, dv)
 
-            assert err < eps
+            assert err < eps, "{} {}".format(ev, dv)
 
             if (nx % 2) == 1 or (mx % 2) == 1:
                 assert abs(ev) < azero
             if (mx % 4) != 0:
                 assert abs(ev) < azero
-            if (mx < 0):
-                assert abs(ev) < azero
+            #if (mx < 0):
+            #    assert abs(ev) < azero
             if (nx == 2):
                 assert abs(ev) < azero
 
@@ -869,10 +869,10 @@ def test_fmm_init_5_6_2():
 def test_fmm_init_5_7():
     R = 2
 
-    N = 8
-    E = 2.
+    N = 4
+    E = 4.
 
-    rc = E/4
+    rc = E/2
 
 
     A = state.State()
@@ -892,7 +892,7 @@ def test_fmm_init_5_7():
         ewald = EwaldOrthoganalHalf(
             domain=A.domain,
             real_cutoff=rc,
-            eps=10.**-14,
+            eps=10.**-12,
             shared_memory=SHARED_MEMORY
         )
 
@@ -957,9 +957,9 @@ def test_fmm_init_5_7():
     for px in range(N):
         print(A.P[px, :], A.Q[px, 0])
         if A.Q[px,0] < 0:
-            col[px] = (1, 0, 0)
+            col[px] = (0, 0, 1)
         else:
-            col[px] = (0, 1, 0)
+            col[px] = (1, 0, 0)
 
 
 
@@ -1026,9 +1026,17 @@ def test_fmm_init_5_7():
         print("ERR:\t\t", serr)
 
 
+    print("DLPOLY EWALD (EV):\t", -2.324071E+01)
+    print("EV EWALD:\t", ewald.internal_to_ev()*phi_ewald, "\t err:\t",
+          abs(-2.324071E+01 - ewald.internal_to_ev()*phi_ewald))
+    print("EV FMM:  \t", ewald.internal_to_ev()*phi_py, "\t err:\t",
+          abs(-2.324071E+01 - ewald.internal_to_ev()*phi_py))
 
-    N2 = 21
-    mid = 10
+
+
+
+    N2 = 1
+    mid = 0
     NB = N2 ** 3
     step = E/N2
     start = -0.5*E + 0.5*step
