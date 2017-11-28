@@ -1433,6 +1433,158 @@ def test_fmm_init_5_7():
         print("charge sum:", np.sum(A.Q[:N:,0]))
 
 
+def nacl_lattice(crn, e, sd=0.05, seed=87712846):
+    print("creating lattice side length:", e, crn)
+
+    raw_lattice = utility.lattice.cubic_lattice(crn, e)
+
+    N = crn[0]*crn[1]*crn[2]
+
+    charges = np.zeros(N)
+    raw_labels = ('Na', 'Cl')
+    labels = np.zeros(N, dtype='|S2')
+
+    raw_charges = (1.0, -1.0)
+    counts = [0, 0]
+    lattice = np.zeros((N,3))
+
+    nai = 0
+    cli = -1
+
+    for px in range(N):
+        ix = px % crn[0]
+        iy = ((px - ix) // crn[0]) % crn[1]
+        iz = (px - ix - iy*crn[0])//(crn[0]*crn[1])
+
+        t = (ix + iy + iz) % 2
+
+        if t == 0:
+            idx = nai
+            nai += 1
+        else:
+            idx = cli
+            cli -= 1
+
+        charges[idx] = raw_charges[t]
+        lattice[idx, :] = raw_lattice[px, :]
+        labels[idx] = raw_labels[t]
+        counts[t] += 1
+
+    rng = np.random.RandomState(seed=seed)
+    velocities = rng.normal(0.0, sd, size=(N,3))
+
+    return lattice, velocities, charges, labels, counts
+
+
+def test_fmm_init_5_7_cube():
+    R = 2
+
+    crN = 20
+    N = crN**3
+
+    E = 3.*crN
+
+    rc = E/2
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-5
+
+    ASYNC = False
+    EWALD = True
+    free_space = False
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+
+
+    if EWALD:
+        ewald = EwaldOrthoganalHalf(
+            domain=A.domain,
+            real_cutoff=rc,
+            eps=eps,
+            shared_memory=SHARED_MEMORY
+        )
+
+    print(fmm.R, fmm.L)
+
+    A.npart = N
+
+    rng = np.random.RandomState(seed=1234)
+
+    A.P = data.PositionDat(ncomp=3)
+    A.F = data.ParticleDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.crr = data.ScalarArray(ncomp=1)
+    A.cri = data.ScalarArray(ncomp=1)
+    A.crs = data.ScalarArray(ncomp=1)
+
+    lattice, velocities, charges, labels, counts = nacl_lattice(
+        (crN, crN, crN), (E, E, E))
+
+
+    A.P[:] = lattice[:]
+    A.Q[:,0] = charges[:]
+
+    bias = np.sum(A.Q[:])/N
+    A.Q[:] -= bias
+
+    A.scatter_data_from(0)
+
+    dipole_src = """
+    dipole[0] += P.i[0] * Q.i[0];
+    dipole[1] += P.i[1] * Q.i[0];
+    dipole[2] += P.i[2] * Q.i[0];
+    """
+    dipole_ga = data.GlobalArray(ncomp=3)
+    dipole_kernel = kernel.Kernel('dipole', dipole_src)
+    dipole_loop = loop.ParticleLoopOMP(kernel=dipole_kernel,
+                                       dat_dict={
+                                           'dipole': dipole_ga(access.INC_ZERO),
+                                           'P': A.P(access.READ),
+                                           'Q': A.Q(access.READ)
+                                       })
+    dipole_loop.execute()
+
+
+
+    t0 = time.time()
+    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    t1 = time.time()
+
+    t2 = time.time()
+    if EWALD:
+        ewald.evaluate_contributions(positions=A.P, charges=A.Q)
+        A.cri[0] = 0.0
+        ewald.extract_forces_energy_reciprocal(A.P, A.Q, A.F, A.cri)
+        A.crr[0] = 0.0
+        ewald.extract_forces_energy_real(A.P, A.Q, A.F, A.crr)
+        A.crs[0] = 0.0
+        ewald.evaluate_self_interactions(A.Q, A.crs)
+    t3 = time.time()
+
+    phi_ewald = A.cri[0] + A.crr[0] + A.crs[0]
+
+
+    local_err = abs(phi_py - phi_ewald)
+    if local_err > eps: serr = red(local_err)
+    else: serr = green(local_err)
+
+    if MPIRANK == 0 and DEBUG:
+        print(60*"-")
+        opt.print_profile()
+        print(60*"-")
+        print("TIME FMM:\t", t1 - t0)
+        print("TIME EWALD:\t", t3 - t2)
+        print("ENERGY FMM:\t", phi_py)
+        print("ENERGY EWALD:\t", phi_ewald, A.cri[0], A.crr[0], A.crs[0])
+        print("ERR:\t\t", serr)
+
+    if MPIRANK == 0 and DEBUG:
+        print("Dipole moment:", dipole_ga[:])
+        print("charge sum:", np.sum(A.Q[:N:,0]))
 
 
 
