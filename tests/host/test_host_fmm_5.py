@@ -533,7 +533,6 @@ def test_fmm_init_5_4(level_set, tol_set, space_set):
 
 
 def test_fmm_init_5_4_quad(level_set, tol_set, space_set):
-#def test_fmm_init_5_4():
 
     # cannot decompose the R=2 case on more than one process
     if MPISIZE > 1 and level_set < 3:
@@ -637,16 +636,8 @@ def test_fmm_init_5_4_quad(level_set, tol_set, space_set):
 
 
 
-
-
-
-
-
-
-
-#@pytest.mark.skipif("True")
-def test_fmm_init_5_5():
-    R = 3
+def test_fmm_init_5_5_nacl():
+    R = 4
 
     #Cdata = np.load(get_res_file_path('coulomb/CO2cuboid.npy'))
     Cdata = np.load(get_res_file_path('coulomb/NACL.npy'))
@@ -658,7 +649,7 @@ def test_fmm_init_5_5():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-    eps = 10.**-5
+    eps = 10.**-6
 
     ASYNC = False
     EWALD = True
@@ -666,8 +657,8 @@ def test_fmm_init_5_5():
 
     rc = min(10, E/4.)
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
-    shell_terms = fmm._test_shell_sum(26, fmm.L)
-    fmm._boundary_terms[:] = shell_terms[:]
+    #shell_terms = fmm._test_shell_sum(26, fmm.L)
+    #fmm._boundary_terms[:] = shell_terms[:]
 
     if EWALD:
         ewald = EwaldOrthoganalHalf(
@@ -692,6 +683,8 @@ def test_fmm_init_5_5():
     A.crs = data.ScalarArray(ncomp=1)
 
     A.P[:] = Cdata[:,0:3:]
+    #print(np.min(Cdata[:,0:3:]), np.max(Cdata[:,0:3:]))
+
     A.P[:] -= 15.
     A.P[:] *= E/30.
 
@@ -752,7 +745,114 @@ def test_fmm_init_5_5():
         print("ERR:\t\t", serr)
 
 
-    print(fmm.tree_parent[1][0,0,0,:])
+
+
+
+#@pytest.mark.skipif("True")
+def test_fmm_init_5_5_co2():
+    R = 3
+
+    Cdata = np.load(get_res_file_path('coulomb/CO2cuboid.npy'))
+    N = Cdata.shape[0]
+    E = 50.
+    #E = 4.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-4
+
+    ASYNC = False
+    EWALD = True
+    free_space = False
+
+    rc = min(10, E/4.)
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+    #shell_terms = fmm._test_shell_sum(26, fmm.L)
+    #fmm._boundary_terms[:] = shell_terms[:]
+
+    if EWALD:
+        ewald = EwaldOrthoganalHalf(
+            domain=A.domain,
+            real_cutoff=rc,
+            eps=10.**-14,
+            shared_memory=SHARED_MEMORY
+        )
+
+    print(fmm.R, fmm.L)
+
+    A.npart = N
+
+    rng = np.random.RandomState(seed=1234)
+
+    A.P = data.PositionDat(ncomp=3)
+    A.F = data.ParticleDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.crr = data.ScalarArray(ncomp=1)
+    A.cri = data.ScalarArray(ncomp=1)
+    A.crs = data.ScalarArray(ncomp=1)
+
+    A.P[:] = Cdata[:,0:3:]
+    print(np.min(Cdata[:,0:3:]), np.max(Cdata[:,0:3:]))
+
+
+    A.Q[:,0] = Cdata[:,3]
+
+    #print(A.P[:N:,:])
+    A.scatter_data_from(0)
+
+    t0 = time.time()
+    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    t1 = time.time()
+
+    dipole_src = """
+    dipole[0] += P.i[0] * Q.i[0];
+    dipole[1] += P.i[1] * Q.i[0];
+    dipole[2] += P.i[2] * Q.i[0];
+    """
+    dipole_ga = data.GlobalArray(ncomp=3)
+    dipole_kernel = kernel.Kernel('dipole', dipole_src)
+    dipole_loop = loop.ParticleLoopOMP(kernel=dipole_kernel,
+                                       dat_dict={
+                                           'dipole': dipole_ga(access.INC_ZERO),
+                                           'P': A.P(access.READ),
+                                           'Q': A.Q(access.READ)
+                                       })
+    dipole_loop.execute()
+    if MPIRANK == 0 and DEBUG:
+        print("Dipole moment:", dipole_ga[:])
+
+
+
+    t2 = time.time()
+    if EWALD:
+        ewald.evaluate_contributions(positions=A.P, charges=A.Q)
+        A.cri[0] = 0.0
+        ewald.extract_forces_energy_reciprocal(A.P, A.Q, A.F, A.cri)
+        A.crr[0] = 0.0
+        ewald.extract_forces_energy_real(A.P, A.Q, A.F, A.crr)
+        A.crs[0] = 0.0
+        ewald.evaluate_self_interactions(A.Q, A.crs)
+    t3 = time.time()
+
+    phi_ewald = A.cri[0] + A.crr[0] + A.crs[0]
+
+    local_err = abs(phi_py - phi_ewald)
+    if local_err > eps: serr = red(local_err)
+    else: serr = green(local_err)
+
+    if MPIRANK == 0 and DEBUG:
+        print(60*"-")
+        #opt.print_profile()
+        print(60*"-")
+        print("TIME FMM:\t", t1 - t0)
+        print("TIME EWALD:\t", t3 - t2)
+        print("ENERGY FMM:\t", phi_py)
+        print("ENERGY EWALD:\t", phi_ewald, A.cri[0], A.crr[0], A.crs[0])
+        print("ERR:\t\t", serr)
 
 
 def test_fmm_init_5_6_1():
@@ -864,16 +964,250 @@ def test_fmm_init_5_6_2():
             if (nx == 2):
                 assert abs(ev) < azero
 
-    #np.save('/tmp/r_coeffs.npy', shell_terms)
 
-def test_fmm_init_5_7():
+
+
+
+
+
+
+def test_fmm_init_5_4_quad2():
+
+    R = 3
+    eps = 10.**-4
+    free_space = '27'
+
+    N = 2
+    E = 4.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    ASYNC = False
+    DIRECT = True if MPISIZE == 1 else False
+
+    DIRECT= True
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+
+    A.npart = N
+
+    rng = np.random.RandomState(seed=1234)
+
+    A.P = data.PositionDat(ncomp=3)
+    A.F = data.ParticleDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.crr = data.ScalarArray(ncomp=1)
+    A.cri = data.ScalarArray(ncomp=1)
+    A.crs = data.ScalarArray(ncomp=1)
+
+    rng = np.random.RandomState(seed=1234)
+
+    if N == 4:
+        ra = 0.25 * E
+        nra = -0.25 * E
+
+        #A.P[0,:] = (0, nra, nra)
+        #A.P[1,:] = (0, nra, ra)
+        #A.P[2,:] = (0, ra, nra)
+        #A.P[3,:] = (0, ra, ra)
+
+        A.P[0,:] = (nra, nra, 0.1)
+        A.P[1,:] = (nra, ra, 0.1)
+        A.P[2,:] = (ra, nra, 0.1)
+        A.P[3,:] = (ra, ra, 0.1)
+
+        A.Q[0,0] = -1.
+        A.Q[3,0] = -1.
+        A.Q[1,0] = 1.
+        A.Q[2,0] = 1.
+
+    elif N == 2:
+        A.P[0,:] = (-0.25*E-0.1, 0, 0)
+        A.P[1,:] = (0.25*E-0.1, 0, 0)
+
+        #A.P[0,:] = (0, -0.25*E, 0)
+        #A.P[1,:] = (0, 0.25*E, 0)
+        #A.P[0,:] = (0, 0, -0.25*E)
+        #A.P[1,:] = (0, 0, 0.25*E)
+
+        A.Q[:,0] = 1.
+        A.Q[0,0] = -1.
+
+    A.scatter_data_from(0)
+
+    t0 = time.time()
+    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    t1 = time.time()
+
+    if DIRECT:
+        phi_direct = 0.0
+        # compute phi from image and surrounding 26 cells
+        for ix in range(N):
+            for jx in range(ix+1, N):
+                rij = np.linalg.norm(A.P[jx,:] - A.P[ix,:])
+                phi_direct += A.Q[ix, 0] * A.Q[jx, 0] /rij
+            if free_space == '27':
+                for ofx in cube_offsets:
+                    cube_mid = np.array(ofx)*E
+                    for jx in range(N):
+                        rij = np.linalg.norm(A.P[jx,:] + cube_mid - A.P[ix, :])
+                        phi_direct += 0.5*A.Q[ix, 0] * A.Q[jx, 0] /rij
+    else:
+        if free_space == '27':
+            phi_direct = -0.12868996439494947981
+        elif free_space == True:
+            phi_direct = -0.12131955438932764957
+        else:
+            raise RuntimeError("bad parameter")
+
+    local_err = abs(phi_py - phi_direct)
+    if local_err > eps: serr = red(local_err)
+    else: serr = green(local_err)
+
+    if MPIRANK == 0 and DEBUG:
+        print("\n")
+        #print(60*"-")
+        #opt.print_profile()
+        #print(60*"-")
+        print("TIME FMM:\t", t1 - t0)
+        print("ENERGY DIRECT:\t{:.20f}".format(phi_direct))
+        print("ENERGY FMM:\t", phi_py)
+        print("ERR:\t\t", serr)
+
+    #assert local_err < eps
+
+
+
+    #np.save('/tmp/r_coeffs.npy', shell_terms)
+def test_fmm_init_5_7_quad():
     R = 2
 
-    N = 8
+    N = 2
     E = 4.
 
     rc = E/2
 
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-4
+
+    ASYNC = False
+    EWALD = True
+    free_space = False
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+
+
+    if EWALD:
+        ewald = EwaldOrthoganalHalf(
+            domain=A.domain,
+            real_cutoff=rc,
+            eps=10.**-12,
+            shared_memory=SHARED_MEMORY
+        )
+
+    A.npart = N
+
+    rng = np.random.RandomState(seed=1234)
+
+    A.P = data.PositionDat(ncomp=3)
+    A.F = data.ParticleDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.crr = data.ScalarArray(ncomp=1)
+    A.cri = data.ScalarArray(ncomp=1)
+    A.crs = data.ScalarArray(ncomp=1)
+
+    if N == 2:
+        A.P[0,:] = (-0.25*E, 0.1, 0.1)
+        A.P[1,:] = (0.25*E, 0.1, 0.1)
+
+        A.Q[:,0] = 1.
+        A.Q[0,0] = -1
+    elif N == 4:
+        ra = 0.25 * E
+        nra = -0.25 * E
+
+        #A.P[0,:] = (nra, nra, 0)
+        #A.P[1,:] = (nra, ra, 0)
+        #A.P[2,:] = (ra, nra, 0)
+        #A.P[3,:] = (ra, ra, 0)
+
+        A.P[0,:] = (0.0, nra, nra)
+        A.P[1,:] = (0.0, nra, ra)
+        A.P[2,:] = (0.0, ra, nra)
+        A.P[3,:] = (0.0, ra, ra)
+
+        A.Q[0,0] = -1.
+        A.Q[3,0] = -1.
+        A.Q[1,0] = 1.
+        A.Q[2,0] = 1.
+
+
+
+    A.scatter_data_from(0)
+
+
+    t0 = time.time()
+    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, async=ASYNC)
+
+    t1 = time.time()
+
+    t2 = time.time()
+    if EWALD:
+        ewald.evaluate_contributions(positions=A.P, charges=A.Q)
+        A.cri[0] = 0.0
+        ewald.extract_forces_energy_reciprocal(A.P, A.Q, A.F, A.cri)
+        A.crr[0] = 0.0
+        ewald.extract_forces_energy_real(A.P, A.Q, A.F, A.crr)
+        A.crs[0] = 0.0
+        ewald.evaluate_self_interactions(A.Q, A.crs)
+    t3 = time.time()
+
+    phi_ewald = A.cri[0] + A.crr[0] + A.crs[0]
+
+
+    local_err = abs(phi_py - phi_ewald)
+    if local_err > eps: serr = red(local_err)
+    else: serr = green(local_err)
+
+    if MPIRANK == 0 and DEBUG:
+        print(60*"-")
+        #opt.print_profile()
+        print(60*"-")
+        print("TIME FMM:\t", t1 - t0)
+        print("TIME EWALD:\t", t3 - t2)
+        print("ENERGY FMM:\t", phi_py)
+        print("ENERGY EWALD:\t", phi_ewald, A.cri[0], A.crr[0], A.crs[0])
+        print("ERR:\t\t", serr)
+
+    if N == 4:
+        dl_phi = -2.324071E+01
+    elif N == 2:
+        dl_phi = -9.868676E+00
+
+    print("DLPOLY EWALD (EV):\t", dl_phi)
+    print("EV EWALD:\t", ewald.internal_to_ev()*phi_ewald, "\t err:\t",
+          abs(dl_phi - ewald.internal_to_ev()*phi_ewald))
+    print("EV FMM:  \t", ewald.internal_to_ev()*phi_py, "\t err:\t",
+          abs(dl_phi - ewald.internal_to_ev()*phi_py))
+
+
+def test_fmm_init_5_7():
+    R = 2
+
+    N = 2
+    E = 4.
+
+    rc = E/2
 
     A = state.State()
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
@@ -918,11 +1252,11 @@ def test_fmm_init_5_7():
     A.Q[:] -= bias
 
     if N == 2:
-        A.P[0,:] = (-0.25*E, 0.3*E, 0)
-        A.P[1,:] = (0.25*E, 0.2*E, 0)
+        A.P[0,:] = (0.0,0.0,-0.25*E)
+        A.P[1,:] = (0.0,0.0,0.25*E)
 
         A.Q[:,0] = 1.
-        A.Q[0,0] = -1.*(N-1)
+        A.Q[0,0] = -1
     if N == 3:
         A.P[0,:] = (0, 0, 0)
         A.P[1,:] = (-0.25*E, 0, 0)
@@ -1026,13 +1360,16 @@ def test_fmm_init_5_7():
         print("ERR:\t\t", serr)
 
 
-    print("DLPOLY EWALD (EV):\t", -2.324071E+01)
+    if N == 4:
+        dl_phi = -2.324071E+01
+    elif N == 2:
+        dl_phi = -9.868676E+00
+
+    print("DLPOLY EWALD (EV):\t", dl_phi)
     print("EV EWALD:\t", ewald.internal_to_ev()*phi_ewald, "\t err:\t",
-          abs(-2.324071E+01 - ewald.internal_to_ev()*phi_ewald))
+          abs(dl_phi - ewald.internal_to_ev()*phi_ewald))
     print("EV FMM:  \t", ewald.internal_to_ev()*phi_py, "\t err:\t",
-          abs(-2.324071E+01 - ewald.internal_to_ev()*phi_py))
-
-
+          abs(dl_phi - ewald.internal_to_ev()*phi_py))
 
 
     N2 = 1

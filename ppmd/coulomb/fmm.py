@@ -443,7 +443,6 @@ class PyFMM(object):
 
     def re_lm(self, l,m): return (l**2) + l + m
 
-
     def im_lm(self, l,m): return (l**2) + l +  m + self.L**2
 
     def __call__(self, positions, charges, forces=None, async=False):
@@ -479,17 +478,18 @@ class PyFMM(object):
 
         for level in range(1, self.R):
 
-            #if not _isnormal(self.tree_plain[level]):
-            #    _pdb_drop()
-
             self._translate_l_to_l(level)
-            #if not _isnormal(self.tree_plain[level]):
-            #    _pdb_drop()
 
+            if level == 1:
+                pass
+                #print("\n")
+                #print(self.tree_plain[1][1,1,1,:])
             self._coarse_to_fine(level)
-            #if level+1 != self.R:
-            #    if not _isnormal(self.tree_parent[level+1]):
-            #        _pdb_drop()
+
+            if level == 2:
+                #print(self.tree_parent[2][1,1,1,:])
+                pass
+
 
 
         #for level in range(self.R):
@@ -506,6 +506,8 @@ class PyFMM(object):
 
         #if not _isnormal(np.array((phi_extract,))):
         #    _pdb_drop()
+
+        print("Far:", phi_extract, "Near:", phi_near)
 
         return phi_extract + phi_near
 
@@ -524,7 +526,6 @@ class PyFMM(object):
     def _compute_periodic_boundary(self):
 
         for nx in range(self.L):
-            print("-----")
             for mx in range(-1*nx, nx+1):
 
                 rev = self.tree_parent[1][0, 0, 0, self.re_lm(nx, mx)]
@@ -534,7 +535,7 @@ class PyFMM(object):
                 if abs(iev) > 10.**-3: siev = green(iev)
                 else: siev = str(iev)
 
-                print(nx, mx, srev,"\t", siev)
+                #print(nx, mx, srev,"\t", siev)
 
         if self.free_space == '27' or self.free_space == True:
 
@@ -549,12 +550,16 @@ class PyFMM(object):
             #self.tree_parent[1][0,0,0,0:4:] = 0.0
             moments = np.copy(self.tree_parent[1][0, 0, 0, :])
 
+            print("MOMENTS", moments[:10:])
+            for lx in range(self.L):
+                print(lx, '----')
+                for mx in range(-1*lx, lx+1):
+                    print(lx, "\tre:", moments[self.re_lm(lx,mx)], "\tim:",
+                          moments[self.im_lm(lx, mx)])
 
-            print("MOMENTS", moments)
 
-
-            print("BOUNDARY TERMS",self._boundary_terms)
-            print("MAX BOUNDARY TERM", np.max(abs(self._boundary_terms)))
+            #print("BOUNDARY TERMS",self._boundary_terms)
+            #print("MAX BOUNDARY TERM", np.max(abs(self._boundary_terms)))
 
             self.tree_parent[1][0, 0, 0, :] = 0.0
             self._translate_mtl_lib['mtl_test_wrapper'](
@@ -569,7 +574,7 @@ class PyFMM(object):
                 extern_numpy_ptr(self.tree_parent[1][0, 0, 0, :])
             )
 
-            print("POST", self.tree_parent[1][0, 0, 0, :])
+            print("POST   ", self.tree_parent[1][0, 0, 0, :10:])
 
 
 
@@ -1027,10 +1032,9 @@ class PyFMM(object):
                         terms[self.re_lm(lx, mx)] -= coeff
 
 
-        for lx in range(2, self.L*2, 2):
-            for mx in range(0, lx+1, 2):
-                #print("lx", lx, "mx", mx, terms[self.re_lm(lx, mx)])
-                pass
+        #for lx in range(2, self.L*2, 2):
+        #    for mx in range(0, lx+1, 2):
+        #        print("lx", lx, "mx", mx, terms[self.re_lm(lx, mx)])
         #print("G END ============================================")
         return terms
 
@@ -1153,6 +1157,7 @@ class PyFMM(object):
                         sph_nm =  re_exp * scipy_p[mxi].real
 
                         terms[self.re_lm(nx, mx)] += sph_nm * irp
+
         print("\n")
         print(30*"-", "shell terms", 30*'-')
         print("radius:", limit)
