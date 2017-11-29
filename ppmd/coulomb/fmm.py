@@ -388,6 +388,7 @@ class PyFMM(object):
         )
  
         self._int_list = list(range(self.R))
+        self._int_list[0] = None
         for lvlx in range(1, self.R):
             tsize = self.tree[lvlx].grid_cube_size
             if tsize is not None:
@@ -428,6 +429,7 @@ class PyFMM(object):
                 ar_arr=self._ar,
                 p_arr=self._interaction_p,
                 e_arr=self._interaction_e,
+                int_list=self._int_list,
                 int_tlookup=self._int_tlookup,
                 int_plookup=self._int_plookup,
                 int_radius=self._int_radius

@@ -42,4 +42,4 @@ def test_cuda_fmm_1():
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
                 cuda=CUDA)
 
-
+    fmm._cuda_mtl._translate_mtl(2)

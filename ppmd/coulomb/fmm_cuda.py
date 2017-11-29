@@ -18,6 +18,12 @@ from scipy.special import lpmv, rgamma, gammaincc, lambertw
 
 from ppmd.cuda import *
 
+REAL = ctypes.c_double
+UINT64 = ctypes.c_uint64
+UINT32 = ctypes.c_uint32
+INT64 = ctypes.c_int64
+INT32 = ctypes.c_int32
+
 def red(input):
     try:
         from termcolor import colored
@@ -34,6 +40,20 @@ def yellow(input):
         return colored(input, 'yellow')
     except Exception as e: return input
 
+def _numpy_ptr(arr):
+    return arr.ctypes.data_as(ctypes.c_void_p)
+
+def _check_dtype(arr, dtype):
+    if arr.dtype != dtype:
+        raise RuntimeError('Bad data type. Expected: {} Found: {}.'.format(
+            str(dtype), str(arr.dtype)))
+    if issubclass(type(arr), np.ndarray): return _numpy_ptr(arr)
+    elif issubclass(type(arr), host.Matrix): return arr.ctypes_data
+    elif issubclass(type(arr), host.Array): return arr.ctypes_data
+    elif issubclass(type(arr), cuda_base.gpuarray.GPUArray):
+        return ctypes.cast(arr.ptr, ctypes.c_void_p)
+    else: raise RuntimeError('unknown array type passed: {}'.format(type(arr)))
+
 
 _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -41,7 +61,8 @@ np.set_printoptions(threshold=np.nan)
 
 class TranslateMTLCuda(object):
     def __init__(self, dtype, tree, nlevel, a_arr, ar_arr, p_arr, e_arr,
-                 int_tlookup, int_plookup, int_radius):
+                 int_list, int_tlookup, int_plookup, int_radius):
+        self.tree = tree
         self.L = nlevel
         ncomp = (self.L**2) * 2
         self.tree_plain = OctalCudaDataTree(tree=tree, mode='plain',
@@ -54,19 +75,79 @@ class TranslateMTLCuda(object):
         self._d_p = cuda_base.gpuarray.to_gpu(p_arr)
         self._d_e = cuda_base.gpuarray.to_gpu(e_arr)
 
+        self._int_list = []
+        for lx in int_list:
+            if lx is not None:
+                ne = cuda_base.gpuarray.to_gpu(lx)
+            else:
+                ne = None
+            self._int_list.append(ne)
+
         self._d_int_tlookup = cuda_base.gpuarray.to_gpu(int_tlookup)
         self._d_int_plookup = cuda_base.gpuarray.to_gpu(int_plookup)
         self._d_int_radius = cuda_base.gpuarray.to_gpu(int_radius)
 
+        jlookup = np.zeros(ncomp, dtype=INT32)
+        klookup = np.zeros(ncomp, dtype=INT32)
+
+        ind = 0
+        for jx in range(nlevel):
+            for kx in range(-1*jx, jx+1):
+                jlookup[ind] = jx
+                klookup[ind] = kx
+                ind += 1
+
+        self._jlookup = cuda_base.gpuarray.to_gpu(jlookup)
+        self._klookup = cuda_base.gpuarray.to_gpu(klookup)
+
         # load multipole to local lib
         with open(str(_SRC_DIR) + \
-                          '/FMMSource/CudaTranslateMTL.cpp') as fh:
+                          '/FMMSource/CudaTranslateMTL.cu') as fh:
             cpp = fh.read()
         with open(str(_SRC_DIR) + \
                           '/FMMSource/CudaTranslateMTL.h') as fh:
             hpp = fh.read()
         self._translate_mtl_lib = cuda_build.simple_lib_creator(hpp, cpp,
             'fmm_translate_mtl')
+
+    def _translate_mtl(self, level):
+
+        radius = 1.0
+
+        err = self._translate_mtl_lib['translate_mtl'](
+            _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
+            _check_dtype(self.tree_halo[level], REAL),
+            _check_dtype(self.tree_plain[level], REAL),
+            _check_dtype(self._d_e, REAL),
+            _check_dtype(self._d_p, REAL),
+            _check_dtype(self._d_a, REAL),
+            _check_dtype(self._d_ar, REAL),
+            REAL(radius),
+            INT64(self.L),
+            _check_dtype(self._int_list[level], INT32),
+            _check_dtype(self._d_int_tlookup, INT32),
+            _check_dtype(self._d_int_plookup, INT32),
+            _check_dtype(self._d_int_radius, ctypes.c_double),
+            _check_dtype(self._jlookup, INT32),
+            _check_dtype(self._klookup, INT32),
+            INT32(256)
+        )
+        cuda_runtime.cuda_err_check(err)
+        if err < 0:
+            raise RuntimeError("Negative error code caught: {}".format(err))
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
