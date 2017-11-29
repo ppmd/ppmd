@@ -1490,7 +1490,7 @@ def test_fmm_init_5_7_cube():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-    eps = 10.**-5
+    eps = 10.**-6
 
     ASYNC = False
     EWALD = True
@@ -1530,6 +1530,9 @@ def test_fmm_init_5_7_cube():
 
     bias = np.sum(A.Q[:])/N
     A.Q[:] -= bias
+
+    if MPIRANK == 0 and DEBUG:
+        print("charge sum:", np.sum(A.Q[:N:,0]))
 
     A.scatter_data_from(0)
 
@@ -1584,12 +1587,6 @@ def test_fmm_init_5_7_cube():
 
     if MPIRANK == 0 and DEBUG:
         print("Dipole moment:", dipole_ga[:])
-        print("charge sum:", np.sum(A.Q[:N:,0]))
-
-
-
-
-
 
 
 

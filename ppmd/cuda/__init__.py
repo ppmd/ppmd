@@ -16,25 +16,23 @@ __all__ = [
 CUDA_IMPORT = False
 CUDA_IMPORT_ERROR = None
 
+try:
+    from . import cuda_base
+    from . import cuda_build
+    from . import cuda_cell
+    from . import cuda_config
+    from . import cuda_data
+    from . import cuda_domain
+    from . import cuda_halo
+    from . import cuda_loop
+    from . import cuda_mpi
+    from . import cuda_pairloop
+    from . import cuda_runtime
+    from . import cuda_state
 
-#try:
-from . import cuda_base
-from . import cuda_build
-from . import cuda_cell
-from . import cuda_config
-from . import cuda_data
-from . import cuda_domain
-from . import cuda_halo
-from . import cuda_loop
-from . import cuda_mpi
-from . import cuda_pairloop
-from . import cuda_runtime
-from . import cuda_state
-
-CUDA_IMPORT = True
-#except Exception as e:
-#    CUDA_IMPORT_ERROR = e
-#    print("CUDA import error:",e)
+    CUDA_IMPORT = True
+except Exception as e:
+    CUDA_IMPORT_ERROR = e
 
 
 

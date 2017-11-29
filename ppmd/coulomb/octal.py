@@ -1007,5 +1007,129 @@ def send_plain_to_parent(src_level, plain_data_tree, parent_data_tree):
 
 
 
+# ---- CUDA ----
+
+from ppmd.cuda import CUDA_IMPORT
+
+if CUDA_IMPORT:
+
+    from ppmd.cuda import *
+
+    class OctalCudaDataTree(object):
+        def __init__(self, tree, ncomp, mode=None, dtype=ctypes.c_double):
+            """
+            Attach data to an OctalTree.
+            :param tree: octal tree to use.
+            :param ncomp: number of components per cell.
+            :param mode: 'plain', 'halo' or 'parent'. 'plain' assigns ncomp to
+            each cube. 'halo' like 'plain' but with space for halo data.
+            'parent' allocates to level l the cell count of level l-1.
+            :param dtype: data type of elements.
+            """
+            if not mode in ('plain', 'halo', 'parent'):
+                raise RuntimeError('bad mode passed')
+            if ncomp != int(ncomp) or ncomp < 1:
+                raise RuntimeError('bad ncomp passed')
+
+            self.tree = tree
+            self.ncomp = ncomp
+            self.dtype = dtype
+            self.mode = mode
+            self.data = []
+            self.num_data = []
+
+            self._async_stream = cuda_runtime.cudadrv.Stream()
+
+            for lvl in self.tree.levels:
+                if self.mode == 'plain' and \
+                    lvl.local_grid_cube_size is not None:
+                        shape = list(lvl.local_grid_cube_size) + [ncomp]
+                elif self.mode == 'halo' and \
+                    lvl.grid_cube_size is not None:
+                        shape = list(lvl.grid_cube_size) + [ncomp]
+                elif self.mode == 'parent' and \
+                    lvl.parent_local_size is not None:
+                        shape = list(lvl.parent_local_size) + [ncomp]
+                else:
+                    shape = None
+                if shape is not None:
+                    self.data.append(cuda_base.gpuarray.zeros(
+                        shape=shape, dtype=dtype))
+                    self.num_data.append(shape[0]*shape[1]*shape[2]*shape[3])
+                else:
+                    # pycuda objects to allocating 0 element arrays
+                    self.data.append(cuda_base.gpuarray.zeros(
+                        shape=(1,), dtype=dtype))
+                    self.num_data.append(0)
+
+            self.nbytes = sum([dx.nbytes for dx in self.data])
+
+        def sync(self):
+            self._async_stream.synchronize()
+
+        def _check_data_tree(self, data_tree):
+            if data_tree.mode != self.mode:
+                raise RuntimeError('data tree modes do not match: {} {}'\
+                                   .format(data_tree.mode, self.mode))
+
+            if data_tree.tree is not self.tree:
+                raise RuntimeError('data tree is not defined on the same '
+                                   'OctalTree')
+
+            if data_tree.ncomp is not self.ncomp:
+                raise RuntimeError('ncomp missmatch: {} {}'.format(
+                    data_tree.ncomp, self.ncomp))
+
+        def set_async(self, level, data_tree):
+            """
+            Asynchronously copy the data on passed level to the device from
+            data_tree.
+            :param level: level to copy from
+            :param data_tree: tree to copy from
+            """
+            self._check_data_tree(data_tree)
+            self.data[level].set_async(data_tree[level],
+                                       stream=self._async_stream)
+
+            return self._async_stream
+
+        def __setitem__(self, level, data_tree):
+            self.sync()
+            self.set_async(level, data_tree)
+            self.sync()
+
+        def get_async(self, level, data_tree):
+            """
+            Asynchronously copy the data on passed level from the device to
+            data_tree.
+            :param level: level to copy from
+            :param data_tree: tree to copy into
+            """
+            self._check_data_tree(data_tree)
+            self.data[level].get_async(ary=data_tree[level],
+                                       stream=self._async_stream)
+            return self._async_stream
+
+        def get(self, level, data_tree):
+            """
+            Copy the data on passed level from the device to
+            data_tree.
+            :param level: level to copy from
+            :param data_tree: tree to copy into
+            """
+            self.sync()
+            self.get_async(level, data_tree)
+            self.sync()
+
+        def __getitem__(self, level):
+            self.sync()
+            arr = self.data[level].get_async(ary=None,
+                                             stream=self._async_stream)
+            self.sync()
+            return arr
+
+        def device_pointer(self, level):
+            return ctypes.cast(self.data[level].ptr, ctypes.c_void_p)
+
 
 

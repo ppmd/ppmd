@@ -31,7 +31,7 @@ class Struct(ctypes.Structure):
     _fields_ = (('ptr', ctypes.c_void_p), ('ncomp', ctypes.c_void_p))
 
 
-def _make_gpu_array(initial_value=None, dtype=None, nrow=None, ncol=None):
+def make_gpu_array(initial_value=None, dtype=None, nrow=None, ncol=None):
     """
     dat initialiser
     """
@@ -83,9 +83,9 @@ class Array(object):
         self.idtype = dtype
         self._ncomp = ctypes.c_int(0)
 
-        self._dat = _make_gpu_array(initial_value=initial_value,
-                                    dtype=dtype,
-                                    ncol=ncomp)
+        self._dat = make_gpu_array(initial_value=initial_value,
+                                   dtype=dtype,
+                                   ncol=ncomp)
 
         self._ncomp.value = self._dat.shape[0]
 
@@ -246,10 +246,10 @@ class Matrix(object):
         self._ncol = ctypes.c_int(0)
         self._nrow = ctypes.c_int(0)
 
-        self._dat = _make_gpu_array(initial_value=initial_value,
-                                    dtype=dtype,
-                                    nrow=nrow,
-                                    ncol=ncol)
+        self._dat = make_gpu_array(initial_value=initial_value,
+                                   dtype=dtype,
+                                   nrow=nrow,
+                                   ncol=ncol)
         self._nrow.value = self._dat.shape[0]
         self._ncol.value = self._dat.shape[1]
 

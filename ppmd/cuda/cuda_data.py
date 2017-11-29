@@ -96,10 +96,10 @@ class ParticleDat(cuda_base.Matrix):
         self._ptr = ctypes.POINTER(self.idtype)()
         self._resize_callback = None
 
-        self._dat = cuda_base._make_gpu_array(initial_value=initial_value,
-                                    dtype=dtype,
-                                    nrow=npart,
-                                    ncol=ncomp)
+        self._dat = cuda_base.make_gpu_array(initial_value=initial_value,
+                                             dtype=dtype,
+                                             nrow=npart,
+                                             ncol=ncomp)
 
         self._nrow.value = self._dat.shape[0]
         self._ncol.value = self._dat.shape[1]

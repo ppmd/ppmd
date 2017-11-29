@@ -16,6 +16,7 @@ import cmath
 from threading import Thread
 from scipy.special import lpmv, rgamma, gammaincc, lambertw
 
+from ppmd.cuda import CUDA_IMPORT
 
 import pytest
 
@@ -69,7 +70,7 @@ def _check_dtype(arr, dtype):
 
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6,
-        free_space=False, r=None, shell_width=0.0):
+        free_space=False, r=None, shell_width=0.0, cuda=False):
 
         dtype = REAL
 
@@ -415,9 +416,33 @@ class PyFMM(object):
         # threading
         self._async_thread = None
 
+        self.cuda = cuda
+        self._cuda_mtl = None
+        if self.cuda and CUDA_IMPORT:
+            from . import fmm_cuda
+            self._cuda_mtl = fmm_cuda.TranslateMTLCuda(
+                dtype=self.dtype,
+                tree=self.tree,
+                nlevel=self.L,
+                a_arr=self._a,
+                ar_arr=self._ar,
+                p_arr=self._interaction_p,
+                e_arr=self._interaction_e,
+                int_tlookup=self._int_tlookup,
+                int_plookup=self._int_plookup,
+                int_radius=self._int_radius
+            )
+
+        if self.cuda and (self._cuda_mtl is None):
+            raise RuntimeError('CUDA support was requested but intialisation'
+                               'failed')
+
+
     def _update_opt(self):
         p = opt.PROFILE
         b = self.__class__.__name__ + ':'
+        p[b+'num_levels'] = self.R
+        p[b+'num_terms'] = self.L
         p[b+'contrib'] = self.timer_contrib.time()
         p[b+'extract'] = self.timer_extract.time()
         p[b+'mtm'] = self.timer_mtm.time()
@@ -1170,12 +1195,6 @@ class PyFMM(object):
 
         print(30*"-", "-----------", 30*'-')
         return terms
-
-
-
-
-
-
 
 
 
