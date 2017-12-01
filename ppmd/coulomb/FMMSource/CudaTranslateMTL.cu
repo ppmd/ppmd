@@ -189,8 +189,6 @@ static __global__ void mtl_kernel2(
         REAL contrib_re = 0.0;
         REAL contrib_im = 0.0; 
 
-        const REAL ajk =  d_alm[jx*d_ASTRIDE1 + d_ASTRIDE2 + kx];
-
         for (INT32 conx=octal_ind*189 ; conx<(octal_ind+1)*189 ; conx++){
             
             const REAL iradius = 1./(d_int_radius[conx] * d_radius);
@@ -201,7 +199,7 @@ static __global__ void mtl_kernel2(
                 )*2*d_nlevel*d_nlevel;
             
             
-            REAL m1tn_ajk = ajk * pow(iradius, jx+1);
+            REAL m1tn_ajk = d_alm[jx*d_ASTRIDE1 + d_ASTRIDE2 + kx] * pow(iradius, jx+1);
             // use Y values
             for( INT32 nx=0 ; nx<d_nlevel ; nx++ ){
 

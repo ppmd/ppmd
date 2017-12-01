@@ -43,6 +43,7 @@ def test_cuda_fmm_1():
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
                 cuda=CUDA)
 
+    print("R:", fmm.R, "L", fmm.L)
     rng = np.random.RandomState(seed=1234)
 
     lx = 4
