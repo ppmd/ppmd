@@ -23,19 +23,6 @@ static inline INT64 xyz_to_lin(
 }
 
 
-static inline void cplx_mul(
-    const REAL a,
-    const REAL b,
-    const REAL x,
-    const REAL y,
-    REAL * RESTRICT g,
-    REAL * RESTRICT h
-){
-   // ( a + bi) * (x + yi) = (ax - by) + (xb + ay)i
-    *g = a * x - b * y;
-    *h = x * b + a * y;
-}
-
 static inline void cplx_mul_add(
     const REAL a,
     const REAL b,
@@ -48,7 +35,6 @@ static inline void cplx_mul_add(
     *g += a * x - b * y;
     *h += x * b + a * y;
 }
-
 
 
 static inline void mtl(
@@ -128,21 +114,108 @@ static inline void mtl(
                 cplx_mul_add(y_re, y_im, 
                     ocoeff_re, ocoeff_im, &contrib_re, &contrib_im);
 
-                //if(DEBUG0 == 0){
-                //    printf("C nx\t%d\tmx\t%d:\t%f\n", 
-                //        nx, mx, contrib_re);
-                //}
-
             }
         }
         
         ldata[CUBE_IND(jx, kx)] += contrib_re;
         ldata[CUBE_IND(jx, kx) + im_offset] += contrib_im;
 
-        //if(DEBUG0 == 0){
-        //    printf("C jx\t%d\tkx\t%d:\t%f\t%f\n", 
-        //    jx, kx, contrib_re, ldata[CUBE_IND(jx, kx)]);
-        //}       
+    }}
+}
+
+
+
+static inline void mtl_no_ar(
+    const INT64             nlevel,
+    const REAL              radius,
+    const REAL * RESTRICT   odata,
+    const REAL * RESTRICT   phi_data,
+    const REAL * RESTRICT   theta_data,
+    const REAL * RESTRICT   a_array,
+    const REAL * RESTRICT   i_array,
+    REAL * RESTRICT         ldata,
+    const INT64 DEBUG0,
+    const INT64 DEBUG1
+){
+    const INT64 ASTRIDE1 = 4*nlevel + 1;
+    const INT64 ASTRIDE2 = 2*nlevel;
+
+    const INT64 ncomp = nlevel*nlevel*2;
+    const INT64 nlevel4 = nlevel*4;
+    const INT64 im_offset = nlevel*nlevel;
+    
+    const INT64 nblk = 2*nlevel+2;
+    REAL iradius_n[nblk];
+    
+    const REAL iradius = 1./radius;
+    iradius_n[0] = 1.0;
+
+    for(INT64 nx=1 ; nx<nblk ; nx++){ iradius_n[nx] = iradius_n[nx-1] * iradius; }
+
+    REAL * RESTRICT iradius_p1 = &iradius_n[1];
+
+    // loop over parent moments
+    for(INT32 jx=0     ; jx<nlevel ; jx++ ){
+                
+                //if (DEBUG0 == 0){printf("");}
+
+    for(INT32 kx=-1*jx ; kx<=jx    ; kx++){
+        const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
+        REAL contrib_re = 0.0;
+        REAL contrib_im = 0.0;
+        
+        const bool pb = (DEBUG0 == 0 && jx == 0 && kx ==0 && DEBUG1 == 0);
+
+
+        for(INT32 nx=0     ; nx<nlevel ; nx++){
+                
+            //if (pb){printf("nx=%d\n", nx);}
+
+            const REAL m1tn = 1.0 - 2.0*((REAL)(nx & 1));   // -1^{n}
+            const INT64 jxpnx = jx + nx;
+            const INT64 p_ind_base = P_IND(jxpnx, 0);
+            const REAL rr_jn1 = iradius_p1[jxpnx];     // 1 / rho^{j + n + 1}
+
+            for(INT64 mx=-1*nx ; mx<=nx ; mx++){
+
+                //if (pb){printf("\tmx= %d\n", mx);}
+
+                const INT64 mxmkx = mx - kx;
+
+                // construct the spherical harmonic
+                const INT64 y_aind = p_ind_base + mxmkx;
+                const REAL y_coeff = theta_data[CUBE_IND(jxpnx, mxmkx)];
+                
+                //if (ABS(mxmkx)>ABS(jxpnx)){printf("\tARRRG\n");}
+
+                const REAL y_re = y_coeff * \
+                    phi_data[EXP_RE_IND(2*nlevel, mxmkx)];
+                const REAL y_im = y_coeff * \
+                    phi_data[EXP_IM_IND(2*nlevel, mxmkx)];
+
+                // compute translation coefficient
+                // A_n^m
+
+                const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + mx];
+                
+
+                const REAL coeff_re = \
+                    i_array[(nlevel+kx)*(nlevel*2 + 1) + nlevel + mx] * \
+                    m1tn * anm * ajk * rr_jn1;
+                
+                const INT64 oind = CUBE_IND(nx, mx);
+                const REAL ocoeff_re = odata[oind]              * coeff_re;
+                const REAL ocoeff_im = odata[oind + im_offset]  * coeff_re;
+
+                cplx_mul_add(y_re, y_im, 
+                    ocoeff_re, ocoeff_im, &contrib_re, &contrib_im);
+
+                //if (pb){printf("\t\thost=%d\t%f\n", oind, rr_jn1);}
+            }
+        }
+        
+        ldata[CUBE_IND(jx, kx)] += contrib_re;
+        ldata[CUBE_IND(jx, kx) + im_offset] += contrib_im;
 
     }}
 }
@@ -196,51 +269,32 @@ int translate_mtl(
         const INT64 octal_ind = xyz_to_lin(dim_eight, 
             cx & 1, cy & 1, cz & 1);
 
-        //if (pcx==2) { printf("C lin_mask: %d\n", octal_ind);}
         
         REAL * out_moments = &local_moments[ncomp * pcx];
         // loop over contributing nearby cells.
-        
-
-        //printf("local size %d %d %d\n", dim_child[0], dim_child[1], dim_child[2]);
-        //printf("Cell %d nlevel %d\n", pcx, nlevel);
-
 
         for( INT32 conx=octal_ind*189 ; conx<(octal_ind+1)*189 ; conx++ ){
             
             const REAL local_radius = int_radius[conx] * radius;
             const INT32 jcell = int_list[conx] + halo_ind;
 
-            //printf("icell %d jcell %d halo_ind %d int_list[conx] %d\n", pcx, jcell, halo_ind, int_list[conx]);
             const INT32 t_lookup = int_tlookup[conx];
             const INT32 p_lookup = int_plookup[conx];
-            
-
-
-            //printf("VAL %d\n", halo_ind);
-            //for (int jx=0 ; jx<nlevel ; jx++){
-            //    for(int kx=-1*jx ; kx<=jx ; kx++ ){
-            //        printf("j\t%d\tk\t%d\tval\t", jx, kx);
-            //        printf("val\t%f\n", 
-            //            multipole_moments[jcell*ncomp + CUBE_IND(jx, kx)]
-            //        );
-            //    }
-            //}
-            
-
+/*
             mtl(nlevel, local_radius, &multipole_moments[jcell*ncomp],
                 &phi_data[p_lookup * phi_stride],
                 &theta_data[t_lookup * theta_stride],
                 alm, almr, i_array,
-                out_moments, 0, 0);
+                out_moments, 0, 0);            
+*/          
+            mtl_no_ar(nlevel, local_radius, &multipole_moments[jcell*ncomp],
+                &phi_data[p_lookup * phi_stride],
+                &theta_data[t_lookup * theta_stride],
+                alm, i_array,
+                out_moments, pcx, conx);
 
-            //if (pcx==0){
-            //    printf("conx\t%d\toffset\t%d\tmm0\t%f\tout%f\n", conx,
-            //        int_list[conx], multipole_moments[jcell*ncomp], out_moments[0]);
-            //}
-
+            
         }
-                //printf("cell %d\t local %f\n", pcx, local_moments[ncomp * pcx]);
         
     }
 

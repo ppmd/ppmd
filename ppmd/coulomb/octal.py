@@ -1076,7 +1076,7 @@ if CUDA_IMPORT:
                 raise RuntimeError('data tree is not defined on the same '
                                    'OctalTree')
 
-            if data_tree.ncomp is not self.ncomp:
+            if data_tree.ncomp != self.ncomp:
                 raise RuntimeError('ncomp missmatch: {} {}'.format(
                     data_tree.ncomp, self.ncomp))
 

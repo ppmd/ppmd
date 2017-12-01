@@ -110,6 +110,8 @@ class PyFMM(object):
                 a_l_m = ((-1.) ** lx)/math.sqrt(math.factorial(lx - mx) *\
                                                 math.factorial(lx+mx))
                 self._a[lx, self.L*2 + mx] = a_l_m
+                # the array below is used directly in the precomputation of
+                # Y_{j+n}^{m-k}
                 self._ar[lx, self.L*2 + mx] = 1.0/a_l_m
 
         # pre compute the powers of i
@@ -273,7 +275,11 @@ class PyFMM(object):
                         for mxi, mx in enumerate(mact_range):
                             val = math.sqrt(math.factorial(
                                 lx - abs(mx))/math.factorial(lx + abs(mx)))
+
                             val *= scipy_p[mxi].real
+                            # pre compute the 1./A_{j+n}^{m-k}
+                            val *= self._ar[lx, self.L*2 + mx]
+
                             if abs(scipy_p[mxi].imag) > 10.**-15:
                                 raise RuntimeError('unexpected imag part')
                             self._interaction_p[iz, iy, ix, 
@@ -432,7 +438,8 @@ class PyFMM(object):
                 int_list=self._int_list,
                 int_tlookup=self._int_tlookup,
                 int_plookup=self._int_plookup,
-                int_radius=self._int_radius
+                int_radius=self._int_radius,
+                ipower_mtl=self._ipower_mtl
             )
 
         if self.cuda and (self._cuda_mtl is None):

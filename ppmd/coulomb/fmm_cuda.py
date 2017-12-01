@@ -61,7 +61,7 @@ np.set_printoptions(threshold=np.nan)
 
 class TranslateMTLCuda(object):
     def __init__(self, dtype, tree, nlevel, a_arr, ar_arr, p_arr, e_arr,
-                 int_list, int_tlookup, int_plookup, int_radius):
+                 int_list, int_tlookup, int_plookup, int_radius, ipower_mtl):
         self.tree = tree
         self.L = nlevel
         ncomp = (self.L**2) * 2
@@ -87,6 +87,8 @@ class TranslateMTLCuda(object):
         self._d_int_plookup = cuda_base.gpuarray.to_gpu(int_plookup)
         self._d_int_radius = cuda_base.gpuarray.to_gpu(int_radius)
 
+        self._ipower_mtl = cuda_base.gpuarray.to_gpu(ipower_mtl)
+
         jlookup = np.zeros(ncomp, dtype=INT32)
         klookup = np.zeros(ncomp, dtype=INT32)
 
@@ -100,6 +102,8 @@ class TranslateMTLCuda(object):
         self._jlookup = cuda_base.gpuarray.to_gpu(jlookup)
         self._klookup = cuda_base.gpuarray.to_gpu(klookup)
 
+
+
         # load multipole to local lib
         with open(str(_SRC_DIR) + \
                           '/FMMSource/CudaTranslateMTL.cu') as fh:
@@ -110,14 +114,22 @@ class TranslateMTLCuda(object):
         self._translate_mtl_lib = cuda_build.simple_lib_creator(hpp, cpp,
             'fmm_translate_mtl')
 
-    def _translate_mtl(self, level):
+        self.timer_mtl = opt.Timer(runtime.TIMER)
 
-        radius = 1.0
+    def translate_mtl(self, host_halo_tree, level, radius):
+        self.tree_halo[level] = host_halo_tree
 
+        self._translate_mtl(level, radius)
+
+        return self.tree_plain[level]
+
+    def _translate_mtl(self, level, radius):
+
+        self.timer_mtl.start()
         err = self._translate_mtl_lib['translate_mtl'](
             _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
-            _check_dtype(self.tree_halo[level], REAL),
-            _check_dtype(self.tree_plain[level], REAL),
+            self.tree_halo.device_pointer(level),
+            self.tree_plain.device_pointer(level),
             _check_dtype(self._d_e, REAL),
             _check_dtype(self._d_p, REAL),
             _check_dtype(self._d_a, REAL),
@@ -130,12 +142,14 @@ class TranslateMTLCuda(object):
             _check_dtype(self._d_int_radius, ctypes.c_double),
             _check_dtype(self._jlookup, INT32),
             _check_dtype(self._klookup, INT32),
-            INT32(256)
+            _check_dtype(self._ipower_mtl, REAL),
+            INT32(128)
         )
         cuda_runtime.cuda_err_check(err)
         if err < 0:
             raise RuntimeError("Negative error code caught: {}".format(err))
 
+        self.timer_mtl.pause()
 
 
 

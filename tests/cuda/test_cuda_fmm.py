@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import print_function
 
 import pytest
 import ctypes
@@ -20,7 +21,7 @@ MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
 
 @cuda
 def test_cuda_fmm_1():
-    R = 3
+    R = 5
 
     crN = 10
     N = crN**3
@@ -42,4 +43,32 @@ def test_cuda_fmm_1():
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
                 cuda=CUDA)
 
-    fmm._cuda_mtl._translate_mtl(2)
+    rng = np.random.RandomState(seed=1234)
+
+    lx = 4
+    fmm.tree_halo[lx][:] = rng.uniform(low=-2.0, high=2.0,
+                                       size=fmm.tree_halo[lx].shape)
+
+    fmm._halo_exchange(lx)
+    fmm._translate_m_to_l(lx)
+
+    print("HOST", fmm.tree_plain[lx].ravel()[:10:])
+    radius = fmm.domain.extent[0] / \
+             fmm.tree[lx].ncubes_side_global
+
+    lx_cuda = fmm._cuda_mtl.translate_mtl(fmm.tree_halo, lx, radius)
+
+    print("CUDA", lx_cuda.ravel()[:10:])
+
+    print("HOST", fmm.timer_mtl.time())
+    print("CUDA", fmm._cuda_mtl.timer_mtl.time())
+
+    for px in range(lx_cuda.ravel().shape[0]):
+        assert abs(fmm.tree_plain[lx].ravel()[px] - lx_cuda.ravel()[px]) < \
+                10.** -12
+
+
+
+
+
+
