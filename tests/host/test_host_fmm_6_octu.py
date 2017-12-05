@@ -231,7 +231,7 @@ def test_fmm_oct_1():
 
     R = 3
     eps = 10.**-6
-    free_space = '27'
+    free_space = True
 
     N = 8
     E = 4.
@@ -267,15 +267,10 @@ def test_fmm_oct_1():
         ra = 0.25 * E
         nra = -0.25 * E
 
-        A.P[0,:] = (0, nra, nra)
-        A.P[1,:] = (0, nra, ra)
-        A.P[2,:] = (0, ra, nra)
-        A.P[3,:] = (0, ra, ra)
-
-        #A.P[0,:] = (nra, nra, 0.1)
-        #A.P[1,:] = (nra, ra, 0.1)
-        #A.P[2,:] = (ra, nra, 0.1)
-        #A.P[3,:] = (ra, ra, 0.1)
+        A.P[0,:] = (nra, nra, 0)
+        A.P[1,:] = (nra, ra, 0)
+        A.P[2,:] = (ra, nra, 0)
+        A.P[3,:] = (ra, ra, 0)
 
         A.Q[0,0] = -1.
         A.Q[3,0] = -1.
@@ -328,8 +323,6 @@ def test_fmm_oct_1():
         A.P[6,:] -= eps
         A.Q[0,0] = 100.
     
-    print(A.P[6,:])
-
 
     A.scatter_data_from(0)
 

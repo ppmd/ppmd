@@ -358,18 +358,24 @@ class PyFMM(object):
         int jcx = FMM_CELL.j[0] % nsx;
         int jcy = ((FMM_CELL.j[0] - jcx) / nsx) % nsy;
         int jcz = (FMM_CELL.j[0] - jcx - jcy*nsx) / (nsx*nsy);
+        //*/
         
-        #undef ABS
-        #define ABS(x) ( (x)>0 ? (x) : -1*(x) )
+ 
+        ///*
+        if (P.j[0] >= {hex}) {{ jcx += nsx; }}
+        if (P.j[1] >= {hey}) {{ jcy += nsy; }}
+        if (P.j[2] >= {hez}) {{ jcz += nsz; }}
         
-        int dx = ABS(icx - jcx);
-        int dy = ABS(icy - jcy);
-        int dz = ABS(icz - jcz);
+        if (P.j[0] < -1.0*{hex}) {{ jcx -= nsx; }}
+        if (P.j[1] < -1.0*{hey}) {{ jcy -= nsy; }}
+        if (P.j[2] < -1.0*{hez}) {{ jcz -= nsz; }}        
+        //*/ 
         
-        if (ABS(P.j[0]) > {hex}) {{ dx -= nsx; }}
-        if (ABS(P.j[1]) > {hey}) {{ dy -= nsy; }}
-        if (ABS(P.j[2]) > {hez}) {{ dz -= nsz; }}
+        int dx = icx - jcx;
+        int dy = icy - jcy;
+        int dz = icz - jcz;
         
+
 
         
         int dr2 = dx*dx + dy*dy + dz*dz;
@@ -385,14 +391,14 @@ class PyFMM(object):
 
         const double r2 = rx*rx + ry*ry + rz*rz;
         const double r = sqrt(r2);
-        if (mask > 0) {{
+        //if (mask > 0) {{
         printf("---------------------------\\n");
         printf("KERNEL: %f %f %d \\n", mask, r, dr2);
         printf("GLOBAL_CELLS: %d %d \\n", FMM_CELL.i[0], FMM_CELL.j[0]);
         printf("\t%d\t%d\t%d \\n", dx, dy, dz);
         printf("\tI\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.i[0], P.i[1], P.i[2], icx, icy, icz);
         printf("\tJ\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.j[0], P.j[1], P.j[2], jcx, jcy, jcz);
-        }}
+        //}}
         
         PHI[0] += mask * Q.i[0] * Q.j[0] / r;
         """.format(**{
