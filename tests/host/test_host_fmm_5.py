@@ -869,7 +869,8 @@ def test_fmm_init_5_6_1():
     fmm = PyFMM(domain=A.domain, r=2, eps=eps, free_space=False)
 
     #shell_terms = np.load(get_res_file_path('coulomb/r_coeffs_e2_L32.npy'))
-    shell_terms = fmm._test_shell_sum(26, fmm.L)
+
+    shell_terms = fmm._test_shell_sum2(16, fmm.L)
 
     for nx in range(fmm.L*2):
         for mx in range(-1*nx, nx+1):
@@ -974,10 +975,10 @@ def test_fmm_init_5_6_2():
 def test_fmm_init_5_4_quad2():
 
     R = 3
-    eps = 10.**-4
-    free_space = '27'
+    eps = 10.**-5
+    free_space = True
 
-    N = 2
+    N = 8
     E = 4.
 
     A = state.State()
@@ -1035,6 +1036,17 @@ def test_fmm_init_5_4_quad2():
 
         A.Q[:,0] = 1.
         A.Q[0,0] = -1.
+
+    elif N == 8:
+        for px in range(8):
+            phi = (float(px)/8) * 2. * math.pi
+            pxr = 0.25*E
+            pxx = pxr * math.cos(phi)
+            pxy = pxr * math.sin(phi)
+
+            A.P[px, :] = (0,pxx, pxy)
+            A.Q[px, 0] = 1. - 2. * (px % 2)
+
 
     A.scatter_data_from(0)
 
@@ -1255,6 +1267,15 @@ def test_fmm_init_5_7():
         A.P[0,:] = (0.0,0.0,-0.25*E)
         A.P[1,:] = (0.0,0.0,0.25*E)
 
+        A.P[0,:] = (0.0,-0.25*E, 0.0)
+        A.P[1,:] = (0.0, 0.25*E, 0.0)
+
+        A.P[0,:] = (-0.25*E, 0.0, 0.0)
+        A.P[1,:] = ( 0.25*E, 0.0, 0.0)
+
+        A.P[0,:] = (-0.24*E, 0.1, 0.1)
+        A.P[1,:] = ( 0.24*E, 0.1, 0.1)
+
         A.Q[:,0] = 1.
         A.Q[0,0] = -1
     if N == 3:
@@ -1283,10 +1304,11 @@ def test_fmm_init_5_7():
             pxx = pxr * math.cos(phi)
             pxy = pxr * math.sin(phi)
 
-            A.P[px, :] = (0 , pxx, pxy)
+            A.P[px, :] = (pxx, 0, pxy)
             A.Q[px, 0] = 1. - 2. * (px % 2)
+        A.P[6,:] += 0.0001
 
-
+    print(A.P[:N:,:])
     #col = np.zeros((N, 3), dtype='int')
     #for px in range(N):
     #    print(A.P[px, :], A.Q[px, 0])
@@ -1326,6 +1348,7 @@ def test_fmm_init_5_7():
 
 
 
+
     t1 = time.time()
 
     t2 = time.time()
@@ -1361,6 +1384,10 @@ def test_fmm_init_5_7():
         dl_phi = -2.324071E+01
     elif N == 2:
         dl_phi = -9.868676E+00
+    elif N == 8:
+        dl_phi = -1.023714E+02
+    else:
+        dl_phi = 0.0
 
     print("DLPOLY EWALD (EV):\t", dl_phi)
     print("EV EWALD:\t", ewald.internal_to_ev()*phi_ewald, "\t err:\t",

@@ -100,6 +100,8 @@ class PyFMM(object):
         self._tcount = runtime.OMP_NUM_THREADS if runtime.OMP_NUM_THREADS is \
             not None else 1
         self._thread_allocation = np.zeros(1, dtype=INT32)
+        self._tmp_cell = np.zeros(1, dtype=INT32)
+
 
         # pre compute A_n^m and 1/(A_n^m)
         self._a = np.zeros(shape=(self.L*2, (self.L*4)+1), dtype=dtype)
@@ -167,7 +169,8 @@ class PyFMM(object):
         for cx, child in enumerate(alpha_beta):
             for lx in range(self.L*2):
                 mval = list(range(-1*lx, 1)) + list(range(1, lx+1))
-                mxval = list(range(lx, -1, -1)) + list(range(1, lx+1))
+                mxval = [abs(mx) for mx in mval]
+
                 scipy_p = lpmv(mxval, lx, child[1])
                 for mxi, mx in enumerate(mval):
                     val = math.sqrt(float(math.factorial(
@@ -299,6 +302,7 @@ class PyFMM(object):
         # create a pairloop for finest level part
         P = data.ParticleDat(ncomp=3, dtype=dtype)
         Q = data.ParticleDat(ncomp=1, dtype=dtype)
+        FMM_CELL = data.ParticleDat(ncomp=1, dtype=ctypes.c_int)
         self.particle_phi = data.GlobalArray(ncomp=1, dtype=dtype)
         ns = self.tree.entry_map.cube_side_count
         maxe = np.max(self.domain.extent[:]) / ns
@@ -326,21 +330,48 @@ class PyFMM(object):
         const double ipx = P.i[0] + {hex}; 
         const double ipy = P.i[1] + {hey}; 
         const double ipz = P.i[2] + {hez};
-        const int icx = 100. + ipx*{lx};
-        const int icy = 100. + ipy*{ly};
-        const int icz = 100. + ipz*{lz};
-
+        
+        const int nsx = {nsx};
+        const int nsy = {nsy};
+        const int nsz = {nsz};
+        
+        
         const double jpx = P.j[0] + {hex}; 
         const double jpy = P.j[1] + {hey}; 
         const double jpz = P.j[2] + {hez};
+        
+        /*
+        const int icx = 100. + ipx*{lx};
+        const int icy = 100. + ipy*{ly};
+        const int icz = 100. + ipz*{lz};       
+        
         const int jcx = 100. + jpx*{lx};
         const int jcy = 100. + jpy*{ly};
         const int jcz = 100. + jpz*{lz};
+        */
         
-        const int dx = icx - jcx;
-        const int dy = icy - jcy;
-        const int dz = icz - jcz;
+        ///*
+        const int icx = FMM_CELL.i[0] % nsx;
+        const int icy = ((FMM_CELL.i[0] - icx) / nsx) % nsy;
+        const int icz = (FMM_CELL.i[0] - icx - icy*nsx) / (nsx*nsy);
+                
+        int jcx = FMM_CELL.j[0] % nsx;
+        int jcy = ((FMM_CELL.j[0] - jcx) / nsx) % nsy;
+        int jcz = (FMM_CELL.j[0] - jcx - jcy*nsx) / (nsx*nsy);
+        
+        #undef ABS
+        #define ABS(x) ( (x)>0 ? (x) : -1*(x) )
+        
+        int dx = ABS(icx - jcx);
+        int dy = ABS(icy - jcy);
+        int dz = ABS(icz - jcz);
+        
+        if (ABS(P.j[0]) > {hex}) {{ dx -= nsx; }}
+        if (ABS(P.j[1]) > {hey}) {{ dy -= nsy; }}
+        if (ABS(P.j[2]) > {hez}) {{ dz -= nsz; }}
+        
 
+        
         int dr2 = dx*dx + dy*dy + dz*dz;
         
         {FREE_SPACE}
@@ -354,16 +385,20 @@ class PyFMM(object):
 
         const double r2 = rx*rx + ry*ry + rz*rz;
         const double r = sqrt(r2);
-        //if (mask > 0) {{
-        //printf("---------------------------\\n");
-        //printf("KERNEL: %f %f %d \\n", mask, r, dr2);
-        //printf("\t%d\t%d\t%d \\n", dx, dy, dz);
-        //printf("\tI\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.i[0], P.i[1], P.i[2], icx, icy, icz);
-        //printf("\tJ\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.j[0], P.j[1], P.j[2], jcx, jcy, jcz);
-        //}}
+        if (mask > 0) {{
+        printf("---------------------------\\n");
+        printf("KERNEL: %f %f %d \\n", mask, r, dr2);
+        printf("GLOBAL_CELLS: %d %d \\n", FMM_CELL.i[0], FMM_CELL.j[0]);
+        printf("\t%d\t%d\t%d \\n", dx, dy, dz);
+        printf("\tI\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.i[0], P.i[1], P.i[2], icx, icy, icz);
+        printf("\tJ\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.j[0], P.j[1], P.j[2], jcx, jcy, jcz);
+        }}
         
         PHI[0] += mask * Q.i[0] * Q.j[0] / r;
         """.format(**{
+            'nsx': ns,
+            'nsy': ns,
+            'nsz': ns,
             'hex': self.domain.extent[0] * 0.5,
             'hey': self.domain.extent[1] * 0.5,
             'hez': self.domain.extent[2] * 0.5,
@@ -378,7 +413,7 @@ class PyFMM(object):
         cell_by_cell = True
         if cell_by_cell:
             PL = pairloop.CellByCellOMP
-            max_radius = 2. * (maxe + shell_width)
+            max_radius = 2.0 * (maxe + shell_width)
         else:
             PL = pairloop.PairLoopNeighbourListNSOMP
             max_radius = 1. * ((((maxe+shell_width)*2.)**2.)*3.)**0.5
@@ -388,6 +423,7 @@ class PyFMM(object):
             dat_dict={
                 'P':P(access.READ),
                 'Q':Q(access.READ),
+                'FMM_CELL': FMM_CELL(access.READ),
                 'PHI':self.particle_phi(access.INC_ZERO)
             },
             shell_cutoff=max_radius
@@ -469,6 +505,7 @@ class PyFMM(object):
             dat_dict = {
                 'P':positions(access.READ),
                 'Q':charges(access.READ),
+                'FMM_CELL':positions.group.fmm_cell(access.READ),
                 'PHI':self.particle_phi(access.INC_ZERO)
             }
         )
@@ -479,9 +516,17 @@ class PyFMM(object):
 
     def im_lm(self, l,m): return (l**2) + l +  m + self.L**2
 
+    def _check_aux_dat(self, positions):
+        if not hasattr(positions.group, 'fmm_cell'):
+            positions.group.fmm_cell = data.ParticleDat(ncomp=1, dtype=INT32)
+            positions.group.fmm_cell.npart_local = positions.npart_local
+
     def __call__(self, positions, charges, forces=None, async=False):
 
-        self._compute_cube_contrib(positions, charges)
+        self._check_aux_dat(positions)
+
+        self._compute_cube_contrib(positions, charges,
+                                   positions.group.fmm_cell)
 
         for level in range(self.R - 1, 0, -1):
 
@@ -504,6 +549,18 @@ class PyFMM(object):
                 self.tree_parent[level][:] = 0.0
 
         self._join_async()
+
+        for lx in range(5):
+            print("lx", lx)
+            for mx in range(-1*lx, lx+1):
+                print("\tMM{: >5} {: >30} {: >30}".format(
+                    mx,
+                    self.tree_parent[1][0,0,0,self.re_lm(lx, mx)],
+                    self.tree_parent[1][0,0,0,self.im_lm(lx, mx)])
+                )
+
+        self.up = np.copy(self.tree_parent[1][0,0,0, :],)
+        print("up shape", self.up.shape)
 
         self.tree_parent[0][:] = 0.0
         self.tree_plain[0][:] = 0.0
@@ -541,7 +598,7 @@ class PyFMM(object):
         #if not _isnormal(np.array((phi_extract,))):
         #    _pdb_drop()
 
-        #print("Far:", phi_extract, "Near:", phi_near)
+        print("Far:", phi_extract, "Near:", phi_near)
 
         return phi_extract + phi_near
 
@@ -619,7 +676,7 @@ class PyFMM(object):
             self._async_thread.join()
             self._async_thread = None
 
-    def _compute_cube_contrib(self, positions, charges):
+    def _compute_cube_contrib(self, positions, charges, fmm_cell):
 
         self.timer_contrib.start()
         ns = self.tree.entry_map.cube_side_count
@@ -635,12 +692,17 @@ class PyFMM(object):
         #print("thread_count", self._tcount)
         #print("npart_local", positions.npart_local)
 
+        if self._tmp_cell.shape[0] < positions.npart_local:
+            self._tmp_cell = np.zeros(int(positions.npart_local*1.1),
+                                      dtype=INT32)
+
         err = self._contribution_lib(
             INT64(self.L),
             UINT64(positions.npart_local),
             INT32(self._tcount),
             _check_dtype(positions, REAL),
             _check_dtype(charges, REAL),
+            _check_dtype(self._tmp_cell, INT32),
             _check_dtype(self.domain.extent, REAL),
             _check_dtype(self.entry_data.local_offset, UINT64),
             _check_dtype(self.entry_data.local_size, UINT64),
@@ -655,6 +717,11 @@ class PyFMM(object):
         self.tree_halo[self.R-1][2:-2:, 2:-2:, 2:-2:, :] = 0.0
         self.entry_data.add_onto(self.tree_halo)
 
+        # hack to ensure halo exchange
+        fmm_cell[:positions.npart_local:, 0] = \
+            self._tmp_cell[:positions.npart_local:]
+
+        #fmm_cell.ctypes_data_post(mode=access.WRITE)
         self.timer_contrib.pause()
 
     def _compute_cube_extraction(self, positions, charges):
@@ -1160,10 +1227,10 @@ class PyFMM(object):
         #print("F END ============================================")
         return terms
 
-
     def _test_shell_sum(self, limit, nl=8):
         ncomp = ((self.L * 2)**2) * 2
         terms = np.zeros(ncomp, dtype=self.dtype)
+        im_terms = np.zeros(ncomp, dtype=self.dtype)
         extent = self.domain.extent
 
         iterset = range(-1*limit, limit+1)
@@ -1189,9 +1256,14 @@ class PyFMM(object):
                             nx - abs(mx)))/math.factorial(nx + abs(mx)))
 
                         re_exp =  np.cos(mx * sph_vec[1]) * val
-                        sph_nm =  re_exp * scipy_p[mxi].real
 
-                        terms[self.re_lm(nx, mx)] += sph_nm * irp
+                        sph_nm =  scipy_p[mxi].real * irp
+
+                        terms[self.re_lm(nx, mx)] += sph_nm * re_exp
+
+                        im_exp =  np.sin(mx * sph_vec[1]) * val
+                        im_terms[self.re_lm(nx, mx)] += sph_nm * im_exp
+
         print("\n")
         print(30*"-", "shell terms", 30*'-')
         print("radius:", limit)
@@ -1203,6 +1275,64 @@ class PyFMM(object):
                 )
 
         print(30*"-", "-----------", 30*'-')
+        return terms
+
+    def _test_shell_sum2(self, limit, nl=8):
+        ncomp = ((self.L * 2)**2) * 2
+        terms = np.zeros(ncomp, dtype=self.dtype)
+        im_terms = np.zeros(ncomp, dtype=self.dtype)
+        extent = self.domain.extent
+
+        iterset = range(-1*limit, limit+1)
+        for itx in itertools.product(iterset, iterset, iterset):
+            nd1 = abs(itx[0]) > 1 or abs(itx[1]) > 1 or abs(itx[2]) > 1
+
+            lenofvec = itx[0]**2 + itx[1]**2 + itx[2]**2
+            nd2 = lenofvec < (limit**2)
+
+            if nd1 and nd2:
+                vec = np.array((itx[0]*extent[0], itx[1]*extent[1],
+                                itx[2]*extent[2]))
+                sph_vec = self._cart_to_sph(vec)
+                ir = 1./sph_vec[0]
+                for nx in range(1, nl, 1):
+                    irp = ir ** (nx + 1.)
+                    #mval = list(range(0, nx+1, 2))
+                    mval = list(range(-1*nx, nx+1, 1))
+                    mxval = [abs(mx) for mx in mval]
+                    scipy_p = lpmv(mxval, nx, math.cos(sph_vec[2]))
+                    for mxi, mx in enumerate(mval):
+                        val = math.sqrt(float(math.factorial(
+                            nx - abs(mx)))/math.factorial(nx + abs(mx)))
+
+                        re_exp =  np.cos(mx * sph_vec[1]) * val
+
+                        sph_nm =  scipy_p[mxi].real * irp
+
+                        terms[self.re_lm(nx, mx)] += sph_nm * re_exp
+
+                        im_exp =  np.sin(mx * sph_vec[1]) * val
+                        im_terms[self.re_lm(nx, mx)] += sph_nm * im_exp
+
+        print("\n")
+        print(30*"-", "shell terms", 30*'-')
+        print("radius:", limit)
+        for nx in range(2, nl, 2):
+            for mx in list(range(0, nx+1, 2)):
+                print("nx:", nx, "\tmx:", mx,
+                      "\tshell val:", terms[self.re_lm(nx, mx)],
+                      "\tewald val:", self._boundary_terms[self.re_lm(nx, mx)]
+                )
+
+        print(30*"-", "-----------", 30*'-')
+        print(30*"-", "im    terms", 30*'-')
+        print("radius:", limit)
+        for nx in range(1, nl, 1):
+            for mx in list(range(-1*nx, nx+1, 1)):
+                print("nx:", nx, "\tmx:", mx,
+                      "\tshell val:", im_terms[self.re_lm(nx, mx)],
+                )
+
         return terms
 
 

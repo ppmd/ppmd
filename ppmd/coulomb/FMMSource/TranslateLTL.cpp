@@ -238,6 +238,7 @@ int translate_ltl(
             &moments_child[cc0]
         };
 
+
         //if( pcx == 7 ){
         //    for (int testx=0 ; testx<ncomp ; testx++){
         //        printf("PARENT DATA %d %f\n", testx, pd_re[testx]);

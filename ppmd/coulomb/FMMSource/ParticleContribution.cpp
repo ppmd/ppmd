@@ -6,7 +6,9 @@ static inline INT64 compute_cell(
     const REAL pz,
     const REAL * RESTRICT boundary,
     const UINT64 * RESTRICT cube_offset,
-    const UINT64 * RESTRICT cube_dim
+    const UINT64 * RESTRICT cube_dim,
+    const UINT64 * RESTRICT cube_side_counts,   
+    INT32 * global_cell
 ){
     const REAL pxs = px + 0.5 * boundary[0];
     const REAL pys = py + 0.5 * boundary[1];
@@ -21,6 +23,14 @@ static inline INT64 compute_cell(
     if (cx >= cube_dim[2] || cy >= cube_dim[1] || cz >= cube_dim[0] ){
         return (INT64) -1;}
     
+    const UINT64 gcx = ((UINT64) (pxs*cube_inverse_len[0]));
+    const UINT64 gcy = ((UINT64) (pys*cube_inverse_len[1]));
+    const UINT64 gcz = ((UINT64) (pzs*cube_inverse_len[2]));
+    
+
+    *global_cell = ((INT32) (  gcx + cube_side_counts[2] * (gcy + cube_side_counts[1] * gcz )  ));
+
+    printf("GLOBAL %f %f %f %d %d %d | %d\n", px, py, pz, gcx, gcy, gcz, *global_cell);
     return cx + cube_dim[2] * (cy + cube_dim[1] * cz);
 }
 
@@ -125,12 +135,15 @@ static inline REAL m1_m(int m){
     return 1.0 - 2.0*((REAL)(m & 1));
 }
 
+
+extern "C"
 INT32 particle_contribution(
     const INT64 nlevel,
     const UINT64 npart,
     const INT32 thread_max,
     const REAL * RESTRICT position,             // xyz
     const REAL * RESTRICT charge,
+    INT32 * RESTRICT fmm_cell,
     const REAL * RESTRICT boundary,             // xl. xu, yl, yu, zl, zu
     const UINT64 * RESTRICT cube_offset,        // zyx (slowest to fastest)
     const UINT64 * RESTRICT cube_dim,           // as above
@@ -157,10 +170,12 @@ INT32 particle_contribution(
 
     // loop over particle and assign them to threads based on cell
     #pragma omp parallel for default(none) shared(thread_assign, position, \
-    boundary, cube_offset, cube_dim, err, cube_ilen, charge)
+    boundary, cube_offset, cube_dim, err, cube_ilen, charge, fmm_cell, cube_side_counts)
     for(UINT64 ix=0 ; ix<npart ; ix++){
+
+        INT32 global_cell = -1;
         const INT64 ix_cell = compute_cell(cube_ilen, position[ix*3], position[ix*3+1], 
-                position[ix*3+2], boundary, cube_offset, cube_dim);
+                position[ix*3+2], boundary, cube_offset, cube_dim, cube_side_counts,&global_cell);
 
         if (ix_cell < 0) {
             #pragma omp critical
@@ -173,6 +188,10 @@ INT32 particle_contribution(
             {thread_layer = ++thread_assign[thread_owner];}
             thread_assign[thread_max + npart*thread_owner + thread_layer - 1]\
                 = ix;
+
+            // assign this particle a cell for short range part
+            fmm_cell[ix] = global_cell;
+            printf("ix = %d global_cell = %d\n", ix, global_cell);
         }
     }
     if (err < 0) { return err; }
@@ -237,12 +256,8 @@ INT32 particle_contribution(
                 #pragma omp critical
                 {err = -3;}
             }
-            //if (ix == 0){
-            //printf("radius %f, ctheta %f, cphi %f, sphi %f, msphi %f\n", radius, ctheta, cphi, sphi, msphi);
-            //}
+
             //compute spherical harmonic moments
-            
-            //printf("px= %d, cell= %d\n", ix, ix_cell);
 
             // start with the complex exponential (will not vectorise)
             REAL * RESTRICT exp_vec = exp_space[tid]; 

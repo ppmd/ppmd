@@ -164,6 +164,7 @@ int translate_mtm(
                     REAL child_re = 0.0;
                     REAL child_im = 0.0;
 
+
                     cplx_mul_add(   cd_re[0][child_ind], cd_re[0][child_ind_im], 
                                         ylm[0*ncomp2 + ychild_ind], ylm[0*ncomp2 + ychild_ind_im], 
                                         &child_re, &child_im);
@@ -190,6 +191,7 @@ int translate_mtm(
                                         &child_re, &child_im);
 
 
+
                     child_re*=coeff;
                     child_im*=coeff;
 
@@ -202,8 +204,16 @@ int translate_mtm(
 
                     jk_re += re_mom;
                     jk_im += im_mom;
-
-
+/*
+                    if(jx == 1 && kx==0 && km_jn){
+                        printf("---- nx %d mx %d\n", nx, mx);
+                        cout << "\t\tY_n^-m "<<ylm[0*ncomp2 + ychild_ind]<<" "<<ylm[0*ncomp2 + ychild_ind_im] << endl;
+                        cout << "\t\tcoeff " << coeff  <<endl;
+                        cout << "\t\tchild data: "<< cd_re[7][child_ind] << " " << cd_re[7][child_ind_im] << endl;
+                        cout << "\t\tchild " << child_re << " im " << child_im  <<endl;
+                        cout << "\t\tcontrib " << re_mom << " i " << jre  <<endl;
+                    }   
+*/
                 }}
 
                 pd_re[CUBE_IND(jx, kx)] = jk_re;
