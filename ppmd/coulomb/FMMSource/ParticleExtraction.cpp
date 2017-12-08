@@ -121,6 +121,7 @@ static inline INT64 extract_cell_spherical(
     const INT32 global_cell,
     REAL * RESTRICT radius,
     REAL * RESTRICT ctheta,
+    REAL * RESTRICT stheta,
     REAL * RESTRICT cphi,
     REAL * RESTRICT sphi,
     REAL * RESTRICT msphi
@@ -167,6 +168,7 @@ static inline INT64 extract_cell_spherical(
     
     const REAL theta = atan2(sqrt(dx2_p_dy2), dz);
     *ctheta = cos(theta);
+    *stheta = sin(theta);
     
     const REAL phi = atan2(dy, dx);
 
@@ -301,12 +303,12 @@ INT32 particle_extraction(
         }
 
 
-        REAL radius, ctheta, cphi, sphi, msphi;
+        REAL radius, ctheta, stheta, cphi, sphi, msphi;
         const INT64 ix_cell = extract_cell_spherical(
             cube_ilen, cube_half_side_len, position[ix*3], position[ix*3+1], 
             position[ix*3+2], boundary, cube_offset, cube_dim,
             cube_side_counts, fmm_cell[ix],
-            &radius, &ctheta, &cphi, &sphi, &msphi
+            &radius, &ctheta, &stheta, &cphi, &sphi, &msphi
         );
         //compute spherical harmonic moments
         // start with the complex exponential (will not vectorise)
@@ -403,7 +405,8 @@ INT32 particle_extraction(
                     &local_pe,
                     &pe_im
                 );
-
+                
+                // radius part
                 REAL tmp_re;
                 REAL tmp_im;
                 
@@ -413,6 +416,11 @@ INT32 particle_extraction(
 
                 sp_radius += -1.0 * tmp_re * ((REAL) lx);
                 
+                // phi part
+                const REAL phi_coeff = -1.0 * rhol2 * ycoeff * plm / stheta;
+
+
+
                 printf("\t %d %d | %f %f\n", lx, mx, ljk_re, ljk_im);
 
 
