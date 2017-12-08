@@ -226,7 +226,18 @@ int translate_ltl(
         const INT64 cc5 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy, ccz+1);
         const INT64 cc6 = ncomp * xyz_to_lin(dim_child, ccx, ccy+1, ccz+1);
         const INT64 cc7 = ncomp * xyz_to_lin(dim_child, ccx+1, ccy+1, ccz+1);
-
+/*
+        REAL * RESTRICT cd_re[8] = {
+            &moments_child[cc7],
+            &moments_child[cc6],
+            &moments_child[cc5],
+            &moments_child[cc4],
+            &moments_child[cc3],
+            &moments_child[cc2],
+            &moments_child[cc1],
+            &moments_child[cc0]
+        };
+*/
         REAL * RESTRICT cd_re[8] = {
             &moments_child[cc7],
             &moments_child[cc6],

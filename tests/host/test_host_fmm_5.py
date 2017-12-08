@@ -88,7 +88,7 @@ def tuple_it(*args, **kwargs):
 
 
 def spherical(xyz):
-    if type(xyz) is tuple:
+    if type(xyz) is tuple or len(xyz.shape) == 1:
         sph = np.zeros(3)
         xy = xyz[0]**2 + xyz[1]**2
         # r
@@ -108,7 +108,27 @@ def spherical(xyz):
         # longitude angle
         sph[:,2] = np.arctan2(xyz[:,1], xyz[:,0])
 
+    #print("spherical", xyz, sph)
     return sph
+
+
+def Afoo(n, m): return ((-1.)**n)/math.sqrt(math.factorial(n - m) * \
+                                            math.factorial(n + m))
+def Ifoo(k, m): return ((1.j) ** (abs(k-m) - abs(k) - abs(m)))
+
+
+def Yfoo(nx, mx, theta, phi):
+    coeff = math.sqrt(
+        float(math.factorial(nx - abs(mx)))/math.factorial(nx + abs(mx))
+    )
+    legp = lpmv(abs(mx), nx, math.cos(theta))
+
+    assert abs(legp.imag) < 10.**-16
+    #print("mx: {: >30} , exp: {: >30} P: {: >30} coeff: {: >30}".format(
+    #    mx,cmath.exp(1.j * mx * phi), legp.real, coeff))
+
+    return coeff * legp * cmath.exp(1.j * mx * phi)
+
 
 def compute_phi(llimit, moments, disp_sph):
 
@@ -854,6 +874,72 @@ def test_fmm_init_5_5_co2():
         print("ENERGY EWALD:\t", phi_ewald, A.cri[0], A.crr[0], A.crs[0])
         print("ERR:\t\t", serr)
 
+    for lx in range(fmm.L):
+        for mx in range(-1*lx, lx+1):
+            py_re = 0.0
+            py_im = 0.0
+            for px in range(N):
+                r = spherical(A.P[px, :])
+                ynm = Yfoo(lx, -1*mx, r[1], r[2]) * (r[0]**float(lx)) * A.Q[px,0]
+                py_re += ynm.real
+                py_im += ynm.imag
+
+            tol = max(abs(py_re)*(10.**-9), 10.**-9)
+            assert abs(py_re - fmm.up[fmm.re_lm(lx, mx)]) < tol
+            assert abs(py_im - fmm.up[fmm.im_lm(lx, mx)]) < tol
+
+
+    shell_lim = 6
+
+    for jx in range(4):
+        print("jx:", jx)
+        for kx in range(-1*jx, jx+1):
+
+            contrib = 0.0 + 0.0*1.j
+            for oz in range(-1*shell_lim, shell_lim+1):
+                for oy in range(-1*shell_lim, shell_lim+1):
+                    for ox in range(-1*shell_lim, shell_lim+1):
+                        shell_radius = ox*ox + oy*oy + oz*oz
+                        if shell_radius > 3 and shell_radius < shell_lim**2:
+
+                            dx = np.array((ox*E, oy*E, oz*E))
+                            # r, theta, phi
+                            sph = spherical(dx)
+                            for nx in range(fmm.L):
+                                for mx in range(-1*nx, nx+1):
+
+                                    o = Ifoo(kx, mx) * Afoo(nx, mx) * Afoo(jx, kx) / \
+                                        Afoo(jx + nx, mx - kx) * ((-1.)**nx)
+
+                                    o /= (sph[0]**(jx+nx+1))
+
+                                    o *= fmm.up[fmm.re_lm(nx, mx)] + 1.j* \
+                                        fmm.up[fmm.im_lm(nx, mx)]
+
+                                    o *= Yfoo(jx+nx, mx-kx, sph[1], sph[2])
+
+                                    contrib += o
+
+            tol = 10.**-16
+
+            creal = fmm.tree_parent[1][0,0,0,fmm.re_lm(jx, kx)]
+            if abs(contrib.real - creal) > tol:
+                serr = red(creal)
+            else:
+                serr = str(creal)
+
+            cimag = fmm.tree_parent[1][0,0,0,fmm.im_lm(jx, kx)]
+
+            if abs(contrib.imag - cimag) > tol:
+                serr_im = red(cimag)
+            else:
+                serr_im = str(cimag)
+
+
+            print("\tkx:{: >5} re {: >30} {:>30} | im {: >30} {: >30}".format(
+                kx,
+                contrib.real, serr,
+                contrib.imag, serr_im))
 
 def test_fmm_init_5_6_1():
 
@@ -1264,39 +1350,46 @@ def test_fmm_init_5_7():
     A.Q[:] -= bias
 
     if N == 2:
-        A.P[0,:] = (0.0,0.0,-0.25*E)
-        A.P[1,:] = (0.0,0.0,0.25*E)
 
-        A.P[0,:] = (0.0,-0.25*E, 0.0)
-        A.P[1,:] = (0.0, 0.25*E, 0.0)
+        A.P[0,:] = (0.0,-0.25*E + 0.4, 0.0)
+        A.P[1,:] = (0.0, 0.25*E + 0.4, 0.0)
 
-        A.P[0,:] = (-0.25*E, 0.0, 0.0)
-        A.P[1,:] = ( 0.25*E, 0.0, 0.0)
+        A.P[0,:] = (-0.25*E,-0.25*E,0)
+        A.P[1,:] = (0.25*E,0.25*E,0)
 
-        A.P[0,:] = (-0.24*E, 0.1, 0.1)
-        A.P[1,:] = ( 0.24*E, 0.1, 0.1)
+        #A.P[0,:] = (-0.25*E, 0.0, 0.0)
+        #A.P[1,:] = ( 0.25*E, 0.0, 0.0)
 
-        A.Q[:,0] = 1.
-        A.Q[0,0] = -1
+        #A.P[0,:] = (-0.24*E, 0.1, 0.1)
+        #A.P[1,:] = ( 0.24*E, 0.1, 0.1)
+
+        A.Q[0,0] = -1.
+        A.Q[1,0] = 1.
     if N == 3:
         A.P[0,:] = (0, 0, 0)
-        A.P[1,:] = (-0.25*E, 0, 0)
-        A.P[2,:] = (0.25*E, 0, 0)
+        A.P[1,:] = (0.25*E, 0, 0)
+        A.P[2,:] = (-0.25*E, 0, 0)
         A.Q[:,0] = 1.
         A.Q[0,0] = -1.*(N-1)
     elif N == 4:
         ra = 0.25 * E
         nra = -0.25 * E
 
-        A.P[0,:] = (nra, nra, 0)
+        A.P[0,:] = (ra, ra, 0)
         A.P[1,:] = (nra, ra, 0)
-        A.P[2,:] = (ra, nra, 0)
-        A.P[3,:] = (ra, ra, 0)
+        A.P[2,:] = (nra, nra, 0)
+        A.P[3,:] = (ra, nra, 0)
+
+        A.P[0,:] = (1.5, 1, 0)
+        A.P[1,:] = (-1.5, 1, 0)
+        A.P[2,:] = (-1.5, -1, 0)
+        A.P[3,:] = (1.5, -1, 0)
 
         A.Q[0,0] = -1.
-        A.Q[3,0] = -1.
         A.Q[1,0] = 1.
-        A.Q[2,0] = 1.
+        A.Q[2,0] = -1.
+        A.Q[3,0] = 1.
+
     elif N == 8:
         for px in range(8):
             phi = (float(px)/8) * 2. * math.pi
@@ -1304,9 +1397,9 @@ def test_fmm_init_5_7():
             pxx = pxr * math.cos(phi)
             pxy = pxr * math.sin(phi)
 
-            A.P[px, :] = (pxx, 0, pxy)
+            A.P[px, :] = (0,pxx, pxy)
             A.Q[px, 0] = 1. - 2. * (px % 2)
-        A.P[6,:] += 0.0001
+        #A.P[6,:] += 0.0001
 
     print(A.P[:N:,:])
     #col = np.zeros((N, 3), dtype='int')
@@ -1345,11 +1438,8 @@ def test_fmm_init_5_7():
     t0 = time.time()
     #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
     phi_py = fmm(A.P, A.Q, async=ASYNC)
-
-
-
-
     t1 = time.time()
+
 
     t2 = time.time()
     if EWALD:
@@ -1378,6 +1468,68 @@ def test_fmm_init_5_7():
         print("ENERGY FMM:\t", phi_py)
         print("ENERGY EWALD:\t", phi_ewald, A.cri[0], A.crr[0], A.crs[0])
         print("ERR:\t\t", serr)
+
+
+
+
+
+
+    # calculate everything "not very far away" directly
+
+    phi_direct = 0.0
+    # compute phi from image and surrounding 26 cells
+    for ix in range(N):
+        for jx in range(ix+1, N):
+            rij = np.linalg.norm(A.P[jx,:] - A.P[ix,:])
+            phi_direct += A.Q[ix, 0] * A.Q[jx, 0] /rij
+
+        for ofx in cube_offsets:
+            cube_mid = np.array(ofx)*E
+            for jx in range(N):
+                rij = np.linalg.norm(A.P[jx,:] + cube_mid - A.P[ix, :])
+                phi_direct += 0.5*A.Q[ix, 0] * A.Q[jx, 0] /rij
+
+    # get far away contribution from multipole
+
+    contrib = 0.0 + 0.0*1.j
+    for px in range(N):
+
+        # r, theta, phi
+        sph = spherical(A.P[px, :])
+
+        for nx in range(fmm.L):
+            for mx in range(-1*nx, nx+1):
+
+                o = fmm.tree_parent[1][0,0,0,fmm.re_lm(nx, mx)] + 1.j* \
+                    fmm.tree_parent[1][0,0,0,fmm.im_lm(nx, mx)]
+
+                o *= (sph[0]**nx)
+                o *= A.Q[px,0]
+                o *= 0.5
+
+                contrib += o * Yfoo(nx, mx, sph[1], sph[2])
+
+    err = abs(phi_direct + contrib.real - phi_ewald)
+    if err > eps:
+        serr = red(err)
+    else:
+        serr = green(err)
+
+    print("ENERGY DIRECT:\t", phi_direct + contrib.real)
+    print("ERR:\t\t", serr)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     if N == 4:
@@ -1458,6 +1610,187 @@ def test_fmm_init_5_7():
     if MPIRANK == 0 and DEBUG:
         print("Dipole moment:", dipole_ga[:])
         print("charge sum:", np.sum(A.Q[:N:,0]))
+
+
+
+
+
+
+
+
+
+
+    # check charge contribution and mtm
+    for lx in range(fmm.L):
+        print("lx", lx)
+        for mx in range(-1*lx, lx+1):
+            py_re = 0.0
+            py_im = 0.0
+            for px in range(N):
+                r = spherical(A.P[px, :])
+                ynm = Yfoo(lx, -1*mx, r[1], r[2]) * (r[0]**float(lx)) * A.Q[px,0]
+                py_re += ynm.real
+                py_im += ynm.imag
+
+            tol = max(abs(py_re)*(10.**-8), 10.**-8)
+            assert abs(py_re - fmm.up[fmm.re_lm(lx, mx)]) < tol
+            assert abs(py_im - fmm.up[fmm.im_lm(lx, mx)]) < tol
+
+            #if DEBUG:
+            #    print("\t{: >5} | {: >30} {: >30} | {: >30} {: >30} ".format(
+            #        mx, py_re, fmm.up[fmm.re_lm(lx, mx)],
+            #        py_im, fmm.up[fmm.im_lm(lx, mx)]))
+
+
+    # halo checking
+    moments = fmm.tree_halo[1]
+    ncomp = moments.shape[3]
+    for iz in range(2):
+        for iy in range(2):
+            for ix in range(2):
+                cx = ix + 2
+                cy = iy + 2
+                cz = iz + 2
+
+                for oz in (-2, 0 ,2):
+                    for oy in (-2, 0 ,2):
+                        for ox in (-2, 0 ,2):
+                            for momx in range(ncomp):
+                                val_centre = moments[cz, cy, cx, momx]
+                                val_halo = moments[cz+oz, cy+oy, cx+ox, momx]
+                                err = abs(val_centre - val_halo)
+                                assert err < 10.**-16
+
+
+    print("1, 1, -1", fmm.tree_plain[1][1, 1, 0, 0])
+    print("1, 1, 1", fmm.tree_plain[1][1, 1, 1, 0])
+
+    print(fmm.tree_halo[1][3,:,:,0])
+
+    print("--------")
+
+    tx = 0
+    ty = 1
+    tz = 1
+    base = np.array((1.,1.,-1))
+
+    shell_lim = 2
+
+    phi_re = 0.0
+    for oz in range(-1*shell_lim, shell_lim+1):
+        for oy in range(-1*shell_lim, shell_lim+1):
+            for ox in range(-1*shell_lim, shell_lim+1):
+
+                shell_radius = ox*ox + oy*oy + oz*oz
+                if shell_radius > 3 and shell_radius < shell_lim**2:
+                    dx = np.array((ox*E*0.5, oy*E*0.5, oz*E*0.5)) - base
+                    # r, theta, phi
+                    radius = 1./np.linalg.norm(dx)
+                    contrib = fmm.tree_halo[1][
+                        2+abs(oz)%2, 2+abs(oy)%2, 2+abs(ox)%2, 0] * radius
+
+                    #print(ox, oy, oz, contrib)
+
+                    phi_re += contrib
+
+    print("direct:", phi_re, "mtl", fmm.tree_plain[1][1, 1, 0, 0])
+
+    print("--------")
+
+    print("FAR 2 0", fmm._boundary_terms[fmm.re_lm(2, 0)])
+    print("FAR 4 0", fmm._boundary_terms[fmm.re_lm(4, 0)])
+    print("FAR 6 0", fmm._boundary_terms[fmm.re_lm(6, 0)])
+
+
+
+
+
+
+    return
+    # spherical sum to approximate peroidic boundaries
+    shell_lim = 6
+    for jx in range(4):
+        print("jx:", jx)
+        for kx in range(-1*jx, jx+1):
+
+            contrib = 0.0 + 0.0*1.j
+            for oz in range(-1*shell_lim, shell_lim+1):
+                for oy in range(-1*shell_lim, shell_lim+1):
+                    for ox in range(-1*shell_lim, shell_lim+1):
+                        shell_radius = ox*ox + oy*oy + oz*oz
+                        if shell_radius > 3 and shell_radius < shell_lim**2:
+
+                            dx = np.array((ox*E, oy*E, oz*E))
+                            # r, theta, phi
+                            sph = spherical(dx)
+                            for nx in range(fmm.L):
+                                for mx in range(-1*nx, nx+1):
+
+                                    o = Ifoo(kx, mx) * Afoo(nx, mx) * Afoo(jx, kx) / \
+                                        Afoo(jx + nx, mx - kx) * ((-1.)**nx)
+
+                                    o /= (sph[0]**(jx+nx+1))
+
+                                    o *= fmm.up[fmm.re_lm(nx, mx)] + 1.j* \
+                                        fmm.up[fmm.im_lm(nx, mx)]
+
+                                    o *= Yfoo(jx+nx, mx-kx, sph[1], sph[2])
+
+                                    contrib += o
+
+            tol = 10.**-16
+
+            creal = fmm.tree_parent[1][0,0,0,fmm.re_lm(jx, kx)]
+            if abs(contrib.real - creal) > tol:
+                serr = red(creal)
+            else:
+                serr = str(creal)
+
+            cimag = fmm.tree_parent[1][0,0,0,fmm.im_lm(jx, kx)]
+
+            if abs(contrib.imag - cimag) > tol:
+                serr_im = red(cimag)
+            else:
+                serr_im = str(cimag)
+
+
+            #print("\tkx:{: >5} re {: >30} {:>30} | im {: >30} {: >30}".format(
+            #    kx,
+            #    contrib.real, serr,
+            #    contrib.imag, serr_im))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def nacl_lattice(crn, e, sd=0.05, seed=87712846):

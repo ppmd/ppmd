@@ -229,11 +229,11 @@ def get_p_exp(fmm, disp_sph):
 
 def test_fmm_oct_1():
 
-    R = 3
-    eps = 10.**-6
-    free_space = True
+    R = 2
+    eps = 10.**-2
+    free_space = '27'
 
-    N = 8
+    N = 2
     E = 4.
 
     A = state.State()
@@ -291,8 +291,8 @@ def test_fmm_oct_1():
         A.Q[0,0] = 1.
 
     elif N == 2:
-        A.P[0,:] = ( 0.25*E, 0.25*E, 0.25*E)
-        A.P[1,:] = ( -0.25*E, -0.25*E, 0)
+        #A.P[0,:] = ( 0.25*E, 0.25*E, 0.25*E)
+        #A.P[1,:] = ( -0.25*E, -0.25*E, 0)
 
         #A.P[0,:] = (0, -0.25*E, 0)
         #A.P[1,:] = (0, 0.25*E, 0)
@@ -300,6 +300,9 @@ def test_fmm_oct_1():
         #A.P[1,:] = (0, 0, 0.25*E)
 
         #A.Q[:,0] = 1.
+
+        A.P[0] = (-1.5, 1, 1)
+        A.P[1] = (1.5, 1, 1)
 
         A.Q[0,0] = -1.
         A.Q[1,0] = 1.
@@ -320,9 +323,20 @@ def test_fmm_oct_1():
 
 
         eps = 0.00001
-        A.P[6,:] -= eps
-        A.Q[0,0] = 100.
-    
+        #A.P[0:N:2,0] += eps
+        #A.P[0,0] -= eps
+        A.P[4,0] -= eps
+        A.P[:, 2] -= 0.200
+        A.P[:, 1] -= 0.200
+
+        #A.Q[0,0] = 0.
+        A.Q[1,0] = 0.
+        A.Q[4,0] = 0.
+        A.Q[3,0] = 0.
+        A.Q[5,0] = 0.
+        A.Q[6,0] = 0.
+        A.Q[7,0] = 0.
+
 
     A.scatter_data_from(0)
 
@@ -331,12 +345,19 @@ def test_fmm_oct_1():
     phi_py = fmm(A.P, A.Q, async=ASYNC)
     t1 = time.time()
 
-    print("cell", A.fmm_cell[:N:])
+    for px in range(N):
+        print("px:", px, "\tcell:", A.fmm_cell[px,0], "\tpos:", A.P[px,:])
+
 
     print("halo 1 1 1 \n", fmm.tree_halo[1][3,3,3,:4:])
+    for lx in range(6):
+        print("lx", lx)
+        for mx in range(-1*lx, lx+1):
+            print("mx", mx, fmm.tree_halo[1][3,3,3,fmm.re_lm(lx, mx)], fmm.tree_halo[1][3,3,3,fmm.im_lm(lx, mx)])
+
     print(fmm.tree_halo[1][3,3,3,fmm.L**2:fmm.L**2+4:])
 
-    print("sph", spherical((-1, -1, -1)))
+    print("sph", spherical((0, 0.5, 0)))
 
 
     print("-1", math.sqrt(3.)*Y(1, 1, math.acos(-1./math.sqrt(3.)),math.pi*1.25))
@@ -344,8 +365,9 @@ def test_fmm_oct_1():
     print("1",  math.sqrt(3.)*Y(1, -1, math.acos(-1./math.sqrt(3.)),math.pi*1.25))
 
 
-    for lx in range(6):
-        print("lx", lx)
+    for lx in range(fmm.L):
+        if DEBUG:
+            print("lx", lx)
         for mx in range(-1*lx, lx+1):
             py_re = 0.0
             py_im = 0.0
@@ -355,9 +377,13 @@ def test_fmm_oct_1():
                 py_re += ynm.real
                 py_im += ynm.imag
 
-            print("\t{: >5} | {: >30} {: >30} | {: >30} {: >30} ".format(
-                mx, py_re, fmm.up[fmm.re_lm(lx, mx)],
-                py_im, fmm.up[fmm.im_lm(lx, mx)]))
+            assert abs(py_re - fmm.up[fmm.re_lm(lx, mx)]) < 10**-10
+            assert abs(py_im - fmm.up[fmm.im_lm(lx, mx)]) < 10**-10
+
+            #if DEBUG:
+            #    print("\t{: >5} | {: >30} {: >30} | {: >30} {: >30} ".format(
+            #        mx, py_re, fmm.up[fmm.re_lm(lx, mx)],
+            #        py_im, fmm.up[fmm.im_lm(lx, mx)]))
 
 
     if DIRECT:
@@ -369,6 +395,8 @@ def test_fmm_oct_1():
                 phi_direct += A.Q[ix, 0] * A.Q[jx, 0] /rij
             if free_space == '27':
                 for ofx in cube_offsets:
+
+
                     cube_mid = np.array(ofx)*E
                     for jx in range(N):
                         rij = np.linalg.norm(A.P[jx,:] + cube_mid - A.P[ix, :])
@@ -380,6 +408,12 @@ def test_fmm_oct_1():
             phi_direct = -0.12131955438932764957
         else:
             raise RuntimeError("bad parameter")
+
+    NOX=False
+    if NOX:
+        print("correction")
+        phi_py -= -1./np.linalg.norm(A.P[1,:] - np.array((E,0,0)) - A.P[0,:])
+
 
     local_err = abs(phi_py - phi_direct)
     if local_err > eps: serr = red(local_err)
@@ -396,6 +430,104 @@ def test_fmm_oct_1():
         print("ERR:\t\t", serr)
 
     #assert local_err < eps
+
+    return
+
+    def Afoo(n, m): return ((-1.)**n)/math.sqrt(math.factorial(n - m) * \
+                                                math.factorial(n + m))
+    def Ifoo(k, m): return ((1.j) ** (abs(k-m) - abs(k) - abs(m)))
+
+    cell = (0,1,1)
+
+    mom = fmm.tree_halo[1]
+
+    for jx in range(fmm.L):
+        print("jx:", jx)
+        for kx in range(-1*jx, jx+1):
+
+            contrib = 0.0 + 0.0*1.j
+            tcount = 0
+            for oz in range(-2-cell[2], 4-cell[2]):
+                for oy in range(-2-cell[1], 4-cell[1]):
+                    for ox in range(-2-cell[0], 4-cell[0]):
+                        if ox*ox + oy*oy + oz*oz > 3:
+                            tcount += 1
+                            dx = np.array((ox*E*0.5, oy*E*0.5, oz*E*0.5))
+
+                            # r, theta, phi
+                            sph = spherical(dx)
+                            for nx in range(fmm.L):
+                                for mx in range(-1*nx, nx+1):
+
+                                    o = Ifoo(kx, mx) * Afoo(nx, mx) * Afoo(jx, kx) / \
+                                        Afoo(jx + nx, mx - kx) * ((-1.)**nx)
+
+                                    mmx = 2 + cell[0] + ox
+                                    mmy = 2 + cell[1] + oy
+                                    mmz = 2 + cell[2] + oz
+
+                                    o /= (sph[0]**(jx+nx+1))
+
+                                    o *= mom[mmz, mmy, mmx, fmm.re_lm(nx, mx)]+\
+                                        1.j* \
+                                        mom[mmz, mmy, mmx, fmm.im_lm(nx, mx)]
+                                    o *= Y(jx+nx, mx-kx, sph[1], sph[2])
+
+                                    contrib += o
+
+            assert tcount == 189
+
+            tol = 10.**-16
+
+            creal = fmm.tree_plain[1][cell[2],cell[1],cell[0],fmm.re_lm(jx, kx)]
+            if abs(contrib.real - creal) > tol:
+                serr = red(creal)
+            else:
+                serr = str(creal)
+
+            cimag = fmm.tree_plain[1][cell[2],cell[1],cell[0],fmm.im_lm(jx, kx)]
+
+            if abs(contrib.imag - cimag) > tol:
+                serr_im = red(cimag)
+            else:
+                serr_im = str(cimag)
+
+
+            print("\tkx:{: >5} re {: >30} {:>30} | im {: >30} {: >30}".format(
+                kx,
+                contrib.real, serr,
+                contrib.imag, serr_im))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

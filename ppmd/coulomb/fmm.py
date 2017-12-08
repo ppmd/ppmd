@@ -267,17 +267,19 @@ class PyFMM(object):
             for iy, py in enumerate(range(-3, 4)):
                 for ix, px in enumerate(range(-3, 4)):
                     # get spherical coord of box
+                    # r, phi, theta
                     sph = self._cart_to_sph((px, py, pz))
                     
                     for lx in range(self.L*2):
-                        msci_range = list(range(lx, -1, -1)) +\
-                                     list(range(1, lx+1))
                         mact_range = list(range(-1*lx, 1)) +\
                                      list(range(1, lx+1))
+
+                        msci_range = [abs(mx) for mx in mact_range]
+
                         scipy_p = lpmv(msci_range, lx, math.cos(sph[2]))
                         for mxi, mx in enumerate(mact_range):
-                            val = math.sqrt(math.factorial(
-                                lx - abs(mx))/math.factorial(lx + abs(mx)))
+                            val = math.sqrt(float(math.factorial(
+                                lx - abs(mx)))/math.factorial(lx + abs(mx)))
 
                             val *= scipy_p[mxi].real
                             # pre compute the 1./A_{j+n}^{m-k}
@@ -366,9 +368,9 @@ class PyFMM(object):
         if (P.j[1] >= {hey}) {{ jcy += nsy; }}
         if (P.j[2] >= {hez}) {{ jcz += nsz; }}
         
-        if (P.j[0] < -1.0*{hex}) {{ jcx -= nsx; }}
-        if (P.j[1] < -1.0*{hey}) {{ jcy -= nsy; }}
-        if (P.j[2] < -1.0*{hez}) {{ jcz -= nsz; }}        
+        if (P.j[0] <= -1.0*{hex}) {{ jcx -= nsx; }}
+        if (P.j[1] <= -1.0*{hey}) {{ jcy -= nsy; }}
+        if (P.j[2] <= -1.0*{hez}) {{ jcz -= nsz; }}        
         //*/ 
         
         int dx = icx - jcx;
@@ -392,12 +394,12 @@ class PyFMM(object):
         const double r2 = rx*rx + ry*ry + rz*rz;
         const double r = sqrt(r2);
         //if (mask > 0) {{
-        printf("---------------------------\\n");
-        printf("KERNEL: %f %f %d \\n", mask, r, dr2);
-        printf("GLOBAL_CELLS: %d %d \\n", FMM_CELL.i[0], FMM_CELL.j[0]);
-        printf("\t%d\t%d\t%d \\n", dx, dy, dz);
-        printf("\tI\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.i[0], P.i[1], P.i[2], icx, icy, icz);
-        printf("\tJ\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.j[0], P.j[1], P.j[2], jcx, jcy, jcz);
+        //printf("---------------------------\\n");
+        //printf("KERNEL: %f %f %d \\n", mask, r, dr2);
+        //printf("GLOBAL_CELLS: %d %d \\n", FMM_CELL.i[0], FMM_CELL.j[0]);
+        //printf("\t%d\t%d\t%d \\n", dx, dy, dz);
+        //printf("\tI\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.i[0], P.i[1], P.i[2], icx, icy, icz);
+        //printf("\tJ\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.j[0], P.j[1], P.j[2], jcx, jcy, jcz);
         //}}
         
         PHI[0] += mask * Q.i[0] * Q.j[0] / r;
@@ -539,18 +541,10 @@ class PyFMM(object):
             self._level_call_async(self._translate_m_to_m, level, async)
             self._halo_exchange(level)
 
-            #if not _isnormal(self.tree_halo[level]):
-            #    _pdb_drop()
-
             self._level_call_async(self._translate_m_to_l, level, async)
-
-            #if not _isnormal(self.tree_plain[level]):
-            #    _pdb_drop()
 
             self._fine_to_coarse(level)
 
-            #if not _isnormal(self.tree_parent[level]):
-            #    _pdb_drop()
             if level > 1:
                 self.tree_parent[level][:] = 0.0
 
@@ -577,15 +571,8 @@ class PyFMM(object):
 
             self._translate_l_to_l(level)
 
-            if level == 1:
-                pass
-                #print("\n")
-                #print(self.tree_plain[1][1,1,1,:])
             self._coarse_to_fine(level)
 
-            if level == 2:
-                #print(self.tree_parent[2][1,1,1,:])
-                pass
 
 
 
@@ -595,6 +582,8 @@ class PyFMM(object):
 
         phi_extract = self._compute_cube_extraction(positions, charges)
         phi_near = self._compute_local_interaction(positions, charges)
+
+        #phi_near = 0.
 
         self._update_opt()
 
@@ -760,6 +749,7 @@ class PyFMM(object):
             INT32(self._tcount),
             _check_dtype(positions, REAL),
             _check_dtype(charges, REAL),
+            _check_dtype(self._tmp_cell, INT32),
             _check_dtype(self.domain.extent, REAL),
             _check_dtype(self.entry_data.local_offset, UINT64),
             _check_dtype(self.entry_data.local_size, UINT64),
@@ -892,6 +882,30 @@ class PyFMM(object):
                 self.tree_halo[level][:,-2::,:,:] = 0.0
             if lo[0] + ls[0] == gs:
                 self.tree_halo[level][-2::,:,:,:] = 0.0
+
+
+        #print("WARNING FUDGING HALOS")
+        #gs = self.tree[level].ncubes_side_global
+        #lo = self.tree[level].local_grid_offset
+        #ls = self.tree[level].local_grid_cube_size
+
+        ### z
+        #if lo[0] + ls[0] == gs:
+        #    self.tree_halo[level][-2::,:,:,:] = 0.0
+        #if lo[0] == 0:
+        #        self.tree_halo[level][:2:,:,:,:] = 0.0
+        ### Y
+        #if lo[1] + ls[1] == gs:
+        #    self.tree_halo[level][:,-2::,:,:] = 0.0
+        #if lo[1] == 0:
+        #    self.tree_halo[level][:,:2:,:,:] = 0.0
+
+        # x
+        #if lo[2] + ls[2] == gs:
+        #   self.tree_halo[level][:,:,-2::,:] = 0.0
+        #if lo[2] == 0:
+        #    self.tree_halo[level][:,:,:2:,:] = 0.0
+
 
         #print(self.tree_halo[level][:,:,:,0])
         self.timer_halo.pause()
@@ -1092,6 +1106,7 @@ class PyFMM(object):
                     scipy_p = lpmv(mxval, lx, math.cos(dispt[2]))
 
                     for mxi, mx in enumerate(mval):
+
                         assert abs(scipy_p[mxi].imag) < 10.**-16
 
                         val = math.sqrt(float(math.factorial(
@@ -1129,7 +1144,6 @@ class PyFMM(object):
 
                     for mxi, mx in enumerate(mval):
                         assert abs(scipy_p[mxi].imag) < 10.**-16
-
                         val = math.sqrt(float(math.factorial(
                             lx - abs(mx)))/math.factorial(lx + abs(mx)))
 
@@ -1214,6 +1228,7 @@ class PyFMM(object):
                     #print("lx", lx, "\thxi", hxi, "\thx", hx, "\tcoeff", coeff)
 
                     for mxi, mx in enumerate(mval):
+
                         val = math.sqrt(float(math.factorial(
                             lx - abs(mx)))/math.factorial(lx + abs(mx)))
                         re_exp = np.cos(mx * dispt[1]) * val
@@ -1330,13 +1345,18 @@ class PyFMM(object):
                       "\tewald val:", self._boundary_terms[self.re_lm(nx, mx)]
                 )
 
-        print(30*"-", "-----------", 30*'-')
         print(30*"-", "im    terms", 30*'-')
         print("radius:", limit)
         for nx in range(1, nl, 1):
             for mx in list(range(-1*nx, nx+1, 1)):
+                ival = im_terms[self.re_lm(nx, mx)]
+                if abs(ival) > 10.**-8:
+                    str_val = red(ival)
+                else:
+                    str_val = str(ival)
+
                 print("nx:", nx, "\tmx:", mx,
-                      "\tshell val:", im_terms[self.re_lm(nx, mx)],
+                      "\tshell val:", str_val,
                 )
 
         return terms

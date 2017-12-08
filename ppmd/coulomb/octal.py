@@ -281,6 +281,7 @@ def compute_interaction_tlookup():
     Compute the 8x189 lookup table to map from offset index to recomputed
     spherical harmonics. Theta part.
     """
+    # xyz to lin
     def tuple_to_lin(x): return (x[:, 2]+3)*49 + (x[:, 1]+3)*7 + x[:, 0]+3
 
     ro = np.zeros(shape=(8, 189), dtype=ctypes.c_int32)

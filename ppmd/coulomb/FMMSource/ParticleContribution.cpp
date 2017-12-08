@@ -77,9 +77,9 @@ static inline INT64 compute_cell_spherical(
     const REAL dy = py - ccy;
     const REAL dz = pz - ccz;
     
-    //printf("dx %f px %f mid %f\n", dx, px, ccx);
-    //printf("dy %f py %f mid %f\n", dy, py, ccy);
-    //printf("dz %f pz %f mid %f\n", dz, pz, ccz);
+    printf("dx %f px %f mid %f\n", dx, px, ccx);
+    printf("dy %f py %f mid %f\n", dy, py, ccy);
+    printf("dz %f pz %f mid %f\n", dz, pz, ccz);
     
 
     // convert to spherical
@@ -87,22 +87,14 @@ static inline INT64 compute_cell_spherical(
     const REAL dx2_p_dy2 = dx2 + dy*dy;
     const REAL d2 = dx2_p_dy2 + dz*dz;
     *radius = sqrt(d2);
+    
+    const REAL theta = atan2(sqrt(dx2_p_dy2), dz);
+    *ctheta = cos(theta);
+    
+    const REAL phi = atan2(dy, dx);
 
-    const REAL dx2_p_dy2_o_d2 = dx2_p_dy2 / d2;
-    // theta part
-    const REAL ct1 = isnormal(dx2_p_dy2_o_d2) ? sqrt(1.0 - dx2_p_dy2_o_d2) : 1.0;
-    *ctheta = (dz >= 0.0) ? ct1 : -1.0 * ct1;
-
-
-
-    // phi part
-    const REAL sqrt_dx2pdy2 = sqrt(dx2_p_dy2);
-    const REAL dx_o_sqrt_dx2pdy2 = dx / sqrt_dx2pdy2;
-    *cphi = isnormal(dx_o_sqrt_dx2pdy2) ? dx_o_sqrt_dx2pdy2 : 1.0;
-    const REAL dx2_o_dx2_p_dy2 = dx2/dx2_p_dy2;
-    const REAL sp1 = isnormal(dx2_o_dx2_p_dy2) ? sqrt(1.0 - dx2_o_dx2_p_dy2) : 0.0;
-
-    *sphi = (dy > 0) ? sp1 : -1.0 * sp1; 
+    *cphi = cos(phi);
+    *sphi = sin(phi); 
     *msphi = -1.0 * (*sphi);
     return cell_idx;
 }
@@ -175,7 +167,7 @@ INT32 particle_contribution(
 
         INT32 global_cell = -1;
         const INT64 ix_cell = compute_cell(cube_ilen, position[ix*3], position[ix*3+1], 
-                position[ix*3+2], boundary, cube_offset, cube_dim, cube_side_counts,&global_cell);
+                position[ix*3+2], boundary, cube_offset, cube_dim, cube_side_counts, &global_cell);
 
         if (ix_cell < 0) {
             #pragma omp critical
@@ -251,6 +243,9 @@ INT32 particle_contribution(
                 position[ix*3+2], boundary, cube_offset, cube_dim,
                 &radius, &ctheta, &cphi, &sphi, &msphi
             );
+
+            printf("%d \t radius: %f cos(theta): %f cos(phi): %f sin(phi): %f -1*sin(phi): %f\n", 
+            ix, radius, ctheta, cphi, sphi, msphi);
             
             if (tx != ix_cell % thread_max) {           
                 #pragma omp critical
