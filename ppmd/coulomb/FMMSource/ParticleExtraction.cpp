@@ -11,6 +11,22 @@ static inline void cplx_mul_add(
     *h += x * b + a * y;
 }
 
+static inline void cplx_mul(
+    const REAL a,
+    const REAL b,
+    const REAL x,
+    const REAL y,
+    REAL * RESTRICT g,
+    REAL * RESTRICT h
+){
+   // ( a + bi) * (x + yi) = (ax - by) + (xb + ay)i
+    *g = a * x - b * y;
+    *h = x * b + a * y;
+}
+
+
+
+
 static inline INT64 compute_cell_spherical(
     const REAL * RESTRICT cube_inverse_len,
     const REAL * RESTRICT cube_half_len,
@@ -205,6 +221,7 @@ INT32 particle_extraction(
     const INT32 thread_max,
     const REAL * RESTRICT position,             // xyz
     const REAL * RESTRICT charge,
+    REAL * RESTRICT force,
     const INT32 * RESTRICT fmm_cell,
     const REAL * RESTRICT boundary,             // xl. xu, yl, yu, zl, zu
     const UINT64 * RESTRICT cube_offset,        // zyx (slowest to fastest)
@@ -264,7 +281,7 @@ INT32 particle_extraction(
     REAL potential_energy = 0.0;
 
     #pragma omp parallel for default(none) shared(thread_assign, position, \
-        boundary, cube_offset, cube_dim, err, exp_space, \
+        boundary, cube_offset, cube_dim, err, exp_space, force, \
         factorial_vec, double_factorial_vec, P_SPACE_VEC, \
         cube_half_side_len, cube_ilen, charge, local_moments, fmm_cell, cube_side_counts) \
         schedule(dynamic) \
@@ -275,110 +292,148 @@ INT32 particle_extraction(
         REAL * P_SPACE = P_SPACE_VEC[tid];
         REAL local_pe = 0.0;
             
-            if (ix<0) {
-                #pragma omp critical
-                {err = -5;}
-            } else if (ix >= npart) {
-                #pragma omp critical
-                {err = -6;}
-            }
+        if (ix<0) {
+            #pragma omp critical
+            {err = -5;}
+        } else if (ix >= npart) {
+            #pragma omp critical
+            {err = -6;}
+        }
 
 
-            REAL radius, ctheta, cphi, sphi, msphi;
-            const INT64 ix_cell = extract_cell_spherical(
-                cube_ilen, cube_half_side_len, position[ix*3], position[ix*3+1], 
-                position[ix*3+2], boundary, cube_offset, cube_dim,
-                cube_side_counts, fmm_cell[ix],
-                &radius, &ctheta, &cphi, &sphi, &msphi
-            );
-            //compute spherical harmonic moments
-            // start with the complex exponential (will not vectorise)
-            REAL * RESTRICT exp_vec = exp_space[tid]; 
-            const REAL * RESTRICT cube_start = &local_moments[ix_cell*ncomp];
-            const REAL * RESTRICT cube_start_im = \
-                &local_moments[ix_cell*ncomp + nlevel*nlevel];
+        REAL radius, ctheta, cphi, sphi, msphi;
+        const INT64 ix_cell = extract_cell_spherical(
+            cube_ilen, cube_half_side_len, position[ix*3], position[ix*3+1], 
+            position[ix*3+2], boundary, cube_offset, cube_dim,
+            cube_side_counts, fmm_cell[ix],
+            &radius, &ctheta, &cphi, &sphi, &msphi
+        );
+        //compute spherical harmonic moments
+        // start with the complex exponential (will not vectorise)
+        REAL * RESTRICT exp_vec = exp_space[tid]; 
+        const REAL * RESTRICT cube_start = &local_moments[ix_cell*ncomp];
+        const REAL * RESTRICT cube_start_im = \
+            &local_moments[ix_cell*ncomp + nlevel*nlevel];
 
 
-            exp_vec[EXP_RE_IND(nlevel, 0)] = 1.0;
-            exp_vec[EXP_IM_IND(nlevel, 0)] = 0.0;
-            for (INT32 lx=1 ; lx<=((INT32)nlevel) ; lx++){
-                next_pos_exp(
-                    cphi, sphi,
-                    exp_vec[EXP_RE_IND(nlevel, lx-1)],
-                    exp_vec[EXP_IM_IND(nlevel, lx-1)],
-                    &exp_vec[EXP_RE_IND(nlevel, lx)],
-                    &exp_vec[EXP_IM_IND(nlevel, lx)]);
-                next_neg_exp(
-                    cphi, msphi,
-                    exp_vec[EXP_RE_IND(nlevel, -1*(lx-1))],
-                    exp_vec[EXP_IM_IND(nlevel, -1*(lx-1))],
-                    &exp_vec[EXP_RE_IND(nlevel, -1*lx)],
-                    &exp_vec[EXP_IM_IND(nlevel, -1*lx)]);
-            }
+        exp_vec[EXP_RE_IND(nlevel, 0)] = 1.0;
+        exp_vec[EXP_IM_IND(nlevel, 0)] = 0.0;
+        for (INT32 lx=1 ; lx<=((INT32)nlevel) ; lx++){
+            next_pos_exp(
+                cphi, sphi,
+                exp_vec[EXP_RE_IND(nlevel, lx-1)],
+                exp_vec[EXP_IM_IND(nlevel, lx-1)],
+                &exp_vec[EXP_RE_IND(nlevel, lx)],
+                &exp_vec[EXP_IM_IND(nlevel, lx)]);
+            next_neg_exp(
+                cphi, msphi,
+                exp_vec[EXP_RE_IND(nlevel, -1*(lx-1))],
+                exp_vec[EXP_IM_IND(nlevel, -1*(lx-1))],
+                &exp_vec[EXP_RE_IND(nlevel, -1*lx)],
+                &exp_vec[EXP_IM_IND(nlevel, -1*lx)]);
+        }
 
-            const REAL sqrt_1m2lx = sqrt(1.0 - ctheta*ctheta);
+        const REAL sqrt_1m2lx = sqrt(1.0 - ctheta*ctheta);
 
-            // P_0^0 = 1;
-            P_SPACE[P_SPACE_IND(nlevel, 0, 0)] = 1.0;
-            
-            for( int lx=0 ; lx<((int)nlevel) ; lx++){
+        // P_0^0 = 1;
+        P_SPACE[P_SPACE_IND(nlevel, 0, 0)] = 1.0;
+        
+        for( int lx=0 ; lx<((int)nlevel) ; lx++){
 
-                //compute the (lx+1)th P values using the lx-th values
-                if (lx<(nlevel-1) ){ 
-                    P_SPACE[P_SPACE_IND(nlevel, lx+1, lx+1)] = \ 
-                    (-1.0 - 2.0*lx) * sqrt_1m2lx * \ 
+            //compute the (lx+1)th P values using the lx-th values
+            if (lx<(nlevel-1) ){ 
+                P_SPACE[P_SPACE_IND(nlevel, lx+1, lx+1)] = \ 
+                (-1.0 - 2.0*lx) * sqrt_1m2lx * \ 
+                P_SPACE[P_SPACE_IND(nlevel, lx, lx)];
+
+                P_SPACE[P_SPACE_IND(nlevel, lx+1, lx)] = \
+                    ctheta * (2*lx + 1) * \
                     P_SPACE[P_SPACE_IND(nlevel, lx, lx)];
 
-                    P_SPACE[P_SPACE_IND(nlevel, lx+1, lx)] = \
-                        ctheta * (2*lx + 1) * \
-                        P_SPACE[P_SPACE_IND(nlevel, lx, lx)];
-
-                    for( int mx=0 ; mx<lx ; mx++ ){
-                        P_SPACE[P_SPACE_IND(nlevel, lx+1, mx)] = \
-                            (ctheta * (2.0*lx+1.0) * \
-                            P_SPACE[P_SPACE_IND(nlevel, lx, mx)] - \
-                            (lx+mx)*P_SPACE[P_SPACE_IND(nlevel, lx-1, mx)])/ \
-                            (lx - mx + 1);
-                    }
-
+                for( int mx=0 ; mx<lx ; mx++ ){
+                    P_SPACE[P_SPACE_IND(nlevel, lx+1, mx)] = \
+                        (ctheta * (2.0*lx+1.0) * \
+                        P_SPACE[P_SPACE_IND(nlevel, lx, mx)] - \
+                        (lx+mx)*P_SPACE[P_SPACE_IND(nlevel, lx-1, mx)])/ \
+                        (lx - mx + 1);
                 }
+
+            }
+        }
+        
+
+        REAL sp_radius = 0.0;
+        REAL sp_phi    = 0.0;
+        REAL sp_theta  = 0.0;
+
+        // compute potential energy contribution
+        REAL rhol = 1.0;
+        REAL rhol2 = 1.0/radius;
+        //loop over l and m
+        for( int lx=0 ; lx<((int)nlevel) ; lx++ ){
+            
+            if (lx==0 && (std::isnan(rhol2) || std::isinf(rhol2))) {rhol2 = 0.0;}
+            if (lx==1) {rhol2 = 1.0;}
+            
+            
+
+            for( int mx=-1*lx ; mx<=lx ; mx++ ){
+                // energy computation
+                const UINT32 abs_mx = abs(mx);
+
+                const REAL ycoeff = sqrt(factorial_vec[lx - abs_mx]/
+                    factorial_vec[lx + abs_mx]);
+
+                const REAL plm = P_SPACE[P_SPACE_IND(nlevel, lx, abs_mx)];
+
+                const REAL ylm_re = ycoeff * plm * \
+                    exp_vec[EXP_RE_IND(nlevel, mx)];
+                const REAL ylm_im = ycoeff * plm * \
+                    exp_vec[EXP_IM_IND(nlevel, mx)];
+                
+                const REAL ljk_re = cube_start[CUBE_IND(lx, mx)];
+                const REAL ljk_im = cube_start_im[CUBE_IND(lx, mx)];
+
+                REAL pe_im = 0.0;
+                cplx_mul_add(
+                    ljk_re,
+                    ljk_im,
+                    ylm_re * rhol,
+                    ylm_im * rhol,
+                    &local_pe,
+                    &pe_im
+                );
+
+                REAL tmp_re;
+                REAL tmp_im;
+                
+                cplx_mul(ljk_re, ljk_im,
+                         ylm_re * rhol2, ylm_im * rhol2,
+                         &tmp_re, &tmp_im);
+
+                sp_radius += -1.0 * tmp_re * ((REAL) lx);
+                
+                printf("\t %d %d | %f %f\n", lx, mx, ljk_re, ljk_im);
+
+
+
             }
 
-            
-            REAL rhol = 1.0;
-            //loop over l and m
-            for( int lx=0 ; lx<((int)nlevel) ; lx++ ){
-                rhol = (lx > 0) ? rhol*radius : 1.0;
+            rhol *= radius;
+            rhol2 *= radius;
+        }
+        potential_energy += local_pe*0.5*charge[ix];
+        
 
-                for( int mx=-1*lx ; mx<=lx ; mx++ ){
-                    const UINT32 abs_mx = abs(mx);
-                    const REAL coeff = sqrt(factorial_vec[lx - abs_mx]/
-                        factorial_vec[lx + abs_mx]) * charge[ix] * rhol;
+        printf("%d | %f %f %f\n", ix, sp_radius, sp_phi, sp_theta);
+        sp_radius *= charge[ix];
 
-                    const REAL plm = P_SPACE[P_SPACE_IND(nlevel, lx, abs_mx)];
-                    const REAL ylm_re = coeff * plm * \
-                        exp_vec[EXP_RE_IND(nlevel, mx)];
-                    const REAL ylm_im = coeff * plm * \
-                        exp_vec[EXP_IM_IND(nlevel, mx)];
-                    
-                    REAL pe_im = 0.0;
+        force[ix*3    ] += sp_radius * cos(sp_phi) * sin(sp_theta);
+        force[ix*3 + 1] += sp_radius * sin(sp_phi) * sin(sp_theta);
+        force[ix*3 + 2] += sp_radius * cos(sp_theta);
 
-                    cplx_mul_add(
-                        cube_start[CUBE_IND(lx, mx)],
-                        cube_start_im[CUBE_IND(lx, mx)],
-                        ylm_re,
-                        ylm_im,
-                        &local_pe,
-                        &pe_im
-                    );
-                    
 
-                }
-            }
-            
         count++;
-        potential_energy += local_pe*0.5;
-        //potential_energy += local_pe;
     }   
 
     // printf("npart %d count %d\n", npart, count);

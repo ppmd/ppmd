@@ -1302,7 +1302,7 @@ def test_fmm_init_5_7_quad():
 def test_fmm_init_5_7():
     R = 2
 
-    N = 8
+    N = 4
     E = 4.
 
     rc = E/2
@@ -1354,14 +1354,13 @@ def test_fmm_init_5_7():
         A.P[0,:] = (0.0,-0.25*E + 0.4, 0.0)
         A.P[1,:] = (0.0, 0.25*E + 0.4, 0.0)
 
-        A.P[0,:] = (-0.25*E,-0.25*E,0)
-        A.P[1,:] = (0.25*E,0.25*E,0)
+        # long edge
+        A.P[0,:] = (-0.1*E, 0.0, 0.0)
+        A.P[1,:] = ( 0.1*E, 0.0, 0.0)
 
-        #A.P[0,:] = (-0.25*E, 0.0, 0.0)
-        #A.P[1,:] = ( 0.25*E, 0.0, 0.0)
-
-        #A.P[0,:] = (-0.24*E, 0.1, 0.1)
-        #A.P[1,:] = ( 0.24*E, 0.1, 0.1)
+        # short edge
+        A.P[0,:] = (-0.4*E, 0.0, 0.0)
+        A.P[1,:] = ( 0.4*E, 0.0, 0.0)
 
         A.Q[0,0] = -1.
         A.Q[1,0] = 1.
@@ -1435,6 +1434,9 @@ def test_fmm_init_5_7():
 
 
 
+
+
+
     t0 = time.time()
     #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
     phi_py = fmm(A.P, A.Q, async=ASYNC)
@@ -1491,6 +1493,8 @@ def test_fmm_init_5_7():
 
     # get far away contribution from multipole
 
+
+
     contrib = 0.0 + 0.0*1.j
     for px in range(N):
 
@@ -1509,6 +1513,9 @@ def test_fmm_init_5_7():
 
                 contrib += o * Yfoo(nx, mx, sph[1], sph[2])
 
+                print(abs(o * Yfoo(nx, mx, sph[1], sph[2])))
+
+
     err = abs(phi_direct + contrib.real - phi_ewald)
     if err > eps:
         serr = red(err)
@@ -1517,17 +1524,33 @@ def test_fmm_init_5_7():
 
     print("ENERGY DIRECT:\t", phi_direct + contrib.real)
     print("ERR:\t\t", serr)
+    print("FAR:\t", contrib.real, "\tNEAR:\t", phi_direct)
 
 
 
+    # plotting fun
+    import matplotlib.pyplot as plt
+    width = 0.35
+    fig, ax = plt.subplots()
 
 
+    llim = min(9, fmm.L)
 
+    ind = np.arange(llim)
 
+    heights = []
 
+    for lx in range(llim):
+        tmp = 0.0
+        for mx in range(-1*lx, lx+1):
+            tmp += abs(fmm.tree_parent[1][0,0,0,fmm.re_lm(lx, mx)]) \
+                 + abs(fmm.tree_parent[1][0,0,0,fmm.im_lm(lx, mx)])
+        heights += [tmp]
 
+    ax.bar(ind, heights)
 
-
+    plt.show()
+    # end plotting fun
 
 
 

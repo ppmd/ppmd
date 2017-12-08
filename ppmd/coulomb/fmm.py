@@ -70,7 +70,8 @@ def _check_dtype(arr, dtype):
 
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6,
-        free_space=False, r=None, shell_width=0.0, cuda=False):
+        free_space=False, r=None, shell_width=0.0, cuda=False,
+        force_unit=1.0, energy_unit=1.0):
 
         dtype = REAL
 
@@ -303,6 +304,7 @@ class PyFMM(object):
 
         # create a pairloop for finest level part
         P = data.ParticleDat(ncomp=3, dtype=dtype)
+        F = data.ParticleDat(ncomp=3, dtype=dtype)
         Q = data.ParticleDat(ncomp=1, dtype=dtype)
         FMM_CELL = data.ParticleDat(ncomp=1, dtype=ctypes.c_int)
         self.particle_phi = data.GlobalArray(ncomp=1, dtype=dtype)
@@ -384,7 +386,7 @@ class PyFMM(object):
         
         {FREE_SPACE}
 
-        const double mask = ((dr2 > 3) ? 0.0 : 0.5) * \
+        const double mask = ((dr2 > 3) ? 0.0 : 1.0) * \
             maskx*masky*maskz;
         
         const double rx = P.j[0] - P.i[0];
@@ -393,6 +395,18 @@ class PyFMM(object):
 
         const double r2 = rx*rx + ry*ry + rz*rz;
         const double r = sqrt(r2);
+        
+        const double ir = 1./r;
+        const double term1 = mask * Q.i[0] * Q.j[0] * ir;
+        PHI[0] += 0.5 * {ENERGY_UNIT} * term1;
+        
+        const double fcoeff = {FORCE_UNIT}*ir*ir*term1;
+        
+        F.i[0] -= fcoeff * rx;
+        F.i[1] -= fcoeff * ry;
+        F.i[2] -= fcoeff * rz;
+        
+        
         //if (mask > 0) {{
         //printf("---------------------------\\n");
         //printf("KERNEL: %f %f %d \\n", mask, r, dr2);
@@ -400,9 +414,9 @@ class PyFMM(object):
         //printf("\t%d\t%d\t%d \\n", dx, dy, dz);
         //printf("\tI\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.i[0], P.i[1], P.i[2], icx, icy, icz);
         //printf("\tJ\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.j[0], P.j[1], P.j[2], jcx, jcy, jcz);
-        //}}
+        //}}        
         
-        PHI[0] += mask * Q.i[0] * Q.j[0] / r;
+        
         """.format(**{
             'nsx': ns,
             'nsy': ns,
@@ -413,7 +427,9 @@ class PyFMM(object):
             'lx': ns / self.domain.extent[0],
             'ly': ns / self.domain.extent[1],
             'lz': ns / self.domain.extent[2],
-            'FREE_SPACE': free_space_mod
+            'FREE_SPACE': free_space_mod,
+            'ENERGY_UNIT': str(float(energy_unit)),
+            'FORCE_UNIT': str(float(force_unit))
         })
         pair_kernel = kernel.Kernel('fmm_pairwise', code=pair_kernel_src, 
             headers=(kernel.Header('math.h'),))
@@ -431,6 +447,7 @@ class PyFMM(object):
             dat_dict={
                 'P':P(access.READ),
                 'Q':Q(access.READ),
+                'F':F(access.INC),
                 'FMM_CELL': FMM_CELL(access.READ),
                 'PHI':self.particle_phi(access.INC_ZERO)
             },
@@ -507,12 +524,16 @@ class PyFMM(object):
         p[b+'up'] = self.timer_up.time()
         p[b+'exec_count'] = self.execution_count
 
-    def _compute_local_interaction(self, positions, charges):
+    def _compute_local_interaction(self, positions, charges, forces=None):
+        if forces is None:
+            forces = data.ParticleDat(ncomp=3, npart=positions.npart_total,
+                                      dtype=self.dtype)
         self.timer_local.start()
         self._pair_loop.execute(
             dat_dict = {
                 'P':positions(access.READ),
                 'Q':charges(access.READ),
+                'F':forces(access.INC),
                 'FMM_CELL':positions.group.fmm_cell(access.READ),
                 'PHI':self.particle_phi(access.INC_ZERO)
             }
@@ -550,17 +571,7 @@ class PyFMM(object):
 
         self._join_async()
 
-        for lx in range(5):
-            print("lx", lx)
-            for mx in range(-1*lx, lx+1):
-                print("\tMM{: >5} {: >30} {: >30}".format(
-                    mx,
-                    self.tree_parent[1][0,0,0,self.re_lm(lx, mx)],
-                    self.tree_parent[1][0,0,0,self.im_lm(lx, mx)])
-                )
-
         self.up = np.copy(self.tree_parent[1][0,0,0, :],)
-        print("up shape", self.up.shape)
 
         self.tree_parent[0][:] = 0.0
         self.tree_plain[0][:] = 0.0
@@ -574,14 +585,14 @@ class PyFMM(object):
             self._coarse_to_fine(level)
 
 
-
-
         #for level in range(self.R):
         #    print(level, 60*'-')
         #    print(self.tree_halo[level][:,:,:,0])
 
-        phi_extract = self._compute_cube_extraction(positions, charges)
-        phi_near = self._compute_local_interaction(positions, charges)
+        phi_extract = self._compute_cube_extraction(positions, charges,
+                                                    forces=forces)
+        phi_near = self._compute_local_interaction(positions, charges,
+                                                   forces=forces)
 
         #phi_near = 0.
 
@@ -719,7 +730,12 @@ class PyFMM(object):
         #fmm_cell.ctypes_data_post(mode=access.WRITE)
         self.timer_contrib.pause()
 
-    def _compute_cube_extraction(self, positions, charges):
+    def _compute_cube_extraction(self, positions, charges, forces=None):
+
+        if forces is None:
+            forces = data.ParticleDat(ncomp=3, npart=positions.npart_local,
+                                      dtype=self.dtype)
+
 
         self.timer_extract.start()
         ns = self.tree.entry_map.cube_side_count
@@ -749,6 +765,7 @@ class PyFMM(object):
             INT32(self._tcount),
             _check_dtype(positions, REAL),
             _check_dtype(charges, REAL),
+            _check_dtype(forces, REAL),
             _check_dtype(self._tmp_cell, INT32),
             _check_dtype(self.domain.extent, REAL),
             _check_dtype(self.entry_data.local_offset, UINT64),
@@ -763,7 +780,7 @@ class PyFMM(object):
         #print("far", positions.npart_local, phi.value)
 
         red_re = mpi.all_reduce(np.array((phi.value)))
-
+        forces.ctypes_data_post(access.W)
         self.timer_extract.pause()
         return red_re
 

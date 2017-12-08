@@ -30,7 +30,7 @@ static inline INT64 compute_cell(
 
     *global_cell = ((INT32) (  gcx + cube_side_counts[2] * (gcy + cube_side_counts[1] * gcz )  ));
 
-    printf("GLOBAL %f %f %f %d %d %d | %d\n", px, py, pz, gcx, gcy, gcz, *global_cell);
+    //printf("GLOBAL %f %f %f %d %d %d | %d\n", px, py, pz, gcx, gcy, gcz, *global_cell);
     return cx + cube_dim[2] * (cy + cube_dim[1] * cz);
 }
 
@@ -77,9 +77,9 @@ static inline INT64 compute_cell_spherical(
     const REAL dy = py - ccy;
     const REAL dz = pz - ccz;
     
-    printf("dx %f px %f mid %f\n", dx, px, ccx);
-    printf("dy %f py %f mid %f\n", dy, py, ccy);
-    printf("dz %f pz %f mid %f\n", dz, pz, ccz);
+    //printf("dx %f px %f mid %f\n", dx, px, ccx);
+    //printf("dy %f py %f mid %f\n", dy, py, ccy);
+    //printf("dz %f pz %f mid %f\n", dz, pz, ccz);
     
 
     // convert to spherical
@@ -183,7 +183,7 @@ INT32 particle_contribution(
 
             // assign this particle a cell for short range part
             fmm_cell[ix] = global_cell;
-            printf("ix = %d global_cell = %d\n", ix, global_cell);
+            //printf("ix = %d global_cell = %d\n", ix, global_cell);
         }
     }
     if (err < 0) { return err; }
@@ -244,8 +244,8 @@ INT32 particle_contribution(
                 &radius, &ctheta, &cphi, &sphi, &msphi
             );
 
-            printf("%d \t radius: %f cos(theta): %f cos(phi): %f sin(phi): %f -1*sin(phi): %f\n", 
-            ix, radius, ctheta, cphi, sphi, msphi);
+            //printf("%d \t radius: %f cos(theta): %f cos(phi): %f sin(phi): %f -1*sin(phi): %f\n", 
+            //ix, radius, ctheta, cphi, sphi, msphi);
             
             if (tx != ix_cell % thread_max) {           
                 #pragma omp critical
