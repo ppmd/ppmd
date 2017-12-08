@@ -1302,7 +1302,7 @@ def test_fmm_init_5_7_quad():
 def test_fmm_init_5_7():
     R = 2
 
-    N = 4
+    N = 8
     E = 4.
 
     rc = E/2
