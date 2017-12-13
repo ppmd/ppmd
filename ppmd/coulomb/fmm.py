@@ -234,7 +234,7 @@ class PyFMM(object):
                           '/FMMSource/ParticleExtraction.h') as fh:
             hpp = fh.read()
         self._extraction_lib = build.simple_lib_creator(hpp, cpp,
-            'fmm_contrib')['particle_extraction']
+            'fmm_extract')['particle_extraction']
 
         # --- periodic boundaries ---
         # "Precise and Efficient Ewald Summation for Periodic Fast Multipole
@@ -1143,7 +1143,8 @@ class PyFMM(object):
 
         for lx in range(2, self.L*2, 2):
 
-            iterset = range(-1, 2, 1)
+            maxs = 1
+            iterset = list(range(-1*maxs, maxs+1, 1))
 
             for tx in itertools.product(iterset, iterset, iterset):
                 if (tx[0] != 0) or (tx[1] != 0) or (tx[2] != 0):

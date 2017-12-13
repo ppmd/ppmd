@@ -171,6 +171,8 @@ static inline INT64 extract_cell_spherical(
     *stheta = sin(theta);
     
     const REAL phi = atan2(dy, dx);
+    
+    printf("xyz %f %f %f | sph %f %f %f\n", dx, dy, dz, *radius, phi, theta);
 
     *cphi = cos(phi);
     *sphi = sin(phi); 
@@ -363,6 +365,8 @@ INT32 particle_extraction(
             }
         }
         
+        const REAL _rstheta = 1.0/stheta;
+        const REAL rstheta = (std::isnan(_rstheta) || std::isinf(_rstheta)) ? 0.0 : _rstheta;
 
         REAL sp_radius = 0.0;
         REAL sp_phi    = 0.0;
@@ -417,11 +421,43 @@ INT32 particle_extraction(
                 sp_radius += -1.0 * tmp_re * ((REAL) lx);
                 
                 // phi part
-                const REAL phi_coeff = -1.0 * rhol2 * ycoeff * plm / stheta;
+                const REAL phi_coeff = -1.0 * rhol2 * ycoeff * plm;
+
+                const REAL phi_exp_re = -1 * ((REAL) mx) * exp_vec[EXP_IM_IND(nlevel, mx)];
+                const REAL phi_exp_im = ((REAL) mx) * exp_vec[EXP_RE_IND(nlevel, mx)];
+
+                cplx_mul(ljk_re, ljk_im,
+                         phi_exp_re, phi_exp_im,
+                         &tmp_re, &tmp_im);
+                
+                sp_phi += phi_coeff * tmp_im;
+    
+                // theta part
+                // P_{-j}^k = P_{j-1}^k => P_{-1}^k = P_0_k = 1.0 if k==0, 0 o/w.
+                const REAL plmm1 = (lx==0) ? ( (mx==0) ? 1.0 : 0.0 ) : P_SPACE[P_SPACE_IND(nlevel, lx-1, abs_mx)];
+
+                const REAL theta_coeff = -1.0 * rhol2 * ycoeff * rstheta * (
+                    (((REAL) lx) +  abs_mx ) * plmm1  - ((REAL) lx ) * ctheta * plm
+                );
+                
+                const REAL theta_exp_re = exp_vec[EXP_RE_IND(nlevel, mx)];
+                const REAL theta_exp_im = exp_vec[EXP_IM_IND(nlevel, mx)];
+
+                cplx_mul(ljk_re, ljk_im,
+                         theta_exp_re, theta_exp_im,
+                         &tmp_re, &tmp_im);
+
+                sp_theta += theta_coeff * tmp_re;
 
 
 
-                printf("\t %d %d | %f %f\n", lx, mx, ljk_re, ljk_im);
+
+//                if (lx==1){
+//                    printf("\t\t\t\t %d %d | %f %f\n", lx, mx, ljk_re, ljk_im);
+//                    printf("\t\t\t\t\t\t\t %f %f\n", phi_coeff*tmp_im,  phi_coeff);
+//                }
+
+                //printf("\t %d %d | %f %f %f | %f\n", lx, mx, sp_radius, sp_phi, sp_theta, phi_exp_re);
 
 
 
@@ -433,12 +469,32 @@ INT32 particle_extraction(
         potential_energy += local_pe*0.5*charge[ix];
         
 
+
+
+
         printf("%d | %f %f %f\n", ix, sp_radius, sp_phi, sp_theta);
         sp_radius *= charge[ix];
+        
+/*
 
-        force[ix*3    ] += sp_radius * cos(sp_phi) * sin(sp_theta);
-        force[ix*3 + 1] += sp_radius * sin(sp_phi) * sin(sp_theta);
-        force[ix*3 + 2] += sp_radius * cos(sp_theta);
+Using the following unit vectors:
+
+\hat{\vec{r}} = [ cos(phi) sin(theta), 
+                  sin(phi)sin(theta), 
+                  cos(theta)  ]
+
+\hat{\vec{theta}} = [   cos(phi)cos(theta),
+                        sin(phi)cos(theta),
+                        -sin(theta) ]
+ 
+\hat{\vec{phi}} = [     -sin(phi),
+                        cos(phi),
+                        0           ]
+*/
+
+        force[ix*3    ] += sp_radius * cphi * stheta + sp_theta * cphi * ctheta - sp_phi * sphi;
+        force[ix*3 + 1] += sp_radius * sphi * stheta + sp_theta * sphi * ctheta + sp_phi * cphi;
+        force[ix*3 + 2] += sp_radius * ctheta - sp_theta * stheta;
 
 
         count++;

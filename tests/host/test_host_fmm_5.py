@@ -1302,7 +1302,7 @@ def test_fmm_init_5_7_quad():
 def test_fmm_init_5_7():
     R = 2
 
-    N = 4
+    N = 2
     E = 4.
 
     rc = E/2
@@ -1361,6 +1361,10 @@ def test_fmm_init_5_7():
         # short edge
         A.P[0,:] = (-0.4*E, 0.0, 0.0)
         A.P[1,:] = ( 0.4*E, 0.0, 0.0)
+
+        #A.P[0,:] = (-0.25*E, 0.0, 0.0)
+        #A.P[1,:] = ( 0.25*E, 0.0, 0.0)
+
 
         A.Q[0,0] = -1.
         A.Q[1,0] = 1.
@@ -1480,12 +1484,18 @@ def test_fmm_init_5_7():
 
     phi_direct = 0.0
     # compute phi from image and surrounding 26 cells
+
+    iterset = list(range(-1, 2, 1))
+
     for ix in range(N):
         for jx in range(ix+1, N):
             rij = np.linalg.norm(A.P[jx,:] - A.P[ix,:])
             phi_direct += A.Q[ix, 0] * A.Q[jx, 0] /rij
 
-        for ofx in cube_offsets:
+        for ofx in itertools.product(iterset, iterset, iterset):
+            if ofx[0]*ofx[0] + ofx[1]*ofx[1] + ofx[2]*ofx[2] == 0:
+                continue
+
             cube_mid = np.array(ofx)*E
             for jx in range(N):
                 rij = np.linalg.norm(A.P[jx,:] + cube_mid - A.P[ix, :])
@@ -1513,7 +1523,7 @@ def test_fmm_init_5_7():
 
                 contrib += o * Yfoo(nx, mx, sph[1], sph[2])
 
-                print(abs(o * Yfoo(nx, mx, sph[1], sph[2])))
+                #print(abs(o * Yfoo(nx, mx, sph[1], sph[2])))
 
 
     err = abs(phi_direct + contrib.real - phi_ewald)
@@ -1523,12 +1533,14 @@ def test_fmm_init_5_7():
         serr = green(err)
 
     print("ENERGY DIRECT:\t", phi_direct + contrib.real)
+    print("ENERGY DIR_LOC:\t", phi_direct)
     print("ERR:\t\t", serr)
     print("FAR:\t", contrib.real, "\tNEAR:\t", phi_direct)
 
 
 
     # plotting fun
+    """
     import matplotlib.pyplot as plt
     width = 0.35
     fig, ax = plt.subplots()
@@ -1551,7 +1563,7 @@ def test_fmm_init_5_7():
 
     plt.show()
     # end plotting fun
-
+    """
 
 
 
@@ -1637,15 +1649,9 @@ def test_fmm_init_5_7():
 
 
 
-
-
-
-
-
-
     # check charge contribution and mtm
     for lx in range(fmm.L):
-        print("lx", lx)
+        #print("lx", lx)
         for mx in range(-1*lx, lx+1):
             py_re = 0.0
             py_im = 0.0
@@ -1688,7 +1694,7 @@ def test_fmm_init_5_7():
     print("1, 1, -1", fmm.tree_plain[1][1, 1, 0, 0])
     print("1, 1, 1", fmm.tree_plain[1][1, 1, 1, 0])
 
-    print(fmm.tree_halo[1][3,:,:,0])
+    #print(fmm.tree_halo[1][3,:,:,0])
 
     print("--------")
 
@@ -1723,6 +1729,38 @@ def test_fmm_init_5_7():
     print("FAR 2 0", fmm._boundary_terms[fmm.re_lm(2, 0)])
     print("FAR 4 0", fmm._boundary_terms[fmm.re_lm(4, 0)])
     print("FAR 6 0", fmm._boundary_terms[fmm.re_lm(6, 0)])
+
+
+
+    maxs = 100
+    iterset = list(range(-1*maxs, maxs+1))
+
+    dipole_phi = 0.0
+    r0x = 0.4
+    r0y = 0.3
+    r0z = 0.7
+
+
+    for dx in itertools.product(iterset, iterset, iterset):
+        dx2 = dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2]
+
+        if dx2==0:
+            continue
+
+        drx = r0x - dx[0]
+        dry = r0y - dx[1]
+        drz = r0z - dx[2]
+
+        dipole_phi += drz*((1./math.sqrt(drx*drx + dry*dry + drz*drz))**3.)
+
+
+    print("DIPOLE PHI:\t", dipole_phi)
+
+
+
+
+
+
 
 
 
@@ -1781,8 +1819,6 @@ def test_fmm_init_5_7():
             #    kx,
             #    contrib.real, serr,
             #    contrib.imag, serr_im))
-
-
 
 
 
@@ -1970,6 +2006,556 @@ def test_fmm_init_5_7_cube():
 
     if MPIRANK == 0 and DEBUG:
         print("Dipole moment:", dipole_ga[:])
+
+
+
+def test_dipole_1():
+    R = 2
+
+    N = 2
+    E = 1.
+
+    rc = E/2
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-5
+
+    ASYNC = False
+    EWALD = True
+    free_space = False
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+
+
+    if EWALD:
+        ewald = EwaldOrthoganalHalf(
+            domain=A.domain,
+            real_cutoff=rc,
+            eps=10.**-12,
+            shared_memory=SHARED_MEMORY
+        )
+
+    print(fmm.R, fmm.L)
+
+    A.npart = N
+
+    rng = np.random.RandomState(seed=1234)
+
+    A.P = data.PositionDat(ncomp=3)
+    A.F = data.ParticleDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.crr = data.ScalarArray(ncomp=1)
+    A.cri = data.ScalarArray(ncomp=1)
+    A.crs = data.ScalarArray(ncomp=1)
+
+
+    rng = np.random.RandomState(seed=1234)
+    A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
+    A.Q[:] = rng.uniform(low=-1., high=1., size=(N,1))
+    bias = np.sum(A.Q[:])/N
+    A.Q[:] -= bias
+
+    if N == 2:
+        A.P[0,:] = (0.0, -0.25*E, 0.0)
+        A.P[1,:] = (0.0,  0.25*E, 0.0)
+
+        A.Q[0,0] = -1.
+        A.Q[1,0] = 1.
+
+    print(A.P[:N:,:])
+
+
+    A.scatter_data_from(0)
+
+
+    dipole_src = """
+    dipole[0] += P.i[0] * Q.i[0];
+    dipole[1] += P.i[1] * Q.i[0];
+    dipole[2] += P.i[2] * Q.i[0];
+    """
+    dipole_ga = data.GlobalArray(ncomp=3)
+    dipole_kernel = kernel.Kernel('dipole', dipole_src)
+    dipole_loop = loop.ParticleLoopOMP(kernel=dipole_kernel,
+                                       dat_dict={
+                                           'dipole': dipole_ga(access.INC_ZERO),
+                                           'P': A.P(access.READ),
+                                           'Q': A.Q(access.READ)
+                                       })
+    dipole_loop.execute()
+
+    print("DIPOLE:\t", dipole_ga[:])
+
+
+    t0 = time.time()
+    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    t1 = time.time()
+
+
+    t2 = time.time()
+    if EWALD:
+        ewald.evaluate_contributions(positions=A.P, charges=A.Q)
+        A.cri[0] = 0.0
+        ewald.extract_forces_energy_reciprocal(A.P, A.Q, A.F, A.cri)
+        A.crr[0] = 0.0
+        ewald.extract_forces_energy_real(A.P, A.Q, A.F, A.crr)
+        A.crs[0] = 0.0
+        ewald.evaluate_self_interactions(A.Q, A.crs)
+    t3 = time.time()
+
+    phi_ewald = A.cri[0] + A.crr[0] + A.crs[0]
+
+
+    local_err = abs(phi_py - phi_ewald)
+    if local_err > eps: serr = red(local_err)
+    else: serr = green(local_err)
+
+    if MPIRANK == 0 and DEBUG:
+        print(60*"-")
+        #opt.print_profile()
+        print(60*"-")
+        print("TIME FMM:\t", t1 - t0)
+        print("TIME EWALD:\t", t3 - t2)
+        print("ENERGY FMM:\t", phi_py)
+        print("ENERGY EWALD:\t", phi_ewald, A.cri[0], A.crr[0], A.crs[0])
+        print("ERR:\t\t", serr)
+
+    r0x = 0.4
+    r0y = 0.3
+    r0z = 0.7
+
+    maxs = 50
+    mins = 10
+
+    iterset = list(range(-1*maxs, maxs+1))
+
+    dipole_phi = 0.0
+
+    for dx in itertools.product(iterset, iterset, iterset):
+        if dx[0]*dx[0] < mins*mins and \
+            dx[1]*dx[1] < mins*mins and \
+            dx[2]*dx[2] < mins*mins:
+            continue
+
+        #if dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2] == 0:
+        #    continue
+
+        drx = r0x - dx[0]
+        dry = r0y - dx[1]
+        drz = r0z - dx[2]
+
+        dipole_phi += drz*((1./math.sqrt(drx*drx + dry*dry + drz*drz))**3.)
+
+    print("DIPOLE PHI:\t", dipole_phi)
+
+
+
+
+
+
+    # calculate everything "not very far away" directly
+
+    # compute phi from image and surrounding 26 cells
+    maxs = 15
+    mins = 1
+
+
+    point = np.array((r0x, r0y, r0z))
+
+    iterset = list(range(-1, 2))
+    phi_direct = 0.0
+    for jx in range(N):
+        for dx in itertools.product(iterset, iterset, iterset):
+            if dx[0]*dx[0] < mins*mins and \
+                dx[1]*dx[1] < mins*mins and \
+                dx[2]*dx[2] < mins*mins:
+                continue
+
+            cube_mid = np.array(dx)*E
+            rij = np.linalg.norm(A.P[jx,:] + cube_mid - point)
+            phi_direct += A.Q[jx, 0] /rij
+
+
+    # get far away contribution from multipole
+
+    contrib = 0.0 + 0.0*1.j
+
+    # r, theta, phi
+    sph = spherical(point)
+
+    for nx in range(fmm.L):
+        for mx in range(-1*nx, nx+1):
+
+            o = fmm.tree_parent[1][0,0,0,fmm.re_lm(nx, mx)] + 1.j* \
+                fmm.tree_parent[1][0,0,0,fmm.im_lm(nx, mx)]
+
+            o *= (sph[0]**nx)
+            #o *= A.Q[px,0]
+            #o *= 0.5
+
+            contrib += o * Yfoo(nx, mx, sph[1], sph[2])
+
+
+
+    err = abs(phi_direct + contrib.real - phi_ewald)
+    if err > eps:
+        serr = red(err)
+    else:
+        serr = green(err)
+
+    print("ENERGY DIRECT:\t", phi_direct + contrib.real)
+    print("ENERGY DIR_LOC:\t", phi_direct)
+    print("ERR:\t\t", serr)
+    print("FAR:\t", contrib.real, "\tNEAR:\t", phi_direct)
+
+    phi_two = phi_direct + contrib.real
+
+    errs = []
+
+    import matplotlib.pyplot as plt
+    plt.ion()
+    fig, ax = plt.subplots()
+
+    plt.show()
+
+    for maxs in range(1, 40):
+
+        iterset = list(range(-1*maxs, maxs+1))
+        phi_direct = 0.0
+        for jx in range(N):
+            for dx in itertools.product(iterset, iterset, iterset):
+                if dx[0]*dx[0] < mins*mins and \
+                    dx[1]*dx[1] < mins*mins and \
+                    dx[2]*dx[2] < mins*mins:
+                    continue
+
+                cube_mid = np.array(dx)*E
+                rij = np.linalg.norm(A.P[jx,:] + cube_mid - point)
+                phi_direct += A.Q[jx, 0] /rij
+
+        errs.append(abs(phi_direct - phi_two))
+
+        print("{: >5} {: >15}".format(maxs, phi_direct))
+
+        ax.plot(errs, color='k')
+        fig.canvas.draw()
+
+    try:
+        input("Press enter to continue.")
+    except:
+        pass
+
+
+
+
+
+def test_dipole_2():
+    R = 3
+
+    N = 2
+    E = 1.
+
+    rc = E/2
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-8
+
+    ASYNC = False
+    EWALD = True
+    free_space = False
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+
+
+    if EWALD:
+        ewald = EwaldOrthoganalHalf(
+            domain=A.domain,
+            real_cutoff=rc,
+            eps=10.**-6,
+            shared_memory=SHARED_MEMORY
+        )
+
+    print(fmm.R, fmm.L)
+
+    A.npart = N
+
+    rng = np.random.RandomState(seed=1234)
+
+    A.P = data.PositionDat(ncomp=3)
+    A.F = data.ParticleDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.crr = data.ScalarArray(ncomp=1)
+    A.cri = data.ScalarArray(ncomp=1)
+    A.crs = data.ScalarArray(ncomp=1)
+
+
+    rng = np.random.RandomState(seed=1234)
+    A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
+    A.Q[:] = rng.uniform(low=-1., high=1., size=(N,1))
+    bias = np.sum(A.Q[:])/N
+    A.Q[:] -= bias
+
+    if N == 2:
+        A.P[0,:] = (0.0, 0.0, -0.25*E)
+        A.P[1,:] = (0.0, 0.0,  0.25*E)
+
+        A.Q[0,0] = -2.
+        A.Q[1,0] = 2.
+    elif N == 4:
+        ra = 0.25 * E
+        nra = -0.25 * E
+
+        A.P[0,:] = (ra, ra, 0)
+        A.P[1,:] = (nra, ra, 0)
+        A.P[2,:] = (nra, nra, 0)
+        A.P[3,:] = (ra, nra, 0)
+
+        A.Q[0,0] = -1.
+        A.Q[1,0] = 1.
+        A.Q[2,0] = -1.
+        A.Q[3,0] = 1.
+
+    print(A.P[:N:,:])
+
+
+    A.scatter_data_from(0)
+
+
+    dipole_src = """
+    dipole[0] += P.i[0] * Q.i[0];
+    dipole[1] += P.i[1] * Q.i[0];
+    dipole[2] += P.i[2] * Q.i[0];
+    """
+    dipole_ga = data.GlobalArray(ncomp=3)
+    dipole_kernel = kernel.Kernel('dipole', dipole_src)
+    dipole_loop = loop.ParticleLoopOMP(kernel=dipole_kernel,
+                                       dat_dict={
+                                           'dipole': dipole_ga(access.INC_ZERO),
+                                           'P': A.P(access.READ),
+                                           'Q': A.Q(access.READ)
+                                       })
+    dipole_loop.execute()
+
+    print("DIPOLE:\t", dipole_ga[:])
+
+
+    t0 = time.time()
+    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    t1 = time.time()
+
+
+    t2 = time.time()
+    if EWALD:
+        ewald.evaluate_contributions(positions=A.P, charges=A.Q)
+        A.cri[0] = 0.0
+        ewald.extract_forces_energy_reciprocal(A.P, A.Q, A.F, A.cri)
+        A.crr[0] = 0.0
+        ewald.extract_forces_energy_real(A.P, A.Q, A.F, A.crr)
+        A.crs[0] = 0.0
+        ewald.evaluate_self_interactions(A.Q, A.crs)
+    t3 = time.time()
+
+    phi_ewald = A.cri[0] + A.crr[0] + A.crs[0]
+
+
+    local_err = abs(phi_py - phi_ewald)
+    if local_err > eps: serr = red(local_err)
+    else: serr = green(local_err)
+
+    if MPIRANK == 0 and DEBUG:
+        print(60*"-")
+        #opt.print_profile()
+        print(60*"-")
+        print("TIME FMM:\t", t1 - t0)
+        print("TIME EWALD:\t", t3 - t2)
+        print("ENERGY FMM:\t", phi_py)
+        print("ENERGY EWALD:\t", phi_ewald, A.cri[0], A.crr[0], A.crs[0])
+        print("ERR:\t\t", serr)
+
+
+    r0x = 0.4
+    r0y = 0.3
+    r0z = 0.7
+
+    maxs = 10
+    mins = 1
+
+    iterset = list(range(-1*maxs, maxs+1))
+
+    dipole_phi = 0.0
+
+    for dx in itertools.product(iterset, iterset, iterset):
+        #if dx[0]*dx[0] < mins*mins and \
+        #    dx[1]*dx[1] < mins*mins and \
+        #    dx[2]*dx[2] < mins*mins:
+        #    continue
+
+        #if dx[0]*dx[0] + dx[1]*dx[1] + dx[2]*dx[2] == 0:
+        #    continue
+
+        drx = r0x - dx[0]
+        dry = r0y - dx[1]
+        drz = r0z - dx[2]
+
+        dipole_phi += drz*((1./math.sqrt(drx*drx + dry*dry + drz*drz))**3.)
+
+    print("DIPOLE PHI:\t", dipole_phi)
+
+    # calculate everything "not very far away" directly
+
+    phi_direct = 0.0
+    # compute phi from image and surrounding 26 cells
+    for ix in range(N):
+        for jx in range(ix+1, N):
+            rij = np.linalg.norm(A.P[jx,:] - A.P[ix,:])
+            phi_direct += A.Q[ix, 0] * A.Q[jx, 0] /rij
+
+        for ofx in cube_offsets:
+            cube_mid = np.array(ofx)*E
+            for jx in range(N):
+                rij = np.linalg.norm(A.P[jx,:] + cube_mid - A.P[ix, :])
+                phi_direct += 0.5*A.Q[ix, 0] * A.Q[jx, 0] /rij
+
+    # get far away contribution from multipole
+
+
+    contrib = 0.0 + 0.0*1.j
+    for px in range(N):
+
+        # r, theta, phi
+        sph = spherical(A.P[px, :])
+
+        for nx in range(fmm.L):
+            for mx in range(-1*nx, nx+1):
+
+                o = fmm.tree_parent[1][0,0,0,fmm.re_lm(nx, mx)] + 1.j* \
+                    fmm.tree_parent[1][0,0,0,fmm.im_lm(nx, mx)]
+
+                o *= (sph[0]**nx)
+                o *= A.Q[px,0]
+                o *= 0.5
+
+                contrib += o * Yfoo(nx, mx, sph[1], sph[2])
+
+
+    err = abs(phi_direct + contrib.real - phi_ewald)
+    if err > eps:
+        serr = red(err)
+    else:
+        serr = green(err)
+
+    print("ENERGY DIRECT:\t", phi_direct + contrib.real)
+    print("ENERGY DIR_LOC:\t", phi_direct)
+    print("ERR:\t\t", serr)
+    print("FAR:\t", contrib.real, "\tNEAR:\t", phi_direct)
+
+    phi_two = phi_direct + contrib.real
+
+    errs = []
+
+    import matplotlib.pyplot as plt
+    plt.ion()
+    fig, ax = plt.subplots()
+
+    plt.show()
+
+    def _phi_box(ofx):
+        phi_tmp = 0.0
+        cube_mid = np.array(ofx)*E
+        for ix in range(N):
+            for jx in range(N):
+                rij = np.linalg.norm(A.P[jx,:] + cube_mid - A.P[ix, :])
+                phi_tmp += 0.5*A.Q[ix, 0] * A.Q[jx, 0] /rij
+        return phi_tmp
+
+    phi_direct = 0.0
+
+    for ix in range(N):
+        for jx in range(ix+1, N):
+            rij = np.linalg.norm(A.P[jx,:] - A.P[ix,:])
+            phi_direct += A.Q[ix, 0] * A.Q[jx, 0] /rij
+
+    for Lambda in range(1, 40):
+
+        # top/bottom
+        iterset0 = list(range(-1*Lambda, Lambda+1))
+        iterset1 = list(range(-1*Lambda, Lambda+1))
+        for ofx in itertools.product(iterset0, iterset1, [-1*Lambda, Lambda]):
+            phi_direct += _phi_box(ofx)
+
+        # front back
+        iterset2 = list(range(-1*(Lambda-1), Lambda))
+        for ofx in itertools.product(iterset0, [-1*Lambda, Lambda], iterset2):
+            phi_direct += _phi_box(ofx)
+
+        # left right
+        iterset1 = list(range(-1*(Lambda-1), Lambda))
+        iterset2 = list(range(-1*(Lambda-1), Lambda))
+        for ofx in itertools.product([-1*Lambda, Lambda], iterset1, iterset2):
+            phi_direct += _phi_box(ofx)
+
+        err = abs(phi_direct - phi_two)
+        errs.append(err)
+
+        print("{: >5} {: >15} | {: >15}".format(Lambda, phi_direct, err))
+
+
+        ax.loglog(errs, color='k', linewidth=2.0)
+        fig.canvas.draw()
+
+    try:
+        input("Press enter to continue.")
+    except:
+        pass
+
+
+
+    errs2 = []
+    for Lambda in range(1, 40):
+
+        phi_direct = 0.0
+        for ix in range(N):
+            for jx in range(ix+1, N):
+                rij = np.linalg.norm(A.P[jx,:] - A.P[ix,:])
+                phi_direct += A.Q[ix, 0] * A.Q[jx, 0] /rij
+
+        iterset = list(range(-1*Lambda, Lambda+1))
+
+        for ofx in itertools.product(iterset, iterset, iterset):
+            dx = ofx[0]*ofx[0] + ofx[1]*ofx[1] + ofx[2]*ofx[2]
+            if dx > 0 and dx <= Lambda*Lambda:
+                phi_direct += _phi_box(ofx)
+
+        err = abs(phi_direct - phi_two)
+        errs2.append(err)
+
+        print("{: >5} {: >15} | {: >15}".format(Lambda, phi_direct, err))
+
+
+        ax.loglog(errs2, color='r')
+        fig.canvas.draw()
+
+    try:
+        input("Press enter to continue.")
+    except:
+        pass
+
+
+
+
+
+
+
+
+
+
 
 
 

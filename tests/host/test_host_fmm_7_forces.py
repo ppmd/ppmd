@@ -21,6 +21,7 @@ from ppmd.coulomb.ewald_half import *
 from scipy.special import sph_harm, lpmv
 import time
 
+from math import *
 
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
@@ -28,20 +29,20 @@ MPIBARRIER = MPI.COMM_WORLD.Barrier
 DEBUG = True
 SHARED_MEMORY = 'omp'
 
-def red(input):
+def red(*input):
     try:
         from termcolor import colored
-        return colored(input, 'red')
+        return colored(*input, color='red')
     except Exception as e: return input
-def green(input):
+def green(*input):
     try:
         from termcolor import colored
-        return colored(input, 'green')
+        return colored(*input, color='green')
     except Exception as e: return input
-def yellow(input):
+def yellow(*input):
     try:
         from termcolor import colored
-        return colored(input, 'yellow')
+        return colored(*input, color='yellow')
     except Exception as e: return input
 
 cube_offsets = (
@@ -112,10 +113,21 @@ def spherical(xyz):
     return sph
 
 
-def Y(nx, mx, theta, phi):
-    coeff = math.sqrt(
+def Hfoo(nx, mx):
+    return math.sqrt(
         float(math.factorial(nx - abs(mx)))/math.factorial(nx + abs(mx))
     )
+
+def Pfoo(nx, mx, x):
+    if abs(mx) > abs(nx):
+        return 0.0
+    elif nx < 0:
+        return Pfoo(-1*nx -1, mx, x)
+    else:
+        return lpmv(mx, nx, x)
+
+def Yfoo(nx, mx, theta, phi):
+    coeff = Hfoo(nx, mx)
     legp = lpmv(abs(mx), nx, math.cos(theta))
     
     assert abs(legp.imag) < 10.**-16
@@ -300,9 +312,14 @@ def test_fmm_oct_1():
         #A.P[1,:] = (0, 0, 0.25*E)
 
         #A.Q[:,0] = 1.
+        eps = 0.00001
 
-        A.P[0] = (0.5, 0.5, -0.5)
-        A.P[1] = (0.5, 0.5, 1.5)
+        epsx = 0.0
+        epsy = eps
+        epsz = 0.0
+
+        A.P[0] = ( 0.5 + epsx, 1.5 + epsy, 0.5 + epsz)
+        A.P[1] = ( 0.5 + epsx,-0.5 + epsy, 0.5 + epsz)
 
         A.Q[0,0] = 1.
         A.Q[1,0] = -1.
@@ -357,13 +374,30 @@ def test_fmm_oct_1():
         print(line)
 
 
+    print("MID")
+    for lx in range(2):
+        print("lx", lx)
+        for mx in range(-1*lx, lx+1):
+            print("\tmx", mx, "\t:", fmm.up[fmm.re_lm(lx, mx)],
+                  fmm.up[fmm.im_lm(lx, mx)])
+    print("PX=0")
+    for lx in range(2):
+        print("lx", lx)
+        for mx in range(-1*lx, lx+1):
+            print("\tmx", mx, "\t:", fmm.tree_plain[2][2,3,2,fmm.re_lm(lx, mx)],
+                  fmm.tree_plain[2][2,3,2,fmm.im_lm(lx, mx)])
+
+
+
+
+
     for lx in range(fmm.L):
         for mx in range(-1*lx, lx+1):
             py_re = 0.0
             py_im = 0.0
             for px in range(N):
                 r = spherical(A.P[px, :])
-                ynm = Y(lx, -1*mx, r[1], r[2]) * (r[0]**float(lx)) * A.Q[px,0]
+                ynm = Yfoo(lx, -1 * mx, r[1], r[2]) * (r[0] ** float(lx)) * A.Q[px, 0]
                 py_re += ynm.real
                 py_im += ynm.imag
 
@@ -414,6 +448,85 @@ def test_fmm_oct_1():
         print("ENERGY DIRECT:\t{:.20f}".format(phi_direct))
         print("ENERGY FMM:\t", phi_py)
         print("ERR:\t\t", serr)
+
+    cell_mids = ((0.5, 1.5, 0.5),(0.5,-0.5,0.5))
+    cell_ind = ((2,3,2), (2,1,2))
+
+
+    for px in range(2):
+        print(green(60*'-'))
+        dx = A.P[px, :] - np.array(cell_mids[px])
+
+        sph = spherical(dx)
+        radius = sph[0]
+        theta = sph[1]
+        phi = sph[2]
+        
+        print(px, radius, phi, theta)
+
+        rstheta = 0.0
+        if abs(theta) > 0.0:
+            rstheta = 1./sin(theta)
+
+
+        rhat = np.array((cos(phi)*sin(theta),
+                        sin(phi)*sin(theta),
+                        cos(theta)))
+
+        thetahat = np.array(
+            (cos(phi)*cos(theta), sin(phi)*cos(theta), -1.0 * sin(theta))
+        )
+
+        phihat = np.array((-1*sin(phi), cos(phi), 0.0))
+
+        Fv = np.zeros(3)
+
+        plain = fmm.tree_plain[fmm.R-1][
+                           cell_ind[px][2],
+                           cell_ind[px][1],
+                           cell_ind[px][0],
+                           :]
+
+        for jx in range(2):
+            print(green(jx))
+            for kx in range(-1*jx, jx+1):
+                print("\t", red(kx))
+                rpower = radius**(jx-1.)
+                Ljk = plain[fmm.re_lm(jx,kx)] + 1.j*plain[fmm.re_lm(jx,kx)]
+
+                # radius
+                radius_coeff = float(jx) * rpower * \
+                      Yfoo(jx, kx, theta, phi)
+
+                # theta
+                theta_coeff = float(jx - abs(kx) + 1) * \
+                                Pfoo(jx+1, abs(kx), cos(theta))
+                theta_coeff -= float(jx + 1) * cos(theta) * \
+                                Pfoo(jx, abs(kx), cos(theta))
+                theta_coeff *= rpower * rstheta
+
+                # phi
+                phi_coeff = Yfoo(jx, kx, theta, phi) * (1.j * float(kx))
+                phi_coeff *= rpower * rstheta
+
+                Fv -= rhat *     (Ljk* radius_coeff).real +\
+                      thetahat * (Ljk* theta_coeff ).real +\
+                      phihat *   (Ljk* phi_coeff   ).real
+
+                print("{: >8} {: >60} | {: >8} {: >60} | {: >8} {: >60}".format(
+                      yellow("r"), radius_coeff,
+                      yellow("theta"),theta_coeff,
+                      yellow("phi"), phi_coeff))
+
+                print("{} = {} * {}".format(
+                    Ljk* radius_coeff, radius_coeff, Ljk
+                ))
+
+
+        print(px, Fv)
+
+
+
 
     #assert local_err < eps
 

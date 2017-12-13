@@ -21,7 +21,7 @@ MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
 
 @cuda
 def test_cuda_fmm_1():
-    R = 5
+    R = 4
 
     crN = 10
     N = crN**3
@@ -46,7 +46,7 @@ def test_cuda_fmm_1():
     print("R:", fmm.R, "L", fmm.L)
     rng = np.random.RandomState(seed=1234)
 
-    lx = 4
+    lx = 3
     fmm.tree_halo[lx][:] = rng.uniform(low=-2.0, high=2.0,
                                        size=fmm.tree_halo[lx].shape)
 
