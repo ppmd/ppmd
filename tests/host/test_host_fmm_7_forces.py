@@ -323,10 +323,10 @@ def test_fmm_oct_1():
 
         epsx = 0
         epsy = 0
-        epsz = eps
+        epsz = 0
 
-        A.P[0] = ( 0.5 + epsx, -1.5 + epsy, 0.5 + epsz)
-        A.P[1] = ( 0.5 + epsx, 0.5 + epsy, 0.5 + epsz)
+        A.P[0] = ( -0.4, 0.6, 0.6)
+        A.P[1] = (  1.5, 0.5, 0.5)
 
         A.Q[0,0] = -1.
         A.Q[1,0] = 1.
@@ -344,7 +344,6 @@ def test_fmm_oct_1():
             #A.Q[px, 0] = -1.
 
         #A.P[0,:] += eps
-
 
         eps = 0.00001
         #A.P[0:N:2,0] += eps
@@ -387,14 +386,13 @@ def test_fmm_oct_1():
         for mx in range(-1*lx, lx+1):
             print("\tmx", mx, "\t:", fmm.up[fmm.re_lm(lx, mx)],
                   fmm.up[fmm.im_lm(lx, mx)])
-    print("PX=0")
-    for lx in range(2):
+
+    print("PX=1")
+    for lx in range(3):
         print("lx", lx)
         for mx in range(-1*lx, lx+1):
-            print("\tmx", mx, "\t:", fmm.tree_plain[2][2,3,2,fmm.re_lm(lx, mx)],
-                  fmm.tree_plain[2][2,3,2,fmm.im_lm(lx, mx)])
-
-
+            print("\tmx", mx, "\t:", fmm.tree_plain[2][2,2,2,fmm.re_lm(lx, mx)],
+                  fmm.tree_plain[2][2,2,2,fmm.im_lm(lx, mx)])
 
 
 
@@ -535,10 +533,13 @@ def test_fmm_oct_1():
         Fvs = np.zeros(3)
         Fvs_im = np.zeros(3)
 
+        vec = phihat
+        print("vectors:\t", rhat, phihat, thetahat, np.linalg.norm(vec))
+
         plain = fmm.tree_plain[R-1][cell[2], cell[1], cell[0], :]
         phi_part = 0.0
 
-        for jx in range(fmm.L):
+        for jx in range(0,fmm.L):
             #print(green(jx))
             for kx in range(-1*jx, jx+1):
                 #print("\t", red(kx))
@@ -547,11 +548,15 @@ def test_fmm_oct_1():
                 mid_phi = A.Q[px, 0]*(radius**jx)* \
                              Ljk*Yfoo(jx,kx,theta, phi)
 
+                if abs(mid_phi) > 0.00001:
+                    print(mid_phi)
+
+
                 # energy
                 phi_force += 0.5 * mid_phi
                 phi_part += 0.5 * mid_phi
 
-                # numerical force
+                # Force from finite differences
                 # x
                 pos = spherical(dx + stencil[0])
                 phip = A.Q[px, 0]*(pos[0]**jx)* Ljk*Yfoo(jx,kx,pos[1], pos[2])
@@ -574,7 +579,9 @@ def test_fmm_oct_1():
                 Fvs[2] -= (phip - phin).real/(2.*h)
                 Fvs_im[2] -= (phip - phin).imag/(2.*h)
 
-                if (jx == 1):
+
+                # force from gradiant of sperical harmonics
+                if jx == 1:
                     rpower = 1.0
                 else:
                     if radius > 0:
@@ -592,14 +599,15 @@ def test_fmm_oct_1():
                 theta_coeff -= float(jx + 1) * cos(theta) * \
                                 Pfoo(jx, abs(kx), cos(theta))
                 theta_coeff *= rpower * rstheta
+                theta_coeff *= Hfoo(jx, kx) * cmath.exp(1.j * float(kx) * phi)
 
                 # phi
                 phi_coeff = Yfoo(jx, kx, theta, phi) * (1.j * float(kx))
                 phi_coeff *= rpower * rstheta
 
-                Fv -= A.Q[px, 0] * (rhat *     (Ljk* radius_coeff).real +\
+                Fv -= A.Q[px, 0] * (rhat     * (Ljk* radius_coeff).real +\
                                     thetahat * (Ljk* theta_coeff ).real +\
-                                    phihat *   (Ljk* phi_coeff   ).real)
+                                    phihat   * (Ljk* phi_coeff   ).real)
 
 
 
