@@ -319,14 +319,14 @@ def test_fmm_oct_1():
         #A.P[1,:] = (0, 0, 0.25*E)
 
         #A.Q[:,0] = 1.
-        eps = 0.001
+        eps = 10.**-14
 
         epsx = 0
         epsy = 0
         epsz = 0
 
-        A.P[0] = ( -0.4, 0.4, 0.6)
-        A.P[1] = (  1.5, 0.5, 0.5)
+        A.P[0] = (  0.2+eps,-0.6-eps, -0.5+eps)
+        A.P[1] = (  0.5,-0.5, 1.5)
 
         A.Q[0,0] = -1.
         A.Q[1,0] = 1.
@@ -508,6 +508,7 @@ def test_fmm_oct_1():
 
         sph = spherical(dx)
         radius = sph[0]
+        #radius = 0.000000001
         theta = sph[1]
         phi = sph[2]
         
@@ -524,8 +525,13 @@ def test_fmm_oct_1():
                         cos(theta)))
 
         thetahat = np.array(
-            (cos(phi)*cos(theta), sin(phi)*cos(theta), -1.0 * sin(theta))
+            (cos(phi)*cos(theta)*rstheta,
+             sin(phi)*cos(theta)*rstheta,
+             -1.0*sin(theta)*rstheta)
         )
+
+        print("sin(theta)/sin(theta)", sin(theta)*rstheta,
+              "cos(theta)", cos(theta))
 
         phihat = np.array((-1*sin(phi), cos(phi), 0.0))
 
@@ -547,10 +553,6 @@ def test_fmm_oct_1():
                 Ljk = plain[fmm.re_lm(jx,kx)] + 1.j*plain[fmm.im_lm(jx,kx)]
                 mid_phi = A.Q[px, 0]*(radius**jx)* \
                              Ljk*Yfoo(jx,kx,theta, phi)
-
-                if abs(mid_phi) > 0.00001:
-                    print(mid_phi)
-
 
                 # energy
                 phi_force += 0.5 * mid_phi
@@ -590,15 +592,16 @@ def test_fmm_oct_1():
                         rpower = 0.0
 
                 # radius
+                #radius_coeff = 0.0
                 radius_coeff = float(jx) * rpower * \
-                      Yfoo(jx, kx, theta, phi)
+                                              Yfoo(jx, kx, theta, phi)
 
                 # theta
                 theta_coeff = float(jx - abs(kx) + 1) * \
                                 Pfoo(jx+1, abs(kx), cos(theta))
                 theta_coeff -= float(jx + 1) * cos(theta) * \
                                 Pfoo(jx, abs(kx), cos(theta))
-                theta_coeff *= rpower * rstheta
+                theta_coeff *= rpower
                 theta_coeff *= Hfoo(jx, kx) * cmath.exp(1.j * float(kx) * phi)
 
                 # phi
@@ -609,25 +612,30 @@ def test_fmm_oct_1():
                                     thetahat * (Ljk* theta_coeff ).real +\
                                     phihat   * (Ljk* phi_coeff   ).real)
 
+                ntol = 0.001
+                if abs(radius_coeff) > ntol or abs(theta_coeff) > ntol or \
+                    abs(phi_coeff) > ntol:
+                    print(jx, kx)
+                    print("{: >8} {: >60} | {: >8} {: >60} | {: >8} {: >60}".format(
 
+                        yellow("r"), radius_coeff,
+                          yellow("theta"),theta_coeff,
+                          yellow("phi"), phi_coeff))
 
                 continue
-                print("{: >8} {: >60} | {: >8} {: >60} | {: >8} {: >60}".format(
-                      yellow("r"), radius_coeff,
-                      yellow("theta"),theta_coeff,
-                      yellow("phi"), phi_coeff))
-
                 print("{} = {} * {}".format(
                     Ljk* radius_coeff, radius_coeff, Ljk
                 ))
 
 
-        err_re_f = red_tol(np.linalg.norm(direct_forces[px,:] - Fv), 10.**-6)
-        err_re_s = red_tol(np.linalg.norm(direct_forces[px,:] - Fvs), 10.**-6)
+        err_re_f = red_tol(np.linalg.norm(direct_forces[px,:] - Fv, ord=np.inf), 10.**-6)
+        err_re_c = red_tol(np.linalg.norm(direct_forces[px,:] - A.F[px,:], ord=2), 10.**-6)
+        err_re_s = red_tol(np.linalg.norm(direct_forces[px,:] - Fvs, ord=np.inf), 10.**-6)
         err_im_s = red_tol(np.linalg.norm(Fvs_im), 10.**-6)
 
         print("PX:", px)
         print("\t\tFORCE FMM :",Fv, err_re_f)
+        print("\t\tFORCE FMMC:",A.F[px,:], err_re_c)
         print("\t\tAPPRX REAL:",Fvs, err_re_s)
         print("\t\tAPPRX IMAG:",Fvs_im, err_im_s)
 
