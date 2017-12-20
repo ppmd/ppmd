@@ -740,23 +740,8 @@ class PyFMM(object):
         self.timer_extract.start()
         ns = self.tree.entry_map.cube_side_count
         cube_side_counts = np.array((ns, ns, ns), dtype=UINT64)
-        '''
-        const INT64 nlevel,
-        const UINT64 npart,
-        const INT32 thread_max,
-        const REAL * RESTRICT position, 
-        const REAL * RESTRICT charge,
-        const REAL * RESTRICT boundary, 
-        const UINT64 * RESTRICT cube_offset,  // zyx (slowest to fastest)
-        const UINT64 * RESTRICT cube_dim,     // as above
-        const UINT64 * RESTRICT cube_side_counts,   // as above
-        const REAL * RESTRICT local_moments,
-        REAL * RESTRICT phi_data,              // lexicographic
-        const INT32 * RESTRICT thread_assign
-        '''
 
         phi = REAL(0)
-        #self.entry_data[:,:,:,:] = self.tree_plain[self.R-1][:,:,:,:]
         self.entry_data.extract_from(self.tree_plain)
 
         err = self._extraction_lib(
@@ -773,7 +758,10 @@ class PyFMM(object):
             _check_dtype(cube_side_counts, UINT64),
             _check_dtype(self.entry_data.data, REAL),
             ctypes.byref(phi),
-            _check_dtype(self._thread_allocation, INT32)
+            _check_dtype(self._thread_allocation, INT32),
+            _check_dtype(self._a, REAL),
+            _check_dtype(self._ar, REAL),
+            _check_dtype(self._ipower_ltl, REAL)
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 
@@ -836,18 +824,7 @@ class PyFMM(object):
         data from the parent data tree.
         :param child_level: Level to translate on.
         """
-        '''
-        const UINT32 * RESTRICT dim_parent,     // slowest to fastest
-        const UINT32 * RESTRICT dim_child,      // slowest to fastest
-        REAL * RESTRICT moments_child,
-        const REAL * RESTRICT moments_parent,
-        const REAL * RESTRICT ylm,
-        const REAL * RESTRICT alm,
-        const REAL * RESTRICT almr,
-        const REAL * RESTRICT i_array,
-        const REAL radius,
-        const INT64 nlevel
-        '''
+
         self.timer_ltl.start()
         if self.tree[child_level].local_grid_cube_size is None:
             return

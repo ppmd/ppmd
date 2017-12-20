@@ -319,14 +319,14 @@ def test_fmm_oct_1():
         #A.P[1,:] = (0, 0, 0.25*E)
 
         #A.Q[:,0] = 1.
-        eps = 10.**-14
+        eps = 10.**-8
 
         epsx = 0
         epsy = 0
         epsz = 0
 
-        A.P[0] = (  0.2+eps,-0.6-eps, -0.5+eps)
-        A.P[1] = (  0.5,-0.5, 1.5)
+        A.P[0] = ( -0.5+eps, -0.5+eps,  0.5+eps)
+        A.P[1] = (  1.5+eps,  1.5+eps,  0.5+eps)
 
         A.Q[0,0] = -1.
         A.Q[1,0] = 1.
@@ -608,13 +608,18 @@ def test_fmm_oct_1():
                 phi_coeff = Yfoo(jx, kx, theta, phi) * (1.j * float(kx))
                 phi_coeff *= rpower * rstheta
 
+                #radius_coeff = 0.0
+                #theta_coeff = 0.0
+                #phi_coeff = 0.0
+
                 Fv -= A.Q[px, 0] * (rhat     * (Ljk* radius_coeff).real +\
                                     thetahat * (Ljk* theta_coeff ).real +\
                                     phihat   * (Ljk* phi_coeff   ).real)
 
                 ntol = 0.001
-                if abs(radius_coeff) > ntol or abs(theta_coeff) > ntol or \
-                    abs(phi_coeff) > ntol:
+                pbool = False
+                if (abs(radius_coeff) > ntol or abs(theta_coeff) > ntol or \
+                    abs(phi_coeff) > ntol) and pbool:
                     print(jx, kx)
                     print("{: >8} {: >60} | {: >8} {: >60} | {: >8} {: >60}".format(
 
@@ -629,7 +634,7 @@ def test_fmm_oct_1():
 
 
         err_re_f = red_tol(np.linalg.norm(direct_forces[px,:] - Fv, ord=np.inf), 10.**-6)
-        err_re_c = red_tol(np.linalg.norm(direct_forces[px,:] - A.F[px,:], ord=2), 10.**-6)
+        err_re_c = red_tol(np.linalg.norm(direct_forces[px,:] - A.F[px,:], ord=np.inf), 10.**-6)
         err_re_s = red_tol(np.linalg.norm(direct_forces[px,:] - Fvs, ord=np.inf), 10.**-6)
         err_im_s = red_tol(np.linalg.norm(Fvs_im), 10.**-6)
 

@@ -128,12 +128,7 @@ static inline void next_neg_exp(
 }
 
 
-static inline REAL m1_m(int m){
-    return 1.0 - 2.0*((REAL)(m & 1));
-}
-
-
-static inline void compute_p_space(
+static void compute_p_space(
     const int nlevel, 
     const REAL x, 
     REAL * RESTRICT P_SPACE
@@ -160,11 +155,11 @@ static inline void compute_p_space(
                     P_SPACE[P_SPACE_IND(nlevel, lx, mx)] - \
                     (lx+mx)*P_SPACE[P_SPACE_IND(nlevel, lx-1, mx)])/ \
                     (lx - mx + 1);
+
             }
         }
     }
 }
-
 
 static inline void compute_exp_space(
     const int nlevel,
@@ -188,8 +183,123 @@ static inline void compute_exp_space(
             exp_vec[EXP_IM_IND(nlevel, -1*(lx-1))],
             &exp_vec[EXP_RE_IND(nlevel, -1*lx)],
             &exp_vec[EXP_IM_IND(nlevel, -1*lx)]);
+
+/*
+        const int lim = 4*nlevel +2;
+        int ind;
+        ind = EXP_IM_IND(nlevel, lx);
+        if (ind >= lim || ind<0){ printf("exp indexing fault: lx = %d, %d \n", lx, ind); }
+        ind = EXP_IM_IND(nlevel, -1*lx);
+        if (ind >= lim || ind<0){ printf("exp indexing fault: lx = %d, %d \n", lx, ind); }
+        ind = EXP_IM_IND(nlevel, -1*(lx-1));
+        if (ind >= lim || ind<0){ printf("exp indexing fault: lx = %d, %d \n", lx, ind); }
+        ind = EXP_IM_IND(nlevel, lx-1);
+        if (ind >= lim || ind<0){ printf("exp indexing fault: lx = %d, %d \n", lx, ind); }
+*/
+
+
     }
 }
+
+
+
+static inline void ltl(
+    const INT64             nlevel,
+    const REAL              radius,
+    const REAL * RESTRICT   odata,
+    const REAL * RESTRICT   a_array,
+    const REAL * RESTRICT   ar_array,
+    const REAL * RESTRICT   i_array,
+    const REAL * RESTRICT   factorial_vec,
+    const REAL * RESTRICT   P_SPACE,
+    const REAL * RESTRICT   exp_vec,
+    REAL * RESTRICT         ldata
+){
+    const INT64 ASTRIDE1 = 4*nlevel + 1;
+    const INT64 ASTRIDE2 = 2*nlevel;
+
+    const INT64 ncomp = nlevel*nlevel*2;
+    const INT64 ncomp2 = nlevel*nlevel*8;
+    
+    const INT64 nlevel4 = nlevel*4;
+    const INT64 im_offset = nlevel*nlevel;
+    const INT64 im_offset2 = nlevel*nlevel*4;
+    
+    const INT64 nblk = nlevel+1;
+    REAL radius_n[nblk];
+    
+    radius_n[0] = 1.0;
+
+    for(INT64 nx=1 ; nx<nblk ; nx++){ 
+        radius_n[nx] = radius_n[nx-1] * radius;
+    }
+
+    // loop over parent moments
+    for(INT32 jx=0     ; jx<nlevel ; jx++ ){
+    for(INT32 kx=-1*jx ; kx<=jx    ; kx++){
+        // A_j^k
+        const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];
+
+        REAL contrib_re = 0.0;
+        REAL contrib_im = 0.0;
+
+        for(INT32 nx=jx ; nx<nlevel ; nx++){
+            // -1^{n}
+            const REAL m1tnpj = 1.0 - 2.0*((REAL)((nx+jx) & 1));
+
+            const INT64 jxpnx = jx + nx;
+
+            // 1 / rho^{j + n + 1}
+            const REAL r_n_j = radius_n[nx-jx];
+
+            for(INT64 mx=-1*nx ; mx<=nx ; mx++){
+
+                const INT64 mxmkx = mx - kx;
+                const INT64 nxmjx = nx - jx;
+
+                const bool valid_indices = ABS(mxmkx) <= ABS(nxmjx);
+
+                // construct the spherical harmonic
+
+                const REAL ycoeff = valid_indices ? sqrt(factorial_vec[nxmjx - ABS(mxmkx)]/
+                    factorial_vec[nxmjx + ABS(mxmkx)]) : 0.0;
+
+                const REAL plm =  valid_indices ? P_SPACE[P_SPACE_IND(nlevel, nxmjx, ABS(mxmkx))]: 0.0;
+                const REAL y_re = valid_indices ? ycoeff * plm * exp_vec[EXP_RE_IND(nlevel, mxmkx)] : 0.0;
+                const REAL y_im = valid_indices ? ycoeff * plm * exp_vec[EXP_IM_IND(nlevel, mxmkx)] : 0.0;
+
+                // A_n^m
+                const REAL a_nj_mk = a_array[
+                    (nx-jx)*ASTRIDE1 + ASTRIDE2 + (mxmkx)];
+
+                // 1 / A_{j + n}^{m - k}
+                const REAL ra_n_m = ar_array[nx*ASTRIDE1 +\
+                    ASTRIDE2 + mx];
+
+                const REAL coeff_re = i_array[(nlevel+kx)*(nlevel*2 + 1)+\
+                    nlevel + mx] *\
+                    m1tnpj * a_nj_mk * ajk * ra_n_m * r_n_j;
+
+                const INT64 oind = CUBE_IND(nx, mx);
+                const REAL ocoeff_re = odata[oind]              * coeff_re;
+                
+                const REAL ocoeff_im = odata[oind + im_offset]  * coeff_re;
+
+                cplx_mul_add(   y_re, y_im, 
+                                ocoeff_re, ocoeff_im, 
+                                &contrib_re, &contrib_im);
+
+            }
+        }
+
+
+        ldata[CUBE_IND(jx, kx)] = contrib_re;
+        ldata[CUBE_IND(jx, kx) + im_offset] = contrib_im;
+        
+    }}
+}
+
+
 
 
 extern "C"
@@ -205,13 +315,15 @@ INT32 particle_extraction(
     const UINT64 * RESTRICT cube_offset,        // zyx (slowest to fastest)
     const UINT64 * RESTRICT cube_dim,           // as above
     const UINT64 * RESTRICT cube_side_counts,   // as above
-    const REAL * RESTRICT local_moments,
+    REAL * RESTRICT local_moments,
     REAL * RESTRICT phi_data,                  // lexicographic
-    const INT32 * RESTRICT thread_assign
+    const INT32 * RESTRICT thread_assign,
+    const REAL * RESTRICT alm,
+    const REAL * RESTRICT almr,
+    const REAL * RESTRICT i_array
 ){
     INT32 err = 0;
     omp_set_num_threads(thread_max);
-    //printf("%f | %f | %f\n", boundary[0], boundary[1], boundary[2]);
 
 
     const REAL cube_ilen[3] = {
@@ -231,45 +343,44 @@ INT32 particle_extraction(
     // pre compute factorial and double factorial
     const UINT64 nfact = (2*nlevel > 4) ? 2*nlevel : 4;
     REAL factorial_vec[nfact];
-    REAL double_factorial_vec[nfact];
 
     factorial_vec[0] = 1.0;
     factorial_vec[1] = 1.0;
     factorial_vec[2] = 2.0;
-    double_factorial_vec[0] = 1.0;
-    double_factorial_vec[1] = 1.0;
-    double_factorial_vec[2] = 2.0;
 
     for( INT64 lx=3 ; lx<nfact ; lx++ ){
         factorial_vec[lx] = lx * factorial_vec[lx-1];
-        double_factorial_vec[lx] = lx * double_factorial_vec[lx-2];
     }
     
     REAL P_SPACE_VEC[thread_max][nlevel*nlevel*2];
+    REAL L_SPACE_VEC[thread_max][nlevel*nlevel*2];
 
     UINT32 count = 0;
     REAL potential_energy = 0.0;
 
     #pragma omp parallel for default(none) shared(thread_assign, position, \
         boundary, cube_offset, cube_dim, err, exp_space, force, \
-        factorial_vec, double_factorial_vec, P_SPACE_VEC, \
-        cube_half_side_len, cube_ilen, charge, local_moments, fmm_cell, cube_side_counts) \
+        factorial_vec, P_SPACE_VEC, L_SPACE_VEC,\
+        cube_half_side_len, cube_ilen, charge, local_moments, fmm_cell, cube_side_counts,\
+        alm, almr, i_array) \
         schedule(dynamic) \
         reduction(+: count) reduction(+: potential_energy)
     for(INT32 ix=0 ; ix<npart ; ix++){
         const int tid = omp_get_thread_num();
+
         const UINT64 ncomp = nlevel*nlevel*2;
 
         // threads tmp space for exponentials and legendre polynomials
-        REAL * P_SPACE = P_SPACE_VEC[tid];
+        REAL * RESTRICT P_SPACE = P_SPACE_VEC[tid];
         REAL * RESTRICT exp_vec = exp_space[tid]; 
+        //REAL * RESTRICT L_SPACE = L_SPACE_VEC[tid];
 
-            
-
+        for(int tx=0 ; tx<nlevel*nlevel*2 ; tx++ ){ P_SPACE[tx]=12345.678; }
+        for(int tx=0 ; tx<(nlevel*4 + 2) ; tx++ ){ exp_vec[tx]=12345.678; }
+        
 
         const INT64 ix_cell = fmm_cell[ix];
-        const REAL * RESTRICT cube_start =    &local_moments[ix_cell*ncomp];
-        const REAL * RESTRICT cube_start_im = &local_moments[ix_cell*ncomp + nlevel*nlevel];
+        REAL * RESTRICT cube_start = &local_moments[ix_cell*ncomp];
 
         // cell mid points
         REAL midx, midy, midz;
@@ -279,27 +390,57 @@ INT32 particle_extraction(
         get_cube_midpoint(cube_half_side_len, boundary, cube_offset, cube_dim,
             cube_side_counts, ix_cell, &midx, &midy, &midz);
 
-        // can shift local expansion to well defined place here
- 
+        const REAL px = position[ix*3];
+        const REAL py = position[ix*3+1];
+        const REAL pz = position[ix*3+2];
+
+        const INT32 shift_expansions = 0;
+        REAL * RESTRICT L_SPACE;
+
+        if (shift_expansions == 1){
+            
+            L_SPACE = L_SPACE_VEC[tid];
+
+            // can shift local expansion to well defined place here
+            REAL newx = px + 0.2*cube_half_side_len[2];
+            REAL newy = py + 0.2*cube_half_side_len[1];
+            REAL newz = pz + 0.2*cube_half_side_len[0];
 
 
+            // displacement from new expansion point to cube centre.
+            get_offset_vector(newx, newy, newz, midx, midy, midz,
+                &radius, &ctheta, &stheta, &cphi, &sphi, &msphi);        
+            compute_p_space(nlevel, ctheta, P_SPACE);
+            compute_exp_space(nlevel, cphi, sphi, msphi, exp_vec);
+
+            ltl(nlevel, radius, cube_start, alm, almr, i_array,
+                factorial_vec, P_SPACE, exp_vec, L_SPACE);
+
+            get_offset_vector(newx, newy, newz, px, py, pz,
+                &radius, &ctheta, &stheta, &cphi, &sphi, &msphi);
+
+            compute_p_space(nlevel, ctheta, P_SPACE);
+            compute_exp_space(nlevel, cphi, sphi, msphi, exp_vec);
 
 
-        get_offset_vector(midx, midy, midz, position[ix*3], position[ix*3+1], position[ix*3+2],
-            &radius, &ctheta, &stheta, &cphi, &sphi, &msphi);
+        } else {
 
-        //compute spherical harmonic moments
-        // start with the complex exponential (will not vectorise)
+            L_SPACE = cube_start;
 
+            // compute offset vectors between particle and point of expansion
+            get_offset_vector(midx, midy, midz, px, py, pz,
+                &radius, &ctheta, &stheta, &cphi, &sphi, &msphi);
+            compute_p_space(nlevel, ctheta, P_SPACE);
+            compute_exp_space((int)nlevel, cphi, sphi, msphi, exp_vec);
 
-        compute_p_space(nlevel, ctheta, P_SPACE);
-        compute_exp_space(nlevel, cphi, sphi, msphi, exp_vec);
-
+        }
 
         const REAL _rstheta = 1.0/stheta;
         const REAL rstheta = (std::isnan(_rstheta) || std::isinf(_rstheta)) ? 0.0 : _rstheta;
+        
+        printf("1./sin(theta) = %f\n", rstheta);
 
-        REAL local_pe = 0.0;
+        REAL local_pe  = 0.0;
         REAL sp_radius = 0.0;
         REAL sp_phi    = 0.0;
         REAL sp_theta  = 0.0;
@@ -326,9 +467,9 @@ INT32 particle_extraction(
                     exp_vec[EXP_RE_IND(nlevel, mx)];
                 const REAL ylm_im = ycoeff * plm * \
                     exp_vec[EXP_IM_IND(nlevel, mx)];
-                
-                const REAL ljk_re = cube_start[CUBE_IND(lx, mx)];
-                const REAL ljk_im = cube_start_im[CUBE_IND(lx, mx)];
+
+                const REAL ljk_re = L_SPACE[CUBE_IND(lx, mx)];
+                const REAL ljk_im = L_SPACE[CUBE_IND(lx, mx) + nlevel*nlevel];
 
                 REAL pe_im = 0.0;
                 cplx_mul_add(
@@ -348,11 +489,11 @@ INT32 particle_extraction(
                          ylm_re * rhol2, ylm_im * rhol2,
                          &tmp_re, &tmp_im);
 
-                sp_radius += -1.0 * tmp_re * ((REAL) lx);
+                sp_radius += tmp_re * ((REAL) lx);
                 
                 // phi part
-                const REAL phi_coeff = -1.0 * rhol2 * ycoeff * plm;
-
+                const REAL phi_coeff = rhol2 * ycoeff * plm * rstheta;
+                
                 const REAL phi_exp_re = -1 * ((REAL) mx) * exp_vec[EXP_IM_IND(nlevel, mx)];
                 const REAL phi_exp_im =      ((REAL) mx) * exp_vec[EXP_RE_IND(nlevel, mx)];
 
@@ -360,11 +501,14 @@ INT32 particle_extraction(
                          phi_exp_re, phi_exp_im,
                          &tmp_re, &tmp_im);
                 
-                sp_phi += phi_coeff * tmp_im;
+                sp_phi += phi_coeff * tmp_re;
     
                 // theta part
                 // P_{-j}^k = P_{j-1}^k => P_{-1}^k = P_0_k = 1.0 if k==0, 0 o/w.
-                const REAL plmm1 = (lx==0) ? ( (mx==0) ? 1.0 : 0.0 ) : P_SPACE[P_SPACE_IND(nlevel, lx-1, abs_mx)];
+                const REAL plmm1_1 = (lx==0) ? ( (mx==0) ? 1.0 : 0.0 ) : P_SPACE[P_SPACE_IND(nlevel, lx-1, abs_mx)];
+                const REAL plmm1 = plmm1_1 * ( (ABS(lx-1) < abs_mx ) ? 0.0 : 1.0);
+                
+                //if (ABS(12345.678 - plmm1)<0.0001) {printf("BAD plmm1 %d %d \n", lx, mx);}
 
                 const REAL theta_coeff = -1.0 * rhol2 * ycoeff * rstheta * (
                     (((REAL) lx) +  abs_mx ) * plmm1  - ((REAL) lx ) * ctheta * plm
@@ -373,12 +517,15 @@ INT32 particle_extraction(
                 const REAL theta_exp_re = exp_vec[EXP_RE_IND(nlevel, mx)];
                 const REAL theta_exp_im = exp_vec[EXP_IM_IND(nlevel, mx)];
 
+                //if (ABS(12345.678 - theta_exp_re)<0.0001) {printf("BAD theta_exp_re %d %d \n", lx, mx);}
+                //if (ABS(12345.678 - theta_exp_im)<0.0001) {printf("BAD theta_exp_im %d %d \n", lx, mx);}
+
                 cplx_mul(ljk_re, ljk_im,
                          theta_exp_re, theta_exp_im,
                          &tmp_re, &tmp_im);
 
-                sp_theta += theta_coeff * tmp_re;
 
+                sp_theta += theta_coeff * tmp_re;
 
             }
 
@@ -393,6 +540,8 @@ INT32 particle_extraction(
 
         printf("%d | %f %f %f\n", ix, sp_radius, sp_phi, sp_theta);
         sp_radius *= charge[ix];
+        sp_theta *= charge[ix];
+        sp_phi *= charge[ix];
         
 /*
 
@@ -410,10 +559,19 @@ Using the following unit vectors:
                         cos(phi),
                         0           ]
 */
+        
+        //sp_radius = 0.0;
+        //sp_theta = 0.0;
+       // sp_phi = 0.0;
 
-        force[ix*3    ] += sp_radius * cphi * stheta + sp_theta * cphi * ctheta - sp_phi * sphi;
-        force[ix*3 + 1] += sp_radius * sphi * stheta + sp_theta * sphi * ctheta + sp_phi * cphi;
-        force[ix*3 + 2] += sp_radius * ctheta - sp_theta * stheta;
+
+PRINT_NAN(sp_radius)
+PRINT_NAN(sp_theta)
+PRINT_NAN(sp_phi)
+
+        force[ix*3    ] -= sp_radius * cphi * stheta    +   sp_theta * cphi * ctheta    -   sp_phi * sphi;
+        force[ix*3 + 1] -= sp_radius * sphi * stheta    +   sp_theta * sphi * ctheta    +   sp_phi * cphi;
+        force[ix*3 + 2] -= sp_radius * ctheta           -   sp_theta * stheta;
 
 
         count++;

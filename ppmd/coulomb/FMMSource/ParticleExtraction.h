@@ -22,6 +22,10 @@ using namespace std;
 
 #define P_SPACE_IND(LMAX, L, M) (((LMAX)+1)*(L) + (M))
 
+#define ABS(x) ((x) > 0 ? (x) : -1*(x))
+
+
+#define PRINT_NAN(x) if(std::isnan(x) || std::isinf(x)){printf(#x);printf(" is nan/inf %f\n", x);}
 
 /*
 Layout of memory used by above macros.
