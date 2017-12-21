@@ -761,7 +761,8 @@ class PyFMM(object):
             _check_dtype(self._thread_allocation, INT32),
             _check_dtype(self._a, REAL),
             _check_dtype(self._ar, REAL),
-            _check_dtype(self._ipower_ltl, REAL)
+            _check_dtype(self._ipower_ltl, REAL),
+            INT32(0)
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 

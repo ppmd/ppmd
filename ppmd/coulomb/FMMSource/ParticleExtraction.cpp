@@ -320,7 +320,8 @@ INT32 particle_extraction(
     const INT32 * RESTRICT thread_assign,
     const REAL * RESTRICT alm,
     const REAL * RESTRICT almr,
-    const REAL * RESTRICT i_array
+    const REAL * RESTRICT i_array,
+    const INT32 always_shift
 ){
     INT32 err = 0;
     omp_set_num_threads(thread_max);
@@ -362,7 +363,7 @@ INT32 particle_extraction(
         boundary, cube_offset, cube_dim, err, exp_space, force, \
         factorial_vec, P_SPACE_VEC, L_SPACE_VEC,\
         cube_half_side_len, cube_ilen, charge, local_moments, fmm_cell, cube_side_counts,\
-        alm, almr, i_array) \
+        alm, almr, i_array, always_shift) \
         schedule(dynamic) \
         reduction(+: count) reduction(+: potential_energy)
     for(INT32 ix=0 ; ix<npart ; ix++){
@@ -393,11 +394,21 @@ INT32 particle_extraction(
         const REAL px = position[ix*3];
         const REAL py = position[ix*3+1];
         const REAL pz = position[ix*3+2];
+        
+        const REAL tol = 0.001;
 
-        const INT32 shift_expansions = 0;
+        const bool shx = ABS(px-midx) < tol;
+        const bool shy = ABS(py-midy) < tol;
+        const bool shz = ABS(pz-midz) < tol;
+        
+        const bool shift_expansion = (
+            (always_shift == 1) || shx || shy || shz
+            ) ? true : false;
+
+
         REAL * RESTRICT L_SPACE;
 
-        if (shift_expansions == 1){
+        if (shift_expansion){
             
             L_SPACE = L_SPACE_VEC[tid];
 

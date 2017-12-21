@@ -278,9 +278,6 @@ def test_fmm_oct_1():
     A.cri = data.ScalarArray(ncomp=1)
     A.crs = data.ScalarArray(ncomp=1)
 
-    rng = np.random.RandomState(seed=1234)
-
-
 
     if N == 4:
         ra = 0.25 * E
@@ -319,14 +316,16 @@ def test_fmm_oct_1():
         #A.P[1,:] = (0, 0, 0.25*E)
 
         #A.Q[:,0] = 1.
-        eps = 10.**-8
+        eps = 0.00
 
         epsx = 0
         epsy = 0
         epsz = 0
 
-        A.P[0] = ( -0.5+eps, -0.5+eps,  0.5+eps)
-        A.P[1] = (  1.5+eps,  1.5+eps,  0.5+eps)
+        A.P[0] = ( -0.5+eps, -0.5+eps,  -0.5+eps)
+        A.P[1] = (  1.5+eps,  1.5+eps,  1.5+eps)
+
+        A.P[:2:,:] = rng.uniform(low=-0.4999*E, high=0.4999*E, size=(N,3))
 
         A.Q[0,0] = -1.
         A.Q[1,0] = 1.
