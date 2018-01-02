@@ -93,7 +93,7 @@ static inline INT64 get_offset_vector(
     
     const REAL phi = atan2(dy, dx);
     
-    printf("xyz %f %f %f | sph %f %f %f\n", dx, dy, dz, *radius, phi, theta);
+    //printf("xyz %f %f %f | sph %f %f %f\n", dx, dy, dz, *radius, phi, theta);
 
     *cphi = cos(phi);
     *sphi = sin(phi); 
@@ -410,7 +410,7 @@ INT32 particle_extraction(
 
         if (shift_expansion){
             
-            printf("Shifting expansion: particle = %d\n", ix);
+            //printf("Shifting expansion: particle = %d\n", ix);
             
             L_SPACE = L_SPACE_VEC[tid];
 
@@ -451,7 +451,7 @@ INT32 particle_extraction(
         const REAL _rstheta = 1.0/stheta;
         const REAL rstheta = (std::isnan(_rstheta) || std::isinf(_rstheta)) ? 0.0 : _rstheta;
         
-        printf("1./sin(theta) = %f\n", rstheta);
+        //printf("1./sin(theta) = %f\n", rstheta);
 
         REAL local_pe  = 0.0;
         REAL sp_radius = 0.0;
@@ -551,7 +551,7 @@ INT32 particle_extraction(
 
 
 
-        printf("%d | %f %f %f\n", ix, sp_radius, sp_phi, sp_theta);
+        //printf("%d | %f %f %f\n", ix, sp_radius, sp_phi, sp_theta);
         sp_radius *= charge[ix];
         sp_theta *= charge[ix];
         sp_phi *= charge[ix];

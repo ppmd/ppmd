@@ -453,7 +453,7 @@ class EwaldOrthoganal(object):
             _cont_source = fh.read()
 
         _real_kernel = kernel.Kernel(
-            name='real_space_part',
+            name='self_interaction_part',
             code=_cont_source,
             headers=_cont_header
         )

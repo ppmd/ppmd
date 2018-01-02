@@ -16,7 +16,6 @@ def get_res_file_path(filename):
 
 
 from ppmd import *
-from ppmd.coulomb.fmm import *
 from ppmd.coulomb.ewald_half import *
 from scipy.special import sph_harm, lpmv
 import time
@@ -530,20 +529,12 @@ def test_fmm_force_ewald_1():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-    ASYNC = False
-    DIRECT = True if MPISIZE == 1 else False
-
-    DIRECT= True
-    EWALD = True
-
-    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
 
     A.npart = N
 
     rng = np.random.RandomState(seed=1234)
 
     A.P = data.PositionDat(ncomp=3)
-    A.F = data.ParticleDat(ncomp=3)
     A.FE = data.ParticleDat(ncomp=3)
     A.Q = data.ParticleDat(ncomp=1)
 
@@ -670,11 +661,6 @@ def test_fmm_force_ewald_1():
 
     A.scatter_data_from(0)
 
-    t0 = time.time()
-    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
-    phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
-    t1 = time.time()
-
     ewald = EwaldOrthoganalHalf(
         domain=A.domain,
         real_cutoff=rc,
@@ -695,32 +681,11 @@ def test_fmm_force_ewald_1():
 
     phi_ewald = A.cri[0] + A.crr[0] + A.crs[0]
 
-    print("EWALD_RECIP:\t", A.cri[0])
-    print("EWALD_REAL:\t", A.crr[0])
-
-    local_err = abs(phi_py - phi_ewald)
-    if local_err > eps: serr = red(local_err)
-    else: serr = green(local_err)
-
-    if MPIRANK == 0 and DEBUG:
-        print("\n")
-        #print(60*"-")
-        #opt.print_profile()
-        #print(60*"-")
-        print("TIME EWALD:\t", t3 - t2)
-        print("TIME FMM:\t", t1 - t0)
-        print("ENERGY EWALD:\t{:.20f}".format(phi_ewald))
-        print("ENERGY FMM:\t", phi_py)
-        print("ERR:\t\t", serr)
 
     for px in range(N):
 
-        err_re_c = red_tol(np.linalg.norm(A.FE[px,:] - A.F[px,:],
-                                          ord=np.inf), 10.**-6)
-
         print("PX:", px)
         print("\t\tFORCE EWALD :",A.FE[px,:])
-        print("\t\tFORCE FMM:",A.F[px,:], err_re_c)
 
 
 
