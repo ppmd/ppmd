@@ -73,6 +73,7 @@ static inline INT64 compute_cell_spherical(
 
     //printf("cube_half_len %f %f %f %f\n", cube_half_len[0], cube_half_len[1], cube_half_len[2], (cyt * 2 + 1) + cube_half_len[1]);
     // compute Cartesian displacement vector
+
     const REAL dx = px - ccx;
     const REAL dy = py - ccy;
     const REAL dz = pz - ccz;

@@ -306,10 +306,10 @@ def force_from_multipole(py_mom, fmm, disp, charge):
 def test_fmm_oct_1():
 
     R = 3
-    eps = 10.**-10
-    free_space = True
+    eps = 10.**-8
+    free_space = '27'
 
-    N = 2
+    N = 20
     E = 4.
 
     A = state.State()
@@ -340,10 +340,10 @@ def test_fmm_oct_1():
         ra = 0.25 * E
         nra = -0.25 * E
 
-        A.P[0,:] = ( 1.00,  1.01, 0.0)
-        A.P[1,:] = (-1.00,  1.01, 0.0)
-        A.P[2,:] = (-1.00, -1.01, 0.0)
-        A.P[3,:] = ( 1.00, -1.01, 0.0)
+        A.P[0,:] = ( 1.01,  1.01, 0.0)
+        A.P[1,:] = (-1.01,  1.01, 0.0)
+        A.P[2,:] = (-1.01, -1.01, 0.0)
+        A.P[3,:] = ( 1.01, -1.01, 0.0)
 
         A.Q[0,0] = -1.
         A.Q[1,0] = 1.
@@ -383,7 +383,7 @@ def test_fmm_oct_1():
         epsz = 0
 
         A.P[0,:] = ( 1.000, 0.001, 0.001)
-        A.P[1,:] = (-1.000, 0.001, 0.001)
+        A.P[1,:] = (-1.001, 0.001, 0.001)
 
         #A.P[:2:,:] = rng.uniform(low=-0.4999*E, high=0.4999*E, size=(N,3))
 
@@ -419,6 +419,14 @@ def test_fmm_oct_1():
         A.Q[6,0] = 0.
         A.Q[7,0] = 0.
 
+    else:
+
+        A.P[:N:,:] = rng.uniform(low=-0.4999*E, high=0.4999*E, size=(N,3))
+        A.Q[:] = rng.uniform(low=-1.0, high=1.0, size=(N,1))
+
+        bias = np.sum(A.Q[:])
+        A.Q[:] -= bias/N
+
 
     A.scatter_data_from(0)
 
@@ -428,49 +436,6 @@ def test_fmm_oct_1():
     t1 = time.time()
 
 
-    for px in range(N):
-        line = ('{: 8.4f} | {: 8.4f} {: 8.4f} {: 8.4f} | ' + \
-                '{: 8.4f} {: 8.4f} {: 8.4f}').format(
-            A.Q[px, 0],
-            A.P[px,0], A.P[px, 1], A.P[px, 2],
-            A.F[px,0], A.F[px, 1], A.F[px, 2]
-        )
-
-        print(line)
-
-
-    print("MID")
-    for lx in range(2):
-        print("lx", lx)
-        for mx in range(-1*lx, lx+1):
-            print("\tmx", mx, "\t:", fmm.up[fmm.re_lm(lx, mx)],
-                  fmm.up[fmm.im_lm(lx, mx)])
-
-    print("PX=1")
-    for lx in range(3):
-        print("lx", lx)
-        for mx in range(-1*lx, lx+1):
-            print("\tmx", mx, "\t:", fmm.tree_plain[2][2,2,2,fmm.re_lm(lx, mx)],
-                  fmm.tree_plain[2][2,2,2,fmm.im_lm(lx, mx)])
-
-
-    print("UNBREAK BELOW")
-    for lx in range(fmm.L):
-        for mx in range(-1*lx, lx+1):
-            py_re = 0.0
-            py_im = 0.0
-            for px in range(N):
-                r = spherical(A.P[px, :])
-                ynm = Yfoo(lx, -1 * mx, r[1], r[2]) * (r[0] ** float(lx)) * A.Q[px, 0]
-                py_re += ynm.real
-                py_im += ynm.imag
-            #assert abs(py_re - fmm.up[fmm.re_lm(lx, mx)]) < 10**-6
-            #assert abs(py_im - fmm.up[fmm.im_lm(lx, mx)]) < 10**-6
-
-            #if DEBUG:
-            #    print("\t{: >5} | {: >30} {: >30} | {: >30} {: >30} ".format(
-            #        mx, py_re, fmm.up[fmm.re_lm(lx, mx)],
-            #        py_im, fmm.up[fmm.im_lm(lx, mx)]))
 
     direct_forces = np.zeros((N, 3))
 
@@ -505,18 +470,6 @@ def test_fmm_oct_1():
                                                / (rij**3.)
 
 
-            print("ix:", ix, "phi:", phi_part)
-
-    else:
-        if free_space == '27':
-            phi_direct = -0.12868996439494947981
-        elif free_space == True:
-            phi_direct = -0.12131955438932764957
-        else:
-            raise RuntimeError("bad parameter")
-
-
-
     local_err = abs(phi_py - phi_direct)
     if local_err > eps: serr = red(local_err)
     else: serr = green(local_err)
@@ -531,309 +484,15 @@ def test_fmm_oct_1():
         print("ENERGY FMM:\t", phi_py)
         print("ERR:\t\t", serr)
 
-    h = 0.00001
-    stencil = (
-        np.array(( h, 0.0   , 0.0   )),
-        np.array(( -1.*h, 0.0   , 0.0   )),
-        np.array(( 0.0  , h , 0.0   )),
-        np.array(( 0.0  , -1.*h , 0.0   )),
-        np.array(( 0.0  , 0.0   ,h )),
-        np.array(( 0.0  , 0.0   ,-1.*h )),
-    )
-
-
-    phi_force = 0.0
     for px in range(N):
-        print(green(60*'-'))
 
-        cell = np.array((
-            int((A.P[px, 0]+E*0.5)),
-            int((A.P[px, 1]+E*0.5)),
-            int((A.P[px, 2]+E*0.5))
-        ))
-
-        width = E/(2.**(R-1))
-        start = (E*-0.5) + 0.5*width
-
-        cell_mid = np.array((
-            start + cell[0]*width,
-            start + cell[1]*width,
-            start + cell[2]*width
-        ))
-
-        print("cell", cell)
-
-        dx = A.P[px, :] - cell_mid
-
-        sph = spherical(dx)
-        radius = sph[0]
-        #radius = 0.000000001
-        theta = sph[1]
-        phi = sph[2]
-        
-        print(px, radius, phi, theta)
-
-        rstheta = 0.0
-        if abs(sin(theta)) > 0.0:
-            rstheta = 1./sin(theta)
-
-        print("1./sin(theta)", rstheta)
-
-        rhat = np.array((cos(phi)*sin(theta),
-                        sin(phi)*sin(theta),
-                        cos(theta)))
-
-        thetahat = np.array(
-            (cos(phi)*cos(theta)*rstheta,
-             sin(phi)*cos(theta)*rstheta,
-             -1.0*sin(theta)*rstheta)
-        )
-
-        print("sin(theta)/sin(theta)", sin(theta)*rstheta,
-              "cos(theta)", cos(theta))
-
-        phihat = np.array((-1*sin(phi), cos(phi), 0.0))
-
-        Fv = np.zeros(3)
-        Fvs = np.zeros(3)
-        Fvs_im = np.zeros(3)
-
-        vec = phihat
-        print("vectors:\t", rhat, phihat, thetahat, np.linalg.norm(vec))
-
-        plain = fmm.tree_plain[R-1][cell[2], cell[1], cell[0], :]
-        phi_part = 0.0
-
-        for jx in range(0,fmm.L):
-            #print(green(jx))
-            for kx in range(-1*jx, jx+1):
-                #print("\t", red(kx))
-
-                Ljk = plain[fmm.re_lm(jx,kx)] + 1.j*plain[fmm.im_lm(jx,kx)]
-                mid_phi = A.Q[px, 0]*(radius**jx)* \
-                             Ljk*Yfoo(jx,kx,theta, phi)
-
-                # energy
-                phi_force += 0.5 * mid_phi
-                phi_part += 0.5 * mid_phi
-
-                # Force from finite differences
-                # x
-                pos = spherical(dx + stencil[0])
-                phip = A.Q[px, 0]*(pos[0]**jx)* Ljk*Yfoo(jx,kx,pos[1], pos[2])
-                pos = spherical(dx + stencil[1])
-                phin = A.Q[px, 0]*(pos[0]**jx)* Ljk*Yfoo(jx,kx,pos[1], pos[2])
-                Fvs[0] -= (phip - phin).real/(2.*h)
-                Fvs_im[0] -= (phip - phin).imag/(2.*h)
-                # y
-                pos = spherical(dx + stencil[2])
-                phip = A.Q[px, 0]*(pos[0]**jx)* Ljk*Yfoo(jx,kx,pos[1], pos[2])
-                pos = spherical(dx + stencil[3])
-                phin = A.Q[px, 0]*(pos[0]**jx)* Ljk*Yfoo(jx,kx,pos[1], pos[2])
-                Fvs[1] -= (phip - phin).real/(2.*h)
-                Fvs_im[1] -= (phip - phin).imag/(2.*h)
-                # z
-                pos = spherical(dx + stencil[4])
-                phip = A.Q[px, 0]*(pos[0]**jx)* Ljk*Yfoo(jx,kx,pos[1], pos[2])
-                pos = spherical(dx + stencil[5])
-                phin = A.Q[px, 0]*(pos[0]**jx)* Ljk*Yfoo(jx,kx,pos[1], pos[2])
-                Fvs[2] -= (phip - phin).real/(2.*h)
-                Fvs_im[2] -= (phip - phin).imag/(2.*h)
-
-
-                # force from gradiant of sperical harmonics
-                if jx == 1:
-                    rpower = 1.0
-                else:
-                    if radius > 0:
-                        rpower = radius**(jx-1.)
-                    else:
-                        rpower = 0.0
-
-                # radius
-                #radius_coeff = 0.0
-                radius_coeff = float(jx) * rpower * \
-                                              Yfoo(jx, kx, theta, phi)
-
-                # theta
-                theta_coeff = float(jx - abs(kx) + 1) * \
-                                Pfoo(jx+1, abs(kx), cos(theta))
-                theta_coeff -= float(jx + 1) * cos(theta) * \
-                                Pfoo(jx, abs(kx), cos(theta))
-                theta_coeff *= rpower
-                theta_coeff *= Hfoo(jx, kx) * cmath.exp(1.j * float(kx) * phi)
-
-                # phi
-                phi_coeff = Yfoo(jx, kx, theta, phi) * (1.j * float(kx))
-                phi_coeff *= rpower * rstheta
-
-                #radius_coeff = 0.0
-                #theta_coeff = 0.0
-                #phi_coeff = 0.0
-
-                Fv -= A.Q[px, 0] * (rhat     * (Ljk* radius_coeff).real +\
-                                    thetahat * (Ljk* theta_coeff ).real +\
-                                    phihat   * (Ljk* phi_coeff   ).real)
-
-                ntol = 0.001
-                pbool = False
-                if (abs(radius_coeff) > ntol or abs(theta_coeff) > ntol or \
-                    abs(phi_coeff) > ntol) and pbool:
-                    print(jx, kx)
-                    print("{: >8} {: >60} | {: >8} {: >60} | {: >8} {: >60}".format(
-
-                        yellow("r"), radius_coeff,
-                          yellow("theta"),theta_coeff,
-                          yellow("phi"), phi_coeff))
-
-                continue
-                print("{} = {} * {}".format(
-                    Ljk* radius_coeff, radius_coeff, Ljk
-                ))
-
-
-        err_re_f = red_tol(np.linalg.norm(direct_forces[px,:] - Fv, ord=np.inf), 10.**-6)
-        err_re_c = red_tol(np.linalg.norm(direct_forces[px,:] - A.F[px,:], ord=np.inf), 10.**-6)
-        err_re_s = red_tol(np.linalg.norm(direct_forces[px,:] - Fvs, ord=np.inf), 10.**-6)
-        err_im_s = red_tol(np.linalg.norm(Fvs_im), 10.**-6)
+        err_re_c = red_tol(np.linalg.norm(direct_forces[px,:] - A.F[px,:],
+                                          ord=np.inf), 10.**-6)
 
         print("PX:", px)
         print("\t\tFORCE DIR :",direct_forces[px,:])
-        print("\t\tFORCE FMM :",Fv, err_re_f)
         print("\t\tFORCE FMMC:",A.F[px,:], err_re_c)
-        print("\t\tAPPRX REAL:",Fvs, err_re_s)
-        print("\t\tAPPRX IMAG:",Fvs_im, err_im_s)
 
-
-        print("PHI_PART", px, phi_part)
-    
-    #import ipdb; ipdb.set_trace()
-
-    print("Energy again:\t", phi_force, "ERR:\t", red(abs(phi_force.real-phi_direct)))
-
-
-
-    source_mom = fmm.tree_halo[R-1][4,4,5,:]
-    source_loc = np.array((1.5, 0.5, 0.5))
-    eval_loc = A.P[1,:]
-    disp = spherical(eval_loc - source_loc).reshape((1,3))
-
-    phi_py2 = compute_phi(fmm.L, source_mom, disp)[0] * A.Q[1,0]
-    print(yellow("1:\t"), yellow(phi_py2))
-
-
-
-
-
-
-    source_mom = fmm.tree_halo[R-1][4,4,3,:]
-    source_loc = np.array((-0.5, 0.5, 0.5))
-    eval_loc = A.P[0,:]
-
-    disp = spherical(eval_loc - source_loc).reshape((1,3))
-
-    _phi_py2 = compute_phi(fmm.L, source_mom, disp)[0] * A.Q[0,0]
-    phi_py2 += _phi_py2
-    phi_py2 *= 0.5
-
-    print(yellow("0:\t"), yellow(_phi_py2))
-
-    print(yellow("PHI2:\t"), yellow(phi_py2),
-          yellow(abs(phi_py2 - phi_direct)))
-
-    fmm_mom = fmm.tree_halo[R-1][4,4,3,:]
-    py_mom = np.zeros_like(fmm_mom)
-
-    for lx in range(fmm.L):
-        for mx in range(-1*lx, lx+1):
-
-            r = spherical(A.P[1, :] - source_loc)
-            ynm = Yfoo(lx, -1 * mx, r[1], r[2]) * (r[0] ** float(lx)) * A.Q[1, 0]
-            py_re = ynm.real
-            py_im = ynm.imag
-
-            assert abs(py_re - fmm_mom[fmm.re_lm(lx, mx)]) < 10**-15
-            assert abs(py_im - fmm_mom[fmm.im_lm(lx, mx)]) < 10**-15
-            py_mom[fmm.re_lm(lx, mx)] = py_re
-            py_mom[fmm.im_lm(lx, mx)] = py_im
-
-    source_mom = py_mom
-    source_loc = np.array((-0.5, 0.5, 0.5))
-    eval_loc = A.P[0,:]
-
-    disp = spherical(eval_loc - source_loc).reshape((1,3))
-
-    _phi_py2 = compute_phi(fmm.L, source_mom, disp)[0] * A.Q[0,0]
-    phi_py2 = _phi_py2
-
-    print(yellow("0_2:\t"), yellow(_phi_py2))
-
-
-    fv = force_from_multipole(py_mom, fmm, disp, A.Q[0,0])
-    print("MM F:\t", yellow(Fv))
-
-
-
-
-
-
-
-
-
-
-
-    other = ( 0.5,-0.5, 0.5)
-    point = np.array((0.5, 1.2, 0.5))
-
-    dphi = 1./np.linalg.norm(point - other)
-
-    cell = np.array((
-        int((point[0]+2)),
-        int((point[1]+2)),
-        int((point[2]+2))
-    ))
-
-    mid = np.array((-1.5, -1.5, -1.5)) + cell
-
-    sph = spherical(point - mid)
-    plain = fmm.tree_plain[fmm.R-1][ cell[2], cell[1], cell[0], :]
-    point_phi = 0.0
-    for jx in range(fmm.L):
-        for kx in range(-1*jx, jx+1):
-            Ljk = plain[fmm.re_lm(jx,kx)] + 1.j*plain[fmm.re_lm(jx,kx)]
-
-            point_phi += (sph[0]**jx)* Ljk*Yfoo(jx,kx,sph[1], sph[2])
-
-    print("POINT PHI:\t", point_phi.real, sph, cell)
-    print("OTHER PHI:\t", dphi, "DX:", point-other)
-
-
-
-
-    point = np.array(( 0.5,-0.2, 0.5))
-    other = (0.5, 1.5, 0.5)
-
-    dphi = 1./np.linalg.norm(point - other)
-
-    cell = np.array((
-        int((point[0]+2)),
-        int((point[1]+2)),
-        int((point[2]+2))
-    ))
-
-    mid = np.array((-1.5, -1.5, -1.5)) + cell
-
-    sph = spherical(point - mid)
-    plain = fmm.tree_plain[fmm.R-1][ cell[2], cell[1], cell[0], :]
-    point_phi = 0.0
-    for jx in range(fmm.L):
-        for kx in range(-1*jx, jx+1):
-            Ljk = plain[fmm.re_lm(jx,kx)] + 1.j*plain[fmm.re_lm(jx,kx)]
-
-            point_phi += (sph[0]**jx)* Ljk*Yfoo(jx,kx,sph[1], sph[2])
-
-    print("POINT PHI:\t", point_phi.real, sph, cell)
-    print("OTHER PHI:\t", dphi, "DX:", point-other)
 
 
 

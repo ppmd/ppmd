@@ -402,13 +402,15 @@ INT32 particle_extraction(
         const bool shz = ABS(pz-midz) < tol;
         
         const bool shift_expansion = (
-            (always_shift == 1) || shx || shy || shz
+            ((always_shift == 1) || shx || shy || shz) && (!(always_shift == -1))
             ) ? true : false;
 
 
         REAL * RESTRICT L_SPACE;
 
         if (shift_expansion){
+            
+            printf("Shifting expansion: particle = %d\n", ix);
             
             L_SPACE = L_SPACE_VEC[tid];
 
