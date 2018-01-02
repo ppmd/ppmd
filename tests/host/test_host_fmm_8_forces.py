@@ -309,7 +309,7 @@ def test_fmm_oct_1():
     eps = 10.**-8
     free_space = '27'
 
-    N = 20
+    N = 50
     E = 4.
 
     A = state.State()
