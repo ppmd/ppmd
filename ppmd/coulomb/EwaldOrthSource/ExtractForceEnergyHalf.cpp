@@ -62,7 +62,6 @@ for(int ix=1 ; ix<NM ; ix++) {
     COMP_AB(&re_p1z, &im_p1z, &TMP_RECIP_AXES[ZQR][ix-1], &TMP_RECIP_AXES[ZQI][ix-1], &TMP_RECIP_AXES[ZQR][ix], &TMP_RECIP_AXES[ZQI][ix]);
 }
 
-
 // start with the axes
 // X
 for( int ii=0 ; ii<NK ; ii++ ){
@@ -174,7 +173,6 @@ for(int iy=0 ; iy<NK ; iy++){
 
 
 
-
 // finally loop over axes and quadrants
 //RRS_INDEX(k,l,m,q)
 for(int iz=0 ; iz<NM ; iz++ ){
@@ -201,8 +199,8 @@ for(int iz=0 ; iz<NM ; iz++ ){
                 const double* i_base_index = &IRS_INDEX(ix,iy,iz,0);
                 const double coeff = COEFF_SPACE(ix+1, iy+1, iz+1) * charge_i;
                 ix++;
-                ixGX += GX;
                 recip_len_zyx = recip_len_zy + ixGX*ixGX;
+
                 for(int qx=0 ; qx<4 ; qx++){
 
                     const double ccx = CC_MAP_X(qx);
@@ -229,6 +227,7 @@ for(int iz=0 ; iz<NM ; iz++ ){
                     tmp_forcez += fterm*izGZ;
                 }
 
+                ixGX += GX;
         }
     }
 }

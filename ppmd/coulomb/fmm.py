@@ -606,7 +606,7 @@ class PyFMM(object):
         #if not _isnormal(np.array((phi_extract,))):
         #    _pdb_drop()
 
-        print("Far:", phi_extract, "Near:", phi_near)
+        #print("Far:", phi_extract, "Near:", phi_near)
 
         return phi_extract + phi_near
 
