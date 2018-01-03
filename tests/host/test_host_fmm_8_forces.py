@@ -303,6 +303,8 @@ def force_from_multipole(py_mom, fmm, disp, charge):
 
     return Fv
 
+#@pytest.mark.skipif("MPISIZE>1")
+@pytest.mark.skipif("True")
 def test_fmm_force_direct_1():
 
     R = 3
@@ -510,19 +512,15 @@ def test_fmm_force_direct_1():
         print("\t\tFORCE DIR :",direct_forces[px,:])
         print("\t\tFORCE FMMC:",A.F[px,:], err_re_c)
 
-
-
-
-
-
-
+#@pytest.mark.skipif("MPISIZE>1")
+@pytest.mark.skipif("True")
 def test_fmm_force_ewald_1():
 
     R = 3
-    eps = 10.**-6
+    eps = 10.**-8
     free_space = False
 
-    N = 4
+    N = 32
     E = 4.
     rc = E/8
 
@@ -660,6 +658,7 @@ def test_fmm_force_ewald_1():
         bias = np.sum(A.Q[:])
         A.Q[:,0] -= bias/N
 
+
     dipole = np.zeros(3)
     for px in range(N):
         dipole[:] += A.P[px,:]*A.Q[px,0]
@@ -678,7 +677,7 @@ def test_fmm_force_ewald_1():
     ewald = EwaldOrthoganalHalf(
         domain=A.domain,
         real_cutoff=rc,
-        eps=10.**-12,
+        eps=eps,
         shared_memory=SHARED_MEMORY
     )
 
@@ -695,9 +694,6 @@ def test_fmm_force_ewald_1():
 
     phi_ewald = A.cri[0] + A.crr[0] + A.crs[0]
 
-    print("EWALD_RECIP:\t", A.cri[0])
-    print("EWALD_REAL:\t", A.crr[0])
-
     local_err = abs(phi_py - phi_ewald)
     if local_err > eps: serr = red(local_err)
     else: serr = green(local_err)
@@ -713,16 +709,192 @@ def test_fmm_force_ewald_1():
         print("ENERGY FMM:\t", phi_py)
         print("ERR:\t\t", serr)
 
+    A.gather_data_on(0)
+    if MPIRANK == 0:
+        for px in range(N):
+
+            err_re_c = red_tol(np.linalg.norm(A.FE[px,:] - A.F[px,:],
+                                              ord=np.inf), 10.**-6)
+
+            print("PX:", px)
+            print("\t\tFORCE EWALD :",A.FE[px,:])
+            print("\t\tFORCE FMM:",A.F[px,:], err_re_c)
+
+#@pytest.mark.skipif("True")
+def test_fmm_force_ewald_2():
+
+    R = 3
+    eps = 10.**-6
+    free_space = True
+
+    N = 2
+    E = 4.
+    rc = E/8
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    ASYNC = False
+    DIRECT = True if MPISIZE == 1 else False
+
+    DIRECT= True
+    EWALD = True
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+
+    A.npart = N
+
+    rng = np.random.RandomState(seed=1234)
+
+    A.P = data.PositionDat(ncomp=3)
+    A.F = data.ParticleDat(ncomp=3)
+    A.FE = data.ParticleDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.crr = data.ScalarArray(ncomp=1)
+    A.cri = data.ScalarArray(ncomp=1)
+    A.crs = data.ScalarArray(ncomp=1)
+
+
+    if N == 4:
+        ra = 0.25 * E
+        nra = -0.25 * E
+
+        A.P[0,:] = ( 0.21,  0.21, 0.00)
+        A.P[1,:] = (-0.21,  0.21, 0.00)
+        A.P[2,:] = (-0.21, -0.21, 0.00)
+        A.P[3,:] = ( 0.21, -0.21, 0.00)
+
+        #A.P[0,:] = ( 0.00,  0.21, 0.21)
+        #A.P[1,:] = ( 0.00,  0.21,-0.21)
+        #A.P[2,:] = ( 0.00, -0.21,-0.21)
+        #A.P[3,:] = ( 0.00, -0.21, 0.21)
+
+        #A.P[0,:] = ( 1.01,  1.01, 0.00)
+        #A.P[1,:] = (-1.01,  1.01, 0.00)
+        #A.P[2,:] = (-1.01, -1.01, 0.00)
+        #A.P[3,:] = ( 1.01, -1.01, 0.00)
+
+        A.Q[0,0] = -1.
+        A.Q[1,0] = 1.
+        A.Q[2,0] = -1.
+        A.Q[3,0] = 1.
+
+    elif N == 1:
+        A.P[0,:] = ( 0.25*E, 0.25*E, 0.25*E)
+        A.P[0,:] = ( 10.**-6, 10.**-6, 10.**-6)
+
+        #A.P[0,:] = (0, -0.25*E, 0)
+        #A.P[1,:] = (0, 0.25*E, 0)
+        #A.P[0,:] = (0, 0, -0.25*E)
+        #A.P[1,:] = (0, 0, 0.25*E)
+
+        #A.Q[:,0] = 1.
+
+        A.Q[0,0] = 1.
+
+    elif N == 2:
+        #A.P[0,:] = ( 0.25*E, 0.25*E, 0.25*E)
+        #A.P[1,:] = ( -0.25*E, -0.25*E, 0)
+
+        #A.P[0,:] = (0, -0.25*E, 0)
+        #A.P[1,:] = (0, 0.25*E, 0)
+        #A.P[0,:] = (0, 0, -0.25*E)
+        #A.P[1,:] = (0, 0, 0.25*E)
+
+        #A.Q[:,0] = 1.
+        ra = 0.25 * E
+        nra = -0.25 * E
+
+        eps = 0.00
+
+        epsx = 0
+        epsy = 0
+        epsz = 0
+
+        A.P[0,:] = ( 0.001, 1.001, 0.001)
+        A.P[1,:] = ( -0.001, -1.001, 0.001)
+
+        #A.P[:2:,:] = rng.uniform(low=-0.4999*E, high=0.4999*E, size=(N,3))
+
+        A.Q[0,0] = -1.
+        A.Q[1,0] = 1.
+
+    elif N == 8:
+        for px in range(8):
+            phi = (float(px)/8) * 2. * math.pi
+            pxr = 0.25*E
+            pxx = pxr * math.cos(phi)
+            pxy = pxr * math.sin(phi)
+
+
+            A.P[px, :] = (pxx, pxy, 0)
+            A.Q[px, 0] = 1. - 2. * (px % 2)
+            #A.Q[px, 0] = -1.
+
+        #A.P[0,:] += eps
+
+        eps = 0.00001
+        #A.P[0:N:2,0] += eps
+        #A.P[0,0] -= eps
+        A.P[4,0] -= eps
+        A.P[:, 2] -= 0.200
+        A.P[:, 1] -= 0.200
+
+        #A.Q[0,0] = 0.
+        A.Q[1,0] = 0.
+        A.Q[4,0] = 0.
+        A.Q[3,0] = 0.
+        A.Q[5,0] = 0.
+        A.Q[6,0] = 0.
+        A.Q[7,0] = 0.
+
+    else:
+        assert N % 2 == 0
+        for px in range(N//2):
+            pos = rng.uniform(low=-0.4999*E, high=0.4999*E, size=(1,3))
+            cha = rng.uniform(low=-1., high=1.)
+
+            A.P[px, :] = pos
+            A.Q[px, 0] = cha
+
+            A.P[-1*(px+1), :] = -1.0*pos
+            A.Q[-1*(px+1), 0] = cha
+
+        bias = np.sum(A.Q[:])
+        A.Q[:,0] -= bias/N
+
+
+    dipole = np.zeros(3)
     for px in range(N):
+        dipole[:] += A.P[px,:]*A.Q[px,0]
 
-        err_re_c = red_tol(np.linalg.norm(A.FE[px,:] - A.F[px,:],
-                                          ord=np.inf), 10.**-6)
+    bias = np.sum(A.Q[:])
 
-        print("PX:", px)
-        print("\t\tFORCE EWALD :",A.FE[px,:])
-        print("\t\tFORCE FMM:",A.F[px,:], err_re_c)
+    print("DIPOLE:\t", dipole, "TOTAL CHARGE:\t", bias)
+
+    A.scatter_data_from(0)
+
+    print("boundary", A.domain.boundary)
+
+    t0 = time.time()
+    phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
+    t1 = time.time()
 
 
+    if MPIRANK == 0 and DEBUG:
+        print("\n")
+        #print(60*"-")
+        #opt.print_profile()
+        #print(60*"-")
+        print("TIME FMM:\t", t1 - t0)
+        print("ENERGY FMM:\t", phi_py)
 
+    A.gather_data_on(0)
+    if MPIRANK == 0:
+        for px in range(N):
 
+            print("PX:", px)
+            print("\t\tFORCE FMM:",A.F[px,:])
 

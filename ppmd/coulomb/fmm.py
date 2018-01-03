@@ -71,7 +71,9 @@ def _check_dtype(arr, dtype):
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6,
         free_space=False, r=None, shell_width=0.0, cuda=False,
-        force_unit=1.0, energy_unit=1.0):
+        force_unit=1.0, energy_unit=1.0, _debug=False):
+
+        self._debug = _debug
 
         dtype = REAL
 
@@ -339,7 +341,6 @@ class PyFMM(object):
         const int nsy = {nsy};
         const int nsz = {nsz};
         
-        
         const double jpx = P.j[0] + {hex}; 
         const double jpy = P.j[1] + {hey}; 
         const double jpz = P.j[2] + {hez};
@@ -573,7 +574,8 @@ class PyFMM(object):
 
         self._join_async()
 
-        self.up = np.copy(self.tree_parent[1][0,0,0, :],)
+        if self._debug:
+            self.up = np.copy(self.tree_parent[1][0,0,0, :],)
 
         self.tree_parent[0][:] = 0.0
         self.tree_plain[0][:] = 0.0
@@ -581,11 +583,9 @@ class PyFMM(object):
         self._compute_periodic_boundary()
 
         for level in range(1, self.R):
-
             self._translate_l_to_l(level)
 
             self._coarse_to_fine(level)
-
 
         #for level in range(self.R):
         #    print(level, 60*'-')
@@ -606,7 +606,7 @@ class PyFMM(object):
         #if not _isnormal(np.array((phi_extract,))):
         #    _pdb_drop()
 
-        #print("Far:", phi_extract, "Near:", phi_near)
+        print("Far:", phi_extract, "Near:", phi_near)
 
         return phi_extract + phi_near
 
@@ -746,6 +746,8 @@ class PyFMM(object):
         phi = REAL(0)
         self.entry_data.extract_from(self.tree_plain)
 
+
+
         err = self._extraction_lib(
             INT64(self.L),
             UINT64(positions.npart_local),
@@ -764,7 +766,7 @@ class PyFMM(object):
             _check_dtype(self._a, REAL),
             _check_dtype(self._ar, REAL),
             _check_dtype(self._ipower_ltl, REAL),
-            INT32(1)
+            INT32(0)
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 

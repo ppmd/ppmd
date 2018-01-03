@@ -25,6 +25,33 @@ static inline void cplx_mul(
 }
 
 
+
+static inline INT64 get_cube_index(
+    const UINT64 * RESTRICT cube_offset,
+    const UINT64 * RESTRICT cube_dim,
+    const UINT64 * RESTRICT cube_side_counts,   
+    const INT32 global_cell
+){
+    
+    const INT64 nsx = cube_side_counts[2];
+    const INT64 nsy = cube_side_counts[1];
+    const INT64 nsz = cube_side_counts[0];
+
+    const INT64 cxt = global_cell % nsx;
+    const INT64 cyt = ((global_cell - cxt) / nsx) % nsy;
+    const INT64 czt = (global_cell - cxt - cyt*nsx) / (nsx*nsy);
+
+    const UINT64 cx = cxt - cube_offset[2];
+    const UINT64 cy = cyt - cube_offset[1];
+    const UINT64 cz = czt - cube_offset[0];
+
+    if (cx >= cube_dim[2] || cy >= cube_dim[1] || cz >= cube_dim[0] ){
+        return (INT64) -1;}
+
+    return cx + cube_dim[2] * (cy + cube_dim[1] * cz);;
+}
+
+
 static inline INT64 get_cube_midpoint(
     const REAL * RESTRICT cube_half_len,
     const REAL * RESTRICT boundary,
@@ -48,6 +75,9 @@ static inline INT64 get_cube_midpoint(
     const UINT64 cx = cxt - cube_offset[2];
     const UINT64 cy = cyt - cube_offset[1];
     const UINT64 cz = czt - cube_offset[0];
+
+    printf("\t\tcxt=%d, cyt=%d, czt=%d\n", cxt, cyt, czt);
+    printf("\t\tnsx=%d, nsy=%d, nsz=%d\n", nsx, nsy, nsz);
 
     if (cx >= cube_dim[2] || cy >= cube_dim[1] || cz >= cube_dim[0] ){
         return (INT64) -1;}
@@ -358,7 +388,6 @@ INT32 particle_extraction(
 
     UINT32 count = 0;
     REAL potential_energy = 0.0;
-
     #pragma omp parallel for default(none) shared(thread_assign, position, \
         boundary, cube_offset, cube_dim, err, exp_space, force, \
         factorial_vec, P_SPACE_VEC, L_SPACE_VEC,\
@@ -368,6 +397,8 @@ INT32 particle_extraction(
         reduction(+: count) reduction(+: potential_energy)
     for(INT32 ix=0 ; ix<npart ; ix++){
         const int tid = omp_get_thread_num();
+        
+        printf("particle: %d\n", ix);
 
         const UINT64 ncomp = nlevel*nlevel*2;
 
@@ -380,7 +411,12 @@ INT32 particle_extraction(
         for(int tx=0 ; tx<(nlevel*4 + 2) ; tx++ ){ exp_vec[tx]=12345.678; }
         
 
-        const INT64 ix_cell = fmm_cell[ix];
+        const INT64 ix_cell = get_cube_index(cube_offset,cube_dim, cube_side_counts, fmm_cell[ix]);
+        //const INT64 ix_cell = fmm_cell[ix];
+
+
+        printf("\t\tfmm_cell=%d, ix_cell=%d\n", fmm_cell[ix], ix_cell);
+
         REAL * RESTRICT cube_start = &local_moments[ix_cell*ncomp];
 
         // cell mid points
@@ -389,7 +425,9 @@ INT32 particle_extraction(
         REAL radius, ctheta, stheta, cphi, sphi, msphi;
 
         get_cube_midpoint(cube_half_side_len, boundary, cube_offset, cube_dim,
-            cube_side_counts, ix_cell, &midx, &midy, &midz);
+            cube_side_counts, fmm_cell[ix], &midx, &midy, &midz);
+        
+        printf("\t\tmidx %f midy %f midz %f\n", midx, midy, midz);
 
         const REAL px = position[ix*3];
         const REAL py = position[ix*3+1];
@@ -415,9 +453,9 @@ INT32 particle_extraction(
             L_SPACE = L_SPACE_VEC[tid];
 
             // can shift local expansion to well defined place here
-            REAL newx = px + 0.2*cube_half_side_len[2];
-            REAL newy = py + 0.2*cube_half_side_len[1];
-            REAL newz = pz + 0.2*cube_half_side_len[0];
+            REAL newx = px + 0.1*cube_half_side_len[2];
+            REAL newy = py + 0.1*cube_half_side_len[1];
+            REAL newz = pz + 0.1*cube_half_side_len[0];
 
 
             // displacement from new expansion point to cube centre.
@@ -447,6 +485,8 @@ INT32 particle_extraction(
             compute_exp_space((int)nlevel, cphi, sphi, msphi, exp_vec);
 
         }
+        
+        printf("\t\t radius %f, ctheta %f, stheta %f, cphi %f, sphi %f, msphi %f\n", radius, ctheta, stheta, cphi, sphi, msphi);
 
         const REAL _rstheta = 1.0/stheta;
         const REAL rstheta = (std::isnan(_rstheta) || std::isinf(_rstheta)) ? 0.0 : _rstheta;
@@ -467,6 +507,8 @@ INT32 particle_extraction(
             if (lx==0 && (std::isnan(rhol2) || std::isinf(rhol2))) {rhol2 = 0.0;}
             if (lx==1) {rhol2 = 1.0;}
 
+            printf("\t\t\tlx=%d\n", lx);
+
             for( int mx=-1*lx ; mx<=lx ; mx++ ){
                 // energy computation
                 const UINT32 abs_mx = abs(mx);
@@ -483,7 +525,7 @@ INT32 particle_extraction(
 
                 const REAL ljk_re = L_SPACE[CUBE_IND(lx, mx)];
                 const REAL ljk_im = L_SPACE[CUBE_IND(lx, mx) + nlevel*nlevel];
-
+                
                 REAL pe_im = 0.0;
                 cplx_mul_add(
                     ljk_re,
@@ -521,24 +563,28 @@ INT32 particle_extraction(
                 const REAL plmm1_1 = (lx==0) ? ( (mx==0) ? 1.0 : 0.0 ) : P_SPACE[P_SPACE_IND(nlevel, lx-1, abs_mx)];
                 const REAL plmm1 = plmm1_1 * ( (ABS(lx-1) < abs_mx ) ? 0.0 : 1.0);
                 
-                //if (ABS(12345.678 - plmm1)<0.0001) {printf("BAD plmm1 %d %d \n", lx, mx);}
-
+//if (ABS(12345.678 - plmm1)<0.0001) {printf("BAD plmm1 %d %d \n", lx, mx);}
+//PRINT_NAN(plmm1)
                 const REAL theta_coeff = -1.0 * rhol2 * ycoeff * rstheta * (
                     (((REAL) lx) +  abs_mx ) * plmm1  - ((REAL) lx ) * ctheta * plm
                 );
                 
                 const REAL theta_exp_re = exp_vec[EXP_RE_IND(nlevel, mx)];
                 const REAL theta_exp_im = exp_vec[EXP_IM_IND(nlevel, mx)];
-
-                //if (ABS(12345.678 - theta_exp_re)<0.0001) {printf("BAD theta_exp_re %d %d \n", lx, mx);}
-                //if (ABS(12345.678 - theta_exp_im)<0.0001) {printf("BAD theta_exp_im %d %d \n", lx, mx);}
+                
+//if ((EXP_RE_IND(nlevel, mx) < 0) || (EXP_RE_IND(nlevel, mx) >= nlevel*4 + 2)) {printf("bad real exp index");}
+//if ((EXP_IM_IND(nlevel, mx) < 0) || (EXP_IM_IND(nlevel, mx) >= nlevel*4 + 2)) {printf("bad imag exp index");}
+//if (ABS(12345.678 - theta_exp_re)<0.01) {printf("BAD theta_exp_re %d %d \n", lx, mx);}
+//if (ABS(12345.678 - theta_exp_im)<0.01) {printf("BAD theta_exp_im %d %d \n", lx, mx);}
 
                 cplx_mul(ljk_re, ljk_im,
                          theta_exp_re, theta_exp_im,
                          &tmp_re, &tmp_im);
 
+//PRINT_NAN(theta_coeff)
 
                 sp_theta += theta_coeff * tmp_re;
+
 
             }
 

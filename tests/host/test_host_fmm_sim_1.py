@@ -43,7 +43,7 @@ def test_fmm_sim_1():
 
     eps = 10.**-6
 
-    fmm = PyFMM(domain=A.domain, N=N, eps=eps, free_space=True)
+    fmm = PyFMM(domain=A.domain, r=3, N=N, eps=eps, free_space=True)
 
     A.P = data.PositionDat(ncomp=3)
     A.Q = data.ParticleDat(ncomp=1)
@@ -80,44 +80,17 @@ def test_fmm_sim_1():
         phi_direct = None
 
     t0 = time.time()
-    fmm._compute_cube_contrib(A.P, A.Q)
-
-    for level in range(fmm.R - 1, 0, -1):
-
-        fmm._translate_m_to_m(level)
-
-        #print("HALO", level)
-        #print(fmm.tree_halo[level][:,:,:,0])
-        fmm._halo_exchange(level)
-        fmm._translate_m_to_l(level)
-        fmm._fine_to_coarse(level)
-
-    fmm.tree_parent[1][:] = 0.0
-
-    for level in range(1, fmm.R):
-        
-        fmm._coarse_to_fine(level)
-        fmm._translate_l_to_l(level)
-
-        #print("PLAIN", level)
-        #print(fmm.tree_plain[level][:,:,:,0])
-
-    fmm._compute_local_interaction(A.P, A.Q)
-
+    phi_fmm = fmm(A.P, A.Q)
     t1 = time.time()
-
-    phi_local = fmm.particle_phi[0]
-    
-    phi_py = fmm._compute_cube_extraction(A.P, A.Q)
-    
-    phi_fmm = phi_local + phi_py
 
     if DEBUG and MPIRANK == 0:
         print("Time:", t1 - t0)
-        print("phi_direct: {:.30f}".format(phi_direct))
-        print("phi_local", phi_local, "phi_py", phi_py)
-        print("direct:", phi_direct, "phi_fmm", phi_fmm)
-        print("ERROR:", abs(phi_direct - phi_fmm))
+        print("MPISIZE", MPISIZE)
+        print("phi_fmm", phi_fmm)
+        if MPISIZE == 1:
+            print("phi_direct: {:.30f}".format(phi_direct))
+            print("phi_fmm", phi_fmm)
+            print("ERROR:", abs(phi_direct - phi_fmm))
 
 
 
