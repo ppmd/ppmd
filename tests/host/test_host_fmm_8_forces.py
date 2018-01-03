@@ -513,7 +513,7 @@ def test_fmm_force_direct_1():
         print("\t\tFORCE FMMC:",A.F[px,:], err_re_c)
 
 #@pytest.mark.skipif("MPISIZE>1")
-@pytest.mark.skipif("True")
+#@pytest.mark.skipif("True")
 def test_fmm_force_ewald_1():
 
     R = 3
@@ -522,6 +522,10 @@ def test_fmm_force_ewald_1():
 
     N = 32
     E = 4.
+
+    N = 10000
+    E = 80.
+
     rc = E/8
 
     A = state.State()
@@ -534,7 +538,10 @@ def test_fmm_force_ewald_1():
     DIRECT= True
     EWALD = True
 
-    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+    CUDA=False
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
+                cuda=CUDA)
 
     A.npart = N
 
@@ -716,11 +723,19 @@ def test_fmm_force_ewald_1():
             err_re_c = red_tol(np.linalg.norm(A.FE[px,:] - A.F[px,:],
                                               ord=np.inf), 10.**-6)
 
-            print("PX:", px)
-            print("\t\tFORCE EWALD :",A.FE[px,:])
-            print("\t\tFORCE FMM:",A.F[px,:], err_re_c)
+            #print("PX:", px)
+            #print("\t\tFORCE EWALD :",A.FE[px,:])
+            #print("\t\tFORCE FMM:",A.F[px,:], err_re_c)
 
-#@pytest.mark.skipif("True")
+            assert np.linalg.norm(A.FE[px,:] - A.F[px,:], ord=np.inf) < 10.**-6
+
+
+    if MPIRANK == 0 and DEBUG:
+        print(60*"-")
+        opt.print_profile()
+        print(60*"-")
+
+@pytest.mark.skipif("True")
 def test_fmm_force_ewald_2():
 
     R = 3

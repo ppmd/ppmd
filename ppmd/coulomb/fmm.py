@@ -70,7 +70,7 @@ def _check_dtype(arr, dtype):
 
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6,
-        free_space=False, r=None, shell_width=0.0, cuda=False,
+        free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels = 2,
         force_unit=1.0, energy_unit=1.0, _debug=False):
 
         self._debug = _debug
@@ -476,6 +476,9 @@ class PyFMM(object):
         self.timer_ltl = opt.Timer(runtime.TIMER)
         self.timer_local = opt.Timer(runtime.TIMER)
 
+        self.timer_mtl_cuda = [opt.Timer(runtime.TIMER) for tx \
+                               in range(cuda_levels)]
+
         self.timer_halo = opt.Timer(runtime.TIMER)
         self.timer_down = opt.Timer(runtime.TIMER)
         self.timer_up = opt.Timer(runtime.TIMER)
@@ -486,6 +489,11 @@ class PyFMM(object):
         self._async_thread = None
 
         self.cuda = cuda
+        self.cuda_levels = cuda_levels
+        self.cuda_async_threads = []
+        for tx in range(self.L):
+            self.cuda_async_threads.append(None)
+
         self._cuda_mtl = None
         if self.cuda and CUDA_IMPORT:
             from . import fmm_cuda
@@ -525,11 +533,14 @@ class PyFMM(object):
         p[b+'up'] = self.timer_up.time()
         p[b+'exec_count'] = self.execution_count
 
+        if self.cuda:
+            for lx in range(self.cuda_levels):
+                p[b+'mtl_cuda_'+str(lx)] = self.timer_mtl_cuda[lx].time()
+
     def _compute_local_interaction(self, positions, charges, forces=None):
         if forces is None:
             forces = data.ParticleDat(ncomp=3, npart=positions.npart_total,
                                       dtype=self.dtype)
-
 
         self.timer_local.start()
         self._pair_loop.execute(
@@ -553,6 +564,48 @@ class PyFMM(object):
             positions.group.fmm_cell = data.ParticleDat(ncomp=1, dtype=INT32)
             positions.group.fmm_cell.npart_local = positions.npart_local
 
+    def _cuda_translate_m_t_l(self, level):
+        if self._cuda_mtl is None:
+            raise RuntimeError("cuda mtl is None")
+        cl = self.R - level - 1
+        if cl >= self.cuda_levels:
+            print("level", level, "max", self.cuda_levels, "cl", cl)
+            raise RuntimeError("cuda mtl called higher than requested max")
+
+        self.timer_mtl_cuda[cl].start()
+
+        radius = self.domain.extent[0] / \
+                 self.tree[level].ncubes_side_global
+
+        new_data = self._cuda_mtl.translate_mtl(
+            self.tree_halo, level, radius)
+        self.tree_plain[level][:] = new_data[:]
+
+        self.timer_mtl_cuda[cl].pause()
+
+    def _cuda_mtl_start_async(self, level):
+        thread = self.cuda_async_threads[level]
+        if thread is not None:
+            raise RuntimeError('Expected None, found a thread')
+
+        #func = self._cuda_translate_m_t_l
+        #self.cuda_async_threads[level] = Thread(target=func, args=(level,))
+        #self.cuda_async_threads[level].start()
+        #self.cuda_async_threads[level].join()
+        #self.cuda_async_threads[level] = None
+
+        self._cuda_translate_m_t_l(level)
+
+
+    def _cuda_mtl_wait_async(self, level):
+        thread = self.cuda_async_threads[level]
+        if thread is None:
+            return
+        else:
+            thread.join()
+            self.cuda_async_threads[level] = None
+
+
     def __call__(self, positions, charges, forces=None, async=False):
 
         self._check_aux_dat(positions)
@@ -565,7 +618,10 @@ class PyFMM(object):
             self._level_call_async(self._translate_m_to_m, level, async)
             self._halo_exchange(level)
 
-            self._level_call_async(self._translate_m_to_l, level, async)
+            if self.cuda and (self.R - level -1 < self.cuda_levels):
+                self._cuda_mtl_start_async(level)
+            else:
+                self._level_call_async(self._translate_m_to_l, level, async)
 
             self._fine_to_coarse(level)
 
@@ -583,8 +639,9 @@ class PyFMM(object):
         self._compute_periodic_boundary()
 
         for level in range(1, self.R):
+            if self.cuda:
+                self._cuda_mtl_wait_async(level)
             self._translate_l_to_l(level)
-
             self._coarse_to_fine(level)
 
         #for level in range(self.R):

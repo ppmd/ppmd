@@ -76,8 +76,8 @@ static inline INT64 get_cube_midpoint(
     const UINT64 cy = cyt - cube_offset[1];
     const UINT64 cz = czt - cube_offset[0];
 
-    printf("\t\tcxt=%d, cyt=%d, czt=%d\n", cxt, cyt, czt);
-    printf("\t\tnsx=%d, nsy=%d, nsz=%d\n", nsx, nsy, nsz);
+    //printf("\t\tcxt=%d, cyt=%d, czt=%d\n", cxt, cyt, czt);
+    //printf("\t\tnsx=%d, nsy=%d, nsz=%d\n", nsx, nsy, nsz);
 
     if (cx >= cube_dim[2] || cy >= cube_dim[1] || cz >= cube_dim[0] ){
         return (INT64) -1;}
@@ -392,13 +392,13 @@ INT32 particle_extraction(
         boundary, cube_offset, cube_dim, err, exp_space, force, \
         factorial_vec, P_SPACE_VEC, L_SPACE_VEC,\
         cube_half_side_len, cube_ilen, charge, local_moments, fmm_cell, cube_side_counts,\
-        alm, almr, i_array, always_shift) \
+        alm, almr, i_array) \
         schedule(dynamic) \
         reduction(+: count) reduction(+: potential_energy)
     for(INT32 ix=0 ; ix<npart ; ix++){
         const int tid = omp_get_thread_num();
         
-        printf("particle: %d\n", ix);
+        //printf("particle: %d\n", ix);
 
         const UINT64 ncomp = nlevel*nlevel*2;
 
@@ -415,7 +415,7 @@ INT32 particle_extraction(
         //const INT64 ix_cell = fmm_cell[ix];
 
 
-        printf("\t\tfmm_cell=%d, ix_cell=%d\n", fmm_cell[ix], ix_cell);
+        //printf("\t\tfmm_cell=%d, ix_cell=%d\n", fmm_cell[ix], ix_cell);
 
         REAL * RESTRICT cube_start = &local_moments[ix_cell*ncomp];
 
@@ -427,7 +427,7 @@ INT32 particle_extraction(
         get_cube_midpoint(cube_half_side_len, boundary, cube_offset, cube_dim,
             cube_side_counts, fmm_cell[ix], &midx, &midy, &midz);
         
-        printf("\t\tmidx %f midy %f midz %f\n", midx, midy, midz);
+        //printf("\t\tmidx %f midy %f midz %f\n", midx, midy, midz);
 
         const REAL px = position[ix*3];
         const REAL py = position[ix*3+1];
@@ -486,7 +486,7 @@ INT32 particle_extraction(
 
         }
         
-        printf("\t\t radius %f, ctheta %f, stheta %f, cphi %f, sphi %f, msphi %f\n", radius, ctheta, stheta, cphi, sphi, msphi);
+        //printf("\t\t radius %f, ctheta %f, stheta %f, cphi %f, sphi %f, msphi %f\n", radius, ctheta, stheta, cphi, sphi, msphi);
 
         const REAL _rstheta = 1.0/stheta;
         const REAL rstheta = (std::isnan(_rstheta) || std::isinf(_rstheta)) ? 0.0 : _rstheta;
@@ -507,7 +507,7 @@ INT32 particle_extraction(
             if (lx==0 && (std::isnan(rhol2) || std::isinf(rhol2))) {rhol2 = 0.0;}
             if (lx==1) {rhol2 = 1.0;}
 
-            printf("\t\t\tlx=%d\n", lx);
+            //printf("\t\t\tlx=%d\n", lx);
 
             for( int mx=-1*lx ; mx<=lx ; mx++ ){
                 // energy computation
@@ -636,7 +636,7 @@ PRINT_NAN(sp_phi)
         count++;
     }   
 
-    // printf("npart %d count %d\n", npart, count);
+    //printf("npart %d count %d\n", npart, count);
 
     if (err < 0){return err;}
     if (count != npart) {err = -4;}

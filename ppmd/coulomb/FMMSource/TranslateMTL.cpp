@@ -255,7 +255,7 @@ int translate_mtl(
     #pragma omp parallel for default(none) schedule(dynamic) \
     shared(dim_child, multipole_moments, local_moments, \
     phi_data, theta_data, alm, almr, i_array, int_list, int_tlookup, \
-    int_plookup, int_radius)
+    int_plookup, int_radius, dim_eight, dim_halo)
     for( INT64 pcx=0 ; pcx<ncells ; pcx++ ){
         INT64 cx, cy, cz;
         lin_to_xyz(dim_child, pcx, &cx, &cy, &cz);

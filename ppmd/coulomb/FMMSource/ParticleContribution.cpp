@@ -323,7 +323,7 @@ INT32 particle_contribution(
                 rhol = (lx > 0) ? rhol*radius : 1.0;
 
                 for( int mx=-1*lx ; mx<=lx ; mx++ ){
-                    const UINT32 abs_mx = abs(mx);
+                    const UINT32 abs_mx = ABS(mx);
                     const REAL coeff = sqrt(factorial_vec[lx - abs_mx]/factorial_vec[lx + abs_mx]) \
                                        * charge[ix] * rhol;
 

@@ -22,6 +22,7 @@ using namespace std;
 #define P_SPACE_IND(LMAX, L, M) (((LMAX)+1)*(L) + (M))
 
 
+#define ABS(x) ((x) > 0 ? (x) : -1*(x))
 /*
 Layout of memory used by above macros.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

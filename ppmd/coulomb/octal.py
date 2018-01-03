@@ -1094,10 +1094,21 @@ if CUDA_IMPORT:
 
             return self._async_stream
 
+        def set(self, level, data_tree):
+            """
+            Asynchronously copy the data on passed level to the device from
+            data_tree.
+            :param level: level to copy from
+            :param data_tree: tree to copy from
+            """
+            self._check_data_tree(data_tree)
+            self.data[level].set(data_tree[level])
+
+            return self._async_stream
+
         def __setitem__(self, level, data_tree):
             self.sync()
-            self.set_async(level, data_tree)
-            self.sync()
+            self.set(level, data_tree)
 
         def get_async(self, level, data_tree):
             """
