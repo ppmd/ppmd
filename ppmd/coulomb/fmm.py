@@ -613,6 +613,11 @@ class PyFMM(object):
 
     def __call__(self, positions, charges, forces=None, async=False):
 
+        self.entry_data.zero()
+        self.tree_plain.zero()
+        self.tree_halo.zero()
+        self.tree_parent.zero()
+
         self._check_aux_dat(positions)
 
         self._compute_cube_contrib(positions, charges,
@@ -659,7 +664,7 @@ class PyFMM(object):
 
         self._update_opt()
 
-        print("Far:", phi_extract, "Near:", phi_near)
+        #print("Far:", phi_extract, "Near:", phi_near)
         return phi_extract + phi_near
 
     def _level_call_async(self, func, level, async):
@@ -729,8 +734,6 @@ class PyFMM(object):
             #print("POST   ", self.tree_parent[1][0, 0, 0, :10:])
 
 
-
-
     def _join_async(self):
         if self._async_thread is not None:
             self._async_thread.join()
@@ -739,6 +742,7 @@ class PyFMM(object):
     def _compute_cube_contrib(self, positions, charges, fmm_cell):
 
         self.timer_contrib.start()
+
         ns = self.tree.entry_map.cube_side_count
         cube_side_counts = np.array((ns, ns, ns), dtype=UINT64)
         if self._thread_allocation.size < self._tcount * \

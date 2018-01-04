@@ -625,6 +625,9 @@ class EntryData(object):
                      self._start[1] + self.local_size[1],
                      self._start[2] + self.local_size[2])
 
+    def zero(self):
+        self.data[:] = 0.0
+
     def add_onto(self, octal_data_tree):
         """
         add data onto a OctalDataTree of mode='halo'
@@ -836,6 +839,11 @@ class OctalDataTree(object):
     def __getitem__(self, item):
         return self.data[item]
 
+    def zero(self):
+        """Zero all stored data."""
+        for lvl, lvld in enumerate(self.tree.levels):
+            if self.data[lvl].size > 0:
+                self.data[lvl][:] = 0.0
 
 def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
     """

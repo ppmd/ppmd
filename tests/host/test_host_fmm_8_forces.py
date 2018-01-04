@@ -677,7 +677,6 @@ def test_fmm_force_ewald_1():
     A.scatter_data_from(0)
 
     t0 = time.time()
-
     phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
     t1 = time.time()
 
@@ -717,6 +716,17 @@ def test_fmm_force_ewald_1():
         print("ENERGY FMM:\t", phi_py)
         print("ERR:\t\t", serr)
 
+
+    # run the same again
+    A.F[:] = 0.0
+    t0 = time.time()
+    phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
+    t1 = time.time()
+
+    local_err = abs(phi_py - phi_ewald)
+    if local_err > eps: serr = red(local_err)
+    else: serr = green(local_err)
+
     A.gather_data_on(0)
     if MPIRANK == 0:
         for px in range(N):
@@ -729,6 +739,11 @@ def test_fmm_force_ewald_1():
             #print("\t\tFORCE FMM:",A.F[px,:], err_re_c)
 
             assert np.linalg.norm(A.FE[px,:] - A.F[px,:], ord=np.inf) < 10.**-6
+
+    if MPIRANK == 0 and DEBUG:
+        print("TIME FMM:\t", t1 - t0)
+        print("ENERGY FMM:\t", phi_py)
+        print("ERR:\t\t", serr)
 
 
     if MPIRANK == 0 and DEBUG:
