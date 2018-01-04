@@ -524,7 +524,7 @@ def test_fmm_force_ewald_1():
     E = 4.
 
     N = 10000
-    E = 80.
+    E = 100.
 
     rc = E/8
 
@@ -677,9 +677,10 @@ def test_fmm_force_ewald_1():
     A.scatter_data_from(0)
 
     t0 = time.time()
-    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
+
     phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
     t1 = time.time()
+
 
     ewald = EwaldOrthoganalHalf(
         domain=A.domain,

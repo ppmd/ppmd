@@ -15,6 +15,7 @@ import math
 import cmath
 from threading import Thread
 from scipy.special import lpmv, rgamma, gammaincc, lambertw
+import sys
 
 from ppmd.cuda import CUDA_IMPORT
 
@@ -70,7 +71,7 @@ def _check_dtype(arr, dtype):
 
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6,
-        free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels = 2,
+        free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels = 1,
         force_unit=1.0, energy_unit=1.0, _debug=False):
 
         self._debug = _debug
@@ -538,6 +539,9 @@ class PyFMM(object):
                 p[b+'mtl_cuda_'+str(lx)] = self.timer_mtl_cuda[lx].time()
 
     def _compute_local_interaction(self, positions, charges, forces=None):
+
+
+
         if forces is None:
             forces = data.ParticleDat(ncomp=3, npart=positions.npart_total,
                                       dtype=self.dtype)
@@ -564,7 +568,9 @@ class PyFMM(object):
             positions.group.fmm_cell = data.ParticleDat(ncomp=1, dtype=INT32)
             positions.group.fmm_cell.npart_local = positions.npart_local
 
-    def _cuda_translate_m_t_l(self, level):
+    def _cuda_translate_m_t_l(self, level, async=True):
+        if self.tree[level].local_grid_cube_size is None:
+            return
         if self._cuda_mtl is None:
             raise RuntimeError("cuda mtl is None")
         cl = self.R - level - 1
@@ -573,29 +579,27 @@ class PyFMM(object):
             raise RuntimeError("cuda mtl called higher than requested max")
 
         self.timer_mtl_cuda[cl].start()
-
         radius = self.domain.extent[0] / \
                  self.tree[level].ncubes_side_global
-
-        new_data = self._cuda_mtl.translate_mtl(
-            self.tree_halo, level, radius)
-        self.tree_plain[level][:] = new_data[:]
+        if async:
+            self._cuda_mtl_start_async(level, radius)
+        else:
+            self._cuda_mtl.translate_mtl(self.tree_halo, level, radius,
+                                         self.tree_plain)
 
         self.timer_mtl_cuda[cl].pause()
 
-    def _cuda_mtl_start_async(self, level):
+    def _cuda_mtl_start_async(self, level, radius):
         thread = self.cuda_async_threads[level]
         if thread is not None:
             raise RuntimeError('Expected None, found a thread')
 
-        #func = self._cuda_translate_m_t_l
-        #self.cuda_async_threads[level] = Thread(target=func, args=(level,))
-        #self.cuda_async_threads[level].start()
-        #self.cuda_async_threads[level].join()
-        #self.cuda_async_threads[level] = None
+        self._cuda_mtl.translate_mtl_pre(level, self.tree_halo)
 
-        self._cuda_translate_m_t_l(level)
+        func = self._cuda_mtl.translate_mtl_async_func
 
+        self.cuda_async_threads[level]=Thread(target=func,args=(level, radius))
+        self.cuda_async_threads[level].start()
 
     def _cuda_mtl_wait_async(self, level):
         thread = self.cuda_async_threads[level]
@@ -603,6 +607,7 @@ class PyFMM(object):
             return
         else:
             thread.join()
+            self._cuda_mtl.translate_mtl_post(level, self.tree_plain)
             self.cuda_async_threads[level] = None
 
 
@@ -613,13 +618,14 @@ class PyFMM(object):
         self._compute_cube_contrib(positions, charges,
                                    positions.group.fmm_cell)
 
+
         for level in range(self.R - 1, 0, -1):
 
             self._level_call_async(self._translate_m_to_m, level, async)
             self._halo_exchange(level)
 
             if self.cuda and (self.R - level -1 < self.cuda_levels):
-                self._cuda_mtl_start_async(level)
+                self._cuda_translate_m_t_l(level)
             else:
                 self._level_call_async(self._translate_m_to_l, level, async)
 
@@ -627,6 +633,7 @@ class PyFMM(object):
 
             if level > 1:
                 self.tree_parent[level][:] = 0.0
+
 
         self._join_async()
 
@@ -644,27 +651,15 @@ class PyFMM(object):
             self._translate_l_to_l(level)
             self._coarse_to_fine(level)
 
-        #for level in range(self.R):
-        #    print(level, 60*'-')
-        #    print(self.tree_halo[level][:,:,:,0])
-
         phi_extract = self._compute_cube_extraction(positions, charges,
                                                     forces=forces)
         phi_near = self._compute_local_interaction(positions, charges,
                                                    forces=forces)
 
-        #phi_near = 0.
 
         self._update_opt()
 
-        #print("Near:", phi_near, "Far:", phi_extract,
-        #      "npart", positions.npart_local)
-
-        #if not _isnormal(np.array((phi_extract,))):
-        #    _pdb_drop()
-
         print("Far:", phi_extract, "Near:", phi_near)
-
         return phi_extract + phi_near
 
     def _level_call_async(self, func, level, async):

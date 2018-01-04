@@ -560,7 +560,6 @@ class PairLoopNeighbourListNS(object):
         args = self._get_class_lib_args(neighbour_list) + \
                self._get_static_lib_args(static_args) + args
 
-
         '''Execute the kernel over all particle pairs.'''
         method = self._lib[self._kernel.name + '_wrapper']
 

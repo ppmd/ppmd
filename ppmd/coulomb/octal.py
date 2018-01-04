@@ -1122,6 +1122,7 @@ if CUDA_IMPORT:
                                        stream=self._async_stream)
             return self._async_stream
 
+
         def get(self, level, data_tree):
             """
             Copy the data on passed level from the device to
@@ -1129,15 +1130,13 @@ if CUDA_IMPORT:
             :param level: level to copy from
             :param data_tree: tree to copy into
             """
-            self.sync()
-            self.get_async(level, data_tree)
-            self.sync()
+            self._check_data_tree(data_tree)
+            self.data[level].get(ary=data_tree[level])
 
         def __getitem__(self, level):
+
             self.sync()
-            arr = self.data[level].get_async(ary=None,
-                                             stream=self._async_stream)
-            self.sync()
+            arr = self.data[level].get_async(ary=None)
             return arr
 
         def device_pointer(self, level):

@@ -116,14 +116,30 @@ class TranslateMTLCuda(object):
 
         self.timer_mtl = opt.Timer(runtime.TIMER)
 
+
+    def translate_mtl_pre(self, level, host_halo_tree):
+        self.tree_halo[level] = host_halo_tree
+
+    def translate_mtl_async_func(self, level, radius):
+        self._translate_mtl(level, radius)
+
+    def translate_mtl_post(self, level, host_plain_tree=None):
+        if host_plain_tree is not None:
+            self.tree_plain.get(level, host_plain_tree)
+            return None
+
+        return self.tree_plain[level]
+
+
+    # perform all mtl stages in one step
     def translate_mtl(self, host_halo_tree, level, radius,
                       host_plain_tree=None):
 
         self.tree_halo[level] = host_halo_tree
         self._translate_mtl(level, radius)
         if host_plain_tree is not None:
-            self.tree_plain.get_async(level, host_plain_tree)
-
+            self.tree_plain.get(level, host_plain_tree)
+            return None
         return self.tree_plain[level]
 
     def _translate_mtl(self, level, radius):

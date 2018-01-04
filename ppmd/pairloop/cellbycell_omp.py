@@ -565,6 +565,7 @@ class CellByCellOMP(object):
         assert ctypes.c_int == cell2part.cell_contents_count.dtype
         jstore = self._init_jstore(cell2part)
         offset = cell2part.cell_list.end - cell2part.domain.cell_count
+
         return [
             ctypes.c_int(runtime.NUM_THREADS),
             ctypes.c_int(cell2part.num_particles),
@@ -589,7 +590,6 @@ class CellByCellOMP(object):
                 )
             else:
                 args.append(obj.ctypes_data_access(mode, pair=True))
-
         return args
 
     def _post_execute_dats(self, dats):
