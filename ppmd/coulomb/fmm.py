@@ -71,7 +71,7 @@ def _check_dtype(arr, dtype):
 
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6,
-        free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels=1,
+        free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels=2,
         force_unit=1.0, energy_unit=1.0, _debug=False):
 
         self._debug = _debug
@@ -514,7 +514,7 @@ class PyFMM(object):
 
         if self.cuda and (self._cuda_mtl is None):
             raise RuntimeError('CUDA support was requested but intialisation'
-                               'failed')
+                               ' failed')
 
 
     def _update_opt(self):
@@ -536,9 +536,8 @@ class PyFMM(object):
 
 
         if self.cuda:
-            for lx in range(self.cuda_levels):
-                p[b+'mtl_cuda_'+str(lx)] = self.timer_mtl_cuda[lx].time()
-                p[b+'mtl_cuda_gflops'] = self.cuda_flop_rate_mtl() / (10.**9.)
+            p[b+'mtl_cuda_(async)'] = self._cuda_mtl.timer_mtl.time()
+            p[b+'mtl_cuda_gflops'] = self.cuda_flop_rate_mtl() / (10.**9.)
     def _compute_local_interaction(self, positions, charges, forces=None):
 
         if forces is None:

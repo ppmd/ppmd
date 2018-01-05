@@ -83,16 +83,19 @@ PBC = domain.BoundaryTypePeriodic
 
 def test_fmm_sim_1():
 
-    R = 3
+    R = 5
     eps = 10.**-6
     free_space = False
 
     dt = 0.001
     shell_steps = 10
-    steps = 400
+    steps = 20
 
-    crn = 10
+    crn = 50
     rho = 3.
+
+    CUDA=False
+    CUDA_LEVELS=1
 
     N = int(crn**3)
     E = rho * crn
@@ -107,10 +110,9 @@ def test_fmm_sim_1():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = PBC()
 
-    CUDA=True
 
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
-                cuda=CUDA)
+                cuda=CUDA, cuda_levels=CUDA_LEVELS)
 
     A.npart = N
 
@@ -234,9 +236,10 @@ def test_fmm_sim_1():
             ke_list.append(A.ke[0])
             u_list.append(A.u[0])
             if MPIRANK == 0:
-                print("{: 5d} {: 10.8e} {: 10.8e} {: 10.8e} {: 10.8e} | {: 8.4f} {: 8.4f}".format(
+                print("{: 5d} {: 10.8e} {: 10.8e} {: 10.8e} {: 10.8e} | {: 8.4f} {: 8.4f} | {:10.8e}".format(
                     it, A.ke[0], A.u[0], qpot, A.ke[0] + A.u[0] + qpot,
-                    fmm.flop_rate_mtl()/(10.**9), fmm.cuda_flop_rate_mtl()/(10.**9))
+                    fmm.flop_rate_mtl()/(10.**9), fmm.cuda_flop_rate_mtl()/(10.**9),
+                    time.time() - start)
                 )
     end = time.time()
 
