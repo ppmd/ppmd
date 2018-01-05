@@ -69,6 +69,8 @@ def cuda_err_check(err_code):
             abort("Non-zero CUDA error:" + str(err_code) + 'rank: ' + \
                   str(_MPIRANK))
 
+DEVICE_NUMBER = 0
+
 def cuda_set_device(device=None):
     """
     Set the cuda device.
@@ -116,9 +118,11 @@ def cuda_set_device(device=None):
               "Device count:", device_count.value,
               "MPI rank:", _MPIRANK,
               "MPI size:", _MPISIZE)
+        DEVICE_NUMBER = _r
         return cudadrv.Device(_r)
 
     else:
+        DEVICE_NUMBER = device
         return cudadrv.Device(device)
 
 

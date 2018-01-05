@@ -165,7 +165,8 @@ class TranslateMTLCuda(object):
             _check_dtype(self._jlookup, INT32),
             _check_dtype(self._klookup, INT32),
             _check_dtype(self._ipower_mtl, REAL),
-            INT32(128)
+            INT32(128),
+            INT32(cuda_runtime.DEVICE_NUMBER)
         )
         self.timer_mtl.pause()
         self._lock.release()

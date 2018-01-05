@@ -71,7 +71,7 @@ def _check_dtype(arr, dtype):
 
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6,
-        free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels=2,
+        free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels=1,
         force_unit=1.0, energy_unit=1.0, _debug=False):
 
         self._debug = _debug

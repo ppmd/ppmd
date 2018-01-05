@@ -107,7 +107,7 @@ def test_fmm_sim_1():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = PBC()
 
-    CUDA=False
+    CUDA=True
 
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
                 cuda=CUDA)

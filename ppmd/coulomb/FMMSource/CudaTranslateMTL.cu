@@ -265,7 +265,8 @@ int translate_mtl(
     const INT32 * RESTRICT d_jlookup,
     const INT32 * RESTRICT d_klookup,
     const REAL * RESTRICT d_ipower_mtl,
-    const INT32 thread_block_size
+    const INT32 thread_block_size,
+    const INT32 device_number
 ){
 
 
@@ -295,7 +296,9 @@ int translate_mtl(
     
     dim3 grid_block(nblocks*dim_child[2], dim_child[1], dim_child[0]);
     dim3 thread_block(thread_block_size, 1, 1);
-
+    
+    err = cudaSetDevice(device_number);
+    if (err != cudaSuccess){return err;}
 
     int device_id = -1;
     err = cudaGetDevice(&device_id);
