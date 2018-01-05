@@ -92,7 +92,6 @@ class PyFMM(object):
 
         self.free_space = free_space
 
-
         ncomp = (self.L**2) * 2
         # define the octal tree and attach data to the tree.
         self.tree = OctalTree(self.R, domain.comm)
@@ -527,12 +526,14 @@ class PyFMM(object):
         p[b+'extract'] = self.timer_extract.time()
         p[b+'mtm'] = self.timer_mtm.time()
         p[b+'mtl'] = self.timer_mtl.time()
+        p[b+'mtl_gflops'] = self.flop_rate_mtl() / (10.**9.)
         p[b+'ltl'] = self.timer_ltl.time()
         p[b+'local'] = self.timer_local.time()
         p[b+'halo'] = self.timer_halo.time()
         p[b+'down'] = self.timer_down.time()
         p[b+'up'] = self.timer_up.time()
         p[b+'exec_count'] = self.execution_count
+
 
         if self.cuda:
             for lx in range(self.cuda_levels):
@@ -608,8 +609,17 @@ class PyFMM(object):
             self._cuda_mtl.translate_mtl_post(level, self.tree_plain)
             self.cuda_async_threads[level] = None
 
+    def flop_rate_mtl(self):
+        local_plain_cells = self.tree_plain.num_cells - 1
+        cost_per_cell = (self.L**4) * 16
+        flop_count = 189 * cost_per_cell * local_plain_cells
+        total_cost = flop_count * self.execution_count
+
+        return total_cost/self. timer_mtl.time()
+
 
     def __call__(self, positions, charges, forces=None, async=False):
+
 
         self.entry_data.zero()
         self.tree_plain.zero()
@@ -659,10 +669,10 @@ class PyFMM(object):
         phi_near = self._compute_local_interaction(positions, charges,
                                                    forces=forces)
 
-
         self._update_opt()
 
         #print("Far:", phi_extract, "Near:", phi_near)
+        self.execution_count += 1
         return phi_extract + phi_near
 
     def _level_call_async(self, func, level, async):

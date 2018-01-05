@@ -88,11 +88,11 @@ def test_fmm_sim_1():
     free_space = False
 
     dt = 0.001
-    shell_steps = 20
-    steps = 100000
+    shell_steps = 10
+    steps = 20
 
-    crn = 8
-    rho = 6.
+    crn = 10
+    rho = 3.
 
     N = int(crn**3)
     E = rho * crn
@@ -138,7 +138,7 @@ def test_fmm_sim_1():
             A.Q[-1*(px+1), 0] = cha
     else:
         A.P[:] = utility.lattice.cubic_lattice((crn, crn, crn), (E,E,E))
-        A.Q[:] = rng.uniform(low=-1.0, high=1.0, size=(N,1))
+        A.Q[:] = rng.uniform(low=-3.0, high=3.0, size=(N,1))
 
     bias = np.sum(A.Q[:])
     A.Q[:,0] -= bias/N
@@ -224,6 +224,8 @@ def test_fmm_sim_1():
         potaa_force_updater.execute()
         qpot = fmm(positions=A.P, charges=A.Q, forces=A.F)
 
+
+
         # velocity verlet 2
         vv_p2.execute(A.npart_local)
 
@@ -232,8 +234,8 @@ def test_fmm_sim_1():
             ke_list.append(A.ke[0])
             u_list.append(A.u[0])
             if MPIRANK == 0:
-                print("{: 5d} {: 10.8e} {: 10.8e} {: 10.8e} {: 10.8e}".format(
-                    it, A.ke[0], A.u[0], qpot, A.ke[0] + A.u[0] + qpot
+                print("{: 5d} {: 10.8e} {: 10.8e} {: 10.8e} {: 10.8e} | {: 8.4f}".format(
+                    it, A.ke[0], A.u[0], qpot, A.ke[0] + A.u[0] + qpot, fmm.flop_rate_mtl()/(10.**9)
                 ))
     end = time.time()
 
