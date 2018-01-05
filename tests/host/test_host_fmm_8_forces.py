@@ -513,7 +513,7 @@ def test_fmm_force_direct_1():
         print("\t\tFORCE FMMC:",A.F[px,:], err_re_c)
 
 #@pytest.mark.skipif("MPISIZE>1")
-@pytest.mark.skipif("True")
+#@pytest.mark.skipif("True")
 def test_fmm_force_ewald_1():
 
     R = 3
@@ -523,8 +523,8 @@ def test_fmm_force_ewald_1():
     N = 32
     E = 4.
 
-    N = 10000
-    E = 100.
+    #N = 10000
+    #E = 100.
 
     rc = E/8
 
@@ -751,7 +751,7 @@ def test_fmm_force_ewald_1():
         opt.print_profile()
         print(60*"-")
 
-#@pytest.mark.skipif("True")
+@pytest.mark.skipif("True")
 def test_fmm_force_ewald_2():
 
     R = 3

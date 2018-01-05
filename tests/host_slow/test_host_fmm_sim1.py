@@ -89,7 +89,7 @@ def test_fmm_sim_1():
 
     dt = 0.001
     shell_steps = 10
-    steps = 20
+    steps = 400
 
     crn = 10
     rho = 3.
@@ -234,9 +234,10 @@ def test_fmm_sim_1():
             ke_list.append(A.ke[0])
             u_list.append(A.u[0])
             if MPIRANK == 0:
-                print("{: 5d} {: 10.8e} {: 10.8e} {: 10.8e} {: 10.8e} | {: 8.4f}".format(
-                    it, A.ke[0], A.u[0], qpot, A.ke[0] + A.u[0] + qpot, fmm.flop_rate_mtl()/(10.**9)
-                ))
+                print("{: 5d} {: 10.8e} {: 10.8e} {: 10.8e} {: 10.8e} | {: 8.4f} {: 8.4f}".format(
+                    it, A.ke[0], A.u[0], qpot, A.ke[0] + A.u[0] + qpot,
+                    fmm.flop_rate_mtl()/(10.**9), fmm.cuda_flop_rate_mtl()/(10.**9))
+                )
     end = time.time()
 
 

@@ -13,7 +13,7 @@ import ctypes
 import os
 import math
 import cmath
-from threading import Thread
+from threading import Thread, Lock
 from scipy.special import lpmv, rgamma, gammaincc, lambertw
 
 from ppmd.cuda import *
@@ -116,6 +116,8 @@ class TranslateMTLCuda(object):
 
         self.timer_mtl = opt.Timer(runtime.TIMER)
 
+        self._lock = Lock()
+
 
     def translate_mtl_pre(self, level, host_halo_tree):
         self.tree_halo[level] = host_halo_tree
@@ -143,6 +145,7 @@ class TranslateMTLCuda(object):
         return self.tree_plain[level]
 
     def _translate_mtl(self, level, radius):
+        self._lock.acquire(True)
 
         self.timer_mtl.start()
         err = self._translate_mtl_lib['translate_mtl'](
@@ -164,11 +167,14 @@ class TranslateMTLCuda(object):
             _check_dtype(self._ipower_mtl, REAL),
             INT32(128)
         )
+        self.timer_mtl.pause()
+        self._lock.release()
+
         cuda_runtime.cuda_err_check(err)
+
         if err < 0:
             raise RuntimeError("Negative error code caught: {}".format(err))
 
-        self.timer_mtl.pause()
 
 
 

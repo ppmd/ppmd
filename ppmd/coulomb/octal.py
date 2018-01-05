@@ -807,7 +807,7 @@ class OctalDataTree(object):
         self.mode = mode
         self.data = []
         self.num_data = []
-        self.num_cells = 0
+        self._num_cells = []
 
         for lvl in self.tree.levels:
             if self.mode == 'plain' and \
@@ -823,9 +823,13 @@ class OctalDataTree(object):
                 shape = (0,0,0,0)
             self.data.append(np.zeros(shape=shape, dtype=dtype))
             self.num_data.append(shape[0]*shape[1]*shape[2]*shape[3])
-            self.num_cells += shape[0]*shape[1]*shape[2]
+            self._num_cells.append(shape[0]*shape[1]*shape[2])
 
         self.nbytes = sum([dx.nbytes for dx in self.data])
+
+    def num_cells(self, start=0, end=None):
+        return sum(self._num_cells[start:end:])
+
 
     def halo_exchange_level(self, level):
         if level < 1:

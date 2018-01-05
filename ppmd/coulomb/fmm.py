@@ -71,7 +71,7 @@ def _check_dtype(arr, dtype):
 
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6,
-        free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels = 1,
+        free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels=2,
         force_unit=1.0, energy_unit=1.0, _debug=False):
 
         self._debug = _debug
@@ -538,7 +538,7 @@ class PyFMM(object):
         if self.cuda:
             for lx in range(self.cuda_levels):
                 p[b+'mtl_cuda_'+str(lx)] = self.timer_mtl_cuda[lx].time()
-
+                p[b+'mtl_cuda_gflops'] = self.cuda_flop_rate_mtl() / (10.**9.)
     def _compute_local_interaction(self, positions, charges, forces=None):
 
         if forces is None:
@@ -609,14 +609,6 @@ class PyFMM(object):
             self._cuda_mtl.translate_mtl_post(level, self.tree_plain)
             self.cuda_async_threads[level] = None
 
-    def flop_rate_mtl(self):
-        local_plain_cells = self.tree_plain.num_cells - 1
-        cost_per_cell = (self.L**4) * 16
-        flop_count = 189 * cost_per_cell * local_plain_cells
-        total_cost = flop_count * self.execution_count
-
-        return total_cost/self. timer_mtl.time()
-
 
     def __call__(self, positions, charges, forces=None, async=False):
 
@@ -686,6 +678,39 @@ class PyFMM(object):
             self._async_thread.start()
         else:
             func(level)
+
+    def flop_rate_mtl(self):
+        start = 1
+        if self.cuda:
+            end = -1*self.cuda_levels
+        else:
+            end = None
+
+        local_plain_cells = self.tree_plain.num_cells(start, end)
+        cost_per_cell = (self.L**4) * 16
+        flop_count = 189 * cost_per_cell * local_plain_cells
+        total_cost = flop_count * self.execution_count
+
+        if self.timer_mtl.time() < 10.**-10:
+            return 0.0
+
+        return total_cost/self.timer_mtl.time()
+
+    def cuda_flop_rate_mtl(self):
+        if not self.cuda:
+            return 0.0
+
+        start = -1*self.cuda_levels
+        end = None
+
+        local_plain_cells = self.tree_plain.num_cells(start, end)
+        cost_per_cell = (self.L**4) * 16
+        flop_count = 189 * cost_per_cell * local_plain_cells
+        total_cost = flop_count * self.execution_count
+        if self._cuda_mtl.timer_mtl.time() < 10.**-10:
+            return 0.0
+        return total_cost/self._cuda_mtl.timer_mtl.time()
+
 
     def _compute_periodic_boundary(self):
 

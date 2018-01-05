@@ -343,7 +343,11 @@ int translate_mtl(
 
     const size_t shared_bytes = sizeof(REAL) * ncomp2;
 
+    //cudaStream_t stream;
+    //cudaStreamCreate (&stream);
+
     //mtl_kernel<<<grid_block, thread_block, shared_bytes>>>(
+    //mtl_kernel2<<<grid_block, thread_block, 0, stream>>>(
     mtl_kernel2<<<grid_block, thread_block>>>(
         num_indices,
         nblocks,
@@ -362,6 +366,7 @@ int translate_mtl(
         d_local_moments
     );
     
+    //err = cudaStreamSynchronize(stream);
     err = cudaDeviceSynchronize();
     if (err != cudaSuccess) {return err;}
 
