@@ -1,3 +1,69 @@
+static inline void global_cell_tuple(
+    const REAL * RESTRICT cube_inverse_len,
+    const REAL px,
+    const REAL py,
+    const REAL pz,
+    const REAL * RESTRICT boundary,
+    INT64 * RESTRICT cxt,
+    INT64 * RESTRICT cyt,
+    INT64 * RESTRICT czt
+){  
+    // shift position as origin is centered then
+    // bin into cells
+    // boundary here is the extent
+    const REAL pxs = px + 0.5 * boundary[0];
+    const REAL pys = py + 0.5 * boundary[1];
+    const REAL pzs = pz + 0.5 * boundary[2];
+
+    *cxt = (INT64) pxs*cube_inverse_len[0];
+    *cyt = (INT64) pys*cube_inverse_len[1];
+    *czt = (INT64) pzs*cube_inverse_len[2];
+}
+
+static inline INT64 local_cell_tuple(
+    const INT64 gcx, 
+    const INT64 gcy, 
+    const INT64 gcz, 
+    const UINT64 * RESTRICT cube_offset,
+    INT64 * RESTRICT cx,
+    INT64 * RESTRICT cy,
+    INT64 * RESTRICT cz
+){
+    // local index is given by global index minus offset
+    *cx = gcx - cube_offset[2];
+    *cy = gcy - cube_offset[1];
+    *cz = gcz - cube_offset[0];
+}
+
+static inline INT64 drift_compensation(
+    const UINT64 * RESTRICT cube_dim,
+    INT64 * RESTRICT gcx,
+    INT64 * RESTRICT gcy,
+    INT64 * RESTRICT gcz,
+    INT64 * RESTRICT cx,
+    INT64 * RESTRICT cy,
+    INT64 * RESTRICT cz
+){
+    if (*cx > cube_dim[2] || *cy > cube_dim[1] || *cz > cube_dim[0] ){
+        printf("Error: Particle far from subdomain.\n");
+        return (INT64) -1;}
+    else if (*cx < 0 || *cy < 0 || *cz <0 ) {
+        printf("Error: Particle far from subdomain.\n");
+        return (INT64) -1;
+    }
+    
+    // Reusing neighbourlists allows particles to drift small distances out of a
+    // subdomain.
+    if (*cx == cube_dim[2]){ *cx -= 1; *gcx -= 1; }
+    if (*cy == cube_dim[1]){ *cy -= 1; *gcy -= 1; }
+    if (*cz == cube_dim[0]){ *cz -= 1; *gcz -= 1; }
+    // as casting to int truncates towards zero we can pass on checking the lower 
+    // bound
+    return 0;
+}
+
+
+
 
 static inline INT64 compute_cell(
     const REAL * RESTRICT cube_inverse_len,
@@ -10,27 +76,14 @@ static inline INT64 compute_cell(
     const UINT64 * RESTRICT cube_side_counts,   
     INT32 * global_cell
 ){
-    const REAL pxs = px + 0.5 * boundary[0];
-    const REAL pys = py + 0.5 * boundary[1];
-    const REAL pzs = pz + 0.5 * boundary[2];
-
-    const UINT64 cx = ((UINT64) (pxs*cube_inverse_len[0])) - cube_offset[2];
-    const UINT64 cy = ((UINT64) (pys*cube_inverse_len[1])) - cube_offset[1];
-    const UINT64 cz = ((UINT64) (pzs*cube_inverse_len[2])) - cube_offset[0];
-    //printf("px %f pxs %f boudary %f \n", px, pxs, boundary[0]);
-    //printf("py %f pys %f boudary %f \n", py, pys, boundary[0]);
-    //printf("pz %f pzs %f boudarz %f \n", pz, pzs, boundary[0]);
-    if (cx >= cube_dim[2] || cy >= cube_dim[1] || cz >= cube_dim[0] ){
-        return (INT64) -1;}
-    
-    const UINT64 gcx = ((UINT64) (pxs*cube_inverse_len[0]));
-    const UINT64 gcy = ((UINT64) (pys*cube_inverse_len[1]));
-    const UINT64 gcz = ((UINT64) (pzs*cube_inverse_len[2]));
-    
+    // global cell tuple
+    INT64 gcx, gcy, gcz, cx, cy, cz;
+    global_cell_tuple(cube_inverse_len, px, py, pz, boundary, &gcx, &gcy, &gcz);
+    local_cell_tuple(gcx, gcy, gcz, cube_offset, &cx, &cy, &cz);
+    if (drift_compensation(cube_dim, &gcx, &gcy, &gcz, &cx, &cy, &cz) < 0){ return -1; }
 
     *global_cell = ((INT32) (  gcx + cube_side_counts[2] * (gcy + cube_side_counts[1] * gcz )  ));
 
-    //printf("GLOBAL %f %f %f %d %d %d | %d\n", px, py, pz, gcx, gcy, gcz, *global_cell);
     return cx + cube_dim[2] * (cy + cube_dim[1] * cz);
 }
 
@@ -49,39 +102,23 @@ static inline INT64 compute_cell_spherical(
     REAL * RESTRICT sphi,
     REAL * RESTRICT msphi
 ){
-    const REAL pxs = px + 0.5 * boundary[0];
-    const REAL pys = py + 0.5 * boundary[1];
-    const REAL pzs = pz + 0.5 * boundary[2];
 
-    const UINT64 cxt = pxs*cube_inverse_len[0];
-    const UINT64 cyt = pys*cube_inverse_len[1];
-    const UINT64 czt = pzs*cube_inverse_len[2];
+    INT64 gcx, gcy, gcz, cx, cy, cz;
+    global_cell_tuple(cube_inverse_len, px, py, pz, boundary, &gcx, &gcy, &gcz);
+    local_cell_tuple(gcx, gcy, gcz, cube_offset, &cx, &cy, &cz);
+    if (drift_compensation(cube_dim, &gcx, &gcy, &gcz, &cx, &cy, &cz) < 0){ return -1; }
 
-    const UINT64 cx = cxt - cube_offset[2];
-    const UINT64 cy = cyt - cube_offset[1];
-    const UINT64 cz = czt - cube_offset[0];
-
-    if (cx >= cube_dim[2] || cy >= cube_dim[1] || cz >= cube_dim[0] ){
-        return (INT64) -1;}
     const int cell_idx = cx + cube_dim[2] * (cy + cube_dim[1] * cz);
     // now compute the vector between particle and cell center in spherical coords
     // cell center
-    const REAL ccx = (cxt * 2 + 1) * cube_half_len[0] - 0.5 * boundary[0]; 
-    const REAL ccy = (cyt * 2 + 1) * cube_half_len[1] - 0.5 * boundary[1]; 
-    const REAL ccz = (czt * 2 + 1) * cube_half_len[2] - 0.5 * boundary[2]; 
-    //printf("cube_inverse_lens %f %f %f\n", cube_inverse_len[0], cube_inverse_len[1], cube_inverse_len[2]);
+    const REAL ccx = (gcx * 2 + 1) * cube_half_len[0] - 0.5 * boundary[0]; 
+    const REAL ccy = (gcy * 2 + 1) * cube_half_len[1] - 0.5 * boundary[1]; 
+    const REAL ccz = (gcz * 2 + 1) * cube_half_len[2] - 0.5 * boundary[2]; 
 
-    //printf("cube_half_len %f %f %f %f\n", cube_half_len[0], cube_half_len[1], cube_half_len[2], (cyt * 2 + 1) + cube_half_len[1]);
     // compute Cartesian displacement vector
-
     const REAL dx = px - ccx;
     const REAL dy = py - ccy;
     const REAL dz = pz - ccz;
-    
-    //printf("dx %f px %f mid %f\n", dx, px, ccx);
-    //printf("dy %f py %f mid %f\n", dy, py, ccy);
-    //printf("dz %f pz %f mid %f\n", dz, pz, ccz);
-    
 
     // convert to spherical
     const REAL dx2 = dx*dx;
@@ -278,17 +315,7 @@ INT32 particle_contribution(
                     &exp_vec[EXP_IM_IND(nlevel, -1*lx)]);
             }
 
-
-/*
-            for (int lx=-1*((int)nlevel)+1 ; lx<((int)nlevel) ; lx++){
-                printf("%d, %f %f\n", lx, exp_vec[EXP_RE_IND(nlevel, lx)], exp_vec[EXP_IM_IND(nlevel, lx)]);
-            }
-*/            
-
-
             const REAL sqrt_1m2lx = sqrt(1.0 - ctheta*ctheta);
- //           printf("sqrt(1 - 2l) = %f, cos(theta) = %f\n", sqrt_1m2lx, ctheta);
-
 
             // P_0^0 = 1;
             P_SPACE[P_SPACE_IND(nlevel, 0, 0)] = 1.0;
@@ -311,11 +338,6 @@ INT32 particle_contribution(
 
                 }
             }
-
-            //for (int mx=0 ; mx<=lx ; mx++){
-            //    printf("l %d, m %d P %.50f\n", lx, mx, P_SPACE[P_SPACE_IND(nlevel, lx, mx)]); 
-            //}
-            //printf("-----------------------------\n");
             
             REAL rhol = 1.0;
             //loop over l and m
@@ -328,13 +350,10 @@ INT32 particle_contribution(
                                        * charge[ix] * rhol;
 
                     const REAL plm = P_SPACE[P_SPACE_IND(nlevel, lx, abs_mx)];
-
+                    
+                    // add this particle's contribution to the cell expansion
                     cube_start[CUBE_IND(lx, mx)] += coeff * plm * exp_vec[EXP_RE_IND(nlevel, -1*mx)];
                     cube_start_im[CUBE_IND(lx, mx)] += coeff * plm * exp_vec[EXP_IM_IND(nlevel, -1*mx)];
-
-                    //if(lx == 1) {printf("%d %f\n", mx, plm);}
-
-                    //printf("%d %d %d = %f %f\n",px, lx, mx, cube_start[CUBE_IND(lx, mx)], cube_start_im[CUBE_IND(lx, mx)]);
 
                 }
             }
@@ -342,8 +361,6 @@ INT32 particle_contribution(
             count++;
         }
     }   
-
-    // printf("npart %d count %d\n", npart, count);
     
     if (count != npart) {err = -4;}
     return err;

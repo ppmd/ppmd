@@ -25,7 +25,7 @@ using namespace std;
 #define ABS(x) ((x) > 0 ? (x) : -1*(x))
 
 
-#define PRINT_NAN(x) if(std::isnan(x) || std::isinf(x)){printf(#x);printf(" is nan/inf %f\n", x);}
+#define PRINT_NAN(x) if(std::isnan(x) || std::isinf(x)){printf(#x);printf(" is nan/inf, value: %f \n", x);}
 
 /*
 Layout of memory used by above macros.
@@ -39,4 +39,8 @@ and
 
 */
 
-
+template <typename T>
+static inline bool isbad(const T x){
+    if(std::isnan(x) || std::isinf(x)){return true;}
+    else {return false;}
+}

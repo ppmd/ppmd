@@ -26,6 +26,7 @@ static inline void cplx_mul(
 
 
 
+
 static inline INT64 get_cube_index(
     const UINT64 * RESTRICT cube_offset,
     const UINT64 * RESTRICT cube_dim,
@@ -76,8 +77,6 @@ static inline INT64 get_cube_midpoint(
     const UINT64 cy = cyt - cube_offset[1];
     const UINT64 cz = czt - cube_offset[0];
 
-    //printf("\t\tcxt=%d, cyt=%d, czt=%d\n", cxt, cyt, czt);
-    //printf("\t\tnsx=%d, nsy=%d, nsz=%d\n", nsx, nsy, nsz);
 
     if (cx >= cube_dim[2] || cy >= cube_dim[1] || cz >= cube_dim[0] ){
         return (INT64) -1;}
@@ -122,8 +121,6 @@ static inline INT64 get_offset_vector(
     *stheta = sin(theta);
     
     const REAL phi = atan2(dy, dx);
-    
-    //printf("xyz %f %f %f | sph %f %f %f\n", dx, dy, dz, *radius, phi, theta);
 
     *cphi = cos(phi);
     *sphi = sin(phi); 
@@ -214,25 +211,16 @@ static inline void compute_exp_space(
             &exp_vec[EXP_RE_IND(nlevel, -1*lx)],
             &exp_vec[EXP_IM_IND(nlevel, -1*lx)]);
 
-/*
-        const int lim = 4*nlevel +2;
-        int ind;
-        ind = EXP_IM_IND(nlevel, lx);
-        if (ind >= lim || ind<0){ printf("exp indexing fault: lx = %d, %d \n", lx, ind); }
-        ind = EXP_IM_IND(nlevel, -1*lx);
-        if (ind >= lim || ind<0){ printf("exp indexing fault: lx = %d, %d \n", lx, ind); }
-        ind = EXP_IM_IND(nlevel, -1*(lx-1));
-        if (ind >= lim || ind<0){ printf("exp indexing fault: lx = %d, %d \n", lx, ind); }
-        ind = EXP_IM_IND(nlevel, lx-1);
-        if (ind >= lim || ind<0){ printf("exp indexing fault: lx = %d, %d \n", lx, ind); }
-*/
-
-
     }
 }
 
 
-
+/*
+The expression to compute the gradient of the potential field is badly defined
+if a particle is positioned on a coordinate axis relative the expansion point.
+We avoid a badly defined expression (and doing some analysis) by shifting the
+local expansion to a place where the gradient is well defined.
+*/
 static inline void ltl(
     const INT64             nlevel,
     const REAL              radius,
@@ -410,12 +398,10 @@ INT32 particle_extraction(
         for(int tx=0 ; tx<nlevel*nlevel*2 ; tx++ ){ P_SPACE[tx]=12345.678; }
         for(int tx=0 ; tx<(nlevel*4 + 2) ; tx++ ){ exp_vec[tx]=12345.678; }
         
-
+        // the fmm cell a particle is contained in is determined once in the initial 
+        // binning into cells.
         const INT64 ix_cell = get_cube_index(cube_offset,cube_dim, cube_side_counts, fmm_cell[ix]);
-        //const INT64 ix_cell = fmm_cell[ix];
 
-
-        //printf("\t\tfmm_cell=%d, ix_cell=%d\n", fmm_cell[ix], ix_cell);
 
         REAL * RESTRICT cube_start = &local_moments[ix_cell*ncomp];
 
@@ -426,8 +412,6 @@ INT32 particle_extraction(
 
         get_cube_midpoint(cube_half_side_len, boundary, cube_offset, cube_dim,
             cube_side_counts, fmm_cell[ix], &midx, &midy, &midz);
-        
-        //printf("\t\tmidx %f midy %f midz %f\n", midx, midy, midz);
 
         const REAL px = position[ix*3];
         const REAL py = position[ix*3+1];
@@ -439,6 +423,7 @@ INT32 particle_extraction(
         const bool shy = ABS(py-midy) < tol;
         const bool shz = ABS(pz-midz) < tol;
         
+        // see comment above ltl function.
         const bool shift_expansion = (
             ((always_shift == 1) || shx || shy || shz) && (!(always_shift == -1))
             ) ? true : false;
@@ -448,7 +433,6 @@ INT32 particle_extraction(
 
         if (shift_expansion){
             
-            //printf("Shifting expansion: particle = %d\n", ix);
             
             L_SPACE = L_SPACE_VEC[tid];
 
@@ -485,13 +469,9 @@ INT32 particle_extraction(
             compute_exp_space((int)nlevel, cphi, sphi, msphi, exp_vec);
 
         }
-        
-        //printf("\t\t radius %f, ctheta %f, stheta %f, cphi %f, sphi %f, msphi %f\n", radius, ctheta, stheta, cphi, sphi, msphi);
 
         const REAL _rstheta = 1.0/stheta;
         const REAL rstheta = (std::isnan(_rstheta) || std::isinf(_rstheta)) ? 0.0 : _rstheta;
-        
-        //printf("1./sin(theta) = %f\n", rstheta);
 
         REAL local_pe  = 0.0;
         REAL sp_radius = 0.0;
@@ -507,7 +487,6 @@ INT32 particle_extraction(
             if (lx==0 && (std::isnan(rhol2) || std::isinf(rhol2))) {rhol2 = 0.0;}
             if (lx==1) {rhol2 = 1.0;}
 
-            //printf("\t\t\tlx=%d\n", lx);
 
             for( int mx=-1*lx ; mx<=lx ; mx++ ){
                 // energy computation
@@ -595,9 +574,6 @@ INT32 particle_extraction(
         
 
 
-
-
-        //printf("%d | %f %f %f\n", ix, sp_radius, sp_phi, sp_theta);
         sp_radius *= charge[ix];
         sp_theta *= charge[ix];
         sp_phi *= charge[ix];
@@ -618,25 +594,28 @@ Using the following unit vectors:
                         cos(phi),
                         0           ]
 */
-        
-        //sp_radius = 0.0;
-        //sp_theta = 0.0;
-       // sp_phi = 0.0;
 
 
 PRINT_NAN(sp_radius)
 PRINT_NAN(sp_theta)
 PRINT_NAN(sp_phi)
+PRINT_NAN(potential_energy)
 
         force[ix*3    ] -= sp_radius * cphi * stheta    +   sp_theta * cphi * ctheta    -   sp_phi * sphi;
         force[ix*3 + 1] -= sp_radius * sphi * stheta    +   sp_theta * sphi * ctheta    +   sp_phi * cphi;
         force[ix*3 + 2] -= sp_radius * ctheta           -   sp_theta * stheta;
 
+        if(isbad(sp_radius) || isbad(sp_theta) || isbad(sp_phi) || isbad(potential_energy)){
+            printf("ERROR: bad value detected (err code -5).\n");
+            #pragma omp critical
+            {err = -5;}
+            #pragma omp flush (err)
+        }
+
 
         count++;
     }   
 
-    //printf("npart %d count %d\n", npart, count);
 
     if (err < 0){return err;}
     if (count != npart) {err = -4;}

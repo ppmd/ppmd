@@ -513,7 +513,7 @@ def test_fmm_force_direct_1():
         print("\t\tFORCE FMMC:",A.F[px,:], err_re_c)
 
 #@pytest.mark.skipif("MPISIZE>1")
-#@pytest.mark.skipif("True")
+@pytest.mark.skipif("True")
 def test_fmm_force_ewald_1():
 
     R = 3
@@ -751,7 +751,7 @@ def test_fmm_force_ewald_1():
         opt.print_profile()
         print(60*"-")
 
-@pytest.mark.skipif("True")
+#@pytest.mark.skipif("True")
 def test_fmm_force_ewald_2():
 
     R = 3
@@ -844,8 +844,8 @@ def test_fmm_force_ewald_2():
         epsy = 0
         epsz = 0
 
-        A.P[0,:] = ( 0.001, 1.001, 0.001)
-        A.P[1,:] = ( -0.001, -1.001, 0.001)
+        A.P[0,:] = ( 1.999999, 0., 0.)
+        A.P[1,:] = ( 0., 0., 0.)
 
         #A.P[:2:,:] = rng.uniform(low=-0.4999*E, high=0.4999*E, size=(N,3))
 
@@ -928,4 +928,16 @@ def test_fmm_force_ewald_2():
 
             print("PX:", px)
             print("\t\tFORCE FMM:",A.F[px,:])
+
+
+    A.P._dat[0,:] = ( 2.001, 0., 0.)
+    A.F[:N:,:] = 0.0
+    phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
+
+    print("NEW FORCE:\t", A.F[0,:])
+
+
+
+
+
 

@@ -88,11 +88,11 @@ def test_fmm_sim_1():
     free_space = False
 
     dt = 0.001
-    shell_steps = 10
-    steps = 100
+    shell_steps = 20
+    steps = 100000
 
-    crn = 20
-    rho = 3.
+    crn = 8
+    rho = 6.
 
     N = int(crn**3)
     E = rho * crn
@@ -106,12 +106,6 @@ def test_fmm_sim_1():
     A = State()
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = PBC()
-
-    ASYNC = False
-    DIRECT = True if MPISIZE == 1 else False
-
-    DIRECT= True
-    EWALD = True
 
     CUDA=False
 
@@ -149,8 +143,8 @@ def test_fmm_sim_1():
     bias = np.sum(A.Q[:])
     A.Q[:,0] -= bias/N
 
-    A.M[:] = 40.
-    A.V[:] = rng.normal(loc=0.0, scale=0.01, size=(N,3))
+    A.M[:] = 1.
+    A.V[:] = rng.normal(loc=0.0, scale=0.1, size=(N,3))
 
     dipole = np.zeros(3)
     for px in range(N):

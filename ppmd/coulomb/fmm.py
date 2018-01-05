@@ -540,8 +540,6 @@ class PyFMM(object):
 
     def _compute_local_interaction(self, positions, charges, forces=None):
 
-
-
         if forces is None:
             forces = data.ParticleDat(ncomp=3, npart=positions.npart_total,
                                       dtype=self.dtype)
@@ -552,7 +550,7 @@ class PyFMM(object):
                 'P':positions(access.READ),
                 'Q':charges(access.READ),
                 'F':forces(access.INC),
-                'FMM_CELL':positions.group.fmm_cell(access.READ),
+                'FMM_CELL':positions.group._fmm_cell(access.READ),
                 'PHI':self.particle_phi(access.INC_ZERO)
             }
         )
@@ -564,9 +562,9 @@ class PyFMM(object):
     def im_lm(self, l,m): return (l**2) + l +  m + self.L**2
 
     def _check_aux_dat(self, positions):
-        if not hasattr(positions.group, 'fmm_cell'):
-            positions.group.fmm_cell = data.ParticleDat(ncomp=1, dtype=INT32)
-            positions.group.fmm_cell.npart_local = positions.npart_local
+        if not hasattr(positions.group, '_fmm_cell'):
+            positions.group._fmm_cell = data.ParticleDat(ncomp=1, dtype=INT32)
+            positions.group._fmm_cell.npart_local = positions.npart_local
 
     def _cuda_translate_m_t_l(self, level, async=True):
         if self.tree[level].local_grid_cube_size is None:
@@ -621,7 +619,7 @@ class PyFMM(object):
         self._check_aux_dat(positions)
 
         self._compute_cube_contrib(positions, charges,
-                                   positions.group.fmm_cell)
+                                   positions.group._fmm_cell)
 
 
         for level in range(self.R - 1, 0, -1):
@@ -839,19 +837,7 @@ class PyFMM(object):
         Translate the child expansions to their parent cells
         :return:
         """
-        '''
-        int translate_mtm(
-            const UINT32 * RESTRICT dim_parent,     // slowest to fastest
-            const UINT32 * RESTRICT dim_child,      // slowest to fastest
-            const REAL * RESTRICT moments_child,
-            REAL * RESTRICT moments_parent,
-            const REAL * RESTRICT ylm,
-            const REAL * RESTRICT alm,
-            const REAL * RESTRICT almr,
-            const REAL radius,
-            const INT64 nlevel
-        )
-        '''
+
         self.timer_mtm.start()
         if self.tree[child_level].parent_local_size is None:
             return 
@@ -939,54 +925,9 @@ class PyFMM(object):
                 self.tree_halo[level][-2::,:,:,:] = 0.0
 
 
-        #print("WARNING FUDGING HALOS")
-        #gs = self.tree[level].ncubes_side_global
-        #lo = self.tree[level].local_grid_offset
-        #ls = self.tree[level].local_grid_cube_size
-
-        ### z
-        #if lo[0] + ls[0] == gs:
-        #    self.tree_halo[level][-2::,:,:,:] = 0.0
-        #if lo[0] == 0:
-        #        self.tree_halo[level][:2:,:,:,:] = 0.0
-        ### Y
-        #if lo[1] + ls[1] == gs:
-        #    self.tree_halo[level][:,-2::,:,:] = 0.0
-        #if lo[1] == 0:
-        #    self.tree_halo[level][:,:2:,:,:] = 0.0
-
-        # x
-        #if lo[2] + ls[2] == gs:
-        #   self.tree_halo[level][:,:,-2::,:] = 0.0
-        #if lo[2] == 0:
-        #    self.tree_halo[level][:,:,:2:,:] = 0.0
-
-
-        #print(self.tree_halo[level][:,:,:,0])
         self.timer_halo.pause()
 
     def _translate_m_to_l(self, level):
-        """
-
-        """
-        '''
-        int translate_mtl(
-	    const UINT32 * RESTRICT dim_child,      // slowest to fastest
-	    const REAL * RESTRICT multipole_moments,
-	    REAL * RESTRICT local_moments,
-	    const REAL * RESTRICT phi_data,
-	    const REAL * RESTRICT theta_data,
-	    const REAL * RESTRICT alm,
-	    const REAL * RESTRICT almr,
-	    const REAL * RESTRICT i_array,
-	    const REAL radius,
-	    const INT64 nlevel,
-	    const INT32 * RESTRICT int_list,
-	    const INT32 * RESTRICT int_tlookup,
-	    const INT32 * RESTRICT int_plookup,
-	    const double * RESTRICT int_radius
-        )
-        '''
 
         if self.tree[level].local_grid_cube_size is None:
             return
@@ -996,8 +937,6 @@ class PyFMM(object):
 
         radius = self.domain.extent[0] / \
                  self.tree[level].ncubes_side_global
-
-        #print("MTL in", self.tree_halo[level][:,:,:,0])
 
         err = self._translate_mtl_lib['translate_mtl'](
             _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
@@ -1015,8 +954,6 @@ class PyFMM(object):
             _check_dtype(self._int_plookup, INT32),
             _check_dtype(self._int_radius, ctypes.c_double)
         )
-        #print("MTL out", self.tree_plain[level][:,:,:,0])
-
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
         self.timer_mtl.pause()
 

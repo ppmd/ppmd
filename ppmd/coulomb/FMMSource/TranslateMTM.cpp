@@ -204,40 +204,15 @@ int translate_mtm(
 
                     jk_re += re_mom;
                     jk_im += im_mom;
-/*
-                    if(jx == 1 && kx==0 && km_jn){
-                        printf("---- nx %d mx %d\n", nx, mx);
-                        cout << "\t\tY_n^-m "<<ylm[0*ncomp2 + ychild_ind]<<" "<<ylm[0*ncomp2 + ychild_ind_im] << endl;
-                        cout << "\t\tcoeff " << coeff  <<endl;
-                        cout << "\t\tchild data: "<< cd_re[7][child_ind] << " " << cd_re[7][child_ind_im] << endl;
-                        cout << "\t\tchild " << child_re << " im " << child_im  <<endl;
-                        cout << "\t\tcontrib " << re_mom << " i " << jre  <<endl;
-                    }   
-*/
+
                 }}
 
                 pd_re[CUBE_IND(jx, kx)] = jk_re;
                 pd_im[CUBE_IND(jx, kx)] = jk_im;
 
         }}
-/*
-        for(INT64 jx=0     ; jx<nlevel ; jx++ ){
-        for(INT64 kx=-1*jx ; kx<=jx    ; kx++){
-                    pd_re[CUBE_IND(jx, kx)] = cd0_re[CUBE_IND(jx, kx)];
-                    pd_im[CUBE_IND(jx, kx)] = cd0_re[CUBE_IND(jx, kx) + im_offset];
 
-        }}
-*/
     }
-/*
-    printf("----------------\n");
-    const INT64 ccc = 0;
-    for(INT64 lx=0 ; lx<nlevel ; lx++){
-        for(INT64 mx=-1*lx ; mx<=lx ; mx++){
-            printf("l %d m %d ylm %f\n", lx, mx, ylm[ccc*ncomp + CUBE_IND(lx, mx)]);
-        }
-    }
-*/
 
 
 
