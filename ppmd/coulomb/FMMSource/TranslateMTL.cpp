@@ -221,6 +221,98 @@ static inline void mtl_no_ar(
 }
 
 
+static inline void mtl_no_ar_inorder(
+    const INT64             nlevel,
+    const REAL              radius,
+    const REAL * RESTRICT   odata,
+    const REAL * RESTRICT   phi_data,
+    const REAL * RESTRICT   theta_data,
+    const REAL * RESTRICT   a_array,
+    const REAL * RESTRICT   i_array,
+    REAL * RESTRICT         ldata,
+    const INT64 DEBUG0,
+    const INT64 DEBUG1,
+    const INT32 * RESTRICT j_array,
+    const INT32 * RESTRICT k_array,
+    const REAL * RESTRICT a_inorder
+){
+    const INT64 ASTRIDE1 = 4*nlevel + 1;
+    const INT64 ASTRIDE2 = 2*nlevel;
+    
+    const INT64 ncomp = nlevel*nlevel*2;
+    const INT64 nlevel4 = nlevel*4;
+    const INT64 im_offset = nlevel*nlevel;
+    
+    const INT64 nblk = 2*nlevel+2;
+    REAL iradius_n[nblk];
+    
+    const REAL iradius = 1./radius;
+    iradius_n[0] = 1.0;
+
+    for(INT64 nx=1 ; nx<nblk ; nx++){ iradius_n[nx] = iradius_n[nx-1] * iradius; }
+
+    REAL * RESTRICT iradius_p1 = &iradius_n[1];
+
+    // loop over parent moments
+    for(INT32 jx=0     ; jx<nlevel ; jx++ ){
+    for(INT32 kx=-1*jx ; kx<=jx    ; kx++){
+
+        const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
+        REAL contrib_re = 0.0;
+        REAL contrib_im = 0.0;
+        
+        for(INT32 termx=0 ; termx<im_offset ; termx++){
+            //const INT32 nx = j_array[termx];
+            
+            const INT32 nx = sqrt((REAL) termx);
+
+            const INT32 mx = -1*nx + (termx - nx*nx);
+
+
+            const REAL m1tn = 1.0 - 2.0*((REAL)(nx & 1));   // -1^{n}
+            const INT64 jxpnx = jx + nx;
+            const INT64 p_ind_base = P_IND(jxpnx, 0);
+            const REAL rr_jn1 = iradius_p1[jxpnx];     // 1 / rho^{j + n + 1}
+
+                const INT64 mxmkx = mx - kx;
+
+                // construct the spherical harmonic
+                const INT64 y_aind = p_ind_base + mxmkx;
+                const REAL y_coeff = theta_data[CUBE_IND(jxpnx, mxmkx)];
+                
+
+                const REAL y_re = y_coeff * \
+                    phi_data[EXP_RE_IND(2*nlevel, mxmkx)];
+                const REAL y_im = y_coeff * \
+                    phi_data[EXP_IM_IND(2*nlevel, mxmkx)];
+
+                // compute translation coefficient
+                // A_n^m
+
+                //const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + mx];
+                const REAL anm = a_inorder[termx];
+                
+
+                const REAL coeff_re = \
+                    i_array[(nlevel+kx)*(nlevel*2 + 1) + nlevel + mx] * \
+                    m1tn * anm * ajk * rr_jn1;
+                
+                //const INT64 oind = CUBE_IND(nx, mx);
+                const INT64 oind = termx;
+                const REAL ocoeff_re = odata[oind]              * coeff_re;
+                const REAL ocoeff_im = odata[oind + im_offset]  * coeff_re;
+
+                cplx_mul_add(y_re, y_im, 
+                    ocoeff_re, ocoeff_im, &contrib_re, &contrib_im);
+
+        }
+        
+        ldata[CUBE_IND(jx, kx)] += contrib_re;
+        ldata[CUBE_IND(jx, kx) + im_offset] += contrib_im;
+
+    }}
+}
+
 extern "C"
 int translate_mtl(
     const UINT32 * RESTRICT dim_child,      // slowest to fastest
@@ -236,8 +328,11 @@ int translate_mtl(
     const INT32 * RESTRICT int_list,
     const INT32 * RESTRICT int_tlookup,
     const INT32 * RESTRICT int_plookup,
-    const double * RESTRICT int_radius
-){
+    const double * RESTRICT int_radius,
+    const INT32 * RESTRICT j_array,
+    const INT32 * RESTRICT k_array,
+    const REAL * RESTRICT a_inorder
+    ){
     int err = 0;
     const INT64 ncells = dim_child[0] * dim_child[1] * dim_child[2];
 
@@ -252,10 +347,11 @@ int translate_mtl(
     const INT32 phi_stride = 8*nlevel + 2;
     const INT32 theta_stride = 4 * nlevel * nlevel;
 
+
     #pragma omp parallel for default(none) schedule(dynamic) \
     shared(dim_child, multipole_moments, local_moments, \
     phi_data, theta_data, alm, almr, i_array, int_list, int_tlookup, \
-    int_plookup, int_radius, dim_eight, dim_halo)
+    int_plookup, int_radius, dim_eight, dim_halo, j_array, k_array, a_inorder)
     for( INT64 pcx=0 ; pcx<ncells ; pcx++ ){
         INT64 cx, cy, cz;
         lin_to_xyz(dim_child, pcx, &cx, &cy, &cz);
@@ -285,15 +381,22 @@ int translate_mtl(
                 &phi_data[p_lookup * phi_stride],
                 &theta_data[t_lookup * theta_stride],
                 alm, almr, i_array,
-                out_moments, 0, 0);            
-*/          
+                out_moments, 0, 0);    
+*/
+///*
             mtl_no_ar(nlevel, local_radius, &multipole_moments[jcell*ncomp],
                 &phi_data[p_lookup * phi_stride],
                 &theta_data[t_lookup * theta_stride],
                 alm, i_array,
                 out_moments, pcx, conx);
-
-            
+//*/
+/*
+            mtl_no_ar_inorder(nlevel, local_radius, &multipole_moments[jcell*ncomp],
+                &phi_data[p_lookup * phi_stride],
+                &theta_data[t_lookup * theta_stride],
+                alm, i_array,
+                out_moments, pcx, conx, j_array, k_array, a_inorder);
+*/           
         }
         
     }

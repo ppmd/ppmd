@@ -135,6 +135,7 @@ class PyFMM(object):
 
                 self._ipower_mtl[kxi, mxi] = \
                     ((1.j) ** (abs(kx - mx) - abs(kx) - abs(mx))).real
+                
 
                 self._ipower_ltl[kxi, mxi] = \
                     ((1.j) ** (abs(mx) - abs(mx - kx) - abs(kx))).real
@@ -150,6 +151,18 @@ class PyFMM(object):
                     float(math.factorial(nx - abs(mx))) /
                     float(math.factorial(nx + abs(mx)))
                 )
+        
+        # create array for j/k lookup incides
+        self._j_array = np.zeros(self.L**2, dtype=INT32)
+        self._k_array = np.zeros(self.L**2, dtype=INT32)
+        self._a_inorder = np.zeros(self.L**2, dtype=dtype) 
+        for jx in range(self.L):
+            for kx in range(-1*jx, jx+1):
+                self._j_array[self.re_lm(jx,kx)] = jx
+                self._k_array[self.re_lm(jx,kx)] = kx
+                self._a_inorder[self.re_lm(jx,kx)] = \
+                    ((-1.) ** jx)/math.sqrt(math.factorial(jx - kx) *\
+                    math.factorial(jx+kx))
 
         # As we have a "uniform" octal tree the values Y_l^m(\alpha, \beta)
         # can be pre-computed for the 8 children of a parent cell. Indexed
@@ -986,7 +999,10 @@ class PyFMM(object):
             _check_dtype(self._int_list[level], INT32),
             _check_dtype(self._int_tlookup, INT32),
             _check_dtype(self._int_plookup, INT32),
-            _check_dtype(self._int_radius, ctypes.c_double)
+            _check_dtype(self._int_radius, ctypes.c_double),
+            _check_dtype(self._j_array  ,INT32),
+            _check_dtype(self._k_array  ,INT32),
+            _check_dtype(self._a_inorder,REAL) 
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
         self.timer_mtl.pause()
@@ -1086,6 +1102,15 @@ class PyFMM(object):
         sn, kappa = self._compute_sn(2)
         # r_c, v_c, kappa
         return sn/kappa, kappa*sn/math.pi, kappa
+
+
+    def _image_to_sph(self, ind):
+       """Convert tuple ind to spherical coordindates of periodic image."""
+       dx = ind[0] * self.domain.extent[0]
+       dy = ind[1] * self.domain.extent[1]
+       dz = ind[2] * self.domain.extent[2]
+
+       return self._cart_to_sph((dx, dy, dz))
 
 
     def _compute_g(self):
