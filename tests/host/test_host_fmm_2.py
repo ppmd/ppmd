@@ -22,7 +22,7 @@ import time
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = MPI.COMM_WORLD.Barrier
-DEBUG = True
+DEBUG = False
 
 def spherical(xyz):
     if type(xyz) is tuple:
@@ -182,7 +182,8 @@ def test_fmm_init_2_1():
         assert abs(dispt_sph[2] - dispt_fmm[1]) < 10.**-16, "bad phi"
         assert abs(dispt_sph[1] - dispt_fmm[2]) < 10.**-16, "bad theta"
 
-    fmm._compute_cube_contrib(A.P, A.Q)
+    fmm._check_aux_dat(A.P)
+    fmm._compute_cube_contrib(A.P, A.Q, A._fmm_cell)
 
     # compute potential energy to point across all charges directly
     P2 = data.PositionDat(npart=N, ncomp=3)

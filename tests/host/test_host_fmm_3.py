@@ -18,11 +18,10 @@ from ppmd.coulomb.fmm import *
 from scipy.special import sph_harm, lpmv
 import time
 
-
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = MPI.COMM_WORLD.Barrier
-DEBUG = True
+DEBUG = False
 
 def spherical(xyz):
     if type(xyz) is tuple:
@@ -193,7 +192,8 @@ def test_fmm_init_3_1():
 
 
     #print("fmm.R", fmm.R)
-    fmm._compute_cube_contrib(A.P, A.Q)
+    fmm._check_aux_dat(A.P)
+    fmm._compute_cube_contrib(A.P, A.Q, A._fmm_cell)
 
     for level in range(fmm.R - 1, 0, -1):
 
@@ -245,7 +245,7 @@ def test_fmm_init_3_1():
     assert abs(phi_ga[0] - phi_fmm) < 10.**-10
 
 
-@pytest.mark.skipif("True")
+@pytest.mark.skipif("MPISIZE>1")
 def test_fmm_init_3_2():
 
     offset = (20., 0., 0.)
@@ -306,7 +306,8 @@ def test_fmm_init_3_2():
     phi_loop.execute()
 
 
-    fmm._compute_cube_contrib(A.P, A.Q)
+    fmm._check_aux_dat(A.P)
+    fmm._compute_cube_contrib(A.P, A.Q, A._fmm_cell)
 
     for level in range(fmm.R - 1, 0, -1):
 
@@ -355,237 +356,6 @@ def test_fmm_init_3_2():
         print("ERROR:", abs(phi_ga[0] - phi_fmm))
 
     assert abs(phi_ga[0] - phi_fmm) < eps
-
-
-def test_fmm_init_3_3():
-
-    offset = (20., 0., 0.)
-
-
-    Ns = 6
-    E = 3*Ns
-
-    A = state.State()
-    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
-    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
-
-    eps = 10.**-3
-
-    N = Ns**3
-    fmm = PyFMM(domain=A.domain, r=3, eps=eps, free_space=True)
-
-    print(fmm.R, fmm.L)
-
-    #N = 512
-    A.npart = N
-
-    print("N", N)
-
-    rng = np.random.RandomState(seed=1234)
-
-    A.P = data.PositionDat(ncomp=3)
-    A.Q = data.ParticleDat(ncomp=1)
-    A.P[:] = utility.lattice.cubic_lattice((Ns, Ns, Ns),
-                                           (E, E, E))
-    #A.P[:] = rng.uniform(low=-0.499*E, high=0.499*E, size=(N,3))
-    A.Q[:] = rng.uniform(low=-1.0, high=1.0, size=(N,1))
-
-    bias = np.sum(A.Q[:])/N
-    A.Q[:] -= bias
-
-    A.scatter_data_from(0)
-
-    if MPISIZE == 1:
-        # compute potential energy to point across all charges directly
-        P2 = data.PositionDat(npart=N, ncomp=3)
-        Q2 = data.ParticleDat(npart=N, ncomp=1)
-        P2[:,:] = A.P[:N:,:]
-        Q2[:,:] = A.Q[:N:,:]
-        phi_ga = data.ScalarArray(ncomp=1, dtype=ctypes.c_double)
-        src = """
-        const double d0 = P.j[0] - P.i[0];
-        const double d1 = P.j[1] - P.i[1];
-        const double d2 = P.j[2] - P.i[2];
-        phi[0] += 0.5 * Q.i[0] * Q.j[0] / sqrt(d0*d0 + d1*d1 + d2*d2);
-        """
-        phi_kernel = kernel.Kernel('all_to_all_phi', src,
-                                   headers=(kernel.Header('math.h'),))
-
-
-        phi_loop = pairloop.AllToAllNS(kernel=phi_kernel,
-                                       dat_dict={'P': P2(access.READ),
-                                                 'Q': Q2(access.READ),
-                                                 'phi': phi_ga(access.INC_ZERO)})
-        phi_loop.execute()
-        phi_direct = phi_ga[0]
-    else:
-        phi_direct = -730.961426357802565689780749380589
-        if N == 2:
-            phi_direct = -1.086833094933797649872531110304
-
-
-    # compute potential energy to point across all charges directly
-    P22 = data.PositionDat(npart=N, ncomp=3)
-    Q22 = data.ParticleDat(npart=N, ncomp=1)
-    P22[:,:] = A.P[:N:,:]
-    Q22[:,:] = A.Q[:N:,:]
-    phi_ga2 = data.ScalarArray(ncomp=1, dtype=ctypes.c_double)
-
-    ns = fmm.tree.entry_map.cube_side_count
-    src = """
-        const double ipx = P.i[0] + {hex}; 
-        const double ipy = P.i[1] + {hey}; 
-        const double ipz = P.i[2] + {hez};
-        const int icx = ipx*{lx};
-        const int icy = ipy*{ly};
-        const int icz = ipz*{lz};
-
-        const double jpx = P.j[0] + {hex}; 
-        const double jpy = P.j[1] + {hey}; 
-        const double jpz = P.j[2] + {hez};
-        const int jcx = jpx*{lx};
-        const int jcy = jpy*{ly};
-        const int jcz = jpz*{lz};
-        
-        const int dx = icx - jcx;
-        const int dy = icy - jcy;
-        const int dz = icz - jcz;
-
-        int dr2 = dx*dx + dy*dy + dz*dz;
-        
-        #define ABS(x) ((x) > 0 ? (x) : (-1*(x)))
-        dr2 += (    (ABS(P.j[0]) > {hex}) || \
-                    (ABS(P.j[1]) > {hey}) || \
-                    (ABS(P.j[2]) > {hez})) ? 1000000 : 0;
-
-        const double mask = (dr2 > 3) ? 0.0 : 1.0;
-        
-        const double rx = P.j[0] - P.i[0];
-        const double ry = P.j[1] - P.i[1];
-        const double rz = P.j[2] - P.i[2];
-
-        const double r2 = rx*rx + ry*ry + rz*rz;
-        const double r = sqrt(r2);
-        
-        //printf("KERNEL: %f %f %d \\n", mask, r, dr2);
-        //printf("\t %d %d %d \\n", dx, dy, dz);
-        //printf("\tI %f %f %f \\n", P.i[0], P.i[1], P.i[2]);
-        //printf("\tJ %f %f %f \\n", P.j[0], P.j[1], P.j[2]);
-
-        PHI[0] += 0.5 * mask * Q.i[0] * Q.j[0] / r;
-        """.format(**{
-            'hex': fmm.domain.extent[0] * 0.5,
-            'hey': fmm.domain.extent[1] * 0.5,
-            'hez': fmm.domain.extent[2] * 0.5,
-            'lx': ns / fmm.domain.extent[0],
-            'ly': ns / fmm.domain.extent[1],
-            'lz': ns / fmm.domain.extent[2]
-        })
-    phi_kernel = kernel.Kernel('all_to_all_phi', src,
-                               headers=(kernel.Header('math.h'),))
-
-
-    phi_loop2 = pairloop.AllToAllNS(kernel=phi_kernel,
-                                   dat_dict={'P': P22(access.READ),
-                                             'Q': Q22(access.READ),
-                                             'PHI': phi_ga2(access.INC_ZERO)})
-    phi_loop2.execute()
-    phi_local2 = phi_ga2[0]
-
-
-
-
-
-
-
-
-
-
-    t0 = time.time()
-    fmm._compute_cube_contrib(A.P, A.Q)
-
-    for level in range(fmm.R - 1, 0, -1):
-        print("UP", level)
-        fmm._translate_m_to_m(level)
-
-        #print("HALO", level)
-        #print(fmm.tree_halo[level][:,:,:,0])
-        fmm._halo_exchange(level)
-        fmm._translate_m_to_l(level)
-        fmm._fine_to_coarse(level)
-
-    fmm.tree_parent[1][:] = 0.0
-
-    for level in range(1, fmm.R):
-        print("DOWN", level)
-        fmm._translate_l_to_l(level)
-        fmm._coarse_to_fine(level)
-
-        #print("PLAIN", level)
-        #print(fmm.tree_plain[level][:,:,:,0])
-
-    #fmm._compute_local_interaction(A.P, A.Q)
-    #phi_local = fmm.particle_phi[0]
-    phi_local = phi_local2
-    t1 = time.time()
-
-
-
-
-    phi_py = fmm._compute_cube_extraction(A.P, A.Q)
-
-
-    phi_fmm = phi_local + phi_py
-
-    if DEBUG and MPIRANK == 0:
-
-        print("Time:", t1 - t0)
-        print("Phi-local alltoall:", phi_local2, "Phi-local pair:", phi_local)
-        print("phi_direct: {:.30f}".format(phi_direct))
-        print("phi_local", phi_local, "phi_py", phi_py)
-        print("direct:", phi_direct, "phi_fmm", phi_fmm)
-        print("ERROR:", abs(phi_direct - phi_fmm))
-
-
-    #assert abs(phi_ga[0] - phi_fmm) < eps
-
-
-
-
-
-
-
-
-def test_fmm_halo_1():
-
-    E = 10.
-
-    A = state.State()
-    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
-    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
-
-    eps = 10.**-4
-
-    fmm = PyFMM(domain=A.domain, N=100, eps=eps, free_space=True)
-
-
-    for level in range(fmm.R - 1, 0, -1):
-
-        if fmm.tree[level].local_grid_cube_size is not None:
-            for ix in range(fmm.tree_halo[level][2:-2:, 2:-2:, 2:-2, 0].shape[2]):
-                fmm.tree_halo[level][2:-2:, 2:-2:, 2+ix, :] = (MPIRANK+1)*(ix+4)
-
-        print(level, 60*'-')
-
-        if fmm.tree[level].local_grid_cube_size is not None:
-            print(fmm.tree_halo[level][:,:,:, 0])
-        fmm.tree_halo.halo_exchange_level(level)
-
-        if fmm.tree[level].local_grid_cube_size is not None:
-            print(fmm.tree_halo[level][:,:,:, 0])
-
-        print(level, 60*'=')
-
 
 
 

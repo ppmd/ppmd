@@ -22,7 +22,7 @@ import time
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = MPI.COMM_WORLD.Barrier
-DEBUG = True
+DEBUG = False
 
 def red(input):
     try:
@@ -177,6 +177,7 @@ def get_p_exp(fmm, disp_sph):
 
     return p_array, exp_array
 
+@pytest.mark.skipif("MPISIZE>1")
 def test_fmm_init_4_1():
 
     offset = (20., 0., 0.)
@@ -194,12 +195,8 @@ def test_fmm_init_4_1():
     N = Ns**3
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=True)
 
-    print(fmm.R, fmm.L)
-
     #N = 3
     A.npart = N
-
-    print("N", N)
 
     rng = np.random.RandomState(seed=1234)
 
@@ -224,19 +221,14 @@ def test_fmm_init_4_1():
 
     A.Q[:] = 1.0
 
-    print("POS_S")
-    print(A.P[0:2:,:])
-    print("POS_E")
-
     #bias = np.sum(A.Q[:])/N
     #A.Q[:] -= bias
 
     A.scatter_data_from(0)
 
-    print("L", fmm.L, "R", fmm.R)
 
-
-    fmm._compute_cube_contrib(A.P, A.Q)
+    fmm._check_aux_dat(A.P)
+    fmm._compute_cube_contrib(A.P, A.Q, A._fmm_cell)
     for level in range(fmm.R - 1, 0, -1):
 
         fmm._translate_m_to_m(level)
@@ -247,11 +239,6 @@ def test_fmm_init_4_1():
         ls = fmm.tree[level].local_grid_cube_size
         cube_width = E/fmm.tree[level].ncubes_side_global
 
-        print("level", level)
-        print("ncubes_side, cube_width",
-              fmm.tree[level].ncubes_side_global, cube_width)
-
-        #print("moments\n", fmm.tree_halo[level][:, :, :, 0])
 
         for tx in tuple_it(ls):
         #for tx in [(0,0,1),]:
@@ -345,15 +332,14 @@ def test_fmm_init_4_1():
             #print("P", ll)
             #print("C", fmm.tree_plain[level][tx[2], tx[1], tx[0],:])
 
-
+@pytest.mark.skipif("MPISIZE>1")
 def test_fmm_init_4_2():
 
-    R = 5
+    R = 3
     Ns = 2**(R-1)
-    Ns = 8
     E = 10.
 
-    SKIP_MTL = True
+    SKIP_MTL = False
 
     A = state.State()
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
@@ -365,12 +351,9 @@ def test_fmm_init_4_2():
     N = Ns**3
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=True)
 
-    print(fmm.R, fmm.L)
-
     N = 2
     A.npart = N
 
-    print("N", N)
 
     rng = np.random.RandomState(seed=1234)
 
@@ -395,18 +378,10 @@ def test_fmm_init_4_2():
 
     A.Q[:] = 1.0
 
-    print("POS_S")
-    print(A.P[0:2:,:])
-    print("POS_E")
-
     #bias = np.sum(A.Q[:])/N
     #A.Q[:] -= bias
 
     A.scatter_data_from(0)
-
-    print("L", fmm.L, "R", fmm.R)
-
-
 
 
     ### FAR PHI START ####
@@ -431,7 +406,6 @@ def test_fmm_init_4_2():
     })
     far_phi_loop.execute()
     far_phi = far_phi_ga[0]
-    print("far_phi", far_phi)
     ### FAR PHI END ###
 
 
@@ -458,13 +432,12 @@ def test_fmm_init_4_2():
                                  'phi': local_phi_ga(access.INC_ZERO)})
     local_phi_loop.execute()
     local_phi_direct = local_phi_ga[0]
-    print("local_phi", local_phi_direct)
     ### LOCAL PHI END ###
 
 
-    fmm._compute_cube_contrib(A.P, A.Q)
+    fmm._check_aux_dat(A.P)
+    fmm._compute_cube_contrib(A.P, A.Q, A._fmm_cell)
     for level in range(fmm.R - 1, 0, -1):
-        print("UP", yellow(level))
         fmm._halo_exchange(level)
         fmm._translate_m_to_l(level)
         fmm._translate_m_to_m(level)
@@ -478,10 +451,6 @@ def test_fmm_init_4_2():
 
         parent_cube_width = 2. * E /fmm.tree[level].ncubes_side_global
         parent_first_cube = -0.5*E + 0.5*parent_cube_width
-
-        print("level", level)
-        print("ncubes_side, cube_width",
-              fmm.tree[level].ncubes_side_global, cube_width)
 
         #### MM EVAL START PARENT ####
         phi_sph_re = 0.0
@@ -504,9 +473,11 @@ def test_fmm_init_4_2():
             phi_sph_im += phi_sph_im1
 
         err = abs(phi_sph_re - far_phi)
-        if err > eps2: serr = red(err)
-        else: serr = green(err)
-        print("LEVEL", level, "MM (PARENT) EVAL ERR:", serr, green(far_phi), phi_sph_re)
+        assert err < eps2
+        if DEBUG:
+            if err > eps2: serr = red(err)
+            else: serr = green(err)
+            print("LEVEL", level, "MM (PARENT) EVAL ERR:", serr, green(far_phi), phi_sph_re)
         #### MM EVAL END PARENT ####
 
         #### MM EVAL START CHILD ####
@@ -530,9 +501,12 @@ def test_fmm_init_4_2():
             phi_sph_im += phi_sph_im1
 
         err = abs(phi_sph_re - far_phi)
-        if err > eps2: serr = red(err)
-        else: serr = green(err)
-        print("LEVEL", level, "MM (CHILD) EVAL ERR:", serr, green(far_phi), phi_sph_re)
+
+        assert err < eps2
+        if DEBUG:
+            if err > eps2: serr = red(err)
+            else: serr = green(err)
+            print("LEVEL", level, "MM (CHILD) EVAL ERR:", serr, green(far_phi), phi_sph_re)
         #### MM EVAL END CHILD ####
 
         ##### MTL LOOP START ####
@@ -579,9 +553,6 @@ def test_fmm_init_4_2():
 
                         p_array, exp_array = get_p_exp(fmm, disp_sph)
 
-                        if abs(disp_sph[0,0] - radius*cube_width) > 10.**-10:
-                            print(disp_sph[0,0], radius*cube_width)
-
                         moment = 1
                         llold = ll[moment]
                         fmm._translate_mtl_lib['mtl_test_wrapper'](
@@ -609,99 +580,10 @@ def test_fmm_init_4_2():
                 for ax in range(2*fmm.L**2):
                     err = abs(ll[ax] - fmm.tree_plain[level][tx[0], tx[1], tx[2],ax])
                     if err > eps2:
-                    #if True:
                         print(tx, ax, "err", red(err), ll[ax],
                               fmm.tree_plain[level][tx[0], tx[1], tx[2],ax])
 
                     assert err < eps
-        ##### MTL END ####
-
-    fmm.tree_parent[0][:] = 0.0
-    fmm.tree_plain[0][:] = 0.0
-    fmm.tree_parent[1][:] = 0.0
-    fmm.tree_plain[1][:] = 0.0
-    for level in range(1, fmm.R):
-        print("DOWN", yellow(level))
-
-        print("PRE", fmm.tree_plain[level][0,0,0,0],
-              fmm.tree_parent[level][0,0,0,0],
-              fmm.tree_plain[level-1][0,0,0,0])
-
-
-        fmm._translate_l_to_l(level)
-
-        fmm._coarse_to_fine(level)
-
-
-        print("POST", fmm.tree_plain[level][0,0,0,0],
-              fmm.tree_parent[level][0,0,0,0],
-              fmm.tree_plain[level-1][0,0,0,0])
-
-        ls = fmm.tree[level].local_grid_cube_size
-        lo = fmm.tree[level].local_grid_offset
-
-        cube_width = E/fmm.tree[level].ncubes_side_global
-        first_cube = -0.5*E + 0.5*cube_width
-
-        extent = A.domain.extent
-        cube_ilen = fmm.tree[level].ncubes_side_global / extent[:]
-        shift_pos = A.P[:] + 0.5 * extent[:]
-        shift_pos[:,0] = shift_pos[:,0] * cube_ilen[0]
-        shift_pos[:,1] = shift_pos[:,1] * cube_ilen[1]
-        shift_pos[:,2] = shift_pos[:,2] * cube_ilen[2]
-        shift_pos = np.array(shift_pos, dtype='int')
-        print(shift_pos)
-
-        # the local expansion should contain the "far away" particle
-        # contributions in the zero-th moment
-        for tx in tuple_it(ls):
-            txa = np.array(tx)
-
-            center = np.array(
-                (first_cube + (lo[2] + tx[2])*cube_width,
-                 first_cube + (lo[1] + tx[1])*cube_width,
-                 first_cube + (lo[0] + tx[0])*cube_width))
-
-            phi_far_local = 0.0
-            for px in range(N):
-                # dx is xyz
-                dx = np.array((0,0,0), dtype='int')
-                dx[0] = txa[2] - shift_pos[px, 0]
-                dx[1] = txa[1] - shift_pos[px, 1]
-                dx[2] = txa[0] - shift_pos[px, 2]
-                dx2 = dx[0]**2 + dx[1]**2 + dx[2]**2
-                if dx2 > 3:
-                    phi_far_local += A.Q[px, 0] / np.linalg.norm(
-                        A.P[px,:] - center)
-
-            ll = fmm.tree_plain[level][tx[0], tx[1], tx[2], 0]
-            err = abs(phi_far_local - ll)
-
-            if err > eps2: serr = red(err)
-            else: serr = err
-
-            print("Expected PHI", tx, "\t", center,"\t",serr,"\t", ll, green(phi_far_local))
-
-
-
-
-
-
-
-
-    phi_extract = fmm._compute_cube_extraction(A.P, A.Q)
-    phi_near = fmm._compute_local_interaction(A.P, A.Q)
-    phi_py = phi_extract + phi_near
-
-    local_err = abs(phi_py - local_phi_direct)
-
-    if local_err > eps: serr = red(local_err)
-    else: serr = yellow(local_err)
-
-    print("LOCAL PHI ERR:", serr, phi_py, green(local_phi_direct))
-    print("NEARBY:", phi_near, "\tEXTRACT:", phi_extract)
-
-
 
 
 
@@ -712,7 +594,7 @@ def test_fmm_init_4_3():
     Ns = 20
     E = 3.*Ns
 
-    SKIP_DIRECT = True
+    SKIP_DIRECT = False
     ASYNC = False
 
     A = state.State()
@@ -724,8 +606,6 @@ def test_fmm_init_4_3():
 
     N = Ns**3
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=True)
-
-    print(fmm.R, fmm.L)
 
     #N = 2
     A.npart = N
@@ -781,7 +661,8 @@ def test_fmm_init_4_3():
                                      'phi': local_phi_ga(access.INC_ZERO)})
         local_phi_loop.execute()
         local_phi_direct = local_phi_ga[0]
-        print("local_phi {:.30f}".format(float(local_phi_direct)))
+        if DEBUG:
+            print("local_phi {:.30f}".format(float(local_phi_direct)))
     else:
         local_phi_direct = 0.0
     local_phi_direct =  mpi.all_reduce(np.array([local_phi_direct]))[0]
@@ -794,6 +675,8 @@ def test_fmm_init_4_3():
     t1 = time.time()
 
     local_err = abs(phi_py - local_phi_direct)
+
+    assert local_err < eps
 
     if local_err > eps: serr = red(local_err)
     else: serr = yellow(local_err)
