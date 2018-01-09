@@ -25,7 +25,7 @@ import time
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = MPI.COMM_WORLD.Barrier
-DEBUG = True
+DEBUG = False
 SHARED_MEMORY = 'omp'
 
 def red(input):
@@ -926,6 +926,7 @@ def test_fmm_init_5_5_co2():
                 contrib.real, serr,
                 contrib.imag, serr_im))
 
+@pytest.mark.skipif("MPISIZE>1")
 def test_fmm_init_5_6_1():
 
     E = 2.
@@ -997,7 +998,7 @@ def test_fmm_init_5_6_1():
             assert abs(contrib_re - l00[fmm.re_lm(jx, kx)]) < 10.**-15
             assert abs(contrib_im - l00[fmm.im_lm(jx, kx)]) < 10.**-15
 
-
+@pytest.mark.skipif("MPISIZE>1")
 def test_fmm_init_5_6_2():
 
     E = 50.
@@ -1158,7 +1159,8 @@ def test_fmm_init_5_4_quad2():
 
 
 
-    #np.save('/tmp/r_coeffs.npy', shell_terms)
+
+@pytest.mark.skipif("MPISIZE>1")
 def test_fmm_init_5_7_quad():
     R = 2
 
