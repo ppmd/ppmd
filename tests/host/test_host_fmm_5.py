@@ -267,8 +267,6 @@ def test_fmm_init_5_1():
             shared_memory=SHARED_MEMORY
         )
 
-    print(fmm.R, fmm.L)
-
     #N = 2
     A.npart = N
 
@@ -614,15 +612,16 @@ def test_fmm_init_5_4_quad(level_set, tol_set, space_set):
                         phi_direct += 0.5*A.Q[ix, 0] * A.Q[jx, 0] /rij
     else:
         if free_space == '27':
-            phi_direct = -0.12868996439494947981
+            phi_direct = -0.12823547267060314558
         elif free_space == True:
-            phi_direct = -0.12131955438932764957
+            phi_direct = -0.10343145750507620750
         else:
             raise RuntimeError("bad parameter")
 
     local_err = abs(phi_py - phi_direct)
     if local_err/Q > eps: serr = red(local_err)
     else: serr = green(local_err)
+
 
     if MPIRANK == 0 and DEBUG:
         print("\n")

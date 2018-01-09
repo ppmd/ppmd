@@ -26,7 +26,7 @@ from math import *
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = MPI.COMM_WORLD.Barrier
-DEBUG = True
+DEBUG = False
 SHARED_MEMORY = 'omp'
 
 def red(*input):
@@ -601,8 +601,6 @@ def test_fmm_force_ewald_1():
         ra = 0.25 * E
         nra = -0.25 * E
 
-        eps = 0.00
-
         epsx = 0
         epsy = 0
         epsz = 0
@@ -629,7 +627,6 @@ def test_fmm_force_ewald_1():
 
         #A.P[0,:] += eps
 
-        eps = 0.00001
         #A.P[0:N:2,0] += eps
         #A.P[0,0] -= eps
         A.P[4,0] -= eps
@@ -666,7 +663,7 @@ def test_fmm_force_ewald_1():
 
     bias = np.sum(A.Q[:])
 
-    print("DIPOLE:\t", dipole, "TOTAL CHARGE:\t", bias)
+    Q = np.sum(np.abs(A.Q[:N:,0]))
 
     A.scatter_data_from(0)
 
@@ -695,7 +692,7 @@ def test_fmm_force_ewald_1():
 
     phi_ewald = A.cri[0] + A.crr[0] + A.crs[0]
 
-    local_err = abs(phi_py - phi_ewald)
+    local_err = abs(phi_py - phi_ewald)/Q
     if local_err > eps: serr = red(local_err)
     else: serr = green(local_err)
 
@@ -710,14 +707,13 @@ def test_fmm_force_ewald_1():
         print("ENERGY FMM:\t", phi_py)
         print("ERR:\t\t", serr)
 
-
     # run the same again
     A.F[:] = 0.0
     t0 = time.time()
     phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
     t1 = time.time()
 
-    local_err = abs(phi_py - phi_ewald)
+    local_err = abs(phi_py - phi_ewald)/Q
     if local_err > eps: serr = red(local_err)
     else: serr = green(local_err)
 
@@ -728,10 +724,6 @@ def test_fmm_force_ewald_1():
             err_re_c = red_tol(np.linalg.norm(A.FE[px,:] - A.F[px,:],
                                               ord=np.inf), 10.**-6)
 
-            #print("PX:", px)
-            #print("\t\tFORCE EWALD :",A.FE[px,:])
-            #print("\t\tFORCE FMM:",A.F[px,:], err_re_c)
-
             assert np.linalg.norm(A.FE[px,:] - A.F[px,:], ord=np.inf) < 10.**-6
 
     if MPIRANK == 0 and DEBUG:
@@ -740,10 +732,7 @@ def test_fmm_force_ewald_1():
         print("ERR:\t\t", serr)
 
 
-    if MPIRANK == 0 and DEBUG:
-        print(60*"-")
-        opt.print_profile()
-        print(60*"-")
+
 
 @pytest.mark.skipif("True")
 def test_fmm_force_ewald_2():
@@ -924,11 +913,6 @@ def test_fmm_force_ewald_2():
             print("\t\tFORCE FMM:",A.F[px,:])
 
 
-    A.P._dat[0,:] = ( 2.001, 0., 0.)
-    A.F[:N:,:] = 0.0
-    phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
-
-    print("NEW FORCE:\t", A.F[0,:])
 
 
 
