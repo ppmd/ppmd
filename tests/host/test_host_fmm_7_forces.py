@@ -313,10 +313,11 @@ def force_from_multipole(py_mom, fmm, disp, charge):
 
     return Fv
 
+@pytest.mark.skipif("MPISIZE>1")
 def test_fmm_oct_1():
 
     R = 3
-    eps = 10.**-10
+    eps = 10.**-8
     free_space = True
 
     N = 2
@@ -387,8 +388,6 @@ def test_fmm_oct_1():
         ra = 0.25 * E
         nra = -0.25 * E
 
-        eps = 0.00
-
         epsx = 0
         epsy = 0
         epsz = 0
@@ -415,7 +414,6 @@ def test_fmm_oct_1():
 
         #A.P[0,:] += eps
 
-        eps = 0.00001
         #A.P[0:N:2,0] += eps
         #A.P[0,0] -= eps
         A.P[4,0] -= eps
@@ -706,10 +704,13 @@ def test_fmm_oct_1():
                 ))
 
 
-        err_re_f = red_tol(np.linalg.norm(direct_forces[px,:] - Fv, ord=np.inf), 10.**-6)
-        err_re_c = red_tol(np.linalg.norm(direct_forces[px,:] - A.F[px,:], ord=np.inf), 10.**-6)
-        err_re_s = red_tol(np.linalg.norm(direct_forces[px,:] - Fvs, ord=np.inf), 10.**-6)
-        err_im_s = red_tol(np.linalg.norm(Fvs_im), 10.**-6)
+        err_re_f = red_tol(np.linalg.norm(direct_forces[px,:] - \
+                                          Fv, ord=np.inf), eps)
+        err_re_c = red_tol(np.linalg.norm(direct_forces[px,:] - \
+                                          A.F[px,:], ord=np.inf), eps)
+        err_re_s = red_tol(np.linalg.norm(direct_forces[px,:] - \
+                                          Fvs, ord=np.inf), eps)
+        err_im_s = red_tol(np.linalg.norm(Fvs_im), eps)
 
         if DEBUG:
             print("PX:", px)
@@ -736,8 +737,6 @@ def test_fmm_oct_1():
 
     phi_py2 = compute_phi(fmm.L, source_mom, disp)[0] * A.Q[1,0]
     if DEBUG: print(yellow("1:\t"), yellow(phi_py2))
-
-
 
 
 
@@ -769,8 +768,8 @@ def test_fmm_oct_1():
             py_re = ynm.real
             py_im = ynm.imag
 
-            assert abs(py_re - fmm_mom[fmm.re_lm(lx, mx)]) < 10**-15
-            assert abs(py_im - fmm_mom[fmm.im_lm(lx, mx)]) < 10**-15
+            assert abs(py_re - fmm_mom[fmm.re_lm(lx, mx)]) < 10.**-15
+            assert abs(py_im - fmm_mom[fmm.im_lm(lx, mx)]) < 10.**-15
             py_mom[fmm.re_lm(lx, mx)] = py_re
             py_mom[fmm.im_lm(lx, mx)] = py_im
 
@@ -848,20 +847,10 @@ def test_fmm_oct_1():
 
 
 
-
-
-
-
-
-
-
-
-
-
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_force_direct_2():
 
-    R = 4
+    R = 3
     eps = 10.**-4
     free_space = '27'
 
@@ -903,10 +892,10 @@ def test_fmm_force_direct_2():
         A.P[2,:] = (-1.01, -1.01, 0.0)
         A.P[3,:] = ( 1.01, -1.01, 0.0)
 
-        A.Q[0,0] = -0.
+        A.Q[0,0] = -1.
         A.Q[1,0] = 1.
         A.Q[2,0] = -1.
-        A.Q[3,0] = 0.
+        A.Q[3,0] = 1.
 
     elif N == 1:
         A.P[0,:] = ( 0.25*E, 0.25*E, 0.25*E)
@@ -934,8 +923,6 @@ def test_fmm_force_direct_2():
         ra = 0.25 * E
         nra = -0.25 * E
 
-        eps = 0.00
-
         epsx = 0
         epsy = 0
         epsz = 0
@@ -962,7 +949,6 @@ def test_fmm_force_direct_2():
 
         #A.P[0,:] += eps
 
-        eps = 0.00001
         #A.P[0:N:2,0] += eps
         #A.P[0,0] -= eps
         A.P[4,0] -= eps
@@ -998,7 +984,7 @@ def test_fmm_force_direct_2():
 
         bias = np.sum(A.Q[:])
 
-        print("DIPOLE:\t", dipole, "TOTAL CHARGE:\t", bias)
+        if DEBUG: print("DIPOLE:\t", dipole, "TOTAL CHARGE:\t", bias)
 
     A.scatter_data_from(0)
 
@@ -1055,16 +1041,16 @@ def test_fmm_force_direct_2():
         print("ENERGY FMM:\t", phi_py)
         print("ERR:\t\t", serr)
 
-    for px in range(N):
+        for px in range(N):
 
-        err_re_c = red_tol(np.linalg.norm(direct_forces[px,:] - A.F[px,:],
-                                          ord=np.inf), eps)
+            err_re_c = red_tol(np.linalg.norm(direct_forces[px,:] - A.F[px,:],
+                                              ord=np.inf), eps)
 
-        print("PX:", px)
-        print("\t\tFORCE DIR :",direct_forces[px,:])
-        print("\t\tFORCE FMMC:",A.F[px,:], err_re_c)
+            print("PX:", px)
+            print("\t\tFORCE DIR :",direct_forces[px,:])
+            print("\t\tFORCE FMMC:",A.F[px,:], err_re_c)
 
-
+    return
     ncomp = 2*(fmm.L**2)
 
     fmm.entry_data.zero()
@@ -1135,13 +1121,8 @@ def test_fmm_force_direct_2():
             for jx in range(fmm.L):
                  for kx in range(-1*jx, jx+1):
 
-                     print("FMM:\t", l_mom[fmm.re_lm(jx, kx)], "\t", l_mom[fmm.im_lm(jx, kx)])
-                     print(" PY:\t", py_l_mom[fmm.re_lm(jx, kx)], "\t", py_l_mom[fmm.im_lm(jx, kx)])
-
                      assert abs(l_mom[fmm.re_lm(jx, kx)] - py_l_mom[fmm.re_lm(jx, kx)]) < 10.**-10
                      assert abs(l_mom[fmm.im_lm(jx, kx)] - py_l_mom[fmm.im_lm(jx, kx)]) < 10.**-10
-            print(cx)
-
 
     # halo checking
     tree_halo_test = OctalDataTree(fmm.tree, ncomp, 'plain', ctypes.c_double)
