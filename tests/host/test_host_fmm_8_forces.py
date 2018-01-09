@@ -138,9 +138,7 @@ def Yfoo(nx, mx, theta, phi):
     legp = lpmv(abs(mx), nx, math.cos(theta))
     
     assert abs(legp.imag) < 10.**-16
-    #print("mx: {: >30} , exp: {: >30} P: {: >30} coeff: {: >30}".format(
-    #    mx,cmath.exp(1.j * mx * phi), legp.real, coeff))
-    
+
     return coeff * legp * cmath.exp(1.j * mx * phi)
 
 
@@ -533,10 +531,6 @@ def test_fmm_force_ewald_1():
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
     ASYNC = False
-    DIRECT = True if MPISIZE == 1 else False
-
-    DIRECT= True
-    EWALD = True
 
     CUDA=False
 

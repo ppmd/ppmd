@@ -25,7 +25,7 @@ import time
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = MPI.COMM_WORLD.Barrier
-DEBUG = True
+DEBUG = False
 SHARED_MEMORY = 'omp'
 
 def red(input):
@@ -226,7 +226,7 @@ def get_p_exp(fmm, disp_sph):
 
     return p_array, exp_array
 
-
+@pytest.mark.skipif("MPISIZE>1")
 def test_fmm_oct_1():
 
     R = 2
@@ -245,7 +245,8 @@ def test_fmm_oct_1():
 
     DIRECT= True
 
-    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space
+                , _debug=True)
 
     A.npart = N
 
@@ -345,29 +346,8 @@ def test_fmm_oct_1():
     phi_py = fmm(A.P, A.Q, async=ASYNC)
     t1 = time.time()
 
-    for px in range(N):
-        print("px:", px, "\tcell:", A.fmm_cell[px,0], "\tpos:", A.P[px,:])
-
-
-    print("halo 1 1 1 \n", fmm.tree_halo[1][3,3,3,:4:])
-    for lx in range(6):
-        print("lx", lx)
-        for mx in range(-1*lx, lx+1):
-            print("mx", mx, fmm.tree_halo[1][3,3,3,fmm.re_lm(lx, mx)], fmm.tree_halo[1][3,3,3,fmm.im_lm(lx, mx)])
-
-    print(fmm.tree_halo[1][3,3,3,fmm.L**2:fmm.L**2+4:])
-
-    print("sph", spherical((0, 0.5, 0)))
-
-
-    print("-1", math.sqrt(3.)*Y(1, 1, math.acos(-1./math.sqrt(3.)),math.pi*1.25))
-    print("0",  math.sqrt(3.)*Y(1, 0, math.acos(-1./math.sqrt(3.)),math.pi*1.25))
-    print("1",  math.sqrt(3.)*Y(1, -1, math.acos(-1./math.sqrt(3.)),math.pi*1.25))
-
-
     for lx in range(fmm.L):
-        if DEBUG:
-            print("lx", lx)
+
         for mx in range(-1*lx, lx+1):
             py_re = 0.0
             py_im = 0.0
@@ -379,11 +359,6 @@ def test_fmm_oct_1():
 
             assert abs(py_re - fmm.up[fmm.re_lm(lx, mx)]) < 10**-10
             assert abs(py_im - fmm.up[fmm.im_lm(lx, mx)]) < 10**-10
-
-            #if DEBUG:
-            #    print("\t{: >5} | {: >30} {: >30} | {: >30} {: >30} ".format(
-            #        mx, py_re, fmm.up[fmm.re_lm(lx, mx)],
-            #        py_im, fmm.up[fmm.im_lm(lx, mx)]))
 
 
     if DIRECT:
@@ -420,18 +395,14 @@ def test_fmm_oct_1():
     else: serr = green(local_err)
 
     if MPIRANK == 0 and DEBUG:
-        print("\n")
-        #print(60*"-")
-        #opt.print_profile()
-        #print(60*"-")
+
         print("TIME FMM:\t", t1 - t0)
         print("ENERGY DIRECT:\t{:.20f}".format(phi_direct))
         print("ENERGY FMM:\t", phi_py)
         print("ERR:\t\t", serr)
 
-    #assert local_err < eps
+    assert local_err < eps
 
-    return
 
     def Afoo(n, m): return ((-1.)**n)/math.sqrt(math.factorial(n - m) * \
                                                 math.factorial(n + m))
@@ -442,7 +413,6 @@ def test_fmm_oct_1():
     mom = fmm.tree_halo[1]
 
     for jx in range(fmm.L):
-        print("jx:", jx)
         for kx in range(-1*jx, jx+1):
 
             contrib = 0.0 + 0.0*1.j
@@ -477,9 +447,11 @@ def test_fmm_oct_1():
 
             assert tcount == 189
 
-            tol = 10.**-16
+            tol = eps
 
             creal = fmm.tree_plain[1][cell[2],cell[1],cell[0],fmm.re_lm(jx, kx)]
+
+
             if abs(contrib.real - creal) > tol:
                 serr = red(creal)
             else:
@@ -492,12 +464,14 @@ def test_fmm_oct_1():
             else:
                 serr_im = str(cimag)
 
-
-            print("\tkx:{: >5} re {: >30} {:>30} | im {: >30} {: >30}".format(
-                kx,
-                contrib.real, serr,
-                contrib.imag, serr_im))
-
+            if DEBUG:
+                print("\tkx:{: >5} re {: >30} {:>30} | im {: >30} {: >30}".format(
+                    kx,
+                    contrib.real, serr,
+                    contrib.imag, serr_im))
+            else:
+                assert abs(contrib.real - creal) < tol
+                assert abs(contrib.imag - cimag) < tol
 
 
 

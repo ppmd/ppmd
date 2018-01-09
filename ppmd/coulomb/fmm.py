@@ -105,7 +105,6 @@ class PyFMM(object):
         self._thread_allocation = np.zeros(1, dtype=INT32)
         self._tmp_cell = np.zeros(1, dtype=INT32)
 
-
         # pre compute A_n^m and 1/(A_n^m)
         self._a = np.zeros(shape=(self.L*2, (self.L*4)+1), dtype=dtype)
         self._ar = np.zeros(shape=(self.L*2,(self.L*4)+1), dtype=dtype)
@@ -663,6 +662,7 @@ class PyFMM(object):
         self._compute_periodic_boundary()
 
         for level in range(1, self.R):
+
             if self.cuda:
                 self._cuda_mtl_wait_async(level)
             self._translate_l_to_l(level)
@@ -1386,6 +1386,9 @@ class PyFMM(object):
 
                         im_exp =  np.sin(mx * sph_vec[1]) * val
                         im_terms[self.re_lm(nx, mx)] += sph_nm * im_exp
+
+
+        return terms
 
         print("\n")
         print(30*"-", "shell terms", 30*'-')

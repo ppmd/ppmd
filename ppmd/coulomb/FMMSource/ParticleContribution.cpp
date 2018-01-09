@@ -15,9 +15,9 @@ static inline void global_cell_tuple(
     const REAL pys = py + 0.5 * boundary[1];
     const REAL pzs = pz + 0.5 * boundary[2];
 
-    *cxt = (INT64) pxs*cube_inverse_len[0];
-    *cyt = (INT64) pys*cube_inverse_len[1];
-    *czt = (INT64) pzs*cube_inverse_len[2];
+    *cxt = pxs*cube_inverse_len[0];
+    *cyt = pys*cube_inverse_len[1];
+    *czt = pzs*cube_inverse_len[2];
 }
 
 static inline INT64 local_cell_tuple(
@@ -105,6 +105,9 @@ static inline INT64 compute_cell_spherical(
 
     INT64 gcx, gcy, gcz, cx, cy, cz;
     global_cell_tuple(cube_inverse_len, px, py, pz, boundary, &gcx, &gcy, &gcz);
+    
+    //printf("\t%f\t%f\t%f global cell %d\t%d\t%d\n", px, py, pz, gcx, gcy, gcz);
+
     local_cell_tuple(gcx, gcy, gcz, cube_offset, &cx, &cy, &cz);
     if (drift_compensation(cube_dim, &gcx, &gcy, &gcz, &cx, &cy, &cz) < 0){ return -1; }
 
@@ -125,6 +128,8 @@ static inline INT64 compute_cell_spherical(
     const REAL dx2_p_dy2 = dx2 + dy*dy;
     const REAL d2 = dx2_p_dy2 + dz*dz;
     *radius = sqrt(d2);
+
+    //printf("\t%f\t%f\t%f global cell %d\t%d\t%d | radius %f |\t%f\t%f\t%f\n", px, py, pz, gcx, gcy, gcz, *radius, ccx, ccy, ccz);
     
     const REAL theta = atan2(sqrt(dx2_p_dy2), dz);
     *ctheta = cos(theta);
