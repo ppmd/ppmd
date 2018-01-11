@@ -305,9 +305,9 @@ def force_from_multipole(py_mom, fmm, disp, charge):
     return Fv
 
 def test_wigner_1():
-    N = 100
+    N = 10
     random_angles = np.random.uniform(low=0.0, high=2.*math.pi, size=N)
-    tol = 10.**-14
+    tol = 10.**-13
 
     for beta in random_angles:
         if DEBUG:
@@ -361,7 +361,21 @@ def test_wigner_1():
             print(jx, "\t-------->\t",w0,"\t",w1,"\t",red_tol(abs(w1-w0),
                                                               10.**-14))
 
+    L = 20
+    random_angles = np.random.uniform(low=0.0, high=2.*math.pi, size=N)
+    for beta in random_angles:
+        for nx in range(0, L):
+            for mpx in range(-1*nx, nx+1):
+                for mx in range(-1*nx, nx+1):
+                    w0 = wigner_d_rec(nx,mpx,mx,beta)
+                    w1 = wigner_d    (nx,mpx,mx,beta)
+                    err = abs(w0 - w1)
+                    if DEBUG:
+                        print(w0, w1, red_tol(err, tol))
+                    assert err < tol
+
     L = 40
+    beta = random_angles[-1]
     for nx in range(0, L):
         for mpx in range(-1*nx, nx+1):
             for mx in range(-1*nx, nx+1):
@@ -371,8 +385,6 @@ def test_wigner_1():
                 if DEBUG:
                     print(w0, w1, red_tol(err, tol))
                 assert err < tol
-
-
 
 
 

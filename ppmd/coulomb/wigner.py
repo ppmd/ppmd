@@ -28,11 +28,6 @@ def wigner_d(j, mp, m, beta):
     Compute the Wigner d-matrix d_{m', m}^j(\beta) using Jacobi polynomials.
     Taken from wikipedia which claims Wigner, E.P. 1931 as a source. Matches
     the recursion based method in wigner_d_rec.
-
-    :param j:
-    :param mp:
-    :param m:
-    :param beta:
     """
 
     j = int(j)
@@ -59,7 +54,7 @@ def wigner_d(j, mp, m, beta):
            (math.cos(0.5*beta)**b) * jacobi(k,a,b)(math.cos(beta))
 
 
-@cached(maxsize=4096)
+@cached(maxsize=40960)
 def wigner_d_rec(j, mp, m, beta):
     """
     Compute the Wigner d-matrix d_{m', m}^j(\beta) using recursion relations
@@ -70,12 +65,7 @@ def wigner_d_rec(j, mp, m, beta):
 
     Corrections:
     Equation (11), last term, numerator in square root should be:
-    (n-m)(n-m-1) not (n-m)(n-m+1) To match the Jacobi Polynomial version.
-
-    :param j:
-    :param mp:
-    :param m:
-    :param beta:
+    (n-m)(n-m-1) not (n-m)(n-m+1) to match the Jacobi Polynomial version.
     """
 
     j = int(j)
@@ -144,8 +134,7 @@ def wigner_d_rec(j, mp, m, beta):
 
         return term1 + term2 + term3
 
-
-    raise RuntimeError("could not compute value")
+    raise RuntimeError("No suitable recursion relation or base case found.")
 
 
 
