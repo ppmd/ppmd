@@ -25,15 +25,21 @@ except Exception as e:
 @cached(maxsize=32)
 def wigner_d(j, mp, m, beta):
     """
-    Compute the Wigner d-matrix d_{m', m}^j(\beta) using Jacobi polynomials
+    Compute the Wigner d-matrix d_{m', m}^j(\beta) using Jacobi polynomials.
+    Taken from wikipedia which claims Wigner, E.P. 1931 as a source. Matches
+    the recursion based method in wigner_d_rec.
+
     :param j:
     :param mp:
     :param m:
     :param beta:
     """
+
+    j = int(j)
+    mp = int(mp)
+    m = int(m)
+
     k = min(j+m, j-m, j+mp, j-mp)
-    a = None
-    l = None
 
     if k == j + m:
         a = mp - m; l = mp - m
@@ -53,12 +59,19 @@ def wigner_d(j, mp, m, beta):
            (math.cos(0.5*beta)**b) * jacobi(k,a,b)(math.cos(beta))
 
 
-
-
 @cached(maxsize=4096)
 def wigner_d_rec(j, mp, m, beta):
     """
     Compute the Wigner d-matrix d_{m', m}^j(\beta) using recursion relations
+    Uses recursion relations in:
+
+    "A fast and stable method for rotating spherical harmonic expansions",
+    Z. Gimbutas, L.Greengard
+
+    Corrections:
+    Equation (11), last term, numerator in square root should be:
+    (n-m)(n-m-1) not (n-m)(n-m+1) To match the Jacobi Polynomial version.
+
     :param j:
     :param mp:
     :param m:
@@ -69,24 +82,17 @@ def wigner_d_rec(j, mp, m, beta):
     mp = int(mp)
     m = int(m)
 
+    # base cases
     if j == 0 and mp == 0 and m == 0:
-        #print("base 1")
         return 1.0
     elif j < 0:
         raise RuntimeError("negative j is invalid")
     elif abs(m) > j or abs(mp) > j:
-        #print("base 0")
         return 0.0
 
-    #if j < 2:
-    #    return wigner_d(j, mp, m, beta)
-
-
-    # 3rd
+    # 3rd Equation 11
     denom = ((j+mp)*(j-mp))
     if denom != 0:
-        #print("3")
-
         cb = math.cos(0.5*beta)
         sb = math.sin(0.5*beta)
         sc = sb * cb
@@ -101,15 +107,12 @@ def wigner_d_rec(j, mp, m, beta):
         term3 = sc * math.sqrt(
             (j-m)*(j-m-1)/denom) * \
             wigner_d_rec(j-1, mp, m+1, beta)
-
-        #return wigner_d(j, mp, m, beta)
         return term1 + term2 - term3
 
 
-    # 1st
+    # 1st Equation 9
     denom = ((j + mp)*(j + mp -1))
     if denom != 0:
-        #print("1")
         term1 = (math.cos(0.5*beta)**2.) * math.sqrt(
             ((j + m)*(j + m - 1))/denom) * \
             wigner_d_rec(j-1,mp-1,m-1,beta)
@@ -122,13 +125,11 @@ def wigner_d_rec(j, mp, m, beta):
             ((j-m)*(j-m-1.))/denom) * \
             wigner_d_rec(j-1, mp-1, m+1, beta)
 
-        #return wigner_d(j, mp, m, beta)
         return term1 - term2 + term3
 
-    # 2nd
+    # 2nd Equation 10
     denom = ((j-mp)*(j-mp-1))
     if denom != 0:
-        #print("2")
         term1 = (math.sin(0.5*beta)**2.) * math.sqrt(
             ((j+m)*(j+m-1))/denom) * \
             wigner_d_rec(j-1,mp+1,m-1,beta)
@@ -141,7 +142,6 @@ def wigner_d_rec(j, mp, m, beta):
             ((j-m)*(j-m-1))/denom) * \
             wigner_d_rec(j-1, mp+1, m+1, beta)
 
-        #return wigner_d(j, mp, m, beta)
         return term1 + term2 + term3
 
 
