@@ -350,10 +350,27 @@ def test_wigner_1():
             assert abs(wigner_d(jx[0], jx[1], jx[2], beta) - jx[3](beta)) < tol
 
 
+    beta= 0.1*math.pi
+    jx = (1,0,0)
 
 
+    for jx in j2:
+        w0 = wigner_d_rec(jx[0],jx[1],jx[2],beta)
+        w1 = wigner_d(jx[0],jx[1],jx[2],beta)
+        if DEBUG:
+            print(jx, "\t-------->\t",w0,"\t",w1,"\t",red_tol(abs(w1-w0),
+                                                              10.**-14))
 
-
+    L = 40
+    for nx in range(0, L):
+        for mpx in range(-1*nx, nx+1):
+            for mx in range(-1*nx, nx+1):
+                w0 = wigner_d_rec(nx,mpx,mx,beta)
+                w1 = wigner_d    (nx,mpx,mx,beta)
+                err = abs(w0 - w1)
+                if DEBUG:
+                    print(w0, w1, red_tol(err, tol))
+                assert err < tol
 
 
 
