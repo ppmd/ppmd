@@ -9,6 +9,22 @@ from scipy.special import jacobi, binom
 import math
 import cmath
 
+
+
+class _idcache(object):
+    def __init__(self, maxsize=None):
+        return
+    def __call__(self, func):
+        return func
+
+try:
+    from functools import lru_cache
+    cached = lru_cache
+except Exception as e:
+    cached = _idcache
+
+
+@cached(maxsize=32)
 def wigner_d(j, mp, m, beta):
     """
     Compute the Wigner d-matrix d_{m', m}^j(\beta)
