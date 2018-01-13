@@ -55,37 +55,6 @@ def red_tol(val, tol):
         return green(str(val))
 
 
-cube_offsets = (
-    (-1,1,-1),
-    (-1,-1,-1),
-    (-1,0,-1),
-    (0,1,-1),
-    (0,-1,-1),
-    (0,0,-1),
-    (1,0,-1),
-    (1,1,-1),
-    (1,-1,-1),
-
-    (-1,1,0),
-    (-1,0,0),
-    (-1,-1,0),
-    (0,-1,0),
-    (0,1,0),
-    (1,0,0),
-    (1,1,0),
-    (1,-1,0),
-
-    (-1,0,1),
-    (-1,1,1),
-    (-1,-1,1),
-    (0,0,1),
-    (0,1,1),
-    (0,-1,1),
-    (1,0,1),
-    (1,1,1),
-    (1,-1,1)
-)
-
 def tuple_it(*args, **kwargs):
     if len(kwargs) == 0:
         tx = args[0]
@@ -146,168 +115,14 @@ def Yfoo(nx, mx, theta, phi):
 
 
 
-
-
-
-
-def compute_phi(llimit, moments, disp_sph):
-
-    phi_sph_re = 0.
-    phi_sph_im = 0.
-    def re_lm(l,m): return (l**2) + l + m
-    def im_lm(l,m): return (l**2) + l +  m + llimit**2
-
-    for lx in range(llimit):
-        mrange = list(range(lx, -1, -1)) + list(range(1, lx+1))
-        mrange2 = list(range(-1*lx, 1)) + list(range(1, lx+1))
-        scipy_p = lpmv(mrange, lx, np.cos(disp_sph[0,1]))
-
-        #print('lx', lx, '-------------')
-
-        for mxi, mx in enumerate(mrange2):
-            #print('mx', mx)
-
-            re_exp = np.cos(mx*disp_sph[0,2])
-            im_exp = np.sin(mx*disp_sph[0,2])
-
-            val = math.sqrt(math.factorial(
-                lx - abs(mx))/math.factorial(lx + abs(mx)))
-            val *= scipy_p[mxi]
-
-            irad = 1. / (disp_sph[0,0] ** (lx+1.))
-
-            scipy_real = re_exp * val * irad
-            scipy_imag = im_exp * val * irad
-
-            ppmd_mom_re = moments[re_lm(lx, mx)]
-            ppmd_mom_im = moments[im_lm(lx, mx)]
-
-            phi_sph_re += scipy_real*ppmd_mom_re - scipy_imag*ppmd_mom_im
-            phi_sph_im += scipy_real*ppmd_mom_im + ppmd_mom_re*scipy_imag
-
-    return phi_sph_re, phi_sph_im
-
-
-
-def compute_phi_local(llimit, moments, disp_sph):
-
-    phi_sph_re = 0.
-    phi_sph_im = 0.
-    def re_lm(l,m): return (l**2) + l + m
-    def im_lm(l,m): return (l**2) + l +  m + llimit**2
-
-    for lx in range(llimit):
-        mrange = list(range(lx, -1, -1)) + list(range(1, lx+1))
-        mrange2 = list(range(-1*lx, 1)) + list(range(1, lx+1))
-        scipy_p = lpmv(mrange, lx, np.cos(disp_sph[0,1]))
-
-        #print('lx', lx, '-------------')
-
-        for mxi, mx in enumerate(mrange2):
-
-            re_exp = np.cos(mx*disp_sph[0,2])
-            im_exp = np.sin(mx*disp_sph[0,2])
-
-            #print('mx', mx, im_exp)
-
-            val = math.sqrt(math.factorial(
-                lx - abs(mx))/math.factorial(lx + abs(mx)))
-            val *= scipy_p[mxi]
-
-            irad = disp_sph[0,0] ** (lx)
-
-            scipy_real = re_exp * val * irad
-            scipy_imag = im_exp * val * irad
-
-            ppmd_mom_re = moments[re_lm(lx, mx)]
-            ppmd_mom_im = moments[im_lm(lx, mx)]
-
-            phi_sph_re += scipy_real*ppmd_mom_re - scipy_imag*ppmd_mom_im
-            phi_sph_im += scipy_real*ppmd_mom_im + ppmd_mom_re*scipy_imag
-
-    return phi_sph_re, phi_sph_im
-
-
-def get_p_exp(fmm, disp_sph):
-    def re_lm(l,m): return (l**2) + l + m
-    exp_array = np.zeros(fmm.L*8 + 2, dtype=ctypes.c_double)
-    p_array = np.zeros((fmm.L*2)**2, dtype=ctypes.c_double)
-    for lx in range(fmm.L*2):
-        mrange = list(range(lx, -1, -1)) + list(range(1, lx+1))
-        mrange2 = list(range(-1*lx, 1)) + list(range(1, lx+1))
-        scipy_p = lpmv(mrange, lx, np.cos(disp_sph[0,1]))
-
-        for mxi, mx in enumerate(mrange2):
-            coeff = math.sqrt(float(math.factorial(lx-abs(mx)))/
-                math.factorial(lx+abs(mx)))
-            p_array[re_lm(lx, mx)] = scipy_p[mxi].real*coeff
-
-    for mxi, mx in enumerate(list(
-            range(-2*fmm.L, 1)) + list(range(1, 2*fmm.L+1))
-        ):
-
-        exp_array[mxi] = np.cos(mx*disp_sph[0,2])
-        exp_array[mxi + fmm.L*4 + 1] = np.sin(mx*disp_sph[0,2])
-
-    return p_array, exp_array
-
-def force_from_multipole(py_mom, fmm, disp, charge):
-
-    Fv = np.zeros(3)
-    radius = disp[0,0]
-    theta = disp[0,1]
-    phi = disp[0,2]
-
-    rstheta = 1.0 / sin(theta)
-    rhat = np.array((cos(phi)*sin(theta),
-                    sin(phi)*sin(theta),
-                    cos(theta)))
-
-    thetahat = np.array(
-        (cos(phi)*cos(theta)*rstheta,
-         sin(phi)*cos(theta)*rstheta,
-         -1.0*sin(theta)*rstheta)
-    )
-
-    phihat = np.array((-1*sin(phi), cos(phi), 0.0))
-    for jx in range(0, fmm.L):
-        #print(green(jx))
-        for kx in range(-1*jx, jx+1):
-            #print("\t", red(kx))
-
-            rpower = radius**(jx+2.)
-
-            Ljk = py_mom[fmm.re_lm(jx,kx)] + 1.j*py_mom[fmm.im_lm(jx,kx)]
-
-            radius_coeff = -1.0 * float(jx + 1.) * rpower * \
-                               Yfoo(jx, kx, theta, phi)
-
-            # theta
-            theta_coeff = float(jx - abs(kx) + 1) * \
-                            Pfoo(jx+1, abs(kx), cos(theta))
-            theta_coeff -= float(jx + 1) * cos(theta) * \
-                            Pfoo(jx, abs(kx), cos(theta))
-            theta_coeff *= rpower
-            theta_coeff *= Hfoo(jx, kx) * cmath.exp(1.j * float(kx) * phi)
-
-            # phi
-            phi_coeff = Yfoo(jx, kx, theta, phi) * (1.j * float(kx))
-            phi_coeff *= rpower * rstheta
-
-            #radius_coeff = 0.0
-            #theta_coeff = 0.0
-            #phi_coeff = 0.0
-
-            Fv -= charge * (rhat     * (Ljk* radius_coeff).real +\
-                            thetahat * (Ljk* theta_coeff ).real +\
-                            phihat   * (Ljk* phi_coeff   ).real)
-
-    return Fv
-
 def test_wigner_1():
+    """Tests the recursive computation matches the jacobi method and
+    some known values"""
+
+
     N = 10
     random_angles = np.random.uniform(low=0.0, high=2.*math.pi, size=N)
-    tol = 10.**-13
+    tol = 10.**-12
 
     for beta in random_angles:
         if DEBUG:
@@ -376,221 +191,411 @@ def test_wigner_1():
 
     L = 40
     beta = random_angles[-1]
+
+    tr = 0.0
+    tj = 0.0
+
     for nx in range(0, L):
         for mpx in range(-1*nx, nx+1):
             for mx in range(-1*nx, nx+1):
+                t0 = time.time()
                 w0 = wigner_d_rec(nx,mpx,mx,beta)
+                tr += time.time() - t0
+
+                t0 = time.time()
                 w1 = wigner_d    (nx,mpx,mx,beta)
+                tj += time.time() - t0
+
                 err = abs(w0 - w1)
                 if DEBUG:
                     print(w0, w1, red_tol(err, tol))
                 assert err < tol
 
+    if DEBUG:
+        print("recusive:\t", tr)
+        print("jacobi:\t", tj)
 
 
-@pytest.mark.skipif("True")
-def test_wigner_expansion_1():
+def test_wigner_2():
+    """
+    rotates random vectors forwards and backwards and checks the results are
+    the same
+    """
 
-    R = 3
-    eps = 10.**-6
-    free_space = True
+    tol = 10.**-12
 
-    N = 4
-    E = 4.
-    rc = E/4
+    nangles = 8
+    nterms = 20
 
-    A = state.State()
-    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
-    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+    random_angles = np.random.uniform(low=0.0, high=2.0*math.pi, size=nangles)
 
-    ASYNC = False
-    DIRECT = True if MPISIZE == 1 else False
+    for nx in range(nterms):
+        for beta in random_angles:
 
-    DIRECT= True
-    EWALD = True
+            original_values = np.random.uniform(
+                low=-10.0, high=10, size=2*nx+1)
+            rotated_values = np.zeros_like(original_values)
+            rotated_values2 = np.zeros_like(original_values)
 
-    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+            # forward rotation
+            for mpx in range(-1*nx, nx+1):
+                tmp = 0.0
+                for mx in range(-1*nx, nx+1):
+                    tmp += wigner_d_rec(nx, mpx, mx, beta) * \
+                           original_values[nx + mx]
+                rotated_values[nx + mpx] = tmp
 
-    A.npart = N
+            # backward rotation
+            for mpx in range(-1*nx, nx+1):
+                tmp = 0.0
+                for mx in range(-1*nx, nx+1):
+                    tmp += wigner_d_rec(nx, mpx, mx, -1.0 * beta) * \
+                           rotated_values[nx + mx]
+                rotated_values2[nx + mpx] = tmp
 
+            err = np.linalg.norm(rotated_values2 - original_values, np.inf)
+            assert err < tol
+
+
+def rotate_moments(L, alpha, beta, gamma, moments):
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + L**2
+
+    out = np.zeros_like(moments)
+    for nx in range(L):
+        for mpx in range(-1*nx, nx+1):
+            tmp = 0.0 + 0.0j
+            for mx in range(-1*nx, nx+1):
+
+                coeff = cmath.exp((1.j) * mx * gamma)
+                coeff *= wigner_d_rec(nx, mpx, mx, beta)
+                coeff *= cmath.exp((1.j) * mx * alpha)
+
+                M = (moments[re_lm(nx, mx)] + 1.j * moments[im_lm(nx, mx)])
+                tmp += coeff * M
+
+            out[re_lm(nx, mpx)] = tmp.real
+            out[im_lm(nx, mpx)] = tmp.imag
+
+    return out
+
+def test_wigner_3():
+    """
+    rotates random vectors forwards and backwards and checks the results are
+    the same. Uses rotate_moments. rotates through two angles
+    """
+
+    tol = 10.**-12
+
+    nangles = 1
+    nterms = 20
+
+
+    ncomp = (nterms**2)*2
+    angles = np.random.uniform(low=0.0, high=2.0*math.pi, size=(nangles, 2))
+
+    #for anglex in range(nangles):
+
+    orig = np.random.uniform(low=-10, high=10, size=ncomp)
+
+
+    forw_ro = rotate_moments(nterms,   0.0,  0.1*math.pi, 0.0, orig)
+    back_ro = rotate_moments(nterms,   0.0, -0.1*math.pi, 0.0, forw_ro)
+    err = np.linalg.norm(orig - back_ro, np.inf)
+    assert err < tol
+
+    forw_ro = rotate_moments(nterms,   0.1,  0., 0.0, orig)
+    back_ro = rotate_moments(nterms,  -0.1,  0., 0.0, forw_ro)
+    err = np.linalg.norm(orig - back_ro, np.inf)
+    assert err < tol
+
+    forw_ro = rotate_moments(nterms,   0.1,  0.1*math.pi, 0.0, orig)
+    forw_ro = rotate_moments(nterms,   0.0, -0.1*math.pi, 0.0, forw_ro)
+    back_ro = rotate_moments(nterms,  -0.1,  0.0*math.pi, 0.0, forw_ro)
+
+    err = np.linalg.norm(orig - back_ro, np.inf)
+    assert err < tol
+
+
+
+def Hfoo(nx, mx):
+    return math.sqrt(
+        float(math.factorial(nx - abs(mx)))/math.factorial(nx + abs(mx))
+    )
+
+def Pfoo(nx, mx, x):
+    if abs(mx) > abs(nx):
+        return 0.0
+    elif nx < 0:
+        return Pfoo(-1*nx -1, mx, x)
+    else:
+        return lpmv(mx, nx, x)
+
+def Yfoo(nx, mx, theta, phi):
+    coeff = Hfoo(nx, mx)
+    legp = lpmv(abs(mx), nx, math.cos(theta))
+
+    assert abs(legp.imag) < 10.**-16
+
+    return coeff * legp * cmath.exp(1.j * mx * phi)
+
+@lru_cache(maxsize=1024)
+def Afoo(n, m):
+    if n - m < 0:
+        return 0.0
+    if n + m < 0:
+        return 0.0
+
+    return ((-1.)**n)/float(
+    math.sqrt(math.factorial(n - m) * math.factorial(n + m)))
+
+def Ifoo(k, m): return ((1.j) ** (abs(k-m) - abs(k) - abs(m)))
+
+
+def shift_normal(L, radius, theta, phi, moments):
+
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + L**2
+
+    out = np.zeros_like(moments)
+    # translate
+    for jx in range(L):
+        for kx in range(-1*jx, jx+1):
+
+            for nx in range(L):
+                for mx in range(-1*nx, nx+1):
+
+                    Onm = moments[re_lm(nx, mx)] + (1.j) * \
+                        moments[im_lm(nx, mx)]
+
+                    Onm *= (1.j)**(abs(kx-mx) - abs(kx) - abs(mx))
+                    Onm *= Afoo(nx, mx)
+                    Onm *= Afoo(jx, kx)
+                    Onm *= Yfoo(jx+nx, mx-kx, theta, phi)
+                    Onm *= (-1.)**nx
+                    Onm /= Afoo(jx+nx, mx-kx)
+                    Onm /= radius**(jx+nx+1.)
+
+                    out[re_lm(jx, kx)] += Onm.real
+                    out[im_lm(jx, kx)] += Onm.imag
+
+    return out
+
+
+
+def shift_z(L, radius, theta, moments):
+
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + L**2
+
+    ct = math.cos(theta)
+
+    out = np.zeros_like(moments)
+    # translate
+    for jx in range(L):
+        for kx in range(-1*jx, jx+1):
+
+            for nx in range(L):
+                Onm = 0.0 if abs(kx) > nx else 1.0
+
+                Onm *= moments[re_lm(nx, kx)] + (1.j) * \
+                    moments[im_lm(nx, kx)]
+
+                Onm *= (-1.)**kx
+                Onm *= Afoo(nx, kx)
+                Onm *= Afoo(jx, kx)
+                Onm *= Yfoo(jx+nx, 0, theta, 0)
+                #Onm *= ct**(nx+jx)
+                Onm *= (-1.)**nx
+                Onm /= Afoo(jx+nx, 0)
+                Onm /= radius**(jx+nx+1.)
+
+                out[re_lm(jx, kx)] += Onm.real
+                out[im_lm(jx, kx)] += Onm.imag
+
+    return out
+
+def shift_rotate(L, radius, theta, phi, moments):
+
+
+    moments = rotate_moments(L, 0.0,  phi, 0.0, moments)
+    out = shift_z(L, radius, 0.0, moments)
+    out =     rotate_moments(L, 0.0,  -1. * phi, 0.0, out)
+
+
+    return out
+
+
+def rotate_z(phi):
+    return np.array((
+        (math.cos(phi), -1.* math.sin(phi)  , 0.0),
+        (math.sin(phi),      math.cos(phi)  , 0.0),
+        (          0.0,               0.0   , 1.0)
+    ))
+
+def rotate_y(theta):
+    return np.array((
+        (math.cos(theta)  ,   0.0, math.sin(theta)),
+        (            0.0  ,   1.0,           0.0),
+        (-1.*math.sin(theta),   0.0, math.cos(theta))
+    ))
+
+
+def matvec(A,b):
+    N = max(b.shape[:])
+    out = np.zeros(N)
+    for rx in range(N):
+        out[rx] = np.dot(A[rx, :], b[:])
+    return out
+
+
+def test_rotatation_matrices_1():
+
+    tol = 10.**-15
+
+    x = np.array((1.0, 0.0, 0.0))
+    y = np.array((0.0, 1.0, 0.0))
+    z = np.array((0.0, 0.0, 1.0))
+
+    assert np.linalg.norm(matvec(rotate_z(math.pi*0.5), x) - y, np.inf) < tol
+    assert np.linalg.norm(matvec(rotate_z(math.pi), x) + x, np.inf) < tol
+    assert np.linalg.norm(matvec(rotate_z(0.1353), z) - z, np.inf) < tol
+
+    assert np.linalg.norm(matvec(rotate_y(0.5*math.pi), z) - x, np.inf) < tol
+    assert np.linalg.norm(matvec(rotate_y(1.5*math.pi), z) + x, np.inf) < tol
+
+
+
+
+def test_wigner_4():
+    """
+    rotates random vectors forwards and backwards and checks the results are
+    the same. Uses rotate_moments. rotates through two angles
+    """
+
+    tol = 10.**-12
+    N = 1
+
+    nangles = 1
+    nterms = 3
+
+    ncomp = (nterms**2)*2
     rng = np.random.RandomState(seed=1234)
 
-    A.P = data.PositionDat(ncomp=3)
-    A.F = data.ParticleDat(ncomp=3)
-    A.FE = data.ParticleDat(ncomp=3)
-    A.Q = data.ParticleDat(ncomp=1)
+    P = rng.uniform(low=-1., high=1., size=(N,3))
 
-    A.crr = data.ScalarArray(ncomp=1)
-    A.cri = data.ScalarArray(ncomp=1)
-    A.crs = data.ScalarArray(ncomp=1)
+    P[0,:] = (1.0, 0.0, 0.0)
 
+    Q = rng.uniform(low=-1., high=1., size=N)
+    Q[:] = 1.0
 
-    if N == 4:
-        ra = 0.25 * E
-        nra = -0.25 * E
+    orig = np.zeros(ncomp)
 
-        A.P[0,:] = ( 1.01,  1.01, 0.0)
-        A.P[1,:] = (-1.01,  1.01, 0.0)
-        A.P[2,:] = (-1.01, -1.01, 0.0)
-        A.P[3,:] = ( 1.01, -1.01, 0.0)
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + nterms**2
 
-        A.Q[0,0] = -1.
-        A.Q[1,0] = 1.
-        A.Q[2,0] = -1.
-        A.Q[3,0] = 1.
+    for lx in range(nterms):
+        for mx in range(-1*lx, lx+1):
+            py_re = 0.0
+            py_im = 0.0
+            for px in range(N):
+                r = spherical(P[px, :])
 
-    elif N == 1:
-        A.P[0,:] = ( 0.25*E, 0.25*E, 0.25*E)
-        A.P[0,:] = ( 10.**-6, 10.**-6, 10.**-6)
+                ynm = Yfoo(lx, -1 * mx, r[1], r[2]) * (r[0] ** float(lx))
+                ynm *= Q[px]
 
-        #A.P[0,:] = (0, -0.25*E, 0)
-        #A.P[1,:] = (0, 0.25*E, 0)
-        #A.P[0,:] = (0, 0, -0.25*E)
-        #A.P[1,:] = (0, 0, 0.25*E)
+                py_re += ynm.real
+                py_im += ynm.imag
 
-        #A.Q[:,0] = 1.
-
-        A.Q[0,0] = 1.
-
-    elif N == 2:
-        #A.P[0,:] = ( 0.25*E, 0.25*E, 0.25*E)
-        #A.P[1,:] = ( -0.25*E, -0.25*E, 0)
-
-        #A.P[0,:] = (0, -0.25*E, 0)
-        #A.P[1,:] = (0, 0.25*E, 0)
-        #A.P[0,:] = (0, 0, -0.25*E)
-        #A.P[1,:] = (0, 0, 0.25*E)
-
-        #A.Q[:,0] = 1.
-        ra = 0.25 * E
-        nra = -0.25 * E
-
-        eps = 0.00
-
-        epsx = 0
-        epsy = 0
-        epsz = 0
-
-        A.P[0,:] = ( 1.000, 0.001, 0.001)
-        A.P[1,:] = (-1.001, 0.001, 0.001)
-
-        #A.P[:2:,:] = rng.uniform(low=-0.4999*E, high=0.4999*E, size=(N,3))
-
-        A.Q[0,0] = -1.
-        A.Q[1,0] = 1.
-
-    elif N == 8:
-        for px in range(8):
-            phi = (float(px)/8) * 2. * math.pi
-            pxr = 0.25*E
-            pxx = pxr * math.cos(phi)
-            pxy = pxr * math.sin(phi)
+            orig[re_lm(lx, mx)] = py_re
+            orig[im_lm(lx, mx)] = py_im
 
 
-            A.P[px, :] = (pxx, pxy, 0)
-            A.Q[px, 0] = 1. - 2. * (px % 2)
-            #A.Q[px, 0] = -1.
 
-        #A.P[0,:] += eps
+    theta = 0.25*math.pi
+    phi = 0.0
 
-        eps = 0.00001
-        #A.P[0:N:2,0] += eps
-        #A.P[0,0] -= eps
-        A.P[4,0] -= eps
-        A.P[:, 2] -= 0.200
-        A.P[:, 1] -= 0.200
+    from transforms3d.euler import mat2euler
 
-        #A.Q[0,0] = 0.
-        A.Q[1,0] = 0.
-        A.Q[4,0] = 0.
-        A.Q[3,0] = 0.
-        A.Q[5,0] = 0.
-        A.Q[6,0] = 0.
-        A.Q[7,0] = 0.
+    zr = rotate_z(phi)
+    yr = rotate_y(theta)
+    rm = np.matmul(yr, zr)
 
-    else:
-        assert N % 2 == 0
-        for px in range(N//2):
-            pos = rng.uniform(low=-0.4999*E, high=0.4999*E, size=(1,3))
-            cha = rng.uniform(low=-1., high=1.)
+    irm = np.linalg.inv(rm)
 
-            A.P[px, :] = pos
-            A.Q[px, 0] = cha
+    alpha, beta, gamma = mat2euler(yr, axes='rzyz')
 
-            A.P[-1*(px+1), :] = -1.0*pos
-            A.Q[-1*(px+1), 0] = cha
+    print(alpha, beta, gamma)
 
-        bias = np.sum(A.Q[:])
-        A.Q[:,0] -= bias/N
+    orig_rot = np.zeros(ncomp)
+    for lx in range(nterms):
+        for mx in range(-1*lx, lx+1):
+            py_re = 0.0
+            py_im = 0.0
+            for px in range(N):
 
-        dipole = np.zeros(3)
-        for px in range(N):
-            dipole[:] += A.P[px,:]*A.Q[px,0]
-
-        bias = np.sum(A.Q[:])
-
-        print("DIPOLE:\t", dipole, "TOTAL CHARGE:\t", bias)
-
-    A.scatter_data_from(0)
-
-    t0 = time.time()
-    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
-    phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
-    t1 = time.time()
-
-    direct_forces = np.zeros((N, 3))
-
-    if DIRECT:
-        #print("WARNING 0-th PARTICLE ONLY")
-        phi_direct = 0.0
-
-        # compute phi from image and surrounding 26 cells
-
-        for ix in range(N):
-
-            phi_part = 0.0
-            for jx in range(ix+1, N):
-                rij = np.linalg.norm(A.P[jx,:] - A.P[ix,:])
-                phi_direct += A.Q[ix, 0] * A.Q[jx, 0] /rij
-                phi_part += A.Q[ix, 0] * A.Q[jx, 0] /rij
-
-                direct_forces[ix,:] -= A.Q[ix, 0] * A.Q[jx, 0] * \
-                                       (A.P[jx,:] - A.P[ix,:]) / (rij**3.)
-                direct_forces[jx,:] += A.Q[ix, 0] * A.Q[jx, 0] * \
-                                       (A.P[jx,:] - A.P[ix,:]) / (rij**3.)
-            if free_space == '27':
-                for ofx in cube_offsets:
-                    cube_mid = np.array(ofx)*E
-                    for jx in range(N):
-                        rij = np.linalg.norm(A.P[jx,:] + cube_mid - A.P[ix, :])
-                        phi_direct += 0.5*A.Q[ix, 0] * A.Q[jx, 0] /rij
-                        phi_part += 0.5*A.Q[ix, 0] * A.Q[jx, 0] /rij
-
-                        direct_forces[ix,:] -= A.Q[ix, 0] * A.Q[jx, 0] * \
-                                           (A.P[jx,:] - A.P[ix,:] + cube_mid) \
-                                               / (rij**3.)
+                new_pos = matvec(rm, P[px,:])
 
 
-    local_err = abs(phi_py - phi_direct)
-    if local_err > eps: serr = red(local_err)
-    else: serr = green(local_err)
+                r = spherical(new_pos)
+                theta_px = r[1]
+                phi_px = r[2]
 
-    if MPIRANK == 0 and DEBUG:
-        print("\n")
-        #print(60*"-")
-        #opt.print_profile()
-        #print(60*"-")
-        print("TIME FMM:\t", t1 - t0)
-        print("ENERGY DIRECT:\t{:.20f}".format(phi_direct))
-        print("ENERGY FMM:\t", phi_py)
-        print("ERR:\t\t", serr)
+                print(P[px, :], new_pos, theta_px, phi_px)
 
-    for px in range(N):
+                ynm = Yfoo(lx, -1 * mx, theta_px, phi_px) * (r[0] ** float(lx))
+                ynm *= Q[px]
 
-        err_re_c = red_tol(np.linalg.norm(direct_forces[px,:] - A.F[px,:],
-                                          ord=np.inf), 10.**-6)
+                py_re += ynm.real
+                py_im += ynm.imag
 
-        print("PX:", px)
-        print("\t\tFORCE DIR :",direct_forces[px,:])
-        print("\t\tFORCE FMMC:",A.F[px,:], err_re_c)
+            orig_rot[re_lm(lx, mx)] = py_re
+            orig_rot[im_lm(lx, mx)] = py_im
+
+    orig_back_rot = rotate_moments(nterms, alpha=alpha, beta=beta,
+                                   gamma=gamma, moments=orig_rot)
+
+    err = np.linalg.norm(orig - orig_back_rot, np.inf)
+
+    print("\n")
+    print(orig[:nterms**2:])
+    print(orig_rot[:nterms**2:])
+    print(err)
+
+
+    #assert err < tol
+
+
+
+
+    return
+
+
+    orig[:] = 0.0
+    orig[0] = -1.0
+
+    radius = 4.
+
+
+    normal_mtl = shift_normal(nterms, radius, theta, phi, orig)
+    #rotate_mtl = shift_z(nterms, radius, theta, orig)
+    rotate_mtl = shift_rotate(nterms, radius, theta, phi, orig)
+
+    err = np.linalg.norm(normal_mtl - rotate_mtl, np.inf)
+
+    print("\n")
+    print(normal_mtl[:nterms**2:])
+    print(rotate_mtl[:nterms**2:])
+    print(err)
+
+
+
+
+
+
+
+
+
+
+
 

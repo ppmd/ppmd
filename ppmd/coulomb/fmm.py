@@ -570,7 +570,6 @@ class PyFMM(object):
         return self.particle_phi[0]
 
     def re_lm(self, l,m): return (l**2) + l + m
-
     def im_lm(self, l,m): return (l**2) + l +  m + self.L**2
 
     def _check_aux_dat(self, positions):
