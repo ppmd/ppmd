@@ -339,7 +339,6 @@ def Yfoo(nx, mx, theta, phi):
 
     return coeff * legp * cmath.exp(1.j * mx * phi)
 
-@lru_cache(maxsize=1024)
 def Afoo(n, m):
     if n - m < 0:
         return 0.0
@@ -464,6 +463,55 @@ def test_rotatation_matrices_1():
     assert np.linalg.norm(matvec(rotate_y(0.5*math.pi), z) - x, np.inf) < tol
     assert np.linalg.norm(matvec(rotate_y(1.5*math.pi), z) + x, np.inf) < tol
 
+def test_print_1():
+    """
+    rotates random vectors forwards and backwards and checks the results are
+    the same. Uses rotate_moments. rotates through two angles
+    """
+
+    tol = 10.**-12
+    N = 4
+
+    nangles = 1
+    nterms = 2
+
+    ncomp = (nterms**2)*2
+    rng = np.random.RandomState(seed=1234)
+
+    P = rng.uniform(low=-1., high=1., size=(N,3))
+
+    P[0,:] = (1.0, 0.0, 0.0)
+    P[1,:] = (0.0, 0.0, 1.0)
+    P[2,:] = (-1.0, 0.0, 0.0)
+    P[3,:] = (0.0, 0.0,-1.0)
+    print("\n")
+
+    Q = rng.uniform(low=-1., high=1., size=N)
+    Q[:] = 1.0
+    np.set_printoptions(precision=4)
+
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + nterms**2
+
+    for px in range(N):
+
+        orig = np.zeros(ncomp)
+        for lx in range(nterms):
+            for mx in range(-1*lx, lx+1):
+                py_re = 0.0
+                py_im = 0.0
+
+                r = spherical(P[px, :])
+
+                ynm = Yfoo(lx, -1 * mx, r[1], r[2]) * (r[0] ** float(lx))
+                ynm *= Q[px]
+
+                py_re += ynm.real
+                py_im += ynm.imag
+
+                orig[re_lm(lx, mx)] = py_re
+                orig[im_lm(lx, mx)] = py_im
+        print(P[px, :], orig)
 
 
 
@@ -477,7 +525,7 @@ def test_wigner_4():
     N = 1
 
     nangles = 1
-    nterms = 3
+    nterms = 2
 
     ncomp = (nterms**2)*2
     rng = np.random.RandomState(seed=1234)
@@ -512,7 +560,7 @@ def test_wigner_4():
 
 
 
-    theta = 0.25*math.pi
+    theta = 0.5*math.pi
     phi = 0.0
 
     from transforms3d.euler import mat2euler
@@ -523,7 +571,9 @@ def test_wigner_4():
 
     irm = np.linalg.inv(rm)
 
-    alpha, beta, gamma = mat2euler(yr, axes='rzyz')
+    alpha, beta, gamma = mat2euler(rm, axes='rzyz')
+    alpha, beta, gamma = 0.0, math.pi*0.5, 0.0
+
 
     print(alpha, beta, gamma)
 
@@ -558,8 +608,9 @@ def test_wigner_4():
     err = np.linalg.norm(orig - orig_back_rot, np.inf)
 
     print("\n")
-    print(orig[:nterms**2:])
-    print(orig_rot[:nterms**2:])
+    print("normal:\t", orig[:])
+    print("before:\t", orig_rot[:])
+    print("back r:\t", orig_back_rot[:])
     print(err)
 
 

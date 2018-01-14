@@ -17,7 +17,7 @@ from functools import wraps
 class _old_cached(object):
     def __init__(self, maxsize=None):
         pass
-    def __call__(function):
+    def __call__(self, function):
         # pythontips.com
         memo = {}
         @wraps(function)
