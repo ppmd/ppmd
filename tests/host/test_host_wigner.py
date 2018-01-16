@@ -108,7 +108,7 @@ def Pfoo(nx, mx, x):
 def Yfoo(nx, mx, theta, phi):
     coeff = Hfoo(nx, mx)
     legp = lpmv(abs(mx), nx, math.cos(theta))
-    
+
     assert abs(legp.imag) < 10.**-16
 
     return coeff * legp * cmath.exp(1.j * mx * phi)
@@ -257,27 +257,7 @@ def test_wigner_2():
             assert err < tol
 
 
-def rotate_moments(L, alpha, beta, gamma, moments):
-    def re_lm(l,m): return (l**2) + l + m
-    def im_lm(l,m): return (l**2) + l +  m + L**2
 
-    out = np.zeros_like(moments)
-    for nx in range(L):
-        for mpx in range(-1*nx, nx+1):
-            tmp = 0.0 + 0.0j
-            for mx in range(-1*nx, nx+1):
-
-                coeff = cmath.exp((1.j) * mx * gamma)
-                coeff *= wigner_d_rec(nx, mpx, mx, beta)
-                coeff *= cmath.exp((1.j) * mx * alpha)
-
-                M = (moments[re_lm(nx, mx)] + 1.j * moments[im_lm(nx, mx)])
-                tmp += coeff * M
-
-            out[re_lm(nx, mpx)] = tmp.real
-            out[im_lm(nx, mpx)] = tmp.imag
-
-    return out
 
 def test_wigner_3():
     """
@@ -473,7 +453,7 @@ def test_print_1():
     N = 4
 
     nangles = 1
-    nterms = 2
+    nterms = 4
 
     ncomp = (nterms**2)*2
     rng = np.random.RandomState(seed=1234)
@@ -494,7 +474,7 @@ def test_print_1():
     def im_lm(l,m): return (l**2) + l +  m + nterms**2
 
     for px in range(N):
-
+        print(60*"-")
         orig = np.zeros(ncomp)
         for lx in range(nterms):
             for mx in range(-1*lx, lx+1):
@@ -515,24 +495,64 @@ def test_print_1():
 
 
 
+def neg_p_factor(l,m):
+    if m > -1: return 1.0
+    m = abs(m)
+    return ((-1.0)**m)*(math.factorial(l - m)/math.factorial(l + m))
+
+
+
+def eps_m(m):
+    if m < 0: return 1.0
+    return (-1.)**m
+
+def rotate_moments(L, alpha, beta, gamma, moments):
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + L**2
+
+    out = np.zeros_like(moments)
+    for nx in range(L):
+        for mpx in range(-1*nx, nx+1):
+            tmp = 0.0 + 0.0j
+            for mx in range(-1*nx, nx+1):
+
+                coeff = cmath.exp((1.j) * mx * gamma)
+                coeff *= wigner_d_rec(nx, mpx, mx, beta)
+                coeff *= cmath.exp((1.j) * mx * alpha)
+
+                coeff *= eps_m( 1*mx)
+                coeff *= eps_m(mpx)
+
+                M = (moments[re_lm(nx, mx)] + 1.j * moments[im_lm(nx, mx)])
+                tmp += coeff * M
+
+            out[re_lm(nx, mpx)] = tmp.real
+            out[im_lm(nx, mpx)] = tmp.imag
+
+    return out
+
+
 def test_wigner_4():
     """
     rotates random vectors forwards and backwards and checks the results are
     the same. Uses rotate_moments. rotates through two angles
     """
 
+    np.set_printoptions(precision=4)
+
+
     tol = 10.**-12
     N = 1
 
     nangles = 1
-    nterms = 2
+    nterms = 6
 
     ncomp = (nterms**2)*2
     rng = np.random.RandomState(seed=1234)
 
     P = rng.uniform(low=-1., high=1., size=(N,3))
 
-    P[0,:] = (1.0, 0.0, 0.0)
+    P[0,:] = (-1.0, 0.0, 0.0)
 
     Q = rng.uniform(low=-1., high=1., size=N)
     Q[:] = 1.0
@@ -559,8 +579,7 @@ def test_wigner_4():
             orig[im_lm(lx, mx)] = py_im
 
 
-
-    theta = 0.5*math.pi
+    theta = -0.25*math.pi
     phi = 0.0
 
     from transforms3d.euler import mat2euler
@@ -569,11 +588,14 @@ def test_wigner_4():
     yr = rotate_y(theta)
     rm = np.matmul(yr, zr)
 
+    print(rm)
+
     irm = np.linalg.inv(rm)
 
     alpha, beta, gamma = mat2euler(rm, axes='rzyz')
-    alpha, beta, gamma = 0.0, math.pi*0.5, 0.0
+    alpha, beta, gamma = 0.0, theta, 0.0
 
+    beta = -1*beta
 
     print(alpha, beta, gamma)
 
@@ -584,7 +606,7 @@ def test_wigner_4():
             py_im = 0.0
             for px in range(N):
 
-                new_pos = matvec(rm, P[px,:])
+                new_pos = matvec(irm, P[px,:])
 
 
                 r = spherical(new_pos)
@@ -602,19 +624,96 @@ def test_wigner_4():
             orig_rot[re_lm(lx, mx)] = py_re
             orig_rot[im_lm(lx, mx)] = py_im
 
-    orig_back_rot = rotate_moments(nterms, alpha=alpha, beta=beta,
-                                   gamma=gamma, moments=orig_rot)
+
+    orig_back_rot = rotate_moments(nterms, alpha=alpha, beta=beta, gamma=gamma,
+                                   moments=orig_rot)
 
     err = np.linalg.norm(orig - orig_back_rot, np.inf)
 
-    print("\n")
-    print("normal:\t", orig[:])
-    print("before:\t", orig_rot[:])
-    print("back r:\t", orig_back_rot[:])
-    print(err)
+
+    for nx in range(nterms):
+        print("nx =", nx)
+        for mx in range(-1*nx, nx+1):
+            print("\t{: 2d} | {: 6f} {: 6f} | {: 6f} {: 6f} || {: 6f} {: 6f}".format(mx,
+                orig[re_lm(nx, mx)], orig_back_rot[re_lm(nx, mx)],
+                orig[im_lm(nx, mx)], orig_back_rot[im_lm(nx, mx)],
+                orig_rot[re_lm(nx, mx)], orig_rot[im_lm(nx, mx)]))
 
 
-    #assert err < tol
+    j = 1
+    ncomp = 2*j+1
+    d_1 = np.zeros((ncomp,ncomp))
+    for mpx in range(ncomp):
+        for mx in range(ncomp):
+            mp = mpx - j
+            m = mx - j
+            coeff = cmath.exp((1.j) * mx * gamma)
+            coeff *= wigner_d_rec(j, mpx-j, mx-j, beta)
+            coeff *= cmath.exp((1.j) * mx * alpha)
+            coeff *= eps_m( 1*m)
+            coeff *= eps_m(mp)
+
+            d_1[mpx, mx] = coeff.real
+
+    print('\n'+60*'-', j)
+
+    print(d_1)
+
+
+    print(np.dot(d_1[0,:], orig_rot[1:4:]))
+    print(np.dot(d_1[1,:], orig_rot[1:4:]))
+    print(np.dot(d_1[2,:], orig_rot[1:4:]))
+
+
+    for mpx in range(ncomp):
+        for mx in range(ncomp):
+            d_1[mpx, mx] = wigner_d_rec(j, mpx-j, mx-j, -1.*beta)
+
+    print('\n'+60*'-', j)
+
+    print(d_1)
+
+
+    j = 2
+    ncomp = 2*j+1
+    d_1 = np.zeros((ncomp,ncomp))
+    for mpx in range(ncomp):
+        for mx in range(ncomp):
+            mp = mpx - j
+            m = mx - j
+            coeff = cmath.exp((1.j) * mx * gamma)
+            coeff *= wigner_d_rec(j, mpx-j, mx-j, beta)
+            coeff *= cmath.exp((1.j) * mx * alpha)
+            coeff *= eps_m( 1*m)
+            coeff *= eps_m(mp)
+
+            d_1[mpx, mx] = coeff.real
+
+    print('\n'+60*'-', j)
+    print(d_1)
+
+
+    print(matvec(d_1, orig_rot[4:9:]).reshape(5,1))
+
+
+
+    print('\n'+60*'-')
+    d_2 = np.zeros((ncomp,ncomp))
+    for mpx in range(ncomp):
+        for mx in range(ncomp):
+            mp = mpx - j
+            m = mx - j
+            coeff = cmath.exp((1.j) * mx * gamma)
+            coeff *= wigner_d_rec(j, mpx-j, mx-j, -1.*beta)
+            coeff *= cmath.exp((1.j) * mx * alpha)
+            coeff *= eps_m( 1*m)
+            coeff *= eps_m(mp)
+
+            d_2[mpx, mx] = coeff.real
+
+    print(np.matmul(d_2, d_1),
+          np.linalg.norm(np.eye(ncomp,ncomp).ravel() - np.matmul(d_2, d_1).ravel(),
+                         np.inf))
 
 
 
