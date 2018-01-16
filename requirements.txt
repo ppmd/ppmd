@@ -5,3 +5,4 @@ mpi4py
 pytest
 pymbolic
 ConfigParser
+transforms3d

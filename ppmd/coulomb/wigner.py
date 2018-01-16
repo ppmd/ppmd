@@ -152,11 +152,49 @@ def wigner_d_rec(j, mp, m, beta):
 
     raise RuntimeError("No suitable recursion relation or base case found.")
 
+def eps_m(m):
+    if m < 0: return 1.0
+    return (-1.)**m
 
+@cached(maxsize=1024)
+def R_z(p, x):
+    """
+    matrix to apply to complex vector of p moments to rotate the basis functions
+    used to compute the moments around the z-axis by angle x.
+    """
+    ncomp = 2*p+1
+    out = np.zeros((ncomp, ncomp), dtype=np.complex)
+    for mx in range(ncomp):
+        m = mx - p
+        out[mx, mx] = cmath.exp((1.j) * m * x)
+    return out
 
+@cached(maxsize=1024)
+def R_y(p, x):
+    """
+    matrix to apply to complex vector of p moments to rotate the basis functions
+    used to compute the moments around the y-axis by angle x.
+    """
+    ncomp = 2*p+1
+    out = np.zeros((ncomp, ncomp), dtype=np.complex)
+    for mpx in range(ncomp):
+        for mx in range(ncomp):
+            mp = mpx - p
+            m = mx - p
+            coeff = wigner_d_rec(p, mp, m, x)
+            coeff *= eps_m(1*m)
+            coeff *= eps_m(mp)
+            out.real[mpx, mx] = coeff
+    return out
 
+@cached(maxsize=1024)
+def R_zy(p, alpha, beta):
+    return np.matmul(R_y(p,beta), R_z(p,alpha))
 
-
+@cached(maxsize=1024)
+def R_zyz(p, alpha, beta, gamma):
+    return np.matmul(R_z(p,gamma),
+           np.matmul(R_y(p,beta), R_z(p,alpha)))
 
 
 

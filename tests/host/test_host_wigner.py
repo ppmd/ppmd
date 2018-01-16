@@ -21,6 +21,7 @@ from ppmd.coulomb.ewald_half import *
 
 from ppmd.coulomb.wigner import *
 
+from transforms3d.euler import mat2euler
 from scipy.special import sph_harm, lpmv
 import time
 
@@ -224,8 +225,8 @@ def test_wigner_2():
 
     tol = 10.**-12
 
-    nangles = 8
-    nterms = 20
+    nangles = 4
+    nterms = 10
 
     random_angles = np.random.uniform(low=0.0, high=2.0*math.pi, size=nangles)
 
@@ -290,8 +291,7 @@ def test_wigner_3():
     assert err < tol
 
     forw_ro = rotate_moments(nterms,   0.1,  0.1*math.pi, 0.0, orig)
-    forw_ro = rotate_moments(nterms,   0.0, -0.1*math.pi, 0.0, forw_ro)
-    back_ro = rotate_moments(nterms,  -0.1,  0.0*math.pi, 0.0, forw_ro)
+    back_ro = rotate_moments(nterms,   0.0, -0.1*math.pi, -0.1, forw_ro)
 
     err = np.linalg.norm(orig - back_ro, np.inf)
     assert err < tol
@@ -422,7 +422,7 @@ def rotate_y(theta):
 
 def matvec(A,b):
     N = max(b.shape[:])
-    out = np.zeros(N)
+    out = np.zeros_like(b)
     for rx in range(N):
         out[rx] = np.dot(A[rx, :], b[:])
     return out
@@ -443,6 +443,7 @@ def test_rotatation_matrices_1():
     assert np.linalg.norm(matvec(rotate_y(0.5*math.pi), z) - x, np.inf) < tol
     assert np.linalg.norm(matvec(rotate_y(1.5*math.pi), z) + x, np.inf) < tol
 
+@pytest.mark.skipif("DEBUG==False")
 def test_print_1():
     """
     rotates random vectors forwards and backwards and checks the results are
@@ -506,53 +507,125 @@ def eps_m(m):
     if m < 0: return 1.0
     return (-1.)**m
 
+
+
 def rotate_moments(L, alpha, beta, gamma, moments):
+
+    return rotate_moments_matrix(L,alpha,beta,gamma,moments)
+
+
+
+def rotate_moments_matrix(L, alpha, beta, gamma, moments):
     def re_lm(l,m): return (l**2) + l + m
     def im_lm(l,m): return (l**2) + l +  m + L**2
 
     out = np.zeros_like(moments)
     for nx in range(L):
-        for mpx in range(-1*nx, nx+1):
-            tmp = 0.0 + 0.0j
-            for mx in range(-1*nx, nx+1):
 
-                coeff = cmath.exp((1.j) * mx * gamma)
-                coeff *= wigner_d_rec(nx, mpx, mx, beta)
-                coeff *= cmath.exp((1.j) * mx * alpha)
+        rotmatrix = R_zyz(nx, alpha=alpha, beta=beta, gamma=gamma)
+        vec = np.zeros(2*nx + 1, dtype=np.complex)
 
-                coeff *= eps_m( 1*mx)
-                coeff *= eps_m(mpx)
+        vec.real[:] = moments[re_lm(nx,-nx):re_lm(nx,nx)+1:]
+        vec.imag[:] = moments[im_lm(nx,-nx):im_lm(nx,nx)+1:]
 
-                M = (moments[re_lm(nx, mx)] + 1.j * moments[im_lm(nx, mx)])
-                tmp += coeff * M
+        for mp in range(-1*nx, nx+1):
+            mpx = mp + nx
+            tmp = np.dot(rotmatrix[mpx, :], vec[:])
 
-            out[re_lm(nx, mpx)] = tmp.real
-            out[im_lm(nx, mpx)] = tmp.imag
+            out[re_lm(nx, mp)] = tmp.real
+            out[im_lm(nx, mp)] = tmp.imag
 
     return out
 
 
+
+
 def test_wigner_4():
+    """
+    Create random rotation matrices, generate moment rotating matrics and check
+    they form a function and it's inverse.
+    """
+
+    tol = 10.**-14
+
+    N = 10
+    jmax = 20
+
+    atheta = np.random.uniform(low=-2.1*math.pi, high=2.1*math.pi, size=N)
+    aphi = np.random.uniform(low=-2.*math.pi, high=2.*math.pi, size=N)
+
+    for ax in range(N):
+
+        theta = atheta[ax]
+        phi = aphi[ax]
+
+        zr = rotate_z(phi)
+        yr = rotate_y(theta)
+        rm = np.matmul(yr, zr)
+
+        alpha, beta, gamma = mat2euler(rm, axes='rzyz')
+
+        def mat_norm(a,b):
+            return np.linalg.norm(a.ravel() - b.ravel(), np.inf)
+
+        for j in range(0, jmax):
+
+            def err_id(mm):
+                return np.linalg.norm(np.eye(2*j+1,2*j+1).ravel() - \
+                    mm.ravel(), np.inf)
+
+            ii = np.matmul(R_z(j, gamma), R_z(j, -gamma))
+            err = err_id(ii)
+            if DEBUG:
+                print(red_tol(err, tol))
+            assert err < tol
+
+            ii = np.matmul(R_y(j, beta), R_y(j, -beta))
+            err = err_id(ii)
+            if DEBUG:
+                print(red_tol(err, tol))
+            assert err < tol
+
+            d_1 = np.matmul(R_z(j, -alpha),
+                            np.matmul(R_y(j, -beta), R_z(j, -gamma))
+                            )
+            d_2 = np.matmul(R_z(j, gamma),
+                            np.matmul(R_y(j, beta), R_z(j, alpha))
+                            )
+
+            err = mat_norm(d_1, R_zyz(p=j,
+                                      alpha=-gamma, beta=-beta, gamma=-alpha))
+            assert err < tol
+
+            err = mat_norm(d_2, R_zyz(p=j,
+                                      alpha=alpha, beta=beta, gamma=gamma))
+            assert err < tol
+
+            ii = np.matmul(d_1, d_2)
+            err = err_id(ii)
+            if DEBUG:
+                print(red_tol(err, tol))
+            assert err < tol
+
+
+
+def test_wigner_5():
     """
     rotates random vectors forwards and backwards and checks the results are
     the same. Uses rotate_moments. rotates through two angles
     """
 
-    np.set_printoptions(precision=4)
-
-
     tol = 10.**-12
     N = 1
 
-    nangles = 1
-    nterms = 6
+    nterms = 40
 
     ncomp = (nterms**2)*2
     rng = np.random.RandomState(seed=1234)
 
     P = rng.uniform(low=-1., high=1., size=(N,3))
 
-    P[0,:] = (-1.0, 0.0, 0.0)
+    #P[0,:] = (-1.0, 1.0, 0.0)
 
     Q = rng.uniform(low=-1., high=1., size=N)
     Q[:] = 1.0
@@ -578,26 +651,21 @@ def test_wigner_4():
             orig[re_lm(lx, mx)] = py_re
             orig[im_lm(lx, mx)] = py_im
 
-
-    theta = -0.25*math.pi
-    phi = 0.0
+    theta = -2.*math.pi
+    phi = -.123*math.pi
 
     from transforms3d.euler import mat2euler
 
     zr = rotate_z(phi)
     yr = rotate_y(theta)
     rm = np.matmul(yr, zr)
-
-    print(rm)
-
     irm = np.linalg.inv(rm)
 
     alpha, beta, gamma = mat2euler(rm, axes='rzyz')
-    alpha, beta, gamma = 0.0, theta, 0.0
 
-    beta = -1*beta
-
-    print(alpha, beta, gamma)
+    if DEBUG:
+        print("alpha, beta, gamma", alpha, beta, gamma,
+              "theta, phi", theta, phi)
 
     orig_rot = np.zeros(ncomp)
     for lx in range(nterms):
@@ -608,12 +676,9 @@ def test_wigner_4():
 
                 new_pos = matvec(irm, P[px,:])
 
-
                 r = spherical(new_pos)
                 theta_px = r[1]
                 phi_px = r[2]
-
-                print(P[px, :], new_pos, theta_px, phi_px)
 
                 ynm = Yfoo(lx, -1 * mx, theta_px, phi_px) * (r[0] ** float(lx))
                 ynm *= Q[px]
@@ -624,128 +689,21 @@ def test_wigner_4():
             orig_rot[re_lm(lx, mx)] = py_re
             orig_rot[im_lm(lx, mx)] = py_im
 
-
-    orig_back_rot = rotate_moments(nterms, alpha=alpha, beta=beta, gamma=gamma,
-                                   moments=orig_rot)
+    orig_back_rot = rotate_moments_matrix(
+        nterms, alpha=-gamma, beta=-beta, gamma=-alpha, moments=orig_rot)
 
     err = np.linalg.norm(orig - orig_back_rot, np.inf)
 
+    if DEBUG:
+        for nx in range(nterms):
+            print("nx =", nx)
+            for mx in range(-1*nx, nx+1):
+                print("\t{: 2d} | {: .16f} {: .16f} | {: 6f} {: 6f} || {: 6f} {: 6f}".format(mx,
+                    orig[re_lm(nx, mx)], orig_back_rot[re_lm(nx, mx)],
+                    orig[im_lm(nx, mx)], orig_back_rot[im_lm(nx, mx)],
+                    orig_rot[re_lm(nx, mx)], orig_rot[im_lm(nx, mx)]))
 
-    for nx in range(nterms):
-        print("nx =", nx)
-        for mx in range(-1*nx, nx+1):
-            print("\t{: 2d} | {: 6f} {: 6f} | {: 6f} {: 6f} || {: 6f} {: 6f}".format(mx,
-                orig[re_lm(nx, mx)], orig_back_rot[re_lm(nx, mx)],
-                orig[im_lm(nx, mx)], orig_back_rot[im_lm(nx, mx)],
-                orig_rot[re_lm(nx, mx)], orig_rot[im_lm(nx, mx)]))
+        print("ERR:\t", red_tol(err, tol))
 
-
-    j = 1
-    ncomp = 2*j+1
-    d_1 = np.zeros((ncomp,ncomp))
-    for mpx in range(ncomp):
-        for mx in range(ncomp):
-            mp = mpx - j
-            m = mx - j
-            coeff = cmath.exp((1.j) * mx * gamma)
-            coeff *= wigner_d_rec(j, mpx-j, mx-j, beta)
-            coeff *= cmath.exp((1.j) * mx * alpha)
-            coeff *= eps_m( 1*m)
-            coeff *= eps_m(mp)
-
-            d_1[mpx, mx] = coeff.real
-
-    print('\n'+60*'-', j)
-
-    print(d_1)
-
-
-    print(np.dot(d_1[0,:], orig_rot[1:4:]))
-    print(np.dot(d_1[1,:], orig_rot[1:4:]))
-    print(np.dot(d_1[2,:], orig_rot[1:4:]))
-
-
-    for mpx in range(ncomp):
-        for mx in range(ncomp):
-            d_1[mpx, mx] = wigner_d_rec(j, mpx-j, mx-j, -1.*beta)
-
-    print('\n'+60*'-', j)
-
-    print(d_1)
-
-
-    j = 2
-    ncomp = 2*j+1
-    d_1 = np.zeros((ncomp,ncomp))
-    for mpx in range(ncomp):
-        for mx in range(ncomp):
-            mp = mpx - j
-            m = mx - j
-            coeff = cmath.exp((1.j) * mx * gamma)
-            coeff *= wigner_d_rec(j, mpx-j, mx-j, beta)
-            coeff *= cmath.exp((1.j) * mx * alpha)
-            coeff *= eps_m( 1*m)
-            coeff *= eps_m(mp)
-
-            d_1[mpx, mx] = coeff.real
-
-    print('\n'+60*'-', j)
-    print(d_1)
-
-
-    print(matvec(d_1, orig_rot[4:9:]).reshape(5,1))
-
-
-
-    print('\n'+60*'-')
-    d_2 = np.zeros((ncomp,ncomp))
-    for mpx in range(ncomp):
-        for mx in range(ncomp):
-            mp = mpx - j
-            m = mx - j
-            coeff = cmath.exp((1.j) * mx * gamma)
-            coeff *= wigner_d_rec(j, mpx-j, mx-j, -1.*beta)
-            coeff *= cmath.exp((1.j) * mx * alpha)
-            coeff *= eps_m( 1*m)
-            coeff *= eps_m(mp)
-
-            d_2[mpx, mx] = coeff.real
-
-    print(np.matmul(d_2, d_1),
-          np.linalg.norm(np.eye(ncomp,ncomp).ravel() - np.matmul(d_2, d_1).ravel(),
-                         np.inf))
-
-
-
-
-    return
-
-
-    orig[:] = 0.0
-    orig[0] = -1.0
-
-    radius = 4.
-
-
-    normal_mtl = shift_normal(nterms, radius, theta, phi, orig)
-    #rotate_mtl = shift_z(nterms, radius, theta, orig)
-    rotate_mtl = shift_rotate(nterms, radius, theta, phi, orig)
-
-    err = np.linalg.norm(normal_mtl - rotate_mtl, np.inf)
-
-    print("\n")
-    print(normal_mtl[:nterms**2:])
-    print(rotate_mtl[:nterms**2:])
-    print(err)
-
-
-
-
-
-
-
-
-
-
-
+    assert err < tol
 
