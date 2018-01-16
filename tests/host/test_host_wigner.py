@@ -543,6 +543,66 @@ def rotate_moments_matrix(L, alpha, beta, gamma, moments):
     return out
 
 
+def test_wigner_4_2(phi_set, theta_set):
+    """
+    Create random rotation matrices, generate moment rotating matrics and check
+    they form a function and it's inverse.
+    """
+
+    tol = 10.**-14
+    jmax = 20
+
+    theta = theta_set
+    phi = phi_set
+
+    zr = rotate_z(phi)
+    yr = rotate_y(theta)
+    rm = np.matmul(yr, zr)
+
+    alpha, beta, gamma = mat2euler(rm, axes='rzyz')
+
+    def mat_norm(a,b):
+        return np.linalg.norm(a.ravel() - b.ravel(), np.inf)
+
+    for j in range(0, jmax):
+
+        def err_id(mm):
+            return np.linalg.norm(np.eye(2*j+1,2*j+1).ravel() - \
+                mm.ravel(), np.inf)
+
+        ii = np.matmul(R_z(j, gamma), R_z(j, -gamma))
+        err = err_id(ii)
+        if DEBUG:
+            print(red_tol(err, tol))
+        assert err < tol
+
+        ii = np.matmul(R_y(j, beta), R_y(j, -beta))
+        err = err_id(ii)
+        if DEBUG:
+            print(red_tol(err, tol))
+        assert err < tol
+
+        d_1 = np.matmul(R_z(j, -alpha),
+                        np.matmul(R_y(j, -beta), R_z(j, -gamma))
+                        )
+        d_2 = np.matmul(R_z(j, gamma),
+                        np.matmul(R_y(j, beta), R_z(j, alpha))
+                        )
+
+        err = mat_norm(d_1, R_zyz(p=j,
+                                  alpha=-gamma, beta=-beta, gamma=-alpha))
+        assert err < tol
+
+        err = mat_norm(d_2, R_zyz(p=j,
+                                  alpha=alpha, beta=beta, gamma=gamma))
+        assert err < tol
+
+        ii = np.matmul(d_1, d_2)
+        err = err_id(ii)
+        if DEBUG:
+            print(red_tol(err, tol))
+        assert err < tol
+
 
 
 def test_wigner_4():
@@ -614,7 +674,27 @@ def test_wigner_4():
 
 
 
-def test_wigner_5():
+
+
+
+
+@pytest.fixture(
+    scope="module",
+    params=(-6.28318531, -4.71238898, -3.14159265, -1.57079633,  0.,
+            1.57079633,  3.14159265,  4.71238898,  6.28318531 )
+)
+def phi_set(request):
+    return request.param
+@pytest.fixture(
+    scope="module",
+    params=(-6.28318531, -4.71238898, -3.14159265, -1.57079633,  0.,
+            1.57079633,  3.14159265,  4.71238898,  6.28318531 )
+)
+def theta_set(request):
+    return request.param
+
+
+def test_wigner_5(phi_set, theta_set):
     """
     rotates random vectors forwards and backwards and checks the results are
     the same. Uses rotate_moments. rotates through two angles
@@ -656,8 +736,12 @@ def test_wigner_5():
             orig[re_lm(lx, mx)] = py_re
             orig[im_lm(lx, mx)] = py_im
 
-    theta = -2.*math.pi
+    theta = -1.0*math.pi
     phi = -.123*math.pi
+
+    theta = theta_set
+    phi = phi_set
+
 
     from transforms3d.euler import mat2euler
 
@@ -667,6 +751,9 @@ def test_wigner_5():
     irm = np.linalg.inv(rm)
 
     alpha, beta, gamma = mat2euler(rm, axes='rzyz')
+
+    #alpha, beta, gamma = phi, theta, 0.0
+
 
     if DEBUG:
         print("alpha, beta, gamma", alpha, beta, gamma,
