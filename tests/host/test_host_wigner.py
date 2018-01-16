@@ -525,15 +525,20 @@ def rotate_moments_matrix(L, alpha, beta, gamma, moments):
         rotmatrix = R_zyz(nx, alpha=alpha, beta=beta, gamma=gamma)
         vec = np.zeros(2*nx + 1, dtype=np.complex)
 
-        vec.real[:] = moments[re_lm(nx,-nx):re_lm(nx,nx)+1:]
-        vec.imag[:] = moments[im_lm(nx,-nx):im_lm(nx,nx)+1:]
+        re_start = re_lm(nx, -nx)
+        re_end = re_lm(nx,nx)+1
 
-        for mp in range(-1*nx, nx+1):
-            mpx = mp + nx
-            tmp = np.dot(rotmatrix[mpx, :], vec[:])
+        im_start = im_lm(nx, -nx)
+        im_end = im_lm(nx,nx)+1
 
-            out[re_lm(nx, mp)] = tmp.real
-            out[im_lm(nx, mp)] = tmp.imag
+        vec.real[:] = moments[re_start:re_end:]
+        vec.imag[:] = moments[im_start:im_end:]
+
+        ab = np.matmul(rotmatrix, vec)
+
+        out[re_start:re_end:] = ab.real[:]
+        out[im_start:im_end:] = ab.imag[:]
+
 
     return out
 
