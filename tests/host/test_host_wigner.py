@@ -367,8 +367,6 @@ def shift_z(L, radius, theta, moments):
     def re_lm(l,m): return (l**2) + l + m
     def im_lm(l,m): return (l**2) + l +  m + L**2
 
-    ct = math.cos(theta)
-
     out = np.zeros_like(moments)
     # translate
     for jx in range(L):
@@ -798,4 +796,207 @@ def test_wigner_5(phi_set, theta_set):
         print("ERR:\t", red_tol(err, tol))
 
     assert err < tol
+
+
+
+
+@pytest.fixture(
+    scope="module",
+    params=(0.        ,  0.52359878,  1.04719755,  1.57079633,  2.0943951 ,
+        2.61799388,  3.14159265 )
+)
+def theta_set2(request):
+    return request.param
+def test_wigner_6(theta_set2, phi_set):
+#def test_wigner_6():
+    """
+    rotates random vectors forwards and backwards and checks the results are
+    the same. Uses rotate_moments. rotates through two angles
+    """
+
+    tol = 10.**-12
+    N = 1
+
+    nterms = 5
+
+    ncomp = (nterms**2)*2
+    rng = np.random.RandomState(seed=1234)
+
+    P = rng.uniform(low=-1., high=1., size=(N,3))
+
+    P[0,:] = (-1.0, 1.0, 0.0)
+
+    Q = rng.uniform(low=-1., high=1., size=N)
+    Q[:] = 1.0
+
+    orig = np.zeros(ncomp)
+
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + nterms**2
+
+    for lx in range(nterms):
+        for mx in range(-1*lx, lx+1):
+            py_re = 0.0
+            py_im = 0.0
+            for px in range(N):
+                r = spherical(P[px, :])
+
+                ynm = Yfoo(lx, -1 * mx, r[1], r[2]) * (r[0] ** float(lx))
+                ynm *= Q[px]
+
+                py_re += ynm.real
+                py_im += ynm.imag
+
+            orig[re_lm(lx, mx)] = py_re
+            orig[im_lm(lx, mx)] = py_im
+
+
+
+    radius = 2.0
+    theta = theta_set2
+    phi = phi_set
+
+
+    DEBUG = True
+    print("\n")
+
+    t0 = time.time()
+    orig_mtl = shift_normal(nterms, radius, theta, phi,orig)
+    if DEBUG:
+        print("standard:\t", time.time() - t0)
+
+    zr = rotate_z(phi)
+    yr = rotate_y(theta)
+    rm = np.matmul(yr, zr)
+    alpha, beta, gamma = mat2euler(rm, axes='rzyz')
+    alpha = 0.0
+    beta = theta
+    gamma = phi
+
+    print("alpha, beta, gamma\t", alpha, beta, gamma)
+
+    t0 = time.time()
+    forward_rot = rotate_moments(nterms, alpha=gamma, beta=beta, gamma=alpha,
+                                 moments=orig)
+    z_mtl = shift_z(nterms, radius, 0.0, forward_rot)
+    rot_mtl = rotate_moments(nterms, alpha=-alpha, beta=-beta, gamma=-gamma,
+                             moments=z_mtl)
+    if DEBUG:
+        print("rotated:\t", time.time() - t0)
+
+    err = np.linalg.norm(rot_mtl - orig_mtl, np.inf)
+
+    if DEBUG and False:
+        for nx in range(nterms):
+            print("nx =", nx)
+            for mx in range(-1*nx, nx+1):
+                print("\t{: 2d} | {: 6f} {: 6f} | {: 6f} {: 6f}".format(mx,
+                    orig_mtl[re_lm(nx, mx)], rot_mtl[re_lm(nx, mx)],
+                    orig_mtl[im_lm(nx, mx)], rot_mtl[im_lm(nx, mx)]))
+
+    if DEBUG:
+        print("ERR:\t", red_tol(err, tol))
+
+
+
+def test_wigner_6_pi():
+    """
+    rotates random vectors forwards and backwards and checks the results are
+    the same. Uses rotate_moments. rotates through two angles
+    """
+
+    tol = 10.**-12
+    N = 1
+
+    nterms = 5
+
+    ncomp = (nterms**2)*2
+    rng = np.random.RandomState(seed=1234)
+
+    P = rng.uniform(low=-1., high=1., size=(N,3))
+
+    P[0,:] = (-1.0, 1.0, 0.0)
+
+    Q = rng.uniform(low=-1., high=1., size=N)
+    Q[:] = 1.0
+
+    orig = np.zeros(ncomp)
+
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + nterms**2
+
+    for lx in range(nterms):
+        for mx in range(-1*lx, lx+1):
+            py_re = 0.0
+            py_im = 0.0
+            for px in range(N):
+                r = spherical(P[px, :])
+
+                ynm = Yfoo(lx, -1 * mx, r[1], r[2]) * (r[0] ** float(lx))
+                ynm *= Q[px]
+
+                py_re += ynm.real
+                py_im += ynm.imag
+
+            orig[re_lm(lx, mx)] = py_re
+            orig[im_lm(lx, mx)] = py_im
+
+
+
+    radius = 2.0
+    theta = 0.0
+    #theta = 3.14159265 - 0.00000001
+    phi = 0.
+
+
+    DEBUG = True
+    print("\n")
+
+    t0 = time.time()
+    orig_mtl = shift_normal(nterms, radius, theta, phi,orig)
+    if DEBUG:
+        print("standard:\t", time.time() - t0)
+
+    zr = rotate_z(phi)
+    yr = rotate_y(theta)
+    rm = np.matmul(yr, zr)
+
+    alpha, beta, gamma = mat2euler(rm, axes='rzyz')
+    alpha = 0.0
+    #beta = -theta
+    #gamma = -phi
+
+    print("alpha, beta, gamma\t", alpha, beta, gamma)
+
+    t0 = time.time()
+    forward_rot = rotate_moments(nterms, alpha=gamma, beta=beta, gamma=alpha,
+                                 moments=orig)
+    z_mtl = shift_z(nterms, radius, 0.0, forward_rot)
+    rot_mtl = rotate_moments(nterms, alpha=-alpha, beta=-beta, gamma=-gamma,
+                             moments=z_mtl)
+    if DEBUG:
+        print("rotated:\t", time.time() - t0)
+
+    err = np.linalg.norm(rot_mtl - orig_mtl, np.inf)
+
+    if DEBUG and False:
+        for nx in range(nterms):
+            print("nx =", nx)
+            for mx in range(-1*nx, nx+1):
+                print("\t{: 2d} | {: 6f} {: 6f} | {: 6f} {: 6f}".format(mx,
+                    orig_mtl[re_lm(nx, mx)], rot_mtl[re_lm(nx, mx)],
+                    orig_mtl[im_lm(nx, mx)], rot_mtl[im_lm(nx, mx)]))
+
+    if DEBUG:
+        print("ERR:\t", red_tol(err, tol))
+
+
+
+
+
+
+
+
+
+
 

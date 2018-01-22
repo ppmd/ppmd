@@ -3,6 +3,7 @@ cgen
 scipy
 mpi4py
 pytest
+pytest-xdist
 pymbolic
 ConfigParser
 transforms3d
