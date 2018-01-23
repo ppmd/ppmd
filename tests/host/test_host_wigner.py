@@ -505,13 +505,8 @@ def eps_m(m):
     if m < 0: return 1.0
     return (-1.)**m
 
-
-
 def rotate_moments(L, alpha, beta, gamma, moments):
-
     return rotate_moments_matrix(L,alpha,beta,gamma,moments)
-
-
 
 def rotate_moments_matrix(L, alpha, beta, gamma, moments):
     def re_lm(l,m): return (l**2) + l + m
@@ -818,7 +813,6 @@ def test_wigner_6(theta_set2, phi_set):
     N = 1
 
     nterms = 5
-
     ncomp = (nterms**2)*2
     rng = np.random.RandomState(seed=1234)
 
@@ -849,8 +843,6 @@ def test_wigner_6(theta_set2, phi_set):
 
             orig[re_lm(lx, mx)] = py_re
             orig[im_lm(lx, mx)] = py_im
-
-
 
     radius = 2.0
     theta = theta_set2
@@ -945,8 +937,8 @@ def test_wigner_6_pi():
 
     radius = 2.0
     theta = 0.0
-    #theta = 3.14159265 - 0.00000001
-    phi = 0.
+    theta = 3.14159265
+    phi = 1.23
 
 
     DEBUG = True
@@ -962,18 +954,21 @@ def test_wigner_6_pi():
     rm = np.matmul(yr, zr)
 
     alpha, beta, gamma = mat2euler(rm, axes='rzyz')
-    alpha = 0.0
+    #alpha = 0.0
     #beta = -theta
-    #gamma = -phi
+    #gamma = 0.0
 
     print("alpha, beta, gamma\t", alpha, beta, gamma)
 
     t0 = time.time()
     forward_rot = rotate_moments(nterms, alpha=gamma, beta=beta, gamma=alpha,
                                  moments=orig)
+
     z_mtl = shift_z(nterms, radius, 0.0, forward_rot)
+
     rot_mtl = rotate_moments(nterms, alpha=-alpha, beta=-beta, gamma=-gamma,
                              moments=z_mtl)
+
     if DEBUG:
         print("rotated:\t", time.time() - t0)
 

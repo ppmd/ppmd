@@ -8,34 +8,9 @@ import scipy
 from scipy.special import jacobi, binom
 import math
 import cmath
+import ctypes
 
-
-
-from functools import wraps
-
-
-class _old_cached(object):
-    def __init__(self, maxsize=None):
-        pass
-    def __call__(self, function):
-        # pythontips.com
-        memo = {}
-        @wraps(function)
-        def wrapper(*args):
-            if args in memo:
-                return memo[args]
-            else:
-                rv = function(*args)
-                memo[args] = rv
-                return rv
-        return wrapper
-
-try:
-    from functools import lru_cache
-    cached = lru_cache
-except Exception as e:
-
-    cached = _old_cached
+from ppmd.coulomb.cached import cached
 
 @cached(maxsize=32)
 def wigner_d(j, mp, m, beta):
@@ -195,6 +170,36 @@ def R_zy(p, alpha, beta):
 def R_zyz(p, alpha, beta, gamma):
     return np.matmul(R_z(p,gamma),
            np.matmul(R_y(p,beta), R_z(p,alpha)))
+
+
+def Rzyz_set(p, alpha, beta, gamma, dtype):
+    """
+    Returns the set of matrices needed to rotate all p moments by beta around
+    the y axis.
+    """
+    pointers_real = np.zeros(p, dtype=ctypes.c_void_p)
+    pointers_imag = np.zeros(p, dtype=ctypes.c_void_p)
+    # alternating real, imag
+    matrices = []
+    for px in range(p):
+        r = R_zyz(px, alpha, beta, gamma)
+        matrices.append(np.array(r.real, dtype=dtype))
+        pointers_real[px] = matrices[-1].ctypes.data
+        matrices.append(np.array(r.imag, dtype=dtype))
+        pointers_imag[px] = matrices[-1].ctypes.data
+
+    return pointers_real, pointers_imag, matrices
+
+
+
+
+
+
+
+
+
+
+
 
 
 

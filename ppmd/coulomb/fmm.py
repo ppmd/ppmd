@@ -18,6 +18,8 @@ from scipy.special import lpmv, rgamma, gammaincc, lambertw
 import sys
 
 from ppmd.cuda import CUDA_IMPORT
+from ppmd.coulomb.wigner import Rzyz_set
+
 
 import pytest
 
@@ -250,6 +252,27 @@ class PyFMM(object):
         self._extraction_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_extract')['particle_extraction']
 
+
+        # load multipole to local lib
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/TranslateMTLZ.cpp') as fh:
+            cpp = fh.read()
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/TranslateMTLZ.h') as fh:
+            hpp = fh.read()
+        self._translate_mtlz_lib = build.simple_lib_creator(hpp, cpp,
+            'fmm_translate_mtlz')
+
+
+
+
+
+
+
+
+
+
+
         # --- periodic boundaries ---
         # "Precise and Efficient Ewald Summation for Periodic Fast Multipole
         # Method", Takashi Amisaki, Journal of Computational Chemistry, Vol21,
@@ -276,7 +299,18 @@ class PyFMM(object):
 
         # exp(m\phi) \phi is the longitudinal angle. 
         self._interaction_e = np.zeros((7, 7, 8*self.L + 2), dtype=dtype)
-        
+
+        self._wigner_real = np.zeros((7,7,7,1), dtype=ctypes.c_void_p)
+        self._wigner_imag = np.zeros((7,7,7,1), dtype=ctypes.c_void_p)
+
+        self._wigner_b_real = np.zeros((7,7,7,1), dtype=ctypes.c_void_p)
+        self._wigner_b_imag = np.zeros((7,7,7,1), dtype=ctypes.c_void_p)
+
+        # storage to prevent matrices/pointer arrays going out of scope
+        self._wigner_matrices = []
+        self._wigner_real_pointers = []
+        self._wigner_imag_pointers = []
+
         # compute the lengendre polynomial coefficients
         for iz, pz in enumerate(range(-3, 4)):
             for iy, py in enumerate(range(-3, 4)):
@@ -305,7 +339,39 @@ class PyFMM(object):
                             self._interaction_p[iz, iy, ix, 
                                 self.re_lm(lx, mx)] = val
 
-        # compute the exponential part
+                    sph = self._cart_to_sph((-px, -py, -pz))
+                    # forward rotate
+                    pointers_real, pointers_imag, matrices = Rzyz_set(
+                        p=self.L,
+                        alpha=sph[1], beta=sph[2], gamma=0.0,
+                        dtype=self.dtype)
+                    # store the temporaries
+                    self._wigner_matrices.append(matrices)
+                    self._wigner_real_pointers.append(pointers_real)
+                    self._wigner_imag_pointers.append(pointers_imag)
+                    # pointers
+                    self._wigner_real[iz, iy, ix, 0] = \
+                        pointers_real.ctypes.data
+                    self._wigner_imag[iz, iy, ix, 0] = \
+                        pointers_imag.ctypes.data
+
+                    # backward rotate
+                    pointers_real, pointers_imag, matrices = Rzyz_set(
+                        p=self.L,
+                        alpha=0.0, beta=-1.*sph[2], gamma=-1.*sph[1],
+                        dtype=self.dtype)
+                    # store the temporaries
+                    self._wigner_matrices.append(matrices)
+                    self._wigner_real_pointers.append(pointers_real)
+                    self._wigner_imag_pointers.append(pointers_imag)
+                    # pointers
+                    self._wigner_b_real[iz, iy, ix, 0] = \
+                        pointers_real.ctypes.data
+                    self._wigner_b_imag[iz, iy, ix, 0] = \
+                        pointers_imag.ctypes.data
+
+
+        # compute the exponential part (not needed for rotated mtl)
         for iy, py in enumerate(range(-3, 4)):
             for ix, px in enumerate(range(-3, 4)):
                 # get spherical coord of box
@@ -344,93 +410,11 @@ class PyFMM(object):
                 'hez': self.domain.extent[2] * 0.5
             })
 
-        pair_kernel_src = """
-        const double ipx = P.i[0] + {hex}; 
-        const double ipy = P.i[1] + {hey}; 
-        const double ipz = P.i[2] + {hez};
-        
-        const int nsx = {nsx};
-        const int nsy = {nsy};
-        const int nsz = {nsz};
-        
-        const double jpx = P.j[0] + {hex}; 
-        const double jpy = P.j[1] + {hey}; 
-        const double jpz = P.j[2] + {hez};
-        
-        /*
-        const int icx = 100. + ipx*{lx};
-        const int icy = 100. + ipy*{ly};
-        const int icz = 100. + ipz*{lz};       
-        
-        const int jcx = 100. + jpx*{lx};
-        const int jcy = 100. + jpy*{ly};
-        const int jcz = 100. + jpz*{lz};
-        */
-        
-        ///*
-        const int icx = FMM_CELL.i[0] % nsx;
-        const int icy = ((FMM_CELL.i[0] - icx) / nsx) % nsy;
-        const int icz = (FMM_CELL.i[0] - icx - icy*nsx) / (nsx*nsy);
-                
-        int jcx = FMM_CELL.j[0] % nsx;
-        int jcy = ((FMM_CELL.j[0] - jcx) / nsx) % nsy;
-        int jcz = (FMM_CELL.j[0] - jcx - jcy*nsx) / (nsx*nsy);
-        //*/
-        
- 
-        ///*
-        if (P.j[0] >= {hex}) {{ jcx += nsx; }}
-        if (P.j[1] >= {hey}) {{ jcy += nsy; }}
-        if (P.j[2] >= {hez}) {{ jcz += nsz; }}
-        
-        if (P.j[0] <= -1.0*{hex}) {{ jcx -= nsx; }}
-        if (P.j[1] <= -1.0*{hey}) {{ jcy -= nsy; }}
-        if (P.j[2] <= -1.0*{hez}) {{ jcz -= nsz; }}        
-        //*/ 
-        
-        int dx = icx - jcx;
-        int dy = icy - jcy;
-        int dz = icz - jcz;
-        
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/CellByCellKernel.cpp') as fh:
+            pair_kernel_src = str(fh.read())
 
-
-        
-        int dr2 = dx*dx + dy*dy + dz*dz;
-        
-        {FREE_SPACE}
-
-        const double mask = ((dr2 > 3) ? 0.0 : 1.0) * \
-            maskx*masky*maskz;
-        
-        const double rx = P.j[0] - P.i[0];
-        const double ry = P.j[1] - P.i[1];
-        const double rz = P.j[2] - P.i[2];
-
-        const double r2 = rx*rx + ry*ry + rz*rz;
-        const double r = sqrt(r2);
-        
-        const double ir = 1./r;
-        const double term1 = mask * Q.i[0] * Q.j[0] * ir;
-        PHI[0] += 0.5 * {ENERGY_UNIT} * term1;
-        
-        const double fcoeff = {FORCE_UNIT}*ir*ir*term1;
-        
-        F.i[0] -= fcoeff * rx;
-        F.i[1] -= fcoeff * ry;
-        F.i[2] -= fcoeff * rz;
-        
-        
-        //if (mask > 0) {{
-        //printf("---------------------------\\n");
-        //printf("KERNEL: %f %f %d \\n", mask, r, dr2);
-        //printf("GLOBAL_CELLS: %d %d \\n", FMM_CELL.i[0], FMM_CELL.j[0]);
-        //printf("\t%d\t%d\t%d \\n", dx, dy, dz);
-        //printf("\tI\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.i[0], P.i[1], P.i[2], icx, icy, icz);
-        //printf("\tJ\t%f\t%f\t%f\t%d\t%d\t%d\\n", P.j[0], P.j[1], P.j[2], jcx, jcy, jcz);
-        //}}        
-        
-        
-        """.format(**{
+        pair_kernel_src = pair_kernel_src.format(**{
             'nsx': ns,
             'nsy': ns,
             'nsz': ns,

@@ -6,6 +6,8 @@ import numpy as np
 from mpi4py import MPI
 from ppmd import pygcl
 
+from ppmd.coulomb.cached import cached
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 
@@ -243,7 +245,7 @@ def compute_local_size_offset(owners, dims, top):
 
     return mysize, myoffset
 
-
+@cached(maxsize=8)
 def compute_interaction_offsets(cube_index):
     """
     Compute the interaction offsets for a given child cube. Child cubes are
@@ -293,7 +295,6 @@ def compute_interaction_tlookup():
                     compute_interaction_offsets((ix, iy, iz)))
                 ri += 1
     return ro
-
 
 def compute_interaction_plookup():
     """
