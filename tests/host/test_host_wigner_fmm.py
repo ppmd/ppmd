@@ -31,7 +31,7 @@ from math import *
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = MPI.COMM_WORLD.Barrier
-DEBUG = False
+DEBUG = True
 SHARED_MEMORY = 'omp'
 
 def red(*input):
@@ -340,9 +340,6 @@ def test_fmm_cplx_matvec_1():
 
     # storage to prevent matrices/pointer arrays going out of scope
     wigner_matrices = []
-    wigner_real_pointers = []
-    wigner_imag_pointers = []
-
     # rotate all terms at once
     pointers_real, pointers_imag, matrices = Rzyz_set(
         p=nterms,
@@ -350,8 +347,6 @@ def test_fmm_cplx_matvec_1():
         dtype=fmm.dtype)
     # store the temporaries
     wigner_matrices.append(matrices)
-    wigner_real_pointers.append(pointers_real)
-    wigner_imag_pointers.append(pointers_imag)
 
     # use lib cplx matvec
     fmm._translate_mtlz_lib['rotate_moments_wrapper'](
@@ -370,8 +365,185 @@ def test_fmm_cplx_matvec_1():
 
 
 
+def shift_z(L, radius, theta, moments):
+
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + L**2
+
+    out = np.zeros_like(moments)
+
+    # translate
+    for jx in range(L):
+        for kx in range(-1*jx, jx+1):
+
+            for nx in range(abs(kx), L):
+                Onm = 1.0
+
+                Onm *= moments[re_lm(nx, kx)] + (1.j) * moments[im_lm(nx, kx)]
+                Onm *= (-1.)**kx
+                Onm *= Afoo(nx, kx)
+                Onm *= Afoo(jx, kx)
+                Onm *= Yfoo(jx+nx, 0, theta, 0)
+                Onm *= (-1.)**nx
+                Onm /= Afoo(jx+nx, 0)
+                Onm /= radius**(jx+nx+1.)
+
+                out[re_lm(jx, kx)] += Onm.real
+                out[im_lm(jx, kx)] += Onm.imag
+
+    return out
 
 
+def test_fmm_translate_1():
+    R = 2
+    eps = 10.**-2
+    free_space = True
+    N = 2
+    E = 4.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space
+                , _debug=True)
+
+    tol = 10.**-14
+    nterms = fmm.L
+    ncomp = (nterms**2)*2
+    im_offset = nterms**2
+    rng = np.random.RandomState(seed=1234)
+
+    moments = rng.uniform(low=-1.0, high=1.0, size=ncomp)
+    bvec = np.zeros_like(moments)
+
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + nterms**2
+
+    radius = 5.
+    theta = 0.0
+    phi = 0.0
+
+    alpha, beta, gamma = 0.0, theta, phi
+
+     # storage to prevent matrices/pointer arrays going out of scope
+    pointers_real, pointers_imag, matrices = Rzyz_set(
+        p=nterms,
+        alpha=alpha, beta=beta, gamma=gamma,
+        dtype=fmm.dtype)
+
+    back_pointers_real, back_pointers_imag, back_matrices = Rzyz_set(
+        p=nterms,
+        alpha=-gamma, beta=-beta, gamma=-alpha,
+        dtype=fmm.dtype)
+
+    tmp_space = np.zeros(ncomp, dtype=fmm.dtype)
+
+    fmm._translate_mtlz_lib['mtl_z_wrapper'](
+        ctypes.c_int64(nterms),
+        fmm.dtype(radius),
+        moments.ctypes.get_as_parameter(),
+        pointers_real.ctypes.get_as_parameter(),
+        pointers_imag.ctypes.get_as_parameter(),
+        back_pointers_real.ctypes.get_as_parameter(),
+        back_pointers_imag.ctypes.get_as_parameter(),
+        fmm._a.ctypes.get_as_parameter(),
+        fmm._ar.ctypes.get_as_parameter(),
+        fmm._ipower_mtl.ctypes.get_as_parameter(),
+        bvec.ctypes.get_as_parameter(),
+        tmp_space.ctypes.get_as_parameter()
+    )
+
+    correct = shift_z(nterms, radius, 0.0, moments)
+
+    err = np.linalg.norm(bvec - correct, np.inf)
+
+    if DEBUG:
+        for nx in range(nterms):
+            print("nx =", nx)
+            for mx in range(-1*nx, nx+1):
+                print("\t{: 2d} | {: .8f} {: .8f} | {: .8f} {: .8f}  || {: .8f} {: .8f}".format(mx,
+                    correct[re_lm(nx, mx)], bvec[re_lm(nx, mx)],
+                    correct[im_lm(nx, mx)], bvec[im_lm(nx, mx)],
+                    moments[re_lm(nx, mx)], moments[im_lm(nx, mx)]))
+
+        print("ERR:\t", red_tol(err, tol))
+
+    assert err < tol
 
 
+def test_fmm_translate_2():
+    R = 2
+    eps = 10.**-2
+    free_space = True
+    N = 2
+    E = 4.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space
+                , _debug=True)
+
+    tol = 10.**-14
+    nterms = fmm.L
+    ncomp = (nterms**2)*2
+    im_offset = nterms**2
+    rng = np.random.RandomState(seed=1234)
+
+    moments = rng.uniform(low=-1.0, high=1.0, size=ncomp)
+    bvec = np.zeros_like(moments)
+
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + nterms**2
+
+    radius = 5.
+    theta = 0.0*math.pi
+    phi = 0.0
+
+    alpha, beta, gamma = 0.0, theta, phi
+
+     # storage to prevent matrices/pointer arrays going out of scope
+    pointers_real, pointers_imag, matrices = Rzyz_set(
+        p=nterms,
+        alpha=alpha, beta=beta, gamma=gamma,
+        dtype=fmm.dtype)
+
+    back_pointers_real, back_pointers_imag, back_matrices = Rzyz_set(
+        p=nterms,
+        alpha=-gamma, beta=-beta, gamma=-alpha,
+        dtype=fmm.dtype)
+
+    tmp_space = np.zeros(ncomp, dtype=fmm.dtype)
+
+    fmm._translate_mtlz_lib['mtl_z_wrapper'](
+        ctypes.c_int64(nterms),
+        fmm.dtype(radius),
+        moments.ctypes.get_as_parameter(),
+        pointers_real.ctypes.get_as_parameter(),
+        pointers_imag.ctypes.get_as_parameter(),
+        back_pointers_real.ctypes.get_as_parameter(),
+        back_pointers_imag.ctypes.get_as_parameter(),
+        fmm._a.ctypes.get_as_parameter(),
+        fmm._ar.ctypes.get_as_parameter(),
+        fmm._ipower_mtl.ctypes.get_as_parameter(),
+        bvec.ctypes.get_as_parameter(),
+        tmp_space.ctypes.get_as_parameter()
+    )
+
+    correct = shift_z(nterms, radius, 0.0, moments)
+
+    err = np.linalg.norm(bvec - correct, np.inf)
+
+    if DEBUG:
+        for nx in range(nterms):
+            print("nx =", nx)
+            for mx in range(-1*nx, nx+1):
+                print("\t{: 2d} | {: .8f} {: .8f} | {: .8f} {: .8f}  || {: .8f} {: .8f}".format(mx,
+                    correct[re_lm(nx, mx)], bvec[re_lm(nx, mx)],
+                    correct[im_lm(nx, mx)], bvec[im_lm(nx, mx)],
+                    moments[re_lm(nx, mx)], moments[im_lm(nx, mx)]))
+
+        print("ERR:\t", red_tol(err, tol))
 

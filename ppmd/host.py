@@ -9,7 +9,7 @@ import numpy as np
 import collections
 
 # package level
-from ppmd import access
+from ppmd import access, runtime
 
 int32 = ctypes.c_int32
 int32_str = 'int'
@@ -301,11 +301,9 @@ class Matrix(object):
         return self.idtype
 
 
-
-
-###################################################################################################
+###############################################################################
 # Blank arrays/matrices
-###################################################################################################
+###############################################################################
 
 NullIntArray = Array(dtype=ctypes.c_int)
 NullDoubleArray = Array(dtype=ctypes.c_double)
@@ -325,42 +323,23 @@ def null_matrix(dtype):
     elif dtype is ctypes.c_int:
         return NullIntMatrix
 
+###############################################################################
+# tmp space for threading
+###############################################################################
 
-
-################################################################################################
-# Pointer array.
-################################################################################################
-
-class PointerArray(object):
-    """
-    Class to store arrays of pointers.
-
-    :arg int length: Length of array.
-    :arg ctypes.dtype dtype: pointer data type.
-    """
-
-    def __init__(self, length, dtype):
-        self._length = length
-        self._dtype = dtype
-        self._Dat = (ctypes.POINTER(self._dtype) * self._length)()
-
-    @property
-    def dtype(self):
-        """Returns data type."""
-        return self._dtype
+class ThreadSpace(object):
+    def __init__(self, n, dtype):
+        self.pointers = np.zeros(runtime.NUM_THREADS, dtype=ctypes.c_void_p)
+        self.data = []
+        self.n = n
+        for nx in range(runtime.NUM_THREADS):
+            self.data.append(np.zeros(n, dtype=dtype))
+            self.pointers[nx] = self.data[-1].ctypes.data
 
     @property
     def ctypes_data(self):
-        """Returns pointer to start of array."""
-        return self._Dat
+        return self.pointers.ctypes.get_as_parameter()
 
-    @property
-    def ncomp(self):
-        """Return number of components"""
-        return self._length
 
-    def __getitem__(self, ix):
-        return self._Dat[ix]
 
-    def __setitem__(self, ix, val):
-        self._Dat[ix] = val
+

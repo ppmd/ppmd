@@ -92,11 +92,6 @@ int rotate_moments_wrapper(
 
 
 
-
-
-
-
-
 static inline void lin_to_xyz(
     const UINT32 * RESTRICT dim_parent,
     const INT64 lin,
@@ -125,13 +120,15 @@ static inline void mtl_z(
     const INT64             nlevel,
     const REAL              radius,
     const REAL * RESTRICT   odata,
-    const REAL * RESTRICT   phi_data,
-    const REAL * RESTRICT   theta_data,
+    const REAL * RESTRICT * RESTRICT re_mat_forw,
+    const REAL * RESTRICT * RESTRICT im_mat_forw,
+    const REAL * RESTRICT * RESTRICT re_mat_back,
+    const REAL * RESTRICT * RESTRICT im_mat_back,
     const REAL * RESTRICT   a_array,
+    const REAL * RESTRICT   ar_array,
     const REAL * RESTRICT   i_array,
     REAL * RESTRICT         ldata,
-    const INT64 DEBUG0,
-    const INT64 DEBUG1
+    REAL * RESTRICT thread_space
 ){
     const INT64 ASTRIDE1 = 4*nlevel + 1;
     const INT64 ASTRIDE2 = 2*nlevel;
@@ -144,32 +141,26 @@ static inline void mtl_z(
     REAL iradius_n[nblk];
     
 
-
-
     const REAL iradius = 1./radius;
     iradius_n[0] = 1.0;
     for(INT64 nx=1 ; nx<nblk ; nx++){ iradius_n[nx] = iradius_n[nx-1] * iradius; }
 
     REAL * RESTRICT iradius_p1 = &iradius_n[1];
 
+
     // loop over parent moments
     for(INT32 jx=0     ; jx<nlevel ; jx++ ){
-                
-                //if (DEBUG0 == 0){printf("");}
-
     for(INT32 kx=-1*jx ; kx<=jx    ; kx++){
+
         const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
         REAL contrib_re = 0.0;
         REAL contrib_im = 0.0;
         
-        const bool pb = (DEBUG0 == 0 && jx == 0 && kx ==0 && DEBUG1 == 0);
-
+        
         const INT32 abs_kx = ABS(kx);
 
-        for(INT32 nx=0     ; nx<=abs_kx ; nx++){
+        for(INT32 nx=abs_kx     ; nx<nlevel ; nx++){
                 
-            //if (pb){printf("nx=%d\n", nx);}
-
             const REAL m1tn = 1.0 - 2.0*((REAL)(nx & 1));   // -1^{n}
             const INT64 jxpnx = jx + nx;
             const INT64 p_ind_base = P_IND(jxpnx, 0);
@@ -180,15 +171,17 @@ static inline void mtl_z(
             // A_n^m
 
             const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + kx];
+            const REAL ia_jn = ar_array[(nx+jx)*ASTRIDE1 + ASTRIDE2];
             
 
             const REAL coeff_re = \
                 i_array[(nlevel+kx)*(nlevel*2 + 1) + nlevel + kx] * \
-                m1tn * anm * ajk * rr_jn1;
+                m1tn * anm * ajk * rr_jn1 * ia_jn;
             
             const INT64 oind = CUBE_IND(nx, kx);
-            const REAL ocoeff_re = odata[oind]              * coeff_re;
-            const REAL ocoeff_im = odata[oind + im_offset]  * coeff_re;
+
+            const REAL ocoeff_re = odata[oind]             * coeff_re;
+            const REAL ocoeff_im = odata[oind + im_offset] * coeff_re;
             
             contrib_re += ocoeff_re;
             contrib_im += ocoeff_im;
@@ -202,12 +195,48 @@ static inline void mtl_z(
 }
 
 extern "C"
+int mtl_z_wrapper(
+    const INT64             nlevel,
+    const REAL              radius,
+    const REAL * RESTRICT   odata,
+    const REAL * RESTRICT * RESTRICT re_mat_forw,
+    const REAL * RESTRICT * RESTRICT im_mat_forw,
+    const REAL * RESTRICT * RESTRICT re_mat_back,
+    const REAL * RESTRICT * RESTRICT im_mat_back,
+    const REAL * RESTRICT   a_array,
+    const REAL * RESTRICT   ar_array,
+    const REAL * RESTRICT   i_array,
+    REAL * RESTRICT         ldata,
+    REAL * RESTRICT thread_space
+){
+    mtl_z(
+        nlevel,
+        radius,
+        odata,
+        re_mat_forw,
+        im_mat_forw,
+        re_mat_back,
+        im_mat_back,
+        a_array,
+        ar_array,
+        i_array,
+        ldata,
+        thread_space
+    );
+
+    return 0;
+}
+
+
+extern "C"
 int translate_mtl(
     const UINT32 * RESTRICT dim_child,      // slowest to fastest
     const REAL * RESTRICT multipole_moments,
     REAL * RESTRICT local_moments,
-    const REAL * RESTRICT phi_data,
-    const REAL * RESTRICT theta_data,
+    const REAL * RESTRICT * RESTRICT * RESTRICT re_mat_forw,
+    const REAL * RESTRICT * RESTRICT * RESTRICT im_mat_forw,
+    const REAL * RESTRICT * RESTRICT * RESTRICT re_mat_back,
+    const REAL * RESTRICT * RESTRICT * RESTRICT im_mat_back,
     const REAL * RESTRICT alm,
     const REAL * RESTRICT almr,
     const REAL * RESTRICT i_array,
@@ -217,9 +246,7 @@ int translate_mtl(
     const INT32 * RESTRICT int_tlookup,
     const INT32 * RESTRICT int_plookup,
     const double * RESTRICT int_radius,
-    const INT32 * RESTRICT j_array,
-    const INT32 * RESTRICT k_array,
-    const REAL * RESTRICT a_inorder
+    REAL * RESTRICT * RESTRICT gthread_space
     ){
     int err = 0;
     const INT64 ncells = dim_child[0] * dim_child[1] * dim_child[2];
@@ -238,11 +265,15 @@ int translate_mtl(
 
     #pragma omp parallel for default(none) schedule(dynamic) \
     shared(dim_child, multipole_moments, local_moments, \
-    phi_data, theta_data, alm, almr, i_array, int_list, int_tlookup, \
-    int_plookup, int_radius, dim_eight, dim_halo, j_array, k_array, a_inorder)
+    alm, almr, i_array, int_list, int_tlookup, \
+    int_plookup, int_radius, dim_eight, dim_halo, \
+    re_mat_back, im_mat_back, im_mat_forw, re_mat_forw, gthread_space)
     for( INT64 pcx=0 ; pcx<ncells ; pcx++ ){
         INT64 cx, cy, cz;
         lin_to_xyz(dim_child, pcx, &cx, &cy, &cz);
+
+        const int tid = omp_get_thread_num();
+        REAL * RESTRICT thread_space = gthread_space[tid];
 
         // multipole moments are in a halo type
         const INT64 ccx = cx + 2;
@@ -263,13 +294,17 @@ int translate_mtl(
             const INT32 jcell = int_list[conx] + halo_ind;
 
             const INT32 t_lookup = int_tlookup[conx];
-            const INT32 p_lookup = int_plookup[conx];
 
             mtl_z(nlevel, local_radius, &multipole_moments[jcell*ncomp],
-                &phi_data[p_lookup * phi_stride],
-                &theta_data[t_lookup * theta_stride],
-                alm, i_array,
-                out_moments, pcx, conx);
+                re_mat_forw[t_lookup],
+                im_mat_forw[t_lookup],
+                re_mat_back[t_lookup],
+                im_mat_back[t_lookup],
+                alm,
+                almr,
+                i_array,
+                out_moments,
+                thread_space);
            
         }
         

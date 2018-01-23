@@ -263,16 +263,6 @@ class PyFMM(object):
         self._translate_mtlz_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_translate_mtlz')
 
-
-
-
-
-
-
-
-
-
-
         # --- periodic boundaries ---
         # "Precise and Efficient Ewald Summation for Periodic Fast Multipole
         # Method", Takashi Amisaki, Journal of Computational Chemistry, Vol21,
@@ -282,8 +272,6 @@ class PyFMM(object):
         if free_space == False:
             self._boundary_terms = self._compute_f() + self._compute_g()
             #self._boundary_terms = np.zeros((self.L * 2)**2, dtype=dtype)
-
-
 
         # create a vectors with ones for real part and zeros for imaginary part
         # to feed into MTL translation. Use radius=1.
