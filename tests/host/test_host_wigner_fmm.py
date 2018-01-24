@@ -264,7 +264,7 @@ def rotate_moments_matrix(L, alpha, beta, gamma, moments):
 
     return out
 
-
+@pytest.mark.skipif("MPISIZE>1")
 def test_fmm_cplx_matvec_1():
     R = 2
     eps = 10.**-2
