@@ -147,6 +147,17 @@ static inline void mtl_z(
 
     REAL * RESTRICT iradius_p1 = &iradius_n[1];
 
+    // rotate foward
+    rotate_moments(
+        nlevel,
+        re_mat_forw,
+        im_mat_forw,
+        odata,
+        &odata[im_offset],
+        ldata,
+        &ldata[im_offset]
+    );
+
 
     // loop over parent moments
     for(INT32 jx=0     ; jx<nlevel ; jx++ ){
@@ -171,7 +182,7 @@ static inline void mtl_z(
             // A_n^m
 
             const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + kx];
-            const REAL ia_jn = ar_array[(nx+jx)*ASTRIDE1 + ASTRIDE2];
+            const REAL ia_jn = ar_array[nx+jx];
             
 
             const REAL coeff_re = \
@@ -180,18 +191,30 @@ static inline void mtl_z(
             
             const INT64 oind = CUBE_IND(nx, kx);
 
-            const REAL ocoeff_re = odata[oind]             * coeff_re;
-            const REAL ocoeff_im = odata[oind + im_offset] * coeff_re;
+            const REAL ocoeff_re = ldata[oind]             * coeff_re;
+            const REAL ocoeff_im = ldata[oind + im_offset] * coeff_re;
             
             contrib_re += ocoeff_re;
             contrib_im += ocoeff_im;
 
         }
         
-        ldata[CUBE_IND(jx, kx)] += contrib_re;
-        ldata[CUBE_IND(jx, kx) + im_offset] += contrib_im;
+        thread_space[CUBE_IND(jx, kx)] += contrib_re;
+        thread_space[CUBE_IND(jx, kx) + im_offset] += contrib_im;
 
     }}
+
+    rotate_moments(
+        nlevel,
+        re_mat_back,
+        im_mat_back,
+        thread_space,
+        &thread_space[im_offset],
+        ldata,
+        &ldata[im_offset]
+    );
+
+
 }
 
 extern "C"

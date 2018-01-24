@@ -474,7 +474,7 @@ def test_fmm_translate_1():
 
 def test_fmm_translate_2():
     R = 2
-    eps = 10.**-2
+    eps = 10.**-4
     free_space = True
     N = 2
     E = 4.
@@ -492,15 +492,15 @@ def test_fmm_translate_2():
     im_offset = nterms**2
     rng = np.random.RandomState(seed=1234)
 
-    moments = rng.uniform(low=-1.0, high=1.0, size=ncomp)
+    moments = rng.uniform(low=-10.0, high=10.0, size=ncomp)
     bvec = np.zeros_like(moments)
 
     def re_lm(l,m): return (l**2) + l + m
     def im_lm(l,m): return (l**2) + l +  m + nterms**2
 
-    radius = 5.
-    theta = 0.0*math.pi
-    phi = 0.0
+    radius = 2.
+    theta = 1.1*math.pi
+    phi = 1.1234
 
     alpha, beta, gamma = 0.0, theta, phi
 
@@ -517,6 +517,7 @@ def test_fmm_translate_2():
 
     tmp_space = np.zeros(ncomp, dtype=fmm.dtype)
 
+    t0 = time.time()
     fmm._translate_mtlz_lib['mtl_z_wrapper'](
         ctypes.c_int64(nterms),
         fmm.dtype(radius),
@@ -526,13 +527,22 @@ def test_fmm_translate_2():
         back_pointers_real.ctypes.get_as_parameter(),
         back_pointers_imag.ctypes.get_as_parameter(),
         fmm._a.ctypes.get_as_parameter(),
-        fmm._ar.ctypes.get_as_parameter(),
+        fmm._arn0.ctypes.get_as_parameter(),
         fmm._ipower_mtl.ctypes.get_as_parameter(),
         bvec.ctypes.get_as_parameter(),
         tmp_space.ctypes.get_as_parameter()
     )
+    t1 = time.time()
 
-    correct = shift_z(nterms, radius, 0.0, moments)
+
+    print("\tTIME:\t", t1-t0)
+
+    forward_rot = rotate_moments(nterms, alpha=alpha, beta=beta, gamma=gamma,
+                                 moments=moments)
+    z_mtl = shift_z(nterms, radius, 0.0, forward_rot)
+
+    correct = rotate_moments(nterms, alpha=-gamma, beta=-beta, gamma=-alpha,
+                             moments=z_mtl)
 
     err = np.linalg.norm(bvec - correct, np.inf)
 
@@ -545,5 +555,6 @@ def test_fmm_translate_2():
                     correct[im_lm(nx, mx)], bvec[im_lm(nx, mx)],
                     moments[re_lm(nx, mx)], moments[im_lm(nx, mx)]))
 
-        print("ERR:\t", red_tol(err, tol))
+    print("ERR:\t", red_tol(err, tol), "\tTIME:\t", t1-t0)
 
+    assert err < tol

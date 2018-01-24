@@ -120,6 +120,12 @@ class PyFMM(object):
                 # Y_{j+n}^{m-k}
                 self._ar[lx, self.L*2 + mx] = 1.0/a_l_m
 
+        self._arn0 = np.zeros(self.L*2, dtype=dtype)
+        for lx in range(2*self.L):
+            a_l0 = ((-1.0)**(lx)) / float(math.factorial(lx))
+            self._arn0[lx] = 1./a_l0
+
+
         # pre compute the powers of i
         self._ipower_mtm = np.zeros(shape=(2*self.L+1, 2*self.L+1),
                                     dtype=dtype)
@@ -746,8 +752,6 @@ class PyFMM(object):
                 extern_numpy_ptr(self._ipower_mtl),
                 extern_numpy_ptr(self.tree_parent[1][0, 0, 0, :])
             )
-
-            #print("POST   ", self.tree_parent[1][0, 0, 0, :10:])
 
 
     def _join_async(self):
