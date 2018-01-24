@@ -233,7 +233,8 @@ class GlobalArrayShared(host._Array):
     All calls must be made on all ranks in parent communicator.
     """
 
-    def __init__(self, size=1, dtype=ctypes.c_double, comm=mpi.MPI.COMM_WORLD, op=mpi.MPI.SUM):
+    def __init__(self, size=1, dtype=ctypes.c_double, comm=mpi.MPI.COMM_WORLD,
+                 op=mpi.MPI.SUM):
         # if no shared mem, numpy array, if shared mem, view into window
         self._data = None
         # array to swap with self._data to avoid copying in allreduce
@@ -275,8 +276,17 @@ class GlobalArrayShared(host._Array):
         # the write space
         self._win = mpi.SHMWIN(size=self.size*ctypes.sizeof(self.dtype),
                                intracomm=mpi.SHMMPI_HANDLE.get_intra_comm())
-        self._data_memview = np.array(self._win.win.memory, copy=False)
-        self._data = self._data_memview.view(dtype=self.dtype)
+
+        if hasattr(self._win.win, 'memory'):
+            self._data_memview = np.array(self._win.win.memory, copy=False)
+            self._data = self._data_memview.view(dtype=self.dtype)
+        elif hasattr(self._win.win, 'tomemory'):
+            self._data_memview = np.frombuffer(self._win.win.tomemory(),
+                                          dtype=self.dtype)
+            self._data = self._data_memview.view()
+        else:
+            raise RuntimeError('cannot get shared memory from window')
+
 
         # reduction and read space
         rsize = int(self._split_comm.get_intra_comm().Get_rank()<1) * \
