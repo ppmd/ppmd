@@ -316,11 +316,11 @@ class PyFMM(object):
         # exp(m\phi) \phi is the longitudinal angle. 
         self._interaction_e = np.zeros((7, 7, 8*self.L + 2), dtype=dtype)
 
-        self._wigner_real = np.zeros((7,7,7,1), dtype=ctypes.c_void_p)
-        self._wigner_imag = np.zeros((7,7,7,1), dtype=ctypes.c_void_p)
+        self._wigner_real = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+        self._wigner_imag = np.zeros((7,7,7), dtype=ctypes.c_void_p)
 
-        self._wigner_b_real = np.zeros((7,7,7,1), dtype=ctypes.c_void_p)
-        self._wigner_b_imag = np.zeros((7,7,7,1), dtype=ctypes.c_void_p)
+        self._wigner_b_real = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+        self._wigner_b_imag = np.zeros((7,7,7), dtype=ctypes.c_void_p)
 
         # storage to prevent matrices/pointer arrays going out of scope
         self._wigner_matrices = []
@@ -355,7 +355,7 @@ class PyFMM(object):
                             self._interaction_p[iz, iy, ix, 
                                 self.re_lm(lx, mx)] = val
 
-                    sph = self._cart_to_sph((-px, -py, -pz))
+                    # sph = self._cart_to_sph((px, py, pz))
                     # forward rotate
                     pointers_real, pointers_imag, matrices = Rzyz_set(
                         p=self.L,
@@ -366,9 +366,9 @@ class PyFMM(object):
                     self._wigner_real_pointers.append(pointers_real)
                     self._wigner_imag_pointers.append(pointers_imag)
                     # pointers
-                    self._wigner_real[iz, iy, ix, 0] = \
+                    self._wigner_real[iz, iy, ix] = \
                         pointers_real.ctypes.data
-                    self._wigner_imag[iz, iy, ix, 0] = \
+                    self._wigner_imag[iz, iy, ix] = \
                         pointers_imag.ctypes.data
 
                     # backward rotate
@@ -381,9 +381,9 @@ class PyFMM(object):
                     self._wigner_real_pointers.append(pointers_real)
                     self._wigner_imag_pointers.append(pointers_imag)
                     # pointers
-                    self._wigner_b_real[iz, iy, ix, 0] = \
+                    self._wigner_b_real[iz, iy, ix] = \
                         pointers_real.ctypes.data
-                    self._wigner_b_imag[iz, iy, ix, 0] = \
+                    self._wigner_b_imag[iz, iy, ix] = \
                         pointers_imag.ctypes.data
 
 
@@ -499,6 +499,7 @@ class PyFMM(object):
 
         # threading
         self._async_thread = None
+        self._thread_space = host.ThreadSpace(n=ncomp*2, dtype=dtype)
 
         self.cuda = cuda
         self.cuda_levels = cuda_levels
@@ -642,7 +643,8 @@ class PyFMM(object):
             if self.cuda and (self.R - level -1 < self.cuda_levels):
                 self._cuda_translate_m_t_l(level)
             else:
-                self._level_call_async(self._translate_m_to_l, level, async)
+                self._level_call_async(self._translate_m_to_l,
+                                       level, async)
 
             self._fine_to_coarse(level)
 
@@ -725,18 +727,6 @@ class PyFMM(object):
 
     def _compute_periodic_boundary(self):
 
-        #for nx in range(self.L):
-        #    for mx in range(-1*nx, nx+1):
-        #
-        #        rev = self.tree_parent[1][0, 0, 0, self.re_lm(nx, mx)]
-        #        if abs(rev) > 10.**-3: srev = green(rev)
-        #        else: srev = str(rev)
-        #        iev = self.tree_parent[1][0, 0, 0, self.im_lm(nx, mx)]
-        #        if abs(iev) > 10.**-3: siev = green(iev)
-        #        else: siev = str(iev)
-
-        #        #print(nx, mx, srev,"\t", siev)
-
         lsize = self.tree[1].parent_local_size
 
         if self.free_space == '27' or self.free_space == True:
@@ -747,20 +737,7 @@ class PyFMM(object):
 
         if lsize is not None:
 
-
-            #self.tree_parent[1][0,0,0,0:4:] = 0.0
             moments = np.copy(self.tree_parent[1][0, 0, 0, :])
-
-            #print("MOMENTS", moments[:10:])
-            #for lx in range(self.L):
-            #    print(lx, '----')
-            #    for mx in range(-1*lx, lx+1):
-            #        print(lx, "\tre:", moments[self.re_lm(lx,mx)], "\tim:",
-            #              moments[self.im_lm(lx, mx)])
-
-
-            #print("BOUNDARY TERMS",self._boundary_terms)
-            #print("MAX BOUNDARY TERM", np.max(abs(self._boundary_terms)))
 
             self.tree_parent[1][0, 0, 0, :] = 0.0
             self._translate_mtl_lib['mtl_test_wrapper'](
@@ -794,10 +771,6 @@ class PyFMM(object):
 
         self._thread_allocation[:self._tcount:] = 0
 
-        #print("allocated", self._thread_allocation.shape)
-        #print("thread_count", self._tcount)
-        #print("npart_local", positions.npart_local)
-
         if self._tmp_cell.shape[0] < positions.npart_local:
             self._tmp_cell = np.zeros(int(positions.npart_local*1.1),
                                       dtype=INT32)
@@ -818,8 +791,6 @@ class PyFMM(object):
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 
-        #self.tree_halo[self.R-1][2:-2:, 2:-2:, 2:-2:, :] = \
-        #    self.entry_data[:,:,:,:]
         self.tree_halo[self.R-1][2:-2:, 2:-2:, 2:-2:, :] = 0.0
         self.entry_data.add_onto(self.tree_halo)
 
@@ -827,7 +798,6 @@ class PyFMM(object):
         fmm_cell[:positions.npart_local:, 0] = \
             self._tmp_cell[:positions.npart_local:]
 
-        #fmm_cell.ctypes_data_post(mode=access.WRITE)
         self.timer_contrib.pause()
 
     def _compute_cube_extraction(self, positions, charges, forces=None):
@@ -843,7 +813,6 @@ class PyFMM(object):
 
         phi = REAL(0)
         self.entry_data.extract_from(self.tree_plain)
-
 
 
         err = self._extraction_lib(
@@ -982,6 +951,40 @@ class PyFMM(object):
         radius = self.domain.extent[0] / \
                  self.tree[level].ncubes_side_global
 
+        err = self._translate_mtlz_lib['translate_mtl'](
+            _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
+            _check_dtype(self.tree_halo[level], REAL),
+            _check_dtype(self.tree_plain[level], REAL),
+            self._wigner_real.ctypes.get_as_parameter(),
+            self._wigner_imag.ctypes.get_as_parameter(),
+            self._wigner_b_real.ctypes.get_as_parameter(),
+            self._wigner_b_imag.ctypes.get_as_parameter(),
+            _check_dtype(self._a, REAL),
+            _check_dtype(self._arn0, REAL),
+            _check_dtype(self._ipower_mtl, REAL),
+            REAL(radius),
+            INT64(self.L),
+            _check_dtype(self._int_list[level], INT32),
+            _check_dtype(self._int_tlookup, INT32),
+            _check_dtype(self._int_plookup, INT32),
+            _check_dtype(self._int_radius, ctypes.c_double),
+            self._thread_space.ctypes_data
+        )
+        if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
+        self.timer_mtl.pause()
+
+
+    def _translate_m_to_l_cart(self, level):
+
+        if self.tree[level].local_grid_cube_size is None:
+            return
+
+        self.timer_mtl.start()
+        self.tree_plain[level][:] = 0.0
+
+        radius = self.domain.extent[0] / \
+                 self.tree[level].ncubes_side_global
+
         err = self._translate_mtl_lib['translate_mtl'](
             _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
             _check_dtype(self.tree_halo[level], REAL),
@@ -1003,6 +1006,20 @@ class PyFMM(object):
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
         self.timer_mtl.pause()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def _fine_to_coarse(self, src_level):
         if src_level < 1:

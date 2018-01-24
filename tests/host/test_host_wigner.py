@@ -392,17 +392,6 @@ def shift_z(L, radius, theta, moments):
 
     return out
 
-def shift_rotate(L, radius, theta, phi, moments):
-
-
-    moments = rotate_moments(L, 0.0,  phi, 0.0, moments)
-    out = shift_z(L, radius, 0.0, moments)
-    out =     rotate_moments(L, 0.0,  -1. * phi, 0.0, out)
-
-
-    return out
-
-
 def rotate_z(phi):
     return np.array((
         (math.cos(phi), -1.* math.sin(phi)  , 0.0),

@@ -500,7 +500,7 @@ def test_fmm_translate_2():
 
     radius = 2.
     theta = 1.1*math.pi
-    phi = 1.1234
+    phi = -1.1234
 
     alpha, beta, gamma = 0.0, theta, phi
 
@@ -515,7 +515,7 @@ def test_fmm_translate_2():
         alpha=-gamma, beta=-beta, gamma=-alpha,
         dtype=fmm.dtype)
 
-    tmp_space = np.zeros(ncomp, dtype=fmm.dtype)
+    tmp_space = np.zeros(ncomp*2, dtype=fmm.dtype)
 
     t0 = time.time()
     fmm._translate_mtlz_lib['mtl_z_wrapper'](
@@ -534,8 +534,6 @@ def test_fmm_translate_2():
     )
     t1 = time.time()
 
-
-    print("\tTIME:\t", t1-t0)
 
     forward_rot = rotate_moments(nterms, alpha=alpha, beta=beta, gamma=gamma,
                                  moments=moments)
@@ -558,3 +556,98 @@ def test_fmm_translate_2():
     print("ERR:\t", red_tol(err, tol), "\tTIME:\t", t1-t0)
 
     assert err < tol
+
+
+
+
+def test_fmm_translate_3():
+    R = 3
+    eps = 10.**-8
+    free_space = True
+    N = 2
+    E = 4.
+
+    A = state.State()
+    A.npart = N
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    A.P = data.PositionDat(ncomp=3)
+    A.F = data.ParticleDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.crr = data.ScalarArray(ncomp=1)
+    A.cri = data.ScalarArray(ncomp=1)
+    A.crs = data.ScalarArray(ncomp=1)
+
+    rng = np.random.RandomState(seed=1234)
+    A.P[:] = rng.uniform(low=-0.4999*E, high=0.49999*E, size=(N,3))
+    A.Q[:] = rng.uniform(low=-1., high=1., size=(N,1))
+    bias = np.sum(A.Q[:])/N
+    A.Q[:] -= bias
+
+    Q = np.sum(A.Q[:]**2.)
+
+    A.scatter_data_from(0)
+
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space
+                , _debug=True)
+
+    positions = A.P
+    charges = A.Q
+
+    fmm.entry_data.zero()
+    fmm.tree_plain.zero()
+    fmm.tree_halo.zero()
+    fmm.tree_parent.zero()
+
+    fmm._check_aux_dat(positions)
+
+    fmm._compute_cube_contrib(positions, charges,
+                               positions.group._fmm_cell)
+
+    level = fmm.R-1
+
+    sh = fmm.tree_halo[level][:,:,:,:].shape
+    fmm.tree_halo[level][:,:,:,:] = rng.uniform(low=-2.0, high=2.0, size=sh)
+
+    t0 = time.time()
+    fmm._translate_m_to_l_cart(level)
+    t1 = time.time()
+
+    correct = np.copy(fmm.tree_plain[level][:,:,:,:])
+
+    fmm.tree_plain[level][:,:,:,:] = 0
+
+    t2 = time.time()
+    fmm._translate_m_to_l(level)
+    t3 = time.time()
+
+    zmtl = np.copy(fmm.tree_plain[level][:,:,:,:])
+
+
+    correct = correct.ravel()
+    zmtl = zmtl.ravel()
+    err = np.linalg.norm(correct - zmtl, np.inf)
+
+    print("\n")
+    print("TIME CART: \t", t1 - t0)
+    print("TIME ZAXI: \t", t3 - t2)
+
+    tol = 10.**-13
+    assert err < tol
+
+
+
+
+
+
+
+
+
+
+
+
+
+

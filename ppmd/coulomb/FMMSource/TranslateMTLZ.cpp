@@ -40,6 +40,32 @@ static inline void rotate_p_moments(
     return;
 }
 
+static inline void rotate_p_moments_append(
+    const INT32 p,
+    const REAL * RESTRICT re_m,
+    const REAL * RESTRICT im_m,
+    const REAL * RESTRICT re_x,
+    const REAL * RESTRICT im_x,
+    REAL * RESTRICT re_b,
+    REAL * RESTRICT im_b
+){
+
+    // implement complex matvec
+    for(INT32 rx=0; rx<p ; rx++){
+        REAL re_c = 0.0;
+        REAL im_c = 0.0;
+        for(INT32 cx=0; cx<p ; cx++){
+            cplx_mul_add(   re_m[p*rx+cx],  im_m[p*rx+cx],
+                            re_x[cx],       im_x[cx],
+                            &re_c,          &im_c);
+        }
+        re_b[rx] += re_c;
+        im_b[rx] += im_c;
+    }
+    return;
+}
+
+
 // test wrapper for pth moment rotation
 extern "C"
 int rotate_p_moments_wrapper(
@@ -90,6 +116,22 @@ int rotate_moments_wrapper(
 }
 
 
+static inline void rotate_moments_append(
+    const INT32 p,
+    const REAL * RESTRICT * RESTRICT re_m,
+    const REAL * RESTRICT * RESTRICT im_m,
+    const REAL * RESTRICT re_x,
+    const REAL * RESTRICT im_x,
+    REAL * RESTRICT re_b,
+    REAL * RESTRICT im_b
+){
+    const INT32 im_offset = p*p;
+    for(INT32 px=0 ; px<p ; px++){
+        rotate_p_moments_append(2*px+1, re_m[px], im_m[px],
+        &re_x[px*px], &im_x[px*px],
+        &re_b[px*px], &im_b[px*px]);
+    }
+}
 
 
 
@@ -147,6 +189,13 @@ static inline void mtl_z(
     for(INT64 nx=1 ; nx<nblk ; nx++){ iradius_n[nx] = iradius_n[nx-1] * iradius; }
 
     REAL * RESTRICT iradius_p1 = &iradius_n[1];
+    
+    const INT32 ts = nlevel*nlevel;
+    REAL * RESTRICT tmp_rel = &thread_space[0];
+    REAL * RESTRICT tmp_iml = &thread_space[ts];
+    REAL * RESTRICT tmp_reh = &thread_space[2*ts];
+    REAL * RESTRICT tmp_imh = &thread_space[3*ts];
+    
 
     // rotate foward
     rotate_moments(
@@ -155,17 +204,21 @@ static inline void mtl_z(
         im_mat_forw,
         odata,
         &odata[im_offset],
-        ldata,
-        &ldata[im_offset]
+        tmp_rel,
+        tmp_iml
     );
     
+    for(INT32 jx=0 ; jx<ts ; jx++){
+        tmp_reh[jx]=0.0;
+        tmp_imh[jx]=0.0;
+    }
 
 
     // loop over parent moments
     for(INT32 jx=0     ; jx<nlevel ; jx++ ){
     
-        REAL * RESTRICT new_re = &thread_space[CUBE_IND(jx, 0)];
-        REAL * RESTRICT new_im = &thread_space[CUBE_IND(jx, 0) + im_offset];
+        REAL * RESTRICT new_re = &tmp_reh[CUBE_IND(jx, 0)];
+        REAL * RESTRICT new_im = &tmp_imh[CUBE_IND(jx, 0)];
 
         for(INT32 nx=0     ; nx<nlevel ; nx++){
         
@@ -179,7 +232,6 @@ static inline void mtl_z(
             for(INT32 kx=-1*kmax ; kx<=kmax    ; kx++){
 
                 const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
-                
 
                 const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + kx];
                 
@@ -189,23 +241,21 @@ static inline void mtl_z(
                 
                 const INT64 oind = CUBE_IND(nx, kx);
 
-                const REAL ocoeff_re = ldata[oind]             * coeff_re;
-                const REAL ocoeff_im = ldata[oind + im_offset] * coeff_re;
-                
+                new_re[kx] += tmp_rel[oind] * coeff_re;
+                new_im[kx] += tmp_iml[oind] * coeff_re;
 
-                new_re[kx] += ocoeff_re;
-                new_im[kx] += ocoeff_im;
             }
 
         }
     }
 
-    rotate_moments(
+
+    rotate_moments_append(
         nlevel,
         re_mat_back,
         im_mat_back,
-        thread_space,
-        &thread_space[im_offset],
+        tmp_reh,
+        tmp_imh,
         ldata,
         &ldata[im_offset]
     );
@@ -326,7 +376,14 @@ int translate_mtl(
                 thread_space);
            
         }
-        
+/*        
+        printf("==========%d\t%d\t%d==========\n", cx, cy, cz);
+        for(int jx=0; jx<nlevel ; jx++){
+            for(int kx=-1*jx; kx<=jx ; kx++){
+                printf("%d\t%d\t%f\n",jx, kx, out_moments[CUBE_IND(jx, kx)]);
+            }
+        }
+*/        
     }
 
     return err;
