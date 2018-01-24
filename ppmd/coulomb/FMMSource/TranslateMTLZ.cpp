@@ -158,56 +158,47 @@ static inline void mtl_z(
         ldata,
         &ldata[im_offset]
     );
+    
 
 
     // loop over parent moments
     for(INT32 jx=0     ; jx<nlevel ; jx++ ){
-    for(INT32 kx=-1*jx ; kx<=jx    ; kx++){
+    
+        REAL * RESTRICT new_re = &thread_space[CUBE_IND(jx, 0)];
+        REAL * RESTRICT new_im = &thread_space[CUBE_IND(jx, 0) + im_offset];
 
-        const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
-        REAL contrib_re = 0.0;
-        REAL contrib_im = 0.0;
+        for(INT32 nx=0     ; nx<nlevel ; nx++){
         
-        
-        const INT32 abs_kx = ABS(kx);
-
-        for(INT32 nx=abs_kx     ; nx<nlevel ; nx++){
-                
-            
-            
-            //const REAL m1tn = 1.0 - 2.0*((REAL)((nx) & 1));   // -1^{n}
-            const REAL m1tn = IARRAY[nx];   // -1^{n}
-
-
-            const INT64 jxpnx = jx + nx;
-            const INT64 p_ind_base = P_IND(jxpnx, 0);
-            const REAL rr_jn1 = iradius_p1[jxpnx];     // 1 / rho^{j + n + 1}
-
-
-            // compute translation coefficient
-            // A_n^m
-
-            const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + kx];
+            const INT32 kmax = MIN(nx, jx);
             const REAL ia_jn = ar_array[nx+jx];
+            const REAL m1tn = IARRAY[nx];   // -1^{n}
+            const REAL rr_jn1 = iradius_p1[jx+nx];     // 1 / rho^{j + n + 1}
             
-            const REAL ipower = IARRAY[kx];
+            const REAL outer_coeff = ia_jn * m1tn * rr_jn1;
 
-            const REAL coeff_re = ipower * m1tn * anm * ajk * rr_jn1 * ia_jn;
-            
-            const INT64 oind = CUBE_IND(nx, kx);
+            for(INT32 kx=-1*kmax ; kx<=kmax    ; kx++){
 
-            const REAL ocoeff_re = ldata[oind]             * coeff_re;
-            const REAL ocoeff_im = ldata[oind + im_offset] * coeff_re;
-            
-            contrib_re += ocoeff_re;
-            contrib_im += ocoeff_im;
+                const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
+                
+
+                const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + kx];
+                
+                const REAL ipower = IARRAY[kx];
+
+                const REAL coeff_re = ipower * anm * ajk * outer_coeff;
+                
+                const INT64 oind = CUBE_IND(nx, kx);
+
+                const REAL ocoeff_re = ldata[oind]             * coeff_re;
+                const REAL ocoeff_im = ldata[oind + im_offset] * coeff_re;
+                
+
+                new_re[kx] += ocoeff_re;
+                new_im[kx] += ocoeff_im;
+            }
 
         }
-        
-        thread_space[CUBE_IND(jx, kx)] += contrib_re;
-        thread_space[CUBE_IND(jx, kx) + im_offset] += contrib_im;
-
-    }}
+    }
 
     rotate_moments(
         nlevel,

@@ -11,13 +11,18 @@ class _old_cached(object):
         # pythontips.com
         memo = {}
         @wraps(function)
-        def wrapper(*args):
+        def wrapper(*args, **kwargs):
+            if len(kwargs) > 0:
+                return function(*args, **kwargs)
+
             if args in memo:
                 return memo[args]
             else:
                 rv = function(*args)
                 memo[args] = rv
                 return rv
+
+
         return wrapper
 try:
     from functools import lru_cache
