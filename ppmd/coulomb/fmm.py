@@ -71,6 +71,18 @@ def _check_dtype(arr, dtype):
     elif issubclass(type(arr), host.Array): return arr.ctypes_data
     else: raise RuntimeError('unknown array type passed: {}'.format(type(arr)))
 
+def _get_iarray(l):
+    b = 'static const REAL _IARRAY[%(length)s] = {' % {'length': 2*l+1}
+    for mx in range(-1*l, l):
+        b += '{}, '.format((-1.0)**(mx))
+
+    b += '%(LL)s};' % {'LL': (-1.0)**l}
+    b += '\nstatic const REAL * RESTRICT IARRAY = &_IARRAY[%(I)s];' % \
+         {'I': l}
+
+    return b
+
+
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6,
         free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels=2,
@@ -108,8 +120,12 @@ class PyFMM(object):
         self._tmp_cell = np.zeros(1, dtype=INT32)
 
         # pre compute A_n^m and 1/(A_n^m)
-        self._a = np.zeros(shape=(self.L*2, (self.L*4)+1), dtype=dtype)
-        self._ar = np.zeros(shape=(self.L*2,(self.L*4)+1), dtype=dtype)
+
+        ASTRIDE1 = (self.L*4)+1
+        ASTRIDE2 = self.L*2
+
+        self._a = np.zeros(shape=(ASTRIDE2, ASTRIDE1), dtype=dtype)
+        self._ar = np.zeros(shape=(ASTRIDE2, ASTRIDE1), dtype=dtype)
 
         for lx in range(self.L*2):
             for mx in range(-1*lx, lx+1):
@@ -258,14 +274,20 @@ class PyFMM(object):
         self._extraction_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_extract')['particle_extraction']
 
-
-        # load multipole to local lib
+        # load multipole to local lib z-direction only
         with open(str(_SRC_DIR) + \
                           '/FMMSource/TranslateMTLZ.cpp') as fh:
             cpp = fh.read()
         with open(str(_SRC_DIR) + \
                           '/FMMSource/TranslateMTLZ.h') as fh:
             hpp = fh.read()
+
+        hpp = hpp % {
+            'SUB_ASTRIDE1': ASTRIDE1,
+            'SUB_ASTRIDE2': ASTRIDE2,
+            'SUB_IARRAY': _get_iarray(self.L)
+        }
+
         self._translate_mtlz_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_translate_mtlz')
 

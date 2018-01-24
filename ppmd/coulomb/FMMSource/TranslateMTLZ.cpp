@@ -1,5 +1,6 @@
 
 
+
 static inline void cplx_mul_add(
     const REAL a,
     const REAL b,
@@ -130,8 +131,8 @@ static inline void mtl_z(
     REAL * RESTRICT         ldata,
     REAL * RESTRICT thread_space
 ){
-    const INT64 ASTRIDE1 = 4*nlevel + 1;
-    const INT64 ASTRIDE2 = 2*nlevel;
+    //const INT64 ASTRIDE1 = 4*nlevel + 1;
+    //const INT64 ASTRIDE2 = 2*nlevel;
 
     const INT64 ncomp = nlevel*nlevel*2;
     const INT64 nlevel4 = nlevel*4;
@@ -172,7 +173,12 @@ static inline void mtl_z(
 
         for(INT32 nx=abs_kx     ; nx<nlevel ; nx++){
                 
-            const REAL m1tn = 1.0 - 2.0*((REAL)(nx & 1));   // -1^{n}
+            
+            
+            //const REAL m1tn = 1.0 - 2.0*((REAL)((nx) & 1));   // -1^{n}
+            const REAL m1tn = IARRAY[nx];   // -1^{n}
+
+
             const INT64 jxpnx = jx + nx;
             const INT64 p_ind_base = P_IND(jxpnx, 0);
             const REAL rr_jn1 = iradius_p1[jxpnx];     // 1 / rho^{j + n + 1}
@@ -184,10 +190,9 @@ static inline void mtl_z(
             const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + kx];
             const REAL ia_jn = ar_array[nx+jx];
             
+            const REAL ipower = IARRAY[kx];
 
-            const REAL coeff_re = \
-                i_array[(nlevel+kx)*(nlevel*2 + 1) + nlevel + kx] * \
-                m1tn * anm * ajk * rr_jn1 * ia_jn;
+            const REAL coeff_re = ipower * m1tn * anm * ajk * rr_jn1 * ia_jn;
             
             const INT64 oind = CUBE_IND(nx, kx);
 
