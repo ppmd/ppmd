@@ -12,7 +12,7 @@ import ctypes
 
 from ppmd.coulomb.cached import cached
 
-@cached(maxsize=32)
+@cached(maxsize=1024)
 def wigner_d(j, mp, m, beta):
     """
     Compute the Wigner d-matrix d_{m', m}^j(\beta) using Jacobi polynomials.
@@ -131,7 +131,7 @@ def eps_m(m):
     if m < 0: return 1.0
     return (-1.)**m
 
-@cached(maxsize=1024)
+@cached(maxsize=4096)
 def R_z(p, x):
     """
     matrix to apply to complex vector of p moments to rotate the basis functions
@@ -144,7 +144,7 @@ def R_z(p, x):
         out[mx, mx] = cmath.exp((1.j) * m * x)
     return out
 
-@cached(maxsize=1024)
+@cached(maxsize=4096)
 def R_y(p, x):
     """
     matrix to apply to complex vector of p moments to rotate the basis functions
@@ -162,11 +162,11 @@ def R_y(p, x):
             out.real[mpx, mx] = coeff
     return out
 
-@cached(maxsize=1024)
+@cached(maxsize=4096)
 def R_zy(p, alpha, beta):
     return np.matmul(R_y(p,beta), R_z(p,alpha))
 
-@cached(maxsize=1024)
+@cached(maxsize=4096)
 def R_zyz(p, alpha, beta, gamma):
     return np.matmul(R_z(p,gamma),
            np.matmul(R_y(p,beta), R_z(p,alpha)))

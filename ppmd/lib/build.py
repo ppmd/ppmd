@@ -112,11 +112,8 @@ def _load(filename):
             str(filename))
         ppmd.abort(e)
 
-def _check_file_existance(abs_path=None):
-    assert abs_path is not None, "build:check_file_existance error. " \
-                                 "No absolute path passed."
+def _check_path_exists(abs_path):
     return os.path.exists(abs_path)
-
 
 _load_timer = opt.Timer()
 
@@ -139,8 +136,11 @@ def simple_lib_creator(
 
     _lib_filename = os.path.join(dst_dir, _filename + '.so')
 
-    if not _check_file_existance(_lib_filename):
+    if not _check_path_exists(_lib_filename):
 
+        # need all ranks to recognise file does not exist if not build per proc
+        if not ppmd.runtime.BUILD_PER_PROC:
+            _MPIBARRIER()
         if (_MPIRANK == 0)  or ppmd.runtime.BUILD_PER_PROC:
             _source_write(header_code, src_code, _filename,
                           extensions=extensions,
@@ -148,6 +148,7 @@ def simple_lib_creator(
 
         build_lib(_filename, extensions=extensions, source_dir=dst_dir,
                   CC=CC, dst_dir=dst_dir, inc_dirs=inc_dirs)
+
 
     _load_timer.start()
     lib = _load(_lib_filename)
@@ -162,6 +163,7 @@ def _check_compiler(name):
         try:
             p = subprocess.Popen(name, stdout=DEV_NULL,
                                  stderr=subprocess.STDOUT)
+            p.communicate()
         except Exception as e:
             raise RuntimeError('Compiler binary "{}" cannot be ran.'.format(
                 name))
@@ -175,7 +177,7 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
     _lib_filename = os.path.join(dst_dir, lib + '.so')
 
     if (_MPIRANK == 0) or ppmd.runtime.BUILD_PER_PROC:
-        _check_compiler(CC.binary)
+        #_check_compiler(CC.binary)
 
         _lib_src_filename = os.path.join(source_dir, lib + extensions[1])
 
@@ -198,21 +200,23 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
                     stdout.write('#Compilation command:\n')
                     stdout.write(' '.join(_c_cmd))
                     stdout.write('\n\n')
-                    p = subprocess.Popen(_c_cmd,
+                    #p = subprocess.Popen(_c_cmd,
+                    p = subprocess.check_call(_c_cmd,
                                          stdout=stdout,
                                          stderr=stderr)
-                    p.communicate()
+                    #stdout_data, stderr_data = p.communicate()
 
         except Exception as e:
             print(e)
             ppmd.abort('build error: library not built.')
+
 
     if not ppmd.runtime.BUILD_PER_PROC:
         _MPIBARRIER()
 
     # try to provide useful compile errors
     if not os.path.exists(_lib_filename):
-        print("Critical build Error: Library not built,\n" + \
+        print("Critical build Error: Library not found,\n" + \
                    _lib_filename + "\n rank:", _MPIRANK)
         if _MPIRANK == 0:
             try:

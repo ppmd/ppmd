@@ -637,13 +637,18 @@ def test_fmm_init_4_3():
     if MPIRANK == 0 and DEBUG:
         print("N", N, "L", fmm.L, "R", fmm.R)
 
-    if MPIRANK == 0 and not SKIP_DIRECT:
+    if not SKIP_DIRECT:
         ### LOCAL PHI START ###
         # compute potential energy to point across all charges directly
         P2 = data.PositionDat(npart=N, ncomp=3)
         Q2 = data.ParticleDat(npart=N, ncomp=1)
-        P2[:,:] = A.P[:N:,:]
-        Q2[:,:] = A.Q[:N:,:]
+        if MPIRANK == 0:
+            P2[:,:] = A.P[:N:,:]
+            Q2[:,:] = A.Q[:N:,:]
+        else:
+            P2[:,:] = 0
+            Q2[:,:] = 0
+
         local_phi_ga = data.ScalarArray(ncomp=1, dtype=ctypes.c_double)
         src = """
         const double d0 = P.j[0] - P.i[0];
@@ -654,17 +659,24 @@ def test_fmm_init_4_3():
         local_phi_kernel = kernel.Kernel('all_to_all_phi', src,
                                    headers=(kernel.Header('math.h'),))
 
-
+        # TODO THIS IS NOT COLLECTIVE!
         local_phi_loop = pairloop.AllToAllNS(kernel=local_phi_kernel,
                            dat_dict={'P': P2(access.READ),
                                      'Q': Q2(access.READ),
                                      'phi': local_phi_ga(access.INC_ZERO)})
-        local_phi_loop.execute()
+
+        if MPIRANK == 0:
+            call_n = N
+        else:
+            call_n = 0
+
+        local_phi_loop.execute(n=call_n)
         local_phi_direct = local_phi_ga[0]
         if DEBUG:
             print("local_phi {:.30f}".format(float(local_phi_direct)))
     else:
         local_phi_direct = 0.0
+
     local_phi_direct =  mpi.all_reduce(np.array([local_phi_direct]))[0]
 
     A.scatter_data_from(0)

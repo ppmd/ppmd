@@ -69,8 +69,6 @@ class CellByCellOMP(object):
 
         self._offset_list = host.Array(ncomp=27, dtype=ctypes.c_int)
 
-        #print(self._components['LIB_SRC'])
-
         self._lib = build.simple_lib_creator(self._generate_header_source(),
                                              self._components['LIB_SRC'],
                                              self._kernel.name,

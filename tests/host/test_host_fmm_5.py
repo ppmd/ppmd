@@ -1281,7 +1281,6 @@ def test_fmm_init_5_7_quad():
 
 
 def nacl_lattice(crn, e, sd=0.05, seed=87712846):
-    print("creating lattice side length:", e, crn)
 
     raw_lattice = utility.lattice.cubic_lattice(crn, e)
 

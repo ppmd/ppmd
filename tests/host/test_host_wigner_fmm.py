@@ -394,6 +394,7 @@ def shift_z(L, radius, theta, moments):
     return out
 
 
+@pytest.mark.skipif("MPISIZE>1")
 def test_fmm_translate_1():
     R = 2
     eps = 10.**-2
@@ -472,6 +473,7 @@ def test_fmm_translate_1():
     assert err < tol
 
 
+@pytest.mark.skipif("MPISIZE>1")
 def test_fmm_translate_2():
     R = 2
     eps = 10.**-4
