@@ -57,8 +57,11 @@ def _create_zeros(nrow=None, ncol=None, dtype=None):
     ppmd.check(dtype is not None, "No data type passed")
 
     if nrow is not None:
+        nrow = max(1, nrow)
+        ncol = max(1, ncol)
         return gpuarray.zeros([int(nrow), int(ncol)], dtype=dtype)
     else:
+        ncol = max(1, ncol)
         return gpuarray.zeros(int(ncol), dtype=dtype)
 
 

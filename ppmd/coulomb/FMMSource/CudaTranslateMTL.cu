@@ -29,129 +29,6 @@ static inline __device__ void cplx_mul_add(
     *h += x * b + a * y;
 }
 
-/*
-static __global__ void mtl_kernel(
-    const INT32 num_indices,
-    const INT32 nblocks,
-    const REAL * RESTRICT d_multipole_moments,
-    const REAL * RESTRICT d_phi_data,
-    const REAL * RESTRICT d_theta_data,
-    const REAL * RESTRICT d_alm,
-    const REAL * RESTRICT d_almr,
-    const INT32 * RESTRICT d_int_list,
-    const INT32 * RESTRICT d_int_tlookup,
-    const INT32 * RESTRICT d_int_plookup,
-    const double * RESTRICT d_int_radius,
-    REAL * RESTRICT d_local_moments
-){
-    const INT32 plainx = blockIdx.x/nblocks;
-    const INT32 plainy = blockIdx.y;
-    const INT32 plainz = blockIdx.z;
-
-    const INT32 local_base = 2*num_indices*(plainx + \
-        d_plain_dim2*(plainy + d_plain_dim1*plainz));
-
-
-    const INT32 index_id = (blockIdx.x % nblocks)*blockDim.x + threadIdx.x;
-    const bool valid_id = (index_id < num_indices);
-    const INT32 jx = valid_id ? dc_jlookup[index_id] : -1;
-    const INT32 kx = valid_id ? dc_klookup[index_id] : -1;
-
-    const INT32 halo_ind = (plainx + 2) + (d_plain_dim2+4)* \
-        ( (plainy + 2) + (d_plain_dim1+4) * (plainz + 2) );
-
-    const INT32 octal_ind = (plainx % 2) + \
-        2*( (plainy % 2) + 2*(plainz % 2) );
-    
-    const INT32 jx_min = dc_jlookup[(blockIdx.x % nblocks)*blockDim.x];
-    const INT32 jx_max = dc_jlookup[min(
-        (blockIdx.x % nblocks + 1)*blockDim.x-1,
-        num_indices-1
-    )];
-
-    REAL contrib_re = 0.0;
-    REAL contrib_im = 0.0; 
-    const REAL ajk =  valid_id ? d_alm[jx*d_ASTRIDE1 + d_ASTRIDE2 + kx] : 0.0;
-
-    const INT32 absk = ABS(kx);
-
-    // shared space for Y_{n+j}^{m-k}/A_{n+j}^{m-k}
-    extern __shared__ REAL shared_y[];
-
-    for (INT32 conx=octal_ind*189 ; conx<(octal_ind+1)*189 ; conx++){
-            const REAL local_radius = d_int_radius[conx] * d_radius;
-            
-            const REAL iradius = 1./local_radius;
-
-            const INT32 jcell = (d_int_list[conx] + halo_ind)*2*d_nlevel*d_nlevel;
-            
-            const REAL * RESTRICT d_phi_base = \
-                &d_phi_data[d_phi_stride * d_int_plookup[conx]];
-            const REAL * RESTRICT d_theta_base = \
-                &d_theta_data[d_theta_stride * d_int_tlookup[conx]];
-            
-            //const bool pb = jx==0 && kx==0 && conx ==0 && plainx == 0 && plainy == 0 && plainz ==0;
-
-            // we have blockDim.x threads
-            for( INT32 jt=jx_min ; jt<jx_max+d_nlevel ; jt++ ){
-                // need to loop over -jt to jt
-                for( INT32 kt=-1*jt + threadIdx.x ; kt<=jt ; kt+=blockDim.x ) {
-                    const INT32 out_ind = CUBE_IND(jt, kt);
-                    const REAL ppart = d_theta_base[out_ind];
-                    
-                    shared_y[out_ind] = ppart * d_phi_base[EXP_RE_IND(2*d_nlevel, kt)];
-                    shared_y[out_ind + 4*d_nlevel*d_nlevel] = ppart * d_phi_base[EXP_IM_IND(2*d_nlevel, kt)];
-                    
-                }
-            }
-            __syncthreads();
-            
-            REAL iradiuspj = pow(iradius, jx+1);
-            REAL m1tn = 1.0;
-            // use Y values
-            for( INT32 nx=0 ; nx<d_nlevel ; nx++ ){
-                
-                //if (pb) { printf("nx=%d\n", nx);}
-
-                for( INT32 mx=-1*nx ; mx<=nx ; mx++ ){
-                    
-                    //if (pb) { printf("\tmx=%d\n", mx); }
-
-                    const REAL anm = d_alm[nx*d_ASTRIDE1 + d_ASTRIDE2 + mx];
-
-
-                    const REAL ipkm = ((ABS(kx-mx) - absk - ABS(mx)) % 4) == 0 ? 1.0 : -1.0;
-                    const REAL coeff = ipkm * anm * ajk * m1tn * iradiuspj;
-                    const REAL o_re = coeff * d_multipole_moments[jcell + CUBE_IND(nx, mx)];
-                    const REAL o_im = coeff * d_multipole_moments[jcell + CUBE_IND(nx, mx) + d_nlevel*d_nlevel];
-                    
-                    const INT32 yind = valid_id ? CUBE_IND(jx+nx, mx-kx) : 0;
-
-                    cplx_mul_add(   o_re, o_im, 
-                                    shared_y[yind], shared_y[yind+4*d_nlevel*d_nlevel],
-                                    &contrib_re, &contrib_im);
-                    
-                    //if (pb) { printf("\t\tcuda=%d\t%f\n", jcell + CUBE_IND(nx, mx), iradiuspj);}
-                }
-                
-                m1tn *= -1.0;
-                iradiuspj *= iradius;
-            }
-            __syncthreads();
-    }
-
-    if(valid_id){
-        //printf("local_base %d cube_ind %d jx %d kx %d\n", local_base, CUBE_IND(jx, kx), jx, kx);
-        d_local_moments[local_base + CUBE_IND(jx, kx)] = contrib_re;
-        d_local_moments[local_base + CUBE_IND(jx, kx) + d_nlevel*d_nlevel] = contrib_im;
-    }
- 
-    //if (plainx == 0 && plainy == 0 && plainz == 0 && valid_id){
-    //    printf("jx %d kx %d jx_min %d jx_max %d\n", jx, kx, jx_min, jx_max);
-    //}
-
-}
-*/
 
 static __global__ void mtl_kernel2(
     const INT32 num_indices,
@@ -297,7 +174,7 @@ int translate_mtl(
     dim3 grid_block(nblocks*dim_child[2], dim_child[1], dim_child[0]);
     dim3 thread_block(thread_block_size, 1, 1);
     
-    err = cudaSetDevice(device_number);
+    //err = cudaSetDevice(device_number);
     if (err != cudaSuccess){return err;}
 
     int device_id = -1;
@@ -346,11 +223,7 @@ int translate_mtl(
 
     const size_t shared_bytes = sizeof(REAL) * ncomp2;
 
-    //cudaStream_t stream;
-    //cudaStreamCreate (&stream);
-
-    //mtl_kernel<<<grid_block, thread_block, shared_bytes>>>(
-    //mtl_kernel2<<<grid_block, thread_block, 0, stream>>>(
+    
     mtl_kernel2<<<grid_block, thread_block>>>(
         num_indices,
         nblocks,
@@ -369,7 +242,7 @@ int translate_mtl(
         d_local_moments
     );
     
-    //err = cudaStreamSynchronize(stream);
+
     err = cudaDeviceSynchronize();
     if (err != cudaSuccess) {return err;}
 

@@ -177,7 +177,7 @@ def test_wigner_1():
             print(jx, "\t-------->\t",w0,"\t",w1,"\t",red_tol(abs(w1-w0),
                                                               10.**-14))
 
-    L = 20
+    L = 15
     random_angles = np.random.uniform(low=0.0, high=2.*math.pi, size=N)
     for beta in random_angles:
         for nx in range(0, L):
@@ -190,7 +190,7 @@ def test_wigner_1():
                         print(w0, w1, red_tol(err, tol))
                     assert err < tol
 
-    L = 40
+    L = 20
     beta = random_angles[-1]
 
     tr = 0.0

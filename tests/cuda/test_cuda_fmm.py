@@ -34,7 +34,7 @@ def test_cuda_fmm_1():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-    eps = 10.**-6
+    eps = 10.**-2
 
     ASYNC = False
     free_space = True
@@ -43,7 +43,6 @@ def test_cuda_fmm_1():
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
                 cuda=CUDA)
 
-    print("R:", fmm.R, "L", fmm.L)
     rng = np.random.RandomState(seed=1234)
 
     lx = 3
@@ -53,16 +52,10 @@ def test_cuda_fmm_1():
     fmm._halo_exchange(lx)
     fmm._translate_m_to_l(lx)
 
-    print("HOST", fmm.tree_plain[lx].ravel()[:10:])
     radius = fmm.domain.extent[0] / \
              fmm.tree[lx].ncubes_side_global
 
     lx_cuda = fmm._cuda_mtl.translate_mtl(fmm.tree_halo, lx, radius)
-
-    print("CUDA", lx_cuda.ravel()[:10:])
-
-    print("HOST", fmm.timer_mtl.time())
-    print("CUDA", fmm._cuda_mtl.timer_mtl.time())
 
     for px in range(lx_cuda.ravel().shape[0]):
         assert abs(fmm.tree_plain[lx].ravel()[px] - lx_cuda.ravel()[px]) < \

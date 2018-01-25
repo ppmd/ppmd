@@ -148,6 +148,7 @@ class TranslateMTLCuda(object):
         self._lock.acquire(True)
 
         self.timer_mtl.start()
+        print("DEVICE_NUMBER:\t",cuda_runtime.DEVICE_NUMBER)
         err = self._translate_mtl_lib['translate_mtl'](
             _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
             self.tree_halo.device_pointer(level),
@@ -168,6 +169,7 @@ class TranslateMTLCuda(object):
             INT32(128),
             INT32(cuda_runtime.DEVICE_NUMBER)
         )
+
         self.timer_mtl.pause()
         self._lock.release()
 

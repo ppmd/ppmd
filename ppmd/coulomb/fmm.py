@@ -496,6 +496,7 @@ class PyFMM(object):
         self.timer_up = opt.Timer(runtime.TIMER)
 
         self.execution_count = 0
+        self._mtlz_ops = self._mtlz_cost_per_cell()
 
         # threading
         self._async_thread = None
@@ -692,6 +693,24 @@ class PyFMM(object):
         else:
             func(level)
 
+    def _mtlz_cost_per_cell(self):
+        t = 0
+        for mx in range(self.L):
+            n = 2*(mx+1)+1
+            t += (2*(n**2))*8
+
+        t *= 2
+
+        for jx in range(self.L):
+            for nx in range(self.L):
+                kmax = min(nx, jx)
+                t += 2
+                for kx in range(-kmax, kmax+1):
+                    t += 7
+
+        return t
+
+
     def flop_rate_mtl(self):
         start = 1
         if self.cuda:
@@ -700,7 +719,12 @@ class PyFMM(object):
             end = None
 
         local_plain_cells = self.tree_plain.num_cells(start, end)
+
+        # "cartesian"
         cost_per_cell = (self.L**4) * 16
+        # z rotation
+        cost_per_cell = self._mtlz_ops
+
         flop_count = 189 * cost_per_cell * local_plain_cells
         total_cost = flop_count * self.execution_count
 
