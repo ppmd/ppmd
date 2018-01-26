@@ -89,7 +89,7 @@ def test_fmm_sim_1():
 
     dt = 0.001
     shell_steps = 10
-    steps = 20
+    steps = 10
 
     crn = 50
     rho = 3.
