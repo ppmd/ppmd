@@ -84,8 +84,8 @@ int rotate_p_moments_wrapper(
 
 static inline void rotate_moments(
     const INT32 p,
-    const REAL * RESTRICT * RESTRICT re_m,
-    const REAL * RESTRICT * RESTRICT im_m,
+    const REAL * RESTRICT const * RESTRICT re_m,
+    const REAL * RESTRICT const * RESTRICT im_m,
     const REAL * RESTRICT re_x,
     const REAL * RESTRICT im_x,
     REAL * RESTRICT re_b,
@@ -103,8 +103,8 @@ static inline void rotate_moments(
 extern "C"
 int rotate_moments_wrapper(
     const INT32 p,
-    const REAL * RESTRICT * RESTRICT re_m,
-    const REAL * RESTRICT * RESTRICT im_m,
+    const REAL * RESTRICT const * RESTRICT re_m,
+    const REAL * RESTRICT const * RESTRICT im_m,
     const REAL * RESTRICT re_x,
     const REAL * RESTRICT im_x,
     REAL * RESTRICT re_b,
@@ -118,8 +118,8 @@ int rotate_moments_wrapper(
 
 static inline void rotate_moments_append(
     const INT32 p,
-    const REAL * RESTRICT * RESTRICT re_m,
-    const REAL * RESTRICT * RESTRICT im_m,
+    const REAL * RESTRICT const * RESTRICT re_m,
+    const REAL * RESTRICT const * RESTRICT im_m,
     const REAL * RESTRICT re_x,
     const REAL * RESTRICT im_x,
     REAL * RESTRICT re_b,
@@ -163,10 +163,10 @@ static inline void mtl_z(
     const INT64             nlevel,
     const REAL              radius,
     const REAL * RESTRICT   odata,
-    const REAL * RESTRICT * RESTRICT re_mat_forw,
-    const REAL * RESTRICT * RESTRICT im_mat_forw,
-    const REAL * RESTRICT * RESTRICT re_mat_back,
-    const REAL * RESTRICT * RESTRICT im_mat_back,
+    const REAL * RESTRICT const * RESTRICT re_mat_forw,
+    const REAL * RESTRICT const * RESTRICT im_mat_forw,
+    const REAL * RESTRICT const * RESTRICT re_mat_back,
+    const REAL * RESTRICT const * RESTRICT im_mat_back,
     const REAL * RESTRICT   a_array,
     const REAL * RESTRICT   ar_array,
     const REAL * RESTRICT   i_array,
@@ -196,7 +196,7 @@ static inline void mtl_z(
     REAL * RESTRICT tmp_reh = &thread_space[2*ts];
     REAL * RESTRICT tmp_imh = &thread_space[3*ts];
     
-
+    
     // rotate foward
     rotate_moments(
         nlevel,
@@ -208,11 +208,12 @@ static inline void mtl_z(
         tmp_iml
     );
     
+
     for(INT32 jx=0 ; jx<ts ; jx++){
         tmp_reh[jx]=0.0;
         tmp_imh[jx]=0.0;
     }
-
+    
 
     // loop over parent moments
     for(INT32 jx=0     ; jx<nlevel ; jx++ ){
@@ -268,10 +269,10 @@ int mtl_z_wrapper(
     const INT64             nlevel,
     const REAL              radius,
     const REAL * RESTRICT   odata,
-    const REAL * RESTRICT * RESTRICT re_mat_forw,
-    const REAL * RESTRICT * RESTRICT im_mat_forw,
-    const REAL * RESTRICT * RESTRICT re_mat_back,
-    const REAL * RESTRICT * RESTRICT im_mat_back,
+    const REAL * RESTRICT const * RESTRICT re_mat_forw,
+    const REAL * RESTRICT const * RESTRICT im_mat_forw,
+    const REAL * RESTRICT const * RESTRICT re_mat_back,
+    const REAL * RESTRICT const * RESTRICT im_mat_back,
     const REAL * RESTRICT   a_array,
     const REAL * RESTRICT   ar_array,
     const REAL * RESTRICT   i_array,
@@ -302,10 +303,10 @@ int translate_mtl(
     const UINT32 * RESTRICT dim_child,      // slowest to fastest
     const REAL * RESTRICT multipole_moments,
     REAL * RESTRICT local_moments,
-    const REAL * RESTRICT * RESTRICT * RESTRICT re_mat_forw,
-    const REAL * RESTRICT * RESTRICT * RESTRICT im_mat_forw,
-    const REAL * RESTRICT * RESTRICT * RESTRICT re_mat_back,
-    const REAL * RESTRICT * RESTRICT * RESTRICT im_mat_back,
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT re_mat_forw,
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT im_mat_forw,
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT re_mat_back,
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT im_mat_back,
     const REAL * RESTRICT alm,
     const REAL * RESTRICT almr,
     const REAL * RESTRICT i_array,

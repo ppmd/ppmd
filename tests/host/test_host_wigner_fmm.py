@@ -31,7 +31,7 @@ from math import *
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = MPI.COMM_WORLD.Barrier
-DEBUG = True
+DEBUG = False
 SHARED_MEMORY = 'omp'
 
 def red(*input):
@@ -438,7 +438,8 @@ def test_fmm_translate_1():
         alpha=-gamma, beta=-beta, gamma=-alpha,
         dtype=fmm.dtype)
 
-    tmp_space = np.zeros(ncomp, dtype=fmm.dtype)
+    tmp_space = np.zeros(2*ncomp, dtype=fmm.dtype)
+
 
     fmm._translate_mtlz_lib['mtl_z_wrapper'](
         ctypes.c_int64(nterms),
@@ -449,7 +450,7 @@ def test_fmm_translate_1():
         back_pointers_real.ctypes.get_as_parameter(),
         back_pointers_imag.ctypes.get_as_parameter(),
         fmm._a.ctypes.get_as_parameter(),
-        fmm._ar.ctypes.get_as_parameter(),
+        fmm._arn0.ctypes.get_as_parameter(),
         fmm._ipower_mtl.ctypes.get_as_parameter(),
         bvec.ctypes.get_as_parameter(),
         tmp_space.ctypes.get_as_parameter()

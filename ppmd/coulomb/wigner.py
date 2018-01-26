@@ -145,6 +145,19 @@ def R_z(p, x):
     return out
 
 @cached(maxsize=4096)
+def R_z_vec(p, x):
+    """
+    matrix to apply to complex vector of p moments to rotate the basis functions
+    used to compute the moments around the z-axis by angle x.
+    """
+    ncomp = 2*p+1
+    out = np.zeros(ncomp, dtype=np.complex)
+    for mx in range(ncomp):
+        m = mx - p
+        out[mx] = cmath.exp((1.j) * m * x)
+    return out
+
+@cached(maxsize=4096)
 def R_y(p, x):
     """
     matrix to apply to complex vector of p moments to rotate the basis functions
@@ -168,8 +181,22 @@ def R_zy(p, alpha, beta):
 
 @cached(maxsize=4096)
 def R_zyz(p, alpha, beta, gamma):
-    return np.matmul(R_z(p,gamma),
-           np.matmul(R_y(p,beta), R_z(p,alpha)))
+    #return np.matmul(R_z(p, gamma),
+    #                 np.matmul(R_y(p, beta), R_z(p, alpha)))
+
+    m0 = R_z_vec(p, gamma)
+    m1 = R_y(p, beta)
+    m2 = R_z_vec(p, alpha)
+
+    out = np.zeros_like(m1)
+
+    for mx in range(m1.shape[1]):
+        out[:, mx] = m1[:, mx] * m2[mx]
+
+    for mx in range(m1.shape[0]):
+        out[mx, :] *= m0[mx]
+
+    return out
 
 
 def Rzyz_set(p, alpha, beta, gamma, dtype):
