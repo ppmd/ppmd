@@ -61,7 +61,8 @@ np.set_printoptions(threshold=np.nan)
 
 class TranslateMTLCuda(object):
     def __init__(self, dtype, tree, nlevel, a_arr, ar_arr, p_arr, e_arr,
-                 int_list, int_tlookup, int_plookup, int_radius, ipower_mtl):
+                 int_list, int_tlookup, int_plookup, int_radius, ipower_mtl,
+                 wigner_f, wigner_b):
         self.tree = tree
         self.L = nlevel
         ncomp = (self.L**2) * 2
@@ -69,6 +70,8 @@ class TranslateMTLCuda(object):
                                             dtype=dtype, ncomp=ncomp)
         self.tree_halo = OctalCudaDataTree(tree=tree, mode='halo',
                                            dtype=dtype, ncomp=ncomp)
+
+
 
         self._d_a = cuda_base.gpuarray.to_gpu(a_arr)
         self._d_ar = cuda_base.gpuarray.to_gpu(ar_arr)
@@ -104,12 +107,111 @@ class TranslateMTLCuda(object):
 
 
 
+
+        # need tmp space to rotate moments
+        self.tmp_tree1 = OctalCudaDataTree(tree=tree, mode='plain',
+                                           dtype=dtype, ncomp=ncomp)
+        self.tmp_tree2 = OctalCudaDataTree(tree=tree, mode='plain',
+                                           dtype=dtype, ncomp=ncomp)
+
+        self._wigner_real = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+        self._wigner_imag = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+
+        self._wigner_b_real = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+        self._wigner_b_imag = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+
+        self._dev_matrices = []
+        self._dev_pointers = []
+
+        # convert host rotation matrices to device matrices
+        for iz, pz in enumerate(range(-3, 4)):
+            for iy, py in enumerate(range(-3, 4)):
+                for ix, px in enumerate(range(-3, 4)):
+
+                    # forward real
+                    f = wigner_f[(pz, py, px)]
+
+                    pa = np.zeros(nlevel, dtype=ctypes.c_void_p)
+
+                    for p in range(nlevel):
+                        # forward real
+                        nn = cuda_base.gpuarray.to_gpu(f['real'][p])
+                        self._dev_matrices.append(nn)
+                        pa[p] = self._dev_matrices[-1].ptr
+
+                    # need array of pointers on gpu
+                    pa = cuda_base.gpuarray.to_gpu(pa)
+                    self._dev_pointers.append(pa)
+
+                    # forward real
+                    self._wigner_real[pz, py, px] = self._dev_pointers[-1].ptr
+
+                    pa = np.zeros(nlevel, dtype=ctypes.c_void_p)
+
+                    for p in range(nlevel):
+                        # forward imag
+                        nn = cuda_base.gpuarray.to_gpu(f['imag'][p])
+                        self._dev_matrices.append(nn)
+                        pa[p] = self._dev_matrices[-1].ptr
+
+                    # need array of pointers on gpu
+                    pa = cuda_base.gpuarray.to_gpu(pa)
+                    self._dev_pointers.append(pa)
+
+                    # forward imag
+                    self._wigner_imag[pz, py, px] = self._dev_pointers[-1].ptr
+
+
+                    f = None
+                    # backward real
+                    b = wigner_b[(pz, py, px)]
+
+                    pa = np.zeros(nlevel, dtype=ctypes.c_void_p)
+
+                    for p in range(nlevel):
+                        # backward real
+                        nn = cuda_base.gpuarray.to_gpu(b['real'][p])
+                        self._dev_matrices.append(nn)
+                        pa[p] = self._dev_matrices[-1].ptr
+
+                    # need array of pointers on gpu
+                    pa = cuda_base.gpuarray.to_gpu(pa)
+                    self._dev_pointers.append(pa)
+
+                    # backward real
+                    self._wigner_b_real[pz, py, px] =self._dev_pointers[-1].ptr
+
+                    pa = np.zeros(nlevel, dtype=ctypes.c_void_p)
+
+                    for p in range(nlevel):
+                        # backward imag
+                        nn = cuda_base.gpuarray.to_gpu(b['imag'][p])
+                        self._dev_matrices.append(nn)
+                        pa[p] = self._dev_matrices[-1].ptr
+
+                    # need array of pointers on gpu
+                    pa = cuda_base.gpuarray.to_gpu(pa)
+                    self._dev_pointers.append(pa)
+
+                    # backward imag
+                    self._wigner_b_imag[pz, py, px] =self._dev_pointers[-1].ptr
+
+
+        # pointers to pointers on device
+        self._wigner_real   = cuda_base.gpuarray.to_gpu(self._wigner_real)
+        self._wigner_imag   = cuda_base.gpuarray.to_gpu(self._wigner_imag)
+        self._wigner_b_real = cuda_base.gpuarray.to_gpu(self._wigner_b_real)
+        self._wigner_b_imag = cuda_base.gpuarray.to_gpu(self._wigner_b_imag)
+
+
+
+
         # load multipole to local lib
         with open(str(_SRC_DIR) + \
-                          '/FMMSource/CudaTranslateMTL.cu') as fh:
+                          '/FMMSource/CudaTranslateMTLZ.cu') as fh:
             cpp = fh.read()
         with open(str(_SRC_DIR) + \
-                          '/FMMSource/CudaTranslateMTL.h') as fh:
+                          '/FMMSource/CudaTranslateMTLZ.h') as fh:
             hpp = fh.read()
         self._translate_mtl_lib = cuda_build.simple_lib_creator(hpp, cpp,
             'fmm_translate_mtl')

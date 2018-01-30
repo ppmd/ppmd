@@ -83,15 +83,15 @@ PBC = domain.BoundaryTypePeriodic
 
 def test_fmm_sim_1():
 
-    R = 5
+    R = 3
     eps = 10.**-6
     free_space = False
 
     dt = 0.001
     shell_steps = 10
-    steps = 10
+    steps = 10000
 
-    crn = 50
+    crn = 10
     rho = 3.
 
     CUDA=False

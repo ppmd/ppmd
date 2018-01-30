@@ -206,14 +206,14 @@ def Rzyz_set(p, alpha, beta, gamma, dtype):
     """
     pointers_real = np.zeros(p, dtype=ctypes.c_void_p)
     pointers_imag = np.zeros(p, dtype=ctypes.c_void_p)
-    # alternating real, imag
-    matrices = []
+
+    matrices = {'real': [], 'imag': []}
     for px in range(p):
         r = R_zyz(px, alpha, beta, gamma)
-        matrices.append(np.array(r.real, dtype=dtype))
-        pointers_real[px] = matrices[-1].ctypes.data
-        matrices.append(np.array(r.imag, dtype=dtype))
-        pointers_imag[px] = matrices[-1].ctypes.data
+        matrices['real'].append(np.array(r.real, dtype=dtype))
+        pointers_real[px] = matrices['real'][-1].ctypes.data
+        matrices['imag'].append(np.array(r.imag, dtype=dtype))
+        pointers_imag[px] = matrices['imag'][-1].ctypes.data
 
     return pointers_real, pointers_imag, matrices
 

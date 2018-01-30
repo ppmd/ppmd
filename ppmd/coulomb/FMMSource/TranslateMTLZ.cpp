@@ -26,6 +26,7 @@ static inline void rotate_p_moments(
 ){
 
     // implement complex matvec
+
     for(INT32 rx=0; rx<p ; rx++){
         REAL re_c = 0.0;
         REAL im_c = 0.0;
@@ -37,6 +38,8 @@ static inline void rotate_p_moments(
         re_b[rx] = re_c;
         im_b[rx] = im_c;
     }
+
+
     return;
 }
 

@@ -323,7 +323,8 @@ class PyFMM(object):
         self._wigner_b_imag = np.zeros((7,7,7), dtype=ctypes.c_void_p)
 
         # storage to prevent matrices/pointer arrays going out of scope
-        self._wigner_matrices = []
+        self._wigner_matrices_f = {}
+        self._wigner_matrices_b = {}
         self._wigner_real_pointers = []
         self._wigner_imag_pointers = []
 
@@ -362,7 +363,7 @@ class PyFMM(object):
                         alpha=sph[1], beta=sph[2], gamma=0.0,
                         dtype=self.dtype)
                     # store the temporaries
-                    self._wigner_matrices.append(matrices)
+                    self._wigner_matrices_f[(pz, py, px)] = matrices
                     self._wigner_real_pointers.append(pointers_real)
                     self._wigner_imag_pointers.append(pointers_imag)
                     # pointers
@@ -377,7 +378,7 @@ class PyFMM(object):
                         alpha=0.0, beta=-1.*sph[2], gamma=-1.*sph[1],
                         dtype=self.dtype)
                     # store the temporaries
-                    self._wigner_matrices.append(matrices)
+                    self._wigner_matrices_b[(pz, py, px)] = matrices
                     self._wigner_real_pointers.append(pointers_real)
                     self._wigner_imag_pointers.append(pointers_imag)
                     # pointers
@@ -523,7 +524,9 @@ class PyFMM(object):
                 int_tlookup=self._int_tlookup,
                 int_plookup=self._int_plookup,
                 int_radius=self._int_radius,
-                ipower_mtl=self._ipower_mtl
+                ipower_mtl=self._ipower_mtl,
+                wigner_f=self._wigner_matrices_f,
+                wigner_b=self._wigner_matrices_b
             )
 
         if self.cuda and (self._cuda_mtl is None):
@@ -644,7 +647,7 @@ class PyFMM(object):
             if self.cuda and (self.R - level -1 < self.cuda_levels):
                 self._cuda_translate_m_t_l(level)
             else:
-                self._level_call_async(self._translate_m_to_l,
+                self._level_call_async(self._translate_m_to_l_cart,
                                        level, async)
 
             self._fine_to_coarse(level)
