@@ -308,8 +308,10 @@ static __global__ void kernel_rotate_forward(
         const INT32 octal_ind = (plainx % 2) + \
             2*( (plainy % 2) + 2*(plainz % 2) );
 
+        const INT32 conx=octal_ind*189 + conxi;
 
-        INT32 conx=octal_ind*189 + conxi;
+        const INT32 local_base = 2*num_indices*(plainx + \
+        d_plain_dim2*(plainy + d_plain_dim1*plainz));
 
 		const INT32 jcell = (d_int_list[conx] + \
 			((plainx + 2) + (d_plain_dim2+4)* \
@@ -317,8 +319,8 @@ static __global__ void kernel_rotate_forward(
 			)*2*d_nlevel*d_nlevel;
         
 		// get the source vector
-		const REAL * RESTRICT re_x = &d_multipole_moments[CUBE_IND(jx, -1*jx)];
-		const REAL * RESTRICT im_x = &d_multipole_moments[CUBE_IND(jx, -1*jx) + d_nlevel*d_nlevel];
+		const REAL * RESTRICT re_x = &d_multipole_moments[jcell + CUBE_IND(jx, -1*jx)];
+		const REAL * RESTRICT im_x = &d_multipole_moments[jcell + CUBE_IND(jx, -1*jx) + d_nlevel*d_nlevel];
 
 		// get the matrix coefficients to rotate forward
 		const REAL * RESTRICT re_m = d_re_mat_forw[d_int_tlookup[conx]][jx];
@@ -331,81 +333,111 @@ static __global__ void kernel_rotate_forward(
 		REAL re_c = 0.0;
 		REAL im_c = 0.0;
 
-		// implement complex matvec 
-		// TODO rotate order to make initial read of values contigous.
-
-        const INT32 local_base = 2*num_indices*(plainx + \
-        d_plain_dim2*(plainy + d_plain_dim1*plainz));
-
-
-        const INT32 cellx = (plainx + \
-        d_plain_dim2*(plainy + d_plain_dim1*plainz));
-
-		const INT32 intx = (1 + \
-        d_plain_dim2*(1 + d_plain_dim1*1));
-
-
-
 		for(INT32 cx=0; cx<p ; cx++){
-			cplx_mul_add(   re_m[p*rx+cx],  im_m[p*rx+cx],
+			cplx_mul_add(   re_m[p*cx+rx],  im_m[p*cx+rx],
 							re_x[cx],       im_x[cx],
 							&re_c,          &im_c);
 
 		}
 		
-	
-		if ((cellx == intx) && ( jx == 1 ) && (kx == 1)){
-			printf("offset:\t%d cell:%d\n", d_int_tlookup[conx], intx);
-			for(INT32 px=0 ; px<p ; px++){
-				for(INT32 nx=0 ; nx<p ; nx++){
-					printf("\t\t%d\t%d\t%f\n", px, nx, re_m[px*p+nx]);
-				}
-			}
-		}
-
-
-        d_rot_mom[local_base + CUBE_IND(jx, kx)] = re_c;
+	    d_rot_mom[local_base + CUBE_IND(jx, kx)] = re_c;
         d_rot_mom[local_base + CUBE_IND(jx, kx) + d_nlevel*d_nlevel] = im_c;
-    }
 
+
+
+    }
 
 }
 
 
 
+static inline REAL mtp(const INT32 n){
+    return ((n % 2) == 0) ? 1.0 : -1.0;
+}
 
 
-
-
-
-
-
-
-
-
-
-static __global__ void mtl_kernel_z(
+static __global__ void kernel_shift_z(
     const INT32 num_indices,
     const INT32 nblocks,
+    const INT32 conxi,
     const REAL * RESTRICT d_multipole_moments,
-    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_re_mat_forw,
-    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_im_mat_forw,
-    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_re_mat_back,
-    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_im_mat_back,
-    const REAL * RESTRICT d_alm,
-    const REAL * RESTRICT d_almr,
-    const INT32 * RESTRICT d_int_list,
-    const INT32 * RESTRICT d_int_tlookup,
-    const double * RESTRICT d_int_radius,
     const INT32 * RESTRICT d_jlookup,
     const INT32 * RESTRICT d_klookup,
-    const REAL * RESTRICT d_ipower_mtl,
-    REAL * RESTRICT d_local_moments
+    const double * RESTRICT d_int_radius,
+    const REAL * RESTRICT d_alm,
+    const REAL * RESTRICT d_almr,
+    REAL * RESTRICT d_out_mom
 ){
     const INT32 plainx = blockIdx.x/nblocks;
     const INT32 plainy = blockIdx.y;
     const INT32 plainz = blockIdx.z;
 
+
+    const INT32 index_id = (blockIdx.x % nblocks)*blockDim.x + threadIdx.x;
+    const bool valid_id = (index_id < num_indices);
+
+    if (valid_id){
+        const INT32 jx = d_jlookup[index_id];
+        const INT32 kx = d_klookup[index_id];
+        const INT32 abs_kx = ABS(kx);
+
+        const INT32 octal_ind = (plainx % 2) + \
+            2*( (plainy % 2) + 2*(plainz % 2) );
+        const INT32 conx=octal_ind*189 + conxi;
+
+
+        const INT32 local_base = 2*num_indices*(plainx + \
+        d_plain_dim2*(plainy + d_plain_dim1*plainz));
+        
+        REAL re_c = 0.0;
+        REAL im_c = 0.0;
+        const REAL iradius = 1./(d_int_radius[conx] * d_radius);
+
+        REAL next_iradius = pow(iradius, jx+abs_kx+1);
+
+        for(INT32 nx=abs_kx ; nx<d_nlevel ; nx++){
+            
+            const REAL coeff =  d_almr[nx+jx] * \
+                                next_iradius * \
+                                d_alm[jx*d_ASTRIDE1 + d_ASTRIDE2 + kx] * \
+                                d_alm[nx*d_ASTRIDE1 + d_ASTRIDE2 + kx];
+
+            const INT32 oind = CUBE_IND(nx, kx) + local_base;
+            const REAL o_re = d_multipole_moments[oind];
+            const REAL o_im = d_multipole_moments[oind + d_nlevel*d_nlevel];
+
+            re_c += o_re * coeff;
+            im_c += o_im * coeff;
+
+            next_iradius *= -1.0 * iradius;
+        }
+
+        d_out_mom[local_base + CUBE_IND(jx, kx)] = re_c;
+        d_out_mom[local_base + CUBE_IND(jx, kx) + d_nlevel*d_nlevel] = im_c;
+
+
+    }
+
+}
+
+
+
+static __global__ void kernel_rotate_back(
+    const INT32 num_indices,
+    const INT32 nblocks,
+	const INT32	conxi,
+    const REAL * RESTRICT d_multipole_moments,
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_re_mat_forw,
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_im_mat_forw,
+    const INT32 * RESTRICT d_int_list,
+    const INT32 * RESTRICT d_int_tlookup,
+    const INT32 * RESTRICT d_jlookup,
+    const INT32 * RESTRICT d_klookup,
+    REAL * RESTRICT d_rot_mom
+){
+    const INT32 plainx = blockIdx.x/nblocks;
+    const INT32 plainy = blockIdx.y;
+    const INT32 plainz = blockIdx.z;
 
 
     const INT32 index_id = (blockIdx.x % nblocks)*blockDim.x + threadIdx.x;
@@ -418,42 +450,42 @@ static __global__ void mtl_kernel_z(
         const INT32 octal_ind = (plainx % 2) + \
             2*( (plainy % 2) + 2*(plainz % 2) );
 
-        REAL contrib_re = 0.0;
-        REAL contrib_im = 0.0; 
-
-        for (INT32 conx=octal_ind*189 ; conx<(octal_ind+1)*189 ; conx++){
-            
-            const REAL iradius = 1./(d_int_radius[conx] * d_radius);
-
-            const INT32 jcell = (d_int_list[conx] + \
-                ((plainx + 2) + (d_plain_dim2+4)* \
-                ( (plainy + 2) + (d_plain_dim1+4) * (plainz + 2) )) \
-                )*2*d_nlevel*d_nlevel;
-            
-            
-            REAL m1tn_ajk = d_alm[jx*d_ASTRIDE1 + d_ASTRIDE2 + kx] * pow(iradius, jx+1);
-            // use Y values
-            for( INT32 nx=0 ; nx<d_nlevel ; nx++ ){
-
-                for( INT32 mx=-1*nx ; mx<=nx ; mx++ ){
-                    
-
-                    
-                }
-
-                
-            }
-        }
+        const INT32 conx=octal_ind*189 + conxi;
 
         const INT32 local_base = 2*num_indices*(plainx + \
-        d_plain_dim2*(plainy + d_plain_dim1*plainz));   
-        d_local_moments[local_base + CUBE_IND(jx, kx)] = contrib_re;
-        d_local_moments[local_base + CUBE_IND(jx, kx) + d_nlevel*d_nlevel] = contrib_im;
+        d_plain_dim2*(plainy + d_plain_dim1*plainz));
+        
+		// get the source vector
+		const REAL * RESTRICT re_x = &d_multipole_moments[local_base + CUBE_IND(jx, -1*jx)];
+		const REAL * RESTRICT im_x = &d_multipole_moments[local_base + CUBE_IND(jx, -1*jx) + d_nlevel*d_nlevel];
+
+		// get the matrix coefficients to rotate forward
+		const REAL * RESTRICT re_m = d_re_mat_forw[d_int_tlookup[conx]][jx];
+		const REAL * RESTRICT im_m = d_im_mat_forw[d_int_tlookup[conx]][jx];
+		
+
+		// size of matrix
+		const INT32 p = 2*jx+1;
+		const INT32 rx = kx + jx;
+		REAL re_c = 0.0;
+		REAL im_c = 0.0;
+
+
+
+		for(INT32 cx=0; cx<p ; cx++){
+			cplx_mul_add(   re_m[p*cx+rx],  im_m[p*cx+rx],
+							re_x[cx],       im_x[cx],
+							&re_c,          &im_c);
+
+		}
+
+        d_rot_mom[local_base + CUBE_IND(jx, kx)] += re_c;
+        d_rot_mom[local_base + CUBE_IND(jx, kx) + d_nlevel*d_nlevel] += im_c;
+
+
     }
 
-
 }
-
 
 
 
@@ -556,24 +588,65 @@ int translate_mtl_z(
     err = cudaMemcpyToSymbol(d_ASTRIDE2, &ASTRIDE2, sizeof(INT32));
     if (err != cudaSuccess) {return err;}
 
-    kernel_rotate_forward<<<grid_block, thread_block>>>(
-    //kernel_rotate_forward<<<nblocks, thread_block_size>>>(
-    num_indices,
-    nblocks,
-	INT32(0),
-    d_multipole_moments,
-    d_re_mat_forw,
-    d_im_mat_forw,
-    d_int_list,
-    d_int_tlookup,
-    d_jlookup,
-    d_klookup,
-    d_tmp_plain0
-	);
 
 
-    err = cudaDeviceSynchronize();
-    if (err != cudaSuccess) {return err;}
+    for( INT32 cxi=0 ; cxi<189 ; cxi++){
+        kernel_rotate_forward<<<grid_block, thread_block>>>(
+        num_indices,
+        nblocks,
+        cxi,
+        d_multipole_moments,
+        d_re_mat_forw,
+        d_im_mat_forw,
+        d_int_list,
+        d_int_tlookup,
+        d_jlookup,
+        d_klookup,
+        d_tmp_plain0
+        );
+
+        err = cudaDeviceSynchronize();
+        if (err != cudaSuccess) {return err;}
+
+        kernel_shift_z<<<grid_block, thread_block>>>(
+            num_indices,
+            nblocks,
+            cxi,
+            d_tmp_plain0,
+            d_jlookup,
+            d_klookup,
+            d_int_radius,
+            d_alm,
+            d_almr,
+            d_tmp_plain1
+        );
+
+        err = cudaDeviceSynchronize();
+        if (err != cudaSuccess) {return err;}
+
+
+        kernel_rotate_back<<<grid_block, thread_block>>>(
+        num_indices,
+        nblocks,
+        cxi,
+        d_tmp_plain1,
+        d_re_mat_back,
+        d_im_mat_back,
+        d_int_list,
+        d_int_tlookup,
+        d_jlookup,
+        d_klookup,
+        d_local_moments
+        );
+
+        err = cudaDeviceSynchronize();
+        if (err != cudaSuccess) {return err;}
+    }
+
+
+
+
+
 
     return err;
 }

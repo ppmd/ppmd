@@ -62,7 +62,7 @@ np.set_printoptions(threshold=np.nan)
 class TranslateMTLCuda(object):
     def __init__(self, dtype, tree, nlevel, a_arr, ar_arr, p_arr, e_arr,
                  int_list, int_tlookup, int_plookup, int_radius, ipower_mtl,
-                 wigner_f, wigner_b):
+                 wigner_f, wigner_b, arn0):
         self.tree = tree
         self.L = nlevel
         ncomp = (self.L**2) * 2
@@ -123,6 +123,14 @@ class TranslateMTLCuda(object):
         self._dev_matrices = []
         self._dev_pointers = []
 
+        def ffs_numpy_swap_memory(arr):
+            out = np.zeros_like(arr)
+            for ix in range(arr.shape[0]):
+                for iy in range(arr.shape[1]):
+                    out[ix, iy] = arr[iy, ix]
+            return out
+
+
         # convert host rotation matrices to device matrices
         for iz, pz in enumerate(range(-3, 4)):
             for iy, py in enumerate(range(-3, 4)):
@@ -135,7 +143,9 @@ class TranslateMTLCuda(object):
 
                     for p in range(nlevel):
                         # forward real
-                        nn = cuda_base.gpuarray.to_gpu(f['real'][p])
+
+                        o = ffs_numpy_swap_memory(f['real'][p])
+                        nn = cuda_base.gpuarray.to_gpu(o)
                         self._dev_matrices.append(nn)
                         pa[p] = self._dev_matrices[-1].ptr
 
@@ -149,8 +159,11 @@ class TranslateMTLCuda(object):
                     pa = np.zeros(nlevel, dtype=ctypes.c_void_p)
 
                     for p in range(nlevel):
+
                         # forward imag
-                        nn = cuda_base.gpuarray.to_gpu(f['imag'][p])
+
+                        o = ffs_numpy_swap_memory(f['imag'][p])
+                        nn = cuda_base.gpuarray.to_gpu(o)
                         self._dev_matrices.append(nn)
                         pa[p] = self._dev_matrices[-1].ptr
 
@@ -170,7 +183,9 @@ class TranslateMTLCuda(object):
 
                     for p in range(nlevel):
                         # backward real
-                        nn = cuda_base.gpuarray.to_gpu(b['real'][p])
+
+                        o = ffs_numpy_swap_memory(b['real'][p])
+                        nn = cuda_base.gpuarray.to_gpu(o)
                         self._dev_matrices.append(nn)
                         pa[p] = self._dev_matrices[-1].ptr
 
@@ -184,8 +199,10 @@ class TranslateMTLCuda(object):
                     pa = np.zeros(nlevel, dtype=ctypes.c_void_p)
 
                     for p in range(nlevel):
+
                         # backward imag
-                        nn = cuda_base.gpuarray.to_gpu(b['imag'][p])
+                        o = ffs_numpy_swap_memory(b['imag'][p])
+                        nn = cuda_base.gpuarray.to_gpu(o)
                         self._dev_matrices.append(nn)
                         pa[p] = self._dev_matrices[-1].ptr
 
@@ -203,7 +220,7 @@ class TranslateMTLCuda(object):
         self._wigner_b_real = cuda_base.gpuarray.to_gpu(self._wigner_b_real)
         self._wigner_b_imag = cuda_base.gpuarray.to_gpu(self._wigner_b_imag)
 
-
+        self._arn0 = cuda_base.gpuarray.to_gpu(arn0)
 
 
         # load multipole to local lib
@@ -309,7 +326,7 @@ class TranslateMTLCuda(object):
             _check_dtype(self._wigner_b_real, ctypes.c_void_p),
             _check_dtype(self._wigner_b_imag, ctypes.c_void_p),
             _check_dtype(self._d_a, REAL),
-            _check_dtype(self._d_ar, REAL),
+            _check_dtype(self._arn0, REAL),
             REAL(radius),
             INT64(self.L),
             _check_dtype(self._int_list[level], INT32),

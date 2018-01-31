@@ -27,14 +27,14 @@ static inline void rotate_p_moments(
 
     // implement complex matvec
 
-	if(p == 3){
-	printf("HOST MATVEC\n");
-    for(INT32 rx=0; rx<p ; rx++){
-        for(INT32 cx=0; cx<p ; cx++){
-			printf("\t\t%d\t%d\t%f\n", rx, cx, re_m[rx*p+cx]);
-        }
-    }
-	}
+	//if(p == 3){
+	//printf("HOST MATVEC\n");
+    //for(INT32 rx=0; rx<p ; rx++){
+    //    for(INT32 cx=0; cx<p ; cx++){
+	//		printf("\t\t%d\t%d\t%f\n", rx, cx, re_m[rx*p+cx]);
+    //    }
+    //}
+	//}
 
     for(INT32 rx=0; rx<p ; rx++){
         REAL re_c = 0.0;
@@ -220,22 +220,14 @@ static inline void mtl_z(
         tmp_iml
     );
 
+/*
 	for( INT32 jx=0 ; jx<nlevel ; jx++){
 		printf("HOST %d\n", jx);
 		for(INT32 kx=-jx ; kx<jx+1 ; kx++){
 			printf(" %d\t%f\t%f\n", jx, tmp_rel[CUBE_IND(jx, kx)], tmp_iml[CUBE_IND(jx, kx)]);
 		}
 	}
-
-    
-
-
-
-
-
-
-
-
+*/
 
     for(INT32 jx=0 ; jx<ts ; jx++){
         tmp_reh[jx]=0.0;
@@ -277,8 +269,14 @@ static inline void mtl_z(
 
         }
     }
-
-
+/*
+	for( INT32 jx=0 ; jx<nlevel ; jx++){
+		printf("HOST %d\n", jx);
+		for(INT32 kx=-jx ; kx<jx+1 ; kx++){
+			printf(" %d\t%.16f\t%.16f\n", kx, tmp_reh[CUBE_IND(jx, kx)], tmp_imh[CUBE_IND(jx, kx)]);
+		}
+	}
+*/
     rotate_moments_append(
         nlevel,
         re_mat_back,
@@ -360,8 +358,6 @@ int translate_mtl(
     const INT32 phi_stride = 8*nlevel + 2;
     const INT32 theta_stride = 4 * nlevel * nlevel;
 
-		printf("conx loop modified, ncells:%d\n", ncells);
-
     #pragma omp parallel for default(none) schedule(dynamic) \
     shared(dim_child, multipole_moments, local_moments, \
     alm, almr, i_array, int_list, int_tlookup, \
@@ -387,16 +383,12 @@ int translate_mtl(
         REAL * out_moments = &local_moments[ncomp * pcx];
         // loop over contributing nearby cells.
 		
-		if (pcx != 73){continue;}
-        for( INT32 conx=octal_ind*189 ; conx<(octal_ind)*189+1 ; conx++ ){
-        //for( INT32 conx=octal_ind*189 ; conx<(octal_ind+1)*189 ; conx++ ){
+        for( INT32 conx=octal_ind*189 ; conx<(octal_ind+1)*189 ; conx++ ){
             
             const REAL local_radius = int_radius[conx] * radius;
             const INT32 jcell = int_list[conx] + halo_ind;
 
             const INT32 t_lookup = int_tlookup[conx];
-			
-			printf("HOST F MAT INDEX: %d \n", t_lookup);
 
             mtl_z(nlevel, local_radius, &multipole_moments[jcell*ncomp],
                 re_mat_forw[t_lookup],
@@ -410,14 +402,7 @@ int translate_mtl(
                 thread_space);
            
         }
-/*        
-        printf("==========%d\t%d\t%d==========\n", cx, cy, cz);
-        for(int jx=0; jx<nlevel ; jx++){
-            for(int kx=-1*jx; kx<=jx ; kx++){
-                printf("%d\t%d\t%f\n",jx, kx, out_moments[CUBE_IND(jx, kx)]);
-            }
-        }
-*/        
+
     }
 
     return err;

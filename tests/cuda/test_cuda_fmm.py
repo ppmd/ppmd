@@ -101,14 +101,21 @@ def test_cuda_fmm_2():
 
     lx_cuda = fmm._cuda_mtl.translate_mtlz(fmm.tree_halo, lx, radius)
 
-    tmp_plain0 = fmm._cuda_mtl.tmp_plain0[lx]
     for jx in range(fmm.L):
         print(jx)
         for kx in range(-jx, jx+1):
-            print("{: 2d} {: .8f} {: .8f}".format(
-                kx, tmp_plain0[1,1,1,fmm.re_lm(jx,kx)],
-                tmp_plain0[1,1,1, fmm.im_lm(jx,kx)]))
+            print("{: 2d} | {: .8f} {: .8f} | {: .8f} {: .8f} ".format(
+                kx,
+                fmm.tree_plain[lx][1,1,1,fmm.re_lm(jx,kx)],
+                lx_cuda[1,1,1,fmm.re_lm(jx,kx)],
+                fmm.tree_plain[lx][1,1,1,fmm.im_lm(jx,kx)],
+                lx_cuda[1,1,1,fmm.im_lm(jx,kx)]))
 
+    assert np.linalg.norm(lx_cuda.ravel() - fmm.tree_plain[lx].ravel(),
+                          np.inf) < 10.**-14
 
+    fmm.tree_plain[lx][:] = 0.0
+    fmm._translate_m_to_l_cart(lx)
 
-
+    assert np.linalg.norm(lx_cuda.ravel() - fmm.tree_plain[lx].ravel(),
+                          np.inf) < 10.**-14

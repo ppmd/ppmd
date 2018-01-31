@@ -526,7 +526,8 @@ class PyFMM(object):
                 int_radius=self._int_radius,
                 ipower_mtl=self._ipower_mtl,
                 wigner_f=self._wigner_matrices_f,
-                wigner_b=self._wigner_matrices_b
+                wigner_b=self._wigner_matrices_b,
+                arn0=self._arn0
             )
 
         if self.cuda and (self._cuda_mtl is None):
