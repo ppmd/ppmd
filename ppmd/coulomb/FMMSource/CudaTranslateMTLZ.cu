@@ -220,9 +220,6 @@ int translate_mtl(
     err = cudaMemcpyToSymbol(d_ASTRIDE2, &ASTRIDE2, sizeof(INT32));
     if (err != cudaSuccess) {return err;}
 
-
-    const size_t shared_bytes = sizeof(REAL) * ncomp2;
-
     
     mtl_kernel2<<<grid_block, thread_block>>>(
         num_indices,
@@ -281,9 +278,98 @@ int translate_mtl(
 
 
 
+// -----------------------------------------------------------------------------------
+
+static __global__ void kernel_rotate_forward(
+    const INT32 num_indices,
+    const INT32 nblocks,
+	const INT32	conxi,
+    const REAL * RESTRICT d_multipole_moments,
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_re_mat_forw,
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_im_mat_forw,
+    const INT32 * RESTRICT d_int_list,
+    const INT32 * RESTRICT d_int_tlookup,
+    const INT32 * RESTRICT d_jlookup,
+    const INT32 * RESTRICT d_klookup,
+    REAL * RESTRICT d_rot_mom
+){
+    const INT32 plainx = blockIdx.x/nblocks;
+    const INT32 plainy = blockIdx.y;
+    const INT32 plainz = blockIdx.z;
+
+
+    const INT32 index_id = (blockIdx.x % nblocks)*blockDim.x + threadIdx.x;
+    const bool valid_id = (index_id < num_indices);
+
+    if (valid_id){
+        const INT32 jx = d_jlookup[index_id];
+        const INT32 kx = d_klookup[index_id];
+
+        const INT32 octal_ind = (plainx % 2) + \
+            2*( (plainy % 2) + 2*(plainz % 2) );
+
+
+        INT32 conx=octal_ind*189 + conxi;
+
+		const INT32 jcell = (d_int_list[conx] + \
+			((plainx + 2) + (d_plain_dim2+4)* \
+			( (plainy + 2) + (d_plain_dim1+4) * (plainz + 2) )) \
+			)*2*d_nlevel*d_nlevel;
+        
+		// get the source vector
+		const REAL * RESTRICT re_x = &d_multipole_moments[CUBE_IND(jx, -1*jx)];
+		const REAL * RESTRICT im_x = &d_multipole_moments[CUBE_IND(jx, -1*jx) + d_nlevel*d_nlevel];
+
+		// get the matrix coefficients to rotate forward
+		const REAL * RESTRICT re_m = d_re_mat_forw[d_int_tlookup[conx]][jx];
+		const REAL * RESTRICT im_m = d_im_mat_forw[d_int_tlookup[conx]][jx];
+		
+
+		// size of matrix
+		const INT32 p = 2*jx+1;
+		const INT32 rx = kx + jx;
+		REAL re_c = 0.0;
+		REAL im_c = 0.0;
+
+		// implement complex matvec 
+		// TODO rotate order to make initial read of values contigous.
+
+        const INT32 local_base = 2*num_indices*(plainx + \
+        d_plain_dim2*(plainy + d_plain_dim1*plainz));
+
+
+        const INT32 cellx = (plainx + \
+        d_plain_dim2*(plainy + d_plain_dim1*plainz));
+
+		const INT32 intx = (1 + \
+        d_plain_dim2*(1 + d_plain_dim1*1));
 
 
 
+		for(INT32 cx=0; cx<p ; cx++){
+			cplx_mul_add(   re_m[p*rx+cx],  im_m[p*rx+cx],
+							re_x[cx],       im_x[cx],
+							&re_c,          &im_c);
+
+		}
+		
+	
+		if ((cellx == intx) && ( jx == 1 ) && (kx == 1)){
+			printf("offset:\t%d cell:%d\n", d_int_tlookup[conx], intx);
+			for(INT32 px=0 ; px<p ; px++){
+				for(INT32 nx=0 ; nx<p ; nx++){
+					printf("\t\t%d\t%d\t%f\n", px, nx, re_m[px*p+nx]);
+				}
+			}
+		}
+
+
+        d_rot_mom[local_base + CUBE_IND(jx, kx)] = re_c;
+        d_rot_mom[local_base + CUBE_IND(jx, kx) + d_nlevel*d_nlevel] = im_c;
+    }
+
+
+}
 
 
 
@@ -376,6 +462,8 @@ int translate_mtl_z(
     const UINT32 * RESTRICT dim_child,      // slowest to fastest
     const REAL * RESTRICT d_multipole_moments,
     REAL * RESTRICT d_local_moments,
+	REAL * RESTRICT d_tmp_plain0,
+	REAL * RESTRICT d_tmp_plain1,
     const REAL * RESTRICT const * RESTRICT const * RESTRICT d_re_mat_forw,
     const REAL * RESTRICT const * RESTRICT const * RESTRICT d_im_mat_forw,
     const REAL * RESTRICT const * RESTRICT const * RESTRICT d_re_mat_back,
@@ -468,10 +556,21 @@ int translate_mtl_z(
     err = cudaMemcpyToSymbol(d_ASTRIDE2, &ASTRIDE2, sizeof(INT32));
     if (err != cudaSuccess) {return err;}
 
+    kernel_rotate_forward<<<grid_block, thread_block>>>(
+    //kernel_rotate_forward<<<nblocks, thread_block_size>>>(
+    num_indices,
+    nblocks,
+	INT32(0),
+    d_multipole_moments,
+    d_re_mat_forw,
+    d_im_mat_forw,
+    d_int_list,
+    d_int_tlookup,
+    d_jlookup,
+    d_klookup,
+    d_tmp_plain0
+	);
 
-    const size_t shared_bytes = sizeof(REAL) * ncomp2;
-
-    
 
     err = cudaDeviceSynchronize();
     if (err != cudaSuccess) {return err;}

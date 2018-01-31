@@ -63,6 +63,52 @@ def test_cuda_fmm_1():
 
 
 
+@cuda
+def test_cuda_fmm_2():
+    R = 4
+
+    crN = 10
+    N = crN**3
+
+    E = 3.*crN
+
+    rc = 10.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-2
+
+    ASYNC = False
+    free_space = '27'
+    CUDA = True
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
+                cuda=CUDA)
+
+    rng = np.random.RandomState(seed=1234)
+
+    lx = 3
+    fmm.tree_halo[lx][:] = rng.uniform(low=-2.0, high=2.0,
+                                       size=fmm.tree_halo[lx].shape)
+
+    fmm._halo_exchange(lx)
+    fmm._translate_m_to_l(lx)
+
+    radius = fmm.domain.extent[0] / \
+             fmm.tree[lx].ncubes_side_global
+
+    lx_cuda = fmm._cuda_mtl.translate_mtlz(fmm.tree_halo, lx, radius)
+
+    tmp_plain0 = fmm._cuda_mtl.tmp_plain0[lx]
+    for jx in range(fmm.L):
+        print(jx)
+        for kx in range(-jx, jx+1):
+            print("{: 2d} {: .8f} {: .8f}".format(
+                kx, tmp_plain0[1,1,1,fmm.re_lm(jx,kx)],
+                tmp_plain0[1,1,1, fmm.im_lm(jx,kx)]))
+
 
 
 

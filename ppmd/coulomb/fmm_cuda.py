@@ -109,10 +109,10 @@ class TranslateMTLCuda(object):
 
 
         # need tmp space to rotate moments
-        self.tmp_tree1 = OctalCudaDataTree(tree=tree, mode='plain',
-                                           dtype=dtype, ncomp=ncomp)
-        self.tmp_tree2 = OctalCudaDataTree(tree=tree, mode='plain',
-                                           dtype=dtype, ncomp=ncomp)
+        self.tmp_plain0 = OctalCudaDataTree(tree=tree, mode='plain',
+                                            dtype=dtype, ncomp=ncomp)
+        self.tmp_plain1 = OctalCudaDataTree(tree=tree, mode='plain',
+                                            dtype=dtype, ncomp=ncomp)
 
         self._wigner_real = np.zeros((7,7,7), dtype=ctypes.c_void_p)
         self._wigner_imag = np.zeros((7,7,7), dtype=ctypes.c_void_p)
@@ -144,7 +144,7 @@ class TranslateMTLCuda(object):
                     self._dev_pointers.append(pa)
 
                     # forward real
-                    self._wigner_real[pz, py, px] = self._dev_pointers[-1].ptr
+                    self._wigner_real[iz, iy, ix] = self._dev_pointers[-1].ptr
 
                     pa = np.zeros(nlevel, dtype=ctypes.c_void_p)
 
@@ -159,7 +159,7 @@ class TranslateMTLCuda(object):
                     self._dev_pointers.append(pa)
 
                     # forward imag
-                    self._wigner_imag[pz, py, px] = self._dev_pointers[-1].ptr
+                    self._wigner_imag[iz, iy, ix] = self._dev_pointers[-1].ptr
 
 
                     f = None
@@ -179,7 +179,7 @@ class TranslateMTLCuda(object):
                     self._dev_pointers.append(pa)
 
                     # backward real
-                    self._wigner_b_real[pz, py, px] =self._dev_pointers[-1].ptr
+                    self._wigner_b_real[iz, iy, ix] =self._dev_pointers[-1].ptr
 
                     pa = np.zeros(nlevel, dtype=ctypes.c_void_p)
 
@@ -194,7 +194,7 @@ class TranslateMTLCuda(object):
                     self._dev_pointers.append(pa)
 
                     # backward imag
-                    self._wigner_b_imag[pz, py, px] =self._dev_pointers[-1].ptr
+                    self._wigner_b_imag[iz, iy, ix] =self._dev_pointers[-1].ptr
 
 
         # pointers to pointers on device
@@ -282,9 +282,53 @@ class TranslateMTLCuda(object):
 
 
 
+    def translate_mtlz(self, host_halo_tree, level, radius,
+                      host_plain_tree=None):
+
+        self.tree_halo[level] = host_halo_tree
+        self._translate_mtlz(level, radius)
+        if host_plain_tree is not None:
+            self.tree_plain.get(level, host_plain_tree)
+            return None
+        return self.tree_plain[level]
+
+    def _translate_mtlz(self, level, radius):
+        self._lock.acquire(True)
 
 
+        self.timer_mtl.start()
+        print("DEVICE_NUMBER:\t",cuda_runtime.DEVICE_NUMBER)
+        err = self._translate_mtl_lib['translate_mtl_z'](
+            _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
+            self.tree_halo.device_pointer(level),
+            self.tree_plain.device_pointer(level),
+            self.tmp_plain0.device_pointer(level),
+            self.tmp_plain1.device_pointer(level),
+            _check_dtype(self._wigner_real  , ctypes.c_void_p),
+            _check_dtype(self._wigner_imag  , ctypes.c_void_p),
+            _check_dtype(self._wigner_b_real, ctypes.c_void_p),
+            _check_dtype(self._wigner_b_imag, ctypes.c_void_p),
+            _check_dtype(self._d_a, REAL),
+            _check_dtype(self._d_ar, REAL),
+            REAL(radius),
+            INT64(self.L),
+            _check_dtype(self._int_list[level], INT32),
+            _check_dtype(self._d_int_tlookup, INT32),
+            _check_dtype(self._d_int_radius, ctypes.c_double),
+            _check_dtype(self._jlookup, INT32),
+            _check_dtype(self._klookup, INT32),
+            _check_dtype(self._ipower_mtl, REAL),
+            INT32(128),
+            INT32(cuda_runtime.DEVICE_NUMBER)
+        )
 
+        self.timer_mtl.pause()
+        self._lock.release()
+
+        cuda_runtime.cuda_err_check(err)
+
+        if err < 0:
+            raise RuntimeError("Negative error code caught: {}".format(err))
 
 
 
