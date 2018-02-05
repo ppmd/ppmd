@@ -11,6 +11,10 @@ import cmath
 import ctypes
 
 from ppmd.coulomb.cached import cached
+from ppmd.lib.build import simple_lib_creator
+
+import os
+_SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
 @cached(maxsize=1024)
 def wigner_d(j, mp, m, beta):
@@ -44,7 +48,7 @@ def wigner_d(j, mp, m, beta):
            (math.cos(0.5*beta)**b) * jacobi(k,a,b)(math.cos(beta))
 
 
-@cached(maxsize=40960)
+@cached(maxsize=4096000)
 def wigner_d_rec(j, mp, m, beta):
     """
     Compute the Wigner d-matrix d_{m', m}^j(\beta) using recursion relations
@@ -88,6 +92,7 @@ def wigner_d_rec(j, mp, m, beta):
         term3 = sc * math.sqrt(
             (j-m)*(j-m-1)/denom) * \
             wigner_d_rec(j-1, mp, m+1, beta)
+
         return term1 + term2 - term3
 
 
@@ -216,6 +221,69 @@ def Rzyz_set(p, alpha, beta, gamma, dtype):
         pointers_imag[px] = matrices['imag'][-1].ctypes.data
 
     return pointers_real, pointers_imag, matrices
+
+
+
+class _WignerEngine(object):
+    def __init__(self):
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/WignerSource.cpp') as fh:
+            cpp = fh.read()
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/WignerSource.h') as fh:
+            hpp = fh.read()
+
+        self._lib = simple_lib_creator(hpp, cpp,
+            'wigner_matrix')['get_matrix_set']
+
+
+    def __call__(self, maxj, beta):
+
+        pointers = np.zeros(maxj, dtype=ctypes.c_void_p)
+        matrices = []
+
+        for jx in range(maxj):
+            p = 2*jx +1
+            matrices.append(np.zeros((p, p), dtype=ctypes.c_double))
+            pointers[jx] = matrices[-1].ctypes.data
+
+        self._lib(
+            ctypes.c_int32(maxj),
+            ctypes.c_double(beta),
+            pointers.ctypes.get_as_parameter()
+        )
+
+        return pointers, matrices
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

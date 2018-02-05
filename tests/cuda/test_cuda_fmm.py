@@ -55,7 +55,7 @@ def test_cuda_fmm_1():
     radius = fmm.domain.extent[0] / \
              fmm.tree[lx].ncubes_side_global
 
-    lx_cuda = fmm._cuda_mtl.translate_mtl(fmm.tree_halo, lx, radius)
+    lx_cuda = fmm._cuda_mtl.translate_mtl_cart(fmm.tree_halo, lx, radius)
 
     for px in range(lx_cuda.ravel().shape[0]):
         assert abs(fmm.tree_plain[lx].ravel()[px] - lx_cuda.ravel()[px]) < \
@@ -101,15 +101,6 @@ def test_cuda_fmm_2():
 
     lx_cuda = fmm._cuda_mtl.translate_mtlz(fmm.tree_halo, lx, radius)
 
-    for jx in range(fmm.L):
-        print(jx)
-        for kx in range(-jx, jx+1):
-            print("{: 2d} | {: .8f} {: .8f} | {: .8f} {: .8f} ".format(
-                kx,
-                fmm.tree_plain[lx][1,1,1,fmm.re_lm(jx,kx)],
-                lx_cuda[1,1,1,fmm.re_lm(jx,kx)],
-                fmm.tree_plain[lx][1,1,1,fmm.im_lm(jx,kx)],
-                lx_cuda[1,1,1,fmm.im_lm(jx,kx)]))
 
     assert np.linalg.norm(lx_cuda.ravel() - fmm.tree_plain[lx].ravel(),
                           np.inf) < 10.**-14

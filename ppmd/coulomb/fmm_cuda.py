@@ -252,12 +252,22 @@ class TranslateMTLCuda(object):
         return self.tree_plain[level]
 
 
+    def translate_mtl_cart(self, host_halo_tree, level, radius,
+                      host_plain_tree=None):
+
+        self.tree_halo[level] = host_halo_tree
+        self._translate_mtlz(level, radius)
+        if host_plain_tree is not None:
+            self.tree_plain.get(level, host_plain_tree)
+            return None
+        return self.tree_plain[level]
+
     # perform all mtl stages in one step
     def translate_mtl(self, host_halo_tree, level, radius,
                       host_plain_tree=None):
 
         self.tree_halo[level] = host_halo_tree
-        self._translate_mtl(level, radius)
+        self._translate_mtlz(level, radius)
         if host_plain_tree is not None:
             self.tree_plain.get(level, host_plain_tree)
             return None
@@ -267,7 +277,6 @@ class TranslateMTLCuda(object):
         self._lock.acquire(True)
 
         self.timer_mtl.start()
-        print("DEVICE_NUMBER:\t",cuda_runtime.DEVICE_NUMBER)
         err = self._translate_mtl_lib['translate_mtl'](
             _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
             self.tree_halo.device_pointer(level),
@@ -314,7 +323,6 @@ class TranslateMTLCuda(object):
 
 
         self.timer_mtl.start()
-        print("DEVICE_NUMBER:\t",cuda_runtime.DEVICE_NUMBER)
         err = self._translate_mtl_lib['translate_mtl_z'](
             _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
             self.tree_halo.device_pointer(level),
@@ -335,7 +343,7 @@ class TranslateMTLCuda(object):
             _check_dtype(self._jlookup, INT32),
             _check_dtype(self._klookup, INT32),
             _check_dtype(self._ipower_mtl, REAL),
-            INT32(128),
+            INT32(256),
             INT32(cuda_runtime.DEVICE_NUMBER)
         )
 

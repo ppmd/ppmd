@@ -20,6 +20,7 @@ from ppmd.coulomb.fmm import *
 from ppmd.coulomb.ewald_half import *
 
 from ppmd.coulomb.wigner import *
+from ppmd.coulomb import wigner
 
 from transforms3d.euler import mat2euler
 from scipy.special import sph_harm, lpmv
@@ -973,6 +974,73 @@ def test_wigner_6_pi():
 
     if DEBUG:
         print("ERR:\t", red_tol(err, tol))
+
+
+
+
+
+def test_wigner_c_1():
+    tol = 10.**-14
+    beta = 0.566
+    jmax = 50
+
+    E = wigner._WignerEngine()
+
+    pointers, matrices = E(jmax, beta)
+
+    for jx in range(1,jmax):
+        if DEBUG:
+            print(jx)
+        for mpx in range(-jx, jx+1):
+            if DEBUG:
+                print("\t", mpx)
+            for mx in range(-jx, jx+1):
+                aa = wigner_d_rec(jx, mpx, mx, beta)
+                bb = matrices[jx][mpx+jx, mx+jx]
+
+                err = abs(aa - bb)
+                if err > tol:
+                    serr = red(err)
+                else:
+                    serr = green(err)
+
+                if DEBUG:
+                    print("\t\t{: .8f} {: .8f}".format(aa, bb),
+                          "\t", serr)
+                assert err < tol*jx
+
+
+def test_wigner_c_2():
+    tol = 10.**-14
+    jmax = 20
+
+    E = wigner._WignerEngine()
+
+
+    for beta in np.random.uniform(low=-2.*math.pi, high=2.0*math.pi, size=40):
+
+        pointers, matrices = E(jmax, beta)
+
+        for jx in range(1,jmax):
+            if DEBUG:
+                print(jx)
+            for mpx in range(-jx, jx+1):
+                if DEBUG:
+                    print("\t", mpx)
+                for mx in range(-jx, jx+1):
+                    aa = wigner_d_rec(jx, mpx, mx, beta)
+                    bb = matrices[jx][mpx+jx, mx+jx]
+
+                    err = abs(aa - bb)
+                    if err > tol:
+                        serr = red(err)
+                    else:
+                        serr = green(err)
+
+                    if DEBUG:
+                        print("\t\t{: .8f} {: .8f}".format(aa, bb),
+                              "\t", serr)
+                    assert err < tol*jx
 
 
 

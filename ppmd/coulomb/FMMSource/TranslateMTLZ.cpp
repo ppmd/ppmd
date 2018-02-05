@@ -25,31 +25,78 @@ static inline void rotate_p_moments(
     REAL * RESTRICT im_b
 ){
 
-    // implement complex matvec
+    //if (p<BLOCKSIZE && false){
 
-	//if(p == 3){
-	//printf("HOST MATVEC\n");
-    //for(INT32 rx=0; rx<p ; rx++){
-    //    for(INT32 cx=0; cx<p ; cx++){
-	//		printf("\t\t%d\t%d\t%f\n", rx, cx, re_m[rx*p+cx]);
-    //    }
-    //}
-	//}
-
-    for(INT32 rx=0; rx<p ; rx++){
-        REAL re_c = 0.0;
-        REAL im_c = 0.0;
-        for(INT32 cx=0; cx<p ; cx++){
-            cplx_mul_add(   re_m[p*rx+cx],  im_m[p*rx+cx],
-                            re_x[cx],       im_x[cx],
-                            &re_c,          &im_c);
+        for(INT32 rx=0; rx<p ; rx++){
+            REAL re_c = 0.0;
+            REAL im_c = 0.0;
+            for(INT32 cx=0; cx<p ; cx++){
+                cplx_mul_add(   re_m[p*rx+cx],  im_m[p*rx+cx],
+                                re_x[cx],       im_x[cx],
+                                &re_c,          &im_c);
+            }
+            re_b[rx] = re_c;
+            im_b[rx] = im_c;
         }
-        re_b[rx] = re_c;
-        im_b[rx] = im_c;
+        return;
+    /*
+    } else {
+        
+        const INT32 nblk = p/BLOCKSIZE;
+        const INT32 npeel = p - nblk*BLOCKSIZE;
+        for( INT32 rx=0 ; rx<p ; rx++){
+            re_b[rx] = 0.0;
+            im_b[rx] = 0.0;
+        }
+
+
+        for( INT32 rbx=0 ; rbx<nblk*BLOCKSIZE ; rbx+=BLOCKSIZE ){
+            for( INT32 cbx=0 ; cbx<nblk*BLOCKSIZE ; cbx+=BLOCKSIZE ){
+                // inner blocks
+                for( INT32 rxi=0 ; rxi<BLOCKSIZE ; rxi++ ){
+                    REAL re_c = 0.0;
+                    REAL im_c = 0.0;
+                    const INT32 rx = rxi + rbx;
+                    for( INT32 cxi=0 ; cxi<BLOCKSIZE ; cxi++ ){
+                        const INT32 cx = cxi + cbx;
+                        cplx_mul_add(   re_m[p*rx+cx],  im_m[p*rx+cx],
+                                        re_x[cx],       im_x[cx],
+                                        &re_c,          &im_c);
+                    }
+                    re_b[rx] += re_c;
+                    im_b[rx] += im_c;
+                }
+            }
+            // end of a row of blocks
+            for( INT32 rxi=0 ; rxi<BLOCKSIZE ; rxi++ ){
+                REAL re_c = 0.0;
+                REAL im_c = 0.0;
+                const INT32 rx = rxi + rbx;
+                for( INT32 cxi=0 ; cxi<npeel ; cxi++ ){
+                    const INT32 cx = cxi + nblk*BLOCKSIZE;
+                    cplx_mul_add(   re_m[p*rx+cx],  im_m[p*rx+cx],
+                                    re_x[cx],       im_x[cx],
+                                    &re_c,          &im_c);
+                }
+                re_b[rx] += re_c;
+                im_b[rx] += im_c;
+            }
+        }
+        
+        for( INT32 rx=nblk*BLOCKSIZE ; rx<p ; rx++){
+            REAL re_c = 0.0;
+            REAL im_c = 0.0;
+            for( INT32 cx=0 ; cx<p ; cx++ ){
+                cplx_mul_add(   re_m[p*rx+cx],  im_m[p*rx+cx],
+                                re_x[cx],       im_x[cx],
+                                &re_c,          &im_c);
+            }
+            re_b[rx] += re_c;
+            im_b[rx] += im_c;                
+        }
+        return;
     }
-
-
-    return;
+    */
 }
 
 static inline void rotate_p_moments_append(

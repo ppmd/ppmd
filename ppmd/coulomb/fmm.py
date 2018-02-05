@@ -86,18 +86,23 @@ def _get_iarray(l):
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6,
         free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels=2,
-        force_unit=1.0, energy_unit=1.0, _debug=False):
+        force_unit=1.0, energy_unit=1.0, _debug=False, l=None):
 
         self._debug = _debug
 
         dtype = REAL
 
-        self.L = int(-1*log(eps,2))
-        """Number of multipole expansion coefficients"""
+        if l is None:
+            self.L = int(-1*log(eps,2))
+            """Number of multipole expansion coefficients"""
+        else:
+            self.L = l
+
         if r is None: self.R = int(log(N, 8))
         else: self.R = int(r)
-
         """Number of levels in octal tree."""
+
+
         self.dtype = dtype
         """Floating point datatype used."""
         self.domain = domain
@@ -648,7 +653,7 @@ class PyFMM(object):
             if self.cuda and (self.R - level -1 < self.cuda_levels):
                 self._cuda_translate_m_t_l(level)
             else:
-                self._level_call_async(self._translate_m_to_l_cart,
+                self._level_call_async(self._translate_m_to_l,
                                        level, async)
 
             self._fine_to_coarse(level)
@@ -745,7 +750,10 @@ class PyFMM(object):
         end = None
 
         local_plain_cells = self.tree_plain.num_cells(start, end)
+        # "cartesian"
         cost_per_cell = (self.L**4) * 16
+        # z rotation
+        cost_per_cell = self._mtlz_ops
         flop_count = 189 * cost_per_cell * local_plain_cells
         total_cost = flop_count * self.execution_count
         if self._cuda_mtl.timer_mtl.time() < 10.**-10:
