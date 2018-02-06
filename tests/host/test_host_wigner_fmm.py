@@ -565,7 +565,7 @@ def test_fmm_translate_2():
 
 def test_fmm_translate_3():
     R = 3
-    eps = 10.**-2
+    eps = 10.**-8
     free_space = True
     N = 2
     E = 4.

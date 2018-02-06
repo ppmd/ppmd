@@ -1044,19 +1044,6 @@ class PyFMM(object):
         self.timer_mtl.pause()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
     def _fine_to_coarse(self, src_level):
         if src_level < 1:
             raise RuntimeError('cannot copy from a level lower than 1')
