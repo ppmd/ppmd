@@ -202,14 +202,6 @@ def R_zyz(p, alpha, beta, gamma):
     for mx in range(m1.shape[0]):
         out[mx, :] *= m0[mx]
 
-    for mpx in range(ncomp):
-        for mx in range(ncomp):
-            mp = mpx - p
-            m = mx - p
-            coeff = eps_m(m)
-            coeff *= eps_m(mp)
-            out[mpx, mx] *= coeff
-
     return out
 
 
@@ -243,9 +235,7 @@ def Rzyz_set_2(p, alpha, beta, gamma, dtype):
     pointers_real = np.zeros(p, dtype=ctypes.c_void_p)
     pointers_imag = np.zeros(p, dtype=ctypes.c_void_p)
 
-    wp, wm = _wigner_engine(p, beta)
-
-
+    wp, wm = _wigner_engine(p, beta, eps_scaled=True)
 
     matrices = {'real': [], 'imag': []}
     for px in range(p):
@@ -291,7 +281,7 @@ class _WignerEngine(object):
             'wigner_matrix')['get_matrix_set']
 
 
-    def __call__(self, maxj, beta):
+    def __call__(self, maxj, beta, eps_scaled=False):
 
         pointers = np.zeros(maxj, dtype=ctypes.c_void_p)
         matrices = []
@@ -306,6 +296,17 @@ class _WignerEngine(object):
             ctypes.c_double(beta),
             pointers.ctypes.get_as_parameter()
         )
+
+        if eps_scaled:
+            for jx in range(maxj):
+                ncomp = 2*jx + 1
+                for mpx in range(ncomp):
+                    for mx in range(ncomp):
+                        mp = mpx - jx
+                        m = mx - jx
+                        coeff = eps_m(m)
+                        coeff *= eps_m(mp)
+                        matrices[jx][mpx, mx] *= coeff
 
         return pointers, matrices
 
