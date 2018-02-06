@@ -58,7 +58,7 @@ def red_tol(val, tol):
         return green(str(val))
 
 
-def test_fmm_force_ewald_1():
+def test_fmm_setup_time_1():
 
     R = 3
     eps = 10.**-8
@@ -79,7 +79,7 @@ def test_fmm_force_ewald_1():
     prof = cProfile.Profile()
     free_space = True
     prof.enable()
-    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space, l=40)
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space, l=20)
     prof.disable()
 
     prof.create_stats()

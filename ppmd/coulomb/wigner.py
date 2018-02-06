@@ -280,7 +280,6 @@ class _WignerEngine(object):
         self._lib = simple_lib_creator(hpp, cpp,
             'wigner_matrix')['get_matrix_set']
 
-
     def __call__(self, maxj, beta, eps_scaled=False):
 
         pointers = np.zeros(maxj, dtype=ctypes.c_void_p)

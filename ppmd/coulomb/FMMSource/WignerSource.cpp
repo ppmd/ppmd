@@ -135,16 +135,28 @@ int get_matrix_set(
 	const REAL cb = cos(0.5*beta);
 	const REAL sb = sin(0.5*beta);
 	
+    const INT32 nthreads = omp_get_num_threads();
+    const REAL inthreads = 1.0/nthreads;
 	// zeroth entry is always 1
 	mat_re[0][0] = 1.0;
 	for (INT32 jx=1 ; jx<maxj ; jx++){
 		const INT32 p = 2*jx+1;
-#pragma omp parallel for default(none) shared(mat_re, jx) schedule(static, 2)
-		for(INT32 mpx=-1*jx ; mpx<=jx ; mpx++){
-			for(INT32 mx=-1*jx ; mx<=jx ; mx++){
-				mat_re[jx][(mpx+jx)*p + (mx+jx)] = rec(jx, mx, mpx, cb, sb, mat_re[jx-1]);
-			}
-		}
+        if (p > nthreads){
+            const INT32 wp = p*inthreads;
+#pragma omp parallel for default(none) shared(mat_re, jx) schedule(static, wp)
+            for(INT32 mpx=-1*jx ; mpx<=jx ; mpx++){
+                for(INT32 mx=-1*jx ; mx<=jx ; mx++){
+                    mat_re[jx][(mpx+jx)*p + (mx+jx)] = rec(jx, mx, mpx, cb, sb, mat_re[jx-1]);
+                }
+            }
+        }else {
+            for(INT32 mpx=-1*jx ; mpx<=jx ; mpx++){
+                for(INT32 mx=-1*jx ; mx<=jx ; mx++){
+                    mat_re[jx][(mpx+jx)*p + (mx+jx)] = rec(jx, mx, mpx, cb, sb, mat_re[jx-1]);
+                }
+            }
+        }
+
 	}
 
     return 0;

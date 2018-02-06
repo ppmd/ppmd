@@ -17,6 +17,7 @@ def get_res_file_path(filename):
 
 from ppmd import *
 from ppmd.coulomb.fmm import *
+from ppmd.coulomb import fmm_pbc
 from ppmd.coulomb.ewald_half import *
 from scipy.special import sph_harm, lpmv
 import time
@@ -942,7 +943,10 @@ def test_fmm_init_5_6_1():
 
     #shell_terms = np.load(get_res_file_path('coulomb/r_coeffs_e2_L32.npy'))
 
-    shell_terms = fmm._test_shell_sum2(16, fmm.L)
+
+    shelltest2 = fmm_pbc._shell_test_2_FMMPbc(
+        fmm.L, fmm.eps,fmm.domain, fmm.dtype)
+    shell_terms = shelltest2._test_shell_sum2(16, fmm.L)
 
     for nx in range(fmm.L*2):
         for mx in range(-1*nx, nx+1):
@@ -1011,8 +1015,10 @@ def test_fmm_init_5_6_2():
     azero = 10.**-9
     fmm = PyFMM(domain=A.domain, r=2, eps=eps, free_space=False)
 
-    #shell_terms = np.load(get_res_file_path('coulomb/r_coeffs_e2_L32.npy'))
-    shell_terms = fmm._test_shell_sum(30, fmm.L)
+
+    shelltest2 = fmm_pbc._shell_test_2_FMMPbc(
+        fmm.L, fmm.eps,fmm.domain, fmm.dtype)
+    shell_terms = shelltest2._test_shell_sum(30, fmm.L)
 
     for nx in range(fmm.L*2):
         for mx in range(-1*nx, nx+1):
