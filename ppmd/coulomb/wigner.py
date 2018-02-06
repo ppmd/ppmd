@@ -175,7 +175,7 @@ def R_y(p, x):
             mp = mpx - p
             m = mx - p
             coeff = wigner_d_rec(p, mp, m, x)
-            coeff *= eps_m(1*m)
+            coeff *= eps_m(m)
             coeff *= eps_m(mp)
             out.real[mpx, mx] = coeff
     return out
@@ -193,7 +193,8 @@ def R_zyz(p, alpha, beta, gamma):
     m1 = R_y(p, beta)
     m2 = R_z_vec(p, alpha)
 
-    out = np.zeros_like(m1)
+    ncomp = 2*p+1
+    out = np.zeros((ncomp, ncomp), dtype=np.complex)
 
     for mx in range(m1.shape[1]):
         out[:, mx] = m1[:, mx] * m2[mx]
@@ -201,10 +202,63 @@ def R_zyz(p, alpha, beta, gamma):
     for mx in range(m1.shape[0]):
         out[mx, :] *= m0[mx]
 
+    for mpx in range(ncomp):
+        for mx in range(ncomp):
+            mp = mpx - p
+            m = mx - p
+            coeff = eps_m(m)
+            coeff *= eps_m(mp)
+            out[mpx, mx] *= coeff
+
     return out
 
 
+def R_zyz_given_y(p, alpha, beta, gamma, m1):
+    #return np.matmul(R_z(p, gamma),
+    #                 np.matmul(R_y(p, beta), R_z(p, alpha)))
+
+    m0 = R_z_vec(p, gamma)
+    m2 = R_z_vec(p, alpha)
+
+    ncomp = 2*p+1
+    out = np.zeros((ncomp, ncomp), dtype=np.complex)
+
+    for mx in range(m1.shape[1]):
+        out[:, mx] = m1[:, mx] * m2[mx]
+
+    for mx in range(m1.shape[0]):
+        out[mx, :] *= m0[mx]
+
+
+    return out
+
 def Rzyz_set(p, alpha, beta, gamma, dtype):
+    return Rzyz_set_2(p, alpha, beta, gamma, dtype)
+
+def Rzyz_set_2(p, alpha, beta, gamma, dtype):
+    """
+    Returns the set of matrices needed to rotate all p moments by beta around
+    the y axis.
+    """
+    pointers_real = np.zeros(p, dtype=ctypes.c_void_p)
+    pointers_imag = np.zeros(p, dtype=ctypes.c_void_p)
+
+    wp, wm = _wigner_engine(p, beta)
+
+
+
+    matrices = {'real': [], 'imag': []}
+    for px in range(p):
+        r = R_zyz_given_y(px, alpha, beta, gamma, wm[px])
+        matrices['real'].append(np.array(r.real, dtype=dtype))
+        pointers_real[px] = matrices['real'][-1].ctypes.data
+        matrices['imag'].append(np.array(r.imag, dtype=dtype))
+        pointers_imag[px] = matrices['imag'][-1].ctypes.data
+
+    return pointers_real, pointers_imag, matrices
+
+
+def Rzyz_set_orig(p, alpha, beta, gamma, dtype):
     """
     Returns the set of matrices needed to rotate all p moments by beta around
     the y axis.
@@ -254,6 +308,8 @@ class _WignerEngine(object):
         )
 
         return pointers, matrices
+
+_wigner_engine=_WignerEngine()
 
 
 

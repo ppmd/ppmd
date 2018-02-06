@@ -1,11 +1,6 @@
 
 
 
-static inline REAL eps_m(const INT32 m){
-    return ( (m % 2 == 0) || (m < 0) ) ? 1.0 : -1.0;
-}
-
-
 static inline REAL get_mat_element(
 	const INT32 j,
 	const INT32 mp,
@@ -144,6 +139,7 @@ int get_matrix_set(
 	mat_re[0][0] = 1.0;
 	for (INT32 jx=1 ; jx<maxj ; jx++){
 		const INT32 p = 2*jx+1;
+#pragma omp parallel for default(none) shared(mat_re, jx) schedule(static, 2)
 		for(INT32 mpx=-1*jx ; mpx<=jx ; mpx++){
 			for(INT32 mx=-1*jx ; mx<=jx ; mx++){
 				mat_re[jx][(mpx+jx)*p + (mx+jx)] = rec(jx, mx, mpx, cb, sb, mat_re[jx-1]);

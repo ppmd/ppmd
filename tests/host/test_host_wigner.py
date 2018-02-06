@@ -1016,7 +1016,6 @@ def test_wigner_c_2():
 
     E = wigner._WignerEngine()
 
-
     for beta in np.random.uniform(low=-2.*math.pi, high=2.0*math.pi, size=40):
 
         pointers, matrices = E(jmax, beta)
@@ -1046,7 +1045,38 @@ def test_wigner_c_2():
 
 
 
+def test_wigner_c_3():
+    tol = 10.**-15
+    jmax = 20
+    alpha = 0.0
+    gamma = 0.1
+    beta=0.45745
 
+    opr, opi, om = Rzyz_set_orig(jmax, alpha, beta, gamma, ctypes.c_double)
+    npr, npi, nm= Rzyz_set(jmax, alpha, beta, gamma, ctypes.c_double)
+
+    DEBUG = False
+    for jx in range(jmax):
+        if DEBUG:
+            print(jx)
+        for mpx in range(-jx, jx+1):
+            if DEBUG:
+                print("\t", mpx)
+            for mx in range(-jx, jx+1):
+                aa = om['real'][jx][mpx, mx]
+                bb = nm['real'][jx][mpx, mx]
+
+                err = abs(aa - bb)
+                if err > tol:
+                    serr = red(err)
+                else:
+                    serr = green(err)
+
+                if DEBUG:
+                    print("\t\t{: .8f} {: .8f}".format(aa, bb),
+                          "\t", serr)
+
+                assert err < tol
 
 
 
