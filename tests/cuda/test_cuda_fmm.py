@@ -55,7 +55,7 @@ def test_cuda_fmm_1():
     radius = fmm.domain.extent[0] / \
              fmm.tree[lx].ncubes_side_global
 
-    lx_cuda = fmm._cuda_mtl.translate_mtl(fmm.tree_halo, lx, radius)
+    lx_cuda = fmm._cuda_mtl.translate_mtl_cart(fmm.tree_halo, lx, radius)
 
     for px in range(lx_cuda.ravel().shape[0]):
         assert abs(fmm.tree_plain[lx].ravel()[px] - lx_cuda.ravel()[px]) < \
@@ -63,6 +63,50 @@ def test_cuda_fmm_1():
 
 
 
+@cuda
+def test_cuda_fmm_2():
+    R = 4
+
+    crN = 10
+    N = crN**3
+
+    E = 3.*crN
+
+    rc = 10.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-2
+
+    ASYNC = False
+    free_space = '27'
+    CUDA = True
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
+                cuda=CUDA)
+
+    rng = np.random.RandomState(seed=1234)
+
+    lx = 3
+    fmm.tree_halo[lx][:] = rng.uniform(low=-2.0, high=2.0,
+                                       size=fmm.tree_halo[lx].shape)
+
+    fmm._halo_exchange(lx)
+    fmm._translate_m_to_l(lx)
+
+    radius = fmm.domain.extent[0] / \
+             fmm.tree[lx].ncubes_side_global
+
+    lx_cuda = fmm._cuda_mtl.translate_mtlz(fmm.tree_halo, lx, radius)
 
 
+    assert np.linalg.norm(lx_cuda.ravel() - fmm.tree_plain[lx].ravel(),
+                          np.inf) < 10.**-14
 
+    fmm.tree_plain[lx][:] = 0.0
+    fmm._translate_m_to_l_cart(lx)
+
+    assert np.linalg.norm(lx_cuda.ravel() - fmm.tree_plain[lx].ravel(),
+                          np.inf) < 10.**-14

@@ -11,6 +11,10 @@ import cmath
 import ctypes
 
 from ppmd.coulomb.cached import cached
+from ppmd.lib.build import simple_lib_creator
+
+import os
+_SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
 @cached(maxsize=1024)
 def wigner_d(j, mp, m, beta):
@@ -44,7 +48,7 @@ def wigner_d(j, mp, m, beta):
            (math.cos(0.5*beta)**b) * jacobi(k,a,b)(math.cos(beta))
 
 
-@cached(maxsize=40960)
+@cached(maxsize=4096000)
 def wigner_d_rec(j, mp, m, beta):
     """
     Compute the Wigner d-matrix d_{m', m}^j(\beta) using recursion relations
@@ -88,6 +92,7 @@ def wigner_d_rec(j, mp, m, beta):
         term3 = sc * math.sqrt(
             (j-m)*(j-m-1)/denom) * \
             wigner_d_rec(j-1, mp, m+1, beta)
+
         return term1 + term2 - term3
 
 
@@ -170,7 +175,7 @@ def R_y(p, x):
             mp = mpx - p
             m = mx - p
             coeff = wigner_d_rec(p, mp, m, x)
-            coeff *= eps_m(1*m)
+            coeff *= eps_m(m)
             coeff *= eps_m(mp)
             out.real[mpx, mx] = coeff
     return out
@@ -188,7 +193,8 @@ def R_zyz(p, alpha, beta, gamma):
     m1 = R_y(p, beta)
     m2 = R_z_vec(p, alpha)
 
-    out = np.zeros_like(m1)
+    ncomp = 2*p+1
+    out = np.zeros((ncomp, ncomp), dtype=np.complex)
 
     for mx in range(m1.shape[1]):
         out[:, mx] = m1[:, mx] * m2[mx]
@@ -199,23 +205,141 @@ def R_zyz(p, alpha, beta, gamma):
     return out
 
 
+def R_zyz_given_y(p, alpha, beta, gamma, m1):
+    #return np.matmul(R_z(p, gamma),
+    #                 np.matmul(R_y(p, beta), R_z(p, alpha)))
+
+    m0 = R_z_vec(p, gamma)
+    m2 = R_z_vec(p, alpha)
+
+    ncomp = 2*p+1
+    out = np.zeros((ncomp, ncomp), dtype=np.complex)
+
+    for mx in range(m1.shape[1]):
+        out[:, mx] = m1[:, mx] * m2[mx]
+
+    for mx in range(m1.shape[0]):
+        out[mx, :] *= m0[mx]
+
+
+    return out
+
 def Rzyz_set(p, alpha, beta, gamma, dtype):
+    return Rzyz_set_2(p, alpha, beta, gamma, dtype)
+
+def Rzyz_set_2(p, alpha, beta, gamma, dtype):
     """
     Returns the set of matrices needed to rotate all p moments by beta around
     the y axis.
     """
     pointers_real = np.zeros(p, dtype=ctypes.c_void_p)
     pointers_imag = np.zeros(p, dtype=ctypes.c_void_p)
-    # alternating real, imag
-    matrices = []
+
+    wp, wm = _wigner_engine(p, beta, eps_scaled=True)
+
+    matrices = {'real': [], 'imag': []}
     for px in range(p):
-        r = R_zyz(px, alpha, beta, gamma)
-        matrices.append(np.array(r.real, dtype=dtype))
-        pointers_real[px] = matrices[-1].ctypes.data
-        matrices.append(np.array(r.imag, dtype=dtype))
-        pointers_imag[px] = matrices[-1].ctypes.data
+        r = R_zyz_given_y(px, alpha, beta, gamma, wm[px])
+        matrices['real'].append(np.array(r.real, dtype=dtype))
+        pointers_real[px] = matrices['real'][-1].ctypes.data
+        matrices['imag'].append(np.array(r.imag, dtype=dtype))
+        pointers_imag[px] = matrices['imag'][-1].ctypes.data
 
     return pointers_real, pointers_imag, matrices
+
+
+def Rzyz_set_orig(p, alpha, beta, gamma, dtype):
+    """
+    Returns the set of matrices needed to rotate all p moments by beta around
+    the y axis.
+    """
+    pointers_real = np.zeros(p, dtype=ctypes.c_void_p)
+    pointers_imag = np.zeros(p, dtype=ctypes.c_void_p)
+
+    matrices = {'real': [], 'imag': []}
+    for px in range(p):
+        r = R_zyz(px, alpha, beta, gamma)
+        matrices['real'].append(np.array(r.real, dtype=dtype))
+        pointers_real[px] = matrices['real'][-1].ctypes.data
+        matrices['imag'].append(np.array(r.imag, dtype=dtype))
+        pointers_imag[px] = matrices['imag'][-1].ctypes.data
+
+    return pointers_real, pointers_imag, matrices
+
+
+
+class _WignerEngine(object):
+    def __init__(self):
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/WignerSource.cpp') as fh:
+            cpp = fh.read()
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/WignerSource.h') as fh:
+            hpp = fh.read()
+
+        self._lib = simple_lib_creator(hpp, cpp,
+            'wigner_matrix')['get_matrix_set']
+
+    def __call__(self, maxj, beta, eps_scaled=False):
+
+        pointers = np.zeros(maxj, dtype=ctypes.c_void_p)
+        matrices = []
+
+        for jx in range(maxj):
+            p = 2*jx +1
+            matrices.append(np.zeros((p, p), dtype=ctypes.c_double))
+            pointers[jx] = matrices[-1].ctypes.data
+
+        self._lib(
+            ctypes.c_int32(maxj),
+            ctypes.c_double(beta),
+            pointers.ctypes.get_as_parameter()
+        )
+
+        if eps_scaled:
+            for jx in range(maxj):
+                ncomp = 2*jx + 1
+                for mpx in range(ncomp):
+                    for mx in range(ncomp):
+                        mp = mpx - jx
+                        m = mx - jx
+                        coeff = eps_m(m)
+                        coeff *= eps_m(mp)
+                        matrices[jx][mpx, mx] *= coeff
+
+        return pointers, matrices
+
+_wigner_engine=_WignerEngine()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

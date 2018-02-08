@@ -89,9 +89,9 @@ def test_fmm_sim_1():
 
     dt = 0.001
     shell_steps = 10
-    steps = 10
+    steps = 10000
 
-    crn = 50
+    crn = 10
     rho = 3.
 
     CUDA=False

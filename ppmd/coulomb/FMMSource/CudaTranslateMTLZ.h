@@ -13,7 +13,6 @@
 
 using namespace std;
 
-
 #define _LM_TO_IND(L, M) ((L)+(M))
 
 #define EXP_RE_IND(L, M) (_LM_TO_IND((L), (M)))
@@ -31,14 +30,6 @@ using namespace std;
 
 #define ABS(x) ((x) > 0 ? (x) : -1*(x))
 
-#define BLOCKSIZE 8
-
-
-#define ASTRIDE1 %(SUB_ASTRIDE1)s
-#define ASTRIDE2 %(SUB_ASTRIDE2)s
-
-%(SUB_IARRAY)s
-
 
 /*
 Layout of memory used by above macros.
@@ -51,9 +42,5 @@ and
 | Re coeffs for all l | Im coeffs for all l |
 
 */
-
-
-
-
 
 

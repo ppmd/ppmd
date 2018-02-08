@@ -61,7 +61,8 @@ np.set_printoptions(threshold=np.nan)
 
 class TranslateMTLCuda(object):
     def __init__(self, dtype, tree, nlevel, a_arr, ar_arr, p_arr, e_arr,
-                 int_list, int_tlookup, int_plookup, int_radius, ipower_mtl):
+                 int_list, int_tlookup, int_plookup, int_radius, ipower_mtl,
+                 wigner_f, wigner_b, arn0):
         self.tree = tree
         self.L = nlevel
         ncomp = (self.L**2) * 2
@@ -69,6 +70,8 @@ class TranslateMTLCuda(object):
                                             dtype=dtype, ncomp=ncomp)
         self.tree_halo = OctalCudaDataTree(tree=tree, mode='halo',
                                            dtype=dtype, ncomp=ncomp)
+
+
 
         self._d_a = cuda_base.gpuarray.to_gpu(a_arr)
         self._d_ar = cuda_base.gpuarray.to_gpu(ar_arr)
@@ -104,12 +107,128 @@ class TranslateMTLCuda(object):
 
 
 
+
+        # need tmp space to rotate moments
+        self.tmp_plain0 = OctalCudaDataTree(tree=tree, mode='plain',
+                                            dtype=dtype, ncomp=ncomp)
+        self.tmp_plain1 = OctalCudaDataTree(tree=tree, mode='plain',
+                                            dtype=dtype, ncomp=ncomp)
+
+        self._wigner_real = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+        self._wigner_imag = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+
+        self._wigner_b_real = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+        self._wigner_b_imag = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+
+        self._dev_matrices = []
+        self._dev_pointers = []
+
+        def ffs_numpy_swap_memory(arr):
+            out = np.zeros_like(arr)
+            for ix in range(arr.shape[0]):
+                for iy in range(arr.shape[1]):
+                    out[ix, iy] = arr[iy, ix]
+            return out
+
+
+        # convert host rotation matrices to device matrices
+        for iz, pz in enumerate(range(-3, 4)):
+            for iy, py in enumerate(range(-3, 4)):
+                for ix, px in enumerate(range(-3, 4)):
+
+                    # forward real
+                    f = wigner_f[(pz, py, px)]
+
+                    pa = np.zeros(nlevel, dtype=ctypes.c_void_p)
+
+                    for p in range(nlevel):
+                        # forward real
+
+                        o = ffs_numpy_swap_memory(f['real'][p])
+                        nn = cuda_base.gpuarray.to_gpu(o)
+                        self._dev_matrices.append(nn)
+                        pa[p] = self._dev_matrices[-1].ptr
+
+                    # need array of pointers on gpu
+                    pa = cuda_base.gpuarray.to_gpu(pa)
+                    self._dev_pointers.append(pa)
+
+                    # forward real
+                    self._wigner_real[iz, iy, ix] = self._dev_pointers[-1].ptr
+
+                    pa = np.zeros(nlevel, dtype=ctypes.c_void_p)
+
+                    for p in range(nlevel):
+
+                        # forward imag
+
+                        o = ffs_numpy_swap_memory(f['imag'][p])
+                        nn = cuda_base.gpuarray.to_gpu(o)
+                        self._dev_matrices.append(nn)
+                        pa[p] = self._dev_matrices[-1].ptr
+
+                    # need array of pointers on gpu
+                    pa = cuda_base.gpuarray.to_gpu(pa)
+                    self._dev_pointers.append(pa)
+
+                    # forward imag
+                    self._wigner_imag[iz, iy, ix] = self._dev_pointers[-1].ptr
+
+
+                    f = None
+                    # backward real
+                    b = wigner_b[(pz, py, px)]
+
+                    pa = np.zeros(nlevel, dtype=ctypes.c_void_p)
+
+                    for p in range(nlevel):
+                        # backward real
+
+                        o = ffs_numpy_swap_memory(b['real'][p])
+                        nn = cuda_base.gpuarray.to_gpu(o)
+                        self._dev_matrices.append(nn)
+                        pa[p] = self._dev_matrices[-1].ptr
+
+                    # need array of pointers on gpu
+                    pa = cuda_base.gpuarray.to_gpu(pa)
+                    self._dev_pointers.append(pa)
+
+                    # backward real
+                    self._wigner_b_real[iz, iy, ix] =self._dev_pointers[-1].ptr
+
+                    pa = np.zeros(nlevel, dtype=ctypes.c_void_p)
+
+                    for p in range(nlevel):
+
+                        # backward imag
+                        o = ffs_numpy_swap_memory(b['imag'][p])
+                        nn = cuda_base.gpuarray.to_gpu(o)
+                        self._dev_matrices.append(nn)
+                        pa[p] = self._dev_matrices[-1].ptr
+
+                    # need array of pointers on gpu
+                    pa = cuda_base.gpuarray.to_gpu(pa)
+                    self._dev_pointers.append(pa)
+
+                    # backward imag
+                    self._wigner_b_imag[iz, iy, ix] =self._dev_pointers[-1].ptr
+
+
+        # pointers to pointers on device
+        self._wigner_real   = cuda_base.gpuarray.to_gpu(self._wigner_real)
+        self._wigner_imag   = cuda_base.gpuarray.to_gpu(self._wigner_imag)
+        self._wigner_b_real = cuda_base.gpuarray.to_gpu(self._wigner_b_real)
+        self._wigner_b_imag = cuda_base.gpuarray.to_gpu(self._wigner_b_imag)
+
+        self._arn0 = cuda_base.gpuarray.to_gpu(arn0)
+
+
         # load multipole to local lib
         with open(str(_SRC_DIR) + \
-                          '/FMMSource/CudaTranslateMTL.cu') as fh:
+                          '/FMMSource/CudaTranslateMTLZ.cu') as fh:
             cpp = fh.read()
         with open(str(_SRC_DIR) + \
-                          '/FMMSource/CudaTranslateMTL.h') as fh:
+                          '/FMMSource/CudaTranslateMTLZ.h') as fh:
             hpp = fh.read()
         self._translate_mtl_lib = cuda_build.simple_lib_creator(hpp, cpp,
             'fmm_translate_mtl')
@@ -133,12 +252,22 @@ class TranslateMTLCuda(object):
         return self.tree_plain[level]
 
 
+    def translate_mtl_cart(self, host_halo_tree, level, radius,
+                      host_plain_tree=None):
+
+        self.tree_halo[level] = host_halo_tree
+        self._translate_mtlz(level, radius)
+        if host_plain_tree is not None:
+            self.tree_plain.get(level, host_plain_tree)
+            return None
+        return self.tree_plain[level]
+
     # perform all mtl stages in one step
     def translate_mtl(self, host_halo_tree, level, radius,
                       host_plain_tree=None):
 
         self.tree_halo[level] = host_halo_tree
-        self._translate_mtl(level, radius)
+        self._translate_mtlz(level, radius)
         if host_plain_tree is not None:
             self.tree_plain.get(level, host_plain_tree)
             return None
@@ -148,7 +277,6 @@ class TranslateMTLCuda(object):
         self._lock.acquire(True)
 
         self.timer_mtl.start()
-        print("DEVICE_NUMBER:\t",cuda_runtime.DEVICE_NUMBER)
         err = self._translate_mtl_lib['translate_mtl'](
             _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
             self.tree_halo.device_pointer(level),
@@ -180,9 +308,52 @@ class TranslateMTLCuda(object):
 
 
 
+    def translate_mtlz(self, host_halo_tree, level, radius,
+                      host_plain_tree=None):
+
+        self.tree_halo[level] = host_halo_tree
+        self._translate_mtlz(level, radius)
+        if host_plain_tree is not None:
+            self.tree_plain.get(level, host_plain_tree)
+            return None
+        return self.tree_plain[level]
+
+    def _translate_mtlz(self, level, radius):
+        self._lock.acquire(True)
 
 
+        self.timer_mtl.start()
+        err = self._translate_mtl_lib['translate_mtl_z'](
+            _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
+            self.tree_halo.device_pointer(level),
+            self.tree_plain.device_pointer(level),
+            self.tmp_plain0.device_pointer(level),
+            self.tmp_plain1.device_pointer(level),
+            _check_dtype(self._wigner_real  , ctypes.c_void_p),
+            _check_dtype(self._wigner_imag  , ctypes.c_void_p),
+            _check_dtype(self._wigner_b_real, ctypes.c_void_p),
+            _check_dtype(self._wigner_b_imag, ctypes.c_void_p),
+            _check_dtype(self._d_a, REAL),
+            _check_dtype(self._arn0, REAL),
+            REAL(radius),
+            INT64(self.L),
+            _check_dtype(self._int_list[level], INT32),
+            _check_dtype(self._d_int_tlookup, INT32),
+            _check_dtype(self._d_int_radius, ctypes.c_double),
+            _check_dtype(self._jlookup, INT32),
+            _check_dtype(self._klookup, INT32),
+            _check_dtype(self._ipower_mtl, REAL),
+            INT32(256),
+            INT32(cuda_runtime.DEVICE_NUMBER)
+        )
 
+        self.timer_mtl.pause()
+        self._lock.release()
+
+        cuda_runtime.cuda_err_check(err)
+
+        if err < 0:
+            raise RuntimeError("Negative error code caught: {}".format(err))
 
 
 

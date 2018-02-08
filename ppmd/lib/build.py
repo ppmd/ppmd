@@ -168,8 +168,13 @@ def _check_compiler(name):
             raise RuntimeError('Compiler binary "{}" cannot be ran.'.format(
                 name))
 
-
 _build_timer = opt.Timer()
+
+def _print_file_if_exists(filename):
+    if os.path.exists(filename):
+        with open(filename) as fh:
+            print(fh.read())
+
 
 def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
     _build_timer.start()
@@ -208,6 +213,7 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
 
         except Exception as e:
             print(e)
+            _print_file_if_exists(stderr_filename)
             ppmd.abort('build error: library not built.')
 
 
