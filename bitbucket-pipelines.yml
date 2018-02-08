@@ -3,7 +3,7 @@
 # Only use spaces to indent your .yml configuration.
 # -----
 # You can specify a custom docker image from Docker Hub as your build environment.
-image: python:3.5.1
+image: ubuntu:artful
 
 pipelines:
   default:
@@ -11,12 +11,12 @@ pipelines:
         caches:
           - pip
         script: # Modify the commands below to build your repository.
-          - apt-get update && apt-get install -y libopenmpi-dev openmpi-bin mpi-default-bin
+          - apt-get update && apt-get install -y libopenmpi-dev openmpi-bin mpi-default-bin python3-pip rsh-server rsh-client
           - export PYTHONPATH="$PYTHONPATH:$(pwd)"
-          - pip install -r requirements.txt
+          - pip3 install -r requirements.txt
           - cd tests/host
           - echo $PYTHONPATH
           - echo $(pwd)
           #- py.test -svx
           - echo $(which g++)
-          - mpirun -n 1 py.test -svx
+          - mpirun --allow-run-as-root -n 1 py.test -sv
