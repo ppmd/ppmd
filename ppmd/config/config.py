@@ -30,9 +30,25 @@ MAIN_CFG['verbose-level'] = (int, 0)
 MAIN_CFG['timer-level'] = (int, 1)
 MAIN_CFG['build-timer-level'] = (int, 0)
 MAIN_CFG['error-level'] = (int, 3)
-MAIN_CFG['build-dir'] = (str, os.path.join(os.getcwd(), 'build'))
-MAIN_CFG['cc-main'] = (str, 'ICC')
-MAIN_CFG['cc-openmp'] = (str, 'ICC')
+
+build_dir = '/tmp/build'
+if 'PPMD_BUILD_DIR' in os.environ:
+    build_dir = os.environ['PPMD_BUILD_DIR']
+
+if 'PPMD_CC_MAIN' in os.environ:
+    cc_main = os.environ['PPMD_CC_MAIN']
+else:
+    cc_main = 'GCC'
+
+if 'PPMD_CC_OMP' in os.environ:
+    cc_omp = os.environ['PPMD_CC_OMP']
+else:
+    cc_omp = 'GCC'
+
+
+MAIN_CFG['build-dir'] = (str, build_dir)
+MAIN_CFG['cc-main'] = (str, cc_main)
+MAIN_CFG['cc-openmp'] = (str, cc_omp)
 MAIN_CFG['cc-mpi'] = (str, 'MPI4PY')
 
 

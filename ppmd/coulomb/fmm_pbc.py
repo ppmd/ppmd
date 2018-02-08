@@ -5,7 +5,9 @@ __license__ = "GPL"
 
 
 from math import log, ceil
-from ppmd.coulomb.octal import *
+
+from ppmd.coulomb.cached import cached
+
 import numpy as np
 from ppmd import runtime, host, kernel, pairloop, data, access, mpi, opt
 from ppmd.lib import build
@@ -17,7 +19,7 @@ from threading import Thread
 from scipy.special import lpmv, rgamma, gammaincc, lambertw
 import sys
 
-
+import itertools
 
 def red(input):
     try:
@@ -57,6 +59,19 @@ class FMMPbc(object):
         self.eps = eps
         self.domain = domain
         self.dtype = dtype
+
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/PBCSource.cpp') as fh:
+            cpp = fh.read()
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/PBCSource.h') as fh:
+            hpp = fh.read()
+
+        self._lib = build.simple_lib_creator(hpp, cpp,
+            'pbc_setup_lib')
+
+        self._lib['test1']()
+
 
     def re_lm(self, l,m): return (l**2) + l + m
     def im_lm(self, l,m): return (l**2) + l +  m + self.L**2
@@ -141,6 +156,12 @@ class FMMPbc(object):
        return self._cart_to_sph((dx, dy, dz))
 
 
+
+    #@cached(maxsize=4096)
+    def _hfoo(self, lx, mx):
+        return math.sqrt(float(math.factorial(
+                lx - abs(mx)))/math.factorial(lx + abs(mx)))
+
     def compute_g(self):
 
         #print("G START ============================================")
@@ -166,13 +187,11 @@ class FMMPbc(object):
             if len(iterset) < 4: print("Warning, small real space cutoff.")
 
             for tx in itertools.product(iterset, iterset, iterset):
-                dx = tx[0]*bx + tx[1]*by + tx[2]*bz
-
-                dispt = self._cart_to_sph(dx)
-
-                #if dispt[0] <= rc and nd1:
 
                 if (tx[0] != 0) or (tx[1] != 0) or (tx[2] != 0):
+
+                    dx = tx[0]*bx + tx[1]*by + tx[2]*bz
+                    dispt = self._cart_to_sph(dx)
 
                     iradius = 1./dispt[0]
                     radius_coeff = iradius ** (lx + 1.)
@@ -188,16 +207,13 @@ class FMMPbc(object):
 
                         assert abs(scipy_p[mxi].imag) < 10.**-16
 
-                        val = math.sqrt(float(math.factorial(
-                            lx - abs(mx)))/math.factorial(lx + abs(mx)))
+                        val = self._hfoo(lx, mx)
 
                         ynm = val * scipy_p[mxi].real * np.cos(mx * dispt[1])
 
                         coeff = ynm * radius_coeff * \
                                 gammaincc(lx + 0.5, kappa2radius2)
 
-                        #print("ynm", ynm, "radius_coeff", radius_coeff, "coeff", coeff)
-                        #print("lx+0.5", lx+0.5, "k2r2", kappa2radius2, "gammaincc", gammaincc(lx + 0.5, kappa2radius2))
 
                         terms[self.re_lm(lx, mx)] += coeff
 
@@ -328,57 +344,6 @@ class FMMPbc(object):
         #print("F END ============================================")
         return terms
 
-    def _test_shell_sum(self, limit, nl=8):
-        ncomp = ((self.L * 2)**2) * 2
-        terms = np.zeros(ncomp, dtype=self.dtype)
-        im_terms = np.zeros(ncomp, dtype=self.dtype)
-        extent = self.domain.extent
-
-        iterset = range(-1*limit, limit+1)
-        for itx in itertools.product(iterset, iterset, iterset):
-            nd1 = abs(itx[0]) > 1 or abs(itx[1]) > 1 or abs(itx[2]) > 1
-
-            lenofvec = itx[0]**2 + itx[1]**2 + itx[2]**2
-            nd2 = lenofvec < (limit**2)
-
-            if nd1 and nd2:
-                vec = np.array((itx[0]*extent[0], itx[1]*extent[1],
-                                itx[2]*extent[2]))
-                sph_vec = self._cart_to_sph(vec)
-                ir = 1./sph_vec[0]
-                for nx in range(2, nl, 2):
-                    irp = ir ** (nx + 1.)
-                    #mval = list(range(0, nx+1, 2))
-                    mval = list(range(-1*nx, nx+1, 2))
-                    mxval = [abs(mx) for mx in mval]
-                    scipy_p = lpmv(mxval, nx, math.cos(sph_vec[2]))
-                    for mxi, mx in enumerate(mval):
-                        val = math.sqrt(float(math.factorial(
-                            nx - abs(mx)))/math.factorial(nx + abs(mx)))
-
-                        re_exp =  np.cos(mx * sph_vec[1]) * val
-
-                        sph_nm =  scipy_p[mxi].real * irp
-
-                        terms[self.re_lm(nx, mx)] += sph_nm * re_exp
-
-                        im_exp =  np.sin(mx * sph_vec[1]) * val
-                        im_terms[self.re_lm(nx, mx)] += sph_nm * im_exp
-
-        print("\n")
-        print(30*"-", "shell terms", 30*'-')
-        print("radius:", limit)
-        for nx in range(2, nl, 2):
-            for mx in list(range(0, nx+1, 2)):
-                print("nx:", nx, "\tmx:", mx,
-                      "\tshell val:", terms[self.re_lm(nx, mx)],
-                      "\tewald val:", self._boundary_terms[self.re_lm(nx, mx)]
-                )
-
-        print(30*"-", "-----------", 30*'-')
-        return terms
-
-
 
 
 
@@ -393,6 +358,8 @@ class _shell_test_2_FMMPbc(object):
         self.eps = eps
         self.domain = domain
         self.dtype = dtype
+
+
 
     def re_lm(self, l,m): return (l**2) + l + m
     def im_lm(self, l,m): return (l**2) + l +  m + self.L**2

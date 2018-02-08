@@ -77,9 +77,9 @@ def test_fmm_setup_time_1():
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
     prof = cProfile.Profile()
-    free_space = True
+    free_space = False
     prof.enable()
-    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space, l=20)
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space, l=40)
     prof.disable()
 
     prof.create_stats()
@@ -91,7 +91,26 @@ def test_fmm_setup_time_1():
 
 
 
+def test_fmm_setup_time_2():
 
+    R = 3
+    eps = 10.**-8
+
+    N = 32
+    E = 4.
+
+    #N = 10000
+    #E = 100.
+
+    rc = E/8
+
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    free_space = False
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space, l=10)
 
 
 

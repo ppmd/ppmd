@@ -134,8 +134,10 @@ class PyFMM(object):
 
         for lx in range(self.L*2):
             for mx in range(-1*lx, lx+1):
-                a_l_m = ((-1.) ** lx)/math.sqrt(math.factorial(lx - mx) *\
-                                                math.factorial(lx+mx))
+                a_l_m = ((-1.) ** lx)/ \
+                        (math.sqrt(math.factorial(lx-mx)) * \
+                         math.sqrt(math.factorial(lx+mx)))
+
                 self._a[lx, self.L*2 + mx] = a_l_m
                 # the array below is used directly in the precomputation of
                 # Y_{j+n}^{m-k}

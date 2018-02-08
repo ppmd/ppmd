@@ -113,10 +113,10 @@ static inline REAL rec(
 	const REAL sb,
 	const REAL * RESTRICT jm1_mat
 ){
-	if (((j+mp)*(j-mp)) != 0){
+	if (((j+mp)*(j - mp)) != 0){
 		//return 0.0;
 		return rec0(j, m, mp, cb, sb, jm1_mat);
-	} else if (((j + mp)*(j + mp -1)) != 0) {
+	} else if (((j + mp)*(j + mp - 1)) != 0) {
 		return rec1(j, m, mp, cb, sb, jm1_mat);
 	} else {
 		return rec2(j, m, mp, cb, sb, jm1_mat);
