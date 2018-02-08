@@ -11,5 +11,5 @@ pipelines:
         caches:
           - pip
         script: # Modify the commands below to build your repository.
-          - pip install -r requirements.txt
+          - MPI=openmpi pip install -r requirements.txt
           - py.test tests/host
