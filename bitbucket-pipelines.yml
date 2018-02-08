@@ -11,7 +11,7 @@ pipelines:
         caches:
           - pip
         script: # Modify the commands below to build your repository.
-          - apt-get update && apt-get install -y libopenmpi-dev openmpi-bin mpi-default-bin python3-pip 
+          - apt-get update && apt-get install -y libopenmpi-dev openmpi-bin mpi-default-bin python3-pip rsh-server rsh-client
           - export PYTHONPATH="$PYTHONPATH:$(pwd)"
           - pip3 install -r requirements.txt
           - cd tests/host
