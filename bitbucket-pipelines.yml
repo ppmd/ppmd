@@ -18,4 +18,5 @@ pipelines:
           - echo $PYTHONPATH
           - echo $(pwd)
           #- py.test -svx
-          - mpirun -n 1 python -c "import ppmd"
+          - echo $(which g++)
+          - mpirun -n 1 py.test -svx
