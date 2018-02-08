@@ -17,4 +17,5 @@ pipelines:
           - cd tests/host
           - echo $PYTHONPATH
           - echo $(pwd)
-          - py.test -svx
+          #- py.test -svx
+          - mpirun -n 1 python -c "import ppmd"
