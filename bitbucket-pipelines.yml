@@ -14,4 +14,5 @@ pipelines:
           - apt-get update && apt-get install -y libopenmpi-dev
           - export PYTHONPATH="$PYTHONPATH:./"
           - pip install -r requirements.txt
-          - py.test tests/host
+          - cd tests/host
+          - py.test
