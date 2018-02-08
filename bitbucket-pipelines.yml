@@ -15,4 +15,6 @@ pipelines:
           - export PYTHONPATH="$PYTHONPATH:$(pwd)"
           - pip install -r requirements.txt
           - cd tests/host
-          - py.test
+          - echo $PYTHONPATH
+          - echo $(pwd)
+          - py.test -svx
