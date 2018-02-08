@@ -19,4 +19,4 @@ pipelines:
           - echo $(pwd)
           #- py.test -svx
           - echo $(which g++)
-          - mpirun --allow-run-as-root -n 1 py.test -sv
+          - mpirun --allow-run-as-root -n 1 py.test -sv 
