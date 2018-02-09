@@ -23,9 +23,11 @@ Required System tools:
 * CUDA Toolkit if targeting CUDA.
 
 To pip install python packages:
+
 ``pip install --no-cache-dir -r requirements.txt"
 
 For CUDA support:
+
 ``pip install --no-cache-dir -r requirements_cuda.txt"
 
 
