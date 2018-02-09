@@ -42,6 +42,7 @@ Set the following environment variables to alter compilers used and default temp
 * ``PPMD_CC_OMP``: Name of the OpenMP compiler to use, as above. For example: ``export PPMD_CC_OMP=$PPMD_CC_MAIN``
 
 The following should be set if CUDA support is desired.
+
 * ``CUDA_SDK``: location of CUDA_SDK (or path containing the helper header files from the sdk).
 * ``MPI_HOME``: Used by the default CUDA compiler configuration to locate the desired MPI implementation.
 
