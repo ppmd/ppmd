@@ -24,11 +24,11 @@ Required System tools:
 
 To pip install python packages:
 
-``pip install --no-cache-dir -r requirements.txt"
+``pip install --no-cache-dir -r requirements.txt``
 
 For CUDA support:
 
-``pip install --no-cache-dir -r requirements_cuda.txt"
+``pip install --no-cache-dir -r requirements_cuda.txt``
 
 
 Environment Variables
