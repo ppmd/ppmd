@@ -6,7 +6,8 @@
 image: ubuntu:artful
 
 pipelines:
-  default:
+  branches:
+  master:
     - step:
         caches:
           - pip
