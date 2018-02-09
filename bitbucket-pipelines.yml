@@ -9,8 +9,6 @@ pipelines:
   branches:
   master:
     - step:
-        caches:
-          - pip
         script: # Modify the commands below to build your repository.
           - apt-get update && apt-get install -y libopenmpi-dev openmpi-bin mpi-default-bin python3-pip rsh-server rsh-client
           - export PYTHONPATH="$PYTHONPATH:$(pwd)"
@@ -18,6 +16,5 @@ pipelines:
           - cd tests/host
           - echo $PYTHONPATH
           - echo $(pwd)
-          #- py.test -svx
           - echo $(which g++)
           - mpirun --allow-run-as-root -n 1 py.test -sv 
