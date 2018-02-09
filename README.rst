@@ -32,6 +32,7 @@ For CUDA support:
 Environment Variables
 ---------------------
 The code generation system relies on consistency of the following environment variable accross all MPI processes, this value must be set for parallel MPI execution.
+
 * ``PYTHONHASHSEED``: e.g ``export PYTHONHASHSEED=123``.
 
 Set the following environment variables to alter compilers used and default temporary directories. If these variables are not set the default behaviour is to use GCC and build temporary files to ``/tmp/build``.
