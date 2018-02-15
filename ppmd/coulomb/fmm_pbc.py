@@ -48,6 +48,30 @@ INT32 = ctypes.c_int32
 np.set_printoptions(threshold=np.nan)
 
 
+def shell_iterator(width):
+    width = int(width)
+    if width == 0:
+        return [(0,0,0)]
+    if width < 0:
+        return []
+
+    b = list(range(-width, width+1))
+    b2 = list(range(-width+1, width))
+    s = []
+    # top
+    s += [(bx[0], bx[1], width) for bx in itertools.product(b,b)]
+    # bottom
+    s += [(bx[0], bx[1], -width) for bx in itertools.product(b,b)]
+    # front
+    s += [(bx[0], -width, bx[1]) for bx in itertools.product(b,b2)]
+    # back
+    s += [(bx[0], width, bx[1]) for bx in itertools.product(b,b2)]
+    # left
+    s += [(-width, bx[0], bx[1]) for bx in itertools.product(b2,b2)]
+    # right
+    s += [(width, bx[0], bx[1]) for bx in itertools.product(b2,b2)]
+    return s
+
 class FMMPbc(object):
     """
     "Precise and Efficient Ewald Summation for Periodic Fast Multipole
@@ -90,13 +114,18 @@ class FMMPbc(object):
 
 
     def _compute_sn(self, lx):
+        """
+        This method tries to use the paper's parameter selection. It will
+        probably fail for lx != 2. We take the kappa values for lx=2
+        for lx !=2 and take increasingly large shells in real and reciprocal
+        space until the values converge.
+        """
         vol = self.domain.extent[0] * self.domain.extent[1] * \
               self.domain.extent[2]
 
         kappa = math.sqrt(math.pi/(vol**(2./3.)))
         eps = min(10.**-8, self.eps)
 
-        #print("COMPUTE SN: \t\tkappa", kappa, "vol", (vol**(2./3.)), "extent", self.domain.extent[:])
 
         if lx == 2:
             tmp = 3. * math.log(2. * kappa)
@@ -155,8 +184,6 @@ class FMMPbc(object):
 
        return self._cart_to_sph((dx, dy, dz))
 
-
-
     #@cached(maxsize=4096)
     def _hfoo(self, lx, mx):
         return math.sqrt(float(math.factorial(
@@ -181,10 +208,9 @@ class FMMPbc(object):
             rc, vc, kappa = self._compute_parameters(lx)
 
             kappa2 = kappa*kappa
-            maxt = max(int(math.ceil(rc/min_len)), 5)
 
+            maxt = 3
             iterset = range(-1 * maxt, maxt+1)
-            if len(iterset) < 4: print("Warning, small real space cutoff.")
 
             for tx in itertools.product(iterset, iterset, iterset):
 
@@ -214,11 +240,50 @@ class FMMPbc(object):
                         coeff = ynm * radius_coeff * \
                                 gammaincc(lx + 0.5, kappa2radius2)
 
+                        terms[self.re_lm(lx, mx)] += coeff
+
+            # add increasingly large outer shells until the values converge
+            for shellx in range(maxt, 20):
+                curr = np.copy(terms[self.re_lm(lx,-lx):self.re_lm(lx,lx+1):])
+
+                for tx in shell_iterator(shellx):
+                    dx = tx[0]*bx + tx[1]*by + tx[2]*bz
+                    dispt = self._cart_to_sph(dx)
+
+                    iradius = 1./dispt[0]
+                    radius_coeff = iradius ** (lx + 1.)
+
+                    kappa2radius2 = kappa2 * dispt[0] * dispt[0]
+
+                    #mval = list(range(0, lx+1, 2))
+                    mval = list(range(-1*lx, lx+1, 2))
+                    mxval = [abs(mx) for mx in mval]
+                    scipy_p = lpmv(mxval, lx, math.cos(dispt[2]))
+
+                    for mxi, mx in enumerate(mval):
+
+                        assert abs(scipy_p[mxi].imag) < 10.**-16
+
+                        val = self._hfoo(lx, mx)
+
+                        ynm = val * scipy_p[mxi].real * np.cos(mx * dispt[1])
+
+                        coeff = ynm * radius_coeff * \
+                                gammaincc(lx + 0.5, kappa2radius2)
 
                         terms[self.re_lm(lx, mx)] += coeff
 
-        # explicitly extract the nearby cells
+                new_vals = terms[self.re_lm(lx,-lx):self.re_lm(lx,lx+1):]
+                err = np.linalg.norm(curr - new_vals, np.inf)
 
+                if err < self.eps*0.01:
+                    break
+                if shellx == 20:
+                    raise RuntimeError('Periodic Boundary Coefficients did'
+                                       'not converge, Please file a bug'
+                                       'report.')
+
+        # explicitly extract the nearby cells
         for lx in range(2, self.L*2, 2):
 
             maxs = 1
@@ -244,33 +309,18 @@ class FMMPbc(object):
                             lx - abs(mx)))/math.factorial(lx + abs(mx)))
 
                         ynm = val * scipy_p[mxi].real * np.cos(mx * dispt[1])
-
                         coeff = ynm * radius_coeff
-
                         terms[self.re_lm(lx, mx)] -= coeff
 
-
-        #for lx in range(2, self.L*2, 2):
-        #    for mx in range(0, lx+1, 2):
-        #        print("lx", lx, "mx", mx, terms[self.re_lm(lx, mx)])
-        #print("G END ============================================")
         return terms
 
     def compute_f(self):
-        #print("F START ============================================")
 
         ncomp = ((self.L * 2)**2) * 2
         terms = np.zeros(ncomp, dtype=self.dtype)
 
         extent = self.domain.extent
-        lx = (extent[0], 0., 0.)
-        ly = (0., extent[1], 0.)
-        lz = (0., 0., extent[2])
         ivolume = 1./(extent[0]*extent[1]*extent[2])
-
-        #gx = np.cross(ly,lz)*ivolume #* 2. * math.pi
-        #gy = np.cross(lz,lx)*ivolume #* 2. * math.pi
-        #gz = np.cross(lx,ly)*ivolume #* 2. * math.pi
 
         gx = np.array((1./extent[0], 0., 0.))
         gy = np.array((0., 1./extent[1], 0.))
@@ -284,26 +334,19 @@ class FMMPbc(object):
 
             rc, vc, kappa = self._compute_parameters(lx)
 
-            #print(lx, rc, vc, kappa)
-
             kappa2 = kappa * kappa
             mpi2okappa2 = -1.0 * (math.pi ** 2.) / kappa2
 
-            ll = 5
+            ll = 6
             if int(ceil(vc/gxl)) < ll:
                 vc = gxl*ll
 
+            nmax = int(ceil(vc/gxl))
+            #nmax = 1
 
-            nmax_x = int(ceil(vc/gxl))
-            nmax_y = int(ceil(vc/gyl))
-            nmax_z = int(ceil(vc/gzl))
-
-            #print("nmax_x", nmax_x, gx, vc)
-            #print(range(-1*nmax_z, nmax_z+1))
-
-            for hxi in itertools.product(range(-1*nmax_z, nmax_z+1),
-                                          range(-1*nmax_y, nmax_y+1),
-                                          range(-1*nmax_x, nmax_x+1)):
+            for hxi in itertools.product(range(- 1*nmax, nmax+1),
+                                          range(-1*nmax, nmax+1),
+                                          range(-1*nmax, nmax+1)):
 
                 hx = hxi[0]*gz + hxi[1]*gy + hxi[2]*gx
                 dispt = self._cart_to_sph(hx)
@@ -321,7 +364,6 @@ class FMMPbc(object):
                             (math.pi ** (lx - 0.5))).real
 
                     coeff = vhnm2 * exp_coeff
-                    #print("lx", lx, "\thxi", hxi, "\thx", hx, "\tcoeff", coeff)
 
                     for mxi, mx in enumerate(mval):
 
@@ -335,13 +377,12 @@ class FMMPbc(object):
                         contrib = sph_nm * coeff
                         terms[self.re_lm(lx, mx)] += contrib.real
 
+
         for lx in range(2, self.L*2, 2):
             igamma = rgamma(lx + 0.5) * ivolume
             for mx in range(-1*lx, lx+1, 2):
                 terms[self.re_lm(lx, mx)] *= igamma
-                #print("lx", lx, "mx", mx, terms[self.re_lm(lx, mx)])
 
-        #print("F END ============================================")
         return terms
 
 

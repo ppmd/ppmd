@@ -112,8 +112,9 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
                 _kernel_arg_decls.append(kernel_arg)
 
                 if mode.write is True:
-                    assert issubclass(type(obj), data.GlobalArrayClassic), "global array must be a thread safe type for \
-                    write access. Type is:" + str(type(obj))
+                    assert issubclass(type(obj), data.GlobalArrayClassic),\
+                        "global array must be a thread safe type for \
+                        write access. Type is:" + str(type(obj))
 
 
             elif issubclass(type(dat[1][0]), host.Matrix):
