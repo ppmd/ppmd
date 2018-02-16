@@ -377,10 +377,6 @@ class ParticleDat(host.Matrix):
 
         # new start
         # can only exchage sizes if needed.
-        #if self.group._cell_to_particle_map.version_id > self.group._cell_to_particle_map.halo_version_id:
-
-        # 0 index contains number of expected particles
-        # 1 index contains the required size of tmp arrays
 
         self.halo_start_reset()
 

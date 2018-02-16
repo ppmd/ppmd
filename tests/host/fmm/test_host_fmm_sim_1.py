@@ -8,7 +8,7 @@ from mpi4py import MPI
 import numpy as np
 
 def get_res_file_path(filename):
-    return os.path.join(os.path.join(os.path.dirname(__file__), '../res'),
+    return os.path.join(os.path.join(os.path.dirname(__file__), '../../res'),
                         filename)
 
 

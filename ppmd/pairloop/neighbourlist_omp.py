@@ -330,9 +330,6 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
     def execute(self, n=None, dat_dict=None, static_args=None):
 
-        print("BORKED PAIRLOOP OMP")
-
-
         _group = self._group # could be None
         if _group is None:
             for pd in self._dat_dict.items(dat_dict):

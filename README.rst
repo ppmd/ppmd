@@ -19,7 +19,7 @@ Required System tools:
 
 * Python 3+ (``PYTHONHASHSEED`` must be set to the same non-zero value on all MPI hosts).
 * mpi4py compatible MPI3.0+ (with development headers e.g. ``libopenmpi-dev openmpi-bin mpi-default-bin`` on ubuntu 17.04.).
-* A C compiler, preferably intel (see ``PPMD_CC_MAIN`` environment variable).
+* A C/C++ compiler, preferably intel (see ``PPMD_CC_MAIN`` environment variable).
 * CUDA Toolkit if targeting CUDA.
 
 To pip install python packages:

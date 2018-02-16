@@ -360,7 +360,6 @@ def test_host_pair_loop_NS_FCC2():
 
     cell_width = float(E)/float(crN2)
 
-    A.P = PositionDat(ncomp=3)
     A.P[:] = md.utility.lattice.fcc((crN2, crN2, crN2), (E, E, E))
 
     A.npart_local = (crN2**3)*4
@@ -411,7 +410,6 @@ def test_host_pair_loop_NS_FCC():
 
     cell_width = (0.5*float(E))/float(crN2)
 
-    A.P = PositionDat(ncomp=3)
     A.P[:] = md.utility.lattice.fcc((crN2, crN2, crN2), (E, E, E))
 
     A.npart_local = (crN2**3)*4
@@ -465,7 +463,6 @@ def test_host_pair_loop_NS_FCC_2():
 
     cell_width = (0.5*float(E))/float(crN2)
 
-    A.P = PositionDat(ncomp=3)
     A.P[:] = md.utility.lattice.fcc((crN2, crN2, crN2), (E, E, E))
 
     A.npart_local = (crN2**3)*4

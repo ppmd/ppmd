@@ -17,7 +17,7 @@ np.set_printoptions(linewidth=200)
 
 import itertools
 def get_res_file_path(filename):
-    return os.path.join(os.path.join(os.path.dirname(__file__), '../res'), filename)
+    return os.path.join(os.path.join(os.path.dirname(__file__), '../../res'), filename)
 
 
 from ppmd import *
