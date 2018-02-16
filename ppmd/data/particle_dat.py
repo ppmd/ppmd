@@ -279,6 +279,7 @@ class ParticleDat(host.Matrix):
         :arg access mode: Access type required by the calling method.
         :return: The pointer to the data.
         """
+
         if mode is access.INC0:
             self.zero(self.npart_local)
 
@@ -404,8 +405,6 @@ class ParticleDat(host.Matrix):
         opt.PROFILE[
             self.__class__.__name__+':'+ self.name +':halo_exchange'
         ] = (self.timer_comm.time())
-
-
 
     def _transfer_unpack(self):
         """

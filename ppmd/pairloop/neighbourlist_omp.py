@@ -330,6 +330,9 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
     def execute(self, n=None, dat_dict=None, static_args=None):
 
+        print("BORKED PAIRLOOP OMP")
+
+
         _group = self._group # could be None
         if _group is None:
             for pd in self._dat_dict.items(dat_dict):
@@ -352,7 +355,9 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
             args += self._kernel.static_args.get_args(static_args)
 
         # Add pointer arguments to launch command
+
         self._init_dat_lib_args(dat_dict)
+
         args+=self._get_dat_lib_args(dat_dict)
 
         # Rebuild neighbour list potentially

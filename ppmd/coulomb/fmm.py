@@ -302,7 +302,13 @@ class PyFMM(object):
 
 
         # pre compute the periodic boundaries coefficients.
-        pbc_tool = FMMPbc(self.L, self.eps, domain, dtype)
+
+        if self.eps is not None:
+            teps = self.eps
+        else:
+            teps = 10.**-12
+
+        pbc_tool = FMMPbc(self.L, teps, domain, dtype)
         if free_space == False:
             self._boundary_terms = pbc_tool.compute_f() + pbc_tool.compute_g()
             #self._boundary_terms = np.zeros((self.L * 2)**2, dtype=dtype)
@@ -633,6 +639,7 @@ class PyFMM(object):
 
 
     def __call__(self, positions, charges, forces=None, async=False):
+
 
 
         self.entry_data.zero()

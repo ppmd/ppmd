@@ -78,6 +78,8 @@ class BaseMDState(object):
         self.pre_update_funcs = []
         self.post_update_funcs = []
 
+        self._dat_len = 0
+
 
     def rebuild_cell_to_particle_maps(self):
         pass
@@ -215,14 +217,19 @@ class BaseMDState(object):
             # set dat name to be attribute name
             getattr(self, name).name = name
 
-            if self._npart_local > 0:
+            if self._dat_len > 0:
+                getattr(self, name).resize(self._dat_len, _callback=False)
+            elif self._npart_local > 0:
                 getattr(self, name).resize(self._npart_local, _callback=False)
             else:
                 getattr(self, name).resize(self._npart, _callback=False)
 
             if type(value) is data.PositionDat:
-                self._position_dat = name
-                self._cell_particle_map_setup()
+                if self._position_dat is None:
+                    self._position_dat = name
+                    self._cell_particle_map_setup()
+                else:
+                    raise RuntimeError('A state may hold only 1 PositionDat.')
 
         # Any other attribute.
         else:
@@ -278,6 +285,7 @@ class BaseMDState(object):
         state such that resizing one dat resizes all dats.
         """
         assert type(value) is not None, "No new size passed"
+        self._dat_len = int(value)
         for ix in self.particle_dats:
             _dat = getattr(self,ix)
             _dat.resize(int(value), _callback=False)
@@ -361,6 +369,7 @@ class BaseMDState(object):
         idh = self._cell_to_particle_map.halo_version_id
         if idi > idh:
             self._cell_to_particle_map.post_halo_exchange()
+
 
 
 class State(BaseMDState):

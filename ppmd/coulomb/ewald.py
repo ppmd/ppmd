@@ -421,6 +421,7 @@ class EwaldOrthoganal(object):
             self._init_real_space_lib()
 
         re = self._vars['real_space_energy']
+
         self._real_space_pairloop.execute(
             dat_dict={
                 'P': positions(access.READ),
