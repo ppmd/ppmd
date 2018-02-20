@@ -411,6 +411,61 @@ class PyFMM(object):
                         math.sin(mx*sph[1])
 
 
+
+        # --------------------------
+        # serious optimisation mode time
+
+        self._str_exp_re = []
+        self._str_exp_im = []
+
+        tmp_ptr_exp_re = np.zeros((7,7), dtype=ctypes.c_void_p)
+        tmp_ptr_exp_im = np.zeros((7,7), dtype=ctypes.c_void_p)
+
+        for iy, py in enumerate(range(-3, 4)):
+            for ix, px in enumerate(range(-3, 4)):
+                # r, phi, theta
+                sph = self._cart_to_sph((px, py, 0))
+                emx_re = np.zeros(2*self.L-1, dtype=REAL)
+                emx_im = np.zeros(2*self.L-1, dtype=REAL)
+                for mxi, mx in enumerate(range(-self.L + 1, self.L)):
+                    emx = cmath.exp(1.j * mx * sph[1])
+                    emx_re[mxi] = emx.real
+                    emx_im[mxi] = emx.imag
+                self._str_exp_re.append(emx_re)
+                self._str_exp_im.append(emx_im)
+                tmp_ptr_exp_re[iy, ix] = self._str_exp_re[-1].ctypes.data
+                tmp_ptr_exp_im[iy, ix] = self._str_exp_im[-1].ctypes.data
+        
+        self._str_wigner = []
+
+        self._ptr_exp_re = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+        self._ptr_exp_im = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+        self._ptr_wigner = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+
+        for iz, pz in enumerate(range(-3, 4)):
+            for iy, py in enumerate(range(-3, 4)):
+                for ix, px in enumerate(range(-3, 4)):
+                    
+                    self._ptr_exp_re[iz, iy, ix] = tmp_ptr_exp_re[iy, ix]
+                    self._ptr_exp_im[iz, iy, ix] = tmp_ptr_exp_im[iy, ix]
+
+                    # r, phi, theta
+                    sph = self._cart_to_sph((px, py, pz))
+                    
+                    beta = sph[1]
+
+                    ptrs, mats = Ry_set(self.L, beta, self.dtype)
+                    
+                    self._str_wigner.append(mats)
+                    self._str_wigner.append(ptrs)
+                    self._ptr_wigner[iz, iy, ix] = self._str_wigner[-1].ctypes.data
+
+
+        # --------------------------
+
+
+
+
         # create a pairloop for finest level part
         P = data.ParticleDat(ncomp=3, dtype=dtype)
         F = data.ParticleDat(ncomp=3, dtype=dtype)

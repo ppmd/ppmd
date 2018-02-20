@@ -247,6 +247,14 @@ def Rzyz_set_2(p, alpha, beta, gamma, dtype):
 
     return pointers_real, pointers_imag, matrices
 
+def Ry_set(p, beta, dtype):
+    """
+    Returns the set of matrices needed to rotate all p moments by beta around
+    the y axis.
+    """
+    wp, wm = _wigner_engine(p, beta, eps_scaled=True)
+
+    return wp, wm
 
 def Rzyz_set_orig(p, alpha, beta, gamma, dtype):
     """
