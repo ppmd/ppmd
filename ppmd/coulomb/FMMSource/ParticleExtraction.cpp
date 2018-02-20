@@ -417,7 +417,7 @@ INT32 particle_extraction(
         const REAL py = position[ix*3+1];
         const REAL pz = position[ix*3+2];
         
-        const REAL tol = 0.001;
+        const REAL tol = 0.00001;
 
         const bool shx = ABS(px-midx) < tol;
         const bool shy = ABS(py-midy) < tol;

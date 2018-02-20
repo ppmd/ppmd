@@ -640,8 +640,6 @@ class PyFMM(object):
 
     def __call__(self, positions, charges, forces=None, async=False):
 
-
-
         self.entry_data.zero()
         self.tree_plain.zero()
         self.tree_halo.zero()
@@ -649,11 +647,12 @@ class PyFMM(object):
 
         self._check_aux_dat(positions)
 
+        #print("LOCAL")
         self._compute_cube_contrib(positions, charges,
                                    positions.group._fmm_cell)
 
-
         for level in range(self.R - 1, 0, -1):
+            #print("UP START", level)
 
             self._level_call_async(self._translate_m_to_m, level, async)
             self._halo_exchange(level)
@@ -669,6 +668,7 @@ class PyFMM(object):
             if level > 1:
                 self.tree_parent[level][:] = 0.0
 
+            #print("UP END", level)
 
         self._join_async()
 
@@ -682,13 +682,16 @@ class PyFMM(object):
 
         for level in range(1, self.R):
 
+            #print("DOWN START", level)
             if self.cuda:
                 self._cuda_mtl_wait_async(level)
             self._translate_l_to_l(level)
             self._coarse_to_fine(level)
 
+            #print("DOWN END", level)
         phi_extract = self._compute_cube_extraction(positions, charges,
                                                     forces=forces)
+
         phi_near = self._compute_local_interaction(positions, charges,
                                                    forces=forces)
 

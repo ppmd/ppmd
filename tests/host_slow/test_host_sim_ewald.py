@@ -44,7 +44,7 @@ k[0] += (V.i[0]*V.i[0] + V.i[1]*V.i[1] + V.i[2]*V.i[2])*0.5*M.i[0];
 '''
 
 
-@pytest.mark.skip(reason='dev test')
+#@pytest.mark.skip(reason='dev test')
 def test_host_sim_2():
 
     directiona = (1, 0, 0)
@@ -169,9 +169,9 @@ def test_host_sim_2():
         A.f[:,:] = 0
         potaa_force_updater.execute()
 
-        #c.evaluate_contributions(positions=A.p, charges=A.q)
-        #A.cri[0] = 0.0
-        #c.extract_forces_energy_reciprocal(A.p, A.q, A.f, A.cri)
+        c.evaluate_contributions(positions=A.p, charges=A.q)
+        A.cri[0] = 0.0
+        c.extract_forces_energy_reciprocal(A.p, A.q, A.f, A.cri)
         A.crr[0] = 0.0
         c.extract_forces_energy_real(A.p, A.q, A.f, A.crr)
 

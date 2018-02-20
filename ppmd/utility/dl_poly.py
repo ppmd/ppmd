@@ -19,8 +19,11 @@ def read_domain_extent(filename=None):
                 extent[1] = line.strip().split()[1]
             if i == 4:
                 extent[2] = line.strip().split()[2]
+            elif i > 10:
+                break
             else:
                 pass
+
 
     return extent
 
