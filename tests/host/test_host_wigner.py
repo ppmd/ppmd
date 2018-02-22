@@ -1079,6 +1079,52 @@ def test_wigner_c_3():
                 assert err < tol
 
 
+def test_sym_1(theta_set):
+
+    betax = theta_set
+    for lx in range(30):
+        w = R_y(lx, betax)
+        for rx in range(2*lx+1):
+            for cx in range(rx+1, 2*lx+1):
+                assert abs( abs(w[rx, cx]) - abs(w[cx, rx])  ) < 10.**-13
+        for rx in range(lx+1):
+            for cx in range(2*lx+1):
+                assert abs(w[rx, cx] - w[-rx-1, -cx-1]) < 10.**-13
+        for rx in range(lx):
+            for cx in range(rx+1, 2*lx-rx):
+                mf = (-1.0)**(cx-rx)
+                assert abs(w[rx, cx] - mf*w[-cx-1, -rx-1]) < 10.**-13
+
+
+def test_sym_2():
+    beta_set = np.random.uniform(low=-math.pi, high=math.pi, size=(30))
+    for betax in beta_set:
+        for lx in range(20):
+            w = R_y(lx, betax)
+            for rx in range(2*lx+1):
+                for cx in range(rx+1, 2*lx+1):
+                    assert abs( abs(w[rx, cx]) - abs(w[cx, rx])  ) < 10.**-13
+        for rx in range(lx+1):
+            for cx in range(2*lx+1):
+                assert abs(w[rx, cx] - w[-rx-1, -cx-1]) < 10.**-13
+        for rx in range(lx):
+            for cx in range(rx+1, 2*lx-rx):
+                mf = (-1.0)**(cx-rx)
+                assert abs(w[rx, cx] - mf*w[-cx-1, -rx-1]) < 10.**-13
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

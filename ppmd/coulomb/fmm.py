@@ -18,7 +18,7 @@ from scipy.special import lpmv, rgamma, gammaincc, lambertw
 import sys
 
 from ppmd.cuda import CUDA_IMPORT
-from ppmd.coulomb.wigner import Rzyz_set
+from ppmd.coulomb.wigner import Rzyz_set, Ry_set
 from ppmd.coulomb.fmm_pbc import FMMPbc
 
 
@@ -298,6 +298,26 @@ class PyFMM(object):
         self._translate_mtlz_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_translate_mtlz')
 
+        # load multipole to local lib z-direction only
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/TranslateMTLZ2.cpp') as fh:
+            cpp = fh.read()
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/TranslateMTLZ2.h') as fh:
+            hpp = fh.read()
+
+        hpp = hpp % {
+            'SUB_ASTRIDE1': ASTRIDE1,
+            'SUB_ASTRIDE2': ASTRIDE2,
+            'SUB_IARRAY': _get_iarray(self.L)
+        }
+
+        self._translate_mtlz2_lib = build.simple_lib_creator(hpp, cpp,
+            'fmm_translate_mtlz2')
+
+
+
+
         # --- periodic boundaries ---
 
 
@@ -425,9 +445,9 @@ class PyFMM(object):
             for ix, px in enumerate(range(-3, 4)):
                 # r, phi, theta
                 sph = self._cart_to_sph((px, py, 0))
-                emx_re = np.zeros(2*self.L-1, dtype=REAL)
-                emx_im = np.zeros(2*self.L-1, dtype=REAL)
-                for mxi, mx in enumerate(range(-self.L + 1, self.L)):
+                emx_re = np.zeros(self.L-1, dtype=REAL)
+                emx_im = np.zeros(self.L-1, dtype=REAL)
+                for mxi, mx in enumerate(range(1, self.L)):
                     emx = cmath.exp(1.j * mx * sph[1])
                     emx_re[mxi] = emx.real
                     emx_im[mxi] = emx.imag

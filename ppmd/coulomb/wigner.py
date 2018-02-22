@@ -252,6 +252,7 @@ def Ry_set(p, beta, dtype):
     Returns the set of matrices needed to rotate all p moments by beta around
     the y axis.
     """
+    assert dtype is ctypes.c_double
     wp, wm = _wigner_engine(p, beta, eps_scaled=True)
 
     return wp, wm
