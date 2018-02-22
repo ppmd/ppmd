@@ -212,6 +212,111 @@ def test_new_matvec_1():
             assert err1 < (10.**-13)
 
 
+def test_new_matvec_2():
+    R = 3
+    L = 16
+    free_space = True
+    N = 2
+    E = 4.
+
+    A = state.State()
+    A.npart = N
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    A.P = data.PositionDat(ncomp=3)
+    A.F = data.ParticleDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.crr = data.ScalarArray(ncomp=1)
+    A.cri = data.ScalarArray(ncomp=1)
+    A.crs = data.ScalarArray(ncomp=1)
+
+    rng = np.random.RandomState(seed=1234)
+    A.P[:] = rng.uniform(low=-0.4999*E, high=0.49999*E, size=(N,3))
+    A.Q[:] = rng.uniform(low=-1., high=1., size=(N,1))
+    bias = np.sum(A.Q[:])/N
+    A.Q[:] -= bias
+
+    Q = np.sum(A.Q[:]**2.)
+
+    A.scatter_data_from(0)
+
+    fmm = PyFMM(domain=A.domain, r=R, l=L, free_space=free_space
+                , _debug=True)
+
+    for alpha, beta in itertools.product(angle_set, angle_set):
+
+        exp_re = np.zeros(L-1, dtype=REAL)
+        exp_im = np.zeros(L-1, dtype=REAL)
+        for mxi, mx in enumerate(range(1, L)):
+            me = cmath.exp(1.j * mx * alpha)
+            exp_re[mxi] = me.real
+            exp_im[mxi] = me.imag
+
+        wp, wm = _wigner_engine(L, beta, eps_scaled=True)
+
+
+        lib_all_forw = fmm._translate_mtlz2_lib[
+            'wrapper_rotate_moments_forward']
+
+        ncall = L*L
+        re_xall = np.zeros(ncall, dtype=REAL)
+        im_xall = np.zeros(ncall, dtype=REAL)
+
+        re_xall[:] = rng.uniform(size=ncall)
+        im_xall[:] = rng.uniform(size=ncall)
+
+        re_tmp0 = np.zeros(ncall, dtype=REAL)
+        im_tmp0 = np.zeros(ncall, dtype=REAL)
+        re_oall = np.zeros(ncall, dtype=REAL)
+        im_oall = np.zeros(ncall, dtype=REAL)
+
+        lib_all_forw(
+            INT32(L),
+            exp_re.ctypes.get_as_parameter(),
+            exp_im.ctypes.get_as_parameter(),
+            wp.ctypes.get_as_parameter(),
+            re_xall.ctypes.get_as_parameter(),
+            im_xall.ctypes.get_as_parameter(),
+            re_tmp0.ctypes.get_as_parameter(),
+            im_tmp0.ctypes.get_as_parameter(),
+            re_oall.ctypes.get_as_parameter(),
+            im_oall.ctypes.get_as_parameter()
+        )
+
+        for lx in range(L):
+
+            nc = 2*lx+1
+            s = fmm.re_lm(lx,-lx)
+            e = fmm.re_lm(lx, lx) + 1
+
+            x = np.zeros(nc, dtype=np.complex)
+            x.real[:] = re_xall[s:e:]
+            x.imag[:] = im_xall[s:e:]
+
+            o0 = np.zeros(nc, dtype=np.complex)
+            o0.real[:] = re_tmp0[s:e:]
+            o0.imag[:] = im_tmp0[s:e:]
+
+            o1 = np.zeros(nc, dtype=np.complex)
+            o1.real[:] = re_oall[s:e:]
+            o1.imag[:] = im_oall[s:e:]
+
+            A_alpha = np.zeros((nc,nc), dtype=np.complex)
+
+            for mxi, mx, in enumerate(range(-lx, lx+1)):
+                A_alpha[mxi, mxi] = cmath.exp(1.j * mx * alpha)
+
+            A_a_x = np.dot(A_alpha, x)
+
+            err0 = np.linalg.norm(A_a_x - o0, np.inf)
+            assert err0 < (10.**-13)
+
+            Ab_Aa_x = np.dot(wm[lx], A_a_x)
+
+            err1 = np.linalg.norm(Ab_Aa_x - o1, np.inf)
+            assert err1 < (10.**-13)
 
 
 

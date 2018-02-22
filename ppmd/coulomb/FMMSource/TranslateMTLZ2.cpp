@@ -92,24 +92,6 @@ int rotate_p_moments_wrapper(
 }
 
 
-static inline void rotate_moments(
-    const INT32 p,
-    const REAL * RESTRICT const * RESTRICT re_m,
-    const REAL * RESTRICT const * RESTRICT im_m,
-    const REAL * RESTRICT re_x,
-    const REAL * RESTRICT im_x,
-    REAL * RESTRICT re_b,
-    REAL * RESTRICT im_b
-){
-    const INT32 im_offset = p*p;
-    for(INT32 px=0 ; px<p ; px++){
-        rotate_p_moments(2*px+1, re_m[px], im_m[px],
-        &re_x[px*px], &im_x[px*px],
-        &re_b[px*px], &im_b[px*px]);
-    }
-}
-
-
 
 static inline void rotate_p_forward(
     const INT32 p,
@@ -143,7 +125,6 @@ static inline void rotate_p_forward(
             &re_bz[p+1+rx], &im_bz[p+1+rx]
         );
     }
-
     //rotate around y axis
     // b <- (Wigner_d) * x
     const INT32 n = 2*p+1;
@@ -164,7 +145,6 @@ static inline void rotate_p_forward(
         re_by[n-rx-1] = lre;
         im_by[n-rx-1] = lim;
     }
-
     // middle row
     REAL mre = 0.0;
     REAL mim = 0.0;
@@ -175,6 +155,29 @@ static inline void rotate_p_forward(
     }
     re_by[p] = mre;
     im_by[p] = mim;
+}
+
+
+
+static inline void rotate_moments_forward(
+    const INT32 l,
+    const REAL * RESTRICT exp_re,
+    const REAL * RESTRICT exp_im,
+    const REAL * RESTRICT const * RESTRICT wig_forw,
+    const REAL * RESTRICT re_x,
+    const REAL * RESTRICT im_x,
+    REAL * RESTRICT re_bz,
+    REAL * RESTRICT im_bz,
+    REAL * RESTRICT re_by,
+    REAL * RESTRICT im_by
+){
+    const INT32 im_offset = l*l;
+    for(INT32 lx=0 ; lx<l ; lx++){
+         rotate_p_forward(lx, exp_re, exp_im, wig_forw[lx],
+         &re_x[lx*lx], &im_x[lx*lx],
+         &re_bz[lx*lx], &im_bz[lx*lx],
+         &re_by[lx*lx], &im_by[lx*lx]);       
+    }
 }
 
 extern "C"
@@ -195,26 +198,23 @@ int wrapper_rotate_p_forward(
     return 0;
 }
 
-
-
-
-
-
-
-
-// test wrapper for rotate_moments
+// test wrapper for rotate_moments_forward
 extern "C"
-int rotate_moments_wrapper(
-    const INT32 p,
-    const REAL * RESTRICT const * RESTRICT re_m,
-    const REAL * RESTRICT const * RESTRICT im_m,
+int wrapper_rotate_moments_forward(
+    const INT32 l,
+    const REAL * RESTRICT exp_re,
+    const REAL * RESTRICT exp_im,
+    const REAL * RESTRICT const * RESTRICT wig_forw,
     const REAL * RESTRICT re_x,
     const REAL * RESTRICT im_x,
-    REAL * RESTRICT re_b,
-    REAL * RESTRICT im_b
+    REAL * RESTRICT re_bz,
+    REAL * RESTRICT im_bz,
+    REAL * RESTRICT re_by,
+    REAL * RESTRICT im_by
 )
 {
-    rotate_moments(p, re_m, im_m, re_x, im_x, re_b, im_b);
+    rotate_moments_forward(l, exp_re, exp_im, wig_forw, re_x,
+        im_x, re_bz, im_bz, re_by, im_by);
     return 0;
 }
 
