@@ -214,7 +214,7 @@ def test_new_matvec_1():
 
 def test_new_matvec_2():
     R = 3
-    L = 16
+    L = 20
     free_space = True
     N = 2
     E = 4.
@@ -255,10 +255,13 @@ def test_new_matvec_2():
             exp_im[mxi] = me.imag
 
         wp, wm = _wigner_engine(L, beta, eps_scaled=True)
+        wpb, wmb = _wigner_engine(L, -beta, eps_scaled=True)
 
 
         lib_all_forw = fmm._translate_mtlz2_lib[
             'wrapper_rotate_moments_forward']
+        lib_all_back = fmm._translate_mtlz2_lib[
+            'wrapper_rotate_moments_backward']
 
         ncall = L*L
         re_xall = np.zeros(ncall, dtype=REAL)
@@ -269,8 +272,12 @@ def test_new_matvec_2():
 
         re_tmp0 = np.zeros(ncall, dtype=REAL)
         im_tmp0 = np.zeros(ncall, dtype=REAL)
+
         re_oall = np.zeros(ncall, dtype=REAL)
         im_oall = np.zeros(ncall, dtype=REAL)
+
+        re_tmp1 = np.zeros(ncall, dtype=REAL)
+        im_tmp1 = np.zeros(ncall, dtype=REAL)
 
         lib_all_forw(
             INT32(L),
@@ -319,8 +326,59 @@ def test_new_matvec_2():
             assert err1 < (10.**-13)
 
 
+        lib_all_back(
+            INT32(L),
+            exp_re.ctypes.get_as_parameter(),
+            exp_im.ctypes.get_as_parameter(),
+            wpb.ctypes.get_as_parameter(),
+            re_oall.ctypes.get_as_parameter(),
+            im_oall.ctypes.get_as_parameter(),
+            re_tmp0.ctypes.get_as_parameter(),
+            im_tmp0.ctypes.get_as_parameter(),
+            re_tmp1.ctypes.get_as_parameter(),
+            im_tmp1.ctypes.get_as_parameter()
+        )
+
+        for lx in range(L):
+
+            nc = 2*lx+1
+            s = fmm.re_lm(lx,-lx)
+            e = fmm.re_lm(lx, lx) + 1
+
+            x = np.zeros(nc, dtype=np.complex)
+            x.real[:] = re_oall[s:e:]
+            x.imag[:] = im_oall[s:e:]
+
+            Ab_x = np.dot(wmb[lx], x)
+
+            err5 = np.linalg.norm(Ab_x.real - re_tmp0[s:e], np.inf)
+            err6 = np.linalg.norm(Ab_x.imag - im_tmp0[s:e], np.inf)
+
+            assert err5 < 10.**-14
+            assert err6 < 10.**-14
+
+            A_alpha = np.zeros((nc,nc), dtype=np.complex)
+            for mxi, mx, in enumerate(range(-lx, lx+1)):
+                A_alpha[mxi, mxi] = cmath.exp(1.j * mx * -alpha)
+
+            Aa_Ab_x = np.dot(A_alpha, Ab_x)
+            err5 = np.linalg.norm(Aa_Ab_x.real - re_tmp1[s:e], np.inf)
+            err6 = np.linalg.norm(Aa_Ab_x.imag - im_tmp1[s:e], np.inf)
+
+            assert err5 < 10.**-14
+            assert err6 < 10.**-14
 
 
+        err2 = np.linalg.norm(re_xall - re_tmp1, np.inf)
+        err3 = np.linalg.norm(im_xall - im_tmp1, np.inf)
+
+        assert err2 < 10.**-14
+        assert err3 < 10.**-14
+
+        for lx in range(L):
+            tmm = np.matmul(wm[lx], wmb[lx])
+            err4 = np.linalg.norm(tmm.ravel() - np.eye(lx*2+1).ravel(), np.inf)
+            assert err4 < 10.**-14
 
 
 

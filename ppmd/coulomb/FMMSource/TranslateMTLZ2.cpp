@@ -24,75 +24,6 @@ static inline void cplx_mul(
     *h = x * b + a * y;
 }
 
-static inline void rotate_p_moments(
-    const INT32 p,
-    const REAL * RESTRICT re_m,
-    const REAL * RESTRICT im_m,
-    const REAL * RESTRICT re_x,
-    const REAL * RESTRICT im_x,
-    REAL * RESTRICT re_b,
-    REAL * RESTRICT im_b
-){
-
-
-    for(INT32 rx=0; rx<p ; rx++){
-        REAL re_c = 0.0;
-        REAL im_c = 0.0;
-        for(INT32 cx=0; cx<p ; cx++){
-            cplx_mul_add(   re_m[p*rx+cx],  im_m[p*rx+cx],
-                            re_x[cx],       im_x[cx],
-                            &re_c,          &im_c);
-        }
-        re_b[rx] = re_c;
-        im_b[rx] = im_c;
-    }
-    return;
-
-}
-
-static inline void rotate_p_moments_append(
-    const INT32 p,
-    const REAL * RESTRICT re_m,
-    const REAL * RESTRICT im_m,
-    const REAL * RESTRICT re_x,
-    const REAL * RESTRICT im_x,
-    REAL * RESTRICT re_b,
-    REAL * RESTRICT im_b
-){
-
-    // implement complex matvec
-    for(INT32 rx=0; rx<p ; rx++){
-        REAL re_c = 0.0;
-        REAL im_c = 0.0;
-        for(INT32 cx=0; cx<p ; cx++){
-            cplx_mul_add(   re_m[p*rx+cx],  im_m[p*rx+cx],
-                            re_x[cx],       im_x[cx],
-                            &re_c,          &im_c);
-        }
-        re_b[rx] += re_c;
-        im_b[rx] += im_c;
-    }
-    return;
-}
-
-
-// test wrapper for pth moment rotation
-extern "C"
-int rotate_p_moments_wrapper(
-    const INT32 p,
-    const REAL * RESTRICT re_m,
-    const REAL * RESTRICT im_m,
-    const REAL * RESTRICT re_x,
-    const REAL * RESTRICT im_x,
-    REAL * RESTRICT re_b,
-    REAL * RESTRICT im_b
-){
-    rotate_p_moments( p, re_m, im_m, re_x, im_x, re_b, im_b);
-    return 0;
-}
-
-
-
 static inline void rotate_p_forward(
     const INT32 p,
     const REAL * RESTRICT exp_re,
@@ -157,8 +88,6 @@ static inline void rotate_p_forward(
     im_by[p] = mim;
 }
 
-
-
 static inline void rotate_moments_forward(
     const INT32 l,
     const REAL * RESTRICT exp_re,
@@ -219,22 +148,122 @@ int wrapper_rotate_moments_forward(
 }
 
 
-static inline void rotate_moments_append(
+
+
+
+
+
+
+
+
+
+static inline void rotate_p_backward(
     const INT32 p,
-    const REAL * RESTRICT const * RESTRICT re_m,
-    const REAL * RESTRICT const * RESTRICT im_m,
+    const REAL * RESTRICT exp_re,
+    const REAL * RESTRICT exp_im,
+    const REAL * RESTRICT wig_forw,
     const REAL * RESTRICT re_x,
     const REAL * RESTRICT im_x,
-    REAL * RESTRICT re_b,
-    REAL * RESTRICT im_b
+    REAL * RESTRICT re_by,
+    REAL * RESTRICT im_by,
+    REAL * RESTRICT re_bz,
+    REAL * RESTRICT im_bz
 ){
-    const INT32 im_offset = p*p;
-    for(INT32 px=0 ; px<p ; px++){
-        rotate_p_moments_append(2*px+1, re_m[px], im_m[px],
-        &re_x[px*px], &im_x[px*px],
-        &re_b[px*px], &im_b[px*px]);
+    //rotate around y axis
+    // b <- (Wigner_d) * x
+    const INT32 n = 2*p+1;
+    for(INT32 rx=0 ; rx<p ; rx++){
+        REAL hre = 0.0;
+        REAL him = 0.0;
+        REAL lre = 0.0;
+        REAL lim = 0.0;
+        for(INT32 cx=0 ; cx<n ; cx++){
+            const REAL a = wig_forw[rx*n + cx];
+            hre += a * re_x[cx];
+            him += a * im_x[cx];
+            lre += a * re_x[n-cx-1];
+            lim += a * im_x[n-cx-1];
+        }
+        re_by[rx] = hre;
+        im_by[rx] = him;
+        re_by[n-rx-1] = lre;
+        im_by[n-rx-1] = lim;
+    }
+    // middle row
+    REAL mre = 0.0;
+    REAL mim = 0.0;
+    for( INT32 cx=0 ; cx<n ; cx++ ){
+        const REAL a = wig_forw[p*n + cx];
+        mre += a * re_x[cx];
+        mim += a * im_x[cx];
+    }
+    re_by[p] = mre;
+    im_by[p] = mim;
+    
+    // rotate negative terms around z axis
+    for(INT32 rx=0 ; rx<p ; rx++){
+         cplx_mul_add(
+            re_by[rx], im_by[rx],
+            exp_re[p-1-rx], exp_im[p-1-rx],
+            &re_bz[rx], &im_bz[rx]
+        );
+    }
+    re_bz[p] += re_by[p];
+    im_bz[p] += im_by[p];
+    // rotate positive terms around z axis
+    for(INT32 rx=0 ; rx<p ; rx++){
+         cplx_mul_add(
+            re_by[p+1+rx], im_by[p+1+rx],
+            exp_re[rx], -1.0*exp_im[rx],
+            &re_bz[p+1+rx], &im_bz[p+1+rx]
+        );
+    }
+
+}
+
+static inline void rotate_moments_backward(
+    const INT32 l,
+    const REAL * RESTRICT exp_re,
+    const REAL * RESTRICT exp_im,
+    const REAL * RESTRICT const * RESTRICT wig_forw,
+    const REAL * RESTRICT re_x,
+    const REAL * RESTRICT im_x,
+    REAL * RESTRICT re_by,
+    REAL * RESTRICT im_by,
+    REAL * RESTRICT re_bz,
+    REAL * RESTRICT im_bz
+){
+    const INT32 im_offset = l*l;
+    for(INT32 lx=0 ; lx<l ; lx++){
+         rotate_p_backward(
+         lx, exp_re, exp_im, wig_forw[lx],
+         &re_x[lx*lx], &im_x[lx*lx],
+         &re_by[lx*lx], &im_by[lx*lx],
+         &re_bz[lx*lx], &im_bz[lx*lx]
+        );       
     }
 }
+
+// test wrapper for rotate_moments_forward
+extern "C"
+int wrapper_rotate_moments_backward(
+    const INT32 l,
+    const REAL * RESTRICT exp_re,
+    const REAL * RESTRICT exp_im,
+    const REAL * RESTRICT const * RESTRICT wig_forw,
+    const REAL * RESTRICT re_x,
+    const REAL * RESTRICT im_x,
+    REAL * RESTRICT re_by,
+    REAL * RESTRICT im_by,
+    REAL * RESTRICT re_bz,
+    REAL * RESTRICT im_bz
+){
+    rotate_moments_backward(l, exp_re, exp_im, wig_forw, re_x,
+        im_x, re_by, im_by, re_bz, im_bz);
+    return 0;
+}
+
+
 
 
 
