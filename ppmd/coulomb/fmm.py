@@ -20,6 +20,7 @@ import sys
 from ppmd.cuda import CUDA_IMPORT
 from ppmd.coulomb.wigner import Rzyz_set, Ry_set
 from ppmd.coulomb.fmm_pbc import FMMPbc
+from ppmd.coulomb.fmm_local import FMMLocal
 
 
 import pytest
@@ -118,6 +119,9 @@ class PyFMM(object):
         self.tree_halo = OctalDataTree(self.tree, ncomp, 'halo', dtype)
         self.tree_parent = OctalDataTree(self.tree, ncomp, 'parent', dtype)
         self.entry_data = EntryData(self.tree, ncomp, dtype)
+
+
+
 
         self._tcount = runtime.OMP_NUM_THREADS if runtime.OMP_NUM_THREADS is \
             not None else 1
@@ -548,6 +552,13 @@ class PyFMM(object):
         else:
             PL = pairloop.PairLoopNeighbourListNSOMP
             max_radius = 1. * ((((maxe+shell_width)*2.)**2.)*3.)**0.5
+
+
+        self._fmm_local = FMMLocal(width=max_radius, domain=self.domain,
+                entry_data=self.entry_data, entry_map=self.tree.entry_map, 
+                free_space=self.free_space, dtype=self.dtype, force_unit=force_unit,
+                energy_unit=energy_unit)
+
 
         self._pair_loop = PL(
             kernel=pair_kernel,

@@ -47,6 +47,14 @@ class StateHandler(object):
         return _group.npart_local, _group.npart_halo, \
             _group.get_cell_to_particle_map().max_cell_contents_count
 
+    def get_pointer(self, dat):
+        obj = dat[0]
+        mode = dat[1]
+        if issubclass(type(obj), data.GlobalArrayClassic):
+            return obj.ctypes_data_access(mode, pair=True, threaded=True)
+        else:
+            return obj.ctypes_data_access(mode, pair=True)
+
     def post_execute(self, dats):
         for d in dats.values():
             assert type(d) is tuple
