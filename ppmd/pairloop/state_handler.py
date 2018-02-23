@@ -28,9 +28,9 @@ class StateHandler(object):
         _group = self._group
         if _group is None:
             for pd in dats.values():
-                if issubclass(type(pd[1][0]), data.PositionDat):
-                    pd[1][0].group.cell_decompose(self.shell_cutoff)
-                    _group = 1
+                if issubclass(type(pd[0]), data.PositionDat):
+                    pd[0].group.cell_decompose(self.shell_cutoff)
+                    _group = pd[0].group
                     break
         if _group is None:
             raise RuntimeError("No state/group found")
@@ -44,7 +44,8 @@ class StateHandler(object):
                 raise RuntimeError("dat was not tuple")
             d[0].ctypes_data_access(d[1], pair=self._pair)
 
-        return _group.npart_local, _group.npart_halo
+        return _group.npart_local, _group.npart_halo, \
+            _group.get_cell_to_particle_map().max_cell_contents_count
 
     def post_execute(self, dats):
         for d in dats.values():

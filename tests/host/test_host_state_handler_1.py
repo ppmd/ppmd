@@ -95,7 +95,44 @@ def test_init_1(state):
     assert state.npart_halo + state.npart_local == ctotals
 
 
+def test_init_2(state):
+    """
+    Set a cutoff slightly smaller than the smallest distance in the grid
+    """
 
+    cell_width = float(E)/float(crN)
+    
+    
+    assert state.npart == N
+
+    rng = np.random.RandomState(seed=1234)
+    state.p[:] = rng.uniform(low=-Eo2, high=Eo2, size=(N,3))
+    state.scatter_data_from(0)
+    
+    # check no particles were gained or lost
+    npl = np.array((state.npart_local))
+    m = mpi.all_reduce(npl)
+    assert m == N
+
+
+    sh = pairloop.state_handler.StateHandler(state=None, shell_cutoff=cell_width)
+
+    # check no particles were gained or lost
+    npl = np.array((state.npart_local))
+    m = mpi.all_reduce(npl)
+    assert m == N
+    
+    # no halo exchanges should have yet occured
+    assert state.npart_halo == 0
+    
+    sh.pre_execute({
+        'p': state.p(access.READ)
+    })
+    
+
+    ctotals = np.sum(state.get_cell_to_particle_map().cell_contents_count[:])
+
+    assert state.npart_halo + state.npart_local == ctotals
 
 
 
