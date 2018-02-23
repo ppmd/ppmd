@@ -461,6 +461,7 @@ class PyFMM(object):
         self._ptr_exp_re = np.zeros((7,7,7), dtype=ctypes.c_void_p)
         self._ptr_exp_im = np.zeros((7,7,7), dtype=ctypes.c_void_p)
         self._ptr_wigner = np.zeros((7,7,7), dtype=ctypes.c_void_p)
+        self._ptr_wignerb = np.zeros((7,7,7), dtype=ctypes.c_void_p)
 
         for iz, pz in enumerate(range(-3, 4)):
             for iy, py in enumerate(range(-3, 4)):
@@ -472,18 +473,23 @@ class PyFMM(object):
                     # r, phi, theta
                     sph = self._cart_to_sph((px, py, pz))
                     
-                    beta = sph[1]
+                    beta = sph[2]
 
                     ptrs, mats = Ry_set(self.L, beta, self.dtype)
                     
                     self._str_wigner.append(mats)
                     self._str_wigner.append(ptrs)
-                    self._ptr_wigner[iz, iy, ix] = self._str_wigner[-1].ctypes.data
+                    self._ptr_wigner[iz, iy, ix] = \
+                        self._str_wigner[-1].ctypes.data
 
+                    ptrs, mats = Ry_set(self.L, -beta, self.dtype)
+
+                    self._str_wigner.append(mats)
+                    self._str_wigner.append(ptrs)
+                    self._ptr_wignerb[iz, iy, ix] = \
+                        self._str_wigner[-1].ctypes.data
 
         # --------------------------
-
-
 
 
         # create a pairloop for finest level part
@@ -1063,6 +1069,40 @@ class PyFMM(object):
         self.timer_halo.pause()
 
     def _translate_m_to_l(self, level):
+
+        if self.tree[level].local_grid_cube_size is None:
+            return
+
+        self.timer_mtl.start()
+        self.tree_plain[level][:] = 0.0
+
+        radius = self.domain.extent[0] / \
+                 self.tree[level].ncubes_side_global
+
+        err = self._translate_mtlz2_lib['translate_mtl'](
+            _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
+            _check_dtype(self.tree_halo[level], REAL),
+            _check_dtype(self.tree_plain[level], REAL),
+            self._ptr_wigner.ctypes.get_as_parameter(),
+            self._ptr_wignerb.ctypes.get_as_parameter(),
+            self._ptr_exp_re.ctypes.get_as_parameter(),
+            self._ptr_exp_im.ctypes.get_as_parameter(),
+            _check_dtype(self._a, REAL),
+            _check_dtype(self._arn0, REAL),
+            _check_dtype(self._ipower_mtl, REAL),
+            REAL(radius),
+            INT64(self.L),
+            _check_dtype(self._int_list[level], INT32),
+            _check_dtype(self._int_tlookup, INT32),
+            _check_dtype(self._int_plookup, INT32),
+            _check_dtype(self._int_radius, ctypes.c_double),
+            self._thread_space.ctypes_data
+        )
+        if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
+        self.timer_mtl.pause()
+
+
+    def _translate_m_to_l_z_1(self, level):
 
         if self.tree[level].local_grid_cube_size is None:
             return

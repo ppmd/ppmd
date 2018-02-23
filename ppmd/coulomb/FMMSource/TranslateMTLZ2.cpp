@@ -297,8 +297,8 @@ static inline void mtl_z(
     const REAL * RESTRICT   odata,
     const REAL * RESTRICT const * RESTRICT wig_forw,
     const REAL * RESTRICT const * RESTRICT wig_back,
-    const REAL * RESTRICT const * RESTRICT exp_re,
-    const REAL * RESTRICT const * RESTRICT exp_im,
+    const REAL * RESTRICT   exp_re,
+    const REAL * RESTRICT   exp_im,
     const REAL * RESTRICT   a_array,
     const REAL * RESTRICT   ar_array,
     const REAL * RESTRICT   i_array,
@@ -327,25 +327,19 @@ static inline void mtl_z(
     REAL * RESTRICT tmp_iml = &thread_space[ts];
     REAL * RESTRICT tmp_reh = &thread_space[2*ts];
     REAL * RESTRICT tmp_imh = &thread_space[3*ts];
-    
-/*
-    // rotate foward
-    rotate_moments(
-        nlevel,
-        re_mat_forw,
-        im_mat_forw,
-        odata,
-        &odata[im_offset],
-        tmp_rel,
-        tmp_iml
-    );
 
+    // rotate foward
+    rotate_moments_forward(nlevel,
+        exp_re, exp_im, wig_forw,
+        odata, &odata[im_offset],
+        tmp_reh, tmp_imh,
+        tmp_rel, tmp_iml
+    );
 
     for(INT32 jx=0 ; jx<ts ; jx++){
         tmp_reh[jx]=0.0;
         tmp_imh[jx]=0.0;
     }
-    
 
     // loop over parent moments
     for(INT32 jx=0     ; jx<nlevel ; jx++ ){
@@ -381,17 +375,14 @@ static inline void mtl_z(
 
         }
     }
-
-    rotate_moments_append(
-        nlevel,
-        re_mat_back,
-        im_mat_back,
-        tmp_reh,
-        tmp_imh,
-        ldata,
-        &ldata[im_offset]
+    
+    // rotate backwards
+    rotate_moments_backward(nlevel, 
+        exp_re, exp_im, wig_back,
+        tmp_reh, tmp_imh,
+        tmp_rel, tmp_iml,
+        ldata, &ldata[im_offset]
     );
-*/
 
 }
 
@@ -402,8 +393,8 @@ int mtl_z_wrapper(
     const REAL * RESTRICT   odata,
     const REAL * RESTRICT const * RESTRICT wig_forw,
     const REAL * RESTRICT const * RESTRICT wig_back,
-    const REAL * RESTRICT const * RESTRICT exp_re,
-    const REAL * RESTRICT const * RESTRICT exp_im,
+    const REAL * RESTRICT exp_re,
+    const REAL * RESTRICT exp_im,
     const REAL * RESTRICT   a_array,
     const REAL * RESTRICT   ar_array,
     const REAL * RESTRICT   i_array,
@@ -436,8 +427,8 @@ int translate_mtl(
     REAL * RESTRICT local_moments,
     const REAL * RESTRICT const * RESTRICT const * RESTRICT wig_forw,
     const REAL * RESTRICT const * RESTRICT const * RESTRICT wig_back,
-    const REAL * RESTRICT const * RESTRICT const * RESTRICT exp_re,
-    const REAL * RESTRICT const * RESTRICT const * RESTRICT exp_im,
+    const REAL * RESTRICT const * RESTRICT exp_re,
+    const REAL * RESTRICT const * RESTRICT exp_im,
     const REAL * RESTRICT alm,
     const REAL * RESTRICT almr,
     const REAL * RESTRICT i_array,

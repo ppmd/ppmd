@@ -21,6 +21,7 @@ from ppmd.coulomb.fmm import *
 from ppmd.coulomb.ewald_half import *
 
 from ppmd.coulomb.wigner import *
+from ppmd.coulomb.wigner import _wigner_engine
 
 from transforms3d.euler import mat2euler
 from scipy.special import sph_harm, lpmv
@@ -617,6 +618,7 @@ def test_fmm_translate_3():
 
     t0 = time.time()
     fmm._translate_m_to_l_cart(level)
+    #fmm._translate_m_to_l_z_1(level)
     t1 = time.time()
 
     correct = np.copy(fmm.tree_plain[level][:,:,:,:])
@@ -632,6 +634,7 @@ def test_fmm_translate_3():
 
     correct = correct.ravel()
     zmtl = zmtl.ravel()
+
     err = np.linalg.norm(correct - zmtl, np.inf)
 
     print("\n")
@@ -644,6 +647,122 @@ def test_fmm_translate_3():
 
 
 
+
+@pytest.mark.skipif("MPISIZE>1")
+def test_fmm_translate_split_1():
+    R = 2
+    eps = 10.**-4
+    free_space = True
+    N = 2
+    E = 4.
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space
+                , _debug=True)
+
+    tol = 10.**-14
+    nterms = fmm.L
+    ncomp = (nterms**2)*2
+    im_offset = nterms**2
+    rng = np.random.RandomState(seed=1234)
+
+    moments = rng.uniform(low=-10.0, high=10.0, size=ncomp)
+    bvec = np.zeros_like(moments)
+
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + nterms**2
+
+    radius = 2.
+    theta = -4.7
+    phi = -2.6
+
+    alpha, beta, gamma = 0.0, theta, phi
+
+     # storage to prevent matrices/pointer arrays going out of scope
+    pointers_real, pointers_imag, matrices = Rzyz_set(
+        p=nterms,
+        alpha=alpha, beta=beta, gamma=gamma,
+        dtype=fmm.dtype)
+
+    back_pointers_real, back_pointers_imag, back_matrices = Rzyz_set(
+        p=nterms,
+        alpha=-gamma, beta=-beta, gamma=-alpha,
+        dtype=fmm.dtype)
+
+    tmp_space = np.zeros(ncomp*2, dtype=fmm.dtype)
+    """
+    t0 = time.time()
+    fmm._translate_mtlz_lib['mtl_z_wrapper'](
+        ctypes.c_int64(nterms),
+        fmm.dtype(radius),
+        moments.ctypes.get_as_parameter(),
+        pointers_real.ctypes.get_as_parameter(),
+        pointers_imag.ctypes.get_as_parameter(),
+        back_pointers_real.ctypes.get_as_parameter(),
+        back_pointers_imag.ctypes.get_as_parameter(),
+        fmm._a.ctypes.get_as_parameter(),
+        fmm._arn0.ctypes.get_as_parameter(),
+        fmm._ipower_mtl.ctypes.get_as_parameter(),
+        bvec.ctypes.get_as_parameter(),
+        tmp_space.ctypes.get_as_parameter()
+    )
+    t1 = time.time()
+    """
+
+    wp, wm = _wigner_engine(fmm.L, beta, eps_scaled=True)
+    wpb, wmb = _wigner_engine(fmm.L, -beta, eps_scaled=True)
+    exp_re = np.zeros(fmm.L-1, dtype=REAL)
+    exp_im = np.zeros(fmm.L-1, dtype=REAL)
+    for mxi, mx in enumerate(range(1, fmm.L)):
+        me = cmath.exp(1.j * mx * alpha)
+        exp_re[mxi] = me.real
+        exp_im[mxi] = me.imag
+
+
+    t0 = time.time()
+    fmm._translate_mtlz2_lib['mtl_z_wrapper'](
+        ctypes.c_int64(nterms),
+        fmm.dtype(radius),
+        moments.ctypes.get_as_parameter(),
+        wp.ctypes.get_as_parameter(),
+        wpb.ctypes.get_as_parameter(),
+        exp_re.ctypes.get_as_parameter(),
+        exp_im.ctypes.get_as_parameter(),
+        fmm._a.ctypes.get_as_parameter(),
+        fmm._arn0.ctypes.get_as_parameter(),
+        fmm._ipower_mtl.ctypes.get_as_parameter(),
+        bvec.ctypes.get_as_parameter(),
+        tmp_space.ctypes.get_as_parameter()
+    )
+    t1 = time.time()
+
+
+
+
+    forward_rot = rotate_moments(nterms, alpha=alpha, beta=beta, gamma=gamma,
+                                 moments=moments)
+    z_mtl = shift_z(nterms, radius, 0.0, forward_rot)
+
+    correct = rotate_moments(nterms, alpha=-gamma, beta=-beta, gamma=-alpha,
+                             moments=z_mtl)
+
+    err = np.linalg.norm(bvec - correct, np.inf)
+
+    if DEBUG:
+        for nx in range(nterms):
+            print("nx =", nx)
+            for mx in range(-1*nx, nx+1):
+                print("\t{: 2d} | {: .8f} {: .8f} | {: .8f} {: .8f}  || {: .8f} {: .8f}".format(mx,
+                    correct[re_lm(nx, mx)], bvec[re_lm(nx, mx)],
+                    correct[im_lm(nx, mx)], bvec[im_lm(nx, mx)],
+                    moments[re_lm(nx, mx)], moments[im_lm(nx, mx)]))
+
+    print("ERR:\t", red_tol(err, tol), "\tTIME:\t", t1-t0)
+
+    assert err < tol
 
 
 

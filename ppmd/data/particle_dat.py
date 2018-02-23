@@ -368,10 +368,8 @@ class ParticleDat(host.Matrix):
 
     def halo_exchange(self):
         """
-        Perform a halo exchange for the particle dat. WIP currently only
-        functional for positions.
+        Perform a halo exchange for the particle dat.
         """
-
 
         self.timer_comm.start()
 
@@ -379,9 +377,6 @@ class ParticleDat(host.Matrix):
         # can only exchage sizes if needed.
 
         self.halo_start_reset()
-
-        idi = self.group._cell_to_particle_map.version_id
-        idh = self.group._cell_to_particle_map.halo_version_id
 
         _halo_sizes = self.group._halo_update_exchange_sizes()
 

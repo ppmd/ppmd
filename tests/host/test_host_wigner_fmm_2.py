@@ -379,8 +379,3 @@ def test_new_matvec_2():
             tmm = np.matmul(wm[lx], wmb[lx])
             err4 = np.linalg.norm(tmm.ravel() - np.eye(lx*2+1).ravel(), np.inf)
             assert err4 < 10.**-14
-
-
-
-
-

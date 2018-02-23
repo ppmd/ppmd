@@ -64,6 +64,9 @@ class BaseMDState(object):
         # Global number of particles
         self._npart = 0
 
+        # number of particles including halos
+        self.npart_halo = 0
+
         self.version_id = 0
 
         self.invalidate_lists = False
@@ -96,7 +99,6 @@ class BaseMDState(object):
             self._base_cell_width = cell_width
             self._cell_particle_map_setup()
             self.invalidate_lists = True
-
 
             for dat in self.particle_dats:
                 getattr(self, dat).vid_halo_cell_list = -1
@@ -356,12 +358,14 @@ class BaseMDState(object):
 
         idi = self._cell_to_particle_map.version_id
         idh = self._cell_to_particle_map.halo_version_id
+
         if idi > idh:
             self._halo_exchange_sizes = self._halo_manager.exchange_cell_counts()
             new_size = self.npart_local + self._halo_exchange_sizes[0]
             self._resize_callback(new_size)
             self._cell_to_particle_map.prepare_halo_sort(new_size)
-
+            self.npart_halo = new_size - self.npart_local
+        
         return self._halo_exchange_sizes
 
     def _halo_update_post_exchange(self):
