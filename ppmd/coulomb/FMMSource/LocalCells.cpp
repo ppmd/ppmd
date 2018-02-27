@@ -28,9 +28,16 @@ static inline REAL compute_interactions_same_cell(
 
         for(INT64 pxj=0 ; pxj<nj ; pxj++){
             const REAL dx = pj[     + pxj] - px ;
-            const REAL dy = pj[1*si + pxj] - py ;
-            const REAL dz = pj[2*si + pxj] - pz ;
-
+            const REAL dy = pj[1*sj + pxj] - py ;
+            const REAL dz = pj[2*sj + pxj] - pz ;
+/*
+            if (ABS(q*qj[pxj])>0.00001){
+                //printf("SAME CELL  ~~~~~~~~~~~~~> dx %f dy %f dz %f |%d %d \n", dx, dy, dz, ti[pxi], tj[pxj]);
+                printf("\t\t -------------------------->> %f %f %f\n", dx, dy, dz);
+                printf("\t\t i %d | %f %f %f\n", ti[pxi], px, py, pz);
+                printf("\t\t j %d | %f %f %f\n", tj[pxj], pj[0*sj + pxj], pj[1*sj + pxj], pj[2*sj + pxj]);
+            }
+*/            
             const REAL r2 = dx*dx + dy*dy + dz*dz;
 
 
@@ -67,6 +74,13 @@ static inline REAL compute_interactions(
     const REAL *  RESTRICT qj,
     REAL *  RESTRICT fi
 ){
+/*
+printf("=================\n");
+for(int jx=0 ; jx<nj ; jx++){
+    printf("%f %f %f\n", pj[0*sj + jx], pj[1*sj + jx], pj[2*sj + jx]);
+}
+printf("=================\n");
+*/
     REAL energy = 0.0;
     for(INT64 pxi=0 ; pxi<ni ; pxi++ ){
         REAL fx = 0.0;
@@ -79,9 +93,17 @@ static inline REAL compute_interactions(
         const REAL q = qi[pxi];
 
         for(INT64 pxj=0 ; pxj<nj ; pxj++){
-            const REAL dx = pj[     + pxj] - px ;
-            const REAL dy = pj[1*si + pxj] - py ;
-            const REAL dz = pj[2*si + pxj] - pz ;
+            const REAL dx = pj[      + pxj ] - px ;
+            const REAL dy = pj[ 1*sj + pxj ] - py ;
+            const REAL dz = pj[ 2*sj + pxj ] - pz ;
+/*            
+            if (ABS(q*qj[pxj])>0.00001){
+                //printf("OTHER CELL ~~~~~~~~~~~~~> dx %f dy %f dz %f\n", dx, dy, dz);
+                printf("\t\t -------------------------->> %f %f %f\n", dx, dy, dz);
+                printf("\t\t i | %f %f %f\n", px, py, pz);
+                printf("\t\t j | %f %f %f\n", pj[0*sj + pxj], pj[1*sj + pxj], pj[2*sj + pxj]);
+            }
+*/            
             const REAL r2 = dx*dx + dy*dy + dz*dz;
             const REAL r = sqrt(r2);
             const REAL ir = 1.0/r;
@@ -106,6 +128,7 @@ static inline REAL compute_interactions(
 extern "C"
 int local_cell_by_cell(
     const INT64 free_space,
+    const REAL * RESTRICT extent,
     const INT64 * RESTRICT global_size,
     const INT64 * RESTRICT local_size,
     const INT64 * RESTRICT local_offset,
@@ -114,7 +137,7 @@ int local_cell_by_cell(
     const INT64 ntotal,
     const REAL * RESTRICT P,
     const REAL * RESTRICT Q,
-    const REAL * RESTRICT C,
+    const INT32 * RESTRICT C,
     REAL * RESTRICT F,
     REAL * RESTRICT U,
     INT64 * RESTRICT ll_array,
@@ -131,12 +154,46 @@ int local_cell_by_cell(
     omp_set_num_threads(num_threads);
     int err = 0;
     REAL energy = 0.0;
+    INT64 part_count = 0;
+    
+    // pad global and pad local
+    const INT64 padg = 3;
+    const INT64 padl = 1;
+
+    const INT64 plsx = local_size[2] + 2*padl;
+    const INT64 plsy = local_size[1] + 2*padl;
+    const INT64 plsz = local_size[0] + 2*padl;
+
+    const INT64 pgsx = global_size[2] + 2*padg;
+    const INT64 pgsy = global_size[1] + 2*padg;
+    const INT64 pgsz = global_size[0] + 2*padg;
+
+    const INT64 ncells_local = plsx*plsy*plsz;
 
     const INT64 ncells_global = global_size[0]*global_size[1]*global_size[2];
-    const INT64 ncells_local = local_size[0]*local_size[1]*local_size[2];
+    const INT64 ncells_padded = pgsx * pgsy * pgsz;
 
-    const INT64 ll_cend   = ncells_global + ntotal;
+    // padded by one cell to include particles that are allowed to drift out
+    // of this domain due to cell list rebuilding.
+
+    const INT64 ll_cend   = ncells_padded + ntotal;
     const INT64 ll_cstart = ntotal;
+
+
+    const INT64 shift_x = 1;
+    const INT64 shift_y = pgsx;
+    const INT64 shift_z = pgsx*pgsy;
+    
+    const INT64 hshift_x = global_size[2];
+    const INT64 hshift_y = global_size[1];
+    const INT64 hshift_z = global_size[0];
+
+    const REAL ex = extent[0];
+    const REAL ey = extent[1];
+    const REAL ez = extent[2];
+    const REAL hex = ex*0.5;
+    const REAL hey = ey*0.5;
+    const REAL hez = ez*0.5;
     
     // initalise the linked list
     for(INT64 llx=ll_cstart ; llx<ll_cend ; llx++){ 
@@ -145,23 +202,61 @@ int local_cell_by_cell(
     }
 
     // build linked list based on global cell of particle
-#pragma omp parallel for default(none) shared(ll_array, ll_ccc_array, C)
+#pragma omp parallel for default(none) reduction(min:err) \
+shared(ll_array, ll_ccc_array, C, P, global_size)
     for(INT64 nx=0 ; nx<ntotal ; nx++ ){
-        const INT64 tcell = C[nx];
+
+        INT64 tcell = C[nx];
+        INT64 tcx = tcell % global_size[2];
+        INT64 tcy = ((tcell - tcx) / global_size[2]) % global_size[1];
+        INT64 tcz = (tcell - tcx - tcy*global_size[2])/(global_size[1]*global_size[2]);
+        
+        tcx += 3;
+        tcy += 3;
+        tcz += 3;
+
+        if (nx >= nlocal) {
+            const REAL hpx = P[3*nx+0];
+            const REAL hpy = P[3*nx+1];
+            const REAL hpz = P[3*nx+2];
+            if (hpx >= hex)         { tcx += hshift_x; }
+            if (hpx <= -1.0*hex)    { tcx -= hshift_x; }
+            if (hpy >= hey)         { tcy += hshift_y; }
+            if (hpy <= -1.0*hey)    { tcy -= hshift_y; }
+            if (hpz >= hez)         { tcz += hshift_z; }
+            if (hpz <= -1.0*hez)    { tcz -= hshift_z; }
+        }
+
+        tcell = tcx + pgsx*(tcy + tcz*pgsy);
+
+/*
+        if (nx < nlocal) {
+            printf("LOCAL: nx %d cell %d\n", nx, tcell);
+        }
+*/
+        if (tcell < 0 || tcell >= ncells_padded ) {
+            err=-4; printf("Err -4: Bad particle (id, cell, max_cell): (%d, %d, %d)\n", nx, tcell, ncells_padded);
+        }
+
 #pragma omp critical
         {
-            const INT64 tcurr = ll_array[ll_cstart+tcell];
-            ll_array[ll_cstart+tcell] = nx;
-            ll_array[nx] = tcurr;
-            ll_ccc_array[tcell]++;
+            if (!(tcell < 0 || tcell >= ncells_padded )){
+                ll_array[nx] = ll_array[ll_cstart+tcell];
+                ll_array[ll_cstart+tcell] = nx;
+                ll_ccc_array[tcell]++;
+            }
         }
     }
     
-#pragma omp parallel for default(none) reduction(min:err) reduction(+:energy)\
+    if (err < 0) { return err; }
+
+#pragma omp parallel for default(none) reduction(min:err) reduction(+:energy) reduction(+:part_count) \
 shared(local_size, local_offset, global_size, P, Q, C, F, U, ll_array, \
 ll_ccc_array, tmp_int_i, tmp_int_j, tmp_real_pi, tmp_real_pj, tmp_real_qi, \
 tmp_real_qj, tmp_real_fi)
     for(INT64 cx=0 ; cx<ncells_local ; cx++ ){
+        if (err<0){ printf("Negative error code detected."); continue; }
+
         const INT64 threadid = omp_get_thread_num();
 
         INT64 * RESTRICT tmp_i    = tmp_int_i[threadid];
@@ -174,15 +269,25 @@ tmp_real_qj, tmp_real_fi)
 
         // convert cell linear index to tuple
         // local_size is zyx
-        const INT64 cxx = cx % local_size[2];
-        const INT64 cxy = ((cx - cxx) / local_size[2]) % local_size[1];
-        const INT64 cxz = (cx - cxx - cxy*local_size[2]) / (local_size[2]*local_size[1]);
+        
+        const INT64 cxx = cx % plsx;
+        const INT64 cxy = ((cx - cxx) / plsx) % plsy;
+        const INT64 cxz = (cx - cxx - cxy*plsx) / (plsx*plsy);
         // indexing tuple of "first" cell in xyz
-        const INT64 gxt[3] = {cxx + local_offset[2], cxy + local_offset[1], cxz + local_offset[0]};
+        // -1 accounts for the padding by one cell. + 3 for the global padding
+        const INT64 gxt[3] = {  cxx + local_offset[2] -1 + 3, 
+                                cxy + local_offset[1] -1 + 3, 
+                                cxz + local_offset[0] -1 + 3};
+
         // global index of "first" cell
-        const INT64 gx = gxt[0] + global_size[2]*(gxt[1] + gxt[2]*global_size[1]);
-
-
+        const INT64 gx = gxt[0] + pgsx*(gxt[1] + gxt[2]*pgsy);
+        
+        // skip cell if empty
+        if (ll_ccc_array[gx] == 0) { continue; }
+/*
+        printf("\t -- CELL -- %d %d %d ---------- %d ------------ %d %d %d\n", 
+                cxx-1, cxy-1, cxz-1, gx, gxt[0], gxt[1], gxt[2]);
+*/
         // populate temporary arrays
         INT64 ci_nt = 0;
         INT64 ci_ntc = 0;
@@ -191,7 +296,9 @@ tmp_real_qj, tmp_real_fi)
         while(ci_tx>-1){
             if (ci_tx > ntotal) {err=-2; printf("Err -2: Bad particle index: %d\n", ci_tx);}
             // only want to write to local particles
+//            printf("gx= %d, px=%d, nt=%d, ntc=%d \n",gx, ci_tx, ci_nt, ci_ntc);
             if (ci_tx < nlocal){
+//                printf("added: %f %f %f\n",P[3*ci_tx + 0], P[3*ci_tx + 1], P[3*ci_tx + 2] );
                 // copy positions
                 tmp_pi[ci_n*0 + ci_nt] = P[3*ci_tx + 0];
                 tmp_pi[ci_n*1 + ci_nt] = P[3*ci_tx + 1];
@@ -212,8 +319,12 @@ tmp_real_qj, tmp_real_fi)
         }
         // failure to find all the particles
         if (ci_ntc != ci_n) {err=-1; printf("Err -1: Bad particle count: %d != %d\n", ci_nt, ci_n);}
+        
+        // if cell contains no local particles continue
+        if (ci_nt == 0) {continue;}
 
-        for(INT32 ox=0 ; ox<27 ; ox++){
+        for(INT32 ox=0 ; (ox<27 && (err>=0)) ; ox++){
+
             // global index of "second" cell as xyz tuple
             const INT64 hxtp[3] = {
                 gxt[0]+HMAP[ox][0],
@@ -221,62 +332,99 @@ tmp_real_qj, tmp_real_fi)
                 gxt[2]+HMAP[ox][2]
             };
             
-            // may skip this cell if in free space
+            // may skip this cell if in free space and the cell definatly
+            // cannot contain local particles
+            INT64 discard_halo = 0;
+
             if (free_space > 0){
                 if (
-                    (hxtp[0] < 0) ||
-                    (hxtp[1] < 0) ||
-                    (hxtp[2] < 0) ||
-                    (hxtp[0] > global_size[2]) ||
-                    (hxtp[1] > global_size[1]) ||
-                    (hxtp[2] > global_size[0])
-                ){continue;}
+                    (hxtp[0] < 2) ||
+                    (hxtp[1] < 2) ||
+                    (hxtp[2] < 2) ||
+                    (hxtp[0] > pgsx - 2 ) ||
+                    (hxtp[1] > pgsy - 2 ) ||
+                    (hxtp[2] > pgsz - 2 )
+                ) { 
+                    //continue;
+                    discard_halo = 1;
+                } 
+                // allow drifted particles to interact with local particles
+                // but not halo particles
+                else if (
+                    (hxtp[0] < 3) ||
+                    (hxtp[1] < 3) ||
+                    (hxtp[2] < 3) ||
+                    (hxtp[0] > pgsx - 4 ) ||
+                    (hxtp[1] > pgsy - 4 ) ||
+                    (hxtp[2] > pgsz - 4 )
+                ) { discard_halo = 1; }
+
             }
 
-            const INT64 hxt[3] = {
-                hxtp[0] % global_size[2],
-                hxtp[1] % global_size[1],
-                hxtp[2] % global_size[0]
-            };            
-
-            const INT64 hx = hxt[0] + global_size[2]*(hxt[1] + hxt[2]*global_size[1]);
+//discard_halo = 1;            
+/*                
+            printf("free_space %d discard %d | %d %d %d \n",
+                    free_space, discard_halo, hxtp[0], hxtp[1], hxtp[2]);
             
+            printf("energy: %f\n", energy);
+*/
+            const INT64 hxt[3] = { hxtp[0], hxtp[1], hxtp[2]};
+            const INT64 hx = hxt[0] + pgsx*(hxt[1] + hxt[2]*pgsy);
+            
+
+            const INT64 cj_n = ll_ccc_array[hx];
+            // if cell is empty skip
+            if (cj_n == 0) { continue; }
 
             // populate temporary arrays
             INT64 cj_nt = 0;
             INT64 cj_ntc = 0;
-            const INT64 cj_n = ll_ccc_array[hx];
             INT64 cj_tx = ll_array[ll_cstart+hx];
             
             
             while(cj_tx>-1){
                 if (cj_tx > ntotal) {err=-2; printf("Err -2: Bad particle index: %d\n", cj_tx);}
-
-                // copy positions
-                tmp_pj[cj_n*0 + cj_nt] = P[3*cj_tx + 0];
-                tmp_pj[cj_n*1 + cj_nt] = P[3*cj_tx + 1];
-                tmp_pj[cj_n*2 + cj_nt] = P[3*cj_tx + 2];
-                // copy charges
-                tmp_qj[cj_nt] = Q[cj_tx];
-                // copy particle id
-                if (hx==gx){
-                    tmp_j[cj_nt] = cj_tx;
+                
+                if ( ((discard_halo > 0) && (cj_tx<nlocal)) || (discard_halo==0) ){
+                    // copy positions
+                    tmp_pj[cj_n*0 + cj_nt] = P[3*cj_tx + 0];
+                    tmp_pj[cj_n*1 + cj_nt] = P[3*cj_tx + 1];
+                    tmp_pj[cj_n*2 + cj_nt] = P[3*cj_tx + 2];
+                    // copy charges
+                    tmp_qj[cj_nt] = Q[cj_tx];
+                    // copy particle id
+                    if (hx==gx){
+                        tmp_j[cj_nt] = cj_tx;
+                    }
+/*
+                    if (ABS(tmp_qj[cj_nt]) > 0.001){
+                        printf("---\n");
+                        printf("%f %f %f\n", P[3*cj_tx + 0], P[3*cj_tx + 1], P[3*cj_tx + 2]);
+                        printf("%f %f %f\n", tmp_pj[cj_n*0 + cj_nt], tmp_pj[cj_n*1 + cj_nt], tmp_pj[cj_n*2 + cj_nt]);
+                        printf("---\n");
+                    }
+*/
+                    // increase particle counter
+                    cj_nt++;
                 }
-                // increase particle counter
-                cj_nt++;
 
+                cj_ntc++;
                 cj_tx = ll_array[cj_tx];
             }
-            if (cj_nt != cj_n) {err=-3; printf("Err -3: Bad particle count: %d != %d\n", ci_nt, ci_n);}
+            
+            if (cj_nt == 0) { continue; }
+
+//printf("gx %d --- dir %d | %d : %d\n", gx, ox, ci_nt, cj_nt);
+
+            if (cj_ntc != cj_n) {err=-3; printf("Err -3: Bad particle count: %d != %d\n", ci_nt, ci_n);}
 
             if (hx != gx){
-                energy += compute_interactions(ci_n, cj_n, ci_nt, cj_nt, tmp_pi, tmp_pj,
-                    tmp_qi, tmp_qj, tmp_fi);  
+                energy += compute_interactions(
+                    ci_n, cj_n, ci_nt, cj_nt, tmp_pi, tmp_pj, tmp_qi, tmp_qj, tmp_fi);  
             } else {
-                energy += compute_interactions_same_cell(ci_n, cj_n, ci_nt, cj_nt, tmp_pi, 
-                tmp_pj, tmp_qi, tmp_qj, tmp_fi, tmp_i, tmp_j);  
+                energy += compute_interactions_same_cell(
+                    ci_n, cj_n, ci_nt, cj_nt, tmp_pi, tmp_pj, tmp_qi, tmp_qj, tmp_fi, tmp_i, tmp_j);  
             }
-
 
         }
 
@@ -286,8 +434,16 @@ tmp_real_qj, tmp_real_fi)
             F[3*idx + 0] += tmp_fi[0*ci_n + px];
             F[3*idx + 1] += tmp_fi[1*ci_n + px];
             F[3*idx + 2] += tmp_fi[2*ci_n + px];
+            part_count++;
         }
 
+    }
+
+    if (err<0) {return err;}
+    
+    if (part_count != nlocal) { 
+        err=-6; 
+        printf("Err -6: one or more particles missed: %d, %d\n", part_count, nlocal);
     }
 
     U[0] = energy;

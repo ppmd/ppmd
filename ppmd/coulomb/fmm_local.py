@@ -14,6 +14,12 @@ import numpy as np
 
 _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
+REAL = ctypes.c_double
+UINT64 = ctypes.c_uint64
+UINT32 = ctypes.c_uint32
+INT64 = ctypes.c_int64
+INT32 = ctypes.c_int32
+
 class FMMLocal(object):
     """
     Class to perform local part of fmm
@@ -47,7 +53,9 @@ class FMMLocal(object):
         self._global_size = np.zeros(3, dtype=INT64)
         self._global_size[:] = entry_map.cube_side_count
 
-        self._ncells = self._global_size[0]*self._global_size[1]*self._global_size[2]
+        self._ncells =  (self._global_size[0] + 6) * \
+                        (self._global_size[1] + 6) * \
+                        (self._global_size[2] + 6)
 
         self._local_size = np.zeros(3, dtype=INT64)
         self._local_size[:] = self.entry_data.local_size[:]
@@ -108,8 +116,8 @@ class FMMLocal(object):
         if self._ll_array.shape[0] < (ntotal + self._ncells):
             self._ll_array = np.zeros(ntotal+100+self._ncells, dtype=INT64)
 
-        if self._tmp_n < ncell:
-            bn = ncell + 100
+        if self._tmp_n < ncell*15:
+            bn = ncell*15 + 100
             self._tmp_int_i = host.ThreadSpace(n=bn, dtype=INT64)
             self._tmp_int_j = host.ThreadSpace(n=bn, dtype=INT64)
             self._tmp_real_pi = host.ThreadSpace(n=3*bn, dtype=REAL)
@@ -117,11 +125,26 @@ class FMMLocal(object):
             self._tmp_real_qi = host.ThreadSpace(n=bn, dtype=REAL)
             self._tmp_real_qj = host.ThreadSpace(n=bn, dtype=REAL)
             self._tmp_real_fi = host.ThreadSpace(n=3*bn, dtype=REAL)
-            sef._tmp_n = bn
+            self._tmp_n = bn
+        
+        #print("\ttmp_n", self._tmp_n, "nlocal", nlocal, "nhalo", nhalo, "max_cell", ncell)
 
+        #for px in range(ntotal):
+        #    print(px, cells[px], "\t", positions[px,:], charges[px,:])
+        
+        if self.domain.extent.dtype is not REAL:
+            raise RuntimeError("expected c_double extent")
+        
+        if self.free_space == '27':
+            free_space = 0
+        elif self.free_space == True:
+            free_space = 1
+        else:
+            free_space = 0
 
         err = self._lib(
-            INT64(self.free_space),
+            INT64(free_space),
+            self.domain.extent.ctypes_data,
             self._global_size.ctypes.get_as_parameter(),
             self._local_size.ctypes.get_as_parameter(),
             self._local_offset.ctypes.get_as_parameter(),
@@ -131,7 +154,7 @@ class FMMLocal(object):
             self.sh.get_pointer(positions(READ)),
             self.sh.get_pointer(charges(READ)),
             self.sh.get_pointer(cells(READ)),
-            self.sh.get_pointer(FORCES(INC)),
+            self.sh.get_pointer(forces(INC)),
             self._u.ctypes.get_as_parameter(),
             self._ll_array.ctypes.get_as_parameter(),
             self._ll_ccc_array.ctypes.get_as_parameter(),
@@ -144,10 +167,11 @@ class FMMLocal(object):
             self._tmp_real_fi.ctypes_data
         )
 
-	self.sh.post_execute(dats=dats)
+        self.sh.post_execute(dats=dats)
         if err < 0:
             raise RuntimeError("Negative error code: {}".format(err))
-
+    
+        return self._u[0]
 
 
 

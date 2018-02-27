@@ -660,7 +660,9 @@ class PyFMM(object):
         if self.cuda:
             p[b+'mtl_cuda_(async)'] = self._cuda_mtl.timer_mtl.time()
             p[b+'mtl_cuda_gflops'] = self.cuda_flop_rate_mtl() / (10.**9.)
-    def _compute_local_interaction(self, positions, charges, forces=None):
+
+
+    def _compute_local_interaction_pairloop(self, positions, charges, forces=None):
 
         if forces is None:
             forces = data.ParticleDat(ncomp=3, npart=positions.npart_total,
@@ -678,6 +680,27 @@ class PyFMM(object):
         )
         self.timer_local.pause()
         return self.particle_phi[0]
+
+
+    def _compute_local_interaction(self, positions, charges, forces=None):
+        cells = positions.group._fmm_cell
+
+        if forces is None:
+            forces = data.ParticleDat(ncomp=3, npart=positions.npart_total,
+                                      dtype=self.dtype)
+
+        self.timer_local.start()
+        
+        phi_tmp = self._fmm_local(positions, charges, forces, cells)
+
+        self.timer_local.pause()
+        
+        phi_tmp = np.array((phi_tmp,))
+        phi_tmp = mpi.all_reduce(phi_tmp)
+
+        self.particle_phi.set(phi_tmp[0])
+        return phi_tmp[0]
+
 
     def re_lm(self, l,m): return (l**2) + l + m
     def im_lm(self, l,m): return (l**2) + l +  m + self.L**2

@@ -158,8 +158,8 @@ def test_fmm_init_2_1():
     #A.P[0,:] = 0.0
     #print(A.P[0,:], A.Q[0])
     
-    A.Q[0, 0] = 1.0
-    A.Q[1, 0] = -1.0
+    #A.Q[0, 0] = 1.0
+    #A.Q[1, 0] = -1.0
     #A.Q[2, 0] = 10.0
 
     #A.P[0, :] = (-4., 0., 0.)
@@ -226,8 +226,7 @@ def test_fmm_init_2_1():
     shift_pos[:,2] = shift_pos[:,2] * cube_ilen[2]
     shift_pos = np.array(shift_pos, dtype='int') 
 
-    fmm._compute_local_interaction(A.P, A.Q)
-    phi_local = fmm.particle_phi[0]
+    phi_local = fmm._compute_local_interaction(A.P, A.Q)
     
 
     level = fmm.R - 1

@@ -41,6 +41,12 @@ const double rx = P.j[0] - P.i[0];
 const double ry = P.j[1] - P.i[1];
 const double rz = P.j[2] - P.i[2];
 
+#define ABS(x) (((x)>0)? (x): -1*(x))
+
+//if(ABS(Q.i[0]*Q.j[0])>0.00001){{
+//    printf("\t\t i | %f %f %f \n", rx, ry, rz);
+//}}
+
 const double r2 = rx*rx + ry*ry + rz*rz;
 const double r = sqrt(r2);
 
