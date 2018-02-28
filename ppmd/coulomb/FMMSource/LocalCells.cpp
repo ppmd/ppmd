@@ -16,10 +16,14 @@ static inline REAL compute_interactions_same_cell(
     const INT64 *  RESTRICT tj
 ){
     REAL energy = 0.0;
+    REAL * RESTRICT fiy = &fi[si];
+    REAL * RESTRICT fiz = &fi[2*si]; 
+
     for(INT64 pxi=0 ; pxi<ni ; pxi++ ){
         REAL fx = 0.0;
         REAL fy = 0.0;
         REAL fz = 0.0;
+        REAL energyi = 0.0;
 
         const REAL px = pi[     + pxi];
         const REAL py = pi[1*si + pxi];
@@ -30,14 +34,7 @@ static inline REAL compute_interactions_same_cell(
             const REAL dx = pj[     + pxj] - px ;
             const REAL dy = pj[1*sj + pxj] - py ;
             const REAL dz = pj[2*sj + pxj] - pz ;
-/*
-            if (ABS(q*qj[pxj])>0.00001){
-                //printf("SAME CELL  ~~~~~~~~~~~~~> dx %f dy %f dz %f |%d %d \n", dx, dy, dz, ti[pxi], tj[pxj]);
-                printf("\t\t -------------------------->> %f %f %f\n", dx, dy, dz);
-                printf("\t\t i %d | %f %f %f\n", ti[pxi], px, py, pz);
-                printf("\t\t j %d | %f %f %f\n", tj[pxj], pj[0*sj + pxj], pj[1*sj + pxj], pj[2*sj + pxj]);
-            }
-*/            
+         
             const REAL r2 = dx*dx + dy*dy + dz*dz;
 
 
@@ -48,16 +45,17 @@ static inline REAL compute_interactions_same_cell(
 
 
             const REAL term1 = q * qj[pxj] * ir * mask;
-            energy += term1;
+            energyi += term1;
             const REAL fcoeff = FORCE_UNIT * ir * ir * term1;
             fx -= fcoeff * dx;
             fy -= fcoeff * dy;
             fz -= fcoeff * dz;
         }
-
-        fi[     + pxi] += fx;
-        fi[1*si + pxi] += fy;
-        fi[2*si + pxi] += fz;
+        
+        energy += energyi;
+        fi [pxi] += fx;
+        fiy[pxi] += fy;
+        fiz[pxi] += fz;
     }
 
     return energy * 0.5 * ENERGY_UNIT;
@@ -74,18 +72,16 @@ static inline REAL compute_interactions(
     const REAL *  RESTRICT qj,
     REAL *  RESTRICT fi
 ){
-/*
-printf("=================\n");
-for(int jx=0 ; jx<nj ; jx++){
-    printf("%f %f %f\n", pj[0*sj + jx], pj[1*sj + jx], pj[2*sj + jx]);
-}
-printf("=================\n");
-*/
+    
+    REAL * RESTRICT fiy = &fi[si];
+    REAL * RESTRICT fiz = &fi[2*si];
+
     REAL energy = 0.0;
     for(INT64 pxi=0 ; pxi<ni ; pxi++ ){
         REAL fx = 0.0;
         REAL fy = 0.0;
         REAL fz = 0.0;
+        REAL energyi = 0.0;
 
         const REAL px = pi[     + pxi];
         const REAL py = pi[1*si + pxi];
@@ -96,28 +92,22 @@ printf("=================\n");
             const REAL dx = pj[      + pxj ] - px ;
             const REAL dy = pj[ 1*sj + pxj ] - py ;
             const REAL dz = pj[ 2*sj + pxj ] - pz ;
-/*            
-            if (ABS(q*qj[pxj])>0.00001){
-                //printf("OTHER CELL ~~~~~~~~~~~~~> dx %f dy %f dz %f\n", dx, dy, dz);
-                printf("\t\t -------------------------->> %f %f %f\n", dx, dy, dz);
-                printf("\t\t i | %f %f %f\n", px, py, pz);
-                printf("\t\t j | %f %f %f\n", pj[0*sj + pxj], pj[1*sj + pxj], pj[2*sj + pxj]);
-            }
-*/            
+
             const REAL r2 = dx*dx + dy*dy + dz*dz;
             const REAL r = sqrt(r2);
             const REAL ir = 1.0/r;
             const REAL term1 = q * qj[pxj] * ir;
-            energy += term1;
+            energyi += term1;
             const REAL fcoeff = FORCE_UNIT * ir * ir * term1;
             fx -= fcoeff * dx;
             fy -= fcoeff * dy;
             fz -= fcoeff * dz;
         }
 
-        fi[     + pxi] += fx;
-        fi[1*si + pxi] += fy;
-        fi[2*si + pxi] += fz;
+        energy += energyi;
+        fi [pxi] += fx;
+        fiy[pxi] += fy;
+        fiz[pxi] += fz;
     }
 
     return energy * 0.5 * ENERGY_UNIT;
