@@ -1,3 +1,43 @@
+static inline void global_local_cell_tuple(
+    const UINT64 * RESTRICT cube_offset,
+    const REAL * RESTRICT cube_inverse_len,
+    const REAL * RESTRICT boundary,
+    const REAL px,
+    const REAL py,
+    const REAL pz,
+    INT64 * RESTRICT gcx,
+    INT64 * RESTRICT gcy,
+    INT64 * RESTRICT gcz,
+    INT64 * RESTRICT cx,
+    INT64 * RESTRICT cy,
+    INT64 * RESTRICT cz
+){
+    // these are slowest to fastest
+    INT64 cox = cube_offset[2];
+    INT64 coy = cube_offset[1];
+    INT64 coz = cube_offset[0];
+
+    const REAL pxs = px + 0.5 * boundary[0];
+    const REAL pys = py + 0.5 * boundary[1];
+    const REAL pzs = pz + 0.5 * boundary[2];
+    
+    // compute global cell as a REAL value
+    const REAL rgx = pxs * cube_inverse_len[0];
+    const REAL rgy = pys * cube_inverse_len[1];
+    const REAL rgz = pzs * cube_inverse_len[2];
+    
+    // compute local cell as a INT64 value, from a real value
+    *cx = (INT64) (rgx - ((REAL)cube_offset[2]));
+    *cy = (INT64) (rgy - ((REAL)cube_offset[1]));
+    *cz = (INT64) (rgz - ((REAL)cube_offset[0]));
+    
+    // compute global cell from local value
+    *gcx = *cx + cox;
+    *gcy = *cy + coy;
+    *gcz = *cz + coz;
+}
+
+
 static inline void global_cell_tuple(
     const REAL * RESTRICT cube_inverse_len,
     const REAL px,
@@ -30,9 +70,9 @@ static inline INT64 local_cell_tuple(
     INT64 * RESTRICT cz
 ){
     // local index is given by global index minus offset
-    *cx = gcx - cube_offset[2];
-    *cy = gcy - cube_offset[1];
-    *cz = gcz - cube_offset[0];
+    *cx = gcx - ((INT64)cube_offset[2]);
+    *cy = gcy - ((INT64)cube_offset[1]);
+    *cz = gcz - ((INT64)cube_offset[0]);
 }
 
 static inline INT64 drift_compensation(
@@ -44,25 +84,25 @@ static inline INT64 drift_compensation(
     INT64 * RESTRICT cy,
     INT64 * RESTRICT cz
 ){
-    if (*cx > cube_dim[2] || *cy > cube_dim[1] || *cz > cube_dim[0] ){
-        printf("Error: Particle far from subdomain.\n");
+    if (((*cx) > ((INT64)cube_dim[2])) || ((*cy) > ((INT64)cube_dim[1])) || ((*cz) > ((INT64)cube_dim[0])) ){
+        printf("Error: Particle far from subdomain. %ld>%ld | %ld>%ld | %ld>%ld \n", 
+                *cx , cube_dim[2] , *cy , cube_dim[1] , *cz , cube_dim[0]);
         return (INT64) -1;}
-    else if (*cx < 0 || *cy < 0 || *cz <0 ) {
-        printf("Error: Particle far from subdomain.\n");
+    else if (((*cx) < 0) || ((*cy) < 0) || ((*cz) <0) ) {
+        printf("Error: Particle far from subdomain. %ld<%ld | %ld<%ld | %ld<%ld \n", 
+                *cx , 0 , *cy , 0 , *cz , 0);
         return (INT64) -1;
     }
     
     // Reusing neighbourlists allows particles to drift small distances out of a
     // subdomain.
-    if (*cx == cube_dim[2]){ *cx -= 1; *gcx -= 1; }
-    if (*cy == cube_dim[1]){ *cy -= 1; *gcy -= 1; }
-    if (*cz == cube_dim[0]){ *cz -= 1; *gcz -= 1; }
+    if (*cx == ((INT64)cube_dim[2])){ *cx -= 1; *gcx -= 1; }
+    if (*cy == ((INT64)cube_dim[1])){ *cy -= 1; *gcy -= 1; }
+    if (*cz == ((INT64)cube_dim[0])){ *cz -= 1; *gcz -= 1; }
     // as casting to int truncates towards zero we can pass on checking the lower 
     // bound
     return 0;
 }
-
-
 
 
 static inline INT64 compute_cell(
@@ -78,9 +118,20 @@ static inline INT64 compute_cell(
 ){
     // global cell tuple
     INT64 gcx, gcy, gcz, cx, cy, cz;
-    global_cell_tuple(cube_inverse_len, px, py, pz, boundary, &gcx, &gcy, &gcz);
-    local_cell_tuple(gcx, gcy, gcz, cube_offset, &cx, &cy, &cz);
-    if (drift_compensation(cube_dim, &gcx, &gcy, &gcz, &cx, &cy, &cz) < 0){ return -1; }
+    global_local_cell_tuple(cube_offset, cube_inverse_len, boundary,
+            px, py, pz, &gcx, &gcy, &gcz, &cx, &cy, &cz);
+
+    //global_cell_tuple(cube_inverse_len, px, py, pz, boundary, &gcx, &gcy, &gcz);
+    //local_cell_tuple(gcx, gcy, gcz, cube_offset, &cx, &cy, &cz);
+
+    if (drift_compensation(cube_dim, &gcx, &gcy, &gcz, &cx, &cy, &cz) < 0){ 
+        printf("position: %.16f %.16f %.16f\nboundary %.16f %.16f %.16f\ninv cell %.16f %.16f %.16f\noffset %ld %ld %ld\n", 
+                px, py, pz,
+                boundary[0], boundary[1], boundary[2], 
+                cube_inverse_len[0], cube_inverse_len[1], cube_inverse_len[2],
+                cube_offset[0], cube_offset[1], cube_offset[2]);
+        return -1; 
+    }
 
     *global_cell = ((INT32) (  gcx + cube_side_counts[2] * (gcy + cube_side_counts[1] * gcz )  ));
 
@@ -104,12 +155,19 @@ static inline INT64 compute_cell_spherical(
 ){
 
     INT64 gcx, gcy, gcz, cx, cy, cz;
-    global_cell_tuple(cube_inverse_len, px, py, pz, boundary, &gcx, &gcy, &gcz);
-    
-    //printf("\t%f\t%f\t%f global cell %d\t%d\t%d\n", px, py, pz, gcx, gcy, gcz);
 
-    local_cell_tuple(gcx, gcy, gcz, cube_offset, &cx, &cy, &cz);
-    if (drift_compensation(cube_dim, &gcx, &gcy, &gcz, &cx, &cy, &cz) < 0){ return -1; }
+    global_local_cell_tuple(cube_offset, cube_inverse_len, boundary,
+            px, py, pz, &gcx, &gcy, &gcz, &cx, &cy, &cz);
+
+    // global_cell_tuple(cube_inverse_len, px, py, pz, boundary, &gcx, &gcy, &gcz);
+    // local_cell_tuple(gcx, gcy, gcz, cube_offset, &cx, &cy, &cz);
+
+    if (drift_compensation(cube_dim, &gcx, &gcy, &gcz, &cx, &cy, &cz) < 0){
+        printf("position: %f %f %f\nboundary %f %f %f\n", 
+                px, py, pz, boundary[0], boundary[1], boundary[2]);
+
+        return -1; 
+    }
 
     const int cell_idx = cx + cube_dim[2] * (cy + cube_dim[1] * cz);
     // now compute the vector between particle and cell center in spherical coords
