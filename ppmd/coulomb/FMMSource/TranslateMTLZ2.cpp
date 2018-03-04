@@ -443,21 +443,22 @@ static inline void blocked_forw_matvec(
     REAL * RESTRICT re_by,
     REAL * RESTRICT im_by
 ){
+    const INT64 oset = p*p;
     for( INT64 blk=0 ; blk<block_size ; blk++){
         // rotate negative terms around z axis
         for(INT32 rx=0 ; rx<p ; rx++){
              cplx_mul(
-                re_x[blk][rx], re_x[blk][rx+im_offset],
+                re_x[blk][oset+rx], re_x[blk][oset+rx+im_offset],
                 exp_re[p-1-rx], -1.0*exp_im[p-1-rx],
                 &re_bz[rx+blk*stride], &im_bz[rx+blk*stride]
             );
         }
-        re_bz[p+blk*stride] = re_x[blk][p];
-        im_bz[p+blk*stride] = re_x[blk][p+im_offset];
+        re_bz[p+blk*stride] = re_x[blk][oset+p];
+        im_bz[p+blk*stride] = re_x[blk][oset+p+im_offset];
         // rotate positive terms around z axis
         for(INT32 rx=0 ; rx<p ; rx++){
              cplx_mul(
-                re_x[blk][p+1+rx], re_x[blk][p+1+rx+im_offset],
+                re_x[blk][oset+p+1+rx], re_x[blk][oset+p+1+rx+im_offset],
                 exp_re[rx], exp_im[rx],
                 &re_bz[p+1+rx+blk*stride], &im_bz[p+1+rx+blk*stride]
             );
@@ -496,26 +497,7 @@ static inline void blocked_forw_matvec(
     }
 }
 
-extern "C"
-int wrapper_blocked_forw_matvec(
-    const INT64 block_size,
-    const INT64 im_offset,
-    const INT64 stride,
-    const INT32 p,
-    const REAL * RESTRICT exp_re,
-    const REAL * RESTRICT exp_im,
-    const REAL * RESTRICT wig_forw,
-    REAL const * RESTRICT re_x[BLOCK_SIZE],
-    REAL * RESTRICT re_bz,
-    REAL * RESTRICT im_bz,
-    REAL * RESTRICT re_by,
-    REAL * RESTRICT im_by
-){
-    blocked_forw_matvec( block_size, im_offset, stride, p, exp_re,
-            exp_im, wig_forw, re_x, re_bz, im_bz, re_by, im_by
-    );
-    return 0;
-}
+
 
 static inline void blocked_rotate_forward(
     const INT64 block_size,
@@ -530,7 +512,7 @@ static inline void blocked_rotate_forward(
     REAL * RESTRICT im_by
 ){
     const INT64 im_offset = l*l;
-    const INT64 stride = 2*im_offset;
+    const INT64 stride = im_offset;
     for(INT64 lx=0 ; lx<l ; lx++){
         blocked_forw_matvec(
             block_size,
@@ -544,9 +526,29 @@ static inline void blocked_rotate_forward(
             &re_bz[lx*lx], &im_bz[lx*lx],
             &re_by[lx*lx], &im_by[lx*lx]
         );
-
     }
 }
+
+
+extern "C"
+int wrapper_blocked_forw_matvec(
+    const INT64 block_size,
+    const INT64 l,
+    const REAL * RESTRICT exp_re,
+    const REAL * RESTRICT exp_im,
+    const REAL * RESTRICT const * RESTRICT wig_forw,
+    REAL const * RESTRICT in_ptrs[BLOCK_SIZE],
+    REAL * RESTRICT re_bz,
+    REAL * RESTRICT im_bz,
+    REAL * RESTRICT re_by,
+    REAL * RESTRICT im_by
+){
+    blocked_rotate_forward( block_size, l, exp_re, exp_im,
+        wig_forw, in_ptrs, re_bz, im_bz, re_by, im_by
+    );
+    return 0;
+}
+
 
 
 extern "C"

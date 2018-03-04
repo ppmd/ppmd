@@ -304,7 +304,6 @@ class _WignerEngine(object):
             ctypes.c_double(beta),
             pointers.ctypes.get_as_parameter()
         )
-
         if eps_scaled:
             for jx in range(maxj):
                 ncomp = 2*jx + 1
