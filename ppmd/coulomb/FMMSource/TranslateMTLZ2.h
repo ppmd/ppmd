@@ -31,9 +31,7 @@ using namespace std;
 
 #define ABS(x) ((x) > 0 ? (x) : -1*(x))
 
-#define BLOCKSIZE 8
-
-
+#define BLOCK_SIZE %(SUB_BLOCK_SIZE)s
 #define ASTRIDE1 %(SUB_ASTRIDE1)s
 #define ASTRIDE2 %(SUB_ASTRIDE2)s
 

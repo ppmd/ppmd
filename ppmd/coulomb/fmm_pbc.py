@@ -11,6 +11,7 @@ from ppmd.coulomb.cached import cached
 import numpy as np
 from ppmd import runtime, host, kernel, pairloop, data, access, mpi, opt
 from ppmd.lib import build
+from ppmd.coulomb.octal import shell_iterator
 import ctypes
 import os
 import math
@@ -47,30 +48,6 @@ INT32 = ctypes.c_int32
 
 np.set_printoptions(threshold=np.nan)
 
-
-def shell_iterator(width):
-    width = int(width)
-    if width == 0:
-        return [(0,0,0)]
-    if width < 0:
-        return []
-
-    b = list(range(-width, width+1))
-    b2 = list(range(-width+1, width))
-    s = []
-    # top
-    s += [(bx[0], bx[1], width) for bx in itertools.product(b,b)]
-    # bottom
-    s += [(bx[0], bx[1], -width) for bx in itertools.product(b,b)]
-    # front
-    s += [(bx[0], -width, bx[1]) for bx in itertools.product(b,b2)]
-    # back
-    s += [(bx[0], width, bx[1]) for bx in itertools.product(b,b2)]
-    # left
-    s += [(-width, bx[0], bx[1]) for bx in itertools.product(b2,b2)]
-    # right
-    s += [(width, bx[0], bx[1]) for bx in itertools.product(b2,b2)]
-    return s
 
 class FMMPbc(object):
     """

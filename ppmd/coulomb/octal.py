@@ -253,6 +253,13 @@ def compute_interaction_offsets(cube_index):
     :param cube_index: Tuple of child cube to compute offsets for.
     :return: numpy array type ctypes.c_int32 size 189x3 of offsets.
     """
+    ro = np.zeros(shape=(189, 3), dtype=ctypes.c_int32)
+    ri = 0
+    for offset in shell_iterator(2):
+        ro[ri, :] = offset
+        ri+=1
+    assert ri == (5**3 - 3**3)
+
     ox = np.array((cube_index[0], cube_index[1], cube_index[2]))
     if np.sum(ox**2) > 3 or not np.all(np.abs(ox) == ox):
         raise RuntimeError("unexpected cube_index" + str(cube_index))
@@ -262,14 +269,13 @@ def compute_interaction_offsets(cube_index):
                       range(-2 - cube_index[1], 4 - cube_index[1]),
                       range(-2 - cube_index[2], 4 - cube_index[2])])
 
-    # loop over all offsets, ignore the 27 nearest neighbours.
-    ro = np.zeros(shape=(189, 3), dtype=ctypes.c_int32)
-    ri = 0
+    # loop over all offsets, ignore the 3**3 + 5**3 inner cells.
     for iz in range(6):
         for iy in range(6):
             for ix in range(6):
                 ox = np.array((ogrid[0, ix], ogrid[1, iy], ogrid[2, iz]))
-                if not np.sum(ox**2) <= 3:
+                l = max(abs(ox[0]), abs(ox[1]), abs(ox[2]))
+                if not (l < 3):
                     ro[ri, :] = ox
                     ri += 1
 
@@ -1022,6 +1028,37 @@ def send_plain_to_parent(src_level, plain_data_tree, parent_data_tree):
     if recv_req is not None: recv_req.wait()
 
 
+def shell_iterator(width):
+    """
+    Iterator to loop over the outer shell of a cube.
+    :param width: Number of cells between a centred cube and the outer most
+    cube.
+    
+    width   = 0 -> a single cube.
+            = 1 -> all cubes in a 3x3x3 block except the very middle cube.
+    """
+    width = int(width)
+    if width == 0:
+        return [(0,0,0)]
+    if width < 0:
+        return []
+
+    b = list(range(-width, width+1))
+    b2 = list(range(-width+1, width))
+    s = []
+    # top
+    s += [(bx[0], bx[1], width) for bx in itertools.product(b,b)]
+    # bottom
+    s += [(bx[0], bx[1], -width) for bx in itertools.product(b,b)]
+    # front
+    s += [(bx[0], -width, bx[1]) for bx in itertools.product(b,b2)]
+    # back
+    s += [(bx[0], width, bx[1]) for bx in itertools.product(b,b2)]
+    # left
+    s += [(-width, bx[0], bx[1]) for bx in itertools.product(b2,b2)]
+    # right
+    s += [(width, bx[0], bx[1]) for bx in itertools.product(b2,b2)]
+    return s
 
 # ---- CUDA ----
 
@@ -1156,6 +1193,5 @@ if CUDA_IMPORT:
 
         def device_pointer(self, level):
             return ctypes.cast(self.data[level].ptr, ctypes.c_void_p)
-
 
 

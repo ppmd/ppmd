@@ -386,6 +386,12 @@ static inline void mtl_z(
 
 }
 
+
+
+
+
+
+
 extern "C"
 int mtl_z_wrapper(
     const INT64             nlevel,
@@ -417,6 +423,129 @@ int mtl_z_wrapper(
     );
 
     return 0;
+}
+
+
+
+
+
+static inline void blocked_forw_matvec(
+    const INT64 block_size,
+    const INT64 im_offset,
+    const INT64 stride,
+    const INT32 p,
+    const REAL * RESTRICT exp_re,
+    const REAL * RESTRICT exp_im,
+    const REAL * RESTRICT wig_forw,
+    REAL const * RESTRICT re_x[BLOCK_SIZE],
+    REAL * RESTRICT re_bz,
+    REAL * RESTRICT im_bz,
+    REAL * RESTRICT re_by,
+    REAL * RESTRICT im_by
+){
+    for( INT64 blk=0 ; blk<block_size ; blk++){
+        // rotate negative terms around z axis
+        for(INT32 rx=0 ; rx<p ; rx++){
+             cplx_mul(
+                re_x[blk][rx], re_x[blk][rx+im_offset],
+                exp_re[p-1-rx], -1.0*exp_im[p-1-rx],
+                &re_bz[rx+blk*stride], &im_bz[rx+blk*stride]
+            );
+        }
+        re_bz[p+blk*stride] = re_x[blk][p];
+        im_bz[p+blk*stride] = re_x[blk][p+im_offset];
+        // rotate positive terms around z axis
+        for(INT32 rx=0 ; rx<p ; rx++){
+             cplx_mul(
+                re_x[blk][p+1+rx], re_x[blk][p+1+rx+im_offset],
+                exp_re[rx], exp_im[rx],
+                &re_bz[p+1+rx+blk*stride], &im_bz[p+1+rx+blk*stride]
+            );
+        }
+    }
+    // naive matmul
+    const INT32 n = 2*p+1;
+    for( INT64 blk=0 ; blk<block_size ; blk++){
+        for(INT32 rx=0 ; rx<p ; rx++){
+            REAL hre = 0.0;
+            REAL him = 0.0;
+            REAL lre = 0.0;
+            REAL lim = 0.0;
+            for(INT32 cx=0 ; cx<n ; cx++){
+                const REAL a = wig_forw[rx*n + cx];
+                hre += a * re_bz[cx+blk*stride];
+                him += a * im_bz[cx+blk*stride];
+                lre += a * re_bz[n-cx-1+blk*stride];
+                lim += a * im_bz[n-cx-1+blk*stride];
+            }
+            re_by[rx+blk*stride] = hre;
+            im_by[rx+blk*stride] = him;
+            re_by[n-rx-1+blk*stride] = lre;
+            im_by[n-rx-1+blk*stride] = lim;
+        }
+        // middle row
+        REAL mre = 0.0;
+        REAL mim = 0.0;
+        for( INT32 cx=0 ; cx<n ; cx++ ){
+            const REAL a = wig_forw[p*n + cx];
+            mre += a * re_bz[cx+blk*stride];
+            mim += a * im_bz[cx+blk*stride];
+        }
+        re_by[p+blk*stride] = mre;
+        im_by[p+blk*stride] = mim;
+    }
+}
+
+extern "C"
+int wrapper_blocked_forw_matvec(
+    const INT64 block_size,
+    const INT64 im_offset,
+    const INT64 stride,
+    const INT32 p,
+    const REAL * RESTRICT exp_re,
+    const REAL * RESTRICT exp_im,
+    const REAL * RESTRICT wig_forw,
+    REAL const * RESTRICT re_x[BLOCK_SIZE],
+    REAL * RESTRICT re_bz,
+    REAL * RESTRICT im_bz,
+    REAL * RESTRICT re_by,
+    REAL * RESTRICT im_by
+){
+    blocked_forw_matvec( block_size, im_offset, stride, p, exp_re,
+            exp_im, wig_forw, re_x, re_bz, im_bz, re_by, im_by
+    );
+    return 0;
+}
+
+static inline void blocked_rotate_forward(
+    const INT64 block_size,
+    const INT64 l,
+    const REAL * RESTRICT exp_re,
+    const REAL * RESTRICT exp_im,
+    const REAL * RESTRICT const * RESTRICT wig_forw,
+    REAL const * RESTRICT in_ptrs[BLOCK_SIZE],
+    REAL * RESTRICT re_bz,
+    REAL * RESTRICT im_bz,
+    REAL * RESTRICT re_by,
+    REAL * RESTRICT im_by
+){
+    const INT64 im_offset = l*l;
+    const INT64 stride = 2*im_offset;
+    for(INT64 lx=0 ; lx<l ; lx++){
+        blocked_forw_matvec(
+            block_size,
+            im_offset,
+            stride,
+            lx,
+            exp_re,
+            exp_im,
+            wig_forw[lx],
+            in_ptrs,
+            &re_bz[lx*lx], &im_bz[lx*lx],
+            &re_by[lx*lx], &im_by[lx*lx]
+        );
+
+    }
 }
 
 
@@ -453,7 +582,67 @@ int translate_mtl(
 
     const INT32 phi_stride = 8*nlevel + 2;
     const INT32 theta_stride = 4 * nlevel * nlevel;
+    
 
+    const INT64 block_size = BLOCK_SIZE;
+    const INT64 block_count = ncells/block_size;
+    const INT64 block_end = block_count*block_size;
+    
+    #pragma omp parallel for default(none) schedule(dynamic) \
+    shared(dim_child, multipole_moments, local_moments, \
+    alm, almr, i_array, int_list, int_tlookup, \
+    int_plookup, int_radius, dim_eight, dim_halo, \
+    wig_forw, wig_back, exp_re, exp_im, gthread_space)
+    for( INT64 blk=0 ; blk<block_end ; blk+=block_size ){
+
+        const int tid = omp_get_thread_num();
+        REAL * RESTRICT thread_space = gthread_space[tid];
+
+        REAL * RESTRICT blk_out = thread_space;
+        REAL * RESTRICT blk_tmp_start = blk_out + ncomp*block_size;
+        
+        // zero output moments
+        for( INT64 ncx=0 ; ncx<ncomp*block_size; ncx++ ){
+            blk_out[ncx] = 0.0;
+        }
+        // moments to translate
+        REAL const * RESTRICT in_ptrs[BLOCK_SIZE];
+        
+
+        for( INT32 conx=0 ; conx<98 ; conx++ ){
+
+            const REAL local_radius = int_radius[conx] * radius;
+            const INT32 t_lookup = int_tlookup[conx];
+            
+            INT64 tblk = 0;
+            for( INT64 pcx=blk ; pcx<(blk+block_size) ; pcx++ ){
+                INT64 cx, cy, cz;
+                lin_to_xyz(dim_child, pcx, &cx, &cy, &cz);
+                // multipole moments are in a halo type
+                const INT64 ccx = cx + 2;
+                const INT64 ccy = cy + 2;
+                const INT64 ccz = cz + 2;
+                const INT64 halo_ind = xyz_to_lin(dim_halo, ccx, ccy, ccz);
+                const INT32 jcell = int_list[conx] + halo_ind;
+                in_ptrs[tblk] = &multipole_moments[jcell*ncomp];
+                tblk++;
+            }
+
+        }
+
+        // append new moments to output cell moments
+        INT64 tblk = 0;
+        for( INT64 pcx=blk ; pcx<(blk+block_size) ; pcx++ ){
+            REAL * out_moments = &local_moments[ncomp * pcx];
+            for( INT64 ncx=0 ; ncx<ncomp ; ncx++){
+                out_moments[ncx] += blk_out[tblk*ncomp + ncx];
+            }
+            tblk++;
+        }
+
+    }
+
+    // peel loop
     #pragma omp parallel for default(none) schedule(dynamic) \
     shared(dim_child, multipole_moments, local_moments, \
     alm, almr, i_array, int_list, int_tlookup, \
@@ -474,12 +663,14 @@ int translate_mtl(
         const INT64 halo_ind = xyz_to_lin(dim_halo, ccx, ccy, ccz);
         const INT64 octal_ind = xyz_to_lin(dim_eight, 
             cx & 1, cy & 1, cz & 1);
-
+        
+        INT64 cstart = octal_ind*189;
+        if (pcx < block_end) { cstart += 98; }
         
         REAL * out_moments = &local_moments[ncomp * pcx];
         // loop over contributing nearby cells.
 		
-        for( INT32 conx=octal_ind*189 ; conx<(octal_ind+1)*189 ; conx++ ){
+        for( INT32 conx=cstart ; conx<(octal_ind+1)*189 ; conx++ ){
             
             const REAL local_radius = int_radius[conx] * radius;
             const INT32 jcell = int_list[conx] + halo_ind;
