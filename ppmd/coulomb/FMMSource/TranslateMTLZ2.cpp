@@ -502,11 +502,13 @@ static inline void blocked_exp_out_matvec(
 
 
 static inline void blocked_wigner_matvec(
+    const INT64 direction,
     const INT64 block_size,
     const INT64 im_offset,
     const INT64 stride,
     const INT32 p,
     const REAL * RESTRICT wig_forw,
+    const REAL * RESTRICT wig_back,
     const REAL * RESTRICT re_bz,
     REAL * RESTRICT re_by
 ){
@@ -514,6 +516,14 @@ static inline void blocked_wigner_matvec(
     REAL * RESTRICT im_by =  re_by + block_size*im_offset;
 
     const INT64 oset = p*p;
+        
+    REAL const * RESTRICT W;
+    if (direction > 0){
+        W = wig_forw;
+    } else {
+        W = wig_back;
+    }
+
 
     // naive matmul
     const INT32 n = 2*p+1;
@@ -524,7 +534,7 @@ static inline void blocked_wigner_matvec(
             REAL lre = 0.0;
             REAL lim = 0.0;
             for(INT32 cx=0 ; cx<n ; cx++){
-                const REAL a = wig_forw[rx*n + cx];
+                const REAL a = W[rx*n + cx];
                 hre += a * re_bz[cx+blk*stride];
                 him += a * im_bz[cx+blk*stride];
                 lre += a * re_bz[n-cx-1+blk*stride];
@@ -539,7 +549,7 @@ static inline void blocked_wigner_matvec(
         REAL mre = 0.0;
         REAL mim = 0.0;
         for( INT32 cx=0 ; cx<n ; cx++ ){
-            const REAL a = wig_forw[p*n + cx];
+            const REAL a = W[p*n + cx];
             mre += a * re_bz[cx+blk*stride];
             mim += a * im_bz[cx+blk*stride];
         }
@@ -555,6 +565,7 @@ static inline void blocked_rotate_forward(
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     const REAL * RESTRICT const * RESTRICT wig_forw,
+    const REAL * RESTRICT const * RESTRICT wig_back,
     REAL const * RESTRICT in_ptrs[BLOCK_SIZE],
     REAL * RESTRICT re_bz,
     REAL * RESTRICT re_by
@@ -575,11 +586,13 @@ static inline void blocked_rotate_forward(
             &re_bz[lx*lx]
         );
         blocked_wigner_matvec(
+            1,
             block_size,
             im_offset,
             stride,
             lx,
             wig_forw[lx],
+            wig_back[lx],
             &re_bz[lx*lx],
             &re_by[lx*lx]
         );
@@ -594,12 +607,13 @@ int wrapper_blocked_forw_matvec(
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     const REAL * RESTRICT const * RESTRICT wig_forw,
+    const REAL * RESTRICT const * RESTRICT wig_back,
     REAL const * RESTRICT in_ptrs[BLOCK_SIZE],
     REAL * RESTRICT re_bz,
     REAL * RESTRICT re_by
 ){
     blocked_rotate_forward( block_size, l, exp_re, exp_im,
-        wig_forw, in_ptrs, re_bz, re_by
+        wig_forw, wig_back, in_ptrs, re_bz, re_by
     );
     return 0;
 }
@@ -611,6 +625,7 @@ static inline void blocked_rotate_backward(
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     const REAL * RESTRICT const * RESTRICT wig_forw,
+    const REAL * RESTRICT const * RESTRICT wig_back,
     const REAL * RESTRICT re_x,
     REAL * RESTRICT re_by,
     REAL * RESTRICT re_bz
@@ -620,11 +635,13 @@ static inline void blocked_rotate_backward(
     for(INT64 lx=0 ; lx<l ; lx++){
 
         blocked_wigner_matvec(
+            0,
             block_size,
             im_offset,
             stride,
             lx,
             wig_forw[lx],
+            wig_back[lx],
             &re_x[lx*lx],
             &re_by[lx*lx]
         );
@@ -649,12 +666,13 @@ int wrapper_blocked_back_matvec(
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     const REAL * RESTRICT const * RESTRICT wig_forw,
+    const REAL * RESTRICT const * RESTRICT wig_back,
     const REAL * RESTRICT re_x,
     REAL * RESTRICT re_by,
     REAL * RESTRICT re_bz
 ){
     blocked_rotate_backward( block_size, l, exp_re, exp_im,
-        wig_forw, re_x, re_by, re_bz
+        wig_forw, wig_back, re_x, re_by, re_bz
     );
     return 0;
 }

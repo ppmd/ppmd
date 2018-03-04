@@ -209,6 +209,7 @@ def test_matmul_1():
             exp_re.ctypes.get_as_parameter(),
             exp_im.ctypes.get_as_parameter(),
             wp.ctypes.get_as_parameter(),
+            wpb.ctypes.get_as_parameter(),
             x_ptrs.ctypes.get_as_parameter(),
             bre_tmp0.ctypes.get_as_parameter(),
             bre_oall.ctypes.get_as_parameter()
@@ -219,6 +220,7 @@ def test_matmul_1():
             INT64(L),
             exp_re.ctypes.get_as_parameter(),
             exp_im.ctypes.get_as_parameter(),
+            wp.ctypes.get_as_parameter(),
             wpb.ctypes.get_as_parameter(),
             bre_oall.ctypes.get_as_parameter(),
             bre_tmp0.ctypes.get_as_parameter(),
