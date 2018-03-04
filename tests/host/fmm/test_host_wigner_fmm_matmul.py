@@ -147,7 +147,7 @@ def test_matmul_1():
                 , _debug=True)
 
     for alpha, beta in itertools.product(angle_set, angle_set):
-        #alpha, beta = 0.1, 0.1
+        #alpha, beta = 0.0, 1.0
 
 
         exp_re = np.zeros(L-1, dtype=REAL)
@@ -171,8 +171,6 @@ def test_matmul_1():
         re_xall = np.zeros(ncall, dtype=REAL)
         im_xall = np.zeros(ncall, dtype=REAL)
 
-
-
         re_tmp0 = np.zeros(ncall, dtype=REAL)
         im_tmp0 = np.zeros(ncall, dtype=REAL)
 
@@ -181,14 +179,14 @@ def test_matmul_1():
 
         re_tmp1 = np.zeros(ncall, dtype=REAL)
         im_tmp1 = np.zeros(ncall, dtype=REAL)
-
         
         
-
         BS = fmm.mtl_block_size
         blib_forw = fmm._translate_mtlz2_lib[
         'wrapper_blocked_forw_matvec'] 
         
+        blib_back = fmm._translate_mtlz2_lib[
+        'wrapper_blocked_back_matvec'] 
         # vars to pass into forward rotate
         bncall = BS * ncall
         bstride = 2*ncall
@@ -196,11 +194,9 @@ def test_matmul_1():
         
         bre_xall[:] = rng.uniform(low=-1, high=1., size=(BS,bstride))
 
-        bre_tmp0 = np.zeros(bncall, dtype=REAL)
-        bim_tmp0 = np.zeros(bncall, dtype=REAL)
-
-        bre_oall = np.zeros(bncall, dtype=REAL)
-        bim_oall = np.zeros(bncall, dtype=REAL)
+        bre_tmp0 = np.zeros(2*bncall, dtype=REAL)
+        bre_oall = np.zeros(2*bncall, dtype=REAL)
+        bre_yall = np.zeros(2*bncall, dtype=REAL)
         
         x_ptrs = np.zeros(BS, ctypes.c_void_p)
         for bx in range(BS):
@@ -215,11 +211,31 @@ def test_matmul_1():
             wp.ctypes.get_as_parameter(),
             x_ptrs.ctypes.get_as_parameter(),
             bre_tmp0.ctypes.get_as_parameter(),
-            bim_tmp0.ctypes.get_as_parameter(),
-            bre_oall.ctypes.get_as_parameter(),
-            bim_oall.ctypes.get_as_parameter()
+            bre_oall.ctypes.get_as_parameter()
         )
-        
+
+        blib_back(
+            INT64(BS),
+            INT64(L),
+            exp_re.ctypes.get_as_parameter(),
+            exp_im.ctypes.get_as_parameter(),
+            wpb.ctypes.get_as_parameter(),
+            bre_oall.ctypes.get_as_parameter(),
+            bre_tmp0.ctypes.get_as_parameter(),
+            bre_yall.ctypes.get_as_parameter()
+        )
+
+        for blkx in range(BS):
+            s = blkx*ncall;
+            e = s + ncall
+            tmp = bre_yall
+            back_err = np.linalg.norm(bre_xall[blkx, :ncall:] - tmp[s:e:], np.inf)
+            assert back_err < 1*10.**-13
+            back_err = np.linalg.norm(bre_xall[blkx, ncall::] - \
+                    tmp[s+bncall:e+bncall:], np.inf)
+            assert back_err < 1*10.**-13
+
+
         for blkx in range(BS):
 
             re_xall[:] = bre_xall[blkx, :ncall:]
@@ -243,59 +259,9 @@ def test_matmul_1():
 
             err_re = np.linalg.norm(re_oall[:] - bre_oall[s:e:], np.inf)
             assert err_re < 10.**-15
-            err_im = np.linalg.norm(im_oall[:] - bim_oall[s:e:], np.inf)
+            err_im = np.linalg.norm(im_oall[:] - bre_oall[bncall+s:bncall+e:], np.inf)
             assert err_im < 10.**-15
 
 
 
-
-
-
-    return
-    for lx in range(L):
-
-        nc = 2*lx+1
-        s = fmm.re_lm(lx,-lx)
-        e = fmm.re_lm(lx, lx) + 1
-
-        x = np.zeros(nc, dtype=np.complex)
-        x.real[:] = re_xall[s:e:]
-        x.imag[:] = im_xall[s:e:]
-
-        o0 = np.zeros(nc, dtype=np.complex)
-        o0.real[:] = re_tmp0[s:e:]
-        o0.imag[:] = im_tmp0[s:e:]
-
-        o1 = np.zeros(nc, dtype=np.complex)
-        o1.real[:] = re_oall[s:e:]
-        o1.imag[:] = im_oall[s:e:]
-
-        A_alpha = np.zeros((nc,nc), dtype=np.complex)
-
-        for mxi, mx, in enumerate(range(-lx, lx+1)):
-            A_alpha[mxi, mxi] = cmath.exp(1.j * mx * alpha)
-
-        A_a_x = np.dot(A_alpha, x)
-
-        err0 = np.linalg.norm(A_a_x - o0, np.inf)
-        assert err0 < (10.**-13)
-
-        Ab_Aa_x = np.dot(wm[lx], A_a_x)
-
-        err1 = np.linalg.norm(Ab_Aa_x - o1, np.inf)
-        assert err1 < (10.**-13)
-
-
-    lib_all_back(
-        INT32(L),
-        exp_re.ctypes.get_as_parameter(),
-        exp_im.ctypes.get_as_parameter(),
-        wpb.ctypes.get_as_parameter(),
-        re_oall.ctypes.get_as_parameter(),
-        im_oall.ctypes.get_as_parameter(),
-        re_tmp0.ctypes.get_as_parameter(),
-        im_tmp0.ctypes.get_as_parameter(),
-        re_tmp1.ctypes.get_as_parameter(),
-        im_tmp1.ctypes.get_as_parameter()
-    )
 

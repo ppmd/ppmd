@@ -426,23 +426,18 @@ int mtl_z_wrapper(
 }
 
 
-
-
-
-static inline void blocked_forw_matvec(
+static inline void blocked_exp_in_matvec(
     const INT64 block_size,
     const INT64 im_offset,
     const INT64 stride,
     const INT32 p,
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
-    const REAL * RESTRICT wig_forw,
     REAL const * RESTRICT re_x[BLOCK_SIZE],
-    REAL * RESTRICT re_bz,
-    REAL * RESTRICT im_bz,
-    REAL * RESTRICT re_by,
-    REAL * RESTRICT im_by
+    REAL * RESTRICT re_bz
 ){
+    REAL * RESTRICT im_bz =  re_bz + block_size*im_offset;
+
     const INT64 oset = p*p;
     for( INT64 blk=0 ; blk<block_size ; blk++){
         // rotate negative terms around z axis
@@ -464,6 +459,62 @@ static inline void blocked_forw_matvec(
             );
         }
     }
+
+}
+
+
+
+static inline void blocked_exp_out_matvec(
+    const INT64 block_size,
+    const INT64 im_offset,
+    const INT64 stride,
+    const INT32 p,
+    const REAL * RESTRICT exp_re,
+    const REAL * RESTRICT exp_im,
+    const REAL * RESTRICT re_x,
+    REAL * RESTRICT re_bz
+){
+    const REAL * RESTRICT im_x =  re_x + block_size*im_offset;
+    REAL * RESTRICT im_bz =  re_bz + block_size*im_offset;
+
+    for( INT64 blk=0 ; blk<block_size ; blk++){
+        // rotate negative terms around z axis
+        for(INT32 rx=0 ; rx<p ; rx++){
+             cplx_mul(
+                re_x[rx+blk*stride], im_x[rx+blk*stride],
+                exp_re[p-1-rx], exp_im[p-1-rx],
+                &re_bz[rx+blk*stride], &im_bz[rx+blk*stride]
+            );
+        }
+        re_bz[p+blk*stride] = re_x[p+blk*stride];
+        im_bz[p+blk*stride] = im_x[p+blk*stride];
+        // rotate positive terms around z axis
+        for(INT32 rx=0 ; rx<p ; rx++){
+             cplx_mul(
+                re_x[p+1+rx+blk*stride], im_x[p+1+rx+blk*stride],
+                exp_re[rx], -1.0*exp_im[rx],
+                &re_bz[p+1+rx+blk*stride], &im_bz[p+1+rx+blk*stride]
+            );
+        }
+    }
+
+}
+
+
+static inline void blocked_wigner_matvec(
+    const INT64 block_size,
+    const INT64 im_offset,
+    const INT64 stride,
+    const INT32 p,
+    const REAL * RESTRICT wig_forw,
+    const REAL * RESTRICT re_bz,
+    REAL * RESTRICT re_by
+){
+    const REAL * RESTRICT im_bz =  re_bz + block_size*im_offset;
+    REAL * RESTRICT im_by =  re_by + block_size*im_offset;
+
+    const INT64 oset = p*p;
+
     // naive matmul
     const INT32 n = 2*p+1;
     for( INT64 blk=0 ; blk<block_size ; blk++){
@@ -498,7 +549,6 @@ static inline void blocked_forw_matvec(
 }
 
 
-
 static inline void blocked_rotate_forward(
     const INT64 block_size,
     const INT64 l,
@@ -507,24 +557,31 @@ static inline void blocked_rotate_forward(
     const REAL * RESTRICT const * RESTRICT wig_forw,
     REAL const * RESTRICT in_ptrs[BLOCK_SIZE],
     REAL * RESTRICT re_bz,
-    REAL * RESTRICT im_bz,
-    REAL * RESTRICT re_by,
-    REAL * RESTRICT im_by
+    REAL * RESTRICT re_by
 ){
     const INT64 im_offset = l*l;
     const INT64 stride = im_offset;
+
     for(INT64 lx=0 ; lx<l ; lx++){
-        blocked_forw_matvec(
+
+        blocked_exp_in_matvec(
             block_size,
             im_offset,
             stride,
             lx,
             exp_re,
             exp_im,
-            wig_forw[lx],
             in_ptrs,
-            &re_bz[lx*lx], &im_bz[lx*lx],
-            &re_by[lx*lx], &im_by[lx*lx]
+            &re_bz[lx*lx]
+        );
+        blocked_wigner_matvec(
+            block_size,
+            im_offset,
+            stride,
+            lx,
+            wig_forw[lx],
+            &re_bz[lx*lx],
+            &re_by[lx*lx]
         );
     }
 }
@@ -539,15 +596,70 @@ int wrapper_blocked_forw_matvec(
     const REAL * RESTRICT const * RESTRICT wig_forw,
     REAL const * RESTRICT in_ptrs[BLOCK_SIZE],
     REAL * RESTRICT re_bz,
-    REAL * RESTRICT im_bz,
-    REAL * RESTRICT re_by,
-    REAL * RESTRICT im_by
+    REAL * RESTRICT re_by
 ){
     blocked_rotate_forward( block_size, l, exp_re, exp_im,
-        wig_forw, in_ptrs, re_bz, im_bz, re_by, im_by
+        wig_forw, in_ptrs, re_bz, re_by
     );
     return 0;
 }
+
+
+static inline void blocked_rotate_backward(
+    const INT64 block_size,
+    const INT64 l,
+    const REAL * RESTRICT exp_re,
+    const REAL * RESTRICT exp_im,
+    const REAL * RESTRICT const * RESTRICT wig_forw,
+    const REAL * RESTRICT re_x,
+    REAL * RESTRICT re_by,
+    REAL * RESTRICT re_bz
+){
+    const INT64 im_offset = l*l;
+    const INT64 stride = im_offset;
+    for(INT64 lx=0 ; lx<l ; lx++){
+
+        blocked_wigner_matvec(
+            block_size,
+            im_offset,
+            stride,
+            lx,
+            wig_forw[lx],
+            &re_x[lx*lx],
+            &re_by[lx*lx]
+        );
+
+        blocked_exp_out_matvec(
+            block_size,
+            im_offset,
+            stride,
+            lx,
+            exp_re,
+            exp_im,
+            &re_by[lx*lx],
+            &re_bz[lx*lx]
+        );
+    }
+}
+
+extern "C"
+int wrapper_blocked_back_matvec(
+    const INT64 block_size,
+    const INT64 l,
+    const REAL * RESTRICT exp_re,
+    const REAL * RESTRICT exp_im,
+    const REAL * RESTRICT const * RESTRICT wig_forw,
+    const REAL * RESTRICT re_x,
+    REAL * RESTRICT re_by,
+    REAL * RESTRICT re_bz
+){
+    blocked_rotate_backward( block_size, l, exp_re, exp_im,
+        wig_forw, re_x, re_by, re_bz
+    );
+    return 0;
+}
+
+
 
 
 
@@ -629,6 +741,15 @@ int translate_mtl(
                 in_ptrs[tblk] = &multipole_moments[jcell*ncomp];
                 tblk++;
             }
+
+
+
+
+
+
+
+
+
 
         }
 
