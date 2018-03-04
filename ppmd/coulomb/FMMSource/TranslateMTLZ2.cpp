@@ -480,7 +480,7 @@ static inline void blocked_exp_out_matvec(
     for( INT64 blk=0 ; blk<block_size ; blk++){
         // rotate negative terms around z axis
         for(INT32 rx=0 ; rx<p ; rx++){
-             cplx_mul(
+             cplx_mul_add(
                 re_x[rx+blk*stride], im_x[rx+blk*stride],
                 exp_re[p-1-rx], exp_im[p-1-rx],
                 &re_bz[rx+blk*stride], &im_bz[rx+blk*stride]
@@ -490,7 +490,7 @@ static inline void blocked_exp_out_matvec(
         im_bz[p+blk*stride] = im_x[p+blk*stride];
         // rotate positive terms around z axis
         for(INT32 rx=0 ; rx<p ; rx++){
-             cplx_mul(
+             cplx_mul_add(
                 re_x[p+1+rx+blk*stride], im_x[p+1+rx+blk*stride],
                 exp_re[rx], -1.0*exp_im[rx],
                 &re_bz[p+1+rx+blk*stride], &im_bz[p+1+rx+blk*stride]
@@ -516,7 +516,12 @@ static inline void blocked_wigner_matvec(
     REAL * RESTRICT im_by =  re_by + block_size*im_offset;
 
     const INT64 oset = p*p;
-        
+    
+    // we pass both matrices here as the forward rotate
+    // matrix is the transpose of the backward rotate
+    // matrix. Hence the backward matrix is the column
+    // major version of the forward matrix. Our "B" matrix
+    // is stored column major. Hence we want both to use BLAS.
     REAL const * RESTRICT W;
     if (direction > 0){
         W = wig_forw;
@@ -680,6 +685,80 @@ int wrapper_blocked_back_matvec(
 
 
 
+static inline void blocked_mtl_z(
+    const INT64             block_size,
+    const INT64             nlevel,
+    const REAL              radius,
+    const REAL * RESTRICT   a_array,
+    const REAL * RESTRICT   ar_array,
+    const REAL * RESTRICT   i_array,
+    const REAL * RESTRICT   odata,
+    REAL * RESTRICT         ldata
+){
+
+    const INT64 stride = nlevel*nlevel;
+    const INT64 nlevel4 = nlevel*4;
+    const INT64 im_offset = nlevel*nlevel;
+    
+    const INT64 nblk = 2*nlevel+2;
+    REAL iradius_n[nblk];
+    const REAL iradius = 1./radius;
+    iradius_n[0] = 1.0;
+    for(INT64 nx=1 ; nx<nblk ; nx++){ iradius_n[nx] = iradius_n[nx-1] * iradius; }
+    REAL * RESTRICT iradius_p1 = &iradius_n[1];
+    
+    const INT32 ts = nlevel*nlevel;
+    
+    REAL * RESTRICT lre = ldata;
+    REAL * RESTRICT lim = ldata + block_size*ts;
+    
+    for(INT32 jx=0 ; jx<ts*block_size ; jx++){
+        lre[jx]=0.0;
+        lim[jx]=0.0;
+    }
+    
+    const REAL * RESTRICT ore = odata;
+    const REAL * RESTRICT oim = odata + block_size*ts;
+    
+    REAL _coeff_arr[nblk];
+    REAL * RESTRICT coeff_arr = &_coeff_arr[nlevel+1];
+
+    // loop over parent moments
+    for(INT32 jx=0     ; jx<nlevel ; jx++ ){
+    
+        for(INT32 nx=0     ; nx<nlevel ; nx++){
+        
+            const INT32 kmax = MIN(nx, jx);
+            const REAL ia_jn = ar_array[nx+jx];
+            const REAL m1tn = IARRAY[nx];   // -1^{n}
+            const REAL rr_jn1 = iradius_p1[jx+nx];     // 1 / rho^{j + n + 1}
+            
+            const REAL outer_coeff = ia_jn * m1tn * rr_jn1;
+
+            for(INT32 kx=-1*kmax ; kx<=kmax    ; kx++){
+
+                const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
+                const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + kx];
+                const REAL ipower = IARRAY[kx];
+                const REAL coeff_re = ipower * anm * ajk * outer_coeff;
+                // store the coefficient to use across the blocks;
+                coeff_arr[kx] = coeff_re;
+            }
+            
+            // apply the coefficient to each block
+            for( INT32 blkx=0 ; blkx<block_size ; blkx++){
+                for(INT32 kx=-1*kmax ; kx<=kmax    ; kx++){
+                    const REAL coeff_re = coeff_arr[kx];
+                    const INT32 oind = blkx*stride + CUBE_IND(nx, kx);
+                    lre[oind] += ore[oind]*coeff_re;
+                    lim[oind] += oim[oind]*coeff_re;
+                }
+            }
+        }
+    }
+}
+
+
 
 extern "C"
 int translate_mtl(
@@ -761,12 +840,7 @@ int translate_mtl(
             }
 
 
-
-
-
-
-
-
+            
 
 
         }
@@ -805,6 +879,7 @@ int translate_mtl(
         const INT64 octal_ind = xyz_to_lin(dim_eight, 
             cx & 1, cy & 1, cz & 1);
         
+        // do inner cells that were not included in the blocked loop
         INT64 cstart = octal_ind*189;
         if (pcx < block_end) { cstart += 98; }
         

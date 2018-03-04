@@ -214,7 +214,7 @@ def test_matmul_1():
             bre_tmp0.ctypes.get_as_parameter(),
             bre_oall.ctypes.get_as_parameter()
         )
-
+        bre_tmp0[:] = 0
         blib_back(
             INT64(BS),
             INT64(L),
