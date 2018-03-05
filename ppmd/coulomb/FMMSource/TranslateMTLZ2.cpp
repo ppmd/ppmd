@@ -437,7 +437,6 @@ static inline void blocked_exp_in_matvec(
     REAL * RESTRICT re_bz
 ){
     REAL * RESTRICT im_bz =  re_bz + block_size*im_offset;
-
     const INT64 oset = p*p;
     for( INT64 blk=0 ; blk<block_size ; blk++){
         // rotate negative terms around z axis
@@ -458,6 +457,7 @@ static inline void blocked_exp_in_matvec(
                 &re_bz[p+1+rx+blk*stride], &im_bz[p+1+rx+blk*stride]
             );
         }
+
     }
 
 }
@@ -486,8 +486,9 @@ static inline void blocked_exp_out_matvec(
                 &re_bz[rx+blk*stride], &im_bz[rx+blk*stride]
             );
         }
-        re_bz[p+blk*stride] = re_x[p+blk*stride];
-        im_bz[p+blk*stride] = im_x[p+blk*stride];
+        re_bz[p+blk*stride] += re_x[p+blk*stride];
+        im_bz[p+blk*stride] += im_x[p+blk*stride];
+
         // rotate positive terms around z axis
         for(INT32 rx=0 ; rx<p ; rx++){
              cplx_mul_add(
@@ -637,6 +638,7 @@ static inline void blocked_rotate_backward(
 ){
     const INT64 im_offset = l*l;
     const INT64 stride = im_offset;
+
     for(INT64 lx=0 ; lx<l ; lx++){
 
         blocked_wigner_matvec(
@@ -753,8 +755,9 @@ static inline void blocked_mtl_z(
 
                     const INT32 oind = blkx*stride + CUBE_IND(nx, kx);
                     const INT32 lind = blkx*stride + CUBE_IND(jx, kx);
-
-                    //printf("%d | %f | %f || %d %d %d\n", oind, oim[oind], coeff_re, jx, nx, kx);
+                    //if (oind == 0){
+                    //    printf("%d | %f | %f || %d %d %d | %d\n", oind, ore[oind], coeff_re, jx, nx, kx, lind);
+                    //}
                     lre[lind] += ore[oind]*coeff_re;
                     lim[lind] += oim[oind]*coeff_re;
                 }
@@ -817,6 +820,10 @@ int translate_mtl(
 
     const INT64 block_size = BLOCK_SIZE;
     const INT64 block_count = ncells/block_size;
+    
+//const INT64 block_end = 2*block_size;
+//const INT64 block_end = 0;
+    printf("block_count %d\n", block_count);
     const INT64 block_end = block_count*block_size;
     
     #pragma omp parallel for default(none) schedule(dynamic) \
@@ -830,16 +837,18 @@ int translate_mtl(
         REAL * RESTRICT thread_space = gthread_space[tid];
 
         REAL * RESTRICT blk_out = thread_space;
-        REAL * RESTRICT blk_tmp_start = blk_out + ncomp*block_size;
+        REAL * RESTRICT blk_tmp0 = blk_out  + ncomp*block_size;
+        REAL * RESTRICT blk_tmp1 = blk_tmp0 + ncomp*block_size;
         
         // zero output moments
         for( INT64 ncx=0 ; ncx<ncomp*block_size; ncx++ ){
             blk_out[ncx] = 0.0;
         }
-        // moments to translate
+        // array of input moments to translate
         REAL const * RESTRICT in_ptrs[BLOCK_SIZE];
         
-
+        INT64 pb = 1;
+        // loop over inner cells
         for( INT32 conx=0 ; conx<98 ; conx++ ){
 
             const REAL local_radius = int_radius[conx] * radius;
@@ -859,9 +868,19 @@ int translate_mtl(
                 tblk++;
             }
 
+            // rotate the block of moments forward
+            blocked_rotate_forward(block_size, nlevel, exp_re[t_lookup],
+                exp_im[t_lookup], wig_forw[t_lookup], wig_back[t_lookup],
+                in_ptrs, blk_tmp0, blk_tmp1);
 
-            
+            // mtl along z direction
+            blocked_mtl_z(block_size, nlevel, local_radius, alm, almr, i_array,
+                blk_tmp1, blk_tmp0);
 
+            // rotate the block of moments backward
+            blocked_rotate_backward(block_size, nlevel, exp_re[t_lookup],
+                exp_im[t_lookup], wig_forw[t_lookup], wig_back[t_lookup],
+                blk_tmp0, blk_tmp1, blk_out);
 
         }
 
@@ -869,13 +888,17 @@ int translate_mtl(
         INT64 tblk = 0;
         for( INT64 pcx=blk ; pcx<(blk+block_size) ; pcx++ ){
             REAL * out_moments = &local_moments[ncomp * pcx];
-            for( INT64 ncx=0 ; ncx<ncomp ; ncx++){
-                out_moments[ncx] += blk_out[tblk*ncomp + ncx];
+            for( INT64 ncx=0 ; ncx<im_offset ; ncx++){
+                out_moments[ncx] += blk_out[tblk*im_offset + ncx];
+                out_moments[im_offset+ncx] += blk_out[im_offset*block_size+tblk*im_offset + ncx];
             }
             tblk++;
         }
 
     }
+    
+    printf("RET EARLY\n");
+    return 0;
 
     // peel loop
     #pragma omp parallel for default(none) schedule(dynamic) \

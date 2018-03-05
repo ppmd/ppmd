@@ -310,7 +310,7 @@ class PyFMM(object):
                           '/FMMSource/TranslateMTLZ2.h') as fh:
             hpp = fh.read()
         
-        self.mtl_block_size = 4
+        self.mtl_block_size = 8
         hpp = hpp % {
             'SUB_ASTRIDE1': ASTRIDE1,
             'SUB_ASTRIDE2': ASTRIDE2,
@@ -607,7 +607,7 @@ class PyFMM(object):
 
         # threading
         self._async_thread = None
-        self._thread_space = host.ThreadSpace(n=ncomp*2, dtype=dtype)
+        self._thread_space = host.ThreadSpace(n=ncomp*4*self.mtl_block_size, dtype=dtype)
 
         self.cuda = cuda
         self.cuda_levels = cuda_levels
