@@ -60,7 +60,7 @@ def load_config(dir=None):
 
 
     # parse main options
-    main_parser = ConfigParser.SafeConfigParser(os.environ)
+    main_parser = ConfigParser.ConfigParser(os.environ)
     main_parser.read(os.path.join(CFG_DIR, 'default.cfg'))
     for key in MAIN_CFG:
         try:
@@ -86,9 +86,16 @@ def load_config(dir=None):
 
 
     # parse all config files in the compilers dir.
-    cc_parser = ConfigParser.SafeConfigParser()
+    cc_parser = ConfigParser.ConfigParser()
     for cc_cfg in os.listdir(os.path.join(CFG_DIR, 'compilers')):
-        cc_parser.read(os.path.join(os.path.join(CFG_DIR, 'compilers'), cc_cfg))
+        if not cc_cfg.endswith('.cfg'):
+            continue
+        
+        with open(os.path.join(os.path.join(CFG_DIR, 'compilers'), cc_cfg)) as fh:
+            cnts = fh.read()
+
+        cc_parser.read_string(cnts)
+
         args = []
         for key in CC_KEYS:
             try:

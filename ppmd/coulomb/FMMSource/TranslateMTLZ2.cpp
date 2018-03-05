@@ -515,52 +515,89 @@ static inline void blocked_wigner_matvec(
 ){
     const REAL * RESTRICT im_bz =  re_bz + block_size*im_offset;
     REAL * RESTRICT im_by =  re_by + block_size*im_offset;
+    
 
     const INT64 oset = p*p;
-    
+    const INT32 n = 2*p+1;
+    REAL const * RESTRICT W;
+
     // we pass both matrices here as the forward rotate
     // matrix is the transpose of the backward rotate
     // matrix. Hence the backward matrix is the column
     // major version of the forward matrix. Our "B" matrix
     // is stored column major. Hence we want both to use BLAS.
-    REAL const * RESTRICT W;
-    if (direction > 0){
-        W = wig_forw;
-    } else {
-        W = wig_back;
-    }
 
+#ifdef USE_MKL
+    const int usemkl = (n<8)?0:1;
+#else
+    const int usemkl = 0;
+#endif
 
-    // naive matmul
-    const INT32 n = 2*p+1;
-    for( INT64 blk=0 ; blk<block_size ; blk++){
-        for(INT32 rx=0 ; rx<p ; rx++){
-            REAL hre = 0.0;
-            REAL him = 0.0;
-            REAL lre = 0.0;
-            REAL lim = 0.0;
-            for(INT32 cx=0 ; cx<n ; cx++){
-                const REAL a = W[rx*n + cx];
-                hre += a * re_bz[cx+blk*stride];
-                him += a * im_bz[cx+blk*stride];
-                lre += a * re_bz[n-cx-1+blk*stride];
-                lim += a * im_bz[n-cx-1+blk*stride];
+    if (usemkl>0){
+#ifdef USE_MKL
+            //printf("using mkl\n");
+            if (direction > 0){
+                W = wig_back;
+            } else {
+                W = wig_forw;
             }
-            re_by[rx+blk*stride] = hre;
-            im_by[rx+blk*stride] = him;
-            re_by[n-rx-1+blk*stride] = lre;
-            im_by[n-rx-1+blk*stride] = lim;
+            DGEMM(
+                CblasColMajor, 
+                CblasNoTrans,
+                CblasNoTrans,
+                (int) n,
+                (int) 2*block_size,
+                (int) n,
+                1.0,
+                W,
+                (int) n,
+                re_bz,
+                (int) im_offset,
+                0.0,
+                re_by,
+                (int) im_offset
+            );
+#endif
+    
+    } else {
+
+        if (direction > 0){
+            W = wig_forw;
+        } else {
+            W = wig_back;
         }
-        // middle row
-        REAL mre = 0.0;
-        REAL mim = 0.0;
-        for( INT32 cx=0 ; cx<n ; cx++ ){
-            const REAL a = W[p*n + cx];
-            mre += a * re_bz[cx+blk*stride];
-            mim += a * im_bz[cx+blk*stride];
+
+        // naive matmul
+        for( INT64 blk=0 ; blk<block_size ; blk++){
+            for(INT32 rx=0 ; rx<p ; rx++){
+                REAL hre = 0.0;
+                REAL him = 0.0;
+                REAL lre = 0.0;
+                REAL lim = 0.0;
+                for(INT32 cx=0 ; cx<n ; cx++){
+                    const REAL a = W[rx*n + cx];
+                    hre += a * re_bz[cx+blk*stride];
+                    him += a * im_bz[cx+blk*stride];
+                    lre += a * re_bz[n-cx-1+blk*stride];
+                    lim += a * im_bz[n-cx-1+blk*stride];
+                }
+                re_by[rx+blk*stride] = hre;
+                im_by[rx+blk*stride] = him;
+                re_by[n-rx-1+blk*stride] = lre;
+                im_by[n-rx-1+blk*stride] = lim;
+            }
+            // middle row
+            REAL mre = 0.0;
+            REAL mim = 0.0;
+            for( INT32 cx=0 ; cx<n ; cx++ ){
+                const REAL a = W[p*n + cx];
+                mre += a * re_bz[cx+blk*stride];
+                mim += a * im_bz[cx+blk*stride];
+            }
+            re_by[p+blk*stride] = mre;
+            im_by[p+blk*stride] = mim;
         }
-        re_by[p+blk*stride] = mre;
-        im_by[p+blk*stride] = mim;
+
     }
 }
 
@@ -750,16 +787,15 @@ static inline void blocked_mtl_z(
             
             // apply the coefficient to each block
             for( INT32 blkx=0 ; blkx<block_size ; blkx++){
+
+                const INT32 lind = blkx*stride + CUBE_IND(jx, 0);
+
                 for(INT32 kx=-1*kmax ; kx<=kmax    ; kx++){
                     const REAL coeff_re = coeff_arr[kx];
 
                     const INT32 oind = blkx*stride + CUBE_IND(nx, kx);
-                    const INT32 lind = blkx*stride + CUBE_IND(jx, kx);
-                    //if (oind == 0){
-                    //    printf("%d | %f | %f || %d %d %d | %d\n", oind, ore[oind], coeff_re, jx, nx, kx, lind);
-                    //}
-                    lre[lind] += ore[oind]*coeff_re;
-                    lim[lind] += oim[oind]*coeff_re;
+                    lre[lind+kx] += ore[oind]*coeff_re;
+                    lim[lind+kx] += oim[oind]*coeff_re;
                 }
             }
         }
@@ -823,10 +859,11 @@ int translate_mtl(
     
 //const INT64 block_end = 2*block_size;
 //const INT64 block_end = 0;
-    printf("block_count %d\n", block_count);
     const INT64 block_end = block_count*block_size;
     
-    #pragma omp parallel for default(none) schedule(dynamic) \
+    printf("block_count %d, peel_size %d\n", block_count, ncells-block_end);
+
+    #pragma omp parallel for default(none) schedule(static, 1) \
     shared(dim_child, multipole_moments, local_moments, \
     alm, almr, i_array, int_list, int_tlookup, \
     int_plookup, int_radius, dim_eight, dim_halo, \

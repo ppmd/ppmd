@@ -58,7 +58,7 @@ angle_set = (-6.28318531, -4.71238898, -3.14159265, -1.57079633,  0.,
 # test forward rotate
 def test_matmul_1():
     R = 3
-    L = 20
+    L = 10
     free_space = True
     N = 2
     E = 4.
@@ -124,7 +124,7 @@ def test_matmul_1():
         im_tmp1 = np.zeros(ncall, dtype=REAL)
         
         
-        bs = fmm.mtl_block_size
+        BS = fmm.mtl_block_size
         blib_forw = fmm._translate_mtlz2_lib[
         'wrapper_blocked_forw_matvec'] 
         
@@ -158,6 +158,7 @@ def test_matmul_1():
             bre_oall.ctypes.get_as_parameter()
         )
         bre_tmp0[:] = 0
+        bre_yall[:] = 0
         blib_back(
             INT64(BS),
             INT64(L),
@@ -174,6 +175,7 @@ def test_matmul_1():
             s = blkx*ncall;
             e = s + ncall
             tmp = bre_yall
+
             back_err = np.linalg.norm(bre_xall[blkx, :ncall:] - tmp[s:e:], np.inf)
             assert back_err < 1*10.**-13
             back_err = np.linalg.norm(bre_xall[blkx, ncall::] - \
@@ -203,9 +205,9 @@ def test_matmul_1():
             e = s + ncall
 
             err_re = np.linalg.norm(re_oall[:] - bre_oall[s:e:], np.inf)
-            assert err_re < 10.**-15
+            assert err_re < 10.**-14
             err_im = np.linalg.norm(im_oall[:] - bre_oall[bncall+s:bncall+e:], np.inf)
-            assert err_im < 10.**-15
+            assert err_im < 10.**-14
 
     
 def test_blocked_mtl_z_1():

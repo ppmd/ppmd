@@ -1,4 +1,9 @@
 
+//#define USE_MKL
+#ifdef USE_MKL
+    #include "mkl.h"
+#endif
+
 #include <stdint.h>
 #include <omp.h>
 #include <stdio.h>
@@ -34,8 +39,15 @@ using namespace std;
 #define BLOCK_SIZE %(SUB_BLOCK_SIZE)s
 #define ASTRIDE1 %(SUB_ASTRIDE1)s
 #define ASTRIDE2 %(SUB_ASTRIDE2)s
+#define DGEMM %(SUB_DGEMM)s
 
 %(SUB_IARRAY)s
+
+#define DOUBLE double
+#define SINGLE float
+
+
+
 
 
 /*

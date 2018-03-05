@@ -310,12 +310,13 @@ class PyFMM(object):
                           '/FMMSource/TranslateMTLZ2.h') as fh:
             hpp = fh.read()
         
-        self.mtl_block_size = 8
+        self.mtl_block_size = 4
         hpp = hpp % {
             'SUB_ASTRIDE1': ASTRIDE1,
             'SUB_ASTRIDE2': ASTRIDE2,
             'SUB_IARRAY': _get_iarray(self.L),
-            'SUB_BLOCK_SIZE': self.mtl_block_size
+            'SUB_BLOCK_SIZE': self.mtl_block_size,
+            'SUB_DGEMM': {ctypes.c_double: 'cblas_dgemm', ctypes.c_float: 'cblas_sgemm'}[REAL]
         }
 
         self._translate_mtlz2_lib = build.simple_lib_creator(hpp, cpp,
