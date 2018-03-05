@@ -744,21 +744,41 @@ static inline void blocked_mtl_z(
                 // store the coefficient to use across the blocks;
                 coeff_arr[kx] = coeff_re;
             }
+
             
             // apply the coefficient to each block
             for( INT32 blkx=0 ; blkx<block_size ; blkx++){
                 for(INT32 kx=-1*kmax ; kx<=kmax    ; kx++){
                     const REAL coeff_re = coeff_arr[kx];
+
                     const INT32 oind = blkx*stride + CUBE_IND(nx, kx);
-                    lre[oind] += ore[oind]*coeff_re;
-                    lim[oind] += oim[oind]*coeff_re;
+                    const INT32 lind = blkx*stride + CUBE_IND(jx, kx);
+
+                    //printf("%d | %f | %f || %d %d %d\n", oind, oim[oind], coeff_re, jx, nx, kx);
+                    lre[lind] += ore[oind]*coeff_re;
+                    lim[lind] += oim[oind]*coeff_re;
                 }
             }
         }
     }
 }
 
-
+extern "C"
+int wrapper_blocked_mtl_z(
+    const INT64             block_size,
+    const INT64             nlevel,
+    const REAL              radius,
+    const REAL * RESTRICT   a_array,
+    const REAL * RESTRICT   ar_array,
+    const REAL * RESTRICT   i_array,
+    const REAL * RESTRICT   odata,
+    REAL * RESTRICT         ldata
+){
+    blocked_mtl_z(
+        block_size, nlevel, radius, a_array, ar_array,
+        i_array, odata, ldata);
+    return 0;
+}
 
 extern "C"
 int translate_mtl(

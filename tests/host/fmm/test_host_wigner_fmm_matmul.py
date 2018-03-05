@@ -27,70 +27,13 @@ import time
 
 from math import *
 
+from common import *
+
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = MPI.COMM_WORLD.Barrier
 DEBUG = False
 SHARED_MEMORY = 'omp'
-
-def red(*input):
-    try:
-        from termcolor import colored
-        return colored(*input, color='red')
-    except Exception as e: return input
-def green(*input):
-    try:
-        from termcolor import colored
-        return colored(*input, color='green')
-    except Exception as e: return input
-def yellow(*input):
-    try:
-        from termcolor import colored
-        return colored(*input, color='yellow')
-    except Exception as e: return input
-
-def red_tol(val, tol):
-    if abs(val) > tol:
-        return red(str(val))
-    else:
-        return green(str(val))
-
-
-def tuple_it(*args, **kwargs):
-    if len(kwargs) == 0:
-        tx = args[0]
-        return itertools.product(range(tx[0]), range(tx[1]), range(tx[2]))
-    else:
-        l = kwargs['low']
-        h = kwargs['high']
-        return itertools.product(range(l[0], h[0]),
-                                 range(l[1], h[1]),
-                                 range(l[2], h[2]))
-
-
-def spherical(xyz):
-    if type(xyz) is tuple or len(xyz.shape) == 1:
-        sph = np.zeros(3)
-        xy = xyz[0]**2 + xyz[1]**2
-        # r
-        sph[0] = np.sqrt(xy + xyz[2]**2)
-        # polar angle
-        sph[1] = np.arctan2(np.sqrt(xy), xyz[2])
-        # longitude angle
-        sph[2] = np.arctan2(xyz[1], xyz[0])
-
-    else:
-        sph = np.zeros(xyz.shape)
-        xy = xyz[:,0]**2 + xyz[:,1]**2
-        # r
-        sph[:,0] = np.sqrt(xy + xyz[:,2]**2)
-        # polar angle
-        sph[:,1] = np.arctan2(np.sqrt(xy), xyz[:,2])
-        # longitude angle
-        sph[:,2] = np.arctan2(xyz[:,1], xyz[:,0])
-
-    #print("spherical", xyz, sph)
-    return sph
 
 @pytest.fixture(
     scope="module",
@@ -181,7 +124,7 @@ def test_matmul_1():
         im_tmp1 = np.zeros(ncall, dtype=REAL)
         
         
-        BS = fmm.mtl_block_size
+        bs = fmm.mtl_block_size
         blib_forw = fmm._translate_mtlz2_lib[
         'wrapper_blocked_forw_matvec'] 
         
@@ -263,6 +206,85 @@ def test_matmul_1():
             assert err_re < 10.**-15
             err_im = np.linalg.norm(im_oall[:] - bre_oall[bncall+s:bncall+e:], np.inf)
             assert err_im < 10.**-15
+
+    
+def test_blocked_mtl_z_1():
+    R = 3
+    L = 10
+    free_space = True
+    N = 2
+    E = 4.
+
+    A = state.State()
+    A.npart = N
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    A.P = data.PositionDat(ncomp=3)
+
+    rng = np.random.RandomState(seed=1234)
+
+
+    A.scatter_data_from(0)
+
+    fmm = PyFMM(domain=A.domain, r=R, l=L, free_space=free_space
+                , _debug=True)
+    
+
+    BS = fmm.mtl_block_size
+    ncall = L*L
+    bncall = BS * ncall
+    bstride = 2*ncall
+
+    bre_oall = np.zeros(2*bncall, dtype=REAL)
+    bre_oall[:] = rng.uniform(low=-1, high=1., size=2*bncall)
+
+    bre_lall = np.zeros(2*bncall, dtype=REAL)
+
+    blib_mtlz = fmm._translate_mtlz2_lib['wrapper_blocked_mtl_z'] 
+
+    radius = 1.0
+    blib_mtlz(
+        INT64(BS),
+        INT64(L),
+        REAL(radius),
+        fmm._a.ctypes.get_as_parameter(),
+        fmm._arn0.ctypes.get_as_parameter(),
+        fmm._ipower_mtl.ctypes.get_as_parameter(),
+        bre_oall.ctypes.get_as_parameter(),
+        bre_lall.ctypes.get_as_parameter()
+    )
+    
+    true_o = np.zeros(bstride)
+    
+    for bx in range(BS):
+        s = bx*ncall
+        e = s + ncall
+        true_o[:ncall:] = bre_oall[s:e:]
+        true_o[ncall::] = bre_oall[bncall + s : bncall + e : ]
+        true_l = shift_z(L, radius, 0.0, true_o) 
+        err_re = np.linalg.norm(true_l[:ncall:] - bre_lall[s:e:], np.inf)
+        err_im = np.linalg.norm(true_l[ncall::] - bre_lall[bncall+s:bncall+e:], np.inf)
+        assert err_re < 10.**-10
+        assert err_im < 10.**-10
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

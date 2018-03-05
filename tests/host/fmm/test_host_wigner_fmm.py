@@ -176,8 +176,6 @@ def shift_normal(L, radius, theta, phi, moments):
 
     return out
 
-
-
 def shift_z(L, radius, theta, moments):
 
     def re_lm(l,m): return (l**2) + l + m
