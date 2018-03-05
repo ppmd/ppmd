@@ -897,8 +897,8 @@ int translate_mtl(
 
     }
     
-    printf("RET EARLY\n");
-    return 0;
+    //printf("RET EARLY\n");
+    //return 0;
 
     // peel loop
     #pragma omp parallel for default(none) schedule(dynamic) \
