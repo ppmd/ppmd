@@ -110,6 +110,7 @@ class CellList(object):
 
         # Timer inits
         self.timer_sort = ppmd.opt.Timer()
+        self._sort_count = 0
 
         # container for cell list.
         self._cell_list = None
@@ -310,12 +311,15 @@ class CellList(object):
         self.update_required = False
 
         self.timer_sort.pause()
-
+        self._sort_count += 1
         self._max_count = np.max(self.cell_contents_count[:])
 
         opt.PROFILE[
             self.__class__.__name__+':sort'
         ] = (self.timer_sort.time())
+        opt.PROFILE[
+            self.__class__.__name__+':sort_count'
+        ] = (self._sort_count)
 
     @property
     def cell_list(self):

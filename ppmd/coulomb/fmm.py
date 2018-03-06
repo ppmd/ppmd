@@ -768,6 +768,9 @@ class PyFMM(object):
         #print("LOCAL")
         self._compute_cube_contrib(positions, charges,
                                    positions.group._fmm_cell)
+        
+        phi_near = self._compute_local_interaction(positions, charges,
+                                                   forces=forces)
 
         for level in range(self.R - 1, 0, -1):
             #print("UP START", level)
@@ -810,13 +813,12 @@ class PyFMM(object):
         phi_extract = self._compute_cube_extraction(positions, charges,
                                                     forces=forces)
 
-        phi_near = self._compute_local_interaction(positions, charges,
-                                                   forces=forces)
+
 
         self._update_opt()
         
-        if mpi.MPI.COMM_WORLD.Get_rank() == 0:
-            print("Far:", phi_extract, "Near:", phi_near)
+        #if mpi.MPI.COMM_WORLD.Get_rank() == 0:
+        #    print("Far:", phi_extract, "Near:", phi_near)
         self.execution_count += 1
         return phi_extract + phi_near
 
@@ -963,6 +965,7 @@ class PyFMM(object):
         # hack to ensure halo exchange
         fmm_cell[:positions.npart_local:, 0] = \
             self._tmp_cell[:positions.npart_local:]
+        fmm_cell.ctypes_data_post(access.WRITE)
 
         self.timer_contrib.pause()
 

@@ -94,6 +94,7 @@ class ParticleDat(host.Matrix):
         self._vid_int = 0
         self._vid_halo = -1
         self.vid_halo_cell_list = -1
+        self._halo_exchange_count = 0
 
         self.group = None
 
@@ -393,10 +394,14 @@ class ParticleDat(host.Matrix):
 
         self._vid_halo = self._vid_int
         self.timer_comm.pause()
+        self._halo_exchange_count += 1
 
         opt.PROFILE[
             self.__class__.__name__+':'+ self.name +':halo_exchange'
         ] = (self.timer_comm.time())
+        opt.PROFILE[
+                self.__class__.__name__+':'+ self.name +':halo_exchange:count'
+        ] = (self._halo_exchange_count)
 
     def _transfer_unpack(self):
         """
