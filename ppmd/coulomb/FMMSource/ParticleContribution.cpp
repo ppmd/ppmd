@@ -134,6 +134,11 @@ static inline INT64 compute_cell(
     }
 
     *global_cell = ((INT32) (  gcx + cube_side_counts[2] * (gcy + cube_side_counts[1] * gcz )  ));
+    if ((*global_cell) < 0){
+        printf("err: Negative global cell\n");
+        return -1;
+    }
+
 
     return cx + cube_dim[2] * (cy + cube_dim[1] * cz);
 }

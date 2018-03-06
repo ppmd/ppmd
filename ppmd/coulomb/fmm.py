@@ -310,7 +310,7 @@ class PyFMM(object):
                           '/FMMSource/TranslateMTLZ2.h') as fh:
             hpp = fh.read()
         
-        self.mtl_block_size = 4
+        self.mtl_block_size = 2
         hpp = hpp % {
             'SUB_ASTRIDE1': ASTRIDE1,
             'SUB_ASTRIDE2': ASTRIDE2,
@@ -814,8 +814,9 @@ class PyFMM(object):
                                                    forces=forces)
 
         self._update_opt()
-
-        #print("Far:", phi_extract, "Near:", phi_near)
+        
+        if mpi.MPI.COMM_WORLD.Get_rank() == 0:
+            print("Far:", phi_extract, "Near:", phi_near)
         self.execution_count += 1
         return phi_extract + phi_near
 

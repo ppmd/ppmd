@@ -371,6 +371,7 @@ class ParticleDat(host.Matrix):
         Perform a halo exchange for the particle dat.
         """
 
+        #print("HALO EXC:", self.name, _MPIRANK)
         self.timer_comm.start()
 
         # new start

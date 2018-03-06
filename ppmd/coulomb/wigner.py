@@ -293,11 +293,24 @@ class _WignerEngine(object):
 
         pointers = np.zeros(maxj, dtype=ctypes.c_void_p)
         matrices = []
-
+        
+        # places the matrices next to each other in memory
+        # may help with smaller ones
+        s = 4
         for jx in range(maxj):
-            p = 2*jx +1
-            matrices.append(np.zeros((p, p), dtype=ctypes.c_double))
-            pointers[jx] = matrices[-1].ctypes.data
+            p = 2*jx + 1
+            s += p*p
+        mat = np.zeros(s, dtype=ctypes.c_double)
+
+        s = 0
+        for jx in range(maxj):
+            p = 2*jx + 1
+            matrices.append(np.reshape(mat[s:s+p*p:].view(), (p,p)))
+            pointers[jx] = mat[s::].ctypes.data
+            s += p*p
+
+        matrices.append(mat)
+
 
         self._lib(
             ctypes.c_int32(maxj),

@@ -185,6 +185,17 @@ int local_cell_by_cell(
     const REAL hey = ey*0.5;
     const REAL hez = ez*0.5;
     
+
+    /*
+    for( INT64 nx=0 ; nx<ntotal ; nx++){
+        INT32 tcell = C[nx];
+        if (tcell<0){
+            printf("err: Negative cell: %d, Particle %d\n", tcell, nx);
+            return -1;
+        }
+    }
+    */
+    
     // initalise the linked list
     for(INT64 llx=ll_cstart ; llx<ll_cend ; llx++){ 
         ll_array[llx] = -1; 
@@ -197,13 +208,32 @@ shared(ll_array, ll_ccc_array, C, P, global_size)
     for(INT64 nx=0 ; nx<ntotal ; nx++ ){
 
         INT64 tcell = C[nx];
+        if (tcell < 0){
+            err=-4; printf("Err -4 /3: Bad particle cell %d\n", tcell);
+        }
+
         INT64 tcx = tcell % global_size[2];
         INT64 tcy = ((tcell - tcx) / global_size[2]) % global_size[1];
         INT64 tcz = (tcell - tcx - tcy*global_size[2])/(global_size[1]*global_size[2]);
         
+        if ((tcx < 0) || (tcx>=global_size[2])){
+            printf("err -10: bad x cell: %d, particle %d\n", tcx, nx);
+            err = -10;
+        }
+        if ((tcy < 0) || (tcx>=global_size[1])){
+            printf("err -11: bad y cell: %d, particle %d\n", tcy, nx);
+            err = -11;
+        }
+        if ((tcz < 0) || (tcx>=global_size[0])){
+            printf("err -12: bad z cell: %d, particle %d\n", tcz, nx);
+            err = -12;
+        }
+
         tcx += 3;
         tcy += 3;
         tcz += 3;
+        
+        INT64 skip = 0;
 
         if (nx >= nlocal) {
             const REAL hpx = P[3*nx+0];
@@ -215,26 +245,41 @@ shared(ll_array, ll_ccc_array, C, P, global_size)
             if (hpy <= -1.0*hey)    { tcy -= hshift_y; }
             if (hpz >= hez)         { tcz += hshift_z; }
             if (hpz <= -1.0*hez)    { tcz -= hshift_z; }
+            
+            // halo particle is very far from this domain
+            if ((tcx < 0) || (tcx>=pgsx)){
+                skip = 1;
+                continue;
+            }
+            if ((tcy < 0) || (tcy>=pgsy)){
+                skip = 1;
+                continue;
+            }
+            if ((tcz < 0) || (tcz>=pgsz)){
+                skip = 1;
+                continue;
+            }
         }
 
         tcell = tcx + pgsx*(tcy + tcz*pgsy);
 
-/*
-        if (nx < nlocal) {
-            printf("LOCAL: nx %d cell %d\n", nx, tcell);
-        }
-*/
-        if (tcell < 0 || tcell >= ncells_padded ) {
-            err=-4; printf("Err -4: Bad particle (id, cell, max_cell): (%d, %d, %d)\n", nx, tcell, ncells_padded);
+        if (tcell < 0){
+            err=-4; printf("Err -4 /2: Bad particle (nlocal, id, cell, max_cell): (%d, %d, %d, %d)\n",
+                    nlocal, nx, tcell, ncells_padded);
         }
 
+        if ((tcell < 0 || tcell >= ncells_padded ) && (err>=0)) {
+            err=-4; printf("Err -4: Bad particle (nlocal, id, cell, max_cell, skip): (%d, %d, %d, %d, %d)\n", nlocal, nx, tcell, ncells_padded, skip);
+        }
+
+        if ((!(tcell < 0 || tcell >= ncells_padded )) && (err>=0)){
 #pragma omp critical
-        {
-            if (!(tcell < 0 || tcell >= ncells_padded )){
-                ll_array[nx] = ll_array[ll_cstart+tcell];
-                ll_array[ll_cstart+tcell] = nx;
-                ll_ccc_array[tcell]++;
+            {
+                    ll_array[nx] = ll_array[ll_cstart+tcell];
+                    ll_array[ll_cstart+tcell] = nx;
+                    ll_ccc_array[tcell]++;
             }
+
         }
     }
     
@@ -245,7 +290,7 @@ shared(local_size, local_offset, global_size, P, Q, C, F, U, ll_array, \
 ll_ccc_array, tmp_int_i, tmp_int_j, tmp_real_pi, tmp_real_pj, tmp_real_qi, \
 tmp_real_qj, tmp_real_fi)
     for(INT64 cx=0 ; cx<ncells_local ; cx++ ){
-        if (err<0){ printf("Negative error code detected."); continue; }
+        if (err < 0){ printf("Negative error code detected."); continue; }
 
         const INT64 threadid = omp_get_thread_num();
 
