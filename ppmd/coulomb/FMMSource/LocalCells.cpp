@@ -203,8 +203,8 @@ int local_cell_by_cell(
     }
 
     // build linked list based on global cell of particle
-#pragma omp parallel for default(none) reduction(min:err) \
-shared(ll_array, ll_ccc_array, C, P, global_size)
+//#pragma omp parallel for default(none) reduction(min:err) \
+//shared(ll_array, ll_ccc_array, C, P, global_size)
     for(INT64 nx=0 ; nx<ntotal ; nx++ ){
 
         INT64 tcell = C[nx];
@@ -273,12 +273,12 @@ shared(ll_array, ll_ccc_array, C, P, global_size)
         }
 
         if ((!(tcell < 0 || tcell >= ncells_padded )) && (err>=0)){
-#pragma omp critical
-            {
+//#pragma omp critical
+//            {
                     ll_array[nx] = ll_array[ll_cstart+tcell];
                     ll_array[ll_cstart+tcell] = nx;
                     ll_ccc_array[tcell]++;
-            }
+//            }
 
         }
     }
@@ -288,7 +288,7 @@ shared(ll_array, ll_ccc_array, C, P, global_size)
 #pragma omp parallel for default(none) reduction(min:err) reduction(+:energy) reduction(+:part_count) \
 shared(local_size, local_offset, global_size, P, Q, C, F, U, ll_array, \
 ll_ccc_array, tmp_int_i, tmp_int_j, tmp_real_pi, tmp_real_pj, tmp_real_qi, \
-tmp_real_qj, tmp_real_fi)
+tmp_real_qj, tmp_real_fi) schedule(dynamic)
     for(INT64 cx=0 ; cx<ncells_local ; cx++ ){
         if (err < 0){ printf("Negative error code detected."); continue; }
 

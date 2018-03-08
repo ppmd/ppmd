@@ -25,8 +25,12 @@ def cubic_lattice(n, e):
 
     n = list(n)
     e = list(e)
-
-    assert len(n) == len(e), "Error: Dimension mismatch"
+    
+    if len(n) != len(e):
+        raise RuntimeError("Error: Dimension mismatch")
+    if len(n) < 1:
+        raise RuntimeError("Error: Cannot create a cube in 0 or less " + \
+            "dimensions.")
 
     ndim = len(n)
     n3 = list(n) + [ndim]
@@ -35,6 +39,10 @@ def cubic_lattice(n, e):
     steps = [0] * ndim
     starts = [0] * ndim
     for v in range(ndim):
+        if n[v] < 1:
+            raise RuntimeError("Error: Zero or Negative dimension size.")
+        if e[v] < 0:
+            raise RuntimeError("Error: Zero or Negative dimension length.")
         steps[v] = float(e[v])/float(n[v])
         starts[v] = -0.5*float(e[v]) + 0.5*steps[v]
 
@@ -43,10 +51,9 @@ def cubic_lattice(n, e):
     for p in nested_iterator([0] * ndim, n):
         for v in range(ndim):
             t[v] = starts[v] + float(p[v]) * steps[v]
-            #print p, v, t[v]
 
         arr[p] = t
-
+    
     return arr.reshape([np.product(n), ndim])
 
 

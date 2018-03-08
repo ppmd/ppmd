@@ -268,7 +268,8 @@ INT32 particle_contribution(
 
     // loop over particle and assign them to threads based on cell
     #pragma omp parallel for default(none) shared(thread_assign, position, \
-    boundary, cube_offset, cube_dim, err, cube_ilen, charge, fmm_cell, cube_side_counts)
+    boundary, cube_offset, cube_dim, cube_ilen, charge, fmm_cell, cube_side_counts) \
+    reduction(min: err)
     for(UINT64 ix=0 ; ix<npart ; ix++){
 
         INT32 global_cell = -1;
@@ -276,14 +277,13 @@ INT32 particle_contribution(
                 position[ix*3+2], boundary, cube_offset, cube_dim, cube_side_counts, &global_cell);
 
         if (ix_cell < 0) {
-            #pragma omp critical
-            {err = -1;}
-            #pragma omp flush (err)
+            err = -1;
         } else {
             const INT64 thread_owner = ix_cell % thread_max;
             INT64 thread_layer;
-            #pragma omp critical
-            {thread_layer = ++thread_assign[thread_owner];}
+            #pragma omp atomic capture
+            thread_layer = ++thread_assign[thread_owner];
+
             thread_assign[thread_max + npart*thread_owner + thread_layer - 1]\
                 = ix;
 

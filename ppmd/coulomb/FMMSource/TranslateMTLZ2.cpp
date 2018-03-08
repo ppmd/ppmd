@@ -653,7 +653,7 @@ static inline void blocked_wigner_matvec(
     // is stored column major. Hence we want both to use BLAS.
 //#undef USE_MKL
 #ifdef USE_MKL
-    const int usemkl = (n<8)?0:1;
+    const int usemkl = (n<4)?0:1;
 #else
     const int usemkl = 0;
 #endif
