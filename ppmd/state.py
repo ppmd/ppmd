@@ -358,6 +358,9 @@ class BaseMDState(object):
 
         idi = self._cell_to_particle_map.version_id
         idh = self._cell_to_particle_map.halo_version_id
+        if idi == 0:
+            raise RuntimeError('Cell to particle map was never constructed before' + \
+                    ' a call to halo exchange')
 
         if idi > idh:
             self._halo_exchange_sizes = self._halo_manager.exchange_cell_counts()

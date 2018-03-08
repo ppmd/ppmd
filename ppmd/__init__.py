@@ -20,7 +20,8 @@ __all__ = [ 'mpi',
             'state',
             'opt',
             'utility',
-            'coulomb']
+            'coulomb',
+            'plain_cell_list']
 
 from . import modules
 from . import utility
@@ -40,7 +41,7 @@ from . import opt
 from . import pio
 from . import runtime
 from . import state
-
+from . import plain_cell_list
 
 abort = mpi.abort
 check = mpi.check
