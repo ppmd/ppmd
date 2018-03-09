@@ -144,6 +144,9 @@ class BaseMDState(object):
         for foo in self.post_update_funcs:
             foo()
     def _determine_update_status(self):
+        if len(self.determine_update_funcs) == 0:
+            return True
+
         v = False
         for foo in self.determine_update_funcs:
             v |= foo()

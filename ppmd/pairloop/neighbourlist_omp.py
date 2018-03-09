@@ -327,7 +327,6 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
             else:
                 obj.ctypes_data_post(mode)
 
-
     def execute(self, n=None, dat_dict=None, static_args=None):
 
         _group = self._group # could be None

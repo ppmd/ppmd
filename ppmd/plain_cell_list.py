@@ -22,9 +22,10 @@ class PlainCellList(object):
     Provides basic cell list capabilities with padded regions
     for halo particles.
     """
-    def __init__(self, cell_width, local_boundary ):
+    def __init__(self, cell_width, local_boundary, n=100):
         assert cell_width > 0
-
+        
+        self.version_id = -1
         
         # local_boundary has layout xl, xh, yl, yh, zl, zh
         self._local_boundary = local_boundary
@@ -65,9 +66,9 @@ class PlainCellList(object):
         self.cell_count = np.product(self.cell_array)
         
         # cell list
-        self.list = np.zeros(100, dtype=INT64)
+        self.list = np.zeros(n+self.cell_count, dtype=INT64)
         # cell reverse lookup
-        self.cell_reverse_lookup = np.zeros(100, dtype=INT64)
+        self.cell_reverse_lookup = np.zeros(n, dtype=INT64)
         # cell contents count
         self.cell_contents_count = np.zeros(self.cell_count, dtype=INT64)
         
