@@ -14,6 +14,12 @@ from ppmd import data, runtime, host, access
 from ppmd.pairloop.neighbourlist import PairLoopNeighbourListNS, Restrict
 from ppmd.pairloop.neighbour_matrix_omp import NeighbourListOMP
 
+from ppmd.pairloop.list_controller import nlist_controller
+
+INT64 = ctypes.c_int64
+REAL = ctypes.c_double
+
+
 class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
     _neighbour_list_dict_OMP = {}
@@ -24,6 +30,7 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
     @staticmethod
     def _new_neighbour_list(shell_cutoff, group):
+        return
         return NeighbourListOMP(
             group.get_npart_local_func(),
             group.get_position_dat(),
@@ -54,12 +61,12 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
     def _generate_lib_specific_args(self):
         self._components['LIB_ARG_DECLS'] = [
-            cgen.Const(cgen.Value(host.int32_str, '_NUM_THREADS')),
-            cgen.Const(cgen.Value(host.int32_str, '_N_LOCAL')),
-            cgen.Const(cgen.Value(host.int32_str, '_STRIDE')),
+            cgen.Const(cgen.Value(host.int64_str, '_NUM_THREADS')),
+            cgen.Const(cgen.Value(host.int64_str, '_N_LOCAL')),
+            cgen.Const(cgen.Value(host.int64_str, '_STRIDE')),
             cgen.Const(
                 cgen.Pointer(
-                    cgen.Value(host.int32_str,
+                    cgen.Value(host.int64_str,
                                Restrict(
                                    self._cc.restrict_keyword,'_NN'
                                )
@@ -68,7 +75,7 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
             ),
             cgen.Const(
                 cgen.Pointer(
-                    cgen.Value(host.int32_str,
+                    cgen.Value(host.int64_str,
                                Restrict(self._cc.restrict_keyword, '_NLIST')),
                 )
             ),
@@ -288,13 +295,13 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
 
     def _get_class_lib_args(self, neighbour_list):
 
-        _N_LOCAL = ctypes.c_int(neighbour_list.n_local)
-        _STRIDE = ctypes.c_int(neighbour_list.stride.value)
-        _NN = neighbour_list.ncount.ctypes_data
-        _LIST = neighbour_list.matrix.ctypes_data
+        _N_LOCAL = INT64(neighbour_list.n_local)
+        _STRIDE  = INT64(neighbour_list.stride.value)
+        _NN      = neighbour_list.ncount.ctypes.get_as_parameter()
+        _LIST    = neighbour_list.matrix.ctypes.get_as_parameter()
 
         return [
-            ctypes.c_int(runtime.NUM_THREADS),
+            INT64(runtime.NUM_THREADS),
             _N_LOCAL,
             _STRIDE,
             _NN,
@@ -338,10 +345,16 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
             self._neighbour_list_from_group(_group)
 
         assert _group is not None, "no group"
-        neighbour_list = self._get_neighbour_list(_group)
 
-        cell2part = _group.get_cell_to_particle_map()
-        cell2part.check()
+
+        #neighbour_list = self._get_neighbour_list(_group)
+        neighbour_list = nlist_controller.get_neighbour_list(
+            _group.get_position_dat(),
+            self.shell_cutoff
+        )
+
+        #cell2part = _group.get_cell_to_particle_map()
+        #cell2part.check()
 
         args = []
         # Add static arguments to launch command
@@ -357,11 +370,11 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
         args+=self._get_dat_lib_args(dat_dict)
 
         # Rebuild neighbour list potentially
-        self._invocations += 1
+        #self._invocations += 1
 
-        self.list_timer.start()
-        neighbour_list.update_if_required()
-        self.list_timer.pause()
+        #self.list_timer.start()
+        #neighbour_list.update_if_required()
+        #self.list_timer.pause()
 
         args2 = self._get_class_lib_args(neighbour_list)
 

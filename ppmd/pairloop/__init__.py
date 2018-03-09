@@ -16,3 +16,5 @@ from ppmd.pairloop.cellbycell_omp import *
 from ppmd.pairloop.neighbourlist import *
 from ppmd.pairloop.neighbourlist_omp import *
 from ppmd.pairloop.state_handler import *
+from ppmd.pairloop.list_controller import *
+from ppmd.pairloop.neighbour_matrix_omp_sub import *

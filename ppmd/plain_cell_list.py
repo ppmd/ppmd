@@ -25,6 +25,7 @@ class PlainCellList(object):
     def __init__(self, cell_width, local_boundary, n=100):
         assert cell_width > 0
         
+        self.cell_width = cell_width
         self.version_id = -1
         
         # local_boundary has layout xl, xh, yl, yh, zl, zh
@@ -92,7 +93,7 @@ class PlainCellList(object):
         n = npart + self.cell_count
         if self.list.shape[0] < n:
             self.list = np.zeros(n, dtype=INT64)
-        self.cell_offset = self.list.shape[0] - self.cell_count
+        self.cell_offset.value = self.list.shape[0] - self.cell_count
         if self.cell_reverse_lookup.shape[0] < n:
             self.cell_reverse_lookup = np.zeros(n, dtype=INT64)
 
@@ -106,7 +107,7 @@ class PlainCellList(object):
         err = self._lib(
             positions.ctypes_data,
             INT64(npart),
-            INT64(self.cell_offset),
+            self.cell_offset,
             self.cell_array.ctypes.get_as_parameter(),
             self._inv_cell_widths.ctypes.get_as_parameter(),
             self._lboundary.ctypes.get_as_parameter(),

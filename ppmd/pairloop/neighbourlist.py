@@ -181,7 +181,7 @@ class PairLoopNeighbourListNS(object):
             cgen.Const(cgen.Value(host.int32_str, '_N_LOCAL')),
             cgen.Const(
                 cgen.Pointer(
-                    cgen.Value(host.int64_str,
+                    cgen.Value(host.long_str,
                                Restrict(
                                    self._cc.restrict_keyword,'_START_POINTS'
                                )

@@ -15,7 +15,12 @@ int32 = ctypes.c_int32
 int32_str = 'int'
 
 int64 = ctypes.c_int64
-int64_str = 'long'
+int64_str = 'int64_t'
+
+long_str = 'long'
+
+
+
 
 double = ctypes.c_double
 double_str = 'double'

@@ -17,6 +17,9 @@ Eo2 = E/2.
 
 tol = 10.**(-12)
 
+np.set_printoptions(threshold=np.nan)
+
+
 rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 nproc = md.mpi.MPI.COMM_WORLD.Get_size()
 
@@ -244,7 +247,7 @@ def test_host_pair_loop_NS_4(state):
 
     loop.execute()
     for ix in range(state.npart_local):
-        assert state.nc[ix] == 18
+        assert state.nc[ix] == 18, "ix={}".format(ix)
 
 
 
