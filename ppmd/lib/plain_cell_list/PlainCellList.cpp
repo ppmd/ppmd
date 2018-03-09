@@ -14,10 +14,14 @@ int PlainCellList(
 ){
     int err = 0;
     const INT64 ncells = cell_array[0]*cell_array[1]*cell_array[2];
+#define MAX(x,y) (((x)>(y))?(x):(y))
+    const INT64 max_threads = MAX(omp_get_max_threads(), 1);
+    const INT64 static_size = (npart/max_threads)+1;
 
+    // bin particles into cells
 #pragma omp parallel for default(none) \
 shared(positions, crl, inverse_cell_lengths, cell_array,\
-local_boundary)
+local_boundary) schedule(static, static_size)
     for(INT64 px=0 ; px<npart ; px++){
         const REAL rx = positions[px*3]   - local_boundary[0];
         const REAL ry = positions[px*3+1] - local_boundary[1];
@@ -39,7 +43,8 @@ local_boundary)
     }
 
 
-
+    // construct cell list from binned particles
+    // might be quicker in serial
 #pragma omp parallel default(none) \
 shared(crl, ccc, cell_array, list)
     {

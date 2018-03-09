@@ -114,7 +114,8 @@ class PlainCellList(object):
             self.cell_reverse_lookup.ctypes.get_as_parameter()
         )
         if err < 0:
-            raise RuntimeError('PlainCellList returned negative error code.')
+            raise RuntimeError('PlainCellList returned negative error code: '\
+                    + str(err))
         self._max_count = np.max(self.cell_contents_count)
 
     @property

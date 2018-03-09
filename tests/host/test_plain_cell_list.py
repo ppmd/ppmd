@@ -1,4 +1,5 @@
 
+import time
 from ppmd import *
 import numpy as np
 import sys
@@ -16,7 +17,7 @@ def test_init_1():
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
     
 
-    N = 1000
+    N = 10000
     A.npart = N
     A.P = data.PositionDat(ncomp=3)
 
@@ -38,31 +39,9 @@ def test_init_1():
 
     cl = plain_cell_list.PlainCellList(nwidth, A.domain.boundary)
     
-    
-    if MPIRANK == 0:
-        print("\n")
-
-    for rx in range(MPISIZE):
-        if rx == MPIRANK:
-            print(MPIRANK, A.domain.boundary, cl.cell_array)
-            print("--->", A.get_cell_to_particle_map().cell_contents_count[:])
-            sys.stdout.flush()
-        BARRIER()
-    
-    if MPIRANK == 0:
-        print(60*'-')
-
     cl.sort(A.P, A.npart_local + A.npart_halo)
 
-    
-    ca = cl.cell_array
-    s = ca[0]*ca[1]
 
-    for rx in range(MPISIZE):
-        if rx == MPIRANK:
-            print(cl.cell_array)
-            for zz in range(ca[2]):
-                print("--->\n", cl.cell_contents_count[zz*s:(zz+1)*s:].reshape(ca[1], ca[0]))
-            sys.stdout.flush()
-        BARRIER()
+
     
+
