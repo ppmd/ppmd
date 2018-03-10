@@ -589,7 +589,9 @@ class PyFMM(object):
 
         # profiling
         self.timer_contrib = opt.Timer(runtime.TIMER)
+        self.timer_contrib_mpi = opt.Timer(runtime.TIMER)
         self.timer_extract = opt.Timer(runtime.TIMER)
+        self.timer_extract_mpi = opt.Timer(runtime.TIMER)
 
         self.timer_mtm = opt.Timer(runtime.TIMER)
         self.timer_mtl = opt.Timer(runtime.TIMER)
@@ -648,7 +650,9 @@ class PyFMM(object):
         p[b+'num_levels'] = self.R
         p[b+'num_terms'] = self.L
         p[b+'contrib'] = self.timer_contrib.time()
+        p[b+'contrib_mpi'] = self.timer_contrib_mpi.time()
         p[b+'extract'] = self.timer_extract.time()
+        p[b+'extract_mpi'] = self.timer_extract_mpi.time()
         p[b+'mtm'] = self.timer_mtm.time()
         p[b+'mtl'] = self.timer_mtl.time()
         p[b+'mtl_gflops'] = self.flop_rate_mtl() / (10.**9.)
@@ -959,6 +963,10 @@ class PyFMM(object):
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 
+        self.timer_contrib.pause()
+        self.timer_contrib_mpi.start()
+        
+
         self.tree_halo[self.R-1][2:-2:, 2:-2:, 2:-2:, :] = 0.0
         self.entry_data.add_onto(self.tree_halo)
 
@@ -967,16 +975,16 @@ class PyFMM(object):
             self._tmp_cell[:positions.npart_local:]
         fmm_cell.ctypes_data_post(access.WRITE)
 
-        self.timer_contrib.pause()
+        self.timer_contrib_mpi.pause()
 
     def _compute_cube_extraction(self, positions, charges, forces=None):
 
+        self.timer_extract_mpi.start()
         if forces is None:
             forces = data.ParticleDat(ncomp=3, npart=positions.npart_local,
                                       dtype=self.dtype)
 
 
-        self.timer_extract.start()
         ns = self.tree.entry_map.cube_side_count
         cube_side_counts = np.array((ns, ns, ns), dtype=UINT64)
 
@@ -984,6 +992,8 @@ class PyFMM(object):
         self.entry_data.extract_from(self.tree_plain)
 
 
+        self.timer_extract_mpi.pause()
+        self.timer_extract.start()
         err = self._extraction_lib(
             INT64(self.L),
             UINT64(positions.npart_local),
