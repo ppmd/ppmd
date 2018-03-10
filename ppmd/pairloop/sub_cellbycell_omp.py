@@ -46,6 +46,7 @@ _offsets = (
     (1,-1,1)
 )
 
+INT64 = ctypes.c_int64
 
 class SubCellByCellOMP(object):
 
@@ -65,6 +66,7 @@ class SubCellByCellOMP(object):
         self.list_timer = opt.Timer(runtime.TIMER)
 
         self._gather_size_limit = 4
+        self._gather_space = host.ThreadSpace(100, ctypes.c_uint8)
         self._generate()
 
         self._offset_list = host.Array(ncomp=27, dtype=ctypes.c_int)
@@ -235,6 +237,14 @@ class SubCellByCellOMP(object):
                                Restrict(self._cc.restrict_keyword, '_JSTORE')),
                 )
             ),
+            cgen.Pointer(
+                cgen.Pointer(
+                    cgen.Value(host.uint8_str,
+                               Restrict(self._cc.restrict_keyword,
+                                   '_GATHER_SPACE')),
+                )
+            ),
+            cgen.Const(cgen.Value(host.int64_str, '_MAX_CELL')),
             self.loop_timer.get_cpp_arguments_ast()
         ]
     def _generate_lib_func(self):
@@ -268,7 +278,7 @@ class SubCellByCellOMP(object):
         """
         code = '''
         %(INCLUDED_HEADERS)s
-
+        #include <cstdint>
         #include "%(LIB_DIR)s/generic.h"
 
         extern "C" %(FUNC_DEC)s
@@ -573,6 +583,8 @@ class SubCellByCellOMP(object):
             cell2part.cell_contents_count.ctypes_data,
             self._offset_list.ctypes_data,
             ctypes.byref(jstore),
+            self._gather_space.ctypes_data,
+            INT64(cell2part.max_cell_contents_count),
             self.loop_timer.get_python_parameters()
         ]
 
@@ -599,6 +611,20 @@ class SubCellByCellOMP(object):
                 obj.ctypes_data_post(mode, threaded=True)
             else:
                 obj.ctypes_data_post(mode)
+    
+    def _prepare_tmp_space(self, max_size):
+        
+        req_bytes = 0
+        for dat in self._dat_dict.items():
+            symbol = dat[0]
+            obj = dat[1][0]
+            dtype = obj.dtype
+            if issubclass(type(obj), data.ParticleDat):
+                req_bytes += 2 * max_size * obj.ncomp * \
+                        ctypes.sizeof(obj.dtype)
+        if self._gather_space.n < req_bytes:
+            self._gather_space = host.ThreadSpace(n=req_bytes+100,
+                    dtype=ctypes.c_uint8)
 
 
     def execute(self, n=None, dat_dict=None, static_args=None):
@@ -626,6 +652,10 @@ class SubCellByCellOMP(object):
         # Add pointer arguments to launch command
         self._init_dat_lib_args(dat_dict)
         args+=self._get_dat_lib_args(dat_dict)
+        
+        # get max cell contents after halo exchange
+        self._prepare_tmp_space(cell2part.max_cell_contents_count)
+        
 
         # Rebuild neighbour list potentially
         self._invocations += 1

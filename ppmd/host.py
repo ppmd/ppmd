@@ -17,6 +17,8 @@ int32_str = 'int'
 int64 = ctypes.c_int64
 int64_str = 'int64_t'
 
+uint8_str = 'uint8_t'
+
 long_str = 'long'
 
 
