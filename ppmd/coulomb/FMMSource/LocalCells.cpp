@@ -103,7 +103,6 @@ static inline REAL compute_interactions(
             fy -= fcoeff * dy;
             fz -= fcoeff * dz;
         }
-
         energy += energyi;
         fi [pxi] += fx;
         fiy[pxi] += fy;

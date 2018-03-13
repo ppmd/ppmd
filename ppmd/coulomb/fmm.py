@@ -775,7 +775,8 @@ class PyFMM(object):
         
         phi_near = self._compute_local_interaction(positions, charges,
                                                    forces=forces)
-
+        #phi_near = self._compute_local_interaction_pairloop(positions, charges,
+        #                                           forces=forces)
         for level in range(self.R - 1, 0, -1):
             #print("UP START", level)
 

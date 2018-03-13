@@ -248,61 +248,10 @@ def get_p_exp(fmm, disp_sph):
 
     return p_array, exp_array
 
-def force_from_multipole(py_mom, fmm, disp, charge):
 
-    Fv = np.zeros(3)
-    radius = disp[0,0]
-    theta = disp[0,1]
-    phi = disp[0,2]
 
-    rstheta = 1.0 / sin(theta)
-    rhat = np.array((cos(phi)*sin(theta),
-                    sin(phi)*sin(theta),
-                    cos(theta)))
-
-    thetahat = np.array(
-        (cos(phi)*cos(theta)*rstheta,
-         sin(phi)*cos(theta)*rstheta,
-         -1.0*sin(theta)*rstheta)
-    )
-
-    phihat = np.array((-1*sin(phi), cos(phi), 0.0))
-    for jx in range(0, fmm.L):
-        #print(green(jx))
-        for kx in range(-1*jx, jx+1):
-            #print("\t", red(kx))
-
-            rpower = radius**(jx+2.)
-
-            Ljk = py_mom[fmm.re_lm(jx,kx)] + 1.j*py_mom[fmm.im_lm(jx,kx)]
-
-            radius_coeff = -1.0 * float(jx + 1.) * rpower * \
-                               Yfoo(jx, kx, theta, phi)
-
-            # theta
-            theta_coeff = float(jx - abs(kx) + 1) * \
-                            Pfoo(jx+1, abs(kx), cos(theta))
-            theta_coeff -= float(jx + 1) * cos(theta) * \
-                            Pfoo(jx, abs(kx), cos(theta))
-            theta_coeff *= rpower
-            theta_coeff *= Hfoo(jx, kx) * cmath.exp(1.j * float(kx) * phi)
-
-            # phi
-            phi_coeff = Yfoo(jx, kx, theta, phi) * (1.j * float(kx))
-            phi_coeff *= rpower * rstheta
-
-            #radius_coeff = 0.0
-            #theta_coeff = 0.0
-            #phi_coeff = 0.0
-
-            Fv -= charge * (rhat     * (Ljk* radius_coeff).real +\
-                            thetahat * (Ljk* theta_coeff ).real +\
-                            phihat   * (Ljk* phi_coeff   ).real)
-
-    return Fv
-
-#@pytest.mark.skipif("MPISIZE>1")
-@pytest.mark.skipif("True")
+@pytest.mark.skipif("MPISIZE>1")
+#@pytest.mark.skipif("True")
 def test_fmm_force_direct_1():
 
     R = 3
@@ -913,9 +862,220 @@ def test_fmm_force_ewald_2():
             print("\t\tFORCE FMM:",A.F[px,:])
 
 
+# def test
+@pytest.mark.skipif("True")
+def test_fmm_force_direct_3():
+
+    R = 3
+    L = 12
+    free_space = True
+
+    N = 2
+    E = 4.
+    rc = E/4
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    ASYNC = False
+    DIRECT = True if MPISIZE == 1 else False
+
+    DIRECT= True
+    EWALD = True
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=None, l=L, free_space=free_space)
+
+    A.npart = N
+
+    rng = np.random.RandomState(seed=1234)
+
+    A.P = data.PositionDat(ncomp=3)
+    A.F = data.ParticleDat(ncomp=3)
+    A.FE = data.ParticleDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+
+    A.crr = data.ScalarArray(ncomp=1)
+    A.cri = data.ScalarArray(ncomp=1)
+    A.crs = data.ScalarArray(ncomp=1)
+
+
+    if N == 2:
+
+        eps = 0.00
+
+        epsx = 0
+        epsy = 0
+        epsz = 0
+
+        A.P[0,:] = (-0.0001, 0.0001, 1.0001)
+        A.P[1,:] = (-0.0001, 0.0001,-0.0001)
+
+
+        A.Q[0,0] = 1.
+        A.Q[1,0] = 1.
+
+
+    A.scatter_data_from(0)
+
+    t0 = time.time()
+    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
+    t1 = time.time()
 
 
 
+    direct_forces = np.zeros((N, 3))
+
+    if DIRECT:
+        #print("WARNING 0-th PARTICLE ONLY")
+        phi_direct = 0.0
+
+        # compute phi from image and surrounding 26 cells
+
+        for ix in range(N):
+
+            phi_part = 0.0
+            for jx in range(ix+1, N):
+                rij = np.linalg.norm(A.P[jx,:] - A.P[ix,:])
+                phi_direct += A.Q[ix, 0] * A.Q[jx, 0] /rij
+                phi_part += A.Q[ix, 0] * A.Q[jx, 0] /rij
+
+                direct_forces[ix,:] -= A.Q[ix, 0] * A.Q[jx, 0] * \
+                                       (A.P[jx,:] - A.P[ix,:]) / (rij**3.)
+                direct_forces[jx,:] += A.Q[ix, 0] * A.Q[jx, 0] * \
+                                       (A.P[jx,:] - A.P[ix,:]) / (rij**3.)
+            if free_space == '27':
+                for ofx in cube_offsets:
+                    cube_mid = np.array(ofx)*E
+                    for jx in range(N):
+                        rij = np.linalg.norm(A.P[jx,:] + cube_mid - A.P[ix, :])
+                        phi_direct += 0.5*A.Q[ix, 0] * A.Q[jx, 0] /rij
+                        phi_part += 0.5*A.Q[ix, 0] * A.Q[jx, 0] /rij
+
+                        direct_forces[ix,:] -= A.Q[ix, 0] * A.Q[jx, 0] * \
+                                           (A.P[jx,:] - A.P[ix,:] + cube_mid) \
+                                               / (rij**3.)
+
+
+    local_err = abs(phi_py - phi_direct)
+    if local_err > eps: serr = red(local_err)
+    else: serr = green(local_err)
+
+    if MPIRANK == 0 and DEBUG:
+        print("\n")
+        #print(60*"-")
+        #opt.print_profile()
+        #print(60*"-")
+        print("TIME FMM:\t", t1 - t0)
+        print("ENERGY DIRECT:\t{:.20f}".format(phi_direct))
+        print("ENERGY FMM:\t", phi_py)
+        print("ERR:\t\t", serr)
+    
+    
+
+    for px in range(N):
+        cell = A._fmm_cell[px,0]
+        stride = fmm.tree_plain[0].shape[-1]
+        ss = fmm.tree_plain[R-1].shape[0:3:]
+
+        cx = cell % ss[2]
+        cy = ((cell - cx)//ss[2]) % ss[1]
+        cz = (((cell - cx)//ss[2]) - cy)//ss[1]
+
+        mom = fmm.tree_plain[fmm.R-1][cz, cy, cx, :]
+        mid = (0.5*E/2.**(R-1))*np.ones(3) + (E/2.**(R-1))*np.array((cx, cy, cz)) - 0.5*E*np.ones(3)
+        
+        disp_cart = A.P[px,:] - mid
+        disp = spherical(disp_cart)
+
+        print(cell, "|", cx, cy, cz, "|", mid)
+
+
+        fpy = force_from_multipole(mom, fmm, disp.reshape(1,3), A.Q[px,0])
+
+
+        err_re_c = red_tol(np.linalg.norm(direct_forces[px,:] - A.F[px,:],
+                                          ord=np.inf), 10.**-6)
+        err_re_p = red_tol(np.linalg.norm(direct_forces[px,:] - fpy,
+                                          ord=np.inf), 10.**-6)        
+
+
+        print("PX:", px)
+        print("\t\tFORCE DIR :",direct_forces[px,:])
+        print("\t\tFORCE FMMC:",A.F[px,:], err_re_c)
+        print("\t\tFORCE py  :",fpy, err_re_p)
 
 
 
+def force_from_multipole(py_mom, fmm, disp, charge):
+
+    Fv = np.zeros(3)
+    radius = disp[0,0]
+    theta = disp[0,1]
+    phi = disp[0,2]
+
+    rstheta = 1.0 / sin(theta)
+    rhat = np.array((cos(phi)*sin(theta),
+                    sin(phi)*sin(theta),
+                    cos(theta)))
+
+    thetahat = np.array(
+        (cos(phi)*cos(theta),
+         sin(phi)*cos(theta),
+         -1.0*sin(theta))
+    )
+    
+
+    print(radius, cos(theta), sin(theta), cos(phi), sin(phi))
+
+    phihat = np.array((-1*sin(phi), cos(phi), 0.0))
+
+    radius_coeff2 = 0.
+    theta_coeff2 = 0.
+    phi_coeff2 = 0.
+
+    for jx in range(0, fmm.L):
+        for kx in range(-1*jx, jx+1):
+
+            rpower = radius**(jx-1.)
+
+            Ljk = py_mom[fmm.re_lm(jx,kx)] + 1.j*py_mom[fmm.im_lm(jx,kx)]
+            
+            #print(Ljk)
+            radius_coeff = float(jx) * rpower * \
+                               Yfoo(jx, kx, theta, phi)
+
+            # theta
+            theta_coeff = float(jx - abs(kx) + 1) * \
+                            Pfoo(jx+1, abs(kx), cos(theta))
+            theta_coeff -= float(jx + 1) * cos(theta) * \
+                            Pfoo(jx, abs(kx), cos(theta))
+            theta_coeff *= rpower
+            theta_coeff *= Hfoo(jx, kx) * cmath.exp(1.j * float(kx) * phi) * rstheta
+
+            # phi
+            phi_coeff = Yfoo(jx, kx, theta, phi) * (1.j * float(kx))
+            phi_coeff *= rpower * rstheta
+            
+            radius_coeff2 += radius_coeff*Ljk
+            theta_coeff2 += theta_coeff  *Ljk
+            phi_coeff2 += phi_coeff      *Ljk
+    
+
+    radius_coeff2 *= charge
+    theta_coeff2 *= charge
+    phi_coeff2 *= charge
+    radius_coeff2 =radius_coeff2.real
+    theta_coeff2  =theta_coeff2.real
+    phi_coeff2    =phi_coeff2.real
+
+
+    print("radius", radius_coeff2.real)
+    print("theta", theta_coeff2.real)
+    print("phi", phi_coeff2.real)
+    print("charge", charge)
+
+    Fv[:] -= radius_coeff2 * rhat  + theta_coeff2 * thetahat + phi_coeff2 * phihat
+
+    return Fv

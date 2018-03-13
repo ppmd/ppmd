@@ -409,7 +409,8 @@ INT32 particle_extraction(
         REAL midx, midy, midz;
         // spherical co-ordinate displacement vector
         REAL radius, ctheta, stheta, cphi, sphi, msphi;
-
+        
+        
         get_cube_midpoint(cube_half_side_len, boundary, cube_offset, cube_dim,
             cube_side_counts, fmm_cell[ix], &midx, &midy, &midz);
 
@@ -424,23 +425,24 @@ INT32 particle_extraction(
         const bool shz = ABS(pz-midz) < tol;
         
         // see comment above ltl function.
+///*        
         const bool shift_expansion = (
             ((always_shift == 1) || shx || shy || shz) && (!(always_shift == -1))
             ) ? true : false;
-
-
+//*/        
+//const bool shift_expansion = false;
+//printf("SHIFTING IS DISABLED!\n");
         REAL * RESTRICT L_SPACE;
 
         if (shift_expansion){
             
-            
             L_SPACE = L_SPACE_VEC[tid];
-
+            
             // can shift local expansion to well defined place here
             REAL newx = px + 0.1*cube_half_side_len[2];
             REAL newy = py + 0.1*cube_half_side_len[1];
             REAL newz = pz + 0.1*cube_half_side_len[0];
-
+            
 
             // displacement from new expansion point to cube centre.
             get_offset_vector(newx, newy, newz, midx, midy, midz,
@@ -472,6 +474,7 @@ INT32 particle_extraction(
 
         const REAL _rstheta = 1.0/stheta;
         const REAL rstheta = (std::isnan(_rstheta) || std::isinf(_rstheta)) ? 0.0 : _rstheta;
+        //const REAL rstheta = _rstheta;
 
         REAL local_pe  = 0.0;
         REAL sp_radius = 0.0;
@@ -482,7 +485,12 @@ INT32 particle_extraction(
         REAL rhol = 1.0;
         REAL rhol2 = 1.0/radius;
         //loop over l and m
+
+
+//printf("radius %f, ctheta %f, stheta %f, cphi %f, sphi%f \n" , radius, ctheta, stheta, cphi, sphi);
+//printf("LOOP IS MODDED!\n");
         for( int lx=0 ; lx<((int)nlevel) ; lx++ ){
+//for( int lx=0 ; lx<2 ; lx++ ){
             
             if (lx==0 && (std::isnan(rhol2) || std::isinf(rhol2))) {rhol2 = 0.0;}
             if (lx==1) {rhol2 = 1.0;}
@@ -515,6 +523,9 @@ INT32 particle_extraction(
                     &pe_im
                 );
                 
+
+
+                // force computation
                 // radius part
                 REAL tmp_re;
                 REAL tmp_im;
@@ -542,6 +553,9 @@ INT32 particle_extraction(
                 const REAL plmm1_1 = (lx==0) ? ( (mx==0) ? 1.0 : 0.0 ) : P_SPACE[P_SPACE_IND(nlevel, lx-1, abs_mx)];
                 const REAL plmm1 = plmm1_1 * ( (ABS(lx-1) < abs_mx ) ? 0.0 : 1.0);
                 
+//printf("j= %d, k= %d, P= %f | cos(theta) %f \n", lx, mx, plmm1, ctheta);
+
+
 //if (ABS(12345.678 - plmm1)<0.0001) {printf("BAD plmm1 %d %d \n", lx, mx);}
 //PRINT_NAN(plmm1)
                 const REAL theta_coeff = -1.0 * rhol2 * ycoeff * rstheta * (
@@ -600,6 +614,13 @@ PRINT_NAN(sp_radius)
 PRINT_NAN(sp_theta)
 PRINT_NAN(sp_phi)
 PRINT_NAN(potential_energy)
+        
+//printf("sp_radius %f\n", sp_radius);
+//printf("sp_theta  %f\n", sp_theta );
+//printf("sp_phi    %f\n", sp_phi   );
+
+        //printf("%f\n", sp_radius * cphi * stheta    +   sp_theta * cphi * ctheta    -   sp_phi * sphi);
+
 
         force[ix*3    ] -= sp_radius * cphi * stheta    +   sp_theta * cphi * ctheta    -   sp_phi * sphi;
         force[ix*3 + 1] -= sp_radius * sphi * stheta    +   sp_theta * sphi * ctheta    +   sp_phi * cphi;
