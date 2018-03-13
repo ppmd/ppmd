@@ -1,7 +1,7 @@
 
 
 static inline void lin_to_xyz(
-    const UINT32 * RESTRICT dim_parent,
+    const INT64 * RESTRICT dim_parent,
     const INT64 lin,
     INT64 * RESTRICT cx,
     INT64 * RESTRICT cy,
@@ -14,7 +14,7 @@ static inline void lin_to_xyz(
 }
 
 static inline INT64 xyz_to_lin(
-    const UINT32 * RESTRICT dim_child,
+    const INT64 * RESTRICT dim_child,
     const INT64 cx,
     const INT64 cy,
     const INT64 cz
@@ -315,7 +315,7 @@ static inline void mtl_no_ar_inorder(
 
 extern "C"
 int translate_mtl(
-    const UINT32 * RESTRICT dim_child,      // slowest to fastest
+    const INT64 * RESTRICT dim_child,      // slowest to fastest
     const REAL * RESTRICT multipole_moments,
     REAL * RESTRICT local_moments,
     const REAL * RESTRICT phi_data,
@@ -340,9 +340,9 @@ int translate_mtl(
     const INT64 ncomp2 = nlevel*nlevel*8;
     const INT64 im_offset = nlevel*nlevel;
     const INT64 im_offset2 = 4*nlevel*nlevel;
-    const UINT32 dim_halo[3] = {dim_child[0] + 4,
+    const INT64 dim_halo[3] = {dim_child[0] + 4,
         dim_child[1] + 4, dim_child[2] + 4};
-    const UINT32 dim_eight[3] = {2, 2, 2};
+    const INT64 dim_eight[3] = {2, 2, 2};
 
     const INT32 phi_stride = 8*nlevel + 2;
     const INT32 theta_stride = 4 * nlevel * nlevel;

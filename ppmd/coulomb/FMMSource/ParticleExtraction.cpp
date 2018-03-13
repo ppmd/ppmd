@@ -28,9 +28,9 @@ static inline void cplx_mul(
 
 
 static inline INT64 get_cube_index(
-    const UINT64 * RESTRICT cube_offset,
-    const UINT64 * RESTRICT cube_dim,
-    const UINT64 * RESTRICT cube_side_counts,   
+    const INT64 * RESTRICT cube_offset,
+    const INT64 * RESTRICT cube_dim,
+    const INT64 * RESTRICT cube_side_counts,   
     const INT32 global_cell
 ){
     
@@ -42,9 +42,9 @@ static inline INT64 get_cube_index(
     const INT64 cyt = ((global_cell - cxt) / nsx) % nsy;
     const INT64 czt = (global_cell - cxt - cyt*nsx) / (nsx*nsy);
 
-    const UINT64 cx = cxt - cube_offset[2];
-    const UINT64 cy = cyt - cube_offset[1];
-    const UINT64 cz = czt - cube_offset[0];
+    const INT64 cx = cxt - cube_offset[2];
+    const INT64 cy = cyt - cube_offset[1];
+    const INT64 cz = czt - cube_offset[0];
 
     if (cx >= cube_dim[2] || cy >= cube_dim[1] || cz >= cube_dim[0] ){
         return (INT64) -1;}
@@ -56,9 +56,9 @@ static inline INT64 get_cube_index(
 static inline INT64 get_cube_midpoint(
     const REAL * RESTRICT cube_half_len,
     const REAL * RESTRICT boundary,
-    const UINT64 * RESTRICT cube_offset,
-    const UINT64 * RESTRICT cube_dim,
-    const UINT64 * RESTRICT cube_side_counts,   
+    const INT64 * RESTRICT cube_offset,
+    const INT64 * RESTRICT cube_dim,
+    const INT64 * RESTRICT cube_side_counts,   
     const INT32 global_cell,
     REAL * RESTRICT midx,
     REAL * RESTRICT midy,
@@ -73,9 +73,9 @@ static inline INT64 get_cube_midpoint(
     const INT64 cyt = ((global_cell - cxt) / nsx) % nsy;
     const INT64 czt = (global_cell - cxt - cyt*nsx) / (nsx*nsy);
 
-    const UINT64 cx = cxt - cube_offset[2];
-    const UINT64 cy = cyt - cube_offset[1];
-    const UINT64 cz = czt - cube_offset[0];
+    const INT64 cx = cxt - cube_offset[2];
+    const INT64 cy = cyt - cube_offset[1];
+    const INT64 cz = czt - cube_offset[0];
 
 
     if (cx >= cube_dim[2] || cy >= cube_dim[1] || cz >= cube_dim[0] ){
@@ -323,16 +323,16 @@ static inline void ltl(
 extern "C"
 INT32 particle_extraction(
     const INT64 nlevel,
-    const UINT64 npart,
+    const INT64 npart,
     const INT32 thread_max,
     const REAL * RESTRICT position,             // xyz
     const REAL * RESTRICT charge,
     REAL * RESTRICT force,
     const INT32 * RESTRICT fmm_cell,
     const REAL * RESTRICT boundary,             // xl. xu, yl, yu, zl, zu
-    const UINT64 * RESTRICT cube_offset,        // zyx (slowest to fastest)
-    const UINT64 * RESTRICT cube_dim,           // as above
-    const UINT64 * RESTRICT cube_side_counts,   // as above
+    const INT64 * RESTRICT cube_offset,        // zyx (slowest to fastest)
+    const INT64 * RESTRICT cube_dim,           // as above
+    const INT64 * RESTRICT cube_side_counts,   // as above
     REAL * RESTRICT local_moments,
     REAL * RESTRICT phi_data,                  // lexicographic
     const INT32 * RESTRICT thread_assign,
@@ -360,7 +360,7 @@ INT32 particle_extraction(
     
     REAL exp_space[thread_max][nlevel*4 + 2];
     // pre compute factorial and double factorial
-    const UINT64 nfact = (2*nlevel > 4) ? 2*nlevel : 4;
+    const INT64 nfact = (2*nlevel > 4) ? 2*nlevel : 4;
     REAL factorial_vec[nfact];
 
     factorial_vec[0] = 1.0;
@@ -374,7 +374,7 @@ INT32 particle_extraction(
     REAL P_SPACE_VEC[thread_max][nlevel*nlevel*2];
     REAL L_SPACE_VEC[thread_max][nlevel*nlevel*2];
 
-    UINT32 count = 0;
+    INT64 count = 0;
     REAL potential_energy = 0.0;
     #pragma omp parallel for default(none) shared(thread_assign, position, \
         boundary, cube_offset, cube_dim, err, exp_space, force, \
@@ -388,7 +388,7 @@ INT32 particle_extraction(
         
         //printf("particle: %d\n", ix);
 
-        const UINT64 ncomp = nlevel*nlevel*2;
+        const INT64 ncomp = nlevel*nlevel*2;
 
         // threads tmp space for exponentials and legendre polynomials
         REAL * RESTRICT P_SPACE = P_SPACE_VEC[tid];
@@ -498,7 +498,7 @@ INT32 particle_extraction(
 
             for( int mx=-1*lx ; mx<=lx ; mx++ ){
                 // energy computation
-                const UINT32 abs_mx = abs(mx);
+                const INT64 abs_mx = abs(mx);
 
                 const REAL ycoeff = sqrt(factorial_vec[lx - abs_mx]/
                     factorial_vec[lx + abs_mx]);

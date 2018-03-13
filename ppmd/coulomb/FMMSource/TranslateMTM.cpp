@@ -1,7 +1,7 @@
 
 
 static inline void lin_to_xyz(
-    const UINT32 * RESTRICT dim_parent,
+    const INT64 * RESTRICT dim_parent,
     const INT64 lin,
     INT64 * RESTRICT cx,
     INT64 * RESTRICT cy,
@@ -14,7 +14,7 @@ static inline void lin_to_xyz(
 }
 
 static inline INT64 xyz_to_lin(
-    const UINT32 * RESTRICT dim_child,
+    const INT64 * RESTRICT dim_child,
     const INT64 cx,
     const INT64 cy,
     const INT64 cz
@@ -60,8 +60,8 @@ static inline double J(
 
 extern "C"
 int translate_mtm(
-    const UINT32 * RESTRICT dim_parent,     // slowest to fastest
-    const UINT32 * RESTRICT dim_child,      // slowest to fastest
+    const INT64 * RESTRICT dim_parent,     // slowest to fastest
+    const INT64 * RESTRICT dim_child,      // slowest to fastest
     const REAL * RESTRICT moments_child,
     REAL * RESTRICT moments_parent,
     const REAL * RESTRICT ylm,

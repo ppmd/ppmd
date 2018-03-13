@@ -11,6 +11,8 @@ from ppmd.coulomb.cached import cached
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 
+REAL = ctypes.c_double
+INT64 = ctypes.c_int64
 
 class cube_owner_map(object):
     """
@@ -63,8 +65,8 @@ class cube_owner_map(object):
         self.cube_to_send = send_ranks
         """Array if this mpi rank contributes to cube i then x_i is owning
         rank of cube i else x_i = -1"""
-        self.local_size = np.array(lsize, dtype=ctypes.c_uint64)
-        self.local_offset = np.array(loffset, dtype=ctypes.c_uint64)
+        self.local_size = np.array(lsize, dtype=INT64)
+        self.local_offset = np.array(loffset, dtype=INT64)
 
     @staticmethod
     def compute_grid_ownership(dims, top, cube_side_count, group_children=False):
@@ -149,7 +151,7 @@ class cube_owner_map(object):
         ndim = len(dim_owners)
         ncubes = ncubes_per_side**ndim
         iterset = [range(ncubes_per_side)] * ndim
-        cube_to_mpi = np.zeros(ncubes, dtype=ctypes.c_uint64)
+        cube_to_mpi = np.zeros(ncubes, dtype=INT64)
 
         tuple_to_lin_coeff = [
             ncubes_per_side**(ndim-dx-1) for dx in range(ndim)]
@@ -196,9 +198,9 @@ class cube_owner_map(object):
         # list if contributing mpi rank is not owning rank.
 
         curr_start = 0
-        starts = np.zeros(ncubes_per_side**ndim + 1, dtype=ctypes.c_uint64)
+        starts = np.zeros(ncubes_per_side**ndim + 1, dtype=INT64)
         con_ranks = list()
-        send_ranks = np.zeros(ncubes_per_side**ndim, dtype=ctypes.c_int64)
+        send_ranks = np.zeros(ncubes_per_side**ndim, dtype=INT64)
         send_ranks[:] = -1
 
         iterset = [range(ncubes_per_side)] * ndim
@@ -221,8 +223,8 @@ class cube_owner_map(object):
 
             starts[cx + 1] = curr_start
 
-        starts = np.array(starts, dtype=ctypes.c_uint64)
-        con_ranks = np.array(con_ranks, dtype=ctypes.c_uint64)
+        starts = np.array(starts, dtype=INT64)
+        con_ranks = np.array(con_ranks, dtype=INT64)
 
         return starts, con_ranks, send_ranks
 
@@ -326,7 +328,7 @@ def compute_interaction_radius():
     give the radius to the box centre.
     """
     def tuple_to_coeff(x): return (x[:,0]**2. + x[:,1]**2. + x[:,2]**2.)**0.5
-    ro = np.zeros(shape=(8, 189), dtype=ctypes.c_double)
+    ro = np.zeros(shape=(8, 189), dtype=REAL)
     ri = 0
     for iz in (0, 1):
         for iy in (0, 1):
@@ -413,17 +415,17 @@ class OctalGridLevel(object):
         """Size of grid plus halos"""
         self._halo_exchange_method = None
         self.owners = np.zeros(shape=(2**level, 2**level, 2**level),
-                               dtype=ctypes.c_uint32)
+                               dtype=INT64)
         """Map from global cube index to owning MPI rank"""
         self.global_to_local = np.zeros(shape=(2**level, 2**level, 2**level),
-                               dtype=ctypes.c_uint32)
+                               dtype=INT64)
         """Map from global cube index to local cube index"""
         self.global_to_local_halo = np.zeros(
-            shape=(2**level, 2**level, 2**level), dtype=ctypes.c_uint32)
+            shape=(2**level, 2**level, 2**level), dtype=INT64)
         """Map from global cube index to local cube index with halos"""
         self.global_to_local_parent = np.zeros(
             shape=(int(2**(level-1)), int(2**(level-1)), int(2**(level-1))),
-            dtype=ctypes.c_uint32)
+            dtype=INT64)
         """Map from global cube index to local parent index"""
 
         self.global_to_local_parent[:] = -1
@@ -502,13 +504,13 @@ class OctalGridLevel(object):
                 owners = ([0], [0], [0])
 
 
-            self.local_grid_cube_size = np.array(lt, dtype=ctypes.c_uint32)
+            self.local_grid_cube_size = np.array(lt, dtype=INT64)
             self.parent_local_size = np.array(
                 (int(lt[0]//2), int(lt[1]//2), int(lt[2]//2)),
-                dtype=ctypes.c_uint32)
+                dtype=INT64)
             self.grid_cube_size = np.array((lt[0] + 4, lt[1] + 4, lt[2] + 4),
-                                           dtype=ctypes.c_uint32)
-            self.local_grid_offset = np.array(lo, dtype=ctypes.c_uint32)
+                                           dtype=INT64)
+            self.local_grid_offset = np.array(lo, dtype=INT64)
 
             # compute the maps from global id to local id by looping over local
             # ids
@@ -615,7 +617,7 @@ class OctalTree(object):
 
 
 class EntryData(object):
-    def __init__(self, tree, ncomp, dtype=ctypes.c_double):
+    def __init__(self, tree, ncomp, dtype=REAL):
         self.tree = tree
         self.dtype = dtype
         self.ncomp = ncomp
@@ -793,7 +795,7 @@ class EntryData(object):
 
 
 class OctalDataTree(object):
-    def __init__(self, tree, ncomp, mode=None, dtype=ctypes.c_double):
+    def __init__(self, tree, ncomp, mode=None, dtype=REAL):
         """
         Attach data to an OctalTree.
         :param tree: octal tree to use.
@@ -1069,7 +1071,7 @@ if CUDA_IMPORT:
     from ppmd.cuda import *
 
     class OctalCudaDataTree(object):
-        def __init__(self, tree, ncomp, mode=None, dtype=ctypes.c_double):
+        def __init__(self, tree, ncomp, mode=None, dtype=REAL):
             """
             Attach data to an OctalTree.
             :param tree: octal tree to use.

@@ -15,8 +15,6 @@ import numpy as np
 _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
 REAL = ctypes.c_double
-UINT64 = ctypes.c_uint64
-UINT32 = ctypes.c_uint32
 INT64 = ctypes.c_int64
 INT32 = ctypes.c_int32
 

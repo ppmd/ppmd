@@ -5,9 +5,9 @@ __constant__ REAL d_radius;
 __constant__ INT32 d_ncells;
 __constant__ INT32 d_re_ncomp;
 
-__constant__ UINT32 d_plain_dim0;
-__constant__ UINT32 d_plain_dim1;
-__constant__ UINT32 d_plain_dim2;
+__constant__ INT64 d_plain_dim0;
+__constant__ INT64 d_plain_dim1;
+__constant__ INT64 d_plain_dim2;
 
 __constant__ INT32 d_phi_stride;
 __constant__ INT32 d_theta_stride;
@@ -126,7 +126,7 @@ static __global__ void mtl_kernel2(
 
 extern "C"
 int translate_mtl(
-    const UINT32 * RESTRICT dim_child,      // slowest to fastest
+    const INT64 * RESTRICT dim_child,      // slowest to fastest
     const REAL * RESTRICT d_multipole_moments,
     REAL * RESTRICT d_local_moments,
     const REAL * RESTRICT d_phi_data,
@@ -202,11 +202,11 @@ int translate_mtl(
     err = cudaMemcpyToSymbol(d_re_ncomp, &re_ncomp, sizeof(INT32));
     if (err != cudaSuccess) {return err;}
 
-    err = cudaMemcpyToSymbol(d_plain_dim0, &dim_child[0], sizeof(UINT32));
+    err = cudaMemcpyToSymbol(d_plain_dim0, &dim_child[0], sizeof(INT64));
     if (err != cudaSuccess) {return err;}
-    err = cudaMemcpyToSymbol(d_plain_dim1, &dim_child[1], sizeof(UINT32));
+    err = cudaMemcpyToSymbol(d_plain_dim1, &dim_child[1], sizeof(INT64));
     if (err != cudaSuccess) {return err;}
-    err = cudaMemcpyToSymbol(d_plain_dim2, &dim_child[2], sizeof(UINT32));
+    err = cudaMemcpyToSymbol(d_plain_dim2, &dim_child[2], sizeof(INT64));
     if (err != cudaSuccess) {return err;}
     
     err = cudaMemcpyToSymbol(d_phi_stride, &phi_stride, sizeof(INT32));
@@ -491,7 +491,7 @@ static __global__ void kernel_rotate_back(
 
 extern "C"
 int translate_mtl_z(
-    const UINT32 * RESTRICT dim_child,      // slowest to fastest
+    const INT64 * RESTRICT dim_child,      // slowest to fastest
     const REAL * RESTRICT d_multipole_moments,
     REAL * RESTRICT d_local_moments,
 	REAL * RESTRICT d_tmp_plain0,
@@ -570,11 +570,11 @@ int translate_mtl_z(
     err = cudaMemcpyToSymbol(d_re_ncomp, &re_ncomp, sizeof(INT32));
     if (err != cudaSuccess) {return err;}
 
-    err = cudaMemcpyToSymbol(d_plain_dim0, &dim_child[0], sizeof(UINT32));
+    err = cudaMemcpyToSymbol(d_plain_dim0, &dim_child[0], sizeof(INT64));
     if (err != cudaSuccess) {return err;}
-    err = cudaMemcpyToSymbol(d_plain_dim1, &dim_child[1], sizeof(UINT32));
+    err = cudaMemcpyToSymbol(d_plain_dim1, &dim_child[1], sizeof(INT64));
     if (err != cudaSuccess) {return err;}
-    err = cudaMemcpyToSymbol(d_plain_dim2, &dim_child[2], sizeof(UINT32));
+    err = cudaMemcpyToSymbol(d_plain_dim2, &dim_child[2], sizeof(INT64));
     if (err != cudaSuccess) {return err;}
     
     err = cudaMemcpyToSymbol(d_phi_stride, &phi_stride, sizeof(INT32));

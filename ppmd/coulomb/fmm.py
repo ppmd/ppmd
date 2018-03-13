@@ -44,8 +44,6 @@ def yellow(input):
 _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
 REAL = ctypes.c_double
-UINT64 = ctypes.c_uint64
-UINT32 = ctypes.c_uint32
 INT64 = ctypes.c_int64
 INT32 = ctypes.c_int32
 
@@ -936,7 +934,7 @@ class PyFMM(object):
         self.timer_contrib.start()
 
         ns = self.tree.entry_map.cube_side_count
-        cube_side_counts = np.array((ns, ns, ns), dtype=UINT64)
+        cube_side_counts = np.array((ns, ns, ns), dtype=INT64)
         if self._thread_allocation.size < self._tcount * \
                 (positions.npart_local + 1):
             self._thread_allocation = np.zeros(
@@ -950,15 +948,15 @@ class PyFMM(object):
 
         err = self._contribution_lib(
             INT64(self.L),
-            UINT64(positions.npart_local),
+            INT64(positions.npart_local),
             INT32(self._tcount),
             _check_dtype(positions, REAL),
             _check_dtype(charges, REAL),
             _check_dtype(self._tmp_cell, INT32),
             _check_dtype(self.domain.extent, REAL),
-            _check_dtype(self.entry_data.local_offset, UINT64),
-            _check_dtype(self.entry_data.local_size, UINT64),
-            _check_dtype(cube_side_counts, UINT64),
+            _check_dtype(self.entry_data.local_offset, INT64),
+            _check_dtype(self.entry_data.local_size, INT64),
+            _check_dtype(cube_side_counts, INT64),
             _check_dtype(self.entry_data.data, REAL),
             _check_dtype(self._thread_allocation, INT32)
         )
@@ -987,7 +985,7 @@ class PyFMM(object):
 
 
         ns = self.tree.entry_map.cube_side_count
-        cube_side_counts = np.array((ns, ns, ns), dtype=UINT64)
+        cube_side_counts = np.array((ns, ns, ns), dtype=INT64)
 
         phi = REAL(0)
         self.entry_data.extract_from(self.tree_plain)
@@ -997,16 +995,16 @@ class PyFMM(object):
         self.timer_extract.start()
         err = self._extraction_lib(
             INT64(self.L),
-            UINT64(positions.npart_local),
+            INT64(positions.npart_local),
             INT32(self._tcount),
             _check_dtype(positions, REAL),
             _check_dtype(charges, REAL),
             _check_dtype(forces, REAL),
             _check_dtype(self._tmp_cell, INT32),
             _check_dtype(self.domain.extent, REAL),
-            _check_dtype(self.entry_data.local_offset, UINT64),
-            _check_dtype(self.entry_data.local_size, UINT64),
-            _check_dtype(cube_side_counts, UINT64),
+            _check_dtype(self.entry_data.local_offset, INT64),
+            _check_dtype(self.entry_data.local_size, INT64),
+            _check_dtype(cube_side_counts, INT64),
             _check_dtype(self.entry_data.data, REAL),
             ctypes.byref(phi),
             _check_dtype(self._thread_allocation, INT32),
@@ -1043,8 +1041,8 @@ class PyFMM(object):
         radius = math.sqrt(radius*radius*3)
 
         err = self._translate_mtm_lib(
-            _check_dtype(self.tree[child_level].parent_local_size, UINT32),
-            _check_dtype(self.tree[child_level].grid_cube_size, UINT32),
+            _check_dtype(self.tree[child_level].parent_local_size, INT64),
+            _check_dtype(self.tree[child_level].grid_cube_size, INT64),
             _check_dtype(self.tree_halo[child_level], REAL),
             _check_dtype(self.tree_parent[child_level], REAL),
             _check_dtype(self._yab, REAL),
@@ -1074,8 +1072,8 @@ class PyFMM(object):
 
         radius = math.sqrt(radius*radius*3)
         err = self._translate_ltl_lib['translate_ltl'](
-            _check_dtype(self.tree[child_level].parent_local_size, UINT32),
-            _check_dtype(self.tree[child_level].local_grid_cube_size, UINT32),
+            _check_dtype(self.tree[child_level].parent_local_size, INT64),
+            _check_dtype(self.tree[child_level].local_grid_cube_size, INT64),
             _check_dtype(self.tree_plain[child_level], REAL),
             _check_dtype(self.tree_parent[child_level], REAL),
             _check_dtype(self._yab, REAL),
@@ -1132,7 +1130,7 @@ class PyFMM(object):
                  self.tree[level].ncubes_side_global
 
         err = self._translate_mtlz2_lib['translate_mtl'](
-            _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
+            _check_dtype(self.tree[level].local_grid_cube_size, INT64),
             _check_dtype(self.tree_halo[level], REAL),
             _check_dtype(self.tree_plain[level], REAL),
             self._ptr_wigner.ctypes.get_as_parameter(),
@@ -1166,7 +1164,7 @@ class PyFMM(object):
                  self.tree[level].ncubes_side_global
 
         err = self._translate_mtlz_lib['translate_mtl'](
-            _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
+            _check_dtype(self.tree[level].local_grid_cube_size, INT64),
             _check_dtype(self.tree_halo[level], REAL),
             _check_dtype(self.tree_plain[level], REAL),
             self._wigner_real.ctypes.get_as_parameter(),
@@ -1200,7 +1198,7 @@ class PyFMM(object):
                  self.tree[level].ncubes_side_global
 
         err = self._translate_mtl_lib['translate_mtl'](
-            _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
+            _check_dtype(self.tree[level].local_grid_cube_size, INT64),
             _check_dtype(self.tree_halo[level], REAL),
             _check_dtype(self.tree_plain[level], REAL),
             _check_dtype(self._interaction_e, REAL),

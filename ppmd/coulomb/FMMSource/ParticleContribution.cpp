@@ -1,5 +1,5 @@
 static inline void global_local_cell_tuple(
-    const UINT64 * RESTRICT cube_offset,
+    const INT64 * RESTRICT cube_offset,
     const REAL * RESTRICT cube_inverse_len,
     const REAL * RESTRICT boundary,
     const REAL px,
@@ -64,7 +64,7 @@ static inline INT64 local_cell_tuple(
     const INT64 gcx, 
     const INT64 gcy, 
     const INT64 gcz, 
-    const UINT64 * RESTRICT cube_offset,
+    const INT64 * RESTRICT cube_offset,
     INT64 * RESTRICT cx,
     INT64 * RESTRICT cy,
     INT64 * RESTRICT cz
@@ -76,7 +76,7 @@ static inline INT64 local_cell_tuple(
 }
 
 static inline INT64 drift_compensation(
-    const UINT64 * RESTRICT cube_dim,
+    const INT64 * RESTRICT cube_dim,
     INT64 * RESTRICT gcx,
     INT64 * RESTRICT gcy,
     INT64 * RESTRICT gcz,
@@ -111,9 +111,9 @@ static inline INT64 compute_cell(
     const REAL py,
     const REAL pz,
     const REAL * RESTRICT boundary,
-    const UINT64 * RESTRICT cube_offset,
-    const UINT64 * RESTRICT cube_dim,
-    const UINT64 * RESTRICT cube_side_counts,   
+    const INT64 * RESTRICT cube_offset,
+    const INT64 * RESTRICT cube_dim,
+    const INT64 * RESTRICT cube_side_counts,   
     INT32 * global_cell
 ){
     // global cell tuple
@@ -150,8 +150,8 @@ static inline INT64 compute_cell_spherical(
     const REAL py,
     const REAL pz,
     const REAL * RESTRICT boundary,
-    const UINT64 * RESTRICT cube_offset,
-    const UINT64 * RESTRICT cube_dim,
+    const INT64 * RESTRICT cube_offset,
+    const INT64 * RESTRICT cube_dim,
     REAL * RESTRICT radius,
     REAL * RESTRICT ctheta,
     REAL * RESTRICT cphi,
@@ -237,15 +237,15 @@ static inline REAL m1_m(int m){
 extern "C"
 INT32 particle_contribution(
     const INT64 nlevel,
-    const UINT64 npart,
+    const INT64 npart,
     const INT32 thread_max,
     const REAL * RESTRICT position,             // xyz
     const REAL * RESTRICT charge,
     INT32 * RESTRICT fmm_cell,
     const REAL * RESTRICT boundary,             // xl. xu, yl, yu, zl, zu
-    const UINT64 * RESTRICT cube_offset,        // zyx (slowest to fastest)
-    const UINT64 * RESTRICT cube_dim,           // as above
-    const UINT64 * RESTRICT cube_side_counts,   // as above
+    const INT64 * RESTRICT cube_offset,        // zyx (slowest to fastest)
+    const INT64 * RESTRICT cube_dim,           // as above
+    const INT64 * RESTRICT cube_side_counts,   // as above
     REAL * RESTRICT cube_data,                  // lexicographic
     INT32 * RESTRICT thread_assign
 ){
@@ -270,7 +270,7 @@ INT32 particle_contribution(
     #pragma omp parallel for default(none) shared(thread_assign, position, \
     boundary, cube_offset, cube_dim, cube_ilen, charge, fmm_cell, cube_side_counts) \
     reduction(min: err)
-    for(UINT64 ix=0 ; ix<npart ; ix++){
+    for(INT64 ix=0 ; ix<npart ; ix++){
 
         INT32 global_cell = -1;
         const INT64 ix_cell = compute_cell(cube_ilen, position[ix*3], position[ix*3+1], 
@@ -295,7 +295,7 @@ INT32 particle_contribution(
     if (err < 0) { return err; }
  
     // check all particles were assigned to a thread
-    UINT64 check_sum = 0;
+    INT64 check_sum = 0;
     for(INT32 ix=0 ; ix<thread_max ; ix++){
         check_sum += thread_assign[ix]; 
         //printf("tx %d val %d\n", ix, thread_assign[ix]);
@@ -312,7 +312,7 @@ INT32 particle_contribution(
     
     REAL exp_space[thread_max][nlevel*4 + 2];
     // pre compute factorial and double factorial
-    const UINT64 nfact = (2*nlevel > 4) ? 2*nlevel : 4;
+    const INT64 nfact = (2*nlevel > 4) ? 2*nlevel : 4;
     REAL factorial_vec[nfact];
     REAL double_factorial_vec[nfact];
 
@@ -331,7 +331,7 @@ INT32 particle_contribution(
     REAL P_SPACE_VEC[thread_max][nlevel*nlevel*2];
 
 
-    UINT32 count = 0;
+    INT64 count = 0;
     #pragma omp parallel for default(none) shared(thread_assign, position, boundary, \
         cube_offset, cube_dim, err, cube_data, exp_space, factorial_vec, double_factorial_vec, P_SPACE_VEC, \
         cube_half_side_len, cube_ilen, charge) \
@@ -339,7 +339,7 @@ INT32 particle_contribution(
         reduction(+: count)
     for(INT32 tx=0 ; tx<thread_max ; tx++){
         const int tid = omp_get_thread_num();
-        const UINT64 ncomp = nlevel*nlevel*2;
+        const INT64 ncomp = nlevel*nlevel*2;
         REAL * P_SPACE = P_SPACE_VEC[tid];
         for(INT64 px=0 ; px<thread_assign[tx] ; px++){
             INT64 ix = thread_assign[thread_max + npart*tx + px];
@@ -413,7 +413,7 @@ INT32 particle_contribution(
                 rhol = (lx > 0) ? rhol*radius : 1.0;
 
                 for( int mx=-1*lx ; mx<=lx ; mx++ ){
-                    const UINT32 abs_mx = ABS(mx);
+                    const INT64 abs_mx = ABS(mx);
                     const REAL coeff = sqrt(factorial_vec[lx - abs_mx]/factorial_vec[lx + abs_mx]) \
                                        * charge[ix] * rhol;
 

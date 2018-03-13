@@ -19,8 +19,6 @@ from scipy.special import lpmv, rgamma, gammaincc, lambertw
 from ppmd.cuda import *
 
 REAL = ctypes.c_double
-UINT64 = ctypes.c_uint64
-UINT32 = ctypes.c_uint32
 INT64 = ctypes.c_int64
 INT32 = ctypes.c_int32
 
@@ -278,7 +276,7 @@ class TranslateMTLCuda(object):
 
         self.timer_mtl.start()
         err = self._translate_mtl_lib['translate_mtl'](
-            _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
+            _check_dtype(self.tree[level].local_grid_cube_size, INT64),
             self.tree_halo.device_pointer(level),
             self.tree_plain.device_pointer(level),
             _check_dtype(self._d_e, REAL),
@@ -324,7 +322,7 @@ class TranslateMTLCuda(object):
 
         self.timer_mtl.start()
         err = self._translate_mtl_lib['translate_mtl_z'](
-            _check_dtype(self.tree[level].local_grid_cube_size, UINT32),
+            _check_dtype(self.tree[level].local_grid_cube_size, INT64),
             self.tree_halo.device_pointer(level),
             self.tree_plain.device_pointer(level),
             self.tmp_plain0.device_pointer(level),
