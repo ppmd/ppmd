@@ -516,7 +516,8 @@ class SubCellByCellOMP(object):
         
         # partition this threads space for temporary vars
         self._components['PARTICLE_DAT_PARTITION'] = \
-            DSLPartitionTempSpace(self._dat_dict, '_MAX_CELL', '_GATHER_SPACE[_threadid]')#,
+            DSLPartitionTempSpace(self._dat_dict, '_MAX_CELL',
+                    '_GATHER_SPACE[_threadid]')#,
         #            extras=((self._components['TMP_INDEX'], 1, INT64),))
         
         kernel_gather.append(self._components['PARTICLE_DAT_PARTITION'].ptr_init)
@@ -685,7 +686,8 @@ class SubCellByCellOMP(object):
         for sx in self._components['OMP_SHARED_SYMS']:
             shared+= sx+','
         shared = shared[:-1]
-        pragma = cgen.Pragma('omp parallel for default(none) schedule(dynamic) collapse(3) shared(' + shared + ')')
+        pragma = cgen.Pragma('omp parallel for default(none)' \
+' schedule(dynamic) collapse(3) shared(' + shared + ')')
         if runtime.OMP_NUM_THREADS is None:
             pragma = cgen.Comment(pragma)
 
