@@ -31,7 +31,7 @@ static inline INT64 get_cube_index(
     const INT64 * RESTRICT cube_offset,
     const INT64 * RESTRICT cube_dim,
     const INT64 * RESTRICT cube_side_counts,   
-    const INT32 global_cell
+    const INT64 global_cell
 ){
     
     const INT64 nsx = cube_side_counts[2];
@@ -59,7 +59,7 @@ static inline INT64 get_cube_midpoint(
     const INT64 * RESTRICT cube_offset,
     const INT64 * RESTRICT cube_dim,
     const INT64 * RESTRICT cube_side_counts,   
-    const INT32 global_cell,
+    const INT64 global_cell,
     REAL * RESTRICT midx,
     REAL * RESTRICT midy,
     REAL * RESTRICT midz
@@ -197,7 +197,7 @@ static inline void compute_exp_space(
 ){
     exp_vec[EXP_RE_IND(nlevel, 0)] = 1.0;
     exp_vec[EXP_IM_IND(nlevel, 0)] = 0.0;
-    for (INT32 lx=1 ; lx<=((INT32)nlevel) ; lx++){
+    for (INT64 lx=1 ; lx<=((INT64)nlevel) ; lx++){
         next_pos_exp(
             cphi, sphi,
             exp_vec[EXP_RE_IND(nlevel, lx-1)],
@@ -253,15 +253,15 @@ static inline void ltl(
     }
 
     // loop over parent moments
-    for(INT32 jx=0     ; jx<nlevel ; jx++ ){
-    for(INT32 kx=-1*jx ; kx<=jx    ; kx++){
+    for(INT64 jx=0     ; jx<nlevel ; jx++ ){
+    for(INT64 kx=-1*jx ; kx<=jx    ; kx++){
         // A_j^k
         const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];
 
         REAL contrib_re = 0.0;
         REAL contrib_im = 0.0;
 
-        for(INT32 nx=jx ; nx<nlevel ; nx++){
+        for(INT64 nx=jx ; nx<nlevel ; nx++){
             // -1^{n}
             const REAL m1tnpj = 1.0 - 2.0*((REAL)((nx+jx) & 1));
 
@@ -321,27 +321,27 @@ static inline void ltl(
 
 
 extern "C"
-INT32 particle_extraction(
+INT64 particle_extraction(
     const INT64 nlevel,
     const INT64 npart,
-    const INT32 thread_max,
+    const INT64 thread_max,
     const REAL * RESTRICT position,             // xyz
     const REAL * RESTRICT charge,
     REAL * RESTRICT force,
-    const INT32 * RESTRICT fmm_cell,
+    const INT64 * RESTRICT fmm_cell,
     const REAL * RESTRICT boundary,             // xl. xu, yl, yu, zl, zu
     const INT64 * RESTRICT cube_offset,        // zyx (slowest to fastest)
     const INT64 * RESTRICT cube_dim,           // as above
     const INT64 * RESTRICT cube_side_counts,   // as above
     REAL * RESTRICT local_moments,
     REAL * RESTRICT phi_data,                  // lexicographic
-    const INT32 * RESTRICT thread_assign,
+    const INT64 * RESTRICT thread_assign,
     const REAL * RESTRICT alm,
     const REAL * RESTRICT almr,
     const REAL * RESTRICT i_array,
-    const INT32 always_shift
+    const INT64 always_shift
 ){
-    INT32 err = 0;
+    INT64 err = 0;
     omp_set_num_threads(thread_max);
 
 
@@ -383,7 +383,7 @@ INT32 particle_extraction(
         alm, almr, i_array) \
         schedule(dynamic) \
         reduction(+: count) reduction(+: potential_energy)
-    for(INT32 ix=0 ; ix<npart ; ix++){
+    for(INT64 ix=0 ; ix<npart ; ix++){
         const int tid = omp_get_thread_num();
         
         //printf("particle: %d\n", ix);

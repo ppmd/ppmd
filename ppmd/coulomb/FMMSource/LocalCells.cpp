@@ -126,7 +126,7 @@ int local_cell_by_cell(
     const INT64 ntotal,
     const REAL * RESTRICT P,
     const REAL * RESTRICT Q,
-    const INT32 * RESTRICT C,
+    const INT64 * RESTRICT C,
     REAL * RESTRICT F,
     REAL * RESTRICT U,
     INT64 * RESTRICT ll_array,
@@ -187,7 +187,7 @@ int local_cell_by_cell(
 
     /*
     for( INT64 nx=0 ; nx<ntotal ; nx++){
-        INT32 tcell = C[nx];
+        INT64 tcell = C[nx];
         if (tcell<0){
             printf("err: Negative cell: %d, Particle %d\n", tcell, nx);
             return -1;
@@ -357,7 +357,7 @@ tmp_real_qj, tmp_real_fi) schedule(dynamic)
         // if cell contains no local particles continue
         if (ci_nt == 0) {continue;}
 
-        for(INT32 ox=0 ; (ox<27 && (err>=0)) ; ox++){
+        for(INT64 ox=0 ; (ox<27 && (err>=0)) ; ox++){
 
             // global index of "second" cell as xyz tuple
             const INT64 hxtp[3] = {

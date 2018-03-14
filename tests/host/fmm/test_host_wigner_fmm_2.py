@@ -170,7 +170,7 @@ def test_new_matvec_1():
             lib_forw = fmm._translate_mtlz2_lib['wrapper_rotate_p_forward']
 
             lib_forw(
-                INT32(lx),
+                INT64(lx),
                 exp_re.ctypes.get_as_parameter(),
                 exp_im.ctypes.get_as_parameter(),
                 ctypes.c_void_p(int(wp[lx])),
@@ -278,7 +278,7 @@ def test_new_matvec_2():
         im_tmp1 = np.zeros(ncall, dtype=REAL)
 
         lib_all_forw(
-            INT32(L),
+            INT64(L),
             exp_re.ctypes.get_as_parameter(),
             exp_im.ctypes.get_as_parameter(),
             wp.ctypes.get_as_parameter(),
@@ -325,7 +325,7 @@ def test_new_matvec_2():
 
 
         lib_all_back(
-            INT32(L),
+            INT64(L),
             exp_re.ctypes.get_as_parameter(),
             exp_im.ctypes.get_as_parameter(),
             wpb.ctypes.get_as_parameter(),

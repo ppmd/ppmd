@@ -80,8 +80,8 @@ static inline void ltl_octal(
     }
 
     // loop over parent moments
-    for(INT32 jx=0     ; jx<nlevel ; jx++ ){
-    for(INT32 kx=-1*jx ; kx<=jx    ; kx++){
+    for(INT64 jx=0     ; jx<nlevel ; jx++ ){
+    for(INT64 kx=-1*jx ; kx<=jx    ; kx++){
         // A_j^k
         const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];
 
@@ -90,7 +90,7 @@ static inline void ltl_octal(
         REAL contrib_re = 0.0;
         REAL contrib_im = 0.0;
 
-        for(INT32 nx=jx ; nx<nlevel ; nx++){
+        for(INT64 nx=jx ; nx<nlevel ; nx++){
             // -1^{n}
             const REAL m1tnpj = 1.0 - 2.0*((REAL)((nx+jx) & 1));
 
@@ -256,7 +256,7 @@ int translate_ltl(
         //    }
         //}
 
-        for(INT32 childx=0 ; childx<8 ; childx++ ){
+        for(INT64 childx=0 ; childx<8 ; childx++ ){
 
                //printf("BEFORE LTL %d %d %f\n", pcx, childx, cd_re[childx][0]);
                //printf("BEFORE LTL %d %d %f\n", pcx, childx, cd_re[childx][0]);

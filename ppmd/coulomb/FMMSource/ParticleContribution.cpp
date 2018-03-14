@@ -114,7 +114,7 @@ static inline INT64 compute_cell(
     const INT64 * RESTRICT cube_offset,
     const INT64 * RESTRICT cube_dim,
     const INT64 * RESTRICT cube_side_counts,   
-    INT32 * global_cell
+    INT64 * global_cell
 ){
     // global cell tuple
     INT64 gcx, gcy, gcz, cx, cy, cz;
@@ -133,7 +133,7 @@ static inline INT64 compute_cell(
         return -1; 
     }
 
-    *global_cell = ((INT32) (  gcx + cube_side_counts[2] * (gcy + cube_side_counts[1] * gcz )  ));
+    *global_cell = ((INT64) (  gcx + cube_side_counts[2] * (gcy + cube_side_counts[1] * gcz )  ));
     if ((*global_cell) < 0){
         printf("err: Negative global cell\n");
         return -1;
@@ -235,21 +235,21 @@ static inline REAL m1_m(int m){
 
 
 extern "C"
-INT32 particle_contribution(
+INT64 particle_contribution(
     const INT64 nlevel,
     const INT64 npart,
-    const INT32 thread_max,
+    const INT64 thread_max,
     const REAL * RESTRICT position,             // xyz
     const REAL * RESTRICT charge,
-    INT32 * RESTRICT fmm_cell,
+    INT64 * RESTRICT fmm_cell,
     const REAL * RESTRICT boundary,             // xl. xu, yl, yu, zl, zu
     const INT64 * RESTRICT cube_offset,        // zyx (slowest to fastest)
     const INT64 * RESTRICT cube_dim,           // as above
     const INT64 * RESTRICT cube_side_counts,   // as above
     REAL * RESTRICT cube_data,                  // lexicographic
-    INT32 * RESTRICT thread_assign
+    INT64 * RESTRICT thread_assign
 ){
-    INT32 err = 0;
+    INT64 err = 0;
     omp_set_num_threads(thread_max);
     //printf("%f | %f | %f\n", boundary[0], boundary[1], boundary[2]);
 
@@ -272,7 +272,7 @@ INT32 particle_contribution(
     reduction(min: err)
     for(INT64 ix=0 ; ix<npart ; ix++){
 
-        INT32 global_cell = -1;
+        INT64 global_cell = -1;
         const INT64 ix_cell = compute_cell(cube_ilen, position[ix*3], position[ix*3+1], 
                 position[ix*3+2], boundary, cube_offset, cube_dim, cube_side_counts, &global_cell);
 
@@ -296,7 +296,7 @@ INT32 particle_contribution(
  
     // check all particles were assigned to a thread
     INT64 check_sum = 0;
-    for(INT32 ix=0 ; ix<thread_max ; ix++){
+    for(INT64 ix=0 ; ix<thread_max ; ix++){
         check_sum += thread_assign[ix]; 
         //printf("tx %d val %d\n", ix, thread_assign[ix]);
     }
@@ -337,7 +337,7 @@ INT32 particle_contribution(
         cube_half_side_len, cube_ilen, charge) \
         schedule(static,1) \
         reduction(+: count)
-    for(INT32 tx=0 ; tx<thread_max ; tx++){
+    for(INT64 tx=0 ; tx<thread_max ; tx++){
         const int tid = omp_get_thread_num();
         const INT64 ncomp = nlevel*nlevel*2;
         REAL * P_SPACE = P_SPACE_VEC[tid];
@@ -368,7 +368,7 @@ INT32 particle_contribution(
 
             exp_vec[EXP_RE_IND(nlevel, 0)] = 1.0;
             exp_vec[EXP_IM_IND(nlevel, 0)] = 0.0;
-            for (INT32 lx=1 ; lx<=((INT32)nlevel) ; lx++){
+            for (INT64 lx=1 ; lx<=((INT64)nlevel) ; lx++){
                 next_pos_exp(
                     cphi, sphi,
                     exp_vec[EXP_RE_IND(nlevel, lx-1)],

@@ -20,7 +20,6 @@ from ppmd.cuda import *
 
 REAL = ctypes.c_double
 INT64 = ctypes.c_int64
-INT32 = ctypes.c_int32
 
 def red(input):
     try:
@@ -90,8 +89,8 @@ class TranslateMTLCuda(object):
 
         self._ipower_mtl = cuda_base.gpuarray.to_gpu(ipower_mtl)
 
-        jlookup = np.zeros(ncomp, dtype=INT32)
-        klookup = np.zeros(ncomp, dtype=INT32)
+        jlookup = np.zeros(ncomp, dtype=INT64)
+        klookup = np.zeros(ncomp, dtype=INT64)
 
         ind = 0
         for jx in range(nlevel):
@@ -285,15 +284,15 @@ class TranslateMTLCuda(object):
             _check_dtype(self._d_ar, REAL),
             REAL(radius),
             INT64(self.L),
-            _check_dtype(self._int_list[level], INT32),
-            _check_dtype(self._d_int_tlookup, INT32),
-            _check_dtype(self._d_int_plookup, INT32),
+            _check_dtype(self._int_list[level], INT64),
+            _check_dtype(self._d_int_tlookup, INT64),
+            _check_dtype(self._d_int_plookup, INT64),
             _check_dtype(self._d_int_radius, ctypes.c_double),
-            _check_dtype(self._jlookup, INT32),
-            _check_dtype(self._klookup, INT32),
+            _check_dtype(self._jlookup, INT64),
+            _check_dtype(self._klookup, INT64),
             _check_dtype(self._ipower_mtl, REAL),
-            INT32(128),
-            INT32(cuda_runtime.DEVICE_NUMBER)
+            INT64(128),
+            INT64(cuda_runtime.DEVICE_NUMBER)
         )
 
         self.timer_mtl.pause()
@@ -335,14 +334,14 @@ class TranslateMTLCuda(object):
             _check_dtype(self._arn0, REAL),
             REAL(radius),
             INT64(self.L),
-            _check_dtype(self._int_list[level], INT32),
-            _check_dtype(self._d_int_tlookup, INT32),
+            _check_dtype(self._int_list[level], INT64),
+            _check_dtype(self._d_int_tlookup, INT64),
             _check_dtype(self._d_int_radius, ctypes.c_double),
-            _check_dtype(self._jlookup, INT32),
-            _check_dtype(self._klookup, INT32),
+            _check_dtype(self._jlookup, INT64),
+            _check_dtype(self._klookup, INT64),
             _check_dtype(self._ipower_mtl, REAL),
-            INT32(256),
-            INT32(cuda_runtime.DEVICE_NUMBER)
+            INT64(256),
+            INT64(cuda_runtime.DEVICE_NUMBER)
         )
 
         self.timer_mtl.pause()

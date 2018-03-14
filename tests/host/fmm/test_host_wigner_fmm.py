@@ -35,6 +35,8 @@ SHARED_MEMORY = 'omp'
 
 from common import *
 
+INT64 = c_int64
+REAL = c_double
 
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_cplx_matvec_1():
@@ -90,7 +92,7 @@ def test_fmm_cplx_matvec_1():
 
         # use lib cplx matvec
         fmm._translate_mtlz_lib['rotate_p_moments_wrapper'](
-            c_int32(nval),
+            INT64(nval),
             re_m.ctypes.get_as_parameter(),
             im_m.ctypes.get_as_parameter(),
             re_x.ctypes.get_as_parameter(),
@@ -122,7 +124,7 @@ def test_fmm_cplx_matvec_1():
 
     # use lib cplx matvec
     fmm._translate_mtlz_lib['rotate_moments_wrapper'](
-        c_int32(nterms),
+        INT64(nterms),
         pointers_real.ctypes.get_as_parameter(),
         pointers_imag.ctypes.get_as_parameter(),
         moments.ctypes.get_as_parameter(),

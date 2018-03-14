@@ -7,7 +7,6 @@
 
 #define REAL double
 #define INT64 int64_t
-#define INT32 int32_t
 
 using namespace std;
 

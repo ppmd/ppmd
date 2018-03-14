@@ -68,13 +68,13 @@ static inline void mtl(
     REAL * RESTRICT iradius_p1 = &iradius_n[1];
 
     // loop over parent moments
-    for(INT32 jx=0     ; jx<nlevel ; jx++ ){
-    for(INT32 kx=-1*jx ; kx<=jx    ; kx++){
+    for(INT64 jx=0     ; jx<nlevel ; jx++ ){
+    for(INT64 kx=-1*jx ; kx<=jx    ; kx++){
         const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
         REAL contrib_re = 0.0;
         REAL contrib_im = 0.0;
 
-        for(INT32 nx=0     ; nx<nlevel ; nx++){
+        for(INT64 nx=0     ; nx<nlevel ; nx++){
             const REAL m1tn = 1.0 - 2.0*((REAL)(nx & 1));   // -1^{n}
             const INT64 jxpnx = jx + nx;
             const INT64 p_ind_base = P_IND(jxpnx, 0);
@@ -155,11 +155,11 @@ static inline void mtl_no_ar(
     REAL * RESTRICT iradius_p1 = &iradius_n[1];
 
     // loop over parent moments
-    for(INT32 jx=0     ; jx<nlevel ; jx++ ){
+    for(INT64 jx=0     ; jx<nlevel ; jx++ ){
                 
                 //if (DEBUG0 == 0){printf("");}
 
-    for(INT32 kx=-1*jx ; kx<=jx    ; kx++){
+    for(INT64 kx=-1*jx ; kx<=jx    ; kx++){
         const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
         REAL contrib_re = 0.0;
         REAL contrib_im = 0.0;
@@ -167,7 +167,7 @@ static inline void mtl_no_ar(
         const bool pb = (DEBUG0 == 0 && jx == 0 && kx ==0 && DEBUG1 == 0);
 
 
-        for(INT32 nx=0     ; nx<nlevel ; nx++){
+        for(INT64 nx=0     ; nx<nlevel ; nx++){
                 
             //if (pb){printf("nx=%d\n", nx);}
 
@@ -232,8 +232,8 @@ static inline void mtl_no_ar_inorder(
     REAL * RESTRICT         ldata,
     const INT64 DEBUG0,
     const INT64 DEBUG1,
-    const INT32 * RESTRICT j_array,
-    const INT32 * RESTRICT k_array,
+    const INT64 * RESTRICT j_array,
+    const INT64 * RESTRICT k_array,
     const REAL * RESTRICT a_inorder
 ){
     const INT64 ASTRIDE1 = 4*nlevel + 1;
@@ -254,19 +254,19 @@ static inline void mtl_no_ar_inorder(
     REAL * RESTRICT iradius_p1 = &iradius_n[1];
 
     // loop over parent moments
-    for(INT32 jx=0     ; jx<nlevel ; jx++ ){
-    for(INT32 kx=-1*jx ; kx<=jx    ; kx++){
+    for(INT64 jx=0     ; jx<nlevel ; jx++ ){
+    for(INT64 kx=-1*jx ; kx<=jx    ; kx++){
 
         const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
         REAL contrib_re = 0.0;
         REAL contrib_im = 0.0;
         
-        for(INT32 termx=0 ; termx<im_offset ; termx++){
-            //const INT32 nx = j_array[termx];
+        for(INT64 termx=0 ; termx<im_offset ; termx++){
+            //const INT64 nx = j_array[termx];
             
-            const INT32 nx = sqrt((REAL) termx);
+            const INT64 nx = sqrt((REAL) termx);
 
-            const INT32 mx = -1*nx + (termx - nx*nx);
+            const INT64 mx = -1*nx + (termx - nx*nx);
 
 
             const REAL m1tn = 1.0 - 2.0*((REAL)(nx & 1));   // -1^{n}
@@ -325,12 +325,12 @@ int translate_mtl(
     const REAL * RESTRICT i_array,
     const REAL radius,
     const INT64 nlevel,
-    const INT32 * RESTRICT int_list,
-    const INT32 * RESTRICT int_tlookup,
-    const INT32 * RESTRICT int_plookup,
+    const INT64 * RESTRICT int_list,
+    const INT64 * RESTRICT int_tlookup,
+    const INT64 * RESTRICT int_plookup,
     const double * RESTRICT int_radius,
-    const INT32 * RESTRICT j_array,
-    const INT32 * RESTRICT k_array,
+    const INT64 * RESTRICT j_array,
+    const INT64 * RESTRICT k_array,
     const REAL * RESTRICT a_inorder
     ){
     int err = 0;
@@ -344,8 +344,8 @@ int translate_mtl(
         dim_child[1] + 4, dim_child[2] + 4};
     const INT64 dim_eight[3] = {2, 2, 2};
 
-    const INT32 phi_stride = 8*nlevel + 2;
-    const INT32 theta_stride = 4 * nlevel * nlevel;
+    const INT64 phi_stride = 8*nlevel + 2;
+    const INT64 theta_stride = 4 * nlevel * nlevel;
 
 
     #pragma omp parallel for default(none) schedule(dynamic) \
@@ -369,13 +369,13 @@ int translate_mtl(
         REAL * out_moments = &local_moments[ncomp * pcx];
         // loop over contributing nearby cells.
 
-        for( INT32 conx=octal_ind*189 ; conx<(octal_ind+1)*189 ; conx++ ){
+        for( INT64 conx=octal_ind*189 ; conx<(octal_ind+1)*189 ; conx++ ){
             
             const REAL local_radius = int_radius[conx] * radius;
-            const INT32 jcell = int_list[conx] + halo_ind;
+            const INT64 jcell = int_list[conx] + halo_ind;
 
-            const INT32 t_lookup = int_tlookup[conx];
-            const INT32 p_lookup = int_plookup[conx];
+            const INT64 t_lookup = int_tlookup[conx];
+            const INT64 p_lookup = int_plookup[conx];
 /*
             mtl(nlevel, local_radius, &multipole_moments[jcell*ncomp],
                 &phi_data[p_lookup * phi_stride],

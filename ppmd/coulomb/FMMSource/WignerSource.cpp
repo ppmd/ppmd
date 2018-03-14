@@ -2,32 +2,32 @@
 
 
 static inline REAL get_mat_element(
-	const INT32 j,
-	const INT32 mp,
-	const INT32 m,
+	const INT64 j,
+	const INT64 mp,
+	const INT64 m,
 	const REAL * RESTRICT mat
 ){	
 
 
 	if ((m > j) || (m<-1*j) || (mp > j) || (mp<-1*j)) { return 0.0; }
 	
-	const INT32 p = 2*j+1;
-	const INT32 mx = j+m;
-	const INT32 mpx = j+mp;
+	const INT64 p = 2*j+1;
+	const INT64 mx = j+m;
+	const INT64 mpx = j+mp;
 	
 	return mat[mpx*p + mx];	
 }
 
 
 static inline REAL rec0(
-	const INT32 j,
-	const INT32 m,
-	const INT32 mp,
+	const INT64 j,
+	const INT64 m,
+	const INT64 mp,
 	const REAL cb,
 	const REAL sb,
 	const REAL * RESTRICT jm1_mat
 ){
-    const INT32 denom = ((j+mp)*(j-mp));
+    const INT64 denom = ((j+mp)*(j-mp));
 
 	const REAL sc = sb * cb;
 	const REAL idenom = 1.0/denom;
@@ -50,14 +50,14 @@ static inline REAL rec0(
 
 
 static inline REAL rec1(
-	const INT32 j,
-	const INT32 m,
-	const INT32 mp,
+	const INT64 j,
+	const INT64 m,
+	const INT64 mp,
 	const REAL cb,
 	const REAL sb,
 	const REAL * RESTRICT jm1_mat
 ){
-    const INT32 denom = ((j + mp)*(j + mp -1));
+    const INT64 denom = ((j + mp)*(j + mp -1));
 
 	const REAL idenom = 1.0/denom;
 
@@ -78,14 +78,14 @@ static inline REAL rec1(
 
 
 static inline REAL rec2(
-	const INT32 j,
-	const INT32 m,
-	const INT32 mp,
+	const INT64 j,
+	const INT64 m,
+	const INT64 mp,
 	const REAL cb,
 	const REAL sb,
 	const REAL * RESTRICT jm1_mat
 ){
-    const INT32 denom = ((j-mp)*(j-mp-1));
+    const INT64 denom = ((j-mp)*(j-mp-1));
 
 	const REAL idenom = 1.0/denom;
 
@@ -106,9 +106,9 @@ static inline REAL rec2(
 
 
 static inline REAL rec(
-	const INT32 j,
-	const INT32 m,
-	const INT32 mp,
+	const INT64 j,
+	const INT64 m,
+	const INT64 mp,
 	const REAL cb,
 	const REAL sb,
 	const REAL * RESTRICT jm1_mat
@@ -126,7 +126,7 @@ static inline REAL rec(
 
 extern "C"
 int get_matrix_set(
-    const INT32 maxj,
+    const INT64 maxj,
 	const REAL beta,
     REAL * RESTRICT * RESTRICT mat_re
 )
@@ -135,23 +135,23 @@ int get_matrix_set(
 	const REAL cb = cos(0.5*beta);
 	const REAL sb = sin(0.5*beta);
 	
-    const INT32 nthreads = omp_get_num_threads();
+    const INT64 nthreads = omp_get_num_threads();
     const REAL inthreads = 1.0/nthreads;
 	// zeroth entry is always 1
 	mat_re[0][0] = 1.0;
-	for (INT32 jx=1 ; jx<maxj ; jx++){
-		const INT32 p = 2*jx+1;
+	for (INT64 jx=1 ; jx<maxj ; jx++){
+		const INT64 p = 2*jx+1;
         if (p > nthreads){
-            const INT32 wp = p*inthreads;
+            const INT64 wp = p*inthreads;
 #pragma omp parallel for default(none) shared(mat_re, jx) schedule(static, wp)
-            for(INT32 mpx=-1*jx ; mpx<=jx ; mpx++){
-                for(INT32 mx=-1*jx ; mx<=jx ; mx++){
+            for(INT64 mpx=-1*jx ; mpx<=jx ; mpx++){
+                for(INT64 mx=-1*jx ; mx<=jx ; mx++){
                     mat_re[jx][(mpx+jx)*p + (mx+jx)] = rec(jx, mx, mpx, cb, sb, mat_re[jx-1]);
                 }
             }
         }else {
-            for(INT32 mpx=-1*jx ; mpx<=jx ; mpx++){
-                for(INT32 mx=-1*jx ; mx<=jx ; mx++){
+            for(INT64 mpx=-1*jx ; mpx<=jx ; mpx++){
+                for(INT64 mx=-1*jx ; mx<=jx ; mx++){
                     mat_re[jx][(mpx+jx)*p + (mx+jx)] = rec(jx, mx, mpx, cb, sb, mat_re[jx-1]);
                 }
             }

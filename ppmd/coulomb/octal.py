@@ -253,9 +253,9 @@ def compute_interaction_offsets(cube_index):
     Compute the interaction offsets for a given child cube. Child cubes are
     indexed with a tuple.
     :param cube_index: Tuple of child cube to compute offsets for.
-    :return: numpy array type ctypes.c_int32 size 189x3 of offsets.
+    :return: numpy array type INT64 size 189x3 of offsets.
     """
-    ro = np.zeros(shape=(189, 3), dtype=ctypes.c_int32)
+    ro = np.zeros(shape=(189, 3), dtype=INT64)
     ri = 0
     for offset in shell_iterator(2):
         ro[ri, :] = offset
@@ -294,7 +294,7 @@ def compute_interaction_tlookup():
     # xyz to lin
     def tuple_to_lin(x): return (x[:, 2]+3)*49 + (x[:, 1]+3)*7 + x[:, 0]+3
 
-    ro = np.zeros(shape=(8, 189), dtype=ctypes.c_int32)
+    ro = np.zeros(shape=(8, 189), dtype=INT64)
     ri = 0
     for iz in (0, 1):
         for iy in (0, 1):
@@ -311,7 +311,7 @@ def compute_interaction_plookup():
     """
     def tuple_to_lin(x): return (x[:, 1]+3)*7 + x[:, 0]+3
 
-    ro = np.zeros(shape=(8, 189), dtype=ctypes.c_int32)
+    ro = np.zeros(shape=(8, 189), dtype=INT64)
     ri = 0
     for iz in (0, 1):
         for iy in (0, 1):
@@ -345,7 +345,7 @@ def compute_interaction_lists(local_size):
     Compute the local interaction offset lists for a local domain. Child cubes
     are indexed lexicographically from 0.
     :param local_size: tuple of local cube domain dimensions (fast to slow)
-    :return: 8x189 ctypes.c_int32 offsets numpy array.
+    :return: 8x189 INT64 offsets numpy array.
     """
     if not local_size[0] > 5 or not local_size[1] > 5 \
             or not local_size[2] > 5:
@@ -355,7 +355,7 @@ def compute_interaction_lists(local_size):
     def tuple_to_lin(x): return x[:, 2]*local_size[2]*local_size[1] + \
         x[:, 1]*local_size[2] + x[:, 0]
 
-    ro = np.zeros(shape=(8, 189), dtype=ctypes.c_int32)
+    ro = np.zeros(shape=(8, 189), dtype=INT64)
     ri = 0
     for iz in (0, 1):
         for iy in (0, 1):

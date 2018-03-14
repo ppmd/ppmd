@@ -45,7 +45,6 @@ _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
 REAL = ctypes.c_double
 INT64 = ctypes.c_int64
-INT32 = ctypes.c_int32
 
 np.set_printoptions(threshold=np.nan)
 
@@ -123,8 +122,8 @@ class PyFMM(object):
 
         self._tcount = runtime.OMP_NUM_THREADS if runtime.OMP_NUM_THREADS is \
             not None else 1
-        self._thread_allocation = np.zeros(1, dtype=INT32)
-        self._tmp_cell = np.zeros(1, dtype=INT32)
+        self._thread_allocation = np.zeros(1, dtype=INT64)
+        self._tmp_cell = np.zeros(1, dtype=INT64)
 
         # pre compute A_n^m and 1/(A_n^m)
 
@@ -185,8 +184,8 @@ class PyFMM(object):
                 )
         
         # create array for j/k lookup incides
-        self._j_array = np.zeros(self.L**2, dtype=INT32)
-        self._k_array = np.zeros(self.L**2, dtype=INT32)
+        self._j_array = np.zeros(self.L**2, dtype=INT64)
+        self._k_array = np.zeros(self.L**2, dtype=INT64)
         self._a_inorder = np.zeros(self.L**2, dtype=dtype) 
         for jx in range(self.L):
             for kx in range(-1*jx, jx+1):
@@ -501,7 +500,7 @@ class PyFMM(object):
         P = data.ParticleDat(ncomp=3, dtype=dtype)
         F = data.ParticleDat(ncomp=3, dtype=dtype)
         Q = data.ParticleDat(ncomp=1, dtype=dtype)
-        FMM_CELL = data.ParticleDat(ncomp=1, dtype=ctypes.c_int)
+        FMM_CELL = data.ParticleDat(ncomp=1, dtype=INT64)
         self.particle_phi = data.GlobalArray(ncomp=1, dtype=dtype)
         ns = self.tree.entry_map.cube_side_count
         maxe = np.max(self.domain.extent[:]) / ns
@@ -712,7 +711,7 @@ class PyFMM(object):
 
     def _check_aux_dat(self, positions):
         if not hasattr(positions.group, '_fmm_cell'):
-            positions.group._fmm_cell = data.ParticleDat(ncomp=1, dtype=INT32)
+            positions.group._fmm_cell = data.ParticleDat(ncomp=1, dtype=INT64)
             positions.group._fmm_cell.npart_local = positions.npart_local
 
     def _cuda_translate_m_t_l(self, level, async=True):
@@ -938,27 +937,27 @@ class PyFMM(object):
         if self._thread_allocation.size < self._tcount * \
                 (positions.npart_local + 1):
             self._thread_allocation = np.zeros(
-                int(self._tcount*(positions.npart_local*1.1 + 1)),dtype=INT32)
+                int(self._tcount*(positions.npart_local*1.1 + 1)),dtype=INT64)
 
         self._thread_allocation[:self._tcount:] = 0
 
         if self._tmp_cell.shape[0] < positions.npart_local:
             self._tmp_cell = np.zeros(int(positions.npart_local*1.1),
-                                      dtype=INT32)
+                                      dtype=INT64)
 
         err = self._contribution_lib(
             INT64(self.L),
             INT64(positions.npart_local),
-            INT32(self._tcount),
+            INT64(self._tcount),
             _check_dtype(positions, REAL),
             _check_dtype(charges, REAL),
-            _check_dtype(self._tmp_cell, INT32),
+            _check_dtype(self._tmp_cell, INT64),
             _check_dtype(self.domain.extent, REAL),
             _check_dtype(self.entry_data.local_offset, INT64),
             _check_dtype(self.entry_data.local_size, INT64),
             _check_dtype(cube_side_counts, INT64),
             _check_dtype(self.entry_data.data, REAL),
-            _check_dtype(self._thread_allocation, INT32)
+            _check_dtype(self._thread_allocation, INT64)
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 
@@ -996,22 +995,22 @@ class PyFMM(object):
         err = self._extraction_lib(
             INT64(self.L),
             INT64(positions.npart_local),
-            INT32(self._tcount),
+            INT64(self._tcount),
             _check_dtype(positions, REAL),
             _check_dtype(charges, REAL),
             _check_dtype(forces, REAL),
-            _check_dtype(self._tmp_cell, INT32),
+            _check_dtype(self._tmp_cell, INT64),
             _check_dtype(self.domain.extent, REAL),
             _check_dtype(self.entry_data.local_offset, INT64),
             _check_dtype(self.entry_data.local_size, INT64),
             _check_dtype(cube_side_counts, INT64),
             _check_dtype(self.entry_data.data, REAL),
             ctypes.byref(phi),
-            _check_dtype(self._thread_allocation, INT32),
+            _check_dtype(self._thread_allocation, INT64),
             _check_dtype(self._a, REAL),
             _check_dtype(self._ar, REAL),
             _check_dtype(self._ipower_ltl, REAL),
-            INT32(0)
+            INT64(0)
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 
@@ -1142,9 +1141,9 @@ class PyFMM(object):
             _check_dtype(self._ipower_mtl, REAL),
             REAL(radius),
             INT64(self.L),
-            _check_dtype(self._int_list[level], INT32),
-            _check_dtype(self._int_tlookup, INT32),
-            _check_dtype(self._int_plookup, INT32),
+            _check_dtype(self._int_list[level], INT64),
+            _check_dtype(self._int_tlookup, INT64),
+            _check_dtype(self._int_plookup, INT64),
             _check_dtype(self._int_radius, ctypes.c_double),
             self._thread_space.ctypes_data
         )
@@ -1176,9 +1175,9 @@ class PyFMM(object):
             _check_dtype(self._ipower_mtl, REAL),
             REAL(radius),
             INT64(self.L),
-            _check_dtype(self._int_list[level], INT32),
-            _check_dtype(self._int_tlookup, INT32),
-            _check_dtype(self._int_plookup, INT32),
+            _check_dtype(self._int_list[level], INT64),
+            _check_dtype(self._int_tlookup, INT64),
+            _check_dtype(self._int_plookup, INT64),
             _check_dtype(self._int_radius, ctypes.c_double),
             self._thread_space.ctypes_data
         )
@@ -1208,12 +1207,12 @@ class PyFMM(object):
             _check_dtype(self._ipower_mtl, REAL),
             REAL(radius),
             INT64(self.L),
-            _check_dtype(self._int_list[level], INT32),
-            _check_dtype(self._int_tlookup, INT32),
-            _check_dtype(self._int_plookup, INT32),
+            _check_dtype(self._int_list[level], INT64),
+            _check_dtype(self._int_tlookup, INT64),
+            _check_dtype(self._int_plookup, INT64),
             _check_dtype(self._int_radius, ctypes.c_double),
-            _check_dtype(self._j_array  ,INT32),
-            _check_dtype(self._k_array  ,INT32),
+            _check_dtype(self._j_array  ,INT64),
+            _check_dtype(self._k_array  ,INT64),
             _check_dtype(self._a_inorder,REAL) 
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))

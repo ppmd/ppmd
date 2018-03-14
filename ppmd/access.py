@@ -235,20 +235,24 @@ class DatArgStore(object):
             symbol = ax[0]
             obj = ax[1][0]
             mode = ax[1][1]
+            
+            err_str = ": {} | {} {} not {} {}".format(
+                    symbol, obj.dtype, mode, self.register[symbol][2],
+                    self.register[symbol][0])
 
             assert obj not in objs, "dats may not be passed twice"
             objs.append(obj)
 
             assert symbol in self.symbols.keys(),\
-                "unexpected symbol in dat dict"
+                "unexpected symbol in dat dict"+err_str
             assert mode == self.register[symbol][0], "incorrect access mode"
             assert issubclass(type(obj), self.register[symbol][1]),\
                 "incompatible dat passed"+\
                 str(type(obj)) + " != " + str(self.register[symbol][1])
             assert obj.dtype == self.register[symbol][2],\
-                "incompatible dat data type"
+                "incompatible dat data type"+err_str
             assert obj.ncomp == self.register[symbol][3],\
-                "incompatible dat ncomp"
+                "incompatible dat ncomp"+err_str
 
     def items(self, new_dats=None):
         """return the dats in a consistent order"""

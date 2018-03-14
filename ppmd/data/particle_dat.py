@@ -210,7 +210,7 @@ class ParticleDat(host.Matrix):
 
     def __repr__(self):
         # self.__str__()
-        return "ParticleDat"
+        return "ParticleDat_"+str(self.dtype)
 
     def __call__(self, mode=access.RW, halo=True):
 

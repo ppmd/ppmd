@@ -189,7 +189,7 @@ def test_matmul_1():
             im_xall[:] = bre_xall[blkx, ncall::]
 
             lib_all_forw(
-                INT32(L),
+                INT64(L),
                 exp_re.ctypes.get_as_parameter(),
                 exp_im.ctypes.get_as_parameter(),
                 wp.ctypes.get_as_parameter(),

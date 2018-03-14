@@ -16,6 +16,8 @@ from ppmd.lib.build import simple_lib_creator
 import os
 _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
+INT64 = ctypes.c_int64
+
 @cached(maxsize=1024)
 def wigner_d(j, mp, m, beta):
     """
@@ -313,7 +315,7 @@ class _WignerEngine(object):
 
 
         self._lib(
-            ctypes.c_int32(maxj),
+            INT64(maxj),
             ctypes.c_double(beta),
             pointers.ctypes.get_as_parameter()
         )

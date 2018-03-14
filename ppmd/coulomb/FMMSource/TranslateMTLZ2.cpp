@@ -68,7 +68,7 @@ static inline void cplx_mul_im(
 
 
 static inline void rotate_p_forward(
-    const INT32 p,
+    const INT64 p,
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     const REAL * RESTRICT wig_forw,
@@ -80,7 +80,7 @@ static inline void rotate_p_forward(
     REAL * RESTRICT im_by
 ){
     // rotate negative terms around z axis
-    for(INT32 rx=0 ; rx<p ; rx++){
+    for(INT64 rx=0 ; rx<p ; rx++){
          cplx_mul(
             re_x[rx], im_x[rx],
             exp_re[p-1-rx],
@@ -91,7 +91,7 @@ static inline void rotate_p_forward(
     re_bz[p] = re_x[p];
     im_bz[p] = im_x[p];
     // rotate positive terms around z axis
-    for(INT32 rx=0 ; rx<p ; rx++){
+    for(INT64 rx=0 ; rx<p ; rx++){
          cplx_mul(
             re_x[p+1+rx], im_x[p+1+rx],
             exp_re[rx],
@@ -101,13 +101,13 @@ static inline void rotate_p_forward(
     }
     //rotate around y axis
     // b <- (Wigner_d) * x
-    const INT32 n = 2*p+1;
-    for(INT32 rx=0 ; rx<p ; rx++){
+    const INT64 n = 2*p+1;
+    for(INT64 rx=0 ; rx<p ; rx++){
         REAL hre = 0.0;
         REAL him = 0.0;
         REAL lre = 0.0;
         REAL lim = 0.0;
-        for(INT32 cx=0 ; cx<n ; cx++){
+        for(INT64 cx=0 ; cx<n ; cx++){
             const REAL a = wig_forw[rx*n + cx];
             hre += a * re_bz[cx];
             him += a * im_bz[cx];
@@ -122,7 +122,7 @@ static inline void rotate_p_forward(
     // middle row
     REAL mre = 0.0;
     REAL mim = 0.0;
-    for( INT32 cx=0 ; cx<n ; cx++ ){
+    for( INT64 cx=0 ; cx<n ; cx++ ){
         const REAL a = wig_forw[p*n + cx];
         mre += a * re_bz[cx];
         mim += a * im_bz[cx];
@@ -132,7 +132,7 @@ static inline void rotate_p_forward(
 }
 
 static inline void rotate_moments_forward(
-    const INT32 l,
+    const INT64 l,
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     const REAL * RESTRICT const * RESTRICT wig_forw,
@@ -143,8 +143,8 @@ static inline void rotate_moments_forward(
     REAL * RESTRICT re_by,
     REAL * RESTRICT im_by
 ){
-    const INT32 im_offset = l*l;
-    for(INT32 lx=0 ; lx<l ; lx++){
+    const INT64 im_offset = l*l;
+    for(INT64 lx=0 ; lx<l ; lx++){
          rotate_p_forward(lx, exp_re, exp_im, wig_forw[lx],
          &re_x[lx*lx], &im_x[lx*lx],
          &re_bz[lx*lx], &im_bz[lx*lx],
@@ -154,7 +154,7 @@ static inline void rotate_moments_forward(
 
 extern "C"
 int wrapper_rotate_p_forward(
-    const INT32 p,
+    const INT64 p,
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     const REAL * RESTRICT wig_forw,
@@ -173,7 +173,7 @@ int wrapper_rotate_p_forward(
 // test wrapper for rotate_moments_forward
 extern "C"
 int wrapper_rotate_moments_forward(
-    const INT32 l,
+    const INT64 l,
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     const REAL * RESTRICT const * RESTRICT wig_forw,
@@ -201,7 +201,7 @@ int wrapper_rotate_moments_forward(
 
 
 static inline void rotate_p_backward(
-    const INT32 p,
+    const INT64 p,
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     const REAL * RESTRICT wig_forw,
@@ -214,13 +214,13 @@ static inline void rotate_p_backward(
 ){
     //rotate around y axis
     // b <- (Wigner_d) * x
-    const INT32 n = 2*p+1;
-    for(INT32 rx=0 ; rx<p ; rx++){
+    const INT64 n = 2*p+1;
+    for(INT64 rx=0 ; rx<p ; rx++){
         REAL hre = 0.0;
         REAL him = 0.0;
         REAL lre = 0.0;
         REAL lim = 0.0;
-        for(INT32 cx=0 ; cx<n ; cx++){
+        for(INT64 cx=0 ; cx<n ; cx++){
             const REAL a = wig_forw[rx*n + cx];
             hre += a * re_x[cx];
             him += a * im_x[cx];
@@ -235,7 +235,7 @@ static inline void rotate_p_backward(
     // middle row
     REAL mre = 0.0;
     REAL mim = 0.0;
-    for( INT32 cx=0 ; cx<n ; cx++ ){
+    for( INT64 cx=0 ; cx<n ; cx++ ){
         const REAL a = wig_forw[p*n + cx];
         mre += a * re_x[cx];
         mim += a * im_x[cx];
@@ -244,7 +244,7 @@ static inline void rotate_p_backward(
     im_by[p] = mim;
     
     // rotate negative terms around z axis
-    for(INT32 rx=0 ; rx<p ; rx++){
+    for(INT64 rx=0 ; rx<p ; rx++){
          cplx_mul_add(
             re_by[rx], im_by[rx],
             exp_re[p-1-rx], exp_im[p-1-rx],
@@ -254,7 +254,7 @@ static inline void rotate_p_backward(
     re_bz[p] += re_by[p];
     im_bz[p] += im_by[p];
     // rotate positive terms around z axis
-    for(INT32 rx=0 ; rx<p ; rx++){
+    for(INT64 rx=0 ; rx<p ; rx++){
          cplx_mul_add(
             re_by[p+1+rx], im_by[p+1+rx],
             exp_re[rx], -1.0*exp_im[rx],
@@ -265,7 +265,7 @@ static inline void rotate_p_backward(
 }
 
 static inline void rotate_moments_backward(
-    const INT32 l,
+    const INT64 l,
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     const REAL * RESTRICT const * RESTRICT wig_forw,
@@ -276,8 +276,8 @@ static inline void rotate_moments_backward(
     REAL * RESTRICT re_bz,
     REAL * RESTRICT im_bz
 ){
-    const INT32 im_offset = l*l;
-    for(INT32 lx=0 ; lx<l ; lx++){
+    const INT64 im_offset = l*l;
+    for(INT64 lx=0 ; lx<l ; lx++){
          rotate_p_backward(
          lx, exp_re, exp_im, wig_forw[lx],
          &re_x[lx*lx], &im_x[lx*lx],
@@ -290,7 +290,7 @@ static inline void rotate_moments_backward(
 // test wrapper for rotate_moments_forward
 extern "C"
 int wrapper_rotate_moments_backward(
-    const INT32 l,
+    const INT64 l,
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     const REAL * RESTRICT const * RESTRICT wig_forw,
@@ -365,7 +365,7 @@ static inline void mtl_z(
 
     REAL * RESTRICT iradius_p1 = &iradius_n[1];
     
-    const INT32 ts = nlevel*nlevel;
+    const INT64 ts = nlevel*nlevel;
     REAL * RESTRICT tmp_rel = &thread_space[0];
     REAL * RESTRICT tmp_iml = &thread_space[ts];
     REAL * RESTRICT tmp_reh = &thread_space[2*ts];
@@ -379,27 +379,27 @@ static inline void mtl_z(
         tmp_rel, tmp_iml
     );
 
-    for(INT32 jx=0 ; jx<ts ; jx++){
+    for(INT64 jx=0 ; jx<ts ; jx++){
         tmp_reh[jx]=0.0;
         tmp_imh[jx]=0.0;
     }
 
     // loop over parent moments
-    for(INT32 jx=0     ; jx<nlevel ; jx++ ){
+    for(INT64 jx=0     ; jx<nlevel ; jx++ ){
     
         REAL * RESTRICT new_re = &tmp_reh[CUBE_IND(jx, 0)];
         REAL * RESTRICT new_im = &tmp_imh[CUBE_IND(jx, 0)];
 
-        for(INT32 nx=0     ; nx<nlevel ; nx++){
+        for(INT64 nx=0     ; nx<nlevel ; nx++){
         
-            const INT32 kmax = MIN(nx, jx);
+            const INT64 kmax = MIN(nx, jx);
             const REAL ia_jn = ar_array[nx+jx];
             const REAL m1tn = IARRAY[nx];   // -1^{n}
             const REAL rr_jn1 = iradius_p1[jx+nx];     // 1 / rho^{j + n + 1}
             
             const REAL outer_coeff = ia_jn * m1tn * rr_jn1;
 
-            for(INT32 kx=-1*kmax ; kx<=kmax    ; kx++){
+            for(INT64 kx=-1*kmax ; kx<=kmax    ; kx++){
 
                 const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
 
@@ -473,7 +473,7 @@ static inline void blocked_exp_in_matvec(
     const INT64 block_size,
     const INT64 im_offset,
     const INT64 stride,
-    const INT32 p,
+    const INT64 p,
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     REAL const * RESTRICT re_x[BLOCK_SIZE],
@@ -483,14 +483,14 @@ static inline void blocked_exp_in_matvec(
     const INT64 oset = p*p;
     for( INT64 blk=0 ; blk<block_size ; blk++){
         // rotate negative terms around z axis
-        for(INT32 rx=0 ; rx<p ; rx++){
+        for(INT64 rx=0 ; rx<p ; rx++){
              cplx_mul_re(
                 re_x[blk][oset+rx], re_x[blk][oset+rx+im_offset],
                 exp_re[p-1-rx], -1.0*exp_im[p-1-rx],
                 &re_bz[rx+blk*stride]
             );
         }
-        for(INT32 rx=0 ; rx<p ; rx++){
+        for(INT64 rx=0 ; rx<p ; rx++){
              cplx_mul_im(
                 re_x[blk][oset+rx], re_x[blk][oset+rx+im_offset],
                 exp_re[p-1-rx], -1.0*exp_im[p-1-rx],
@@ -501,14 +501,14 @@ static inline void blocked_exp_in_matvec(
         re_bz[p+blk*stride] = re_x[blk][oset+p];
         im_bz[p+blk*stride] = re_x[blk][oset+p+im_offset];
         // rotate positive terms around z axis
-        for(INT32 rx=0 ; rx<p ; rx++){
+        for(INT64 rx=0 ; rx<p ; rx++){
              cplx_mul_re(
                 re_x[blk][oset+p+1+rx], re_x[blk][oset+p+1+rx+im_offset],
                 exp_re[rx], exp_im[rx],
                 &re_bz[p+1+rx+blk*stride]
             );
         }
-        for(INT32 rx=0 ; rx<p ; rx++){
+        for(INT64 rx=0 ; rx<p ; rx++){
              cplx_mul_im(
                 re_x[blk][oset+p+1+rx], re_x[blk][oset+p+1+rx+im_offset],
                 exp_re[rx], exp_im[rx],
@@ -525,7 +525,7 @@ static inline void blocked_all_exp_in_matvec(
     const INT64 block_size,
     const INT64 im_offset,
     const INT64 stride,
-    const INT32 l,
+    const INT64 l,
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     REAL const * RESTRICT re_x[BLOCK_SIZE],
@@ -538,14 +538,14 @@ static inline void blocked_all_exp_in_matvec(
         REAL * RESTRICT im_bz =  re_bz + block_size*im_offset;
         const INT64 oset = p*p;
             // rotate negative terms around z axis
-            for(INT32 rx=0 ; rx<p ; rx++){
+            for(INT64 rx=0 ; rx<p ; rx++){
                  cplx_mul_re(
                     re_x[blk][oset+rx], re_x[blk][oset+rx+im_offset],
                     exp_re[p-1-rx], -1.0*exp_im[p-1-rx],
                     &re_bz[rx+blk*stride]
                 );
             }
-            for(INT32 rx=0 ; rx<p ; rx++){
+            for(INT64 rx=0 ; rx<p ; rx++){
                  cplx_mul_im(
                     re_x[blk][oset+rx], re_x[blk][oset+rx+im_offset],
                     exp_re[p-1-rx], -1.0*exp_im[p-1-rx],
@@ -556,14 +556,14 @@ static inline void blocked_all_exp_in_matvec(
             re_bz[p+blk*stride] = re_x[blk][oset+p];
             im_bz[p+blk*stride] = re_x[blk][oset+p+im_offset];
             // rotate positive terms around z axis
-            for(INT32 rx=0 ; rx<p ; rx++){
+            for(INT64 rx=0 ; rx<p ; rx++){
                  cplx_mul_re(
                     re_x[blk][oset+p+1+rx], re_x[blk][oset+p+1+rx+im_offset],
                     exp_re[rx], exp_im[rx],
                     &re_bz[p+1+rx+blk*stride]
                 );
             }
-            for(INT32 rx=0 ; rx<p ; rx++){
+            for(INT64 rx=0 ; rx<p ; rx++){
                  cplx_mul_im(
                     re_x[blk][oset+p+1+rx], re_x[blk][oset+p+1+rx+im_offset],
                     exp_re[rx], exp_im[rx],
@@ -579,7 +579,7 @@ static inline void blocked_exp_out_matvec(
     const INT64 block_size,
     const INT64 im_offset,
     const INT64 stride,
-    const INT32 p,
+    const INT64 p,
     const REAL * RESTRICT exp_re,
     const REAL * RESTRICT exp_im,
     const REAL * RESTRICT re_x,
@@ -590,14 +590,14 @@ static inline void blocked_exp_out_matvec(
 
     for( INT64 blk=0 ; blk<block_size ; blk++){
         // rotate negative terms around z axis
-        for(INT32 rx=0 ; rx<p ; rx++){
+        for(INT64 rx=0 ; rx<p ; rx++){
              cplx_mul_add_re(
                 re_x[rx+blk*stride], im_x[rx+blk*stride],
                 exp_re[p-1-rx], exp_im[p-1-rx],
                 &re_bz[rx+blk*stride]
             );
         }
-        for(INT32 rx=0 ; rx<p ; rx++){
+        for(INT64 rx=0 ; rx<p ; rx++){
              cplx_mul_add_im(
                 re_x[rx+blk*stride], im_x[rx+blk*stride],
                 exp_re[p-1-rx], exp_im[p-1-rx],
@@ -608,14 +608,14 @@ static inline void blocked_exp_out_matvec(
         im_bz[p+blk*stride] += im_x[p+blk*stride];
 
         // rotate positive terms around z axis
-        for(INT32 rx=0 ; rx<p ; rx++){
+        for(INT64 rx=0 ; rx<p ; rx++){
              cplx_mul_add_re(
                 re_x[p+1+rx+blk*stride], im_x[p+1+rx+blk*stride],
                 exp_re[rx], -1.0*exp_im[rx],
                 &re_bz[p+1+rx+blk*stride]
             );
         }
-        for(INT32 rx=0 ; rx<p ; rx++){
+        for(INT64 rx=0 ; rx<p ; rx++){
              cplx_mul_add_im(
                 re_x[p+1+rx+blk*stride], im_x[p+1+rx+blk*stride],
                 exp_re[rx], -1.0*exp_im[rx],
@@ -632,7 +632,7 @@ static inline void blocked_wigner_matvec(
     const INT64 block_size,
     const INT64 im_offset,
     const INT64 stride,
-    const INT32 p,
+    const INT64 p,
     const REAL * RESTRICT wig_forw,
     const REAL * RESTRICT wig_back,
     const REAL * RESTRICT re_bz,
@@ -643,7 +643,7 @@ static inline void blocked_wigner_matvec(
     
 
     const INT64 oset = p*p;
-    const INT32 n = 2*p+1;
+    const INT64 n = 2*p+1;
     REAL const * RESTRICT W;
 
     // we pass both matrices here as the forward rotate
@@ -694,10 +694,10 @@ static inline void blocked_wigner_matvec(
 
         // naive matmul
         for( INT64 blk=0 ; blk<2*block_size ; blk++){
-            for(INT32 rx=0 ; rx<p ; rx++){
+            for(INT64 rx=0 ; rx<p ; rx++){
                 REAL hre = 0.0;
                 REAL lre = 0.0;
-                for(INT32 cx=0 ; cx<n ; cx++){
+                for(INT64 cx=0 ; cx<n ; cx++){
                     const REAL a = W[rx*n + cx];
                     hre += a * re_bz[cx+blk*stride];
                     lre += a * re_bz[n-cx-1+blk*stride];
@@ -707,7 +707,7 @@ static inline void blocked_wigner_matvec(
             }
             // middle row
             REAL mre = 0.0;
-            for( INT32 cx=0 ; cx<n ; cx++ ){
+            for( INT64 cx=0 ; cx<n ; cx++ ){
                 const REAL a = W[p*n + cx];
                 mre += a * re_bz[cx+blk*stride];
             }
@@ -874,12 +874,12 @@ static inline void blocked_mtl_z(
     for(INT64 nx=1 ; nx<nblk ; nx++){ iradius_n[nx] = iradius_n[nx-1] * iradius; }
     REAL * RESTRICT iradius_p1 = &iradius_n[1];
     
-    const INT32 ts = nlevel*nlevel;
+    const INT64 ts = nlevel*nlevel;
     
     REAL * RESTRICT lre = ldata;
     REAL * RESTRICT lim = ldata + block_size*ts;
     
-    for(INT32 jx=0 ; jx<ts*block_size ; jx++){
+    for(INT64 jx=0 ; jx<ts*block_size ; jx++){
         lre[jx]=0.0;
         lim[jx]=0.0;
     }
@@ -891,18 +891,18 @@ static inline void blocked_mtl_z(
     REAL * RESTRICT coeff_arr = &_coeff_arr[nlevel+1];
 
     // loop over parent moments
-    for(INT32 jx=0     ; jx<nlevel ; jx++ ){
+    for(INT64 jx=0     ; jx<nlevel ; jx++ ){
     
-        for(INT32 nx=0     ; nx<nlevel ; nx++){
+        for(INT64 nx=0     ; nx<nlevel ; nx++){
         
-            const INT32 kmax = MIN(nx, jx);
+            const INT64 kmax = MIN(nx, jx);
             const REAL ia_jn = ar_array[nx+jx];
             const REAL m1tn = IARRAY[nx];   // -1^{n}
             const REAL rr_jn1 = iradius_p1[jx+nx];     // 1 / rho^{j + n + 1}
             
             const REAL outer_coeff = ia_jn * m1tn * rr_jn1;
 
-            for(INT32 kx=-1*kmax ; kx<=kmax    ; kx++){
+            for(INT64 kx=-1*kmax ; kx<=kmax    ; kx++){
 
                 const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
                 const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + kx];
@@ -914,11 +914,11 @@ static inline void blocked_mtl_z(
 
             
             // apply the coefficient to each block
-            for( INT32 blkx=0 ; blkx<2*block_size ; blkx++){
+            for( INT64 blkx=0 ; blkx<2*block_size ; blkx++){
 
-                const INT32 lind = blkx*im_offset + CUBE_IND(jx, 0);
-                const INT32 oind = blkx*im_offset + CUBE_IND(nx, 0);
-                for(INT32 kx=-1*kmax ; kx<=kmax    ; kx++){
+                const INT64 lind = blkx*im_offset + CUBE_IND(jx, 0);
+                const INT64 oind = blkx*im_offset + CUBE_IND(nx, 0);
+                for(INT64 kx=-1*kmax ; kx<=kmax    ; kx++){
                     const REAL coeff_re = coeff_arr[kx];
 
                     lre[lind+kx] += ore[oind+kx]*coeff_re;
@@ -959,9 +959,9 @@ int translate_mtl(
     const REAL * RESTRICT i_array,
     const REAL radius,
     const INT64 nlevel,
-    const INT32 * RESTRICT int_list,
-    const INT32 * RESTRICT int_tlookup,
-    const INT32 * RESTRICT int_plookup,
+    const INT64 * RESTRICT int_list,
+    const INT64 * RESTRICT int_tlookup,
+    const INT64 * RESTRICT int_plookup,
     const double * RESTRICT int_radius,
     REAL * RESTRICT * RESTRICT gthread_space
     ){
@@ -976,8 +976,8 @@ int translate_mtl(
         dim_child[1] + 4, dim_child[2] + 4};
     const INT64 dim_eight[3] = {2, 2, 2};
 
-    const INT32 phi_stride = 8*nlevel + 2;
-    const INT32 theta_stride = 4 * nlevel * nlevel;
+    const INT64 phi_stride = 8*nlevel + 2;
+    const INT64 theta_stride = 4 * nlevel * nlevel;
     
 
     const INT64 block_size = BLOCK_SIZE;
@@ -1009,10 +1009,10 @@ int translate_mtl(
         
         INT64 pb = 1;
         // loop over inner cells
-        for( INT32 conx=0 ; conx<98 ; conx++ ){
+        for( INT64 conx=0 ; conx<98 ; conx++ ){
 
             const REAL local_radius = int_radius[conx] * radius;
-            const INT32 t_lookup = int_tlookup[conx];
+            const INT64 t_lookup = int_tlookup[conx];
             
             INT64 tblk = 0;
             for( INT64 pcx=blk ; pcx<(blk+block_size) ; pcx++ ){
@@ -1023,7 +1023,7 @@ int translate_mtl(
                 const INT64 ccy = cy + 2;
                 const INT64 ccz = cz + 2;
                 const INT64 halo_ind = xyz_to_lin(dim_halo, ccx, ccy, ccz);
-                const INT32 jcell = int_list[conx] + halo_ind;
+                const INT64 jcell = int_list[conx] + halo_ind;
                 in_ptrs[tblk] = &multipole_moments[jcell*ncomp];
                 tblk++;
             }
@@ -1089,12 +1089,12 @@ int translate_mtl(
         REAL * out_moments = &local_moments[ncomp * pcx];
         // loop over contributing nearby cells.
 		
-        for( INT32 conx=cstart ; conx<(octal_ind+1)*189 ; conx++ ){
+        for( INT64 conx=cstart ; conx<(octal_ind+1)*189 ; conx++ ){
             
             const REAL local_radius = int_radius[conx] * radius;
-            const INT32 jcell = int_list[conx] + halo_ind;
+            const INT64 jcell = int_list[conx] + halo_ind;
 
-            const INT32 t_lookup = int_tlookup[conx];
+            const INT64 t_lookup = int_tlookup[conx];
 
             mtl_z(nlevel, local_radius, &multipole_moments[jcell*ncomp],
                 wig_forw[t_lookup],

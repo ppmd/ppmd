@@ -12,7 +12,7 @@ import ctypes
 from ppmd import data, runtime, host, access, modules, opt
 from ppmd.lib import build
 from ppmd.pairloop.neighbourlist import Restrict, scatter_matrix
-
+from ppmd.modules.dsl_seq_comp import DSLSeqComp
 
 _offsets = (
     (-1,1,-1),
@@ -115,6 +115,7 @@ class SubCellByCellOMP(object):
 
     def _generate(self):
         self._init_components()
+        self._generate_particle_dat_c()
         self._generate_lib_specific_args()
         self._generate_kernel_arg_decls()
         self._generate_kernel_func()
@@ -175,21 +176,11 @@ class SubCellByCellOMP(object):
 
     def _generate_kernel_scatter(self):
         kernel_scatter = cgen.Module([cgen.Comment('#### Post kernel scatter ####')])
-
-        for i, dat in enumerate(self._dat_dict.items()):
-            if issubclass(type(dat[1][0]), host.Matrix)\
-                    and dat[1][1].write\
-                    and dat[1][0].ncomp <= self._gather_size_limit:
-
-                isym = dat[0]+'i'
-                ix =self._components['LIB_PAIR_INDEX_0']
-                g = scatter_matrix(dat[1][0], dat[0], isym, ix)
-                kernel_scatter.append(g)
-
         self._components['LIB_KERNEL_SCATTER'] = kernel_scatter
 
     def _init_components(self):
          self._components = {
+             'PARTICLE_DAT_C': dict(),
              'LIB_PAIR_INDEX_0': '_i',
              'LIB_PAIR_INDEX_1': '_j',
              'LIB_NAME': str(self._kernel.name) + '_wrapper',
@@ -280,7 +271,7 @@ class SubCellByCellOMP(object):
         %(INCLUDED_HEADERS)s
         #include <cstdint>
         #include "%(LIB_DIR)s/generic.h"
-
+        #define INT64 int64_t
         extern "C" %(FUNC_DEC)s
         '''
         d = {'INCLUDED_HEADERS': str(self._components['KERNEL_HEADERS']),
@@ -301,6 +292,25 @@ class SubCellByCellOMP(object):
             self.__class__.__name__+':'+self._kernel.name+\
                 ':kernel_execution_count'
         ] =  self._kernel_execution_count
+    
+    def _generate_particle_dat_c(self):
+
+        for i, dat in enumerate(self._dat_dict.items()):
+            obj = dat[1][0]
+            mode = dat[1][1]
+            symbol = dat[0]
+            if issubclass(type(obj), host.Matrix):
+                self._components['PARTICLE_DAT_C'][symbol] = \
+                    DSLSeqComp(
+                            sym=symbol,
+                            ctype=host.ctypes_map[obj.dtype],
+                            const=True if not mode.write else False,
+                            ncomp=obj.ncomp,
+                            i_index=self._components['LIB_PAIR_INDEX_0'],
+                            j_index=self._components['LIB_PAIR_INDEX_1']
+                )
+
+
 
     def _generate_kernel_arg_decls(self):
 
@@ -350,25 +360,9 @@ class SubCellByCellOMP(object):
 
 
             elif issubclass(type(dat[1][0]), host.Matrix):
-                # MAKE STRUCT TYPE
-                dtype = dat[1][0].dtype
-                ti = cgen.Pointer(cgen.Value(
-                    cgen.dtype_to_ctype(dtype),
-                    Restrict(self._cc.restrict_keyword,'i')
-                ))
-                tj = cgen.Pointer(cgen.Value(
-                    cgen.dtype_to_ctype(dtype),
-                    Restrict(self._cc.restrict_keyword,'j')
-                ))
-                if not dat[1][1].write:
-                    ti = cgen.Const(ti)
-                    tj = cgen.Const(tj)
-                typename = '_'+dat[0]+'_t'
-                _kernel_structs.append(cgen.Typedef(cgen.Struct(
-                    '', [ti,tj], typename)))
-
-                # MAKE STRUCT ARG
-                _kernel_arg_decls.append(cgen.Value(typename, dat[0]))
+                gen = self._components['PARTICLE_DAT_C'][symbol]
+                _kernel_structs.append(gen.header)
+                _kernel_arg_decls.append(gen.kernel_arg_decl)
 
             if not dat[1][1].write:
                 kernel_lib_arg = cgen.Const(kernel_lib_arg)
@@ -378,6 +372,7 @@ class SubCellByCellOMP(object):
         self._components['KERNEL_ARG_DECLS'] = _kernel_arg_decls
         self._components['KERNEL_LIB_ARG_DECLS'] = _kernel_lib_arg_decls
         self._components['KERNEL_STRUCT_TYPEDEFS'] = _kernel_structs
+
 
     def _get_static_lib_args(self, static_args):
         args = []
@@ -428,28 +423,6 @@ class SubCellByCellOMP(object):
 
                 kernel_gather.append(g)
 
-            elif issubclass(type(obj), host.Matrix) \
-                    and mode.write \
-                    and obj.ncomp <= self._gather_size_limit:
-
-
-                isym = symbol+'i'
-                nc = obj.ncomp
-                ncb = '['+str(nc)+']'
-                dtype = host.ctypes_map[obj.dtype]
-
-                t = '{'
-                for tx in range(nc):
-                    t+= '*(' + symbol + '+' + \
-                        self._components['LIB_PAIR_INDEX_0']
-                    t+= '*' + str(nc) + '+' + str(tx) + '),'
-                t = t[:-1] + '}'
-
-                g = cgen.Value(dtype,isym+ncb)
-                g = cgen.Initializer(g,t)
-
-                kernel_gather.append(g)
-
         self._components['LIB_KERNEL_GATHER'] = kernel_gather
 
     def _generate_kernel_call(self):
@@ -472,22 +445,9 @@ class SubCellByCellOMP(object):
             elif issubclass(type(obj), host._Array):
                 kernel_call_symbols.append(symbol)
             elif issubclass(type(obj), host.Matrix):
-                call_symbol = symbol + '_c'
-                kernel_call_symbols.append(call_symbol)
-
-                nc = str(obj.ncomp)
-                _ishift = '+' + self._components['LIB_PAIR_INDEX_0'] + '*' + nc
-                _jshift = '+' + self._components['LIB_PAIR_INDEX_1'] + '*' + nc
-
-                if mode.write and obj.ncomp <= self._gather_size_limit:
-                    isym = '&'+ symbol+'i[0]'
-                else:
-                    isym = symbol + _ishift
-                jsym = symbol + _jshift
-                g = cgen.Value('_'+symbol+'_t', call_symbol)
-                g = cgen.Initializer(g, '{ ' + isym + ', ' + jsym + '}')
-
-                kernel_call.append(g)
+                g = self._components['PARTICLE_DAT_C'][symbol]
+                kernel_call_symbols.append(g.kernel_arg)
+                kernel_call.append(g.kernel_create_arg)
 
             else:
                 print("ERROR: Type not known")
