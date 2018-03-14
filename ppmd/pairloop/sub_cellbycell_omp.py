@@ -694,17 +694,25 @@ class SubCellByCellOMP(object):
             pragma,
             # cellx loop
             cgen.For('INT64 ' + cx + '=0',
-                    cx + '<' + ncx,
-                    cx+'++',
-                    cgen.For('INT64 ' + cy + '=0',
+                cx + '<' + ncx,
+                cx+'++',
+                cgen.Block(
+                    [
+                        cgen.For('INT64 ' + cy + '=0',
                             cy + '<' + ncy,
                             cy+'++',
-                            cgen.For('INT64 ' + cz + '=0',
-                                    cz + '<' + ncz,
-                                    cz+'++',
-                                    block
+                            cgen.Block(
+                                (
+                                    cgen.For('INT64 ' + cz + '=0',
+                                        cz + '<' + ncz,
+                                        cz+'++',
+                                        block
+                                    ),
+                                )
                             )
-                    )
+                        ),
+                    ]
+                )
             )
         ])
 
