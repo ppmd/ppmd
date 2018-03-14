@@ -55,7 +55,8 @@ _ctypes_map = {ctypes.c_double: 'double',
               # ctypes.c_longlong: 'long long',
               'doublepointer': 'double *',
               'intpointer': 'int *',
-              'longpointer': 'long *'}
+              'longpointer': 'long *',
+              ctypes.c_int64: 'int64_t'}
 
 
 

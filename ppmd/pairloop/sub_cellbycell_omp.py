@@ -12,8 +12,10 @@ import ctypes
 from ppmd import data, runtime, host, access, modules, opt
 from ppmd.lib import build
 from ppmd.pairloop.neighbourlist import Restrict, scatter_matrix
+
 from ppmd.modules.dsl_seq_comp import DSLSeqComp
-from ppmd.modules.dsl_cell_gather_scatter import DSLPartitionTempSpace
+from ppmd.modules.dsl_cell_gather_scatter import DSLPartitionTempSpace, DSLSeqGather
+from ppmd.modules.dsl_cell_list_loop import DSLCellListIter
 
 _offsets = (
     (-1,1,-1),
@@ -159,43 +161,128 @@ class SubCellByCellOMP(object):
         self._components['KERNEL_HEADERS'] = cgen.Module(s)
 
     def _generate_lib_inner_loop_block(self):
-        i = self._components['LIB_PAIR_INDEX_0']
-        j = self._components['LIB_PAIR_INDEX_1']
-        self._components['LIB_INNER_LOOP_BLOCK'] = \
-            cgen.Block([
-                cgen.Line('const int _jcell = _icell + _OFFSET[_k];'),
-                cgen.Line('int '+j+' = _CELL_LIST[_jcell + _LIST_OFFSET];' ),
-                cgen.For(
-                    'int _k2=0','_k2<_CCC[_jcell]','_k2++',
-                    cgen.Block([
-                        cgen.Line('if(%(I)s!=%(J)s){_JJSTORE[_nn++]=%(J)s;}'%\
-                             {'I':i, 'J':j}),
-                        cgen.Line(j+' = _CELL_LIST['+j+'];'),
-                    ])
-                ),
-            ])
+        # generate j gather
+        #'J_GATHER'
+        cj = self._components['LIB_CELL_INDEX_1']
+
+
+
+        j_gather = cgen.Module([
+            cgen.Comment('#### Pre kernel j gather ####'),
+        ])
+        
+        
+        inner_l = []
+        src_sym = '_jgpx'
+        dst_sym = '_jhpx'
+        # add dats to omp shared and init global array reduction
+        for i, dat in enumerate(self._dat_dict.items()):
+
+            obj = dat[1][0]
+            mode = dat[1][1]
+            symbol = dat[0]
+
+            if issubclass(type(obj), data.ParticleDat):
+                tsym = self._components['PARTICLE_DAT_PARTITION'].jdict[symbol]
+                inner_l.append(DSLSeqGather(
+                    symbol, tsym, obj.ncomp, src_sym, dst_sym
+                ))
+
+        #tmp_sym = self._components['PARTICLE_DAT_PARTITION'].jdict[
+        #        self._components['TMP_INDEX']]
+        #inner_l.append(
+        #    cgen.Line(tmp_sym+'['+dst_sym+']='+src_sym+';')
+        #)
+
+        inner_l.append(cgen.Line(dst_sym+'++;'))        
+        
+        
+        inner = cgen.Module(inner_l)
+        g = self._components['CELL_LIST_ITER'](src_sym, cj, inner)
+        
+        j_gather.append(cgen.Initializer(cgen.Value('INT64', dst_sym),'0'))
+        j_gather.append(g)
+
+        self._components['J_GATHER'] = j_gather
+
+
 
     def _generate_kernel_scatter(self):
         kernel_scatter = cgen.Module([cgen.Comment('#### Post kernel scatter ####')])
+
+        ci = self._components['LIB_CELL_INDEX_0']
+
+        inner_l = []
+        src_sym = '_sgpx'
+        dst_sym = '_shpx'
+        # add dats to omp shared and init global array reduction
+        shared_syms = self._components['OMP_SHARED_SYMS']
+        for i, dat in enumerate(self._dat_dict.items()):
+
+            obj = dat[1][0]
+            mode = dat[1][1]
+            symbol = dat[0]
+            shared_syms.append(symbol)
+
+            if issubclass(type(obj), data.ParticleDat) and mode.write:
+                tsym = self._components['PARTICLE_DAT_PARTITION'].idict[symbol]
+                inner_l.append(DSLSeqGather(
+                    tsym, symbol, obj.ncomp, dst_sym, src_sym
+                ))
+        
+
+        inner_l.append(cgen.Line(dst_sym+'++;')) 
+        inner = cgen.Module(inner_l)
+        g = self._components['CELL_LIST_ITER'](src_sym, ci, inner)
+        
+        kernel_scatter.append(cgen.Initializer(cgen.Value('INT64', dst_sym),'0'))
+        kernel_scatter.append(g)
+
+
         self._components['LIB_KERNEL_SCATTER'] = kernel_scatter
 
     def _init_components(self):
-         self._components = {
+        self._components = {
             'PARTICLE_DAT_C': dict(),
             'PARTICLE_DAT_PARTITION': None,
             'LIB_PAIR_INDEX_0': '_i',
             'LIB_PAIR_INDEX_1': '_j',
+            'LIB_CELL_INDEX_0': '_ci',
+            'LIB_CELL_INDEX_1': '_cj',
+            'LIB_CELL_CX': '_CX',
+            'LIB_CELL_CY': '_CY',
+            'LIB_CELL_CZ': '_CZ',
+            'N_CELL_X': '_N_CELL_X',
+            'N_CELL_Y': '_N_CELL_Y',
+            'N_CELL_Z': '_N_CELL_Z',
+            'N_LOCAL' : '_N_LOCAL',
+            'J_GATHER' : None,
             'LIB_NAME': str(self._kernel.name) + '_wrapper',
             'LIB_HEADERS': [cgen.Include('omp.h', system=True),],
             'OMP_THREAD_INDEX_SYM': '_threadid',
             'OMP_SHARED_SYMS': ['_CELL_LIST', '_OFFSET', '_CRL', '_CCC',
-                                '_JSTORE', '_GATHER_SPACE']
-         }
+                                '_JSTORE', '_GATHER_SPACE'],
+            'CELL_LIST_ITER': None,
+            'TMP_INDEX': '_TMP_INDEX'
+        }
+
+        self._components['CELL_LIST_ITER'] = DSLCellListIter(
+            '_CELL_LIST', '_OFFSET'
+        )
 
     def _generate_lib_specific_args(self):
+        cp = self._components
+        ncx =  cp['N_CELL_X']
+        ncy =  cp['N_CELL_Y']
+        ncz =  cp['N_CELL_Z']
+        nloc = cp['N_LOCAL']
+
         self._components['LIB_ARG_DECLS'] = [
             cgen.Const(cgen.Value(host.int32_str, '_NUM_THREADS')),
-            cgen.Const(cgen.Value(host.int32_str, '_N_LOCAL')),
+            cgen.Const(cgen.Value(host.int64_str, ncx)),
+            cgen.Const(cgen.Value(host.int64_str, ncy)),
+            cgen.Const(cgen.Value(host.int64_str, ncz)),
+            cgen.Const(cgen.Value(host.int32_str, nloc)),
             cgen.Const(cgen.Value(host.int32_str, '_LIST_OFFSET')),
             cgen.Const(
                 cgen.Pointer(
@@ -398,21 +485,40 @@ class SubCellByCellOMP(object):
                 dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
 
     def _generate_kernel_gather(self):
+        cx = self._components['LIB_CELL_CX']
+        cy = self._components['LIB_CELL_CY']
+        cz = self._components['LIB_CELL_CZ']
+
+        ncx = self._components['N_CELL_X']
+        ncy = self._components['N_CELL_Y']
+        ncz = self._components['N_CELL_Z']
+
+        ci = self._components['LIB_CELL_INDEX_0']
 
         kernel_gather = cgen.Module([
             cgen.Comment('#### Pre kernel gather ####'),
+            # compute the linear cell index
+            cgen.Initializer(cgen.Const(cgen.Value('INT64', ci)),
+                cx + '+' + ncx +'*('+cy+'+'+ncy+'*'+cz+')'),
+            # get the thread index
             cgen.Initializer(cgen.Const(cgen.Value(
                 'int', self._components['OMP_THREAD_INDEX_SYM'])),
                 'omp_get_thread_num()')
         ])
-
+        
+        # partition this threads space for temporary vars
         self._components['PARTICLE_DAT_PARTITION'] = \
-            DSLPartitionTempSpace(self._dat_dict, '_MAX_CELL', '_GATHER_SPACE[_threadid]')
+            DSLPartitionTempSpace(self._dat_dict, '_MAX_CELL', '_GATHER_SPACE[_threadid]')#,
+        #            extras=((self._components['TMP_INDEX'], 1, INT64),))
         
         kernel_gather.append(self._components['PARTICLE_DAT_PARTITION'].ptr_init)
 
+        
+        inner_l = []
+        src_sym = '_gpx'
+        dst_sym = '_hpx'
+        # add dats to omp shared and init global array reduction
         shared_syms = self._components['OMP_SHARED_SYMS']
-
         for i, dat in enumerate(self._dat_dict.items()):
 
             obj = dat[1][0]
@@ -430,6 +536,28 @@ class SubCellByCellOMP(object):
                 g = cgen.Initializer(g, val)
 
                 kernel_gather.append(g)
+
+            if issubclass(type(obj), data.ParticleDat):
+                tsym = self._components['PARTICLE_DAT_PARTITION'].idict[symbol]
+                inner_l.append(DSLSeqGather(
+                    symbol, tsym, obj.ncomp, src_sym, dst_sym
+                ))
+        
+
+        #tmp_sym = self._components['PARTICLE_DAT_PARTITION'].idict[
+        #        self._components['TMP_INDEX']]
+        #inner_l.append(
+        #    cgen.Line(tmp_sym+'['+dst_sym+']='+src_sym+';')
+        #)
+
+        inner_l.append(cgen.Line(dst_sym+'++;'))        
+        
+        
+        inner = cgen.Module(inner_l)
+        g = self._components['CELL_LIST_ITER'](src_sym, ci, inner)
+        
+        kernel_gather.append(cgen.Initializer(cgen.Value('INT64', dst_sym),'0'))
+        kernel_gather.append(g)
 
         self._components['LIB_KERNEL_GATHER'] = kernel_gather
         
@@ -477,51 +605,67 @@ class SubCellByCellOMP(object):
 
 
     def _generate_lib_inner_loop(self):
+        
         i = self._components['LIB_PAIR_INDEX_0']
         j = self._components['LIB_PAIR_INDEX_1']
-        self._components['LIB_LOOP_J_PREPARE'] = cgen.Module([
-            cgen.Line('const int _icell = _CRL['+i+'];'),
-            cgen.Line('int * _JJSTORE = _JSTORE['+self._components[
-                'OMP_THREAD_INDEX_SYM']+'];'),
-            cgen.Line('int _nn = 0;'),
-        ])
 
-        b = self._components['LIB_INNER_LOOP_BLOCK']
+        jgatherl = []
+
+
+
+        b = cgen.Block((
+            cgen.Line('const INT64 {jcell} = {icell} + _OFFSET[_k];'.format(
+                jcell=self._components['LIB_CELL_INDEX_1'],
+                icell=self._components['LIB_CELL_INDEX_0']
+            )),
+            self._components['J_GATHER'],
+            self._components['LIB_KERNEL_CALL']
+        ))
+
         self._components['LIB_INNER_LOOP'] = cgen.Module([
                 cgen.For('int _k=0', '_k<27', '_k++', b),
-                cgen.For(
-                    'int _k2=0','_k2<_nn','_k2++',
-                    cgen.Block([
-                        cgen.Line('const int '+j+' = _JJSTORE[_k2];' ),
-                        self._components['LIB_KERNEL_CALL'],
-                    ])
-                )
             ])
 
     def _generate_lib_outer_loop(self):
 
         block = cgen.Block([self._components['LIB_KERNEL_GATHER'],
-                            self._components['LIB_LOOP_J_PREPARE'],
                             self._components['LIB_INNER_LOOP'],
                             self._components['LIB_KERNEL_SCATTER']])
 
-        i = self._components['LIB_PAIR_INDEX_0']
+        cx = self._components['LIB_CELL_CX']
+        cy = self._components['LIB_CELL_CY']
+        cz = self._components['LIB_CELL_CZ']
+
+        ncx = self._components['N_CELL_X']
+        ncy = self._components['N_CELL_Y']
+        ncz = self._components['N_CELL_Z']
+
 
         shared = ''
         for sx in self._components['OMP_SHARED_SYMS']:
             shared+= sx+','
         shared = shared[:-1]
-        pragma = cgen.Pragma('omp parallel for default(none) schedule(dynamic) shared(' + shared + ')')
+        pragma = cgen.Pragma('omp parallel for default(none) schedule(dynamic) collapse(3) shared(' + shared + ')')
         if runtime.OMP_NUM_THREADS is None:
             pragma = cgen.Comment(pragma)
 
         loop = cgen.Module([
             cgen.Line('omp_set_num_threads(_NUM_THREADS);'),
             pragma,
-            cgen.For('int ' + i + '=0',
-                    i + '<_N_LOCAL',
-                    i+'++',
-                    block)
+            # cellx loop
+            cgen.For('INT64 ' + cx + '=0',
+                    cx + '<' + ncx,
+                    cx+'++',
+                    cgen.For('INT64 ' + cy + '=0',
+                            cy + '<' + ncy,
+                            cy+'++',
+                            cgen.For('INT64 ' + cz + '=0',
+                                    cz + '<' + ncz,
+                                    cz+'++',
+                                    block
+                            )
+                    )
+            )
         ])
 
         self._components['LIB_OUTER_LOOP'] = loop
@@ -546,6 +690,9 @@ class SubCellByCellOMP(object):
 
         return [
             ctypes.c_int(runtime.NUM_THREADS),
+            INT64(cell2part.cell_array[0]),
+            INT64(cell2part.cell_array[1]),
+            INT64(cell2part.cell_array[2]),
             ctypes.c_int(cell2part.num_particles),
             ctypes.c_int(offset),
             cell2part.cell_list.ctypes_data,

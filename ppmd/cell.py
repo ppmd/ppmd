@@ -215,6 +215,9 @@ class CellList(object):
             self._update_func_pre()
             # pass
 
+    @property   
+    def cell_array(self):
+        return self._domain.cell_array
 
     def check(self):
         """
