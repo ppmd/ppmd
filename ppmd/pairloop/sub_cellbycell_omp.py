@@ -68,7 +68,6 @@ class SubCellByCellOMP(object):
         self.wrapper_timer = opt.Timer(runtime.TIMER)
         self.list_timer = opt.Timer(runtime.TIMER)
 
-        self._gather_size_limit = 4
         self._gather_space = host.ThreadSpace(100, ctypes.c_uint8)
         self._generate()
 
@@ -118,13 +117,14 @@ class SubCellByCellOMP(object):
 
     def _generate(self):
         self._init_components()
+        
+        self._generate_kernel_gather()
         self._generate_particle_dat_c()
         self._generate_lib_specific_args()
         self._generate_kernel_arg_decls()
         self._generate_kernel_func()
         self._generate_kernel_headers()
 
-        self._generate_kernel_gather()
         self._generate_kernel_call()
         self._generate_kernel_scatter()
 
@@ -173,8 +173,9 @@ class SubCellByCellOMP(object):
         
         
         inner_l = []
-        src_sym = '_jgpx'
-        dst_sym = '_jhpx'
+        src_sym = '_tmp_jgpx'
+        dst_sym = self._components['CCC_1']
+
         # add dats to omp shared and init global array reduction
         for i, dat in enumerate(self._dat_dict.items()):
 
@@ -249,6 +250,8 @@ class SubCellByCellOMP(object):
             'LIB_PAIR_INDEX_1': '_j',
             'LIB_CELL_INDEX_0': '_ci',
             'LIB_CELL_INDEX_1': '_cj',
+            'CCC_0': '_gpx',
+            'CCC_1': '_jgpx',
             'LIB_CELL_CX': '_CX',
             'LIB_CELL_CY': '_CY',
             'LIB_CELL_CZ': '_CZ',
@@ -267,7 +270,7 @@ class SubCellByCellOMP(object):
         }
 
         self._components['CELL_LIST_ITER'] = DSLCellListIter(
-            '_CELL_LIST', '_OFFSET'
+            '_CELL_LIST', '_LIST_OFFSET'
         )
 
     def _generate_lib_specific_args(self):
@@ -392,6 +395,10 @@ class SubCellByCellOMP(object):
                 self._components['PARTICLE_DAT_C'][symbol] = \
                     DSLSeqComp(
                             sym=symbol,
+                            i_gather_sym=self._components[
+                                'PARTICLE_DAT_PARTITION'].idict[symbol],
+                            j_gather_sym=self._components[
+                                'PARTICLE_DAT_PARTITION'].jdict[symbol],
                             ctype=host.ctypes_map[obj.dtype],
                             const=True if not mode.write else False,
                             ncomp=obj.ncomp,
@@ -493,6 +500,7 @@ class SubCellByCellOMP(object):
         ncy = self._components['N_CELL_Y']
         ncz = self._components['N_CELL_Z']
 
+
         ci = self._components['LIB_CELL_INDEX_0']
 
         kernel_gather = cgen.Module([
@@ -515,8 +523,9 @@ class SubCellByCellOMP(object):
 
         
         inner_l = []
-        src_sym = '_gpx'
-        dst_sym = '_hpx'
+
+        src_sym = '__tmp_gpx'
+        dst_sym = self._components['CCC_0']
         # add dats to omp shared and init global array reduction
         shared_syms = self._components['OMP_SHARED_SYMS']
         for i, dat in enumerate(self._dat_dict.items()):
@@ -606,11 +615,42 @@ class SubCellByCellOMP(object):
 
     def _generate_lib_inner_loop(self):
         
-        i = self._components['LIB_PAIR_INDEX_0']
-        j = self._components['LIB_PAIR_INDEX_1']
+        c = self._components
+        i = c['LIB_PAIR_INDEX_0']
+        j = c['LIB_PAIR_INDEX_1']
+        ccc_i = c['CCC_0']
+        ccc_j = c['CCC_1']
+        ci = self._components['LIB_CELL_INDEX_0']
+        cj = self._components['LIB_CELL_INDEX_1']
 
-        jgatherl = []
 
+        loop_other = cgen.For(
+            'INT64 ' + i + '=0', i+'<'+ccc_i, i+'++',
+            cgen.For(
+                'INT64 ' + j + '=0', j+'<'+ccc_j, j+'++',
+                cgen.Block(self._components['LIB_KERNEL_CALL'])
+            )
+        )
+
+        loop_same = cgen.For(
+            'INT64 ' + i + '=0', i+'<'+ccc_i, i+'++',
+            cgen.Block((
+            cgen.For(
+                'INT64 ' + j + '=0', j+'<'+i, j+'++',
+                cgen.Block(self._components['LIB_KERNEL_CALL'])
+            ),
+            cgen.For(
+                'INT64 ' + j + '=1+' + i, j+'<'+ccc_j, j+'++',
+                cgen.Block(self._components['LIB_KERNEL_CALL'])
+            )
+            ))
+        )
+
+        cell_cond = cgen.If(
+            ci+'=='+cj,
+            loop_same,
+            loop_other
+        )
 
 
         b = cgen.Block((
@@ -619,7 +659,7 @@ class SubCellByCellOMP(object):
                 icell=self._components['LIB_CELL_INDEX_0']
             )),
             self._components['J_GATHER'],
-            self._components['LIB_KERNEL_CALL']
+            cell_cond
         ))
 
         self._components['LIB_INNER_LOOP'] = cgen.Module([

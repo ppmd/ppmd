@@ -11,7 +11,7 @@ __license__ = "GPL"
 from cgen import *
 
 class DSLSeqComp(object):
-    def __init__(self, sym, ctype, const, ncomp, i_index, j_index):
+    def __init__(self, sym, i_gather_sym, j_gather_sym, ctype, const, ncomp, i_index, j_index):
         """
         Creates the C/C++ required to access A.i[x] and A.j[x].
 
@@ -54,10 +54,12 @@ class DSLSeqComp(object):
         
         self.kernel_create_arg = Line("""
        _{sym}_call _{sym}_c;
-       _{sym}_c.i = _{sym}_class({sym}+{i_index}*{ncomp});
-       _{sym}_c.j = _{sym}_class({sym}+{j_index}*{ncomp});       
+       _{sym}_c.i = _{sym}_class({i_gather_sym}+{i_index}*{ncomp});
+       _{sym}_c.j = _{sym}_class({j_gather_sym}+{j_index}*{ncomp});       
         """.format(
             sym=sym,
+            i_gather_sym=i_gather_sym,
+            j_gather_sym=j_gather_sym,
             i_index=i_index,
             j_index=j_index,
             ncomp=ncomp
