@@ -13,6 +13,7 @@ from ppmd import data, runtime, host, access, modules, opt
 from ppmd.lib import build
 from ppmd.pairloop.neighbourlist import Restrict, scatter_matrix
 from ppmd.modules.dsl_seq_comp import DSLSeqComp
+from ppmd.modules.dsl_cell_gather_scatter import DSLPartitionTempSpace
 
 _offsets = (
     (-1,1,-1),
@@ -180,14 +181,15 @@ class SubCellByCellOMP(object):
 
     def _init_components(self):
          self._components = {
-             'PARTICLE_DAT_C': dict(),
-             'LIB_PAIR_INDEX_0': '_i',
-             'LIB_PAIR_INDEX_1': '_j',
-             'LIB_NAME': str(self._kernel.name) + '_wrapper',
-             'LIB_HEADERS': [cgen.Include('omp.h', system=True),],
-             'OMP_THREAD_INDEX_SYM': '_threadid',
-             'OMP_SHARED_SYMS': ['_CELL_LIST', '_OFFSET', '_CRL', '_CCC',
-                                 '_JSTORE']
+            'PARTICLE_DAT_C': dict(),
+            'PARTICLE_DAT_PARTITION': None,
+            'LIB_PAIR_INDEX_0': '_i',
+            'LIB_PAIR_INDEX_1': '_j',
+            'LIB_NAME': str(self._kernel.name) + '_wrapper',
+            'LIB_HEADERS': [cgen.Include('omp.h', system=True),],
+            'OMP_THREAD_INDEX_SYM': '_threadid',
+            'OMP_SHARED_SYMS': ['_CELL_LIST', '_OFFSET', '_CRL', '_CCC',
+                                '_JSTORE', '_GATHER_SPACE']
          }
 
     def _generate_lib_specific_args(self):
@@ -403,6 +405,12 @@ class SubCellByCellOMP(object):
                 'int', self._components['OMP_THREAD_INDEX_SYM'])),
                 'omp_get_thread_num()')
         ])
+
+        self._components['PARTICLE_DAT_PARTITION'] = \
+            DSLPartitionTempSpace(self._dat_dict, '_MAX_CELL', '_GATHER_SPACE[_threadid]')
+        
+        kernel_gather.append(self._components['PARTICLE_DAT_PARTITION'].ptr_init)
+
         shared_syms = self._components['OMP_SHARED_SYMS']
 
         for i, dat in enumerate(self._dat_dict.items()):
@@ -424,6 +432,8 @@ class SubCellByCellOMP(object):
                 kernel_gather.append(g)
 
         self._components['LIB_KERNEL_GATHER'] = kernel_gather
+        
+
 
     def _generate_kernel_call(self):
 
@@ -574,14 +584,9 @@ class SubCellByCellOMP(object):
     
     def _prepare_tmp_space(self, max_size):
         
-        req_bytes = 0
-        for dat in self._dat_dict.items():
-            symbol = dat[0]
-            obj = dat[1][0]
-            dtype = obj.dtype
-            if issubclass(type(obj), data.ParticleDat):
-                req_bytes += 2 * max_size * obj.ncomp * \
-                        ctypes.sizeof(obj.dtype)
+        req_bytes = self._components['PARTICLE_DAT_PARTITION'].req_bytes * \
+                max_size
+
         if self._gather_space.n < req_bytes:
             self._gather_space = host.ThreadSpace(n=req_bytes+100,
                     dtype=ctypes.c_uint8)

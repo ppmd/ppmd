@@ -10,7 +10,6 @@ __license__ = "GPL"
 
 from cgen import *
 
-
 class DSLSeqComp(object):
     def __init__(self, sym, ctype, const, ncomp, i_index, j_index):
         """
@@ -71,15 +70,6 @@ class DSLSeqComp(object):
         return str(self.header) + "\n"+ str(self.kernel_arg_decl) + \
                 str(self.kernel_create_arg) + "\n" + \
                 str(self.kernel_arg)
-
-
-
-
-
-
-
-
-
 
 
 
