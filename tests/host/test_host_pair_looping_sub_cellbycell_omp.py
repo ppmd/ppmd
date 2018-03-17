@@ -5,6 +5,7 @@ import ctypes
 import numpy as np
 import math
 
+np.set_printoptions(threshold=np.nan)
 
 import ppmd as md
 from ppmd.access import *
@@ -152,3 +153,51 @@ def test_host_pair_loop_NS_2(state):
         assert state.nc[ix] == 6
 
 
+def test_host_pair_loop_NS_3(state):
+    """
+    Tests a global array
+    """
+    cell_width = float(E)/float(crN)
+    pi = np.zeros([N,3], dtype=ctypes.c_double)
+    px = 0
+
+    # This is upsetting....
+    for ix in range(crN):
+        for iy in range(crN):
+            for iz in range(crN):
+                pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
+                px += 1
+
+    state.p[:] = pi
+    state.npart_local = N
+    state.filter_on_domain_boundary()
+    
+    ga = GlobalArray(size=1, dtype=ctypes.c_int64)
+
+
+    kernel_code = '''
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    if ((r0*r0 + r1*r1 + r2*r2) <= %(CUTOFF)s*%(CUTOFF)s){
+        NC.i[0]+=1;
+        GA[0] += 1;
+    }
+    ''' % {'CUTOFF': str(cell_width+tol)}
+
+    kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
+    kernel_map = {'P': state.p(md.access.R),
+                  'NC': state.nc(md.access.W),
+                  'GA': ga(md.access.INC)}
+
+    loop = PairLoop(kernel=kernel,
+                    dat_dict=kernel_map,
+                    shell_cutoff=cell_width+tol)
+
+    state.nc.zero()
+
+    loop.execute()
+    for ix in range(state.npart_local):
+        assert state.nc[ix] == 6
+
+    assert ga[0] == 6*N

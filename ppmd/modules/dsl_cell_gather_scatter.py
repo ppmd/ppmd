@@ -127,5 +127,53 @@ def DSLSeqGather(src_sym, dst_sym, ncomp, src_ind, dst_ind):
 
 
 
+def DSLStrideGather(src_sym, dst_sym, ncomp, src_ind, dst_ind, stride):
+    tmp_sym = '__'+src_sym+dst_sym
+    
+    b = Block(
+        (
+            Line(
+                '{dst_sym}[{dst_ind}] = {src_sym}[{src_ind}];'.format(
+                    dst_sym=dst_sym,
+                    dst_ind=dst_ind+'+'+stride+'*'+tmp_sym,
+                    src_sym=src_sym,
+                    src_ind=src_ind+'*'+str(ncomp)+'+'+tmp_sym
+                )
+            ),
+        )
+    )
+
+    f0 = For(
+        'INT64 {}=0'.format(tmp_sym),
+        '{}<{}'.format(tmp_sym, ncomp),
+        '{}++'.format(tmp_sym),
+        b
+    )
+    return f0
+
+
+def DSLStrideScatter(src_sym, dst_sym, ncomp, src_ind, dst_ind, stride):
+    tmp_sym = '__'+src_sym+dst_sym
+    
+    b = Block(
+        (
+            Line(
+                '{dst_sym}[{dst_ind}] = {src_sym}[{src_ind}];'.format(
+                    dst_sym=dst_sym,
+                    dst_ind=dst_ind+'*'+str(ncomp)+'+'+tmp_sym,
+                    src_sym=src_sym,
+                    src_ind=src_ind+'+'+stride+'*'+tmp_sym
+                )
+            ),
+        )
+    )
+
+    f0 = For(
+        'INT64 {}=0'.format(tmp_sym),
+        '{}<{}'.format(tmp_sym, ncomp),
+        '{}++'.format(tmp_sym),
+        b
+    )
+    return f0
 
 

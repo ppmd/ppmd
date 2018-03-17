@@ -15,7 +15,8 @@ from ppmd.pairloop.neighbourlist import Restrict, scatter_matrix
 
 from ppmd.modules.dsl_seq_comp import DSLSeqComp
 from ppmd.modules.dsl_stride_comp import DSLStrideComp
-from ppmd.modules.dsl_cell_gather_scatter import DSLPartitionTempSpace, DSLSeqGather
+from ppmd.modules.dsl_cell_gather_scatter import *
+from ppmd.modules.dsl_record_local import *
 from ppmd.modules.dsl_cell_list_loop import DSLCellListIter
 
 _offsets = (
@@ -186,8 +187,9 @@ class SubCellByCellOMP(object):
 
             if issubclass(type(obj), data.ParticleDat):
                 tsym = self._components['PARTICLE_DAT_PARTITION'].jdict[symbol]
-                inner_l.append(DSLSeqGather(
-                    symbol, tsym, obj.ncomp, src_sym, dst_sym
+                inner_l.append(DSLStrideGather(
+                    symbol, tsym, obj.ncomp, src_sym, dst_sym,
+                    self._components['CCC_MAX']
                 ))
 
         #tmp_sym = self._components['PARTICLE_DAT_PARTITION'].jdict[
@@ -228,8 +230,9 @@ class SubCellByCellOMP(object):
 
             if issubclass(type(obj), data.ParticleDat) and mode.write:
                 tsym = self._components['PARTICLE_DAT_PARTITION'].idict[symbol]
-                inner_l.append(DSLSeqGather(
-                    tsym, symbol, obj.ncomp, dst_sym, src_sym
+                inner_l.append(DSLStrideScatter(
+                    tsym, symbol, obj.ncomp, dst_sym, src_sym,
+                    self._components['CCC_MAX']
                 ))
         
 
@@ -259,7 +262,9 @@ class SubCellByCellOMP(object):
             'N_CELL_X': '_N_CELL_X',
             'N_CELL_Y': '_N_CELL_Y',
             'N_CELL_Z': '_N_CELL_Z',
+            'N_CELL_PAD': '_N_CELL_PAD',
             'N_LOCAL' : '_N_LOCAL',
+            'I_LOCAL_SYM': '_I_LOCAL_COUNT',
             'J_GATHER' : None,
             'LIB_NAME': str(self._kernel.name) + '_wrapper',
             'LIB_HEADERS': [cgen.Include('omp.h', system=True),],
@@ -280,6 +285,7 @@ class SubCellByCellOMP(object):
         ncx =  cp['N_CELL_X']
         ncy =  cp['N_CELL_Y']
         ncz =  cp['N_CELL_Z']
+        npad = cp['N_CELL_PAD']
         nloc = cp['N_LOCAL']
 
         self._components['LIB_ARG_DECLS'] = [
@@ -287,6 +293,7 @@ class SubCellByCellOMP(object):
             cgen.Const(cgen.Value(host.int64_str, ncx)),
             cgen.Const(cgen.Value(host.int64_str, ncy)),
             cgen.Const(cgen.Value(host.int64_str, ncz)),
+            cgen.Const(cgen.Value(host.int64_str, npad)),
             cgen.Const(cgen.Value(host.int32_str, nloc)),
             cgen.Const(cgen.Value(host.int32_str, '_LIST_OFFSET')),
             cgen.Const(
@@ -496,16 +503,15 @@ class SubCellByCellOMP(object):
                 dat_orig[0].ctypes_data_access(dat_orig[1], pair=True)
 
     def _generate_kernel_gather(self):
-        cx = self._components['LIB_CELL_CX']
-        cy = self._components['LIB_CELL_CY']
-        cz = self._components['LIB_CELL_CZ']
+        cp = self._components
+        cx = cp['LIB_CELL_CX']
+        cy = cp['LIB_CELL_CY']
+        cz = cp['LIB_CELL_CZ']
 
-        ncx = self._components['N_CELL_X']
-        ncy = self._components['N_CELL_Y']
-        ncz = self._components['N_CELL_Z']
-
-
-        ci = self._components['LIB_CELL_INDEX_0']
+        ncx =cp['N_CELL_X']
+        ncy =cp['N_CELL_Y']
+        ncz =cp['N_CELL_Z']
+        ci = cp['LIB_CELL_INDEX_0']
 
         kernel_gather = cgen.Module([
             cgen.Comment('#### Pre kernel gather ####'),
@@ -522,16 +528,24 @@ class SubCellByCellOMP(object):
         self._components['PARTICLE_DAT_PARTITION'] = \
             DSLPartitionTempSpace(self._dat_dict,
                     self._components['CCC_MAX'],
-                    '_GATHER_SPACE[_threadid]')#,
-        #            extras=((self._components['TMP_INDEX'], 1, INT64),))
+                    '_GATHER_SPACE[_threadid]',
+                    extras=((cp['TMP_INDEX'], 1, INT64),))
         
         kernel_gather.append(self._components['PARTICLE_DAT_PARTITION'].ptr_init)
-
         
-        inner_l = []
-
         src_sym = '__tmp_gpx'
-        dst_sym = self._components['CCC_0']
+        dst_sym = cp['CCC_0']
+
+        record_local = DSLRecordLocal(
+            ind_sym=src_sym,
+            nlocal_sym=cp['N_LOCAL'],
+            store_sym=cp['PARTICLE_DAT_PARTITION'].idict[cp['TMP_INDEX']],
+            store_ind_sym=dst_sym,
+            count_sym=cp['I_LOCAL_SYM']
+        )
+        kernel_gather.append(record_local[0])
+        inner_l = [record_local[1]]
+
         # add dats to omp shared and init global array reduction
         shared_syms = self._components['OMP_SHARED_SYMS']
         for i, dat in enumerate(self._dat_dict.items()):
@@ -553,17 +567,12 @@ class SubCellByCellOMP(object):
                 kernel_gather.append(g)
 
             if issubclass(type(obj), data.ParticleDat):
-                tsym = self._components['PARTICLE_DAT_PARTITION'].idict[symbol]
-                inner_l.append(DSLSeqGather(
-                    symbol, tsym, obj.ncomp, src_sym, dst_sym
+                tsym = cp['PARTICLE_DAT_PARTITION'].idict[symbol]
+                inner_l.append(DSLStrideGather(
+                    symbol, tsym, obj.ncomp, src_sym, dst_sym,
+                    self._components['CCC_MAX']
                 ))
         
-
-        #tmp_sym = self._components['PARTICLE_DAT_PARTITION'].idict[
-        #        self._components['TMP_INDEX']]
-        #inner_l.append(
-        #    cgen.Line(tmp_sym+'['+dst_sym+']='+src_sym+';')
-        #)
 
         inner_l.append(cgen.Line(dst_sym+'++;'))        
         
@@ -573,6 +582,15 @@ class SubCellByCellOMP(object):
         
         kernel_gather.append(cgen.Initializer(cgen.Value('INT64', dst_sym),'0'))
         kernel_gather.append(g)
+        
+        # skip cell if there are not local particles
+        kernel_gather.append(
+            cgen.If(
+                cp['I_LOCAL_SYM']+'==0',
+                cgen.Block((cgen.Line('continue;'),))
+            )
+        )
+
 
         self._components['LIB_KERNEL_GATHER'] = kernel_gather
         
@@ -626,30 +644,37 @@ class SubCellByCellOMP(object):
         j = c['LIB_PAIR_INDEX_1']
         ccc_i = c['CCC_0']
         ccc_j = c['CCC_1']
-        ci = self._components['LIB_CELL_INDEX_0']
-        cj = self._components['LIB_CELL_INDEX_1']
+        ci = c['LIB_CELL_INDEX_0']
+        cj = c['LIB_CELL_INDEX_1']
+        nloc = c['N_LOCAL']
+
+        iif = c['PARTICLE_DAT_PARTITION'].idict[c['TMP_INDEX']]
+        def ifnothalo(b):
+            return cgen.Block((cgen.If(iif+'['+i+']<'+nloc, b),))
 
 
         loop_other = cgen.For(
             'INT64 ' + i + '=0', i+'<'+ccc_i, i+'++',
-            cgen.For(
+            ifnothalo(cgen.Block((cgen.For(
                 'INT64 ' + j + '=0', j+'<'+ccc_j, j+'++',
-                cgen.Block(self._components['LIB_KERNEL_CALL'])
-            )
+                cgen.Block(self._components['LIB_KERNEL_CALL'])),)
+            ))
         )
 
         loop_same = cgen.For(
             'INT64 ' + i + '=0', i+'<'+ccc_i, i+'++',
-            cgen.Block((
-            cgen.For(
-                'INT64 ' + j + '=0', j+'<'+i, j+'++',
-                cgen.Block(self._components['LIB_KERNEL_CALL'])
-            ),
-            cgen.For(
-                'INT64 ' + j + '=1+' + i, j+'<'+ccc_j, j+'++',
-                cgen.Block(self._components['LIB_KERNEL_CALL'])
+            ifnothalo(
+                cgen.Block((
+                cgen.For(
+                    'INT64 ' + j + '=0', j+'<'+i, j+'++',
+                    cgen.Block(self._components['LIB_KERNEL_CALL'])
+                ),
+                cgen.For(
+                    'INT64 ' + j + '=1+' + i, j+'<'+ccc_j, j+'++',
+                    cgen.Block(self._components['LIB_KERNEL_CALL'])
+                )
+                ))
             )
-            ))
         )
 
         cell_cond = cgen.If(
@@ -686,6 +711,8 @@ class SubCellByCellOMP(object):
         ncy = self._components['N_CELL_Y']
         ncz = self._components['N_CELL_Z']
 
+        npad = self._components['N_CELL_PAD']
+
 
         shared = ''
         for sx in self._components['OMP_SHARED_SYMS']:
@@ -700,18 +727,18 @@ class SubCellByCellOMP(object):
             cgen.Line('omp_set_num_threads(_NUM_THREADS);'),
             pragma,
             # cellx loop
-            cgen.For('INT64 ' + cx + '=0',
-                cx + '<' + ncx,
+            cgen.For('INT64 ' + cx + '=' + npad,
+                cx + '<' + ncx + '-' + npad,
                 cx+'++',
                 cgen.Block(
                     [
-                        cgen.For('INT64 ' + cy + '=0',
-                            cy + '<' + ncy,
+                        cgen.For('INT64 ' + cy + '=' + npad,
+                            cy + '<' + ncy + '-' + npad,
                             cy+'++',
                             cgen.Block(
                                 (
-                                    cgen.For('INT64 ' + cz + '=0',
-                                        cz + '<' + ncz,
+                                    cgen.For('INT64 ' + cz + '=' + npad,
+                                        cz + '<' + ncz + '-' + npad,
                                         cz+'++',
                                         block
                                     ),
@@ -748,6 +775,7 @@ class SubCellByCellOMP(object):
             INT64(cell2part.cell_array[0]),
             INT64(cell2part.cell_array[1]),
             INT64(cell2part.cell_array[2]),
+            INT64(1),
             ctypes.c_int(cell2part.num_particles),
             ctypes.c_int(offset),
             cell2part.cell_list.ctypes_data,
