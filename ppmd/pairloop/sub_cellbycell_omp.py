@@ -14,6 +14,7 @@ from ppmd.lib import build
 from ppmd.pairloop.neighbourlist import Restrict, scatter_matrix
 
 from ppmd.modules.dsl_seq_comp import DSLSeqComp
+from ppmd.modules.dsl_stride_comp import DSLStrideComp
 from ppmd.modules.dsl_cell_gather_scatter import DSLPartitionTempSpace, DSLSeqGather
 from ppmd.modules.dsl_cell_list_loop import DSLCellListIter
 
@@ -266,7 +267,8 @@ class SubCellByCellOMP(object):
             'OMP_SHARED_SYMS': ['_CELL_LIST', '_OFFSET', '_CRL', '_CCC',
                                 '_JSTORE', '_GATHER_SPACE'],
             'CELL_LIST_ITER': None,
-            'TMP_INDEX': '_TMP_INDEX'
+            'TMP_INDEX': '_TMP_INDEX',
+            'CCC_MAX': '_MAX_CELL'
         }
 
         self._components['CELL_LIST_ITER'] = DSLCellListIter(
@@ -327,7 +329,8 @@ class SubCellByCellOMP(object):
                                    '_GATHER_SPACE')),
                 )
             ),
-            cgen.Const(cgen.Value(host.int64_str, '_MAX_CELL')),
+            cgen.Const(cgen.Value(host.int64_str,
+                self._components['CCC_MAX'])),
             self.loop_timer.get_cpp_arguments_ast()
         ]
     def _generate_lib_func(self):
@@ -393,7 +396,7 @@ class SubCellByCellOMP(object):
             symbol = dat[0]
             if issubclass(type(obj), host.Matrix):
                 self._components['PARTICLE_DAT_C'][symbol] = \
-                    DSLSeqComp(
+                    DSLStrideComp(
                             sym=symbol,
                             i_gather_sym=self._components[
                                 'PARTICLE_DAT_PARTITION'].idict[symbol],
@@ -403,7 +406,8 @@ class SubCellByCellOMP(object):
                             const=True if not mode.write else False,
                             ncomp=obj.ncomp,
                             i_index=self._components['LIB_PAIR_INDEX_0'],
-                            j_index=self._components['LIB_PAIR_INDEX_1']
+                            j_index=self._components['LIB_PAIR_INDEX_1'],
+                            stride=self._components['CCC_MAX']
                 )
 
 
@@ -516,7 +520,8 @@ class SubCellByCellOMP(object):
         
         # partition this threads space for temporary vars
         self._components['PARTICLE_DAT_PARTITION'] = \
-            DSLPartitionTempSpace(self._dat_dict, '_MAX_CELL',
+            DSLPartitionTempSpace(self._dat_dict,
+                    self._components['CCC_MAX'],
                     '_GATHER_SPACE[_threadid]')#,
         #            extras=((self._components['TMP_INDEX'], 1, INT64),))
         
@@ -530,7 +535,7 @@ class SubCellByCellOMP(object):
         # add dats to omp shared and init global array reduction
         shared_syms = self._components['OMP_SHARED_SYMS']
         for i, dat in enumerate(self._dat_dict.items()):
-
+ 
             obj = dat[1][0]
             mode = dat[1][1]
             symbol = dat[0]
