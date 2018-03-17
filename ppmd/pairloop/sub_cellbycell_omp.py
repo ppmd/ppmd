@@ -65,7 +65,7 @@ class SubCellByCellOMP(object):
         self._cc = build.TMPCC
         self._kernel = kernel
         self.shell_cutoff = shell_cutoff
-
+        
         self.loop_timer = modules.code_timer.LoopTimer()
         self.wrapper_timer = opt.Timer(runtime.TIMER)
         self.list_timer = opt.Timer(runtime.TIMER)
@@ -90,12 +90,12 @@ class SubCellByCellOMP(object):
         if self._group is not None:
             self._make_cell_list(self._group)
 
-        self._kernel_execution_count = 0
+        self._kernel_execution_count = INT64(0)
         self._invocations = 0
 
         self._jstore = [host.Array(ncomp=100, dtype=ctypes.c_int) for tx in \
                         range(runtime.NUM_THREADS)]
-
+        
 
     def _make_cell_list(self, group):
         # if flag is true then a new cell list was created
@@ -273,7 +273,8 @@ class SubCellByCellOMP(object):
                                 '_JSTORE', '_GATHER_SPACE'],
             'CELL_LIST_ITER': None,
             'TMP_INDEX': '_TMP_INDEX',
-            'CCC_MAX': '_MAX_CELL'
+            'CCC_MAX': '_MAX_CELL',
+            'EXEC_COUNT': '_EXEC_COUNT'
         }
 
         self._components['CELL_LIST_ITER'] = DSLCellListIter(
@@ -287,6 +288,7 @@ class SubCellByCellOMP(object):
         ncz =  cp['N_CELL_Z']
         npad = cp['N_CELL_PAD']
         nloc = cp['N_LOCAL']
+        exec_count = cp['EXEC_COUNT']
 
         self._components['LIB_ARG_DECLS'] = [
             cgen.Const(cgen.Value(host.int32_str, '_NUM_THREADS')),
@@ -338,6 +340,7 @@ class SubCellByCellOMP(object):
             ),
             cgen.Const(cgen.Value(host.int64_str,
                 self._components['CCC_MAX'])),
+            cgen.Pointer(cgen.Value(host.int64_str, exec_count)),
             self.loop_timer.get_cpp_arguments_ast()
         ]
     def _generate_lib_func(self):
@@ -393,7 +396,7 @@ class SubCellByCellOMP(object):
         opt.PROFILE[
             self.__class__.__name__+':'+self._kernel.name+\
                 ':kernel_execution_count'
-        ] =  self._kernel_execution_count
+        ] =  self._kernel_execution_count.value
     
     def _generate_particle_dat_c(self):
 
@@ -647,6 +650,7 @@ class SubCellByCellOMP(object):
         ci = c['LIB_CELL_INDEX_0']
         cj = c['LIB_CELL_INDEX_1']
         nloc = c['N_LOCAL']
+        ec = '_'+c['EXEC_COUNT']
 
         iif = c['PARTICLE_DAT_PARTITION'].idict[c['TMP_INDEX']]
         def ifnothalo(b):
@@ -657,7 +661,8 @@ class SubCellByCellOMP(object):
             'INT64 ' + i + '=0', i+'<'+ccc_i, i+'++',
             ifnothalo(cgen.Block((cgen.For(
                 'INT64 ' + j + '=0', j+'<'+ccc_j, j+'++',
-                cgen.Block(self._components['LIB_KERNEL_CALL'])),)
+                cgen.Block(self._components['LIB_KERNEL_CALL'])),
+                cgen.Line(ec+'+='+ccc_j+';'))
             ))
         )
 
@@ -672,7 +677,8 @@ class SubCellByCellOMP(object):
                 cgen.For(
                     'INT64 ' + j + '=1+' + i, j+'<'+ccc_j, j+'++',
                     cgen.Block(self._components['LIB_KERNEL_CALL'])
-                )
+                ),
+                cgen.Line(ec+'+='+ccc_j+'-1;')
                 ))
             )
         )
@@ -710,21 +716,26 @@ class SubCellByCellOMP(object):
         ncx = self._components['N_CELL_X']
         ncy = self._components['N_CELL_Y']
         ncz = self._components['N_CELL_Z']
+        
+        exec_count = self._components['EXEC_COUNT']
+        red_exec_count = '_' + exec_count
 
         npad = self._components['N_CELL_PAD']
-
+        
 
         shared = ''
         for sx in self._components['OMP_SHARED_SYMS']:
             shared+= sx+','
         shared = shared[:-1]
-        pragma = cgen.Pragma('omp parallel for default(none)' \
-' schedule(dynamic) collapse(3) shared(' + shared + ')')
+        pragma = cgen.Pragma('omp parallel for default(none) reduction(+:' + \
+            red_exec_count +') schedule(dynamic) collapse(3) ' + \
+            'shared(' + shared + ')')
         if runtime.OMP_NUM_THREADS is None:
             pragma = cgen.Comment(pragma)
 
         loop = cgen.Module([
             cgen.Line('omp_set_num_threads(_NUM_THREADS);'),
+            cgen.Line('INT64 ' + red_exec_count + ' = 0;'),
             pragma,
             # cellx loop
             cgen.For('INT64 ' + cx + '=' + npad,
@@ -747,7 +758,8 @@ class SubCellByCellOMP(object):
                         ),
                     ]
                 )
-            )
+            ),
+            cgen.Line('*'+exec_count+' += ' + red_exec_count + ';')
         ])
 
         self._components['LIB_OUTER_LOOP'] = loop
@@ -785,6 +797,7 @@ class SubCellByCellOMP(object):
             ctypes.byref(jstore),
             self._gather_space.ctypes_data,
             INT64(cell2part.max_cell_contents_count),
+            ctypes.byref(self._kernel_execution_count),
             self.loop_timer.get_python_parameters()
         ]
 

@@ -172,7 +172,7 @@ def test_host_pair_loop_NS_3(state):
     state.npart_local = N
     state.filter_on_domain_boundary()
     
-    ga = GlobalArray(size=1, dtype=ctypes.c_int64)
+    ga = GlobalArray(size=2, dtype=ctypes.c_int64)
 
 
     kernel_code = '''
@@ -183,6 +183,7 @@ def test_host_pair_loop_NS_3(state):
         NC.i[0]+=1;
         GA[0] += 1;
     }
+    GA[1]+=1;
     ''' % {'CUTOFF': str(cell_width+tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
@@ -201,3 +202,4 @@ def test_host_pair_loop_NS_3(state):
         assert state.nc[ix] == 6
 
     assert ga[0] == 6*N
+    
