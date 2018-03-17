@@ -399,6 +399,7 @@ static inline void mtl_z(
             
             const REAL outer_coeff = ia_jn * m1tn * rr_jn1;
 
+#pragma omp simd
             for(INT64 kx=-1*kmax ; kx<=kmax    ; kx++){
 
                 const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
@@ -697,6 +698,7 @@ static inline void blocked_wigner_matvec(
             for(INT64 rx=0 ; rx<p ; rx++){
                 REAL hre = 0.0;
                 REAL lre = 0.0;
+#pragma omp simd reduction(+:hre) reduction(+:lre)
                 for(INT64 cx=0 ; cx<n ; cx++){
                     const REAL a = W[rx*n + cx];
                     hre += a * re_bz[cx+blk*stride];

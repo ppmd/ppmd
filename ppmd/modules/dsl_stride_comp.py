@@ -24,9 +24,9 @@ class DSLStrideComp(object):
         :param j_index: symbol used as second loop index e.g. '_j'.
         """
 
-        c = 'const' if const else ''
-        self.header = Line(
-            """
+        c = 'const'
+
+        header = """
             class _{sym}_class {{
                public:
                 _{sym}_class(
@@ -37,22 +37,34 @@ class DSLStrideComp(object):
                     pstride=stride;
                 }};
                 _{sym}_class() {{return;}};
-                {const} {ctype}& operator[] (INT64 ind) {{return pptr[ind*pstride];}};
+                {const} {ctype}& operator[] (INT64 ind) 
+                    {{return pptr[ind*pstride];}};
               private:               
                 {ctype} {const} * RESTRICT pptr;
                 INT64 pstride; 
             }};
+            """.format( ctype=ctype, const=c, sym=sym)
+
+        if const:
+            header += """
             class _{sym}_call {{
               public:
                 _{sym}_class i;
                 _{sym}_class j;
             }};
-            """.format(
-                ctype=ctype,
-                const=c,
-                sym=sym
-            )
-        )
+            """.format( ctype=ctype, sym=sym) 
+
+        else:
+            header += """
+            class _{sym}_call {{
+              public:
+                {ctype} * RESTRICT i;
+                _{sym}_class j;
+            }};
+            """.format( ctype=ctype, sym=sym) 
+
+
+        self.header = Line(header)
         """Returns the class definitions."""
 
         t = "_{sym}_call".format(sym=sym)
@@ -60,10 +72,69 @@ class DSLStrideComp(object):
         self.kernel_arg_decl = Value(t, v)
         """Returns the parameter decleration for the kernel"""
         
-        self.kernel_create_arg = Line("""
-       _{sym}_call _{sym}_c;
-       _{sym}_c.i = _{sym}_class({i_gather_sym}+{i_index}, {stride});
-       _{sym}_c.j = _{sym}_class({j_gather_sym}+{j_index}, {stride});
+        iarg = """
+        _{sym}_call _{sym}_c;
+        """.format(sym=sym)
+        
+        iscatter = """
+        """
+
+        if const:
+            iarg += """
+            _{sym}_c.i = _{sym}_class({i_gather_sym}+{i_index}, {stride});
+            """.format(
+                sym=sym,
+                i_gather_sym=i_gather_sym,
+                j_gather_sym=j_gather_sym,
+                i_index=i_index,
+                j_index=j_index,
+                stride=stride
+            )
+            iscatter += ''
+        else:
+            iarg += """
+            {ctype} _{sym}i[{ncomp}] = {{0}};
+            for( INT64 _{sym}ix=0 ; _{sym}ix<{ncomp} ; _{sym}ix++ ){{
+                _{sym}i[_{sym}ix] = {i_gather_sym}[{i_index} + _{sym}ix * {stride}];
+            }}
+            _{sym}_c.i = _{sym}i;
+            """.format(
+                sym=sym,
+                ctype=ctype,
+                i_gather_sym=i_gather_sym,
+                j_gather_sym=j_gather_sym,
+                i_index=i_index,
+                j_index=j_index,
+                stride=stride,
+                ncomp=ncomp
+            )
+            iscatter += """
+            for( INT64 _{sym}ix=0 ; _{sym}ix<{ncomp} ; _{sym}ix++ ){{
+                 {i_gather_sym}[{i_index} + _{sym}ix * {stride}] = _{sym}i[_{sym}ix];
+            }}
+            """.format(
+                sym=sym,
+                ctype=ctype,
+                i_gather_sym=i_gather_sym,
+                j_gather_sym=j_gather_sym,
+                i_index=i_index,
+                j_index=j_index,
+                stride=stride,
+                ncomp=ncomp,
+            )
+
+
+        self.kernel_create_i_arg = iarg
+        """Returns the construction of the argument to call the kernel"""
+        
+        self.kernel_create_i_scatter = iscatter
+        """Returns the construction of the argument to call the kernel"""
+ 
+
+
+
+        self.kernel_create_j_arg = Line("""
+        _{sym}_c.j = _{sym}_class({j_gather_sym}+{j_index}, {stride});
         """.format(
             sym=sym,
             i_gather_sym=i_gather_sym,
@@ -74,6 +145,11 @@ class DSLStrideComp(object):
         ))
         """Returns the construction of the argument to call the kernel"""
         
+
+
+
+
+
         self.kernel_arg = "_{sym}_c".format(sym=sym)
     
     def __repr__(self):

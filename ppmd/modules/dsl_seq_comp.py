@@ -11,7 +11,8 @@ __license__ = "GPL"
 from cgen import *
 
 class DSLSeqComp(object):
-    def __init__(self, sym, i_gather_sym, j_gather_sym, ctype, const, ncomp, i_index, j_index):
+    def __init__(self, sym, i_gather_sym, j_gather_sym, ctype, const,
+            ncomp, i_index, j_index, stride=None):
         """
         Creates the C/C++ required to access A.i[x] and A.j[x].
 

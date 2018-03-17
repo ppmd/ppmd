@@ -15,6 +15,8 @@ from ppmd.pairloop.neighbourlist import Restrict, scatter_matrix
 
 from ppmd.modules.dsl_seq_comp import DSLSeqComp
 from ppmd.modules.dsl_stride_comp import DSLStrideComp
+from ppmd.modules.dsl_struct_comp import DSLStructComp
+
 from ppmd.modules.dsl_cell_gather_scatter import *
 from ppmd.modules.dsl_record_local import *
 from ppmd.modules.dsl_cell_list_loop import DSLCellListIter
@@ -50,6 +52,9 @@ _offsets = (
     (1,1,1),
     (1,-1,1)
 )
+
+
+
 
 INT64 = ctypes.c_int64
 
@@ -220,13 +225,11 @@ class SubCellByCellOMP(object):
         src_sym = '_sgpx'
         dst_sym = '_shpx'
         # add dats to omp shared and init global array reduction
-        shared_syms = self._components['OMP_SHARED_SYMS']
         for i, dat in enumerate(self._dat_dict.items()):
 
             obj = dat[1][0]
             mode = dat[1][1]
             symbol = dat[0]
-            shared_syms.append(symbol)
 
             if issubclass(type(obj), data.ParticleDat) and mode.write:
                 tsym = self._components['PARTICLE_DAT_PARTITION'].idict[symbol]
@@ -274,7 +277,9 @@ class SubCellByCellOMP(object):
             'CELL_LIST_ITER': None,
             'TMP_INDEX': '_TMP_INDEX',
             'CCC_MAX': '_MAX_CELL',
-            'EXEC_COUNT': '_EXEC_COUNT'
+            'EXEC_COUNT': '_EXEC_COUNT',
+            'KERNEL_GATHER': '',
+            'KERNEL_SCATTER': ''
         }
 
         self._components['CELL_LIST_ITER'] = DSLCellListIter(
@@ -607,7 +612,7 @@ class SubCellByCellOMP(object):
         if self._kernel.static_args is not None:
             for i, dat in enumerate(self._kernel.static_args.items()):
                 kernel_call_symbols.append(dat[0])
-
+        
         for i, dat in enumerate(self._dat_dict.items()):
 
             obj = dat[1][0]
@@ -621,10 +626,13 @@ class SubCellByCellOMP(object):
             elif issubclass(type(obj), host.Matrix):
                 g = self._components['PARTICLE_DAT_C'][symbol]
                 kernel_call_symbols.append(g.kernel_arg)
-                kernel_call.append(g.kernel_create_arg)
+                kernel_call.append(g.kernel_create_j_arg)
+                self._components['KERNEL_GATHER'] += g.kernel_create_i_arg
+                self._components['KERNEL_SCATTER'] += g.kernel_create_i_scatter
 
             else:
                 print("ERROR: Type not known")
+        
 
         kernel_call.append(cgen.Comment('#### Kernel call ####'))
 
@@ -656,20 +664,31 @@ class SubCellByCellOMP(object):
         def ifnothalo(b):
             return cgen.Block((cgen.If(iif+'['+i+']<'+nloc, b),))
 
+        kg = self._components['KERNEL_GATHER']
+        ks = self._components['KERNEL_SCATTER']
 
-        loop_other = cgen.For(
+
+        loop_other = cgen.Block((cgen.For(
             'INT64 ' + i + '=0', i+'<'+ccc_i, i+'++',
-            ifnothalo(cgen.Block((cgen.For(
-                'INT64 ' + j + '=0', j+'<'+ccc_j, j+'++',
-                cgen.Block(self._components['LIB_KERNEL_CALL'])),
-                cgen.Line(ec+'+='+ccc_j+';'))
+            ifnothalo(cgen.Block(
+                (
+                    cgen.Line(kg),
+                    cgen.For(
+                        'INT64 ' + j + '=0', j+'<'+ccc_j, j+'++',
+                        cgen.Block(self._components['LIB_KERNEL_CALL'])
+                    ),
+                    cgen.Line(ks),
+                    cgen.Line(ec+'+='+ccc_j+';')
+                )
             ))
-        )
+        ),))
 
-        loop_same = cgen.For(
+
+        loop_same = cgen.Block((cgen.For(
             'INT64 ' + i + '=0', i+'<'+ccc_i, i+'++',
             ifnothalo(
                 cgen.Block((
+                cgen.Line(kg),
                 cgen.For(
                     'INT64 ' + j + '=0', j+'<'+i, j+'++',
                     cgen.Block(self._components['LIB_KERNEL_CALL'])
@@ -678,10 +697,11 @@ class SubCellByCellOMP(object):
                     'INT64 ' + j + '=1+' + i, j+'<'+ccc_j, j+'++',
                     cgen.Block(self._components['LIB_KERNEL_CALL'])
                 ),
+                cgen.Line(ks),
                 cgen.Line(ec+'+='+ccc_j+'-1;')
                 ))
             )
-        )
+        ),))
 
         cell_cond = cgen.If(
             ci+'=='+cj,
