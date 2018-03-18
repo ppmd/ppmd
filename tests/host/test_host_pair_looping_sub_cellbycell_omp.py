@@ -317,14 +317,14 @@ def test_host_pair_loop_NS_5(state):
     F.i[0]+= (r2 < rc2) ? f_tmp*R0 : 0.0;
     F.i[1]+= (r2 < rc2) ? f_tmp*R1 : 0.0;
     F.i[2]+= (r2 < rc2) ? f_tmp*R2 : 0.0;
-    //u[0]+= (r2 < rc2) ? 0.5*CV*((r_m6-1.0)*r_m6 + internalshift) : 0.0;
+    u[0]+= (r2 < rc2) ? 0.5*CV*((r_m6-1.0)*r_m6 + internalshift) : 0.0;
 
     ''' % {'CUTOFF': str(cell_width+tol)}
 
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {
             'P': state.p(md.access.R),
-            'F': state.f4(md.access.W),
+            'F': state.f(md.access.W),
             'u': ga(md.access.INC_ZERO)
             }
 

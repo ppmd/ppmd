@@ -22,6 +22,8 @@ from ppmd.modules.dsl_record_local import *
 from ppmd.modules.dsl_cell_list_loop import DSLCellListIter
 
 from ppmd.modules.dsl_kernel_symbols import *
+from ppmd.modules.dsl_array_access import *
+
 
 _offsets = (
     (-1,1,-1),
@@ -411,20 +413,41 @@ class SubCellByCellOMP(object):
             obj = dat[1][0]
             mode = dat[1][1]
             symbol = dat[0]
+
+            if issubclass(type(obj), data.GlobalArrayClassic):
+                dsc = DSLGlobalArrayAccess(
+                    sym=symbol,
+                    thread_sym=symbol+'_c',
+                    ctype=host.ctypes_map[obj.dtype],
+                    const=True if not mode.write else False,
+                    ncomp=obj.ncomp
+                )
+                c['PARTICLE_DAT_C'][symbol] = dsc
+
+            elif issubclass(type(obj), host._Array):
+                dsc = DSLArrayAccess(
+                    sym=symbol,
+                    ctype=host.ctypes_map[obj.dtype],
+                    const=True if not mode.write else False,
+                    ncomp=obj.ncomp
+                )
+
+                c['PARTICLE_DAT_C'][symbol] = dsc
+
             if issubclass(type(obj), host.Matrix):
 
                 dsc = DSLStrideComp(
-                            sym=symbol,
-                            i_gather_sym=self._components[
-                                'PARTICLE_DAT_PARTITION'].idict[symbol],
-                            j_gather_sym=self._components[
-                                'PARTICLE_DAT_PARTITION'].jdict[symbol],
-                            ctype=host.ctypes_map[obj.dtype],
-                            const=True if not mode.write else False,
-                            ncomp=obj.ncomp,
-                            i_index=self._components['LIB_PAIR_INDEX_0'],
-                            j_index=self._components['LIB_PAIR_INDEX_1'],
-                            stride=self._components['CCC_MAX']
+                    sym=symbol,
+                    i_gather_sym=self._components[
+                        'PARTICLE_DAT_PARTITION'].idict[symbol],
+                    j_gather_sym=self._components[
+                        'PARTICLE_DAT_PARTITION'].jdict[symbol],
+                    ctype=host.ctypes_map[obj.dtype],
+                    const=True if not mode.write else False,
+                    ncomp=obj.ncomp,
+                    i_index=self._components['LIB_PAIR_INDEX_0'],
+                    j_index=self._components['LIB_PAIR_INDEX_1'],
+                    stride=self._components['CCC_MAX']
                 )
 
                 c['KERNEL'].sub_sym(symbol+'.i', dsc.isymbol)
@@ -462,17 +485,12 @@ class SubCellByCellOMP(object):
 
             if issubclass(type(obj), data.GlobalArrayClassic):
                 kernel_lib_arg = cgen.Pointer(kernel_lib_arg)
+                gen = self._components['PARTICLE_DAT_C'][symbol]
+                _kernel_arg_decls.append(gen.kernel_arg_decl)
+            elif issubclass(type(obj), host._Array):
 
-            if issubclass(type(obj), host._Array):
-                kernel_arg = cgen.Pointer(
-                    cgen.Value(
-                        host.ctypes_map[obj.dtype],
-                        Restrict(self._cc.restrict_keyword, symbol)
-                ))
-
-                if not mode.write:
-                    kernel_arg = cgen.Const(kernel_arg)
-                _kernel_arg_decls.append(kernel_arg)
+                gen = self._components['PARTICLE_DAT_C'][symbol]
+                _kernel_arg_decls.append(gen.kernel_arg_decl)
 
                 if mode.write is True:
                     assert issubclass(type(obj), data.GlobalArrayClassic), \
@@ -626,19 +644,11 @@ class SubCellByCellOMP(object):
             mode = dat[1][1]
             symbol = dat[0]
 
-            if issubclass(type(obj), data.GlobalArrayClassic):
-                kernel_call_symbols.append(symbol+'_c')
-            elif issubclass(type(obj), host._Array):
-                kernel_call_symbols.append(symbol)
-            elif issubclass(type(obj), host.Matrix):
-                g = self._components['PARTICLE_DAT_C'][symbol]
-                kernel_call_symbols.append(g.kernel_arg)
-                kernel_call.append(g.kernel_create_j_arg)
-                self._components['KERNEL_GATHER'] += g.kernel_create_i_arg
-                self._components['KERNEL_SCATTER'] += g.kernel_create_i_scatter
-
-            else:
-                print("ERROR: Type not known")
+            g = self._components['PARTICLE_DAT_C'][symbol]
+            kernel_call_symbols.append(g.kernel_arg)
+            kernel_call.append(g.kernel_create_j_arg)
+            self._components['KERNEL_GATHER'] += g.kernel_create_i_arg
+            self._components['KERNEL_SCATTER'] += g.kernel_create_i_scatter
         
 
         kernel_call.append(cgen.Comment('#### Kernel call ####'))
@@ -651,6 +661,7 @@ class SubCellByCellOMP(object):
         kernel_call.append(cgen.Line(
             'k_'+self._kernel.name+'(' + kernel_call_symbols_s + ');'
         ))
+        
 
         self._components['LIB_KERNEL_CALL'] = kernel_call
 
