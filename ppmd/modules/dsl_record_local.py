@@ -1,6 +1,5 @@
 """
-Create the C/C++ to load the required data from all particles in a cell
-into temporary arrays for cell by cell pairlooping.
+count the number of particles in a cell whilst gathering data
 """
 
 from __future__ import division, print_function, absolute_import

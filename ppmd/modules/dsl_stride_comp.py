@@ -1,6 +1,6 @@
 """
-Create the C++ classes to access A.i[k] where A.i[k+1] is adjacent in memory
-to A.i[k];
+Create the C++ classes to access A.i[k] where A.i[k+1] is offset in memory
+to A.i[k] by a non-unit stride;
 """
 
 from __future__ import division, print_function, absolute_import
@@ -24,6 +24,9 @@ class DSLStrideComp(object):
         :param j_index: symbol used as second loop index e.g. '_j'.
         """
 
+        self.isymbol = "__{sym}i".format(sym=sym)
+        self.jsymbol = "__{sym}j".format(sym=sym)
+    
         c = 'const'
 
         header = """
@@ -45,35 +48,40 @@ class DSLStrideComp(object):
             }};
             """.format( ctype=ctype, const=c, sym=sym)
 
-        if const:
-            header += """
-            class _{sym}_call {{
-              public:
-                _{sym}_class i;
-                _{sym}_class j;
-            }};
-            """.format( ctype=ctype, sym=sym) 
+        #if const:
+        #    header += """
+        #    class _{sym}_call {{
+        #      public:
+        #        _{sym}_class i;
+        #        _{sym}_class j;
+        #    }};
+        #    """.format( ctype=ctype, sym=sym) 
 
-        else:
-            header += """
-            class _{sym}_call {{
-              public:
-                {ctype} * RESTRICT i;
-                _{sym}_class j;
-            }};
-            """.format( ctype=ctype, sym=sym) 
+        #else:
+        #    header += """
+        #    class _{sym}_call {{
+        #      public:
+        #        {ctype} * RESTRICT i;
+        #        _{sym}_class j;
+        #    }};
+        #    """.format( ctype=ctype, sym=sym) 
 
 
         self.header = Line(header)
         """Returns the class definitions."""
+        
+        jt = "_{sym}_class".format(sym=sym)
+        if const:
+            it = jt
+        else:
+            it = "{ctype} * RESTRICT".format(ctype=ctype)
 
-        t = "_{sym}_call".format(sym=sym)
-        v = sym
-        self.kernel_arg_decl = Value(t, v)
+        self.kernel_arg_decl = (Value(it, self.isymbol), Value(jt, self.jsymbol))
+
         """Returns the parameter decleration for the kernel"""
         
         iarg = """
-        _{sym}_call _{sym}_c;
+        //_{sym}_class _{sym}_ci;
         """.format(sym=sym)
         
         iscatter = """
@@ -81,7 +89,7 @@ class DSLStrideComp(object):
 
         if const:
             iarg += """
-            _{sym}_c.i = _{sym}_class({i_gather_sym}+{i_index}, {stride});
+            _{sym}_class _{sym}_ci({i_gather_sym}+{i_index}, {stride});
             """.format(
                 sym=sym,
                 i_gather_sym=i_gather_sym,
@@ -93,11 +101,10 @@ class DSLStrideComp(object):
             iscatter += ''
         else:
             iarg += """
-            {ctype} _{sym}i[{ncomp}] = {{0}};
+            {ctype} _{sym}_ci[{ncomp}] = {{0}};
             for( INT64 _{sym}ix=0 ; _{sym}ix<{ncomp} ; _{sym}ix++ ){{
-                _{sym}i[_{sym}ix] = {i_gather_sym}[{i_index} + _{sym}ix * {stride}];
+                _{sym}_ci[_{sym}ix] = {i_gather_sym}[{i_index} + _{sym}ix * {stride}];
             }}
-            _{sym}_c.i = _{sym}i;
             """.format(
                 sym=sym,
                 ctype=ctype,
@@ -110,7 +117,7 @@ class DSLStrideComp(object):
             )
             iscatter += """
             for( INT64 _{sym}ix=0 ; _{sym}ix<{ncomp} ; _{sym}ix++ ){{
-                 {i_gather_sym}[{i_index} + _{sym}ix * {stride}] = _{sym}i[_{sym}ix];
+                 {i_gather_sym}[{i_index} + _{sym}ix * {stride}] = _{sym}_ci[_{sym}ix];
             }}
             """.format(
                 sym=sym,
@@ -134,7 +141,7 @@ class DSLStrideComp(object):
 
 
         self.kernel_create_j_arg = Line("""
-        _{sym}_c.j = _{sym}_class({j_gather_sym}+{j_index}, {stride});
+        _{sym}_class _{sym}_cj({j_gather_sym}+{j_index}, {stride});
         """.format(
             sym=sym,
             i_gather_sym=i_gather_sym,
@@ -145,13 +152,9 @@ class DSLStrideComp(object):
         ))
         """Returns the construction of the argument to call the kernel"""
         
+        self.kernel_arg = "_{sym}_ci, _{sym}_cj".format(sym=sym)
 
 
-
-
-
-        self.kernel_arg = "_{sym}_c".format(sym=sym)
-    
     def __repr__(self):
         return str(self.header) + "\n"+ str(self.kernel_arg_decl) + \
                 str(self.kernel_create_arg) + "\n" + \

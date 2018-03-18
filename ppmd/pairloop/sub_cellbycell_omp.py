@@ -21,6 +21,8 @@ from ppmd.modules.dsl_cell_gather_scatter import *
 from ppmd.modules.dsl_record_local import *
 from ppmd.modules.dsl_cell_list_loop import DSLCellListIter
 
+from ppmd.modules.dsl_kernel_symbols import *
+
 _offsets = (
     (-1,1,-1),
     (-1,-1,-1),
@@ -124,7 +126,7 @@ class SubCellByCellOMP(object):
 
     def _generate(self):
         self._init_components()
-        
+        self._generate_kernel()
         self._generate_kernel_gather()
         self._generate_particle_dat_c()
         self._generate_lib_specific_args()
@@ -141,6 +143,11 @@ class SubCellByCellOMP(object):
         self._generate_lib_outer_loop()
         self._generate_lib_func()
         self._generate_lib_src()
+    
+    def _generate_kernel(self):
+        k = DSLKernelSymSub(kernel=self._kernel.code)
+
+        self._components['KERNEL'] = k
 
     def _generate_kernel_func(self):
         self._components['KERNEL_FUNC'] = cgen.FunctionBody(
@@ -151,7 +158,7 @@ class SubCellByCellOMP(object):
                 self._components['KERNEL_ARG_DECLS']
             ),
                 cgen.Block([
-                    cgen.Line(self._kernel.code)
+                    cgen.Line(self._components['KERNEL'].kernel)
                 ])
             )
 
@@ -197,11 +204,6 @@ class SubCellByCellOMP(object):
                     self._components['CCC_MAX']
                 ))
 
-        #tmp_sym = self._components['PARTICLE_DAT_PARTITION'].jdict[
-        #        self._components['TMP_INDEX']]
-        #inner_l.append(
-        #    cgen.Line(tmp_sym+'['+dst_sym+']='+src_sym+';')
-        #)
 
         inner_l.append(cgen.Line(dst_sym+'++;'))        
         
@@ -404,14 +406,14 @@ class SubCellByCellOMP(object):
         ] =  self._kernel_execution_count.value
     
     def _generate_particle_dat_c(self):
-
+        c = self._components
         for i, dat in enumerate(self._dat_dict.items()):
             obj = dat[1][0]
             mode = dat[1][1]
             symbol = dat[0]
             if issubclass(type(obj), host.Matrix):
-                self._components['PARTICLE_DAT_C'][symbol] = \
-                    DSLStrideComp(
+
+                dsc = DSLStrideComp(
                             sym=symbol,
                             i_gather_sym=self._components[
                                 'PARTICLE_DAT_PARTITION'].idict[symbol],
@@ -425,6 +427,10 @@ class SubCellByCellOMP(object):
                             stride=self._components['CCC_MAX']
                 )
 
+                c['KERNEL'].sub_sym(symbol+'.i', dsc.isymbol)
+                c['KERNEL'].sub_sym(symbol+'.j', dsc.jsymbol)
+
+                c['PARTICLE_DAT_C'][symbol] = dsc
 
 
     def _generate_kernel_arg_decls(self):
@@ -477,7 +483,8 @@ class SubCellByCellOMP(object):
             elif issubclass(type(dat[1][0]), host.Matrix):
                 gen = self._components['PARTICLE_DAT_C'][symbol]
                 _kernel_structs.append(gen.header)
-                _kernel_arg_decls.append(gen.kernel_arg_decl)
+                _kernel_arg_decls.append(gen.kernel_arg_decl[0])
+                _kernel_arg_decls.append(gen.kernel_arg_decl[1])
 
             if not dat[1][1].write:
                 kernel_lib_arg = cgen.Const(kernel_lib_arg)
