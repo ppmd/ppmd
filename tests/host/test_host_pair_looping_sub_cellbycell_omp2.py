@@ -56,7 +56,7 @@ def test_host_pair_loop_NS_5():
     Tests a scalar array read
     """
     
-    crN = 40 #cubert(N)
+    crN = 50 #cubert(N)
     N = crN**3
     E = 3. * crN
 
@@ -75,7 +75,7 @@ def test_host_pair_loop_NS_5():
     A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
     A.nc = ParticleDat(ncomp=1, dtype=ctypes.c_int)
 
-    cell_width = 2.0 * float(E)/float(crN)
+    cell_width = 6.0 * float(E)/float(crN)
 
     rng = np.random.RandomState(seed=865)
 
@@ -145,7 +145,7 @@ def test_host_pair_loop_NS_5():
         if m == 0.0:
             m = 1.0
         err = np.linalg.norm((A.f[px,:] - A.f2[px,:])/m, np.inf)
-        assert err < 0.5*10.**-14
+        assert err < 10.**-13
         if err > 10.**-10 and DEBUG:
             print(px, red_tol(err, 10.**-6), A.f[px, :], A.f2[px,:])
     
