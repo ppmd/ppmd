@@ -30,6 +30,7 @@ State = md.state.State
 PairLoop = md.pairloop.SubCellByCellOMP
 Kernel = md.kernel.Kernel
 
+PairloopNL = md.pairloop.PairLoopNeighbourListNSOMP
 
 @pytest.fixture
 def state():
@@ -41,7 +42,7 @@ def state():
     A.p = PositionDat(ncomp=3)
     A.v = ParticleDat(ncomp=3)
     A.f = ParticleDat(ncomp=3)
-    A.f4 = ParticleDat(ncomp=4)
+    A.f2 = ParticleDat(ncomp=3)
     A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
     A.nc = ParticleDat(ncomp=1, dtype=ctypes.c_int)
 
@@ -270,69 +271,6 @@ def test_host_pair_loop_NS_4(state):
     assert ga[0] == 6*N
 
 
-def test_host_pair_loop_NS_5(state):
-    """
-    Tests a scalar array read
-    """
-    cell_width = float(E)/float(crN)
-    pi = np.zeros([N,3], dtype=ctypes.c_double)
-    px = 0
 
-    # This is upsetting....
-    for ix in range(crN):
-        for iy in range(crN):
-            for iz in range(crN):
-                pi[px,:] = (E/crN)*np.array([ix, iy, iz]) - 0.5*(E-E/crN)*np.ones(3)
-                px += 1
 
-    state.p[:] = pi
-    state.npart_local = N
-    state.filter_on_domain_boundary()
-    
-    ga = GlobalArray(size=2, dtype=ctypes.c_double)
-    sa = ScalarArray(ncomp=3, dtype=ctypes.c_double)
-    sa[0] = math.pi
-    sa[0] = math.pi*0.5
-    sa[0] = 1000.*math.pi
 
-    kernel_code = '''
-    #define rc2 1.0
-    #define CF 1.0
-    #define sigma2 1.0
-    #define CV 1.0
-    #define internalshift 1.0
-    const double R0 = P.j[0] - P.i[0];
-    const double R1 = P.j[1] - P.i[1];
-    const double R2 = P.j[2] - P.i[2];
-
-    const double r2 = R0*R0 + R1*R1 + R2*R2;
-
-    const double r_m2 = sigma2/r2;
-    const double r_m4 = r_m2*r_m2;
-    const double r_m6 = r_m4*r_m2;
-
-    const double r_m8 = r_m4*r_m4;
-    const double f_tmp = CF*(r_m6 - 0.5)*r_m8;
-
-    F.i[0]+= (r2 < rc2) ? f_tmp*R0 : 0.0;
-    F.i[1]+= (r2 < rc2) ? f_tmp*R1 : 0.0;
-    F.i[2]+= (r2 < rc2) ? f_tmp*R2 : 0.0;
-    u[0]+= (r2 < rc2) ? 0.5*CV*((r_m6-1.0)*r_m6 + internalshift) : 0.0;
-
-    ''' % {'CUTOFF': str(cell_width+tol)}
-
-    kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
-    kernel_map = {
-            'P': state.p(md.access.R),
-            'F': state.f(md.access.W),
-            'u': ga(md.access.INC_ZERO)
-            }
-
-    loop = PairLoop(kernel=kernel,
-                    dat_dict=kernel_map,
-                    shell_cutoff=cell_width+tol)
-
-    state.nc.zero()
-
-    loop.execute()
-   
