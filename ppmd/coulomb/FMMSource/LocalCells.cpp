@@ -137,7 +137,9 @@ int local_cell_by_cell(
     REAL * RESTRICT * RESTRICT tmp_real_pj,
     REAL * RESTRICT * RESTRICT tmp_real_qi,
     REAL * RESTRICT * RESTRICT tmp_real_qj,
-    REAL * RESTRICT * RESTRICT tmp_real_fi
+    REAL * RESTRICT * RESTRICT tmp_real_fi,
+    const INT64 compute_potential,
+    REAL * RESTRICT potential_array
 ){
 
     omp_set_num_threads(num_threads);

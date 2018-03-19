@@ -686,16 +686,16 @@ class PyFMM(object):
         return self.particle_phi[0]
 
 
-    def _compute_local_interaction(self, positions, charges, forces=None):
+    def _compute_local_interaction(self, positions, charges, forces=None, potential=None):
         cells = positions.group._fmm_cell
 
         if forces is None:
             forces = data.ParticleDat(ncomp=3, npart=positions.npart_total,
                                       dtype=self.dtype)
-
+    
         self.timer_local.start()
         
-        phi_tmp = self._fmm_local(positions, charges, forces, cells)
+        phi_tmp = self._fmm_local(positions, charges, forces, cells, potential)
 
         self.timer_local.pause()
         
@@ -757,7 +757,7 @@ class PyFMM(object):
             self.cuda_async_threads[level] = None
 
 
-    def __call__(self, positions, charges, forces=None, async=False):
+    def __call__(self, positions, charges, forces=None, potential=None, async=False):
 
         self.entry_data.zero()
         self.tree_plain.zero()
@@ -771,7 +771,8 @@ class PyFMM(object):
                                    positions.group._fmm_cell)
         
         phi_near = self._compute_local_interaction(positions, charges,
-                                                   forces=forces)
+                                                   forces=forces,
+                                                   potential=potential)
         #phi_near = self._compute_local_interaction_pairloop(positions, charges,
         #                                           forces=forces)
         for level in range(self.R - 1, 0, -1):

@@ -7,6 +7,7 @@ __license__ = "GPL"
 from ppmd import runtime, host, pairloop, data, mpi, opt
 from ppmd.lib import build
 from ppmd.access import *
+from ppmd.data import ParticleDat
 
 import ctypes
 import os
@@ -16,6 +17,18 @@ _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
 REAL = ctypes.c_double
 INT64 = ctypes.c_int64
+
+def _check_dtype(arr, dtype):
+    if arr.dtype != dtype:
+        raise RuntimeError('Bad data type. Expected: {} Found: {}.'.format(
+            str(dtype), str(arr.dtype)))
+    if issubclass(type(arr), np.ndarray): return _numpy_ptr(arr)
+    elif issubclass(type(arr), host.Matrix): return arr.ctypes_data
+    elif issubclass(type(arr), host.Array): return arr.ctypes_data
+    else: raise RuntimeError('unknown array type passed: {}'.format(type(arr)))
+
+
+
 
 class FMMLocal(object):
     """
@@ -74,7 +87,7 @@ class FMMLocal(object):
         self._tmp_real_qj = host.ThreadSpace(n=bn, dtype=REAL)
         self._tmp_real_fi = host.ThreadSpace(n=bn, dtype=REAL)
 
-    def __call__(self, positions, charges, forces, cells):
+    def __call__(self, positions, charges, forces, cells, potential=None):
         """
         const INT64 free_space,
         const INT64 * RESTRICT global_size,
@@ -104,7 +117,22 @@ class FMMLocal(object):
             'f': forces(INC),
             'c': cells(READ)
         }
-        
+        if potential is not None and \
+                issubclass(type(potential), ParticleDat):
+            dats['u'] = potential
+            assert potential[:].shape[0] <= positions.npart_local
+        elif potential is not None:
+            assert potential.shape[0] * potential.shape[1] <= \
+                    postitions.npart_local
+
+        compute_pot = INT64(0)
+        dummy_real = REAL(0)
+        pot_ptr = ctypes.byref(dummy_real)
+        if potential is not None:
+            compute_pot.value = 1
+            pot_ptr = _check_dtype(potential, REAL)
+            
+
         self._u[0] = 0.0
 
         nlocal, nhalo, ncell = self.sh.pre_execute(dats=dats)
@@ -161,7 +189,9 @@ class FMMLocal(object):
             self._tmp_real_pj.ctypes_data,
             self._tmp_real_qi.ctypes_data,
             self._tmp_real_qj.ctypes_data,
-            self._tmp_real_fi.ctypes_data
+            self._tmp_real_fi.ctypes_data,
+            compute_pot,
+            pot_ptr
         )
 
         self.sh.post_execute(dats=dats)
