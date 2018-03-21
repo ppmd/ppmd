@@ -289,7 +289,7 @@ int local_cell_by_cell(
 #pragma omp parallel for default(none) reduction(min:err) reduction(+:energy) reduction(+:part_count) \
 shared(local_size, local_offset, global_size, P, Q, C, F, U, ll_array, \
 ll_ccc_array, tmp_int_i, tmp_int_j, tmp_real_pi, tmp_real_pj, tmp_real_qi, \
-tmp_real_qj, tmp_real_fi) schedule(dynamic)
+tmp_real_qj, tmp_real_fi, HMAP) schedule(dynamic)
     for(INT64 cx=0 ; cx<ncells_local ; cx++ ){
         if (err < 0){ printf("Negative error code detected."); continue; }
 

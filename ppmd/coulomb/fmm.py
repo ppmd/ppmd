@@ -14,6 +14,7 @@ import os
 import math
 import cmath
 from threading import Thread
+import scipy
 from scipy.special import lpmv, rgamma, gammaincc, lambertw
 import sys
 
@@ -602,6 +603,11 @@ class PyFMM(object):
         self.timer_down = opt.Timer(runtime.TIMER)
         self.timer_up = opt.Timer(runtime.TIMER)
 
+
+        self.shift_yes = INT64(0)
+        self.shift_no = INT64(0)
+
+
         self.execution_count = 0
         self._mtlz_ops = self._mtlz_cost_per_cell()
 
@@ -659,7 +665,7 @@ class PyFMM(object):
         p[b+'down'] = self.timer_down.time()
         p[b+'up'] = self.timer_up.time()
         p[b+'exec_count'] = self.execution_count
-
+        p[b+'extract_shift_yes_no'] = (self.shift_yes.value, self.shift_no.value)
 
         if self.cuda:
             p[b+'mtl_cuda_(async)'] = self._cuda_mtl.timer_mtl.time()
@@ -993,6 +999,10 @@ class PyFMM(object):
 
         self.timer_extract_mpi.pause()
         self.timer_extract.start()
+
+        shift_yes = INT64(0)
+        shift_no = INT64(0)
+
         err = self._extraction_lib(
             INT64(self.L),
             INT64(positions.npart_local),
@@ -1011,11 +1021,12 @@ class PyFMM(object):
             _check_dtype(self._a, REAL),
             _check_dtype(self._ar, REAL),
             _check_dtype(self._ipower_ltl, REAL),
-            INT64(0)
+            INT64(0),
+            ctypes.byref(self.shift_yes),
+            ctypes.byref(self.shift_no)
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 
-        #print("far", positions.npart_local, phi.value)
 
         red_re = mpi.all_reduce(np.array((phi.value)))
         forces.ctypes_data_post(access.W)
@@ -1268,6 +1279,16 @@ class PyFMM(object):
 
        return self._cart_to_sph((dx, dy, dz))
 
+    @staticmethod
+    def internal_to_ev():
+        """
+        Multiply by this constant to convert from internal units to eV.
+        """
+        epsilon_0 = scipy.constants.epsilon_0
+        pi = scipy.constants.pi
+        c0 = scipy.constants.physical_constants['atomic unit of charge'][0]
+        l0 = 10.**-10
+        return c0 / (4.*pi*epsilon_0*l0)    
 
     def _test_shell_sum2(self, limit, nl=8):
         pass

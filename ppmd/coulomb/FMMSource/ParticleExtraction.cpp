@@ -339,7 +339,9 @@ INT64 particle_extraction(
     const REAL * RESTRICT alm,
     const REAL * RESTRICT almr,
     const REAL * RESTRICT i_array,
-    const INT64 always_shift
+    const INT64 always_shift,
+    INT64 * RESTRICT shift_yes,
+    INT64 * RESTRICT shift_no
 ){
     INT64 err = 0;
     omp_set_num_threads(thread_max);
@@ -375,6 +377,9 @@ INT64 particle_extraction(
     REAL L_SPACE_VEC[thread_max][nlevel*nlevel*2];
 
     INT64 count = 0;
+    INT64 _shift_yes = 0;
+    INT64 _shift_no = 0;
+
     REAL potential_energy = 0.0;
     #pragma omp parallel for default(none) shared(thread_assign, position, \
         boundary, cube_offset, cube_dim, err, exp_space, force, \
@@ -382,7 +387,7 @@ INT64 particle_extraction(
         cube_half_side_len, cube_ilen, charge, local_moments, fmm_cell, cube_side_counts,\
         alm, almr, i_array) \
         schedule(dynamic) \
-        reduction(+: count) reduction(+: potential_energy)
+        reduction(+: count) reduction(+: potential_energy) reduction(+:_shift_yes) reduction(+:_shift_no)
     for(INT64 ix=0 ; ix<npart ; ix++){
         const int tid = omp_get_thread_num();
         
@@ -418,7 +423,7 @@ INT64 particle_extraction(
         const REAL py = position[ix*3+1];
         const REAL pz = position[ix*3+2];
         
-        const REAL tol = 0.00001;
+        const REAL tol = 0.00000000001;
 
         const bool shx = ABS(px-midx) < tol;
         const bool shy = ABS(py-midy) < tol;
@@ -426,11 +431,24 @@ INT64 particle_extraction(
         
         // see comment above ltl function.
 ///*        
-        const bool shift_expansion = (
+        bool shift_expansion = (
             ((always_shift == 1) || shx || shy || shz) && (!(always_shift == -1))
             ) ? true : false;
 //*/        
-//const bool shift_expansion = false;
+//shift_expansion = false;
+//
+
+
+        get_offset_vector(midx, midy, midz, px, py, pz,
+            &radius, &ctheta, &stheta, &cphi, &sphi, &msphi);
+        
+        shift_expansion = (
+            ((always_shift == 1) || (radius < tol) || (stheta<tol)) && (!(always_shift == -1))
+            ) ? true : false;
+
+
+
+
 //printf("SHIFTING IS DISABLED!\n");
         REAL * RESTRICT L_SPACE;
 
@@ -459,7 +477,7 @@ INT64 particle_extraction(
             compute_p_space(nlevel, ctheta, P_SPACE);
             compute_exp_space(nlevel, cphi, sphi, msphi, exp_vec);
 
-
+            _shift_yes++;
         } else {
 
             L_SPACE = cube_start;
@@ -470,6 +488,7 @@ INT64 particle_extraction(
             compute_p_space(nlevel, ctheta, P_SPACE);
             compute_exp_space((int)nlevel, cphi, sphi, msphi, exp_vec);
 
+            _shift_no++;
         }
 
         const REAL _rstheta = 1.0/stheta;
@@ -642,6 +661,9 @@ PRINT_NAN(potential_energy)
     if (count != npart) {err = -4;}
 
     *phi_data = potential_energy;
+
+    *shift_yes += _shift_yes;
+    *shift_no += _shift_no;
     return err;
 }
 
