@@ -121,27 +121,31 @@ class FMMLocal(object):
         }
         if potential is not None and \
                 issubclass(type(potential), ParticleDat):
-            dats['u'] = potential(INC)
+            dats['u'] = potential(INC_ZERO)
             assert potential[:].shape[0] >= positions.npart_local
         elif potential is not None:
             assert potential.shape[0] * potential.shape[1] >= \
                     postitions.npart_local
-
-        compute_pot = INT64(0)
-        dummy_real = REAL(0)
-        pot_ptr = ctypes.byref(dummy_real)
-        if potential is not None:
-            compute_pot.value = 1
-            pot_ptr = _check_dtype(potential, REAL)
-            
 
         self._u[0] = 0.0
 
         nlocal, nhalo, ncell = self.sh.pre_execute(dats=dats)
         ntotal = nlocal + nhalo
         
+
+        compute_pot = INT64(0)
+        dummy_real = REAL(0)
+        pot_ptr = ctypes.byref(dummy_real)
+        if potential is not None:
+            compute_pot.value = 1
+            # pot_ptr = _check_dtype(potential, REAL)
+            pot_ptr = potential.ctypes_data
+
+
+
         if self._ll_array.shape[0] < (ntotal + self._ncells):
             self._ll_array = np.zeros(ntotal+100+self._ncells, dtype=INT64)
+        
 
         if self._tmp_n < ncell*15:
             bn = ncell*15 + 100
@@ -154,7 +158,8 @@ class FMMLocal(object):
             self._tmp_real_fi = host.ThreadSpace(n=3*bn, dtype=REAL)
             self._tmp_real_ui = host.ThreadSpace(n=bn, dtype=REAL)
             self._tmp_n = bn
-        
+ 
+
         #print("\ttmp_n", self._tmp_n, "nlocal", nlocal, "nhalo", nhalo, "max_cell", ncell)
 
         #for px in range(ntotal):
@@ -171,7 +176,7 @@ class FMMLocal(object):
             free_space = 0
 
         exec_count = INT64(0)
-
+        
         err = self._lib(
             INT64(free_space),
             self.domain.extent.ctypes_data,
