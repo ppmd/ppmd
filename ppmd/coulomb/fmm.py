@@ -308,7 +308,7 @@ class PyFMM(object):
                           '/FMMSource/TranslateMTLZ2.h') as fh:
             hpp = fh.read()
         
-        self.mtl_block_size = 8 if runtime.NUM_THREADS == 1 else 2
+        self.mtl_block_size = 4 if runtime.NUM_THREADS == 1 else 2
         hpp = hpp % {
             'SUB_ASTRIDE1': ASTRIDE1,
             'SUB_ASTRIDE2': ASTRIDE2,
