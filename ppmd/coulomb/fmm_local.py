@@ -87,6 +87,8 @@ class FMMLocal(object):
         self._tmp_real_qj = host.ThreadSpace(n=bn, dtype=REAL)
         self._tmp_real_fi = host.ThreadSpace(n=bn, dtype=REAL)
 
+        self.exec_count = 0
+
     def __call__(self, positions, charges, forces, cells, potential=None):
         """
         const INT64 free_space,
@@ -119,10 +121,10 @@ class FMMLocal(object):
         }
         if potential is not None and \
                 issubclass(type(potential), ParticleDat):
-            dats['u'] = potential
-            assert potential[:].shape[0] <= positions.npart_local
+            dats['u'] = potential(INC)
+            assert potential[:].shape[0] >= positions.npart_local
         elif potential is not None:
-            assert potential.shape[0] * potential.shape[1] <= \
+            assert potential.shape[0] * potential.shape[1] >= \
                     postitions.npart_local
 
         compute_pot = INT64(0)
@@ -150,6 +152,7 @@ class FMMLocal(object):
             self._tmp_real_qi = host.ThreadSpace(n=bn, dtype=REAL)
             self._tmp_real_qj = host.ThreadSpace(n=bn, dtype=REAL)
             self._tmp_real_fi = host.ThreadSpace(n=3*bn, dtype=REAL)
+            self._tmp_real_ui = host.ThreadSpace(n=bn, dtype=REAL)
             self._tmp_n = bn
         
         #print("\ttmp_n", self._tmp_n, "nlocal", nlocal, "nhalo", nhalo, "max_cell", ncell)
@@ -166,6 +169,8 @@ class FMMLocal(object):
             free_space = 1
         else:
             free_space = 0
+
+        exec_count = INT64(0)
 
         err = self._lib(
             INT64(free_space),
@@ -190,9 +195,13 @@ class FMMLocal(object):
             self._tmp_real_qi.ctypes_data,
             self._tmp_real_qj.ctypes_data,
             self._tmp_real_fi.ctypes_data,
+            self._tmp_real_ui.ctypes_data,
             compute_pot,
-            pot_ptr
+            pot_ptr,
+            ctypes.byref(exec_count)
         )
+        
+        self.exec_count += exec_count.value
 
         self.sh.post_execute(dats=dats)
         if err < 0:

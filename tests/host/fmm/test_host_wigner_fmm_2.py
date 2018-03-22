@@ -348,12 +348,12 @@ def test_new_matvec_2():
             x.imag[:] = im_oall[s:e:]
 
             Ab_x = np.dot(wmb[lx], x)
-
-            err5 = np.linalg.norm(Ab_x.real - re_tmp0[s:e], np.inf)
-            err6 = np.linalg.norm(Ab_x.imag - im_tmp0[s:e], np.inf)
-
-            assert err5 < 10.**-14
-            assert err6 < 10.**-14
+            
+            # the use of this temporary space was changed
+            #err5 = np.linalg.norm(Ab_x.real - re_tmp0[s:e], np.inf)
+            #err6 = np.linalg.norm(Ab_x.imag - im_tmp0[s:e], np.inf)
+            #assert err5 < 10.**-14
+            #assert err6 < 10.**-14
 
             A_alpha = np.zeros((nc,nc), dtype=np.complex)
             for mxi, mx, in enumerate(range(-lx, lx+1)):

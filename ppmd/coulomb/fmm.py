@@ -280,6 +280,13 @@ class PyFMM(object):
         with open(str(_SRC_DIR) + \
                           '/FMMSource/ParticleExtraction.h') as fh:
             hpp = fh.read()
+        
+
+        hpp = hpp % {
+            'SUB_FORCE_UNIT': float(force_unit),
+            'SUB_ENERGY_UNIT': float(energy_unit)
+        }
+
         self._extraction_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_extract')['particle_extraction']
 
@@ -308,7 +315,7 @@ class PyFMM(object):
                           '/FMMSource/TranslateMTLZ2.h') as fh:
             hpp = fh.read()
         
-        self.mtl_block_size = 4 if runtime.NUM_THREADS == 1 else 2
+        self.mtl_block_size = 8 if runtime.NUM_THREADS == 1 else 4
         hpp = hpp % {
             'SUB_ASTRIDE1': ASTRIDE1,
             'SUB_ASTRIDE2': ASTRIDE2,
@@ -661,6 +668,8 @@ class PyFMM(object):
         p[b+'mtl_gflops'] = self.flop_rate_mtl() / (10.**9.)
         p[b+'ltl'] = self.timer_ltl.time()
         p[b+'local'] = self.timer_local.time()
+        p[b+'local_gflops_vapprox'] = self._fmm_local.exec_count * 22  \
+         / (self.timer_local.time()*10.**9)
         p[b+'halo'] = self.timer_halo.time()
         p[b+'down'] = self.timer_down.time()
         p[b+'up'] = self.timer_up.time()
@@ -820,7 +829,8 @@ class PyFMM(object):
 
             #print("DOWN END", level)
         phi_extract = self._compute_cube_extraction(positions, charges,
-                                                    forces=forces)
+                                                    forces=forces,
+                                                    potential=potential)
 
 
 
@@ -847,7 +857,8 @@ class PyFMM(object):
         t = 0
         for mx in range(self.L):
             n = 2*(mx+1)+1
-            t += (2*(n**2))*8
+            t += (2*(n**2))*2
+            t += n*8
 
         t *= 2
 
@@ -978,11 +989,22 @@ class PyFMM(object):
         # hack to ensure halo exchange
         fmm_cell[:positions.npart_local:, 0] = \
             self._tmp_cell[:positions.npart_local:]
+
         fmm_cell.ctypes_data_post(access.WRITE)
 
         self.timer_contrib_mpi.pause()
 
-    def _compute_cube_extraction(self, positions, charges, forces=None):
+    def _compute_cube_extraction(self, positions, charges,
+            forces=None, potential=None):
+
+
+        compute_pot = INT64(0)
+        dummy_real = REAL(0)
+        pot_ptr = ctypes.byref(dummy_real)
+        if potential is not None:
+            assert potential.npart_local >= positions.npart_local
+            compute_pot.value = 1
+            pot_ptr = _check_dtype(potential, REAL)
 
         self.timer_extract_mpi.start()
         if forces is None:
@@ -1023,14 +1045,19 @@ class PyFMM(object):
             _check_dtype(self._ipower_ltl, REAL),
             INT64(0),
             ctypes.byref(self.shift_yes),
-            ctypes.byref(self.shift_no)
+            ctypes.byref(self.shift_no),
+            compute_pot,
+            pot_ptr
         )
         if err < 0: raise RuntimeError('Negative return code: {}'.format(err))
 
 
         red_re = mpi.all_reduce(np.array((phi.value)))
         forces.ctypes_data_post(access.W)
+        if potential is not None:
+            potential.ctypes_data_post(access.WRITE)
         self.timer_extract.pause()
+
         return red_re
 
 

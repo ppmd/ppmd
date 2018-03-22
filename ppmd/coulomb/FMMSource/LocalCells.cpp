@@ -12,6 +12,7 @@ static inline REAL compute_interactions_same_cell(
     const REAL *  RESTRICT qi,
     const REAL *  RESTRICT qj,
     REAL *  RESTRICT fi,
+    REAL *  RESTRICT ui,
     const INT64 *  RESTRICT ti,
     const INT64 *  RESTRICT tj
 ){
@@ -61,6 +62,7 @@ reduction(+:fz)
         fi [pxi] += fx;
         fiy[pxi] += fy;
         fiz[pxi] += fz;
+        ui[pxi] += energyi * ENERGY_UNIT;
     }
 
     return energy * 0.5 * ENERGY_UNIT;
@@ -75,7 +77,8 @@ static inline REAL compute_interactions(
     const REAL *  RESTRICT pj,
     const REAL *  RESTRICT qi,
     const REAL *  RESTRICT qj,
-    REAL *  RESTRICT fi
+    REAL *  RESTRICT fi,
+    REAL *  RESTRICT ui
 ){
     
     REAL * RESTRICT fiy = &fi[si];
@@ -117,6 +120,7 @@ reduction(+:fz)
         fi [pxi] += fx;
         fiy[pxi] += fy;
         fiz[pxi] += fz;
+        ui[pxi] += energyi * ENERGY_UNIT;
     }
 
     return energy * 0.5 * ENERGY_UNIT;
@@ -148,8 +152,10 @@ int local_cell_by_cell(
     REAL * RESTRICT * RESTRICT tmp_real_qi,
     REAL * RESTRICT * RESTRICT tmp_real_qj,
     REAL * RESTRICT * RESTRICT tmp_real_fi,
+    REAL * RESTRICT * RESTRICT tmp_real_ui,
     const INT64 compute_potential,
-    REAL * RESTRICT potential_array
+    REAL * RESTRICT potential_array,
+    INT64 * RESTRICT exec_count
 ){
 
     omp_set_num_threads(num_threads);
@@ -196,6 +202,8 @@ int local_cell_by_cell(
     const REAL hey = ey*0.5;
     const REAL hez = ez*0.5;
     
+    INT64 _exec_count = 0;
+
 
     /*
     for( INT64 nx=0 ; nx<ntotal ; nx++){
@@ -297,9 +305,10 @@ int local_cell_by_cell(
     if (err < 0) { return err; }
 
 #pragma omp parallel for default(none) reduction(min:err) reduction(+:energy) reduction(+:part_count) \
+reduction(+:_exec_count) \
 shared(local_size, local_offset, global_size, P, Q, C, F, U, ll_array, \
 ll_ccc_array, tmp_int_i, tmp_int_j, tmp_real_pi, tmp_real_pj, tmp_real_qi, \
-tmp_real_qj, tmp_real_fi, HMAP) schedule(dynamic)
+tmp_real_qj, tmp_real_fi, tmp_real_ui, HMAP, potential_array) schedule(dynamic)
     for(INT64 cx=0 ; cx<ncells_local ; cx++ ){
         if (err < 0){ printf("Negative error code detected."); continue; }
 
@@ -312,6 +321,7 @@ tmp_real_qj, tmp_real_fi, HMAP) schedule(dynamic)
         REAL * RESTRICT  tmp_qi = tmp_real_qi[threadid];
         REAL * RESTRICT  tmp_qj = tmp_real_qj[threadid];
         REAL * RESTRICT  tmp_fi = tmp_real_fi[threadid];
+        REAL * RESTRICT  tmp_ui = tmp_real_ui[threadid];
 
         // convert cell linear index to tuple
         // local_size is zyx
@@ -355,6 +365,8 @@ tmp_real_qj, tmp_real_fi, HMAP) schedule(dynamic)
                 tmp_fi[ci_n*0 + ci_nt] = 0.0;
                 tmp_fi[ci_n*1 + ci_nt] = 0.0;
                 tmp_fi[ci_n*2 + ci_nt] = 0.0;
+                // zero this particle's potential
+                tmp_ui[ci_nt] = 0.0;
                 // copy particle id
                 tmp_i[ci_nt] = ci_tx;
                 // increase particle counter
@@ -466,11 +478,12 @@ tmp_real_qj, tmp_real_fi, HMAP) schedule(dynamic)
 
             if (hx != gx){
                 energy += compute_interactions(
-                    ci_n, cj_n, ci_nt, cj_nt, tmp_pi, tmp_pj, tmp_qi, tmp_qj, tmp_fi);  
+                    ci_n, cj_n, ci_nt, cj_nt, tmp_pi, tmp_pj, tmp_qi, tmp_qj, tmp_fi, tmp_ui);  
             } else {
                 energy += compute_interactions_same_cell(
-                    ci_n, cj_n, ci_nt, cj_nt, tmp_pi, tmp_pj, tmp_qi, tmp_qj, tmp_fi, tmp_i, tmp_j);  
+                    ci_n, cj_n, ci_nt, cj_nt, tmp_pi, tmp_pj, tmp_qi, tmp_qj, tmp_fi, tmp_ui, tmp_i, tmp_j);  
             }
+            _exec_count += ci_nt*cj_nt;
 
         }
 
@@ -483,6 +496,14 @@ tmp_real_qj, tmp_real_fi, HMAP) schedule(dynamic)
             part_count++;
         }
 
+        if (compute_potential>0){
+            for(INT64 px=0 ; px<ci_nt ; px++){
+                const INT64 idx = tmp_i[px];
+                potential_array[idx] += tmp_ui[px];
+            }
+        }
+
+
     }
 
     if (err<0) {return err;}
@@ -493,6 +514,7 @@ tmp_real_qj, tmp_real_fi, HMAP) schedule(dynamic)
     }
 
     U[0] = energy;
+    *exec_count = _exec_count;
 
     return err;
 }

@@ -341,7 +341,9 @@ INT64 particle_extraction(
     const REAL * RESTRICT i_array,
     const INT64 always_shift,
     INT64 * RESTRICT shift_yes,
-    INT64 * RESTRICT shift_no
+    INT64 * RESTRICT shift_no,
+    const INT64 compute_potential,
+    REAL * RESTRICT potential_array
 ){
     INT64 err = 0;
     omp_set_num_threads(thread_max);
@@ -385,7 +387,7 @@ INT64 particle_extraction(
         boundary, cube_offset, cube_dim, err, exp_space, force, \
         factorial_vec, P_SPACE_VEC, L_SPACE_VEC,\
         cube_half_side_len, cube_ilen, charge, local_moments, fmm_cell, cube_side_counts,\
-        alm, almr, i_array) \
+        alm, almr, i_array, potential_array) \
         schedule(dynamic) \
         reduction(+: count) reduction(+: potential_energy) reduction(+:_shift_yes) reduction(+:_shift_no)
     for(INT64 ix=0 ; ix<npart ; ix++){
@@ -603,10 +605,7 @@ INT64 particle_extraction(
             rhol *= radius;
             rhol2 *= radius;
         }
-        potential_energy += local_pe*0.5*charge[ix];
         
-
-
         sp_radius *= charge[ix];
         sp_theta *= charge[ix];
         sp_phi *= charge[ix];
@@ -645,6 +644,16 @@ PRINT_NAN(potential_energy)
         force[ix*3 + 1] -= sp_radius * sphi * stheta    +   sp_theta * sphi * ctheta    +   sp_phi * cphi;
         force[ix*3 + 2] -= sp_radius * ctheta           -   sp_theta * stheta;
 
+        force[ix*3    ] *= FORCE_UNIT;
+        force[ix*3 + 1] *= FORCE_UNIT;
+        force[ix*3 + 2] *= FORCE_UNIT;
+
+        potential_energy += local_pe*0.5*charge[ix];
+
+        if (compute_potential > 0){
+            potential_array[ix] += ENERGY_UNIT * local_pe*charge[ix];
+        }
+
         if(isbad(sp_radius) || isbad(sp_theta) || isbad(sp_phi) || isbad(potential_energy)){
             printf("ERROR: bad value detected (err code -5).\n");
             #pragma omp critical
@@ -660,7 +669,7 @@ PRINT_NAN(potential_energy)
     if (err < 0){return err;}
     if (count != npart) {err = -4;}
 
-    *phi_data = potential_energy;
+    *phi_data = potential_energy * ENERGY_UNIT;
 
     *shift_yes += _shift_yes;
     *shift_no += _shift_no;

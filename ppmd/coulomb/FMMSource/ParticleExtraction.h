@@ -22,7 +22,7 @@ using namespace std;
 #define ABS(x) ((x) > 0 ? (x) : -1*(x))
 
 
-#define PRINT_NAN(x) if(std::isnan(x) || std::isinf(x)){printf(#x);printf(" is nan/inf, value: %f \n", x);}
+#define PRINT_NAN(x) if(std::isnan(x) || std::isinf(x)){printf(#x);printf(" is nan/inf, value: %%f \n", x);}
 
 /*
 Layout of memory used by above macros.
@@ -35,6 +35,9 @@ and
 | Re coeffs for all l | Im coeffs for all l |
 
 */
+
+#define ENERGY_UNIT (%(SUB_ENERGY_UNIT)s)
+#define FORCE_UNIT (%(SUB_FORCE_UNIT)s)
 
 template <typename T>
 static inline bool isbad(const T x){

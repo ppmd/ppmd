@@ -212,9 +212,19 @@ static inline void rotate_p_backward(
     REAL * RESTRICT re_bz,
     REAL * RESTRICT im_bz
 ){
+
     //rotate around y axis
     // b <- (Wigner_d) * x
+
+    
     const INT64 n = 2*p+1;
+
+    for(INT64 rx=0 ; rx<n ; rx++){
+        re_by[rx] = re_x[n-1-rx];
+        im_by[rx] = im_x[n-1-rx];
+    }
+
+
     for(INT64 rx=0 ; rx<p ; rx++){
         REAL hre = 0.0;
         REAL him = 0.0;
@@ -224,13 +234,29 @@ static inline void rotate_p_backward(
             const REAL a = wig_forw[rx*n + cx];
             hre += a * re_x[cx];
             him += a * im_x[cx];
-            lre += a * re_x[n-cx-1];
-            lim += a * im_x[n-cx-1];
+            //lre += a * re_x[n-cx-1];
+            //lim += a * im_x[n-cx-1];
+            lre += a * re_by[cx];
+            lim += a * im_by[cx];
         }
-        re_by[rx] = hre;
-        im_by[rx] = him;
-        re_by[n-rx-1] = lre;
-        im_by[n-rx-1] = lim;
+
+        cplx_mul_add(
+            hre, him,
+            exp_re[p-1-rx], exp_im[p-1-rx],
+            &re_bz[rx], &im_bz[rx]
+        );
+
+        cplx_mul_add(
+            lre, lim,
+            exp_re[p-1-rx], -1.0*exp_im[p-1-rx],
+            &re_bz[n-rx-1], &im_bz[n-rx-1]
+        );
+
+        //re_by[rx] = hre;
+        //im_by[rx] = him;
+
+        //re_by[n-rx-1] = lre;
+        //im_by[n-rx-1] = lim;
     }
     // middle row
     REAL mre = 0.0;
@@ -240,9 +266,10 @@ static inline void rotate_p_backward(
         mre += a * re_x[cx];
         mim += a * im_x[cx];
     }
-    re_by[p] = mre;
-    im_by[p] = mim;
-    
+    re_bz[p] += mre;
+    im_bz[p] += mim;
+
+    /*
     // rotate negative terms around z axis
     for(INT64 rx=0 ; rx<p ; rx++){
          cplx_mul_add(
@@ -251,9 +278,11 @@ static inline void rotate_p_backward(
             &re_bz[rx], &im_bz[rx]
         );
     }
-    re_bz[p] += re_by[p];
-    im_bz[p] += im_by[p];
+    */
+    //re_bz[p] += re_by[p];
+    //im_bz[p] += im_by[p];
     // rotate positive terms around z axis
+    /*
     for(INT64 rx=0 ; rx<p ; rx++){
          cplx_mul_add(
             re_by[p+1+rx], im_by[p+1+rx],
@@ -261,6 +290,7 @@ static inline void rotate_p_backward(
             &re_bz[p+1+rx], &im_bz[p+1+rx]
         );
     }
+    */
 
 }
 
@@ -361,9 +391,16 @@ static inline void mtl_z(
 
     const REAL iradius = 1./radius;
     iradius_n[0] = 1.0;
+    
     for(INT64 nx=1 ; nx<nblk ; nx++){ iradius_n[nx] = iradius_n[nx-1] * iradius; }
-
     REAL * RESTRICT iradius_p1 = &iradius_n[1];
+    
+
+    for(INT64 nxjx=0 ; nxjx<2*nlevel ; nxjx++){
+        iradius_p1[nxjx] *= ar_array[nxjx];
+    }
+
+
     
     const INT64 ts = nlevel*nlevel;
     REAL * RESTRICT tmp_rel = &thread_space[0];
@@ -372,53 +409,74 @@ static inline void mtl_z(
     REAL * RESTRICT tmp_imh = &thread_space[3*ts];
 
     // rotate foward
+///*    
     rotate_moments_forward(nlevel,
         exp_re, exp_im, wig_forw,
         odata, &odata[im_offset],
         tmp_reh, tmp_imh,
         tmp_rel, tmp_iml
     );
-
+//*/
     for(INT64 jx=0 ; jx<ts ; jx++){
         tmp_reh[jx]=0.0;
         tmp_imh[jx]=0.0;
     }
 
+
+///*    
     // loop over parent moments
     for(INT64 jx=0     ; jx<nlevel ; jx++ ){
     
         REAL * RESTRICT new_re = &tmp_reh[CUBE_IND(jx, 0)];
         REAL * RESTRICT new_im = &tmp_imh[CUBE_IND(jx, 0)];
 
-        for(INT64 nx=0     ; nx<nlevel ; nx++){
-        
-            const INT64 kmax = MIN(nx, jx);
-            const REAL ia_jn = ar_array[nx+jx];
-            const REAL m1tn = IARRAY[nx];   // -1^{n}
+        REAL m1 = 1.0;
+        for(INT64 nx=0     ; nx<jx ; nx++){
+            const INT64 kmax = nx;
+//const REAL ia_jn = ar_array[nx+jx];
+//const REAL m1tn = IARRAY[nx];   // -1^{n}
             const REAL rr_jn1 = iradius_p1[jx+nx];     // 1 / rho^{j + n + 1}
             
-            const REAL outer_coeff = ia_jn * m1tn * rr_jn1;
+//const REAL outer_coeff = ia_jn * m1tn * rr_jn1;
+            const REAL outer_coeff = m1 * rr_jn1;
 
-#pragma omp simd
+#pragma omp simd 
             for(INT64 kx=-1*kmax ; kx<=kmax    ; kx++){
-
                 const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
-
                 const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + kx];
-                
                 const REAL ipower = IARRAY[kx];
-
                 const REAL coeff_re = ipower * anm * ajk * outer_coeff;
-                
                 const INT64 oind = CUBE_IND(nx, kx);
-
                 new_re[kx] += tmp_rel[oind] * coeff_re;
                 new_im[kx] += tmp_iml[oind] * coeff_re;
-
             }
-
+            m1 *= -1.0;
         }
+        for(INT64 nx=jx     ; nx<nlevel ; nx++){
+            const INT64 kmax = jx;
+//const REAL ia_jn = ar_array[nx+jx];
+//const REAL m1tn = IARRAY[nx];   // -1^{n}
+            const REAL rr_jn1 = iradius_p1[jx+nx];     // 1 / rho^{j + n + 1}
+            
+//const REAL outer_coeff = ia_jn * m1tn * rr_jn1;
+            const REAL outer_coeff = m1 * rr_jn1;
+
+#pragma omp simd 
+            for(INT64 kx=-1*kmax ; kx<=kmax    ; kx++){
+                const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
+                const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + kx];
+                const REAL ipower = IARRAY[kx];
+                const REAL coeff_re = ipower * anm * ajk * outer_coeff;
+                const INT64 oind = CUBE_IND(nx, kx);
+                new_re[kx] += tmp_rel[oind] * coeff_re;
+                new_im[kx] += tmp_iml[oind] * coeff_re;
+            }
+            m1 *= -1.0;
+        }
+
     }
+//*/
+///*
     
     // rotate backwards
     rotate_moments_backward(nlevel, 
@@ -427,7 +485,7 @@ static inline void mtl_z(
         tmp_rel, tmp_iml,
         ldata, &ldata[im_offset]
     );
-
+//*/
 }
 
 
@@ -875,7 +933,9 @@ static inline void blocked_mtl_z(
     iradius_n[0] = 1.0;
     for(INT64 nx=1 ; nx<nblk ; nx++){ iradius_n[nx] = iradius_n[nx-1] * iradius; }
     REAL * RESTRICT iradius_p1 = &iradius_n[1];
-    
+    for(INT64 nxjx=0 ; nxjx<2*nlevel ; nxjx++){
+        iradius_p1[nxjx] *= ar_array[nxjx];
+    }   
     const INT64 ts = nlevel*nlevel;
     
     REAL * RESTRICT lre = ldata;
@@ -898,11 +958,12 @@ static inline void blocked_mtl_z(
         for(INT64 nx=0     ; nx<nlevel ; nx++){
         
             const INT64 kmax = MIN(nx, jx);
-            const REAL ia_jn = ar_array[nx+jx];
+//const REAL ia_jn = ar_array[nx+jx];
             const REAL m1tn = IARRAY[nx];   // -1^{n}
             const REAL rr_jn1 = iradius_p1[jx+nx];     // 1 / rho^{j + n + 1}
             
-            const REAL outer_coeff = ia_jn * m1tn * rr_jn1;
+//const REAL outer_coeff = ia_jn * m1tn * rr_jn1;
+            const REAL outer_coeff = m1tn * rr_jn1;
 
             for(INT64 kx=-1*kmax ; kx<=kmax    ; kx++){
 
@@ -913,13 +974,13 @@ static inline void blocked_mtl_z(
                 // store the coefficient to use across the blocks;
                 coeff_arr[kx] = coeff_re;
             }
-
             
             // apply the coefficient to each block
             for( INT64 blkx=0 ; blkx<2*block_size ; blkx++){
 
                 const INT64 lind = blkx*im_offset + CUBE_IND(jx, 0);
                 const INT64 oind = blkx*im_offset + CUBE_IND(nx, 0);
+#pragma omp simd
                 for(INT64 kx=-1*kmax ; kx<=kmax    ; kx++){
                     const REAL coeff_re = coeff_arr[kx];
 
@@ -985,6 +1046,9 @@ int translate_mtl(
     const INT64 block_size = BLOCK_SIZE;
     const INT64 block_count = ncells/block_size;
     const INT64 block_end = block_count*block_size;
+    
+    // skip blocked loop
+    //const INT64 block_end = 0;
     
 //printf("block_count %d, peel_size %d\n", block_count, ncells-block_end);
 

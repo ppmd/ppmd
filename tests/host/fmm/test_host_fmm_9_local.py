@@ -133,7 +133,7 @@ def test_fmm_init_2_1():
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-    eps = 10.**-2
+    eps = 10.**-3
 
     fmm = PyFMM(domain=A.domain, r=3, eps=eps, free_space=True)
 
@@ -147,6 +147,8 @@ def test_fmm_init_2_1():
 
     A.P = data.PositionDat(ncomp=3)
     A.Q = data.ParticleDat(ncomp=1)
+    A.U = data.ParticleDat(ncomp=1)
+    A.F = data.ParticleDat(ncomp=3)
 
     A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
 
@@ -186,6 +188,7 @@ def test_fmm_init_2_1():
     # compute potential energy to point across all charges directly
     P2 = data.PositionDat(npart=N, ncomp=3)
     Q2 = data.ParticleDat(npart=N, ncomp=1)    
+    U2 = data.ParticleDat(npart=N, ncomp=1)
     P2[:,:] = A.P[:N:,:]
     Q2[:,:] = A.Q[:N:,:]
     phi_ga = data.ScalarArray(ncomp=1, dtype=ctypes.c_double)
@@ -194,7 +197,9 @@ def test_fmm_init_2_1():
     const double d0 = P.j[0] - P.i[0];
     const double d1 = P.j[1] - P.i[1];
     const double d2 = P.j[2] - P.i[2];
-    phi[0] += 0.5 * Q.i[0] * Q.j[0] / sqrt(d0*d0 + d1*d1 + d2*d2);
+    const double contrib = Q.i[0] * Q.j[0] / sqrt(d0*d0 + d1*d1 + d2*d2);
+    phi[0] += 0.5 * contrib;
+    U.i[0] += contrib;
     """
     phi_kernel = kernel.Kernel('all_to_all_phi', src,
                                headers=(kernel.Header('math.h'),))
@@ -203,9 +208,11 @@ def test_fmm_init_2_1():
     phi_loop = pairloop.AllToAllNS(kernel=phi_kernel,
                                    dat_dict={'P': P2(access.READ),
                                              'Q': Q2(access.READ),
-                                             'phi': phi_ga(access.INC_ZERO)})
+                                             'phi': phi_ga(access.INC_ZERO),
+                                             'U': U2(access.INC_ZERO)})
     phi_loop.execute()
     
+
     if DEBUG:
         phi_py = 0.0
         for ix in range(N):
@@ -283,12 +290,10 @@ def test_fmm_init_2_1():
     assert abs(phi_ga[0] - phi_sph_re - phi_local) < eps, "bad real part"
 
 
-
-
-
-
-
-
+    phi_py2 = fmm(A.P, A.Q, forces=A.F, potential=A.U)
+    
+    for px in range(A.npart_local):
+        assert abs(U2[px,0] - A.U[px,0]) < eps
 
 
 
