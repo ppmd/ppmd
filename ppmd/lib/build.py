@@ -89,7 +89,7 @@ def _source_write(header_code, src_code, filename, extensions, dst_dir, CC):
             #ifndef %(UNIQUENAME)s_H
             #define %(UNIQUENAME)s_H %(UNIQUENAME)s_H
             #define RESTRICT %(RESTRICT_FLAG)s
-            
+            #include <cstdint>
             %(HEADER_CODE)s
             
             #endif

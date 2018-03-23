@@ -82,7 +82,13 @@ class EwaldOrthoganal(object):
         """Real space padding width"""
         self.alpha = float(alpha)
         """alpha"""
+        
 
+        
+        self.real_cutoff = float(real_cutoff)
+        alpha = 0.2
+        #print("alpha", alpha)
+        #print("r_c", self.real_cutoff)
 
         # these parts are specific to the orthongonal box
         extent = self.domain.extent
@@ -131,9 +137,13 @@ class EwaldOrthoganal(object):
         #print 'max reciprocal vector len:', max_len
         nmax_t = max(nmax_x, nmax_y, nmax_z)
         #print "nmax_t", nmax_t
+        
+        
 
         self.kmax = (nmax_x, nmax_y, nmax_z)
         """Number of reciporcal vectors taken in each direction."""
+        #print("kmax", self.kmax)
+
         self.recip_cutoff = max_len
         """Reciprocal space cutoff."""
         self.recip_vectors = (gx,gy,gz)
@@ -296,6 +306,8 @@ class EwaldOrthoganal(object):
             }
         )
 
+        self._extract_force_energy_pot_lib = None
+
     def _init_real_space_lib(self):
 
         # real space energy and force kernel
@@ -334,6 +346,35 @@ class EwaldOrthoganal(object):
             },
             shell_cutoff=rn
         )
+
+        # real space energy and force kernel and per particle potential
+        with open(str(
+                _SRC_DIR) + '/EwaldOrthSource/RealSpaceForceEnergyPot.h', 'r') as fh:
+            _cont_header_src = fh.read()
+        _cont_header = (kernel.Header(block=_cont_header_src % self._subvars),)
+
+        with open(str(
+                _SRC_DIR) + '/EwaldOrthSource/RealSpaceForceEnergyPot.cpp', 'r') as fh:
+            _cont_source = fh.read()
+
+        _real_kernel = kernel.Kernel(
+            name='real_space_part_pot',
+            code=_cont_source,
+            headers=_cont_header
+        ) 
+
+        self._real_space_pairloop_pot = PPL(
+            kernel=_real_kernel,
+            dat_dict={
+                'P': data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(access.READ),
+                'Q': data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(access.READ),
+                'UPP': data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(access.INC),
+                'F': data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(access.INC),
+                'u': self._vars['real_space_energy'](access.INC_ZERO)
+            },
+            shell_cutoff=rn
+        )
+
 
 
     def _init_coeff_space(self):
@@ -404,8 +445,41 @@ class EwaldOrthoganal(object):
             energy[0] = re[0]
         return re[0]
 
-    def extract_forces_energy_reciprocal(self, positions, charges, forces, energy):
-        self._extract_reciprocal_contribution(positions, charges, forces, energy)
+    def _extract_reciprocal_contribution2(self, positions, charges, forces, energy=None, potential=None):
+        
+
+        if self._extract_force_energy_pot_lib is None:
+            raise RuntimeError("only implemented in EwaldOrthHalf")
+        if potential is None:
+            raise RuntimeError("Need a potential dat")
+
+        NLOCAL = positions.npart_local
+        re = self._vars['recip_space_energy']
+        self._extract_force_energy_pot_lib.execute(
+            n = NLOCAL,
+            dat_dict={
+                'Positions': positions(access.READ),
+                'Charges': charges(access.READ),
+                'RecipSpace': self._vars['recip_space_kernel'](access.READ),
+                'Forces': forces(access.INC),
+                'Potential': potential(access.INC),
+                'Energy': re(access.INC_ZERO),
+                'CoeffSpace': self._vars['coeff_space_kernel'](access.READ)
+            }
+        )
+        if energy is not None:
+            energy[0] = re[0]
+        return re[0]
+
+
+
+
+    def extract_forces_energy_reciprocal(self, positions, charges, forces, energy, potential=None):
+        if potential is None:
+            return self._extract_reciprocal_contribution(positions, charges, forces, energy)
+        else:
+            return self._extract_reciprocal_contribution2(positions, charges, forces, energy, potential)
+
 
 
     def evaluate_contributions(self, positions, charges):
@@ -415,21 +489,33 @@ class EwaldOrthoganal(object):
         self._calculate_reciprocal_contribution(positions, charges)
 
 
-    def extract_forces_energy_real(self, positions, charges, forces, energy=None):
+    def extract_forces_energy_real(self, positions, charges, forces, energy=None, potential=None):
 
         if self._real_space_pairloop is None:
             self._init_real_space_lib()
 
         re = self._vars['real_space_energy']
 
-        self._real_space_pairloop.execute(
-            dat_dict={
-                'P': positions(access.READ),
-                'Q': charges(access.READ),
-                'F': forces(access.INC),
-                'u': re(access.INC_ZERO)
-            }
-        )
+
+        if potential is None:
+            self._real_space_pairloop.execute(
+                dat_dict={
+                    'P': positions(access.READ),
+                    'Q': charges(access.READ),
+                    'F': forces(access.INC),
+                    'u': re(access.INC_ZERO)
+                }
+            )
+        else:
+            self._real_space_pairloop_pot.execute(
+                dat_dict={
+                    'P': positions(access.READ),
+                    'Q': charges(access.READ),
+                    'F': forces(access.INC),
+                    'UPP': potential(access.INC),
+                    'u': re(access.INC_ZERO)
+                }
+            )
 
         if energy is not None:
             energy[0] = re[0]
@@ -467,21 +553,74 @@ class EwaldOrthoganal(object):
             }
         )
 
-    def evaluate_self_interactions(self, charges, energy=None):
+        with open(str(
+            _SRC_DIR) + '/EwaldOrthSource/SelfInteractionPot.h', 'r') as fh:
+            _cont_header_src = fh.read()
+        _cont_header = (kernel.Header(block=_cont_header_src % self._subvars),)
+
+        with open(str(
+            _SRC_DIR) + '/EwaldOrthSource/SelfInteractionPot.cpp', 'r') as fh:
+            _cont_source = fh.read()
+
+        _real_kernel = kernel.Kernel(
+            name='self_interaction_part_pot',
+            code=_cont_source,
+            headers=_cont_header
+        )
+
+        self._self_interaction_pot_lib = PL(
+            kernel=_real_kernel,
+            dat_dict={
+                'Q': data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(access.READ),
+                'UPP': data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(access.INC),
+                'u': self._vars['self_interaction_energy'](access.INC_ZERO)
+            }
+        )
+
+
+
+    def evaluate_self_interactions(self, charges, energy=None, potential=None):
 
         if self._self_interaction_lib is None:
             self._init_self_interaction_lib()
         en = self._vars['self_interaction_energy']
-        self._self_interaction_lib.execute(
-            dat_dict={
-                'Q': charges(access.READ),
-                'u': en(access.INC_ZERO)
-            }
-        )
+        
+
+
+        if potential is None:
+            self._self_interaction_lib.execute(
+                dat_dict={
+                    'Q': charges(access.READ),
+                    'u': en(access.INC_ZERO)
+                }
+            )
+        else:
+            self._self_interaction_pot_lib.execute(
+                dat_dict={
+                    'UPP': potential(access.INC),
+                    'Q': charges(access.READ),
+                    'u': en(access.INC_ZERO)
+                }
+            )
+
         if energy is not None:
             energy[0] = en[0]
 
         return en[0]
+
+
+    def __call__(self, positions, charges, forces, potential=None):
+        
+        self.evaluate_contributions(positions=positions, charges=charges)
+
+        e = 0.0
+        e += self.extract_forces_energy_reciprocal(positions, charges, forces, energy=None, potential=potential)
+        e += self.extract_forces_energy_real(positions, charges, forces, energy=None, potential=potential)
+        e += self.evaluate_self_interactions(charges, energy=None, potential=potential)
+        
+        return e
+
+
 
 
     @staticmethod

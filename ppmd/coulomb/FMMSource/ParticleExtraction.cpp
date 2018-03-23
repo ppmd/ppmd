@@ -647,11 +647,14 @@ PRINT_NAN(potential_energy)
         force[ix*3    ] *= FORCE_UNIT;
         force[ix*3 + 1] *= FORCE_UNIT;
         force[ix*3 + 2] *= FORCE_UNIT;
+        
+        local_pe *= ENERGY_UNIT;
+        local_pe *= charge[ix];
 
-        potential_energy += local_pe*0.5*charge[ix];
+        potential_energy += local_pe*0.5;
 
         if (compute_potential > 0){
-            potential_array[ix] += ENERGY_UNIT * local_pe*charge[ix];
+            potential_array[ix] += local_pe;
         }
 
         if(isbad(sp_radius) || isbad(sp_theta) || isbad(sp_phi) || isbad(potential_energy)){
@@ -669,7 +672,7 @@ PRINT_NAN(potential_energy)
     if (err < 0){return err;}
     if (count != npart) {err = -4;}
 
-    *phi_data = potential_energy * ENERGY_UNIT;
+    *phi_data = potential_energy;
 
     *shift_yes += _shift_yes;
     *shift_no += _shift_no;

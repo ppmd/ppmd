@@ -74,6 +74,53 @@ def test_ewald_energy_python_co2_2_1():
         assert abs( np.sum(A.charges[:, 0]) ) < 10.**-12, "total charge not zero"
 
 
+@pytest.mark.skipif("mpi_ncomp>1")
+def test_ewald_energy_per_particle():
+    """
+    Test that the python implementation of ewald calculates the correct 
+    real space contribution and self interaction contribution.
+    """
+
+    eta = 0.26506
+    alpha = eta**2.
+    rc = 12.
+
+    e = 24.47507
+    meo2 = -0.5 * e
+
+    data = np.load(get_res_file_path('coulomb/CO2.npy'))
+
+    N = data.shape[0]
+    A = State()
+    A.npart = N
+    A.domain = md.domain.BaseDomainHalo(extent=(e,e,e))
+    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+
+    c = md.coulomb.ewald_half.EwaldOrthoganalHalf(domain=A.domain, real_cutoff=rc, alpha=alpha)
+    assert c.alpha == alpha, "unexpected alpha"
+    assert c.real_cutoff == rc, "unexpected rc"
+
+
+    A.positions = PositionDat(ncomp=3)
+    A.forces = ParticleDat(ncomp=3)
+    A.charges = ParticleDat(ncomp=1)
+    A.energies = ParticleDat(ncomp=1)
+
+    if mpi_rank == 0:
+        A.positions[:] = data[:,0:3:]
+        A.charges[:, 0] = data[:,3]
+    A.scatter_data_from(0)
+    
+    de = c(A.positions, A.charges, A.forces, A.energies)
+    
+    oe = np.sum(A.energies[:N:])
+    
+    assert abs(de*2.0 - oe) < 10.**-10
+
+
+
+
+
 def test_ewald_energy_python_co2_2_2():
     eta = 0.26506
     alpha = eta**2.

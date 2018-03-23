@@ -78,6 +78,35 @@ class EwaldOrthoganalHalf(EwaldOrthoganal):
             }
         )
 
+        # reciprocal extract forces plus energy plus per particle energy
+        with open(str(
+                _SRC_DIR) + '/EwaldOrthSource/ExtractForceEnergyHalfPot.h', 'r') as fh:
+            _cont_header_src = fh.read()
+        _cont_header = kernel.Header(block=_cont_header_src % self._subvars)
+
+        with open(str(
+                _SRC_DIR) + '/EwaldOrthSource/ExtractForceEnergyHalfPot.cpp', 'r') as fh:
+            _cont_source = fh.read()
+
+        _cont_kernel = kernel.Kernel(
+            name='reciprocal_force_energy',
+            code=_cont_source,
+            headers=_cont_header
+        )
+
+        self._extract_force_energy_pot_lib = PL(
+            kernel=_cont_kernel,
+            dat_dict={
+                'Positions': data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(access.READ),
+                'Forces': data.ParticleDat(ncomp=3, dtype=ctypes.c_double)(access.INC),
+                'Energy': self._vars['recip_space_energy'](access.INC_ZERO),
+                'Charges': data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(access.READ),
+                'Potential': data.ParticleDat(ncomp=1, dtype=ctypes.c_double)(access.INC),
+                'RecipSpace': self._vars['recip_space_kernel'](access.READ),
+                'CoeffSpace': self._vars['coeff_space_kernel'](access.READ)
+            }
+        )
+
         # reciprocal potential field
         with open(str(
                 _SRC_DIR) + '/EwaldOrthSource/EvaluateFarPotentialField.h', 'r') as fh:
