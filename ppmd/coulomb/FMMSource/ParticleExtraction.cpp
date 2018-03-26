@@ -640,13 +640,9 @@ PRINT_NAN(potential_energy)
         //printf("%f\n", sp_radius * cphi * stheta    +   sp_theta * cphi * ctheta    -   sp_phi * sphi);
 
 
-        force[ix*3    ] -= sp_radius * cphi * stheta    +   sp_theta * cphi * ctheta    -   sp_phi * sphi;
-        force[ix*3 + 1] -= sp_radius * sphi * stheta    +   sp_theta * sphi * ctheta    +   sp_phi * cphi;
-        force[ix*3 + 2] -= sp_radius * ctheta           -   sp_theta * stheta;
-
-        force[ix*3    ] *= FORCE_UNIT;
-        force[ix*3 + 1] *= FORCE_UNIT;
-        force[ix*3 + 2] *= FORCE_UNIT;
+        force[ix*3    ] -= FORCE_UNIT * (sp_radius * cphi * stheta    +   sp_theta * cphi * ctheta    -   sp_phi * sphi);
+        force[ix*3 + 1] -= FORCE_UNIT * (sp_radius * sphi * stheta    +   sp_theta * sphi * ctheta    +   sp_phi * cphi);
+        force[ix*3 + 2] -= FORCE_UNIT * (sp_radius * ctheta           -   sp_theta * stheta);
         
         local_pe *= ENERGY_UNIT;
         local_pe *= charge[ix];

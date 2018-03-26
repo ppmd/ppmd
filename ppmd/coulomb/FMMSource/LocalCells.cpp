@@ -52,7 +52,7 @@ reduction(+:fz)
 
             const REAL term1 = q * qj[pxj] * ir * mask;
             energyi += term1;
-            const REAL fcoeff = FORCE_UNIT * ir * ir * term1;
+            const REAL fcoeff = ir * ir * term1;
             fx -= fcoeff * dx;
             fy -= fcoeff * dy;
             fz -= fcoeff * dz;
@@ -62,7 +62,7 @@ reduction(+:fz)
         fi [pxi] += fx;
         fiy[pxi] += fy;
         fiz[pxi] += fz;
-        ui[pxi] += energyi * ENERGY_UNIT;
+        ui[pxi] += energyi;
     }
 
     return energy * 0.5 * ENERGY_UNIT;
@@ -111,7 +111,7 @@ reduction(+:fz)
             const REAL ir = 1.0/r;
             const REAL term1 = q * qj[pxj] * ir;
             energyi += term1;
-            const REAL fcoeff = FORCE_UNIT * ir * ir * term1;
+            const REAL fcoeff = ir * ir * term1;
             fx -= fcoeff * dx;
             fy -= fcoeff * dy;
             fz -= fcoeff * dz;
@@ -120,7 +120,7 @@ reduction(+:fz)
         fi [pxi] += fx;
         fiy[pxi] += fy;
         fiz[pxi] += fz;
-        ui[pxi] += energyi * ENERGY_UNIT;
+        ui[pxi] += energyi;
     }
 
     return energy * 0.5 * ENERGY_UNIT;
@@ -492,16 +492,16 @@ tmp_real_qj, tmp_real_fi, tmp_real_ui, HMAP, potential_array) schedule(dynamic)
         // write back the new forces
         for(INT64 px=0 ; px<ci_nt ; px++){
             const INT64 idx = tmp_i[px];
-            F[3*idx + 0] += tmp_fi[0*ci_n + px];
-            F[3*idx + 1] += tmp_fi[1*ci_n + px];
-            F[3*idx + 2] += tmp_fi[2*ci_n + px];
+            F[3*idx + 0] += FORCE_UNIT * tmp_fi[0*ci_n + px];
+            F[3*idx + 1] += FORCE_UNIT * tmp_fi[1*ci_n + px];
+            F[3*idx + 2] += FORCE_UNIT * tmp_fi[2*ci_n + px];
             part_count++;
         }
 
         if (compute_potential>0){
             for(INT64 px=0 ; px<ci_nt ; px++){
                 const INT64 idx = tmp_i[px];
-                potential_array[idx] += tmp_ui[px];
+                potential_array[idx] += ENERGY_UNIT * tmp_ui[px];
             }
         }
 

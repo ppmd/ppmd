@@ -82,6 +82,15 @@ def _get_iarray(l):
 
     return b
 
+def internal_to_ev():
+    """
+    Multiply by this constant to convert from internal units to eV.
+    """
+    epsilon_0 = scipy.constants.epsilon_0
+    pi = scipy.constants.pi
+    c0 = scipy.constants.physical_constants['atomic unit of charge'][0]
+    l0 = 10.**-10
+    return c0 / (4.*pi*epsilon_0*l0)    
 
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6,
@@ -669,7 +678,8 @@ class PyFMM(object):
         p[b+'ltl'] = self.timer_ltl.time()
         p[b+'local'] = self.timer_local.time()
         p[b+'local_gflops_vapprox'] = self._fmm_local.exec_count * 22  \
-         / (self.timer_local.time()*10.**9)
+         / (self.timer_local.time()*10.**9) if self.timer_local.time() != 0.0 \
+         else 0.0
         p[b+'halo'] = self.timer_halo.time()
         p[b+'down'] = self.timer_down.time()
         p[b+'up'] = self.timer_up.time()
@@ -785,9 +795,11 @@ class PyFMM(object):
         self._compute_cube_contrib(positions, charges,
                                    positions.group._fmm_cell)
         
+        phi_near = 0.0
         phi_near = self._compute_local_interaction(positions, charges,
                                                    forces=forces,
                                                    potential=potential)
+
         #phi_near = self._compute_local_interaction_pairloop(positions, charges,
         #                                           forces=forces)
         for level in range(self.R - 1, 0, -1):
@@ -828,10 +840,11 @@ class PyFMM(object):
             self._coarse_to_fine(level)
 
             #print("DOWN END", level)
+
+        phi_extract = 0.0
         phi_extract = self._compute_cube_extraction(positions, charges,
                                                     forces=forces,
                                                     potential=potential)
-
 
 
         self._update_opt()
@@ -1311,11 +1324,7 @@ class PyFMM(object):
         """
         Multiply by this constant to convert from internal units to eV.
         """
-        epsilon_0 = scipy.constants.epsilon_0
-        pi = scipy.constants.pi
-        c0 = scipy.constants.physical_constants['atomic unit of charge'][0]
-        l0 = 10.**-10
-        return c0 / (4.*pi*epsilon_0*l0)    
+        return internal_to_ev()
 
     def _test_shell_sum2(self, limit, nl=8):
         pass
