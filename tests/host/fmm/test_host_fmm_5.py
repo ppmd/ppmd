@@ -736,6 +736,7 @@ def test_fmm_init_5_5_nacl(level_set_3_4):
 
     phi_ewald = A.cri[0] + A.crr[0] + A.crs[0]
 
+    #print(phi_ewald, A.cri[0], A.crr[0], A.crs[0])
 
     local_err = abs(phi_py - phi_ewald)/Q
 

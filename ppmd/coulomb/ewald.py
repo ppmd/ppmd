@@ -85,8 +85,8 @@ class EwaldOrthoganal(object):
         
 
         
-        self.real_cutoff = float(real_cutoff)
-        alpha = 0.2
+        #self.real_cutoff = float(real_cutoff)
+        #alpha = 0.2
         #print("alpha", alpha)
         #print("r_c", self.real_cutoff)
 
