@@ -35,7 +35,8 @@ static inline REAL compute_interactions_same_cell(
 reduction(+:energyi) \
 reduction(+:fx) \
 reduction(+:fy) \
-reduction(+:fz)
+reduction(+:fz) \
+simdlen(8)
         for(INT64 pxj=0 ; pxj<nj ; pxj++){
             const REAL dx = pj[     + pxj] - px ;
             const REAL dy = pj[1*sj + pxj] - py ;
@@ -43,12 +44,10 @@ reduction(+:fz)
          
             const REAL r2 = dx*dx + dy*dy + dz*dz;
 
-
             const REAL mask = (ti[pxi] == tj[pxj]) ? 0.0 : 1.0;
             const REAL r = sqrt(r2) + (1.0 - mask);
 
             const REAL ir = 1.0/r;
-
 
             const REAL term1 = q * qj[pxj] * ir * mask;
             energyi += term1;
@@ -85,7 +84,9 @@ static inline REAL compute_interactions(
     REAL * RESTRICT fiz = &fi[2*si];
 
     REAL energy = 0.0;
-
+//#pragma omp simd \
+//reduction(+:energy) \
+//simdlen(8)        
     for(INT64 pxi=0 ; pxi<ni ; pxi++ ){
         REAL fx = 0.0;
         REAL fy = 0.0;
@@ -100,7 +101,8 @@ static inline REAL compute_interactions(
 reduction(+:energyi) \
 reduction(+:fx) \
 reduction(+:fy) \
-reduction(+:fz)
+reduction(+:fz) \
+simdlen(8)        
         for(INT64 pxj=0 ; pxj<nj ; pxj++){
             const REAL dx = pj[      + pxj ] - px ;
             const REAL dy = pj[ 1*sj + pxj ] - py ;

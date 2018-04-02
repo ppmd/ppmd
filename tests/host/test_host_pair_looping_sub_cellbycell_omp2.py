@@ -85,8 +85,8 @@ def test_host_pair_loop_NS_5():
     A.npart_local = N
     A.filter_on_domain_boundary()
     
-    ga = GlobalArray(size=1, dtype=ctypes.c_double)
-    ga2 = GlobalArray(size=1, dtype=ctypes.c_double)
+    ga = GlobalArray(size=2, dtype=ctypes.c_double)
+    ga2 = GlobalArray(size=2, dtype=ctypes.c_double)
 
     kernel_code = '''
     #define rc2 %(CUTOFF)s*%(CUTOFF)s
@@ -106,13 +106,15 @@ def test_host_pair_loop_NS_5():
 
     const double r_m8 = r_m4*r_m4;
     const double f_tmp = CF*(r_m6 - 0.5)*r_m8;
-
+    
     F.i[0]+= (r2 < rc2) ? f_tmp*R0 : 0.0;
     F.i[1]+= (r2 < rc2) ? f_tmp*R1 : 0.0;
     F.i[2]+= (r2 < rc2) ? f_tmp*R2 : 0.0;
     u[0]+= (r2 < rc2) ? 0.5*CV*((r_m6-1.0)*r_m6 + internalshift) : 0.0;
+    u[1]+= (r2 < rc2) ? 0.5*CV*((r_m6-1.0)*r_m6 + internalshift) : 0.0;
 
     ''' % {'CUTOFF': str(cell_width+tol)}
+
 
     kernel = md.kernel.Kernel('test_host_compare_1',code=kernel_code)
 
