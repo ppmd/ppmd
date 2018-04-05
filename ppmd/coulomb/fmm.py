@@ -95,7 +95,7 @@ def internal_to_ev():
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6,
         free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels=2,
-        force_unit=1.0, energy_unit=1.0, _debug=False, l=None):
+        force_unit=1.0, energy_unit=1.0, _debug=False, l=None, cuda_local=False):
 
         self._debug = _debug
 
@@ -636,7 +636,7 @@ class PyFMM(object):
         self.cuda_async_threads = []
         for tx in range(self.L):
             self.cuda_async_threads.append(None)
-
+        
         self._cuda_mtl = None
         if self.cuda and CUDA_IMPORT:
             from . import fmm_cuda
@@ -661,7 +661,23 @@ class PyFMM(object):
         if self.cuda and (self._cuda_mtl is None):
             raise RuntimeError('CUDA support was requested but intialisation'
                                ' failed')
+        
+        
 
+        self.cuda_local = cuda_local
+        self._fmm_local_cuda = None
+        if self.cuda_local and CUDA_IMPORT and self.free_space == False:
+            from . import fmm_cuda
+            self._fmm_local_cuda = fmm_cuda.CudaFMMLocal(width=max_radius,
+                domain=self.domain, entry_data=self.entry_data, 
+                entry_map=self.tree.entry_map, free_space=self.free_space,
+                dtype=self.dtype, force_unit=force_unit,
+                energy_unit=energy_unit)
+
+        #if self.cuda_local and (self._fmm_local is None):
+        #    raise RuntimeError('CUDA support was requested but intialisation'
+        #                       ' failed')        
+        
 
     def _update_opt(self):
         p = opt.PROFILE
@@ -731,6 +747,38 @@ class PyFMM(object):
         return phi_tmp[0]
 
 
+    def _cuda_start_local(self, positions, charges, forces=None, potential=None):
+        cells = positions.group._fmm_cell
+
+        if forces is None:
+            forces = data.ParticleDat(ncomp=3, npart=positions.npart_total,
+                                      dtype=self.dtype)
+    
+        self.timer_local.start()
+
+        self._fmm_local_cuda(positions, charges, forces, cells, potential)
+
+        self._cuda_local_thread = Thread(target=self._fmm_local_cuda.call2,
+                args=(positions, charges, forces, cells, potential))
+        self._cuda_local_thread.start()
+        
+
+    def _cuda_end_local(self):
+        self._cuda_local_thread.join()
+        self._fmm_local_cuda.call3()
+        
+        phi_tmp = self._fmm_local_cuda.last_u
+        self.timer_local.pause()
+        
+        phi_tmp = np.array((phi_tmp,))
+        phi_tmp = mpi.all_reduce(phi_tmp)
+
+        self.particle_phi.set(phi_tmp[0])
+        return phi_tmp[0]
+
+
+
+
     def re_lm(self, l,m): return (l**2) + l + m
     def im_lm(self, l,m): return (l**2) + l +  m + self.L**2
 
@@ -796,14 +844,17 @@ class PyFMM(object):
                                    positions.group._fmm_cell)
         
         phi_near = 0.0
-        phi_near = self._compute_local_interaction(positions, charges,
-                                                   forces=forces,
-                                                   potential=potential)
 
-        #phi_near = self._compute_local_interaction_pairloop(positions, charges,
-        #                                           forces=forces)
+        if not self.cuda_local:
+            phi_near = self._compute_local_interaction(positions, charges,
+                                                       forces=forces,
+                                                       potential=potential)
+        else:
+            self._cuda_start_local(positions, charges, forces=forces,
+                potential=potential)
+
+
         for level in range(self.R - 1, 0, -1):
-            #print("UP START", level)
 
             self._level_call_async(self._translate_m_to_m, level, async)
             self._halo_exchange(level)
@@ -846,6 +897,8 @@ class PyFMM(object):
                                                     forces=forces,
                                                     potential=potential)
 
+        if self.cuda_local:
+            phi_near = self._cuda_end_local()
 
         self._update_opt()
         

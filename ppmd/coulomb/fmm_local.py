@@ -18,6 +18,7 @@ _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 REAL = ctypes.c_double
 INT64 = ctypes.c_int64
 
+
 def _check_dtype(arr, dtype):
     if arr.dtype != dtype:
         raise RuntimeError('Bad data type. Expected: {} Found: {}.'.format(
@@ -26,8 +27,6 @@ def _check_dtype(arr, dtype):
     elif issubclass(type(arr), host.Matrix): return arr.ctypes_data
     elif issubclass(type(arr), host.Array): return arr.ctypes_data
     else: raise RuntimeError('unknown array type passed: {}'.format(type(arr)))
-
-
 
 
 class FMMLocal(object):
@@ -213,14 +212,6 @@ class FMMLocal(object):
             raise RuntimeError("Negative error code: {}".format(err))
     
         return self._u[0]
-
-
-
-
-
-
-
-
 
 
 

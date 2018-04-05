@@ -18,6 +18,9 @@ from scipy.special import lpmv, rgamma, gammaincc, lambertw
 
 from ppmd.cuda import *
 
+from ppmd.access import *
+from ppmd.data import ParticleDat
+
 REAL = ctypes.c_double
 INT64 = ctypes.c_int64
 
@@ -356,6 +359,249 @@ class TranslateMTLCuda(object):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class CudaFMMLocal(object):
+    """
+    Class to perform local part of fmm
+    """
+    def __init__(self, width, domain, entry_data, entry_map, free_space,
+            dtype, force_unit, energy_unit):
+
+        self.width = width
+        self.domain = domain
+        self.entry_data = entry_data
+        self.entry_map = entry_map
+        self.free_space = free_space
+        self.dtype = dtype
+
+        self.sh = pairloop.state_handler.StateHandler(state=None, shell_cutoff=width)
+
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/CudaLocalCells.cu') as fh:
+            cpp = fh.read()
+        with open(str(_SRC_DIR) + \
+                          '/FMMSource/CudaLocalCells.h') as fh:
+            hpp = fh.read()
+
+        hpp = hpp % {
+            'SUB_FORCE_UNIT': str(force_unit),
+            'SUB_ENERGY_UNIT': str(energy_unit)
+        }
+
+        self._lib = cuda_build.simple_lib_creator(hpp, cpp, 'fmm_local')
+        self._lib0 = self._lib['local_cell_by_cell_0']
+        self._lib1 = self._lib['local_cell_by_cell_1']
+        self._lib2 = self._lib['local_cell_by_cell_2']
+
+        #print("CUDA LOCAL BUILT")
+        self._global_size = np.zeros(3, dtype=INT64)
+        self._global_size[:] = entry_map.cube_side_count
+
+        self._ncells =  (self._global_size[0] + 6) * \
+                        (self._global_size[1] + 6) * \
+                        (self._global_size[2] + 6)
+
+        self._local_size = np.zeros(3, dtype=INT64)
+        self._local_size[:] = self.entry_data.local_size[:]
+        
+        self._local_offset = np.zeros(3, dtype=INT64)
+        self._local_offset[:] = self.entry_data.local_offset[:]
+        self._u = np.zeros(1, dtype=self.dtype)
+        self.last_u = 0.0
+
+        self._ll_array = np.zeros(1, dtype=INT64)
+        self._ll_ccc_array = np.zeros(self._ncells, dtype=INT64)
+        self.d_ll_ccc_array = cuda_base.gpuarray.GPUArray(shape=self._ll_ccc_array.shape, dtype=INT64)
+
+        self._ntotal = 100000
+        self.d_positions = cuda_base.gpuarray.GPUArray(shape=(self._ntotal, 3), dtype=REAL)
+        self.d_charges = cuda_base.gpuarray.GPUArray(shape=(self._ntotal, 1), dtype=REAL)
+        self.d_forces = cuda_base.gpuarray.GPUArray(shape=(self._ntotal, 3), dtype=REAL)
+        self.d_potential_array = cuda_base.gpuarray.GPUArray(shape=(self._ntotal, 1), dtype=REAL)
+
+        self.h_forces = np.zeros(shape=(self._ntotal, 3), dtype=REAL)
+        self.h_potential_array = np.zeros(shape=(self._ntotal, 1), dtype=REAL)
+
+        self.exec_count = 0
+
+
+        self.timer0 = opt.Timer(runtime.TIMER)
+        self.timer1 = opt.Timer(runtime.TIMER)
+
+    def __call__(self, positions, charges, forces, cells, potential=None):
+        dats = {
+            'p': positions(READ),
+            'q': charges(READ),
+            'f': forces(INC),
+            'c': cells(READ)
+        }
+        
+        self._dats = dats
+
+        if potential is not None and \
+                issubclass(type(potential), ParticleDat):
+            dats['u'] = potential(INC_ZERO)
+            assert potential[:].shape[0] >= positions.npart_local
+        elif potential is not None:
+            assert potential.shape[0] * potential.shape[1] >= \
+                    postitions.npart_local
+
+        self._u[0] = 0.0
+
+        nlocal, nhalo, ncell = self.sh.pre_execute(dats=dats)
+        self._tmp_dict = {
+            'nlocal': nlocal,
+            'nhalo': nhalo,
+            'ncell': ncell
+        }
+        ntotal = nlocal + nhalo
+
+        if self._ll_array.shape[0] < (ntotal + self._ncells):
+            self._ll_array = np.zeros(ntotal+100+self._ncells, dtype=INT64)
+            self.d_ll_array = cuda_base.gpuarray.GPUArray(shape=self._ll_array.shape, dtype=INT64)
+        
+        
+        if ntotal > self._ntotal:
+            self.d_positions = cuda_base.gpuarray.GPUArray(shape=(ntotal, 3), dtype=REAL)
+            self.d_charges = cuda_base.gpuarray.GPUArray(shape=(ntotal, 1), dtype=REAL)
+            self.d_forces = cuda_base.gpuarray.GPUArray(shape=(ntotal, 3), dtype=REAL)
+            self.d_potential_array = cuda_base.gpuarray.GPUArray(shape=(ntotal, 1), dtype=REAL)
+            self.h_forces = np.zeros(shape=(ntotal, 3), dtype=REAL)
+            self.h_potential_array = np.zeros(shape=(ntotal, 1), dtype=REAL)           
+            self._ntotal = ntotal
+    
+    def call2(self,  positions, charges, forces, cells, potential=None):
+        nlocal = self._tmp_dict['nlocal']
+        nhalo = self._tmp_dict['nhalo']
+        ncell = self._tmp_dict['ncell']
+
+        ntotal = nlocal + nhalo
+        compute_pot = INT64(0)
+        dummy_real = REAL(0)
+        pot_ptr = ctypes.byref(dummy_real)
+        if potential is not None:
+            compute_pot.value = 1
+            # pot_ptr = _check_dtype(potential, REAL)
+            pot_ptr = potential.ctypes_data
+
+        if self.domain.extent.dtype is not REAL:
+            raise RuntimeError("expected c_double extent")
+        
+        if self.free_space == '27':
+            free_space = 0
+        elif self.free_space == True:
+            free_space = 1
+        else:
+            free_space = 0
+
+        exec_count = INT64(0)
+        req_len = INT64(0)
+        ret_max_cc = INT64(0)
+        self.timer0.start()
+        err = self._lib0(
+            INT64(free_space),
+            self.domain.extent.ctypes_data,
+            self._global_size.ctypes.get_as_parameter(),
+            self._local_size.ctypes.get_as_parameter(),
+            self._local_offset.ctypes.get_as_parameter(),
+            INT64(runtime.NUM_THREADS),
+            INT64(nlocal),
+            INT64(ntotal),
+            self.sh.get_pointer(positions(READ)),
+            self.sh.get_pointer(charges(READ)),
+            self.sh.get_pointer(cells(READ)),
+            self._ll_array.ctypes.get_as_parameter(),
+            self._ll_ccc_array.ctypes.get_as_parameter(),
+            INT64(512),
+            INT64(cuda_runtime.DEVICE_NUMBER),
+            _check_dtype(self.d_positions, REAL),
+            _check_dtype(self.d_charges, REAL),
+            _check_dtype(self.d_forces, REAL),
+            _check_dtype(self.d_potential_array, REAL),
+            ctypes.byref(req_len),
+            ctypes.byref(ret_max_cc)
+        )
+
+        cuda_runtime.cuda_err_check(err)
+        self.timer0.pause()
+
+        
+        self.timer1.start()
+        err = self._lib1(
+            INT64(free_space),
+            self._global_size.ctypes.get_as_parameter(),
+            self._local_size.ctypes.get_as_parameter(),
+            self._local_offset.ctypes.get_as_parameter(),
+            INT64(runtime.NUM_THREADS),
+            INT64(nlocal),
+            INT64(ntotal),
+            ctypes.byref(exec_count),
+            self._ll_array.ctypes.get_as_parameter(),
+            self._ll_ccc_array.ctypes.get_as_parameter(),
+            INT64(128),
+            INT64(cuda_runtime.DEVICE_NUMBER),
+            _check_dtype(self.d_positions, REAL),
+            _check_dtype(self.d_charges, REAL),
+            _check_dtype(self.d_forces, REAL),
+            _check_dtype(self.d_potential_array, REAL),
+            _check_dtype(self.d_ll_array, INT64),
+            _check_dtype(self.d_ll_ccc_array, INT64),
+            ret_max_cc,
+            _check_dtype(self.h_forces, REAL),
+            _check_dtype(self.h_potential_array, REAL)
+        )
+
+        self.timer1.pause()
+        cuda_runtime.cuda_err_check(err)
+
+        err = self._lib2(
+            compute_pot,
+            INT64(nlocal),
+            INT64(cuda_runtime.DEVICE_NUMBER),
+            _check_dtype(self.h_forces, REAL),
+            _check_dtype(self.h_potential_array, REAL),
+            _check_dtype(forces, REAL),
+            pot_ptr,
+            _check_dtype(self._u, REAL)
+        )
+
+        cuda_runtime.cuda_err_check(err)
+
+
+        self.exec_count += exec_count.value
+        self.last_u = self._u[0]
+        return self._u[0]
+
+    def call3(self):
+        self.sh.post_execute(dats=self._dats)
+
+    
+
+    def __del__(self):
+        print("0", self.timer0.time())
+        print("1", self.timer1.time())
 
 
 
