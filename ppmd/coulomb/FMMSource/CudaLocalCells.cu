@@ -239,7 +239,7 @@ shared(ll_array, ll_ccc_array, C, P, global_size)
     
     if (err < 0) { return err; }
 
-    max_cell_count += 1; //need the extra element to indicate the occupancy.
+    //max_cell_count += 1; //need the extra element to indicate the occupancy.
 
     
     *req_len = ncells_local * max_cell_count;

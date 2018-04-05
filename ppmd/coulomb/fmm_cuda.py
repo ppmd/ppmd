@@ -449,6 +449,7 @@ class CudaFMMLocal(object):
 
         self.timer0 = opt.Timer(runtime.TIMER)
         self.timer1 = opt.Timer(runtime.TIMER)
+        self.timer2 = opt.Timer(runtime.TIMER)
 
     def __call__(self, positions, charges, forces, cells, potential=None):
         dats = {
@@ -595,26 +596,19 @@ class CudaFMMLocal(object):
         return self._u[0]
 
     def call3(self):
+        self.timer2.start()
         self.sh.post_execute(dats=self._dats)
+        self.timer2.pause()
+        
+        self._update_opt()
 
     
-
-    def __del__(self):
-        print("0", self.timer0.time())
-        print("1", self.timer1.time())
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def _update_opt(self):
+        p = opt.PROFILE
+        b = self.__class__.__name__ + ':'
+        p[b+'init'] = self.timer0.time()
+        p[b+'local'] = self.timer1.time()
+        p[b+'finalise'] = self.timer2.time()
 
 
 

@@ -110,3 +110,120 @@ def test_cuda_fmm_2():
 
     assert np.linalg.norm(lx_cuda.ravel() - fmm.tree_plain[lx].ravel(),
                           np.inf) < 10.**-14
+
+
+def test_cuda_local_1():
+    R = 4
+
+    crN = 10
+    N = crN**3
+
+    E = 3.*crN
+
+    rc = 10.
+
+    A = state.State()
+    A.npart = N
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-2
+    
+    A.p = data.PositionDat(ncomp=3)
+    A.f = data.ParticleDat(ncomp=3)
+    A.q = data.ParticleDat(ncomp=1)
+    A.u = data.ParticleDat(ncomp=1)
+    A.fc = data.ParticleDat(ncomp=3)
+    A.uc = data.ParticleDat(ncomp=1)   
+    if MPIRANK == 0:
+        A.p[:N:,:] = np.random.uniform(low=-0.499*E, high=0.499*E, size=(N,3))
+        A.q[:N:] = np.random.uniform(low=-2.0, high=2.0, size=(N,1))
+        bias = np.sum(A.q[:N:])
+        A.q[:N:] -= bias/N
+    
+    A.scatter_data_from(0)
+
+
+    free_space = False
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
+                cuda_local=False)
+    fmmc = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
+                cuda_local=True)
+
+    
+    p = fmm(positions=A.p, charges=A.q, forces=A.f, potential=A.u)
+    pc = fmmc(positions=A.p, charges=A.q, forces=A.fc, potential=A.uc)
+    
+    assert abs(p - pc) < 10.**-13
+    
+    nloc = A.npart_local
+    err1 = np.linalg.norm(A.f[:nloc:, :] - A.fc[:nloc:,:], np.inf)
+    err2 = np.linalg.norm(A.u[:nloc:, :] - A.uc[:nloc:,:], np.inf)
+    
+    assert err1 < 10**-12
+    assert err2 < 10**-12
+
+
+
+
+def test_cuda_local_2():
+    R = 4
+
+    crN = 20
+    N = crN**3
+
+    E = 3.*crN
+
+    rc = 10.
+
+    A = state.State()
+    A.npart = N
+    A.domain = domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+
+    eps = 10.**-2
+    
+    A.p = data.PositionDat(ncomp=3)
+    A.f = data.ParticleDat(ncomp=3)
+    A.q = data.ParticleDat(ncomp=1)
+    A.u = data.ParticleDat(ncomp=1)
+    A.fc = data.ParticleDat(ncomp=3)
+    A.uc = data.ParticleDat(ncomp=1)   
+    if MPIRANK == 0:
+        A.p[:N:,:] = np.random.uniform(low=-0.499*E, high=0.499*E, size=(N,3))
+        A.q[:N:] = np.random.uniform(low=-2.0, high=2.0, size=(N,1))
+        bias = np.sum(A.q[:N:])
+        A.q[:N:] -= bias/N
+    
+    A.scatter_data_from(0)
+
+
+    free_space = False
+
+    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
+                cuda_local=False)
+    fmmc = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
+                cuda_local=True)
+
+    
+    p = fmm(positions=A.p, charges=A.q, forces=A.f, potential=A.u)
+    pc = fmmc(positions=A.p, charges=A.q, forces=A.fc, potential=A.uc)
+    
+    assert abs(p - pc) < 10.**-12
+    
+    nloc = A.npart_local
+    err1 = np.linalg.norm(A.f[:nloc:, :] - A.fc[:nloc:,:], np.inf)
+    err2 = np.linalg.norm(A.u[:nloc:, :] - A.uc[:nloc:,:], np.inf)
+    
+    assert err1 < 10**-12
+    assert err2 < 10**-12
+
+
+
+
+
+
+
+
+
