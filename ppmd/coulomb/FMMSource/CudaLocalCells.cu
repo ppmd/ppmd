@@ -288,56 +288,6 @@ __device__ inline INT32 d_get_particle_id(
 
 
 
-__global__ void same_cell(
-    const INT64 * RESTRICT d_ll_array,
-    const REAL * RESTRICT d_positions,
-    const REAL * RESTRICT d_charges,
-    REAL * RESTRICT d_forces,
-    REAL * RESTRICT d_potential_array
-){
-    
-    const INT32 threadid = threadIdx.x + blockIdx.x*blockDim.x;
-    const INT32 global_cell = d_get_global_cell(threadid);
-    const INT32 ix = d_get_particle_id(threadid, global_cell, d_ll_array);
-    
-    //printf("%ld %ld %ld %ld %ld\n", d_max_cell_count, d_plsx, d_plsy, d_pgsx, d_pgsy);
-    //printf("threadid %d, global_cell %d, ix %d\n", threadid, global_cell, ix);
-    
-    if (ix < 0) {return;}
-    if (ix >= d_nlocal) {return;}
-
-    REAL fx = 0.0;
-    REAL fy = 0.0;
-    REAL fz = 0.0;
-    REAL uu = 0.0;
-
-    INT64 jx = d_ll_array[d_ll_cstart + global_cell];
-    while( jx > -1){
-        if (jx != ix){
-            const REAL dx = d_positions[jx*3 + 0] - d_positions[ix*3 + 0];
-            const REAL dy = d_positions[jx*3 + 1] - d_positions[ix*3 + 1];
-            const REAL dz = d_positions[jx*3 + 2] - d_positions[ix*3 + 2];
-            const REAL r2 = dx*dx + dy*dy + dz*dz;
-            const REAL rr = sqrt(r2);
-            const REAL ir = 1.0/rr;
-            uu += ir * d_charges[ix] * d_charges[jx];
-            fx -= ir * ir * ir * d_charges[ix] * d_charges[jx] * dx;
-            fy -= ir * ir * ir * d_charges[ix] * d_charges[jx] * dy;
-            fz -= ir * ir * ir * d_charges[ix] * d_charges[jx] * dz;
-        }
-        jx = d_ll_array[jx];
-    }
-    
-    if(ix > -1){
-        d_forces[ix*3 + 0] += FORCE_UNIT * fx;
-        d_forces[ix*3 + 1] += FORCE_UNIT * fy;
-        d_forces[ix*3 + 2] += FORCE_UNIT * fz;
-        d_potential_array[ix] += ENERGY_UNIT * uu;
-
-    }
-    return;
-}
-
 __global__ void other_cell(
     const INT64 * RESTRICT d_ll_array,
     const REAL * RESTRICT d_positions,
@@ -347,55 +297,68 @@ __global__ void other_cell(
 ){
     
     const INT32 threadid = threadIdx.x + blockIdx.x*blockDim.x;
-    const INT32 ix = d_get_particle_id(threadid, d_get_global_cell(threadid), d_ll_array);
+
+    INT32 global_cell = d_get_global_cell(threadid);
+    const INT32 ix = d_get_particle_id(threadid, global_cell, d_ll_array);
+    global_cell += d_ll_cstart;
 
     if (ix < 0) {return;}
     if (ix >= d_nlocal) {return;}
+
+    const REAL px = d_positions[ix*3    ];
+    const REAL py = d_positions[ix*3 + 1];
+    const REAL pz = d_positions[ix*3 + 2];
+
 
     REAL fx = 0.0;
     REAL fy = 0.0;
     REAL fz = 0.0;
     REAL uu = 0.0;
 
-    INT32 jx = d_ll_array[d_ll_cstart + d_get_global_cell(threadid)];
+    INT32 jx = d_ll_array[global_cell];
+
+
+
     while( jx > -1){
         if (jx != ix){
-            const REAL dx = d_positions[jx*3 + 0] - d_positions[ix*3 + 0];
-            const REAL dy = d_positions[jx*3 + 1] - d_positions[ix*3 + 1];
-            const REAL dz = d_positions[jx*3 + 2] - d_positions[ix*3 + 2];
+            const REAL * RESTRICT py_ptr = &d_positions[jx*3];
+            const REAL dx = *(py_ptr++) - px;
+            const REAL dy = *(py_ptr++) - py;
+            const REAL dz = *(py_ptr)   - pz;
             const REAL r2 = dx*dx + dy*dy + dz*dz;
             const REAL rr = sqrt(r2);
             const REAL ir = 1.0/rr;
-            uu += ir * d_charges[ix] * d_charges[jx];
-            fx -= ir * ir * ir * d_charges[ix] * d_charges[jx] * dx;
-            fy -= ir * ir * ir * d_charges[ix] * d_charges[jx] * dy;
-            fz -= ir * ir * ir * d_charges[ix] * d_charges[jx] * dz;
+            uu += ir * d_charges[jx];
+            fx -= ir * ir * ir * d_charges[jx] * dx;
+            fy -= ir * ir * ir * d_charges[jx] * dy;
+            fz -= ir * ir * ir * d_charges[jx] * dz;
         }
         jx = d_ll_array[jx];
     }
 
-    for(int ox=0 ; ox<26 ; ox++){
-        jx = d_ll_array[d_ll_cstart + d_get_global_cell(threadid) + d_offsets[ox]];
+    for(int ox=25 ; ox>=0 ; ox--){
+        jx = d_ll_array[global_cell + d_offsets[ox]];
         while( jx > -1){
-            const REAL dx = d_positions[jx*3 + 0] - d_positions[ix*3 + 0];
-            const REAL dy = d_positions[jx*3 + 1] - d_positions[ix*3 + 1];
-            const REAL dz = d_positions[jx*3 + 2] - d_positions[ix*3 + 2];
+            const REAL * RESTRICT py_ptr = &d_positions[jx*3];
+            const REAL dx = *(py_ptr++) - px;
+            const REAL dy = *(py_ptr++) - py;
+            const REAL dz = *(py_ptr)   - pz;
             const REAL r2 = dx*dx + dy*dy + dz*dz;
             const REAL rr = sqrt(r2);
-            const REAL ir = 1.0/rr;
-            uu += ir * d_charges[ix] * d_charges[jx];
-            fx -= ir * ir * ir * d_charges[ix] * d_charges[jx] * dx;
-            fy -= ir * ir * ir * d_charges[ix] * d_charges[jx] * dy;
-            fz -= ir * ir * ir * d_charges[ix] * d_charges[jx] * dz;
+            REAL ir = 1.0/rr;
+            uu += ir * d_charges[jx];
+            fx -= ir * ir * ir * d_charges[jx] * dx;
+            fy -= ir * ir * ir * d_charges[jx] * dy;
+            fz -= ir * ir * ir * d_charges[jx] * dz;
 
             jx = d_ll_array[jx];
         }
     }
 
-    d_forces[ix*3 + 0] += fx;
-    d_forces[ix*3 + 1] += fy;
-    d_forces[ix*3 + 2] += fz;
-    d_potential_array[ix] += uu;
+    d_forces[ix*3 + 0] = fx * d_charges[ix];
+    d_forces[ix*3 + 1] = fy * d_charges[ix];
+    d_forces[ix*3 + 2] = fz * d_charges[ix];
+    d_potential_array[ix] = uu * d_charges[ix];
 
     return;
 }
@@ -528,9 +491,7 @@ int local_cell_by_cell_1(
     CUDACHECKERR
     err = cudaDeviceSynchronize();
     CUDACHECKERR
-    //same_cell<<<grid_block2, thread_block>>>(d_ll_array, d_positions, d_charges, d_forces, d_potential_array);
-    //err = cudaDeviceSynchronize();
-    //CUDACHECKERR
+
     other_cell<<<grid_block2, thread_block>>>(d_ll_array, d_positions, d_charges, d_forces, d_potential_array);
     err = cudaDeviceSynchronize();
     CUDACHECKERR

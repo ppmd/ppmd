@@ -561,7 +561,7 @@ class CudaFMMLocal(object):
             ctypes.byref(exec_count),
             self._ll_array.ctypes.get_as_parameter(),
             self._ll_ccc_array.ctypes.get_as_parameter(),
-            INT64(128),
+            INT64(256),
             INT64(cuda_runtime.DEVICE_NUMBER),
             _check_dtype(self.d_positions, REAL),
             _check_dtype(self.d_charges, REAL),
