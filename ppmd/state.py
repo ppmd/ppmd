@@ -343,14 +343,30 @@ class BaseMDState(object):
         )
 
         bx = np.logical_not(lo)
-        # self.npart_local = np.sum(lo)
+        #self.npart_local = np.sum(lo)
         self._move_controller.compress_empty_slots(np.nonzero(bx)[0])
 
         for px in self.particle_dats:
             getattr(self, px).npart_local = self.npart_local
+        # check we did not loose some particles in the process
+        self.check_npart_total()
 
+    def check_npart_total(self):
+        """Check no particles have been lost"""
+        t = self.sum_npart_local()
+        if t != self.npart:
+            raise RuntimeError("Particles lost! Expected {} found {}.".\
+                    format(self.npart, t))
 
-    def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None, shifts=None):
+    def sum_npart_local(self):
+        """Sum npart_local across all ranks"""
+        _t = np.array((0,), dtype=ctypes.c_int64)
+        _o = np.array((self.npart_local,), dtype=ctypes.c_int64)
+        _MPIWORLD.Allreduce(_o, _t)
+        return _t[0]
+
+    def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None,
+            shifts=None):
         self._move_controller.move_to_neighbour(
             ids_directions_list,
             dir_send_totals,
