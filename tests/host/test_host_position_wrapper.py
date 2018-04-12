@@ -41,9 +41,11 @@ def test_simple_shift():
         assert -0.5 * e[2] <= pt[2]
         assert  0.5 * e[2] >= pt[2]
 
-    S.P[:N:, :] = la
-    S.P1[:N:, :] = la_wrap
+    S.P[:N:, :] = la_wrap
+    S.P1[:N:, :] = la
     
+    # if la_wrap contains particles outside the domain this call will error
+    # with a lost particle error
     S.filter_on_domain_boundary()
 
 

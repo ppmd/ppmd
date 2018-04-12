@@ -22,13 +22,16 @@ def wrap_positions(extent, positions):
 
     out = np.zeros_like(positions)
     
-    print(positions[0,:])
-
     offset = np.min(positions, axis=0)
+
     for cx in range(3):
-        out[cx, :] = np.fmod(positions[cx,:] + offset[cx], extent[cx]) - 0.5*extent[cx]
+        out[:, cx] = np.fmod(positions[:,cx] - offset[cx], extent[cx]) - 0.5*extent[cx]
     
-    print(out[0,:])
+    for cx in range(3):
+        if np.min(out[:, cx]) < -0.5*extent[cx]:
+            raise RuntimeError('Wrapping positions failed.')
+        if np.max(out[:, cx]) > 0.5*extent[cx]:
+            raise RuntimeError('Wrapping positions failed.')
 
     return out
 

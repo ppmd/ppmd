@@ -341,13 +341,16 @@ class BaseMDState(object):
             ),
             np.logical_and((b[4] <= p[::,2]), (p[::,2] < b[5]))
         )
+        
 
         bx = np.logical_not(lo)
-        #self.npart_local = np.sum(lo)
         self._move_controller.compress_empty_slots(np.nonzero(bx)[0])
 
-        for px in self.particle_dats:
-            getattr(self, px).npart_local = self.npart_local
+        self.npart_local = np.sum(lo)
+
+        #for px in self.particle_dats:
+        #    getattr(self, px).npart_local = self.npart_local
+
         # check we did not loose some particles in the process
         self.check_npart_total()
 
