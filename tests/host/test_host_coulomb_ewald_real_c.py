@@ -53,7 +53,6 @@ def test_ewald_energy_python_nacl_c_1():
         recip_nmax=(9,9,9),
         shared_memory=SHARED_MEMORY
     )
-
     A.positions = PositionDat(ncomp=3)
     A.forces = ParticleDat(ncomp=3)
     A.charges = ParticleDat(ncomp=1)
@@ -67,7 +66,7 @@ def test_ewald_energy_python_nacl_c_1():
         A.charges[:, 0] = data[:,3]
 
     A.scatter_data_from(0)
-
+    
     c.evaluate_contributions(positions=A.positions, charges=A.charges)
 
 
@@ -79,10 +78,12 @@ def test_ewald_energy_python_nacl_c_1():
     assert abs(energy[0]*c.internal_to_ev() - 0.5223894616E-26) < 10.**-3, "particle loop"
 
     c.extract_forces_energy_real(A.positions, A.charges, A.forces, energy_real)
+
     c.evaluate_self_interactions(A.charges, energy_self)
 
     assert abs(energy_real[0]*c.internal_to_ev() + energy_self[0]*c.internal_to_ev() + 0.4194069853E+04) < 10.**-2, "bad real space part"
 
+    print("\t10")
 
 def test_ewald_energy_python_nacl_c_1_mpi():
 

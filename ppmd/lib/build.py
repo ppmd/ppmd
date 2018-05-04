@@ -202,15 +202,18 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
         try:
             with open(stdout_filename, 'w') as stdout:
                 with open(stderr_filename, 'w') as stderr:
+                    #print("EXEC START:")
+                    #print(_c_cmd)
+                    #print("EXEC END:")
                     stdout.write('#Compilation command:\n')
                     stdout.write(' '.join(_c_cmd))
                     stdout.write('\n\n')
-                    #p = subprocess.Popen(_c_cmd,
+                    stdout.flush()
+                    #p = subprocess.Popen(_c_cmd)
                     p = subprocess.check_call(_c_cmd,
                                          stdout=stdout,
                                          stderr=stderr)
                     #stdout_data, stderr_data = p.communicate()
-
         except Exception as e:
             print(e)
             _print_file_if_exists(stderr_filename)

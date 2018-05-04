@@ -9,7 +9,8 @@ import numpy as np
 def wrap_positions(extent, positions):
     """
     Ensure that the passed positions are contained within a domain of size
-    extent with a centred origin. Returns a new array.
+    extent with a centred origin. Returns a new array with wrapped and 
+    centred positions.
 
     :arg extent: 3 entry subscriptable object of domain extents.
     :arg positions: Nx3 numpy array of positions (not modified).
@@ -25,8 +26,14 @@ def wrap_positions(extent, positions):
     offset = np.min(positions, axis=0)
 
     for cx in range(3):
-        out[:, cx] = np.fmod(positions[:,cx] - offset[cx], extent[cx]) - 0.5*extent[cx]
-    
+        # map onto [0, E_cx]
+        out[:, cx] = np.fmod(positions[:, cx] - offset[cx], extent[cx])
+        #min value is 0 from the offset used
+        max_cx = np.max(out[:, cx])
+        pad_cx = extent[cx] - max_cx
+        assert pad_cx >= 0.0
+        out[:, cx] -= 0.5*(extent[cx] - pad_cx)
+
     for cx in range(3):
         if np.min(out[:, cx]) < -0.5*extent[cx]:
             raise RuntimeError('Wrapping positions failed.')

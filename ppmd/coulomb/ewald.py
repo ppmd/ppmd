@@ -612,6 +612,7 @@ class EwaldOrthoganal(object):
     def __call__(self, positions, charges, forces, potential=None):
         
         self.evaluate_contributions(positions=positions, charges=charges)
+        
 
         e = 0.0
         e += self.extract_forces_energy_reciprocal(positions, charges, forces, energy=None, potential=potential)
