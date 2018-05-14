@@ -13,6 +13,7 @@ __copyright__ = "Copyright 2016, W.R.Saunders"
 
 REAL = ctypes.c_double
 INT64 = ctypes.c_int64
+np.set_printoptions(threshold=np.nan)
 
 class cube_owner_map(object):
     """
@@ -633,9 +634,45 @@ class EntryData(object):
         self._end = (self._start[0] + self.local_size[0],
                      self._start[1] + self.local_size[1],
                      self._start[2] + self.local_size[2])
+        
+        self._add_map = self._compute_add_map()
+        self._extract_map = self._compute_extract_map()
 
     def zero(self):
         self.data[:] = 0.0
+    
+    def _compute_extract_map(self):
+        ns = 2 ** (self.tree.num_levels - 1)
+        rank = self.tree.cart_comm.Get_rank()
+
+        src_owners = self.tree[-1].owners.ravel()
+        dst_sends = self.tree.entry_map.cube_to_send
+
+        cxt_list = list()
+        for cxt in itertools.product(range(ns), range(ns), range(ns)):
+            cx = cube_tuple_to_lin_zyx(cxt, ns)
+
+            if (src_owners[cx] == rank) or (dst_sends[cx] > -1):
+                cxt_list.append(cxt)
+        
+        return np.array(cxt_list)                
+
+    def _compute_add_map(self):
+        ns = 2 ** (self.tree.num_levels - 1)
+        dst_owners = self.tree[-1].owners.ravel()
+        dst_sends = self.tree.entry_map.cube_to_send
+        rank = self.tree.cart_comm.Get_rank()
+        
+        cxt_list = list()
+
+        for cxt in itertools.product(range(ns), range(ns), range(ns)):
+            cx = cube_tuple_to_lin_zyx(cxt, ns)
+            dst_owner = dst_owners[cx]
+
+            if (dst_owner == rank) or (dst_sends[cx] > -1):
+                cxt_list.append(cxt)
+        
+        return np.array(cxt_list)
 
     def add_onto(self, octal_data_tree):
         """
@@ -671,10 +708,10 @@ class EntryData(object):
 
         send_req = None
 
-        for cxt in itertools.product(range(ns), range(ns), range(ns)):
+        #for cxt in itertools.product(range(ns), range(ns), range(ns)):
+        for cxt in self._add_map:
+            cxt = tuple(cxt)
             cx = cube_tuple_to_lin_zyx(cxt, ns)
-
-            local_ind = self._inside_entry(cxt)
             dst_owner = dst_owners[cx]
 
             if dst_owner == rank:
@@ -682,6 +719,8 @@ class EntryData(object):
                 dst_ind_e = dst_ind_b + ncomp
 
                 # start by copying the local data
+                
+                local_ind = self._inside_entry(cxt)
                 src_ind_b = local_ind * ncomp
                 src_ind_e = src_ind_b + ncomp
                 dst[dst_ind_b: dst_ind_e:] = src[src_ind_b:src_ind_e:]
@@ -693,6 +732,7 @@ class EntryData(object):
                     dst[dst_ind_b: dst_ind_e:] += tmp[:]
 
             elif dst_sends[cx] > -1:
+                local_ind = self._inside_entry(cxt)
                 # this rank needs to send it's contribution
                 src_ind_b = local_ind * ncomp
                 src_ind_e = src_ind_b + ncomp
@@ -737,10 +777,11 @@ class EntryData(object):
 
         send_req = None
 
-        for cxt in itertools.product(range(ns), range(ns), range(ns)):
+        #for cxt in itertools.product(range(ns), range(ns), range(ns)):
+        for cxt in self._extract_map:
+            cxt = tuple(cxt)
             cx = cube_tuple_to_lin_zyx(cxt, ns)
 
-            local_ind = self._inside_entry(cxt)
             src_owner = src_owners[cx]
 
             if src_owner == rank:
@@ -749,6 +790,8 @@ class EntryData(object):
                 src_ind_e = src_ind_b + ncomp
 
                 # start by copying the local data
+                
+                local_ind = self._inside_entry(cxt)
                 dst_ind_b = local_ind * ncomp
                 dst_ind_e = dst_ind_b + ncomp
 
@@ -766,6 +809,8 @@ class EntryData(object):
 
             elif dst_sends[cx] > -1:
                 # this rank needs to recv its copy contribution
+                
+                local_ind = self._inside_entry(cxt)
                 dst_ind_b = local_ind * ncomp
                 dst_ind_e = dst_ind_b + ncomp
                 comm.Recv(tmp[:], src_owner, tag=cx)
