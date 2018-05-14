@@ -1,4 +1,9 @@
-from __future__ import print_function, division, absolute_import
+class SubCellList(object):
+    def __init__(self):
+        self.cell_list = None
+        self.cell_reverse_lookup = None
+        self.cell_contents_count = None
+        rom __future__ import print_function, division, absolute_import
 
 import ppmd.opt
 import ppmd.runtime

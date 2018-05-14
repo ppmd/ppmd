@@ -128,4 +128,18 @@ class SubCell(object):
         ]
 
 
+class SubCellList(object):
+    def __init__(self, domain, position_dat, int_radius, cell_radius):
+        self.cell_list = None
+        self.cell_reverse_lookup = None
+        self.cell_contents_count = None
+        self.max_cell_contents_count = None
+        self.end = None
+        self.cell_count = None
+        self.cell_array = None
+        self.num_particles = None
+        self.check = None
+
+
+
 
