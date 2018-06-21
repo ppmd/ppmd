@@ -396,8 +396,8 @@ static __global__ void kernel_rotate_back(
     const INT64 nblocks,
 	const INT64	conxi,
     const REAL * RESTRICT d_multipole_moments,
-    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_re_mat_forw,
-    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_im_mat_forw,
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_re_mat_back,
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_im_mat_back,
     const INT64 * RESTRICT d_int_list,
     const INT64 * RESTRICT d_int_tlookup,
     const INT64 * RESTRICT d_jlookup,
@@ -429,8 +429,8 @@ static __global__ void kernel_rotate_back(
 		const REAL * RESTRICT im_x = &d_multipole_moments[local_base + CUBE_IND(jx, -1*jx) + d_nlevel*d_nlevel];
 
 		// get the matrix coefficients to rotate forward
-		const REAL * RESTRICT re_m = d_re_mat_forw[d_int_tlookup[conx]][jx];
-		const REAL * RESTRICT im_m = d_im_mat_forw[d_int_tlookup[conx]][jx];
+		const REAL * RESTRICT re_m = d_re_mat_back[d_int_tlookup[conx]][jx];
+		const REAL * RESTRICT im_m = d_im_mat_back[d_int_tlookup[conx]][jx];
 		
 
 		// size of matrix
@@ -455,6 +455,163 @@ static __global__ void kernel_rotate_back(
     }
 
 }
+
+
+
+
+
+
+static __global__ void kernel_all_fused(
+    // rotate forward
+    const INT64 num_indices,
+    const INT64 nblocks,
+    const REAL * RESTRICT d_multipole_moments,
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_re_mat_forw,
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_im_mat_forw,
+    const INT64 * RESTRICT d_int_list,
+    const INT64 * RESTRICT d_int_tlookup,
+    const INT64 * RESTRICT d_jlookup,
+    const INT64 * RESTRICT d_klookup,
+    //rotate backward
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_re_mat_back,
+    const REAL * RESTRICT const * RESTRICT const * RESTRICT d_im_mat_back,
+    // translate
+    const double * RESTRICT d_int_radius,
+    const REAL * RESTRICT d_alm,
+    const REAL * RESTRICT d_almr,
+    REAL * RESTRICT d_out_mom
+)
+{
+    extern __shared__ REAL d_tmp1[];
+    extern __shared__ REAL d_tmp2[];
+    
+
+    const INT64 plainx = blockIdx.x/nblocks;
+    const INT64 plainy = blockIdx.y;
+    const INT64 plainz = blockIdx.z;
+
+    const INT64 index_id = (blockIdx.x % nblocks)*blockDim.x + threadIdx.x;
+    const bool valid_id = (index_id < num_indices);
+
+    if (valid_id){
+        const INT64 jx = d_jlookup[index_id];
+        const INT64 kx = d_klookup[index_id];
+
+        const INT64 octal_ind = (plainx % 2) + \
+            2*( (plainy % 2) + 2*(plainz % 2) );
+
+        for(int conxi=0; conxi<189; conxi++){
+            // rotate forward
+
+            const INT64 conx=octal_ind*189 + conxi;
+
+            const INT64 local_base = 2*num_indices*(plainx + \
+            d_plain_dim2*(plainy + d_plain_dim1*plainz));
+
+            const INT64 jcell = (d_int_list[conx] + \
+                ((plainx + 2) + (d_plain_dim2+4)* \
+                ( (plainy + 2) + (d_plain_dim1+4) * (plainz + 2) )) \
+                )*2*d_nlevel*d_nlevel;
+            
+            // get the source vector
+            const REAL * RESTRICT re_x = &d_multipole_moments[jcell + CUBE_IND(jx, -1*jx)];
+            const REAL * RESTRICT im_x = &d_multipole_moments[jcell + CUBE_IND(jx, -1*jx) + d_nlevel*d_nlevel];
+
+            // get the matrix coefficients to rotate forward
+            const REAL * RESTRICT re_m = d_re_mat_forw[d_int_tlookup[conx]][jx];
+            const REAL * RESTRICT im_m = d_im_mat_forw[d_int_tlookup[conx]][jx];
+            
+
+            // size of matrix
+            const INT64 p = 2*jx+1;
+            const INT64 rx = kx + jx;
+            REAL re_c = 0.0;
+            REAL im_c = 0.0;
+
+            for(INT64 cx=0; cx<p ; cx++){
+                cplx_mul_add(   re_m[p*cx+rx],  im_m[p*cx+rx],
+                                re_x[cx],       im_x[cx],
+                                &re_c,          &im_c);
+
+            }
+            
+            d_tmp1[CUBE_IND(jx, kx)] = re_c;
+            d_tmp1[CUBE_IND(jx, kx) + d_nlevel*d_nlevel] = im_c;
+            
+            __syncthreads();
+            // z translate
+            const INT64 abs_kx = ABS(kx);
+            
+            re_c = 0.0;
+            im_c = 0.0;
+            const REAL iradius = 1./(d_int_radius[conx] * d_radius);
+
+            REAL next_iradius = pow(iradius, jx+abs_kx+1);
+
+            for(INT64 nx=abs_kx ; nx<d_nlevel ; nx++){
+                
+                const REAL coeff =  d_almr[nx+jx] * \
+                                    next_iradius * \
+                                    d_alm[jx*d_ASTRIDE1 + d_ASTRIDE2 + kx] * \
+                                    d_alm[nx*d_ASTRIDE1 + d_ASTRIDE2 + kx];
+
+                const INT64 oind = CUBE_IND(nx, kx);
+                const REAL o_re = d_tmp1[oind];
+                const REAL o_im = d_tmp1[oind + d_nlevel*d_nlevel];
+
+                re_c += o_re * coeff;
+                im_c += o_im * coeff;
+
+                next_iradius *= -1.0 * iradius;
+            }
+
+            d_tmp2[CUBE_IND(jx, kx)] = re_c;
+            d_tmp2[CUBE_IND(jx, kx) + d_nlevel*d_nlevel] = im_c;
+            
+            __syncthreads();
+            // rotate backwards
+
+            // get the source vector
+            const REAL * RESTRICT re_xb = &d_tmp2[CUBE_IND(jx, -1*jx)];
+            const REAL * RESTRICT im_xb = &d_tmp2[CUBE_IND(jx, -1*jx) + d_nlevel*d_nlevel];
+
+            // get the matrix coefficients to rotate forward
+            const REAL * RESTRICT re_mb = d_re_mat_back[d_int_tlookup[conx]][jx];
+            const REAL * RESTRICT im_mb = d_im_mat_back[d_int_tlookup[conx]][jx];
+
+            // size of matrix
+            re_c = 0.0;
+            im_c = 0.0;
+
+            for(INT64 cx=0; cx<p ; cx++){
+                cplx_mul_add(   re_mb[p*cx+rx],  im_mb[p*cx+rx],
+                                re_xb[cx],       im_xb[cx],
+                                &re_c,          &im_c);
+
+            }
+
+            d_out_mom[local_base + CUBE_IND(jx, kx)] += re_c;
+            d_out_mom[local_base + CUBE_IND(jx, kx) + d_nlevel*d_nlevel] += im_c;
+
+            __syncthreads();
+        }
+
+    }
+
+    return;
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -491,8 +648,6 @@ int translate_mtl_z(
     //const INT64 ncomp = nlevel*nlevel*2;
     const INT64 re_ncomp = nlevel*nlevel;
     const INT64 ncomp2 = nlevel*nlevel*8;
-    //const INT64 im_offset = nlevel*nlevel;
-    //const INT64 im_offset2 = 4*nlevel*nlevel;
 
 
     const INT64 phi_stride = 8*nlevel + 2;
@@ -511,6 +666,11 @@ int translate_mtl_z(
     dim3 grid_block(nblocks*dim_child[2], dim_child[1], dim_child[0]);
     dim3 thread_block(thread_block_size, 1, 1);
     
+    if (num_indices > thread_block_size){
+        printf("all terms must be handled by one thread block\n");
+        return -1;
+    }
+
     //err = cudaSetDevice(device_number);
     if (err != cudaSuccess){return err;}
 
@@ -526,7 +686,7 @@ int translate_mtl_z(
         printf("bad threadblock size: %d, device max: %d\n", thread_block_size, device_prop.maxThreadsPerBlock); 
         return cudaErrorUnknown; 
     }
- 
+    
     err = cudaMemcpyToSymbol(d_nlevel, &nlevel, sizeof(INT64));
     if (err != cudaSuccess) {return err;}
     
@@ -557,9 +717,30 @@ int translate_mtl_z(
     err = cudaMemcpyToSymbol(d_ASTRIDE2, &ASTRIDE2, sizeof(INT64));
     if (err != cudaSuccess) {return err;}
 
+    kernel_all_fused<<<grid_block, thread_block, 2*sizeof(REAL)*2*num_indices>>>(
+        num_indices,
+        nblocks,
+        d_multipole_moments,
+        d_re_mat_forw,
+        d_im_mat_forw,
+        d_int_list,
+        d_int_tlookup,
+        d_jlookup,
+        d_klookup,
+        d_re_mat_back,
+        d_im_mat_back,
+        d_int_radius,
+        d_alm,
+        d_almr,
+        d_local_moments
+    );
 
+    err = cudaDeviceSynchronize();
 
     for( INT64 cxi=0 ; cxi<189 ; cxi++){
+        
+        continue;
+
         kernel_rotate_forward<<<grid_block, thread_block>>>(
         num_indices,
         nblocks,

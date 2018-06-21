@@ -320,7 +320,11 @@ class TranslateMTLCuda(object):
 
     def _translate_mtlz(self, level, radius):
         self._lock.acquire(True)
-
+        
+        nthreads_per_block = int(ceil((self.L**2)/32))*32
+        if nthreads_per_block <= 0 or nthreads_per_block > 1024:
+            raise RuntimeError("bad thread count {} for L={}".format(
+                nthreads_per_block, self.L))
 
         self.timer_mtl.start()
         err = self._translate_mtl_lib['translate_mtl_z'](
@@ -343,7 +347,7 @@ class TranslateMTLCuda(object):
             _check_dtype(self._jlookup, INT64),
             _check_dtype(self._klookup, INT64),
             _check_dtype(self._ipower_mtl, REAL),
-            INT64(256),
+            INT64(nthreads_per_block),
             INT64(cuda_runtime.DEVICE_NUMBER)
         )
 

@@ -15,13 +15,14 @@ __license__ = "GPL"
 import ctypes
 import numpy as np
 
-np.set_printoptions(threshold=1000)
 
 # package level
 from ppmd import access, mpi, runtime, host, opt
 from ppmd.lib import build
 
 from ppmd.data.scalar_array import ScalarArray
+
+np.set_printoptions(threshold=1000)
 
 _MPI = mpi.MPI
 SUM = _MPI.SUM
@@ -109,12 +110,13 @@ class ParticleDat(host.Matrix):
         self.name = name
         """:return: The name of the ParticleDat instance."""
 
-
         self.idtype = dtype
-        self._dat = host._make_array(initial_value=initial_value,
-                                      dtype=dtype,
-                                      nrow=npart,
-                                      ncol=ncomp)
+        self._dat = host._make_array(
+            initial_value=initial_value,
+            dtype=dtype,
+            nrow=npart,
+            ncol=ncomp
+        )
 
         self.max_npart = self._dat.shape[0]
         """:return: The maximum number of particles which can be stored within
@@ -133,7 +135,6 @@ class ParticleDat(host.Matrix):
         self.npart_local_halo = 0
         """:return: The number of particles currently stored within the halo region of the particle dat."""
 
-
         self._resize_callback = None
         self._version = 0
 
@@ -143,7 +144,6 @@ class ParticleDat(host.Matrix):
         # tmp space for norms/maxes etc
         self._norm_tmp = ScalarArray(ncomp=1, dtype=self.dtype)
         self._linf_norm_lib = None
-
 
     @property
     def data(self):
@@ -176,11 +176,10 @@ class ParticleDat(host.Matrix):
         """
 
         tmp = np.linalg.norm(
-            self.data[:self.npart_local:,:].ravel(),
+            self.data[:self.npart_local:, :].ravel(),
             np.inf
         )
         return tmp
-
 
     def max(self):
         """
@@ -197,37 +196,36 @@ class ParticleDat(host.Matrix):
         """
         return self.npart_local + self.npart_halo
 
-
     def __getitem__(self, ix):
-        return self.data[ix]
+        return np.copy(self._dat[ix])
 
     def __setitem__(self, ix, val):
         self._vid_int += 1
         self.data[ix] = val
+        if type(self) is PositionDat and self.group is not None:
+            self.group.invalidate_lists = True
 
     def __str__(self):
         return str(self.data[::])
 
     def __repr__(self):
         # self.__str__()
-        return "ParticleDat_"+str(self.dtype)
+        return "ParticleDat_" + str(self.dtype)
 
     def __call__(self, mode=access.RW, halo=True):
 
         return self, mode, halo
 
     def copy(self):
-        #print "dat:", self._dat
+        # print "dat:", self._dat
         return ParticleDat(initial_value=self._dat[0:self.npart_local:],
                            ncomp=self.ncomp,
                            npart=self.npart_local,
                            dtype=self.dtype)
 
-
-
     def broadcast_data_from(self, rank=0, _resize_callback=True):
         # in terms of MPI_COMM_WORLD
-        assert (rank>-1) and (rank<_MPISIZE), "Invalid mpi rank"
+        assert (rank > -1) and (rank < _MPISIZE), "Invalid mpi rank"
 
         if _MPISIZE == 1:
             return
@@ -237,11 +235,10 @@ class ParticleDat(host.Matrix):
             self.resize(s[0], _callback=_resize_callback)
             _MPIWORLD.Bcast(self._dat, root=rank)
 
-
     def gather_data_on(self, rank=0, _resize_callback=False):
 
         # in terms of MPI_COMM_WORLD
-        assert (rank>-1) and (rank<_MPISIZE), "Invalid mpi rank"
+        assert (rank > -1) and (rank < _MPISIZE), "Invalid mpi rank"
         if _MPISIZE == 1:
             return
         else:
@@ -260,20 +257,18 @@ class ParticleDat(host.Matrix):
                 disp = [0] + counts[:-1:]
                 disp = tuple(np.cumsum(self.ncomp * np.array(disp)))
 
-                counts = tuple([self.ncomp*c for c in counts])
-
+                counts = tuple([self.ncomp * c for c in counts])
 
                 tmp = np.zeros([self.npart_local, self.ncomp], dtype=self.dtype)
 
-
-            _MPIWORLD.Gatherv(sendbuf=self._dat[:send_size:,::],
-                             recvbuf=(tmp, counts, disp, None),
-                             root=rank)
+            _MPIWORLD.Gatherv(
+                sendbuf=self._dat[:send_size:, ::],
+                recvbuf=(tmp, counts, disp, None),
+                root=rank
+            )
 
             if _MPIRANK == rank:
                 self._dat = tmp
-
-
 
     def ctypes_data_access(self, mode=access.RW, pair=True):
         """
@@ -291,8 +286,10 @@ class ParticleDat(host.Matrix):
                 celllist = self.group.get_cell_to_particle_map()
 
                 if celllist.halos_exist is True and \
-                        (self._vid_int > self._vid_halo or
-                        self.vid_halo_cell_list < celllist.version_id):
+                        (
+                            self._vid_int > self._vid_halo or
+                            self.vid_halo_cell_list < celllist.version_id
+                        ):
 
                     exchange = True
             else:
@@ -305,7 +302,6 @@ class ParticleDat(host.Matrix):
             self._vid_halo = self._vid_int
             self.vid_halo_cell_list = celllist.version_id
 
-
         return self._dat.ctypes.data_as(ctypes.POINTER(self.dtype))
 
     def ctypes_data_post(self, mode=access.RW):
@@ -316,7 +312,6 @@ class ParticleDat(host.Matrix):
         if mode.write:
             self._vid_int += 1
 
-
     def halo_start_shift(self, shift):
         """
         Shift the starting point of the halo in the particle dat by the
@@ -326,7 +321,6 @@ class ParticleDat(host.Matrix):
 
         self.halo_start += shift
         self.npart_local_halo = self.halo_start - self.npart_local
-
 
     def halo_start_set(self, index):
         """
@@ -366,25 +360,22 @@ class ParticleDat(host.Matrix):
             self.max_npart = n
             self.realloc(n, self.ncol)
 
-
     def halo_exchange(self):
         """
         Perform a halo exchange for the particle dat.
         """
 
-        #print("HALO EXC:", self.name, _MPIRANK)
+        # print("HALO EXC:", self.name, _MPIRANK)
         self.timer_comm.start()
 
-        # new start
         # can only exchage sizes if needed.
 
         self.halo_start_reset()
 
         _halo_sizes = self.group._halo_update_exchange_sizes()
         if self._tmp_halo_space.ncomp < (self.ncomp * _halo_sizes[1]):
-            #print "\t\t\tresizing temp halo space", _halo_sizes[1]
+            # print "\t\t\tresizing temp halo space", _halo_sizes[1]
             self._tmp_halo_space.realloc(int(1.1 * _halo_sizes[1] * self.ncomp))
-
 
         self._transfer_unpack()
         self.halo_start_shift(_halo_sizes[0])
@@ -396,10 +387,10 @@ class ParticleDat(host.Matrix):
         self._halo_exchange_count += 1
 
         opt.PROFILE[
-            self.__class__.__name__+':'+ self.name +':halo_exchange'
+            self.__class__.__name__ + ':' + self.name + ':halo_exchange'
         ] = (self.timer_comm.time())
         opt.PROFILE[
-                self.__class__.__name__+':'+ self.name +':halo_exchange:count'
+            self.__class__.__name__ + ':' + self.name + ':halo_exchange:count'
         ] = (self._halo_exchange_count)
 
     def _transfer_unpack(self):
@@ -600,7 +591,6 @@ class ParticleDat(host.Matrix):
                                                           CC=build.MPI_CC
                                                           )['HALO_EXCHANGE_PD']
 
-
         # End of creation code -----------------------------------------
 
         comm = self.group.domain.comm
@@ -635,8 +625,10 @@ class ParticleDat(host.Matrix):
 # PositionDat.
 #########################################################################
 
+
 class PositionDat(ParticleDat):
     pass
+
 
 # this needs deleting after cell by cell is updated
 class TypedDat(object):

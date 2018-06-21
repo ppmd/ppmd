@@ -94,7 +94,7 @@ def internal_to_ev():
 
 class PyFMM(object):
     def __init__(self, domain, N=None, eps=10.**-6,
-        free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels=2,
+        free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels=1,
         force_unit=1.0, energy_unit=1.0, _debug=False, l=None, cuda_local=False):
 
         self._debug = _debug
@@ -852,7 +852,6 @@ class PyFMM(object):
         else:
             self._cuda_start_local(positions, charges, forces=forces,
                 potential=potential)
-
 
         for level in range(self.R - 1, 0, -1):
 

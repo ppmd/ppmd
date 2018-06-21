@@ -10,9 +10,8 @@ __license__ = "GPL"
 # system level
 import ctypes
 import numpy as np
-
 # package level
-from ppmd import data, cell, host, kernel, mpi, runtime, halo
+from ppmd import data, cell, host, mpi, runtime, halo
 import ppmd.lib.build as build
 
 _MPI = mpi.MPI
@@ -21,6 +20,7 @@ _MPIWORLD = mpi.MPI.COMM_WORLD
 _MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
 _MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
 _MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
+
 
 class _AsFunc(object):
     """
@@ -48,7 +48,7 @@ class BaseMDState(object):
     def __init__(self, *args, **kwargs):
 
         self._domain = None
-        self._base_cell_width = 0.0 # no cell structure imposed
+        self._base_cell_width = 0.0  # no cell structure imposed
 
         self._cell_to_particle_map = None
         self._halo_manager = None
@@ -74,7 +74,7 @@ class BaseMDState(object):
 
         self._move_controller = _move_controller(state=self)
 
-        #halo vars
+        # halo vars
         self._halo_exchange_sizes = None
 
         self.determine_update_funcs = []
@@ -83,10 +83,8 @@ class BaseMDState(object):
 
         self._dat_len = 0
 
-
     def rebuild_cell_to_particle_maps(self):
         pass
-
 
     def cell_decompose(self, cell_width):
 
@@ -106,7 +104,6 @@ class BaseMDState(object):
             return True
         else:
             return False
-
 
     def _cell_particle_map_setup(self):
 
@@ -128,7 +125,7 @@ class BaseMDState(object):
                 self._determine_update_status
             )
             self._cell_to_particle_map.setup_callback_on_update(
-               self._post_update_funcs
+                self._post_update_funcs
             )
 
             self._cell_to_particle_map.update_required = True
@@ -143,6 +140,7 @@ class BaseMDState(object):
     def _post_update_funcs(self):
         for foo in self.post_update_funcs:
             foo()
+
     def _determine_update_status(self):
         if len(self.determine_update_funcs) == 0:
             return True
@@ -171,7 +169,6 @@ class BaseMDState(object):
     def _ccbarrier(self):
         return self._domain.comm.Barrier()
 
-
     @domain.setter
     def domain(self, new_domain):
         self._domain = new_domain
@@ -187,12 +184,10 @@ class BaseMDState(object):
     def get_cell_to_particle_map(self):
         return self._cell_to_particle_map
 
-
     def get_position_dat(self):
         assert self._position_dat is not None, "No positions have been added, " \
                                                "Use data.PositionDat"
         return getattr(self, self._position_dat)
-
 
     def __setattr__(self, name, value):
         """
@@ -207,10 +202,10 @@ class BaseMDState(object):
         # Add to instance list of particle dats.
         if issubclass(type(value), data.ParticleDat):
             object.__setattr__(self, name, value)
-            if not name in self.particle_dats:
+            if name not in self.particle_dats:
                 self.particle_dats.append(name)
 
-            # Re-create the move library.
+            # Recreate the move library.
             self._move_controller.reset()
 
             # register resize callback
@@ -265,22 +260,18 @@ class BaseMDState(object):
         """
         self._npart_local = int(value)
         for ix in self.particle_dats:
-            _dat = getattr(self,ix)
+            _dat = getattr(self, ix)
             _dat.npart_local = int(value)
             _dat.halo_start_reset()
-        # print "N set:", value
-
 
     @property
     def npart(self):
         return self._npart
 
-
     @npart.setter
     def npart(self, value=None):
         assert value >= 0, "no value passed"
         self._npart = value
-
 
     def _resize_callback(self, value=None):
         """
@@ -292,18 +283,16 @@ class BaseMDState(object):
         assert type(value) is not None, "No new size passed"
         self._dat_len = int(value)
         for ix in self.particle_dats:
-            _dat = getattr(self,ix)
+            _dat = getattr(self, ix)
             _dat.resize(int(value), _callback=False)
-
 
     def scatter_data_from(self, rank):
         self.broadcast_data_from(rank)
         self.filter_on_domain_boundary()
 
-
     def broadcast_data_from(self, rank=0):
         # This is in terms of MPI_COMM_WORLD
-        assert (rank>-1) and (rank<_MPISIZE), "Invalid mpi rank"
+        assert (rank > -1) and (rank < _MPISIZE), "Invalid mpi rank"
 
         if _MPISIZE == 1:
             self.npart_local = self.npart
@@ -315,7 +304,6 @@ class BaseMDState(object):
             for px in self.particle_dats:
                 getattr(self, px).broadcast_data_from(rank=rank, _resize_callback=False)
 
-
     def gather_data_on(self, rank=0):
         # also in terms of MPI_COMM_WORLD
         if _MPISIZE == 1:
@@ -323,7 +311,6 @@ class BaseMDState(object):
         else:
             for px in self.particle_dats:
                 getattr(self, px).gather_data_on(rank)
-
 
     def filter_on_domain_boundary(self):
         """
@@ -333,22 +320,20 @@ class BaseMDState(object):
         b = self.domain.boundary
         p = self.get_position_dat()
 
-
         lo = np.logical_and(
             np.logical_and(
-                np.logical_and((b[0] <= p[::,0]), (p[::,0] < b[1])),
-                np.logical_and((b[2] <= p[::,1]), (p[::,1] < b[3]))
+                np.logical_and((b[0] <= p[::, 0]), (p[::, 0] < b[1])),
+                np.logical_and((b[2] <= p[::, 1]), (p[::, 1] < b[3]))
             ),
-            np.logical_and((b[4] <= p[::,2]), (p[::,2] < b[5]))
+            np.logical_and((b[4] <= p[::, 2]), (p[::, 2] < b[5]))
         )
-        
 
         bx = np.logical_not(lo)
         self._move_controller.compress_empty_slots(np.nonzero(bx)[0])
 
         self.npart_local = np.sum(lo)
 
-        #for px in self.particle_dats:
+        # for px in self.particle_dats:
         #    getattr(self, px).npart_local = self.npart_local
 
         # check we did not loose some particles in the process
@@ -358,8 +343,8 @@ class BaseMDState(object):
         """Check no particles have been lost"""
         t = self.sum_npart_local()
         if t != self.npart:
-            raise RuntimeError("Particles lost! Expected {} found {}.".\
-                    format(self.npart, t))
+            raise RuntimeError("Particles lost! Expected {} found {}.".
+                               format(self.npart, t))
 
     def sum_npart_local(self):
         """Sum npart_local across all ranks"""
@@ -369,7 +354,7 @@ class BaseMDState(object):
         return _t[0]
 
     def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None,
-            shifts=None):
+                          shifts=None):
         self._move_controller.move_to_neighbour(
             ids_directions_list,
             dir_send_totals,
@@ -381,8 +366,8 @@ class BaseMDState(object):
         idi = self._cell_to_particle_map.version_id
         idh = self._cell_to_particle_map.halo_version_id
         if idi == 0:
-            raise RuntimeError('Cell to particle map was never constructed before' + \
-                    ' a call to halo exchange')
+            raise RuntimeError('Cell to particle map was never constructed before' +
+                               ' a call to halo exchange')
 
         if idi > idh:
             self._halo_exchange_sizes = self._halo_manager.exchange_cell_counts()
@@ -390,7 +375,6 @@ class BaseMDState(object):
             self._resize_callback(new_size)
             self._cell_to_particle_map.prepare_halo_sort(new_size)
             self.npart_halo = new_size - self.npart_local
-        
         return self._halo_exchange_sizes
 
     def _halo_update_post_exchange(self):
@@ -400,10 +384,8 @@ class BaseMDState(object):
             self._cell_to_particle_map.post_halo_exchange()
 
 
-
 class State(BaseMDState):
     pass
-
 
 
 class _move_controller(object):
@@ -456,7 +438,7 @@ class _move_controller(object):
         self._total_ncomp = 0
         for ixi, ix in enumerate(self.state.particle_dats):
             _dat = getattr(self.state, ix)
-            self._total_ncomp += _dat.ncomp*ctypes.sizeof(_dat.dtype)
+            self._total_ncomp += _dat.ncomp * ctypes.sizeof(_dat.dtype)
 
     def move_to_neighbour(self, ids_directions_list=None,
                           dir_send_totals=None, shifts=None):
@@ -464,9 +446,9 @@ class _move_controller(object):
         Move particles using the linked list.
         :arg host.Array ids_directions_list(int): Linked list of ids from
          directions.
-        :arg host.Array dir_send_totals(int): 26 Element array of number of 
+        :arg host.Array dir_send_totals(int): 26 Element array of number of
         particles traveling in each direction.
-        :arg host.Array shifts(double): 73 element array of the shifts to 
+        :arg host.Array shifts(double): 73 element array of the shifts to
         apply when moving particles for the 26 directions.
         """
 
@@ -510,7 +492,7 @@ class _move_controller(object):
             self._move_recv_buffer.realloc(self._total_ncomp * _recv_total)
 
         for ix in self.state.particle_dats:
-            _d = getattr(self.state,ix)
+            _d = getattr(self.state, ix)
             if _recv_total + self.state.npart_local > _d.max_npart:
                 _d.resize(_recv_total + self.state.npart_local)
 
@@ -518,7 +500,7 @@ class _move_controller(object):
         if _send_total > 0:
             self._resize_empty_slot_store(_send_total)
 
-        #pack particles to send.
+        # pack particles to send.
         assert shifts.dtype == ctypes.c_double
         self._move_packing_lib(
             self._move_send_buffer.ctypes_data,
@@ -528,11 +510,10 @@ class _move_controller(object):
             *[getattr(self.state, n).ctypes_data for n in self.state.particle_dats]
         )
 
-        #sort empty slots.
+        # sort empty slots.
         self._move_empty_slots.data[0:_send_total:].sort()
 
-
-        #exchange particle data.
+        # exchange particle data.
         self._exchange_move_send_recv_buffers()
 
         # Create unpacking lib.
@@ -559,7 +540,8 @@ class _move_controller(object):
             _send_rank[_tx] = mpi.cartcomm_shift(
                 self._ccomm, direction, ignore_periods=True)
 
-            _recv_rank[_tx] = mpi.cartcomm_shift(self._ccomm,
+            _recv_rank[_tx] = mpi.cartcomm_shift(
+                self._ccomm,
                 (-1 * direction[0], -1 * direction[1], -1 * direction[2]),
                 ignore_periods=True
             )
@@ -567,7 +549,7 @@ class _move_controller(object):
         if _recv_total < _send_total:
             self.compressed = False
             _tmp = self._move_empty_slots.data[_recv_total:_send_total:]
-            self._move_empty_slots.data[0:_send_total-_recv_total:] = np.array(_tmp, copy=True)
+            self._move_empty_slots.data[0:_send_total - _recv_total:] = np.array(_tmp, copy=True)
 
         else:
             self.state.npart_local = self.state.npart_local + _recv_total - _send_total
@@ -576,7 +558,7 @@ class _move_controller(object):
         self._compress_particle_dats(_send_total - _recv_total)
 
         if _send_total > 0 or _recv_total > 0:
-            #print "invalidating lists in move"
+            # print "invalidating lists in move"
             self.state.invalidate_lists = True
 
         self.move_timer.pause()
@@ -590,7 +572,6 @@ class _move_controller(object):
         _r_start = 0
         _r_end = 0
         _n = self._total_ncomp
-
 
         for ix in range(26):
             _s_end += _n * self._move_dir_send_totals[ix]
@@ -610,32 +591,39 @@ class _move_controller(object):
 
             # sending of particles.
             if self._move_dir_send_totals[ix] > 0 and self._move_dir_recv_totals[ix] > 0:
-                self._ccomm.Sendrecv(self._move_send_buffer.data[_s_start:_s_end:],
-                                             _send_rank,
-                                             _send_rank,
-                                             self._move_recv_buffer.data[_r_start:_r_end:],
-                                             _recv_rank,
-                                             self._ccrank,
-                                             self._status)
+                self._ccomm.Sendrecv(
+                    self._move_send_buffer.data[_s_start:_s_end:],
+                    _send_rank,
+                    _send_rank,
+                    self._move_recv_buffer.data[_r_start:_r_end:],
+                    _recv_rank,
+                    self._ccrank,
+                    self._status
+                )
 
             elif self._move_dir_send_totals[ix] > 0:
-                    self._ccomm.Send(self._move_send_buffer.data[_s_start:_s_end:],
-                                             _send_rank,
-                                             _send_rank)
+                    self._ccomm.Send(
+                        self._move_send_buffer.data[_s_start:_s_end:],
+                        _send_rank,
+                        _send_rank
+                    )
 
             elif self._move_dir_recv_totals[ix] > 0:
-                    self._ccomm.Recv(self._move_recv_buffer.data[_r_start:_r_end:],
-                                             _recv_rank,
-                                             self._ccrank,
-                                             self._status)
+                    self._ccomm.Recv(
+                        self._move_recv_buffer.data[_r_start:_r_end:],
+                        _recv_rank,
+                        self._ccrank,
+                        self._status
+                    )
 
             _s_start += _n * self._move_dir_send_totals[ix]
             _r_start += _n * self._move_dir_recv_totals[ix]
 
             if self._move_dir_recv_totals[ix] > 0:
                 _tsize = self._status.Get_count(mpi.mpi_map[ctypes.c_byte])
-                assert _tsize == self._move_dir_recv_totals[ix]*self._total_ncomp, "RECVD incorrect amount of data:" + str(_tsize) + " " + str(self._move_dir_recv_totals[ix]*self._total_ncomp)
-
+                assert _tsize == self._move_dir_recv_totals[ix] * self._total_ncomp, \
+                    "RECVD incorrect amount of data:" + str(_tsize) + " " + str(
+                    self._move_dir_recv_totals[ix] * self._total_ncomp)
 
     def _move_exchange_send_recv_sizes(self):
         """
@@ -656,7 +644,8 @@ class _move_controller(object):
                 ignore_periods=True
             )
 
-            self._ccomm.Sendrecv(self._move_dir_send_totals.data[ix:ix + 1:],
+            self._ccomm.Sendrecv(
+                self._move_dir_send_totals.data[ix:ix + 1:],
                 _send_rank,
                 _send_rank,
                 self._move_dir_recv_totals.data[ix:ix + 1:],
@@ -728,7 +717,10 @@ class _move_controller(object):
     def build_unpack_lib(state):
 
         dats = state.particle_dats
-        g = lambda x: getattr(state, x)
+
+        def g(x):
+            return getattr(state, x)
+
         args = ','.join(['{} * D_{}'.format(g(n).ctype, n) for n in dats])
         mvs = ''.join([
             '''
@@ -757,10 +749,10 @@ class _move_controller(object):
         for(int ix = 0; ix < _recv_count; ix++){
             int pos;
             // prioritise filling spaces in dat.
-            if (ix < _num_free_slots) {pos = _free_slots[ix];} 
+            if (ix < _num_free_slots) {pos = _free_slots[ix];}
             else {pos = _prev_num_particles + ix - _num_free_slots;}
             %(MVS)s
-        }  
+        }
         return 0;}
         ''' % {'ARGS': args, 'MVS': mvs}
         return build.simple_lib_creator(
@@ -770,7 +762,10 @@ class _move_controller(object):
     def build_pack_lib(state):
 
         dats = state.particle_dats
-        g = lambda x: getattr(state, x)
+
+        def g(x):
+            return getattr(state, x)
+
         args = ','.join(['const {} * D_{}'.format(g(n).ctype, n) for n in dats])
         _dynamic_dats_shift = ''
         for ix in state.particle_dats:
@@ -778,7 +773,7 @@ class _move_controller(object):
             sub_dict = {
                 'DTYPE': dat.ctype,
                 'DBYTE': str(ctypes.sizeof(dat.dtype)),
-                'TBYTE': str(dat.ncomp*ctypes.sizeof(dat.dtype)),
+                'TBYTE': str(dat.ncomp * ctypes.sizeof(dat.dtype)),
                 'NCOMP': str(dat.ncomp),
                 'NAME': str(ix)
             }
@@ -802,7 +797,7 @@ class _move_controller(object):
 
         hsrc = '''
         #include<string.h>
-        #include<stdint.h>       
+        #include<stdint.h>
         '''
         src = '''
         extern "C"
@@ -836,7 +831,9 @@ class _move_controller(object):
 
         dats = state.particle_dats
 
-        g = lambda x: getattr(state, x)
+        def g(x):
+            return getattr(state, x)
+
         hsrc = ''''''
         args = ','.join(['{} * D_{}'.format(g(n).ctype, n) for n in dats])
         dyn = '\n'.join(
@@ -853,7 +850,7 @@ class _move_controller(object):
         extern "C"
         int compress(
             const int slots_to_fill_in,
-            const int n_new_in,     
+            const int n_new_in,
             const int * slots,
             int * n_new_out,
             %(ARGS)s

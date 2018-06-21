@@ -159,8 +159,6 @@ int local_cell_by_cell(
     REAL * RESTRICT potential_array,
     INT64 * RESTRICT exec_count
 ){
-    
-
 
     omp_set_num_threads(num_threads);
     int err = 0;
