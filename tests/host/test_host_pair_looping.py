@@ -775,7 +775,7 @@ def test_host_pair_loop_NS_FCC_2():
 
 
 
-@pytest.fixture(scope="module", params=list({ctypes.c_int, ctypes.c_double}))
+@pytest.fixture(scope="function", params=list({ctypes.c_int, ctypes.c_double}))
 def DTYPE(request):
     return request.param
 
@@ -784,7 +784,6 @@ def test_host_pair_loop_NS_dtypes_access(DTYPE):
     Set a cutoff slightly larger than the 3rd nearest neighbour distance in
     the grid
     """
-
     A = State()
 
     crN2 = 10
