@@ -76,7 +76,7 @@ int local_cell_by_cell_0(
 
     dim3 grid_block(nblocks, 1, 1);
     
-    //err = cudaSetDevice(device_number);
+    err = cudaSetDevice(device_number);
     CUDACHECKERR
 
     int device_id = -1;
@@ -92,7 +92,13 @@ int local_cell_by_cell_0(
         return cudaErrorUnknown; 
     }   
     
-    cudaStream_t s1, s2;
+    cudaStream_t s1, s2, s3;
+    err = cudaStreamCreate(&s1);
+    CUDACHECKERR
+    err = cudaStreamCreate(&s2);
+    CUDACHECKERR    
+    err = cudaStreamCreate(&s3);
+    CUDACHECKERR
 
     err = cudaMemcpyAsync((void*) d_positions, (void*) P, (size_t) 3*ntotal*sizeof(REAL),
             cudaMemcpyHostToDevice, s1); 
@@ -101,7 +107,7 @@ int local_cell_by_cell_0(
     err = cudaMemcpyAsync (d_charges, Q, ntotal*sizeof(REAL), cudaMemcpyHostToDevice, s2); 
     CUDACHECKERR
 
-    zero_outputs<<<grid_block, thread_block>>>(nlocal, d_forces, d_potential_array);
+    zero_outputs<<<grid_block, thread_block, 0, s3>>>(nlocal, d_forces, d_potential_array);
 
     // bin particles into fmm cells whilst copying is happening.
 
@@ -247,7 +253,13 @@ shared(ll_array, ll_ccc_array, C, P, global_size)
 
     err = cudaDeviceSynchronize();
     CUDACHECKERR
-    
+
+    err = cudaStreamDestroy(s1);
+    CUDACHECKERR
+    err = cudaStreamDestroy(s2);
+    CUDACHECKERR
+    err = cudaStreamDestroy(s3);
+    CUDACHECKERR
     return err;
 }
 
@@ -416,11 +428,16 @@ int local_cell_by_cell_1(
     dim3 thread_block(thread_block_size, 1, 1);
     
     
-    //err = cudaSetDevice(device_number);
+    err = cudaSetDevice(device_number);
     CUDACHECKERR
 
     int device_id = -1;
     err = cudaGetDevice(&device_id);
+    CUDACHECKERR
+    
+    err = cudaStreamCreate(&s1);
+    CUDACHECKERR
+    err = cudaStreamCreate(&s2);
     CUDACHECKERR
 
 
@@ -489,9 +506,10 @@ int local_cell_by_cell_1(
     CUDACHECKERR
     err = cudaMemcpyToSymbol(d_local_offset0, &local_offset[0], sizeof(INT64));
     CUDACHECKERR
+
+
     err = cudaDeviceSynchronize();
     CUDACHECKERR
-
     other_cell<<<grid_block2, thread_block>>>(d_ll_array, d_positions, d_charges, d_forces, d_potential_array);
     err = cudaDeviceSynchronize();
     CUDACHECKERR
@@ -504,6 +522,12 @@ int local_cell_by_cell_1(
             nlocal*sizeof(REAL), cudaMemcpyDeviceToHost, s2);
     CUDACHECKERR
     err = cudaDeviceSynchronize();
+    CUDACHECKERR
+
+
+    err = cudaStreamDestroy(s1);
+    CUDACHECKERR
+    err = cudaStreamDestroy(s2);
     CUDACHECKERR
 
     return err;
@@ -529,11 +553,11 @@ int local_cell_by_cell_2(
     int err = 0;
     
     //err = cudaSetDevice(device_number);
-    CUDACHECKERR
+    //CUDACHECKERR
 
     int device_id = -1;
-    err = cudaGetDevice(&device_id);
-    CUDACHECKERR
+    //err = cudaGetDevice(&device_id);
+    //CUDACHECKERR
     
     REAL uu = 0.0;
 
