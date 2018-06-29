@@ -116,79 +116,79 @@ def test_cuda_halo_cell_check(state):
                 assert bool_in_halo(cx,cy,cz,C0,C1,C2) == flags[cv]
 
 
-
+@pytest.mark.skipif("nproc < 2")
 @cuda
 def test_host_halo_cube_4(state, h_state):
     """
     Check cell contents using a cell by cell inspection.
     """
 
-    if nproc > 1:
-        cell_width = float(E)/float(crN)
+    cell_width = float(E)/float(crN)
 
-        state.domain.cell_decompose(cell_width)
-        state.get_cell_to_particle_map().create()
-        state.get_cell_to_particle_map().update_required = True
+    state.domain.cell_decompose(cell_width)
+    state.get_cell_to_particle_map().create()
+    state.get_cell_to_particle_map().update_required = True
 
-        h_state.domain.cell_decompose(cell_width)
-        h_state.get_cell_to_particle_map().create()
-        h_state.get_cell_to_particle_map().update_required = True
+    h_state.domain.cell_decompose(cell_width)
+    h_state.get_cell_to_particle_map().create()
+    h_state.get_cell_to_particle_map().update_required = True
 
-
-        pi = np.random.uniform(-0.5*E, 0.5*E, [N,3])
-        pi = np.array(pi, dtype=ctypes.c_double)
-
-
-        state.p[:] = pi
-        state.npart_local = N
-        state.filter_on_domain_boundary()
-        state.get_cell_to_particle_map().check()
+    rng = np.random.RandomState(seed=1234)
+    pi = rng.uniform(-0.5*E, 0.5*E, [N,3])
+    pi = md.utility.sanitise.wrap_positions((E,E,E), pi)
+    pi = np.array(pi, dtype=ctypes.c_double)
 
 
-        h_state.p[:] = pi
-        h_state.npart_local = N
-        h_state.filter_on_domain_boundary()
-        h_state.get_cell_to_particle_map().check()
-
-        state.p.halo_exchange()
-        h_state.p.halo_exchange()
+    state.p[:] = pi
+    state.npart_local = N
+    state.filter_on_domain_boundary()
+    state.get_cell_to_particle_map().check()
 
 
-        assert h_state.p.npart_local == state.p.npart_local
-        assert h_state.p.npart_local_halo == state.p.npart_local_halo
+    h_state.p[:] = pi
+    h_state.npart_local = N
+    h_state.filter_on_domain_boundary()
+    h_state.get_cell_to_particle_map().check()
 
-        cl = h_state.p.npart_local
-        ch = h_state.p.npart_local_halo
-
-
-        h_p = h_state.p[cl:cl+ch:, :]
-        d_p = state.p[cl:cl+ch:, :]
+    state.p.halo_exchange()
+    h_state.p.halo_exchange()
 
 
-        h_p = h_p[np.lexsort((h_p[:, 0], h_p[:, 1], h_p[:,2]))]
-        d_p = d_p[np.lexsort((d_p[:, 0], d_p[:, 1], d_p[:,2]))]
+    assert h_state.p.npart_local == state.p.npart_local
+    assert h_state.p.npart_local_halo == state.p.npart_local_halo
 
-        '''
-        print rank, h_p.shape, d_p.shape, ch
+    cl = h_state.p.npart_local
+    ch = h_state.p.npart_local_halo
 
-        np.set_printoptions(linewidth=60)
 
-        if rank == 0:
-            print rank, "DEV local"
-            print state.p[0:cl:,::]
+    h_p = h_state.p[cl:cl+ch:, :]
+    d_p = state.p[cl:cl+ch:, :]
 
-            print rank, "DEV halo"
-            print state.p[cl:cl+ch:,::]
 
-            print rank, "HOST halo"
-            print h_state.p[cl:cl+ch:,::]
+    h_p = h_p[np.lexsort((h_p[:, 0], h_p[:, 1], h_p[:,2]))]
+    d_p = d_p[np.lexsort((d_p[:, 0], d_p[:, 1], d_p[:,2]))]
 
-        '''
+    '''
+    print rank, h_p.shape, d_p.shape, ch
 
-        for ix in range(ch):
-            assert h_p[ix, 0] == d_p[ix, 0]
-            assert h_p[ix, 1] == d_p[ix, 1]
-            assert h_p[ix, 2] == d_p[ix, 2]
+    np.set_printoptions(linewidth=60)
+
+    if rank == 0:
+        print rank, "DEV local"
+        print state.p[0:cl:,::]
+
+        print rank, "DEV halo"
+        print state.p[cl:cl+ch:,::]
+
+        print rank, "HOST halo"
+        print h_state.p[cl:cl+ch:,::]
+
+    '''
+
+    for ix in range(ch):
+        assert h_p[ix, 0] == d_p[ix, 0]
+        assert h_p[ix, 1] == d_p[ix, 1]
+        assert h_p[ix, 2] == d_p[ix, 2]
 
 
 

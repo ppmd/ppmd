@@ -217,8 +217,8 @@ def test_cuda_local_2():
     err1 = np.linalg.norm(A.f[:nloc:, :] - A.fc[:nloc:,:], np.inf)
     err2 = np.linalg.norm(A.u[:nloc:, :] - A.uc[:nloc:,:], np.inf)
     
-    assert err1 < 10**-12
-    assert err2 < 10**-12
+    assert err1 < 10**-11
+    assert err2 < 10**-11
 
 
 
