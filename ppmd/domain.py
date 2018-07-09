@@ -19,9 +19,7 @@ from ppmd.lib import build
 
 _MPI = mpi.MPI
 _MPIWORLD = _MPI.COMM_WORLD
-_MPIRANK = _MPIWORLD.Get_rank()
 _MPISIZE = _MPIWORLD.Get_size()
-_MPIBARRIER = _MPIWORLD.Barrier
 
 _LIB_SOURCES = os.path.join(os.path.dirname(__file__), 'lib/domain/')
 

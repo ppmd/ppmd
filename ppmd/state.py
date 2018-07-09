@@ -144,6 +144,12 @@ class BaseMDState(object):
         for foo in self.determine_update_funcs:
             v |= foo()
         return v
+    
+    def _check_comm(self):
+        if self._domain is None:
+            raise RuntimeError('A domain is required but no domain was found')
+        if self._domain.comm is None:
+            raise RuntimeError('A domain communicator is required but comm was none')        
 
     @property
     def domain(self):
@@ -151,17 +157,21 @@ class BaseMDState(object):
 
     @property
     def _ccomm(self):
+        self._check_comm()
         return self._domain.comm
 
     @property
     def _ccrank(self):
+        self._check_comm()
         return self._domain.comm.Get_rank()
 
     @property
     def _ccsize(self):
+        self._check_comm()
         return self._domain.comm.Get_size()
 
     def _ccbarrier(self):
+        self._check_comm()
         return self._domain.comm.Barrier()
 
     @domain.setter
@@ -199,6 +209,8 @@ class BaseMDState(object):
             object.__setattr__(self, name, value)
             if name not in self.particle_dats:
                 self.particle_dats.append(name)
+            else:
+                raise RuntimeError('This property is already assigned')
 
             # Recreate the move library.
             self._move_controller.reset()
@@ -211,6 +223,10 @@ class BaseMDState(object):
 
             # set dat name to be attribute name
             getattr(self, name).name = name
+            
+            # set the communicator of the dat
+            if self._domain is not None:
+                getattr(self, name).comm = self._ccomm
 
             if self._dat_len > 0:
                 getattr(self, name).resize(self._dat_len, _callback=False)

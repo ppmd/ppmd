@@ -24,12 +24,7 @@ from ppmd.data.scalar_array import ScalarArray
 
 np.set_printoptions(threshold=1000)
 
-_MPI = mpi.MPI
-SUM = _MPI.SUM
-_MPIWORLD = mpi.MPI.COMM_WORLD
-_MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
-_MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
-_MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
+SUM = mpi.MPI.SUM
 
 """
 rst_doc{
@@ -145,6 +140,9 @@ class ParticleDat(host.Matrix):
         self._norm_tmp = ScalarArray(ncomp=1, dtype=self.dtype)
         self._linf_norm_lib = None
 
+        # default comm is world
+        self.comm = mpi.MPI.COMM_WORLD
+
     @property
     def data(self):
         self._vid_int += 1
@@ -225,32 +223,32 @@ class ParticleDat(host.Matrix):
 
     def broadcast_data_from(self, rank=0, _resize_callback=True):
         # in terms of MPI_COMM_WORLD
-        assert (rank > -1) and (rank < _MPISIZE), "Invalid mpi rank"
+        assert (rank > -1) and (rank < self.comm.Get_size()), "Invalid mpi rank"
 
-        if _MPISIZE == 1:
+        if self.comm.Get_size() == 1:
             return
         else:
             s = np.array([self._dat.shape[0]], dtype=ctypes.c_int)
-            _MPIWORLD.Bcast(s, root=rank)
+            self.comm.Bcast(s, root=rank)
             self.resize(s[0], _callback=_resize_callback)
-            _MPIWORLD.Bcast(self._dat, root=rank)
+            self.comm.Bcast(self._dat, root=rank)
 
     def gather_data_on(self, rank=0, _resize_callback=False):
 
         # in terms of MPI_COMM_WORLD
-        assert (rank > -1) and (rank < _MPISIZE), "Invalid mpi rank"
-        if _MPISIZE == 1:
+        assert (rank > -1) and (rank < self.comm.Get_size()), "Invalid mpi rank"
+        if self.comm.Get_size() == 1:
             return
         else:
 
-            counts = _MPIWORLD.gather(self.npart_local, root=rank)
+            counts = self.comm.gather(self.npart_local, root=rank)
 
             disp = None
             tmp = np.zeros(1)
 
             send_size = self.npart_local
 
-            if _MPIRANK == rank:
+            if self.comm.Get_rank() == rank:
 
                 self.resize(sum(counts), _callback=_resize_callback)
                 self.npart_local = sum(counts)
@@ -261,13 +259,13 @@ class ParticleDat(host.Matrix):
 
                 tmp = np.zeros([self.npart_local, self.ncomp], dtype=self.dtype)
 
-            _MPIWORLD.Gatherv(
+            self.comm.Gatherv(
                 sendbuf=self._dat[:send_size:, ::],
                 recvbuf=(tmp, counts, disp, None),
                 root=rank
             )
 
-            if _MPIRANK == rank:
+            if self.comm.Get_rank() == rank:
                 self._dat = tmp
 
     def ctypes_data_access(self, mode=access.RW, pair=True):
@@ -365,7 +363,6 @@ class ParticleDat(host.Matrix):
         Perform a halo exchange for the particle dat.
         """
 
-        # print("HALO EXC:", self.name, _MPIRANK)
         self.timer_comm.start()
 
         # can only exchage sizes if needed.
