@@ -9,11 +9,12 @@ import sys, atexit, traceback
 import ctypes as ct
 import numpy as np
 
+import os
+
 if sys.version_info[0] >= 3:
     import queue as Queue
 else:
     import Queue
-
 
 if not MPI.Is_initialized():
     MPI.Init()
@@ -325,3 +326,27 @@ if MPI.COMM_WORLD.size > 1:
         abort()
 
     sys.excepthook = mpi_excepthook
+
+_badhashstring = '''
+
+===========================================================================
+Environment variable PYTHONHASHSEED is either not set or set to a bad
+value. For Bash like shells execute the following or similar before mpirun:
+
+export PYTHONHASHSEED=1234
+
+===========================================================================
+'''
+
+def check_pythonhashseed():
+    if MPI.COMM_WORLD.size == 1:
+        return
+    if sys.version_info[0] < 3:
+        return
+    if 'PYTHONHASHSEED' not in os.environ.keys():
+        raise RuntimeError(_badhashstring)
+    if int(os.environ['PYTHONHASHSEED'], 10) < 0:
+        raise RuntimeError(_badhashstring)
+    if int(os.environ['PYTHONHASHSEED'], 10) >= 4294967295:
+        raise RuntimeError(_badhashstring)
+

@@ -45,3 +45,6 @@ from . import plain_cell_list
 
 abort = mpi.abort
 check = mpi.check
+
+mpi.check_pythonhashseed()
+

@@ -228,13 +228,13 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
     except Exception as e:
         print(e)
         _print_file_if_exists(stderr_filename)
-        ppmd.abort('build error: library not built.')
+        raise RuntimeError('build error: library not built.')
 
     # try to provide useful compile errors
     if not os.path.exists(_lib_filename):
         print("Critical build Error: Library not found,\n" + \
                    _lib_filename + "\n rank:", _MPIRANK)
-        ppmd.abort('compiler call did not error, but no binary found')
+        raise RuntimeError('compiler call did not error, but no binary found')
 
     _build_timer.pause()
     opt.PROFILE['Build:' + CC.binary[0] + ':'] = (_build_timer.time())
