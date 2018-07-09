@@ -30,39 +30,33 @@ SUM = mpi.MPI.SUM
 _global_array_access = (access.R, access.READ, access.INC, access.INC_ZERO, access.INC0)
 
 
-
 class GlobalArray(object):
     """
     Class for global data. This class may be: globally set, incremented and
-    read. This class is constructed with a MPI reduction operator, currently 
-    only MPI.SUM is avaialbe, which defines the addition operator. Global 
-    setting sets all values in the array to the same value across all ranks. 
+    read. This class is constructed with a MPI reduction operator, currently
+    only MPI.SUM is avaialbe, which defines the addition operator. Global
+    setting sets all values in the array to the same value across all ranks.
     All calls must be made on all ranks in parent communicator.
     """
 
-    def __new__(
-    self, size=1, dtype=ctypes.c_double, comm=mpi.MPI.COMM_WORLD, op=mpi.MPI.SUM, shared_memory=False,
-    ncomp=None):
+    def __new__(self, size=1, dtype=ctypes.c_double, comm=mpi.MPI.COMM_WORLD,
+                op=mpi.MPI.SUM, shared_memory=False, ncomp=None):
         if ncomp is not None:
-            size = max(size,ncomp)
+            size = max(size, ncomp)
 
         assert shared_memory in (False, 'mpi', 'thread', 'omp')
         if shared_memory == 'mpi':
-            return GlobalArrayShared(
-            size=size, dtype=dtype, comm=comm, op=op
-        )
+            return GlobalArrayShared(size=size, dtype=dtype, comm=comm, op=op)
         else:
-            return GlobalArrayClassic(
-            size=size, dtype=dtype, comm=comm, op=op
-            )
+            return GlobalArrayClassic(size=size, dtype=dtype, comm=comm, op=op)
 
     def __getitem__(self, item):
         pass
-    #def __setitem__(self, key, value):
-    #    pass
+
     @property
     def ncomp(self):
         return self.size
+
 
 class GlobalArrayClassic(host._Array):
     """
@@ -117,11 +111,14 @@ class GlobalArrayClassic(host._Array):
         if self._threaded is True:
             return
         self._kdata = [np.zeros(shape=self.size, dtype=self.dtype) for tx in range(self.thread_count)]
-        self._write_pointers = (ctypes.POINTER(self.dtype) * self.thread_count)(*[kx.ctypes.data_as(ctypes.POINTER(self.dtype)) for kx in self._kdata])
-        self._read_pointers = (ctypes.POINTER(self.dtype) * self.thread_count)(*[self._data.ctypes.data_as(ctypes.POINTER(self.dtype)) for kx in range(self.thread_count)])
+
+        self._write_pointers = (ctypes.POINTER(self.dtype) * self.thread_count)(
+            *[kx.ctypes.data_as(ctypes.POINTER(self.dtype)) for kx in self._kdata])
+
+        self._read_pointers = (ctypes.POINTER(self.dtype) * self.thread_count)(
+            *[self._data.ctypes.data_as(ctypes.POINTER(self.dtype)) for kx in range(self.thread_count)])
 
         self._threaded = True
-
 
     def set(self, val):
         self._sync_wait()
@@ -131,12 +128,6 @@ class GlobalArrayClassic(host._Array):
             self._zero_thread_regions()
 
         self._sync_status = True
-
-    #def __setitem__(self, key, value):
-    #
-    #    self._sync_wait()
-    #    self._rdata[key] = value
-    #    self._sync_init()
 
     def __getitem__(self, item):
         self._sync_wait()
@@ -153,10 +144,8 @@ class GlobalArrayClassic(host._Array):
     def ctypes_data_access(self, mode=access.READ, pair=False, threaded=False):
         self._sync_wait()
 
-
         if mode in (access.INC0, access.INC_ZERO):
             self.set(self.identity_element)
-
 
         if threaded is False:
             if not mode.write:
@@ -169,7 +158,6 @@ class GlobalArrayClassic(host._Array):
                 return self._read_pointers
             else:
                 return self._write_pointers
-
 
     @property
     def ctypes_data_read(self):
@@ -205,9 +193,8 @@ class GlobalArrayClassic(host._Array):
         self._timer.pause()
 
         opt.PROFILE[
-            self.__class__.__name__+':{}--{}:{}:'.format(self.dtype, self.size, id(self))
+            self.__class__.__name__ + ':{}--{}:{}:'.format(self.dtype, self.size, id(self))
         ] = (self._timer.time())
-
 
     def _sync_wait(self):
         if self._sync_status:
@@ -216,13 +203,12 @@ class GlobalArrayClassic(host._Array):
         self._sync_status = True
 
 
-
 class GlobalArrayShared(host._Array):
     """
     Class for global data. This class may be: globally set, incremented and
-    read. This class is constructed with a MPI reduction operator, currently 
-    only MPI.SUM is avaialbe, which defines the addition operator. Global 
-    setting sets all values in the array to the same value across all ranks. 
+    read. This class is constructed with a MPI reduction operator, currently
+    only MPI.SUM is avaialbe, which defines the addition operator. Global
+    setting sets all values in the array to the same value across all ranks.
     All calls must be made on all ranks in parent communicator.
     """
 
@@ -254,7 +240,6 @@ class GlobalArrayShared(host._Array):
 
         self.shared_memory = (mpi.MPI.VERSION >= 3) and runtime.MPI_SHARED_MEM
         """True if shared memory is enabled"""
-        
         self.comm = comm
 
     @property
@@ -278,7 +263,7 @@ class GlobalArrayShared(host._Array):
         # create shared memory windows and numpy views
 
         # the write space
-        self._win = mpi.SHMWIN(size=self.size*ctypes.sizeof(self.dtype),
+        self._win = mpi.SHMWIN(size=self.size * ctypes.sizeof(self.dtype),
                                intracomm=mpi.SHMMPI_HANDLE.get_intra_comm())
 
         if hasattr(self._win.win, 'memory'):
@@ -286,15 +271,14 @@ class GlobalArrayShared(host._Array):
             self._data = self._data_memview.view(dtype=self.dtype)
         elif hasattr(self._win.win, 'tomemory'):
             self._data_memview = np.frombuffer(self._win.win.tomemory(),
-                                          dtype=self.dtype)
+                                               dtype=self.dtype)
             self._data = self._data_memview.view()
         else:
             raise RuntimeError('cannot get shared memory from window')
 
-
         # reduction and read space
-        rsize = int(self._split_comm.get_intra_comm().Get_rank()<1) * \
-                self.size * ctypes.sizeof(self.dtype)
+        rsize = int(self._split_comm.get_intra_comm().Get_rank() < 1) * \
+            self.size * ctypes.sizeof(self.dtype)
 
         # window 1 ===========================================================
         self._rwin = mpi.SHMWIN(size=rsize,
@@ -303,7 +287,6 @@ class GlobalArrayShared(host._Array):
         rwin_root_memview = self._rwin.win.Shared_query(0)[0]
         self._rdata_memview = np.array(rwin_root_memview, copy=False)
         self._rdata = self._rdata_memview.view(dtype=self.dtype)
-
 
         # window 2 ===========================================================
         self._rwin2 = mpi.SHMWIN(size=rsize,
@@ -316,26 +299,25 @@ class GlobalArrayShared(host._Array):
         self._flip = True
         # ====================================================================
 
-
         # reduction sizes
         self._msize = None
         self._lsize = self._split_comm.get_intra_comm().Get_size()
         self._lrank = self._split_comm.get_intra_comm().Get_rank()
         if self.size <= self._lsize:
-            self._msize = int(self._lrank<self.size)
+            self._msize = int(self._lrank < self.size)
             self._mstart = self._lrank
         else:
-            bsize = int(math.floor(float(self.size)/self._lsize))
+            bsize = int(math.floor(float(self.size) / self._lsize))
             self._msize = bsize
-            mrem = (self.size - self._msize*self._lsize) % self._lsize
+            mrem = (self.size - self._msize * self._lsize) % self._lsize
             self._msize += int(self._lrank < mrem)
-            self._mstart = int(self._lrank < mrem)*self._lrank*self._msize + int(self._lrank>=mrem)*(mrem*(bsize+1)+(self._lrank-mrem)*bsize)
+            self._mstart = int(self._lrank < mrem) * self._lrank * self._msize + \
+                int(self._lrank >= mrem) * (mrem * (bsize + 1) + (self._lrank - mrem) * bsize)
 
         # view into all of shared memory, list of arrays
         rwin_root_memview = [self._win.win.Shared_query(ix)[0] for ix in range(self._lsize)]
         self._data_root_memview = [np.array(rwin_root_memview[ix], copy=False) for ix in range(self._lsize)]
         self._data_root = [self._data_root_memview[ix].view(dtype=self.dtype) for ix in range(self._lsize)]
-
 
     @property
     def ncomp(self):
@@ -346,18 +328,12 @@ class GlobalArrayShared(host._Array):
 
         self._split_comm.get_intra_comm().Barrier()
         self._rwin.win.Fence()
-        self._rdata[self._mstart:self._mstart+self._msize:] = val
+        self._rdata[self._mstart:self._mstart + self._msize:] = val
         self._rwin.win.Fence()
         self._split_comm.get_intra_comm().Barrier()
 
         self._data.fill(self.identity_element)
         self._sync_status = True
-
-    #def __setitem__(self, key, value):
-    #    self._sync_wait()
-    #    print "SET", self._data[key], value
-    #    self._data[key] = value
-    #    self._sync_init()
 
     def __getitem__(self, item):
         self._sync_wait()
@@ -400,7 +376,8 @@ class GlobalArrayShared(host._Array):
         self._rwin.win.Fence()
 
         for rx in range(self._lsize):
-            self._rdata[self._mstart:self._mstart+self._msize:] += self._data_root[rx][self._mstart:self._mstart+self._msize:]
+            self._rdata[self._mstart:self._mstart + self._msize:] += \
+                self._data_root[rx][self._mstart:self._mstart + self._msize:]
 
         self._rwin.win.Fence()
         self._split_comm.get_intra_comm().Barrier()
@@ -422,14 +399,11 @@ class GlobalArrayShared(host._Array):
 
         self._split_comm.get_intra_comm().Barrier()
 
-
         self._timer.pause()
 
         opt.PROFILE[
-            self.__class__.__name__+':{}--{}:{}:'.format(self.dtype, self.size, id(self))
+            self.__class__.__name__ + ':{}--{}:{}:'.format(self.dtype, self.size, id(self))
         ] = (self._timer.time())
-
-
 
     def _sync_wait(self):
         if self._sync_status:
