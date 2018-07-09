@@ -100,7 +100,7 @@ class GlobalArrayClassic(host._Array):
         """Data type of array."""
         self.shared_memory_type = 'thread'
 
-        self._redcomm = comm
+        self.comm = comm
 
         self._data = np.zeros(shape=size, dtype=dtype)
         self._rdata = np.zeros(shape=size, dtype=dtype)
@@ -205,7 +205,7 @@ class GlobalArrayClassic(host._Array):
         self._timer.start()
         self._sync_status = False
 
-        self._redcomm.Allreduce(self._rdata, self._data2, self.op)
+        self.comm.Allreduce(self._rdata, self._data2, self.op)
         self._data[:] += self._data2[:]
         self._rdata.fill(self.identity_element)
 
@@ -246,6 +246,8 @@ class GlobalArrayShared(host._Array):
 
         assert op is mpi.MPI.SUM, "no other reduction operators are currently implemented"
 
+        self._timer = ppmd.opt.Timer(runtime.TIMER)
+
         self.op = op
         """MPI Reduction operation"""
         self.identity_element = 0
@@ -259,7 +261,16 @@ class GlobalArrayShared(host._Array):
 
         self.shared_memory = (mpi.MPI.VERSION >= 3) and runtime.MPI_SHARED_MEM
         """True if shared memory is enabled"""
+        
+        self.comm = comm
 
+    @property
+    def comm(self):
+        return self._comm
+
+    @comm.setter
+    def comm(self, comm):
+        self._comm = comm
         # aquire/create split communicator for window
         if comm is mpi.MPI.COMM_WORLD and self.shared_memory:
             self._split_comm = mpi.SHMMPI_HANDLE
@@ -290,7 +301,7 @@ class GlobalArrayShared(host._Array):
 
         # reduction and read space
         rsize = int(self._split_comm.get_intra_comm().Get_rank()<1) * \
-                size * ctypes.sizeof(self.dtype)
+                self.size * ctypes.sizeof(self.dtype)
 
         # window 1 ===========================================================
         self._rwin = mpi.SHMWIN(size=rsize,
@@ -332,7 +343,6 @@ class GlobalArrayShared(host._Array):
         self._data_root_memview = [np.array(rwin_root_memview[ix], copy=False) for ix in range(self._lsize)]
         self._data_root = [self._data_root_memview[ix].view(dtype=self.dtype) for ix in range(self._lsize)]
 
-        self._timer = ppmd.opt.Timer(runtime.TIMER)
 
     @property
     def ncomp(self):
