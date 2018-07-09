@@ -19,15 +19,8 @@ import math
 # package level
 from ppmd import access, mpi, runtime, host, opt
 
-
 np.set_printoptions(threshold=1000)
-
-_MPI = mpi.MPI
-SUM = _MPI.SUM
-_MPIWORLD = mpi.MPI.COMM_WORLD
-_MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
-_MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
-_MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
+SUM = mpi.MPI.SUM
 
 
 #####################################################################################
