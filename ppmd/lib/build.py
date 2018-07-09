@@ -13,10 +13,11 @@ import subprocess
 from ppmd import config, runtime, mpi, opt
 
 import ppmd.lib
+import numpy as np
 
-_MPIWORLD = ppmd.mpi.MPI.COMM_WORLD
+
 _MPIRANK = ppmd.mpi.MPI.COMM_WORLD.Get_rank()
-_MPISIZE = ppmd.mpi.MPI.COMM_WORLD.Get_size()
+_MPIWORLD = ppmd.mpi.MPI.COMM_WORLD
 _MPIBARRIER = ppmd.mpi.MPI.COMM_WORLD.Barrier
 
 ###############################################################################
@@ -135,20 +136,36 @@ def simple_lib_creator(
         _filename += '_' + str(_MPIRANK)
 
     _lib_filename = os.path.join(dst_dir, _filename + '.so')
+    
+    _build_needed = not _check_path_exists(_lib_filename)
 
-    if not _check_path_exists(_lib_filename):
+    var = int(hashlib.md5(_lib_filename.encode('utf-8')).hexdigest()[:14], 16)
+    var0 = np.array([int(_build_needed), var])
+    _MPIWORLD.Bcast(var0, root=0)
+
+    if var0[1] != var:
+        ppmd.abort('Consensus not reached on filename:' + \
+            _filename)
+    if var0[0] != int(_build_needed):
+        ppmd.abort('Consensus not reached on build needed:' + \
+            _filename)
+
+    if _build_needed:
 
         # need all ranks to recognise file does not exist if not build per proc
+        # before rank 0 starts to build it
         if not ppmd.runtime.BUILD_PER_PROC:
             _MPIBARRIER()
+
         if (_MPIRANK == 0)  or ppmd.runtime.BUILD_PER_PROC:
             _source_write(header_code, src_code, _filename,
                           extensions=extensions,
                           dst_dir=ppmd.runtime.BUILD_DIR, CC=CC)
 
-        build_lib(_filename, extensions=extensions, source_dir=dst_dir,
-                  CC=CC, dst_dir=dst_dir, inc_dirs=inc_dirs)
-
+            build_lib(_filename, extensions=extensions, source_dir=dst_dir,
+                      CC=CC, dst_dir=dst_dir, inc_dirs=inc_dirs)
+        if not ppmd.runtime.BUILD_PER_PROC:
+            _MPIBARRIER()
 
     _load_timer.start()
     lib = _load(_lib_filename)
@@ -165,7 +182,7 @@ def _check_compiler(name):
                                  stderr=subprocess.STDOUT)
             p.communicate()
         except Exception as e:
-            raise RuntimeError('Compiler binary "{}" cannot be ran.'.format(
+            mpi.abort('Compiler binary "{}" cannot be ran.'.format(
                 name))
 
 _build_timer = opt.Timer()
@@ -180,60 +197,44 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
     _build_timer.start()
 
     _lib_filename = os.path.join(dst_dir, lib + '.so')
+    _lib_src_filename = os.path.join(source_dir, lib + extensions[1])
 
-    if (_MPIRANK == 0) or ppmd.runtime.BUILD_PER_PROC:
-        #_check_compiler(CC.binary)
+    _c_cmd = CC.binary + [_lib_src_filename] + ['-o'] + \
+             [_lib_filename] + CC.c_flags  + CC.l_flags + \
+             ['-I' + str(d) for d in inc_dirs] + \
+             ['-I' + str(source_dir)]
 
-        _lib_src_filename = os.path.join(source_dir, lib + extensions[1])
+    if ppmd.runtime.DEBUG > 0:
+        _c_cmd += CC.dbg_flags
+    if ppmd.runtime.OPT > 0:
+        _c_cmd += CC.opt_flags
+    _c_cmd += CC.shared_lib_flag
 
-        _c_cmd = CC.binary + [_lib_src_filename] + ['-o'] + \
-                 [_lib_filename] + CC.c_flags  + CC.l_flags + \
-                 ['-I' + str(d) for d in inc_dirs] + \
-                 ['-I' + str(source_dir)]
+    stdout_filename = os.path.join(dst_dir, lib + '.log')
+    stderr_filename = os.path.join(dst_dir,  lib + '.err')
+    try:
+        with open(stdout_filename, 'w') as stdout:
+            with open(stderr_filename, 'w') as stderr:
+                stdout.write('#Compilation command:\n')
+                stdout.write(' '.join(_c_cmd))
+                stdout.write('\n\n')
+                stdout.flush()
+                #p = subprocess.Popen(_c_cmd)
+                p = subprocess.check_call(_c_cmd,
+                                     stdout=stdout,
+                                     stderr=stderr)
+                #stdout_data, stderr_data = p.communicate()
 
-        if ppmd.runtime.DEBUG > 0:
-            _c_cmd += CC.dbg_flags
-        if ppmd.runtime.OPT > 0:
-            _c_cmd += CC.opt_flags
-        _c_cmd += CC.shared_lib_flag
-
-        stdout_filename = os.path.join(dst_dir, lib + '.log')
-        stderr_filename = os.path.join(dst_dir,  lib + '.err')
-        try:
-            with open(stdout_filename, 'w') as stdout:
-                with open(stderr_filename, 'w') as stderr:
-                    #print("EXEC START:")
-                    #print(_c_cmd)
-                    #print("EXEC END:")
-                    stdout.write('#Compilation command:\n')
-                    stdout.write(' '.join(_c_cmd))
-                    stdout.write('\n\n')
-                    stdout.flush()
-                    #p = subprocess.Popen(_c_cmd)
-                    p = subprocess.check_call(_c_cmd,
-                                         stdout=stdout,
-                                         stderr=stderr)
-                    #stdout_data, stderr_data = p.communicate()
-        except Exception as e:
-            print(e)
-            _print_file_if_exists(stderr_filename)
-            ppmd.abort('build error: library not built.')
-
-
-    if not ppmd.runtime.BUILD_PER_PROC:
-        _MPIBARRIER()
+    except Exception as e:
+        print(e)
+        _print_file_if_exists(stderr_filename)
+        ppmd.abort('build error: library not built.')
 
     # try to provide useful compile errors
     if not os.path.exists(_lib_filename):
         print("Critical build Error: Library not found,\n" + \
                    _lib_filename + "\n rank:", _MPIRANK)
-        if _MPIRANK == 0:
-            try:
-                with open(os.path.join(dst_dir, lib + '.err'), 'r') as stderr:
-                    print(stderr.read())
-            except Exception as e:
-                print("Error printing failed:", e)
-        ppmd.abort()
+        ppmd.abort('compiler call did not error, but no binary found')
 
     _build_timer.pause()
     opt.PROFILE['Build:' + CC.binary[0] + ':'] = (_build_timer.time())
