@@ -37,8 +37,6 @@ import time
 # package level
 from ppmd import kernel, data, runtime, pio, mpi, opt, access
 
-np.set_printoptions(threshold='nan')
-
 _MPI = mpi.MPI
 _MPIWORLD = mpi.MPI.COMM_WORLD
 _MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()

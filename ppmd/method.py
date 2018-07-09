@@ -34,8 +34,6 @@ import numpy as np
 # package level
 from ppmd import kernel, data, runtime, pio, mpi, opt, access, pairloop, loop
 
-np.set_printoptions(threshold='nan')
-
 _MPI = mpi.MPI
 _MPIWORLD = mpi.MPI.COMM_WORLD
 _MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
