@@ -242,6 +242,12 @@ class BaseMDState(object):
                 else:
                     raise RuntimeError('A state may hold only 1 PositionDat.')
 
+        elif (type(value) is data.global_array.GlobalArrayClassic) or \
+            (type(value) is data.global_array.GlobalArrayShared):
+            object.__setattr__(self, name, value)
+            if self._domain is not None:
+                getattr(self, name).comm = self._ccomm
+
         # Any other attribute.
         else:
             object.__setattr__(self, name, value)
