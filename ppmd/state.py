@@ -14,12 +14,7 @@ import numpy as np
 from ppmd import data, cell, host, mpi, runtime, halo
 import ppmd.lib.build as build
 
-_MPI = mpi.MPI
-SUM = _MPI.SUM
-_MPIWORLD = mpi.MPI.COMM_WORLD
-_MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
-_MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
-_MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
+SUM = mpi.MPI.SUM
 
 
 class _AsFunc(object):
@@ -292,21 +287,21 @@ class BaseMDState(object):
 
     def broadcast_data_from(self, rank=0):
         # This is in terms of MPI_COMM_WORLD
-        assert (rank > -1) and (rank < _MPISIZE), "Invalid mpi rank"
+        assert (rank > -1) and (rank < self._ccsize), "Invalid mpi rank"
 
-        if _MPISIZE == 1:
+        if self._ccsize == 1:
             self.npart_local = self.npart
             return
         else:
             s = np.array([self.npart])
-            _MPIWORLD.Bcast(s, root=rank)
+            self._ccomm.Bcast(s, root=rank)
             self.npart_local = s[0]
             for px in self.particle_dats:
                 getattr(self, px).broadcast_data_from(rank=rank, _resize_callback=False)
 
     def gather_data_on(self, rank=0):
         # also in terms of MPI_COMM_WORLD
-        if _MPISIZE == 1:
+        if self._ccsize == 1:
             return
         else:
             for px in self.particle_dats:
@@ -350,7 +345,7 @@ class BaseMDState(object):
         """Sum npart_local across all ranks"""
         _t = np.array((0,), dtype=ctypes.c_int64)
         _o = np.array((self.npart_local,), dtype=ctypes.c_int64)
-        _MPIWORLD.Allreduce(_o, _t)
+        self._ccomm.Allreduce(_o, _t)
         return _t[0]
 
     def move_to_neighbour(self, ids_directions_list=None, dir_send_totals=None,
