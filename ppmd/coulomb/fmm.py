@@ -115,6 +115,12 @@ class PyFMM(object):
         """Floating point datatype used."""
         self.domain = domain
 
+        _e = domain.extent
+        if (abs(_e[0] - _e[1]) > 10.**-8) or (abs(_e[0] - _e[2]) > 10.**-8):
+            raise RuntimeError('domain passed to constructor is not cubic')
+
+
+
         self.eps = eps
 
         self.free_space = free_space
@@ -666,6 +672,9 @@ class PyFMM(object):
 
         self.cuda_local = cuda_local
         self._fmm_local_cuda = None
+        if self.cuda_local and not CUDA_IMPORT:
+            raise RuntimeError('cuda_local is set but CUDA_IMPORT == False')
+
         if self.cuda_local and CUDA_IMPORT and self.free_space == False:
             from . import fmm_cuda
             self._fmm_local_cuda = fmm_cuda.CudaFMMLocal(width=max_radius,
