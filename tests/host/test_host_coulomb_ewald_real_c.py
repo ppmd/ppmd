@@ -83,8 +83,6 @@ def test_ewald_energy_python_nacl_c_1():
 
     assert abs(energy_real[0]*c.internal_to_ev() + energy_self[0]*c.internal_to_ev() + 0.4194069853E+04) < 10.**-2, "bad real space part"
 
-    print("\t10")
-
 def test_ewald_energy_python_nacl_c_1_mpi():
 
     SHARED_MEMORY = 'mpi'

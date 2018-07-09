@@ -142,13 +142,16 @@ def simple_lib_creator(
     var = int(hashlib.md5(_lib_filename.encode('utf-8')).hexdigest()[:14], 16)
     var0 = np.array([int(_build_needed), var])
     _MPIWORLD.Bcast(var0, root=0)
+    
+    print("==={", _MPIRANK, ppmd.runtime.BUILD_PER_PROC)
 
-    if var0[1] != var:
-        ppmd.abort('Consensus not reached on filename:' + \
-            _filename)
-    if var0[0] != int(_build_needed):
-        ppmd.abort('Consensus not reached on build needed:' + \
-            _filename)
+    if not ppmd.runtime.BUILD_PER_PROC:
+        if var0[1] != var:
+            ppmd.abort('Consensus not reached on filename:' + \
+                _filename)
+        if var0[0] != int(_build_needed):
+            ppmd.abort('Consensus not reached on build needed:' + \
+                _filename)
 
     if _build_needed:
 

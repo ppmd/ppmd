@@ -66,7 +66,7 @@ def s_nd():
 
     return A
 
-@pytest.fixture(scope="module", params=list({0, nproc-1}))
+@pytest.fixture(scope="module", params=(0, nproc-1))
 def base_rank(request):
     return request.param
 

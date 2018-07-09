@@ -57,7 +57,7 @@ def s_nd():
 
     return A
 
-@pytest.fixture(scope="module", params=list({0, nproc-1}))
+@pytest.fixture(scope="module", params=(0, nproc-1))
 def base_rank(request):
     return request.param
 
@@ -419,12 +419,7 @@ def test_host_looping_6(state, base_rank):
     assert np.sum(state.f[:M:,2] == 3.0*np.ones([M]) ) == M
 
 
-
-@pytest.fixture(scope="module", params=list({ctypes.c_int, ctypes.c_double}))
-def DTYPE(request):
-    return request.param
-
-
+@pytest.mark.parametrize("DTYPE", (ctypes.c_int, ctypes.c_double))
 def test_host_looping_7(DTYPE):
     """
     Distributed looping without gather

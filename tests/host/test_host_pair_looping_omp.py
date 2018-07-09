@@ -69,7 +69,7 @@ def s_nd():
 
     return A
 
-@pytest.fixture(scope="module", params=list({0, nproc-1}))
+@pytest.fixture(scope="module", params=(0, nproc-1))
 def base_rank(request):
     return request.param
 
@@ -531,7 +531,7 @@ def test_host_pair_loop_NS_FCC_2():
 
 
 
-@pytest.fixture(scope="module", params=list({ctypes.c_int, ctypes.c_double}))
+@pytest.fixture(scope="module", params=(ctypes.c_int, ctypes.c_double))
 def DTYPE(request):
     return request.param
 

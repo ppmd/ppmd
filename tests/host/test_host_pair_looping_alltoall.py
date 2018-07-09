@@ -9,6 +9,7 @@ import ppmd as md
 N = 1000
 
 rank = md.mpi.MPI.COMM_WORLD.Get_rank()
+barrier = md.mpi.MPI.COMM_WORLD.Barrier
 
 
 PositionDat = md.data.PositionDat
@@ -60,8 +61,10 @@ def test_host_all_to_all_NS():
         for i in range(N):
             assert B[i] == C[i]
 
+    barrier()
     md.runtime.BUILD_PER_PROC = False
-
+    barrier()
+    print('===================>', rank)
 
 def test_host_all_to_all():
 
@@ -108,5 +111,8 @@ def test_host_all_to_all():
         for i in range(N):
             assert B[i] == C[i]
 
-    md.runtime.BUILD_PER_PROC = False
 
+    barrier()
+    md.runtime.BUILD_PER_PROC = False
+    barrier()
+    print('------------------->', rank)
