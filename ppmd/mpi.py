@@ -313,6 +313,8 @@ def abort(err='-', err_code=0):
     print(80*"=")
     traceback.print_stack()
     print(80*"=")
+    sys.stdout.flush()
+    sys.stderr.flush()
     MPI.COMM_WORLD.Abort(err_code)
 
 # https://groups.google.com/forum/#!msg/mpi4py/me2TFzHmmsQ/sSF99LE0t9QJ
@@ -322,6 +324,7 @@ if MPI.COMM_WORLD.size > 1:
     def mpi_excepthook(typ, value, traceback):
         print("ATTEMPTING TO TERMINATE")
         except_hook(typ, value, traceback)
+        sys.stdout.flush()
         sys.stderr.flush()
         abort()
 

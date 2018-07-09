@@ -64,7 +64,6 @@ def test_host_all_to_all_NS():
     barrier()
     md.runtime.BUILD_PER_PROC = False
     barrier()
-    print('===================>', rank)
 
 def test_host_all_to_all():
 
@@ -115,4 +114,3 @@ def test_host_all_to_all():
     barrier()
     md.runtime.BUILD_PER_PROC = False
     barrier()
-    print('------------------->', rank)

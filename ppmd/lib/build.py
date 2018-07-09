@@ -139,16 +139,15 @@ def simple_lib_creator(
     
     _build_needed = not _check_path_exists(_lib_filename)
 
-    var = int(hashlib.md5(_lib_filename.encode('utf-8')).hexdigest()[:14], 16)
-    var0 = np.array([int(_build_needed), var])
-    _MPIWORLD.Bcast(var0, root=0)
-    
-    print("==={", _MPIRANK, ppmd.runtime.BUILD_PER_PROC)
-
     if not ppmd.runtime.BUILD_PER_PROC:
+
+        var = int(hashlib.md5(_lib_filename.encode('utf-8')).hexdigest()[:7], 16)
+        var0 = np.array([int(_build_needed), var])
+        _MPIWORLD.Bcast(var0, root=0)
         if var0[1] != var:
             ppmd.abort('Consensus not reached on filename:' + \
                 _filename)
+
         if var0[0] != int(_build_needed):
             ppmd.abort('Consensus not reached on build needed:' + \
                 _filename)
@@ -157,8 +156,8 @@ def simple_lib_creator(
 
         # need all ranks to recognise file does not exist if not build per proc
         # before rank 0 starts to build it
-        if not ppmd.runtime.BUILD_PER_PROC:
-            _MPIBARRIER()
+        # if not ppmd.runtime.BUILD_PER_PROC:
+        #     _MPIBARRIER()
 
         if (_MPIRANK == 0)  or ppmd.runtime.BUILD_PER_PROC:
             _source_write(header_code, src_code, _filename,

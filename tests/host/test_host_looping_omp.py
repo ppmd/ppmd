@@ -69,7 +69,6 @@ def test_host_looping_1(s_nd):
     looping on non spatially decomposed state
     """
 
-    print("THREADS", md.runtime.NUM_THREADS)
     gid_sum = GlobalArray(size=1, dtype=ctypes.c_int, shared_memory='thread')
 
     pi = rng.uniform(-1*Eo2, Eo2, [N,3])
@@ -130,7 +129,6 @@ def test_host_looping_2(s_nd):
     looping on non spatially decomposed state
     """
 
-    print("THREADS", md.runtime.NUM_THREADS)
     gid_sum = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory='thread')
 
     pi = rng.uniform(-1*Eo2, Eo2, [N,3])
@@ -173,7 +171,6 @@ def test_host_looping_3(s_nd):
     looping on non spatially decomposed state
     """
 
-    print("THREADS", md.runtime.NUM_THREADS)
     gid_sum = GlobalArray(size=1, dtype=ctypes.c_double, shared_memory='thread')
 
     pi = rng.uniform(-1*Eo2, Eo2, [N,3])
@@ -204,7 +201,6 @@ def test_host_looping_3(s_nd):
 
 def test_host_looping_4(state):
 
-    print("THREADS", md.runtime.NUM_THREADS)
 
     pi = rng.uniform(-1*Eo2, Eo2, [N,3])
 

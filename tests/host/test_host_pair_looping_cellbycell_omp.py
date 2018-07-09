@@ -32,12 +32,16 @@ Kernel = md.kernel.Kernel
 
 @pytest.fixture
 def state():
+
     A = State()
     A.npart = N
     A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
 
-    A.p = PositionDat(ncomp=3)
+    pt = PositionDat(ncomp=3)
+
+    A.p = pt
+
     A.v = ParticleDat(ncomp=3)
     A.f = ParticleDat(ncomp=3)
     A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
@@ -75,6 +79,8 @@ def test_host_pair_loop_NS_1(state):
     """
     Set a cutoff slightly smaller than the smallest distance in the grid
     """
+
+
     cell_width = float(E)/float(crN)
     pi = np.zeros([N,3], dtype=ctypes.c_double)
 
@@ -96,6 +102,8 @@ def test_host_pair_loop_NS_1(state):
     kernel = md.kernel.Kernel('test_host_pair_loop_1',code=kernel_code)
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
+    
+
 
     loop = PairLoop(kernel=kernel,
                     dat_dict=kernel_map,

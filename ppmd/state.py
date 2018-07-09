@@ -203,7 +203,6 @@ class BaseMDState(object):
         :param value: Value of parameter.
         :return:
         """
-
         # Add to instance list of particle dats.
         if issubclass(type(value), data.ParticleDat):
             object.__setattr__(self, name, value)
