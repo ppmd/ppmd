@@ -123,6 +123,7 @@ class ParticleLoop(object):
     def _get_allowed_types():
         return {
             cuda_data.ScalarArray: (access.INC_ZERO, access.READ, access.INC),
+            cuda_data.GlobalArray: (access.INC_ZERO, access.READ, access.INC),
             cuda_data.ParticleDat: access.all_access_types,
             cuda_data.PositionDat: access.all_access_types,
             cuda_base.Array: access.all_access_types,
@@ -225,7 +226,8 @@ class ParticleLoop(object):
                                       )
 
 
-            if issubclass(type(dati), cuda_base.Array):
+            if type(dati) is cuda_data.GlobalArray or \
+                issubclass(type(dati), cuda_base.Array):
 
 
                 # KERNEL ARGS DECLS -----------------------------
@@ -358,7 +360,8 @@ class ParticleLoop(object):
     def _generate_map_macros(self):
         g = cgen.Module([cgen.Comment('#### KERNEL_MAP_MACROS ####')])
         for i, dat in enumerate(self._dat_dict.items()):
-            if issubclass(type(dat[1][0]), cuda_base.Array):
+            if type(dat[1][0]) is cuda_data.GlobalArray or \
+                issubclass(type(dat[1][0]), cuda_base.Array):
                 g.append(cgen.Define(dat[0]+'(x)', '('+dat[0]+'[(x)])'))
             if issubclass(type(dat[1][0]), cuda_base.Matrix):
                 g.append(cgen.Define(dat[0]+'(y)', dat[0]+'.i[(y)]'))

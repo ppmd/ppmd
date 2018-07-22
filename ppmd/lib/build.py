@@ -35,7 +35,6 @@ if not os.path.exists(build_dir) and _MPIRANK == 0:
     os.mkdir(build_dir)
 _MPIBARRIER()
 
-
 ####################################
 # Build Lib
 ####################################

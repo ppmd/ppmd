@@ -28,6 +28,54 @@ _MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
 _MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
 _MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
 
+class GlobalArray(object):
+    def __init__(self, ncomp, dtype=ctypes.c_double, comm=mpi.MPI.COMM_WORLD, op=mpi.MPI.SUM):
+        self.ncomp = ncomp
+        self.dtype = dtype
+        self.comm = comm
+        self.op = op
+
+        self._h_data = np.zeros(ncomp, dtype=self.dtype)
+        self._d_data = gpuarray.zeros(ncomp, dtype=self.dtype)
+
+        self._reduce_tmp0 = np.zeros_like(self._h_data)
+        self._reduce_tmp1 = np.zeros_like(self._h_data)
+
+    @property
+    def ctype(self):
+        return host.ctypes_map[self.dtype]
+
+    def set(self, val):
+        self._h_data = val * np.ones(self.ncomp, dtype=self.dtype)
+
+    def ctypes_data_access(self, mode, pair, exchange=None):
+        if mode is access.READ:
+            self._d_data.set(self._h_data)
+            return ctypes.c_void_p(self._d_data.ptr)
+        elif mode in (access.INC_ZERO, access.INC):
+            self._d_data.set(np.zeros_like(self._h_data))
+            return ctypes.c_void_p(self._d_data.ptr)
+
+    def ctypes_data_post(self, mode=None, threaded=False):
+        if not mode.write:
+            return
+        assert mode in (access.INC, access.INC_ZERO)
+        
+        # pull value off device
+        self._d_data.get(self._reduce_tmp0)
+        self.comm.Allreduce(self._reduce_tmp0, self._reduce_tmp1, self.op)
+        if mode is access.INC:
+            self._h_data[:] += self._reduce_tmp1[:]
+        else:
+            self._h_data[:] = self._reduce_tmp1[:]
+
+
+    def __getitem__(self, key):
+        return self._h_data[key]
+
+    def __call__(self, mode):
+        return self, mode
+
 
 class ScalarArray(cuda_base.Array):
 
