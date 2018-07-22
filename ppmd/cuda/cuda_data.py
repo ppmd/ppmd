@@ -30,10 +30,27 @@ _MPIBARRIER = mpi.MPI.COMM_WORLD.Barrier
 
 class GlobalArray(object):
     def __init__(self, ncomp, dtype=ctypes.c_double, comm=mpi.MPI.COMM_WORLD, op=mpi.MPI.SUM):
+        """
+        GlobalArray for CUDA. From Python all elements can be set to the same value.
+        From a Kernel all elements can be accessed with the access descriptors;
+        READ, INC and INC_ZERO.
+        
+        :arg ncomp: Number of components in array.
+        :arg dtype: Data type of array.
+        :arg comm: MPI4Py communicator to use for reductions (default COMM_WORLD).
+        :arg op: Defaults to the ony implemented reduction operation (SUM).
+        """
         self.ncomp = ncomp
+        """Number of components"""
         self.dtype = dtype
+        """Data type"""
         self.comm = comm
+        """Communicator"""
         self.op = op
+        """reduction op"""
+        
+        if op is not mpi.MPI.SUM:
+            raise NotImplementedError('ppmd.mpi.MPI.SUM is the only supported op')
 
         self._h_data = np.zeros(ncomp, dtype=self.dtype)
         self._d_data = gpuarray.zeros(ncomp, dtype=self.dtype)
@@ -46,6 +63,9 @@ class GlobalArray(object):
         return host.ctypes_map[self.dtype]
 
     def set(self, val):
+        """
+        Set all elements to passed value.
+        """
         self._h_data = val * np.ones(self.ncomp, dtype=self.dtype)
 
     def ctypes_data_access(self, mode, pair, exchange=None):
@@ -68,7 +88,6 @@ class GlobalArray(object):
             self._h_data[:] += self._reduce_tmp1[:]
         else:
             self._h_data[:] = self._reduce_tmp1[:]
-
 
     def __getitem__(self, key):
         return self._h_data[key]
