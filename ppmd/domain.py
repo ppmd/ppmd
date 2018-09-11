@@ -17,10 +17,6 @@ import os
 from ppmd import data, host,  mpi, runtime, pio, opt
 from ppmd.lib import build
 
-_MPI = mpi.MPI
-_MPIWORLD = _MPI.COMM_WORLD
-_MPISIZE = _MPIWORLD.Get_size()
-
 _LIB_SOURCES = os.path.join(os.path.dirname(__file__), 'lib/domain/')
 
 
@@ -36,7 +32,7 @@ class BaseDomainHalo(object):
 
     """
 
-    def __init__(self, extent=None, cell_count=1, periods=(1, 1, 1)):
+    def __init__(self, extent=None, cell_count=1, periods=(1, 1, 1), comm=mpi.MPI.COMM_WORLD):
         self._init_cells = False
         self._init_decomp = False
 
@@ -65,7 +61,7 @@ class BaseDomainHalo(object):
         self._boundary_cell_version = -1
         self._boundary_cells = None
 
-        self.comm = _MPIWORLD
+        self.comm = comm
 
     @property
     def dims(self):
@@ -159,7 +155,8 @@ class BaseDomainHalo(object):
     def mpi_decompose(self, mpi_grid=None):
         if self._init_decomp:
             print("WARNING: domain already spatially decomposed")
-
+        
+        mpisize = self.comm.size
 
         if mpi_grid is None:
             if self._init_extent:
@@ -170,25 +167,23 @@ class BaseDomainHalo(object):
                       int(self.extent[1]/sf)*1000,
                       int(self.extent[2]/sf)*1000)
 
-                _dims = _find_domain_decomp(sc, _MPISIZE)
+                _dims = _find_domain_decomp(sc, mpisize)
             else:
-                _dims = _find_domain_decomp_no_extent(_MPISIZE)
+                _dims = _find_domain_decomp_no_extent(mpisize)
 
         else:
-            assert mpi_grid[0]*mpi_grid[1]*mpi_grid[2]==_MPISIZE,\
+            assert mpi_grid[0]*mpi_grid[1]*mpi_grid[2]==mpisize,\
                 "Incompatible MPI rank structure"
             _dims = mpi_grid
 
          # Create cartesian communicator
         _dims = tuple(_dims)
-
-        self.comm = mpi.create_cartcomm(
-            _MPIWORLD,
-            _dims[::-1],
+        
+        self.comm = self.comm.Create_cart(
+            _dims[::-1], 
             (bool(self._periods[2]), bool(self._periods[1]), bool(self._periods[0])),
             True
         )
-
 
         self._init_decomp = True
 

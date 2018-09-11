@@ -62,8 +62,11 @@ class EwaldOrthoganal(object):
         assert shared_memory in (False, 'omp', 'mpi')
 
         ss = cmath.sqrt(scipy.special.lambertw(1./eps)).real
+        
+        if alpha is not None and real_cutoff is not None and recip_cutoff is not None:
+            pass
 
-        if alpha is not None and real_cutoff is not None:
+        elif alpha is not None and real_cutoff is not None:
             ss = real_cutoff * sqrt(alpha)
 
         elif alpha is None:
