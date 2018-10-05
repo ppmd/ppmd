@@ -35,7 +35,7 @@ def load_config(dir=None):
 
 
     # parse cuda options
-    main_parser = ConfigParser.SafeConfigParser(os.environ)
+    main_parser = ConfigParser.ConfigParser(os.environ)
     main_parser.read(os.path.join(CFG_DIR, 'cuda_default.cfg'))
     for key in CUDA_CFG:
         try:

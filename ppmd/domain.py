@@ -32,7 +32,7 @@ class BaseDomainHalo(object):
 
     """
 
-    def __init__(self, extent=None, cell_count=1, periods=(1, 1, 1), comm=mpi.MPI.COMM_WORLD):
+    def __init__(self, extent=None, periods=(1, 1, 1), comm=mpi.MPI.COMM_WORLD):
         self._init_cells = False
         self._init_decomp = False
 
