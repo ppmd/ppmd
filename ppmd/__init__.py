@@ -3,6 +3,8 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
+from pytools import prefork
+prefork.enable_prefork()
 
 __all__ = [ 'mpi',
             'access',

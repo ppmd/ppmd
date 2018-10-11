@@ -4,6 +4,9 @@ __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
 # system level
+import mpi4py
+# mpi4py.rc(thread_level='serialized')
+
 from mpi4py import MPI
 import sys, atexit, traceback
 import ctypes as ct

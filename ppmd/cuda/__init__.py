@@ -1,3 +1,10 @@
+
+# print("WARNING CUDA DISABLED FOR DEBUGGING")
+
+CUDA_IMPORT = False
+CUDA_IMPORT_ERROR = None
+
+
 __all__ = [
     'cuda_config',
     'cuda_build',
@@ -13,8 +20,8 @@ __all__ = [
     'cuda_domain'
 ]
 
-CUDA_IMPORT = False
-CUDA_IMPORT_ERROR = None
+
+
 
 try:
     from . import cuda_base
@@ -33,6 +40,5 @@ try:
     CUDA_IMPORT = True
 except Exception as e:
     CUDA_IMPORT_ERROR = e
-
 
 

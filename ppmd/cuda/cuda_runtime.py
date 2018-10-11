@@ -8,29 +8,35 @@ import ctypes
 import os
 import math
 
+
+
 # pycuda imports
+import pycuda
 import pycuda.driver as cudadrv
+
+# Init cuda
+cudadrv.init()
+
 
 
 #package level imports
 from ppmd.cuda import cuda_config
 from ppmd import runtime, pio, mpi, abort
 
+
+
 CUDA_ENABLED = cuda_config.CUDA_CFG['enable-cuda'][1]
-
-
 OPT = cuda_config.CUDA_CFG['opt-level'][1]
 DEBUG = cuda_config.CUDA_CFG['debug-level'][1]
 VERBOSE = cuda_config.CUDA_CFG['verbose-level'][1]
 TIMER = cuda_config.CUDA_CFG['timer-level'][1]
 BUILD_TIMER = cuda_config.CUDA_CFG['build-timer-level'][1]
 ERROR_LEVEL = cuda_config.CUDA_CFG['error-level'][1]
-
-
 BUILD_DIR = runtime.BUILD_DIR
 
-# Init cuda
-cudadrv.init()
+
+
+
 
 from . import cuda_build
 
@@ -130,8 +136,10 @@ DEVICE, DEVICE_NUMBER = cuda_set_device()
 global CONTEXT
 CONTEXT = DEVICE.make_context()
 
+print("CUDA initialised")
 
 def context_cleanup():
+    print("CUDA Context cleanup")
     global CONTEXT
     CONTEXT.synchronize()
     CONTEXT.pop()
