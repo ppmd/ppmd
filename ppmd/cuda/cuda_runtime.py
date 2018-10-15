@@ -136,10 +136,10 @@ DEVICE, DEVICE_NUMBER = cuda_set_device()
 global CONTEXT
 CONTEXT = DEVICE.make_context()
 
-print("CUDA initialised")
+#print("CUDA initialised")
 
 def context_cleanup():
-    print("CUDA Context cleanup")
+    #print("CUDA Context cleanup")
     global CONTEXT
     CONTEXT.synchronize()
     CONTEXT.pop()

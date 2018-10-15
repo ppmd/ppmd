@@ -4,7 +4,6 @@
 CUDA_IMPORT = False
 CUDA_IMPORT_ERROR = None
 
-
 __all__ = [
     'cuda_config',
     'cuda_build',
@@ -19,8 +18,6 @@ __all__ = [
     'cuda_mpi',
     'cuda_domain'
 ]
-
-
 
 
 try:
