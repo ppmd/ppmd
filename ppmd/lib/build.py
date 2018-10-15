@@ -9,6 +9,8 @@ import os
 import hashlib
 import subprocess
 
+from pytools.prefork import call_capture_output
+
 # package level imports
 from ppmd import config, runtime, mpi, opt
 
@@ -176,16 +178,6 @@ def simple_lib_creator(
 
     return lib
 
-def _check_compiler(name):
-    with  open(os.devnull, 'w') as DEV_NULL:
-        try:
-            p = subprocess.Popen(name, stdout=DEV_NULL,
-                                 stderr=subprocess.STDOUT)
-            p.communicate()
-        except Exception as e:
-            mpi.abort('Compiler binary "{}" cannot be ran.'.format(
-                name))
-
 _build_timer = opt.Timer()
 
 def _print_file_if_exists(filename):
@@ -210,10 +202,39 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
     if ppmd.runtime.OPT > 0:
         _c_cmd += CC.opt_flags
     _c_cmd += CC.shared_lib_flag
-
+    
     stdout_filename = os.path.join(dst_dir, lib + '.log')
     stderr_filename = os.path.join(dst_dir,  lib + '.err')
     try:
+        with open(stdout_filename, 'w') as stdout:
+            with open(stderr_filename, 'w') as stderr:
+                stdout.write('#Compilation command:\n')
+                stdout.write(' '.join(_c_cmd))
+                stdout.write('\n\n')
+                stdout.flush()
+                result, stdout, stderr = call_capture_output(_c_cmd)
+                stdout = stdout.decode('utf-8')
+                stderr = stderr.decode('utf-8')
+
+                stdout.write(result)
+                stdout.write(stdout)
+                stdout.write(stderr)
+                stdout.flush()
+                if result != 0:
+                    print(stdout)
+                    print("----")
+                    raise Exception(stderr)
+
+    except Exception as e:
+        print(e)
+        raise RuntimeError('build error: library not built.')
+
+    # code prior to prefork solution
+    """
+    stdout_filename = os.path.join(dst_dir, lib + '.log')
+    stderr_filename = os.path.join(dst_dir,  lib + '.err')
+    try:
+
         with open(stdout_filename, 'w') as stdout:
             with open(stderr_filename, 'w') as stderr:
                 stdout.write('#Compilation command:\n')
@@ -230,6 +251,7 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
         print(e)
         _print_file_if_exists(stderr_filename)
         raise RuntimeError('build error: library not built.')
+    """
 
     # try to provide useful compile errors
     if not os.path.exists(_lib_filename):
