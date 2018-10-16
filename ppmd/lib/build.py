@@ -217,7 +217,7 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
                 stdout = stdout.decode('utf-8')
                 stderr = stderr.decode('utf-8')
 
-                stdout_fh.write(result)
+                stdout_fh.write(str(result) + '\n')
                 stdout_fh.write(stdout)
                 stderr_fh.write(stderr)
                 stdout_fh.flush()
