@@ -206,20 +206,22 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
     stdout_filename = os.path.join(dst_dir, lib + '.log')
     stderr_filename = os.path.join(dst_dir,  lib + '.err')
     try:
-        with open(stdout_filename, 'w') as stdout:
-            with open(stderr_filename, 'w') as stderr:
-                stdout.write('#Compilation command:\n')
-                stdout.write(' '.join(_c_cmd))
-                stdout.write('\n\n')
-                stdout.flush()
+        with open(stdout_filename, 'w') as stdout_fh:
+            with open(stderr_filename, 'w') as stderr_fh:
+                stdout_fh.write('#Compilation command:\n')
+                stdout_fh.write(' '.join(_c_cmd))
+                stdout_fh.write('\n\n')
+                stdout_fh.flush()
                 result, stdout, stderr = call_capture_output(_c_cmd)
+
                 stdout = stdout.decode('utf-8')
                 stderr = stderr.decode('utf-8')
 
-                stdout.write(result)
-                stdout.write(stdout)
-                stdout.write(stderr)
-                stdout.flush()
+                stdout_fh.write(result)
+                stdout_fh.write(stdout)
+                stderr_fh.write(stderr)
+                stdout_fh.flush()
+                stderr_fh.flush()
                 if result != 0:
                     print(stdout)
                     print("----")
