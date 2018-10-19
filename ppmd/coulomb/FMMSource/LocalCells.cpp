@@ -35,8 +35,8 @@ static inline REAL compute_interactions_same_cell(
 reduction(+:energyi) \
 reduction(+:fx) \
 reduction(+:fy) \
-reduction(+:fz) \
-simdlen(8)
+reduction(+:fz) //\
+//simdlen(8)
         for(INT64 pxj=0 ; pxj<nj ; pxj++){
             const REAL dx = pj[     + pxj] - px ;
             const REAL dy = pj[1*sj + pxj] - py ;
@@ -86,7 +86,7 @@ static inline REAL compute_interactions(
     REAL energy = 0.0;
 //#pragma omp simd \
 //reduction(+:energy) \
-//simdlen(8)        
+//simdlen(7)        
     for(INT64 pxi=0 ; pxi<ni ; pxi++ ){
         REAL fx = 0.0;
         REAL fy = 0.0;
@@ -101,8 +101,8 @@ static inline REAL compute_interactions(
 reduction(+:energyi) \
 reduction(+:fx) \
 reduction(+:fy) \
-reduction(+:fz) \
-simdlen(8)        
+reduction(+:fz) //\
+//simdlen(8)        
         for(INT64 pxj=0 ; pxj<nj ; pxj++){
             const REAL dx = pj[      + pxj ] - px ;
             const REAL dy = pj[ 1*sj + pxj ] - py ;
