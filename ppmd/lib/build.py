@@ -120,7 +120,7 @@ def _check_path_exists(abs_path):
 _load_timer = opt.Timer()
 
 def simple_lib_creator(
-        header_code, src_code, name, extensions=('.h', '.cpp'),
+        header_code, src_code, name='', extensions=('.h', '.cpp'),
         dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC, prefix='HOST',
         inc_dirs=(runtime.LIB_DIR,)
 ):

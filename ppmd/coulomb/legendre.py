@@ -52,6 +52,7 @@ class ALegendrePolynomialGen(object):
                     ),                    
                 ]
         self.module = Module(modlist)
+        self.header = Include('math.h')
 
     def get_p_sym(self, l, m):
         assert l > -1
