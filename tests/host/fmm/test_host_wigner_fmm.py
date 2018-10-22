@@ -22,7 +22,6 @@ from ppmd.coulomb.wigner import *
 from ppmd.coulomb.wigner import _wigner_engine
 
 from transforms3d.euler import mat2euler
-from scipy.special import sph_harm, lpmv
 import time
 
 from math import *

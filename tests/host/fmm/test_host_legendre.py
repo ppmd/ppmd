@@ -103,11 +103,83 @@ def test_exp_gen_1():
             assert im_err < 10.**-13
 
 
+def test_sph_gen_1():
+
+    lmax = 26
+
+    sph_gen = SphGen(lmax)
+
+    assign_gen = ''
+    for lx in range(lmax+1):
+        for mx in range(-lx, lx+1):
+            assign_gen += 're_out[LMAX * {lx} + LOFFSET + {mx}] = '.format(lx=lx, mx=mx) + \
+                str(sph_gen.get_y_sym(lx, mx)[0]) + ';\n'
+            assign_gen += 'im_out[LMAX * {lx} + LOFFSET + {mx}] = '.format(lx=lx, mx=mx) + \
+                str(sph_gen.get_y_sym(lx, mx)[1]) + ';\n'
 
 
+    src = """
+    #define LMAX ({LMAX})
+    #define LOFFSET ({LOFFSET})
 
+    extern "C" int test_sph_gen(
+        const double theta,
+        const double phi,
+        double * RESTRICT re_out,
+        double * RESTRICT im_out
+    ){{
+        {SPH_GEN}
+        {ASSIGN_GEN}
+        return 0;
+    }}
+    """.format(
+        SPH_GEN=str(sph_gen.module),
+        ASSIGN_GEN=str(assign_gen),
+        LMAX=2*lmax+1,
+        LOFFSET=lmax
+    )
+    header = str(sph_gen.header)
 
+    lib = simple_lib_creator(header_code=header, src_code=src)['test_sph_gen']
 
+    re_out = np.zeros((lmax+1, 2*lmax+1), dtype=c_double)
+    im_out = np.zeros_like(re_out)
+
+    rng = np.random.RandomState(1234)
+    
+    theta_set = rng.uniform(low=0.0, high=math.pi, size=10)
+    phi_set = rng.uniform(low=0.0, high=2.*math.pi, size=10)
+
+    for theta, phi in zip(theta_set, phi_set):
+        lib(
+            c_double(theta),
+            c_double(phi),
+            re_out.ctypes.get_as_parameter(),
+            im_out.ctypes.get_as_parameter()
+        )
+
+        for lx in range(lmax + 1):
+            mrange = list(range(lx, -1, -1)) + list(range(1, lx+1))
+            mrange2 = list(range(-1*lx, 1)) + list(range(1, lx+1))
+            scipy_p = lpmv(mrange, lx, np.cos(theta))
+
+            for mxi, mx in enumerate(mrange2):
+
+                re_exp = math.cos(mx * phi)
+                im_exp = math.sin(mx * phi)
+
+                val = math.sqrt(math.factorial(
+                    lx - abs(mx))/math.factorial(lx + abs(mx)))
+                val *= scipy_p[mxi]
+
+                scipy_real = re_exp * val
+                scipy_imag = im_exp * val
+                
+                re_err = abs(scipy_real - re_out[lx, lmax + mx])
+                im_err = abs(scipy_imag - im_out[lx, lmax + mx])
+
+                assert re_err < 10.**-14
+                assert im_err < 10.**-14
 
 
 

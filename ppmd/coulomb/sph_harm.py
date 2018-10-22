@@ -177,14 +177,57 @@ class SphCoeffGen(object):
     
     def get_denominator_sym(self, mx):
         assert mx > -1
-        assert abs(mx) <= self.maxl
+        assert abs(mx) <= 2*self.maxl+1
         return _Symbol(self.sym + '_denom_' + str(mx))
 
 
 class SphGen(object):
-    def __init__(self, maxl, sym='_Y', ctype='double'):
-        pass
+    def __init__(self, maxl, sym='_Y', theta_sym='theta', phi_sym='phi', ctype='double'):
+        self.maxl = maxl
+        self.sym = sym
+        self.ctype = ctype
+        self.header = Include('math.h')
+        
+        def icv_wrap(a, b):
+            return Initializer(Const(Value(self.ctype, a)), b)
 
+        lpmv_gen = ALegendrePolynomialGen(maxl=maxl, tsym='cos_' + theta_sym, ctype=ctype)
+        exp_gen = SphExpGen(maxl=maxl, psym=phi_sym, ctype=ctype)
+        coeff_gen = SphCoeffGen(maxl=maxl, ctype=ctype)
+
+        modlist = [
+            icv_wrap('cos_' + theta_sym, 'cos(' + theta_sym + ')'),
+            lpmv_gen.module,
+            exp_gen.module,
+            coeff_gen.module
+        ]
+        
+        for lx in range(maxl+1):
+            modlist += [
+                icv_wrap(
+                    self.get_y_sym(lx, mx)[0],
+                    coeff_gen.get_numerator_sym(lx - abs(mx)) * coeff_gen.get_denominator_sym(lx + abs(mx)) * \
+                        lpmv_gen.get_p_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[0]
+                ) for mx in range(-lx, lx+1)
+            ]
+            modlist += [
+                icv_wrap(
+                    self.get_y_sym(lx, mx)[1],
+                    coeff_gen.get_numerator_sym(lx - abs(mx)) * coeff_gen.get_denominator_sym(lx + abs(mx)) * \
+                        lpmv_gen.get_p_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[1]
+                ) for mx in range(-lx, lx+1)
+            ]
+
+        self.module = Module(modlist)
+
+    def get_y_sym(self, n, m):
+        assert n > -1
+        assert n <= self.maxl
+        assert abs(m) <= n
+        ms = 'mn' if m < 0 else 'mp'
+        ms += str(abs(m))
+        s = self.sym + 'n' + str(abs(n)) + ms
+        return _Symbol('_re' + s), _Symbol('_im' + s)
 
 
 
