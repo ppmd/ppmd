@@ -14,7 +14,8 @@ class ALegendrePolynomialGen(object):
         self.ptmp = psym + 'tmp'
         self.tmp_count = -1
         self.tsym = tsym
-        
+        self.header = Include('math.h')
+
         sqrttmp = self._get_next_tmp()
 
         modlist = [
@@ -51,8 +52,8 @@ class ALegendrePolynomialGen(object):
                         )
                     ),                    
                 ]
+
         self.module = Module(modlist)
-        self.header = Include('math.h')
 
     def get_p_sym(self, l, m):
         assert l > -1
@@ -64,6 +65,96 @@ class ALegendrePolynomialGen(object):
     def _get_next_tmp(self):
         self.tmp_count += 1
         return self.ptmp + str(self.tmp_count)
+
+
+class _Symbol(object):
+    def __init__(self, sym):
+        self.sym = str(sym)
+    def __str__(self):
+        return self.sym
+    def __add__(self, other):
+        return _Symbol(str(self) + ' + ' + str(other))
+    def __sub__(self, other):
+        return _Symbol(str(self) + ' - ' + str(other))
+    def __rsub__(self, other):
+        return _Symbol(str(other) + ' - ' + str(self))    
+    def __mul__(self, other):
+        return _Symbol('' + str(self) + ' * ( ' + str(other) + ' )')
+    __rmul__ = __mul__
+    __radd__ = __add__
+
+
+class SphExpGen(object):
+    def __init__(self, maxl, esym='_E', psym='phi', ctype='double'):
+        self.maxl = maxl
+        self.psym = psym
+        self.esym = esym
+        self.ctype = ctype
+        self.header = Include('math.h')
+
+        cos_phi  = _Symbol('_cphi' + esym)
+        sin_phi  = _Symbol('_sphi' + esym)
+        msin_phi = _Symbol('_msphi' + esym)
+
+        def icv_wrap(a, b):
+            return Initializer(Const(Value(self.ctype, a)), b)
+
+        modlist = [
+            icv_wrap(self.get_e_sym(0)[0], '1.0'),
+            icv_wrap(self.get_e_sym(0)[1], '0.0'),
+            icv_wrap(sin_phi, 'sin({phi})'.format(phi=psym)),
+            icv_wrap(cos_phi, 'cos({phi})'.format(phi=psym)),
+            icv_wrap(msin_phi, -1.0 * sin_phi),
+        ]
+
+        for mx in range(1, maxl+1):
+            re_m, im_m = self.get_e_sym(mx)
+            re_mm1, im_mm1 = self.get_e_sym(mx-1)
+
+            re_nm, im_nm = self.get_e_sym(-1 * mx)
+            re_nmm1, im_nmm1 = self.get_e_sym(-1 * (mx - 1))
+            
+            re_m_rhs, im_m_rhs = self._cmplx_mul(cos_phi, sin_phi, re_mm1, im_mm1)
+            re_nm_rhs, im_nm_rhs = self._cmplx_mul(cos_phi, msin_phi, re_nmm1, im_nmm1)
+
+            modlist += [
+                icv_wrap(re_m, re_m_rhs),
+                icv_wrap(im_m, im_m_rhs),
+                icv_wrap(re_nm, re_nm_rhs),
+                icv_wrap(im_nm, im_nm_rhs)
+            ]
+
+        self.module = Module(modlist)
+
+    @staticmethod
+    def _cmplx_mul(a, b, x, y):
+        g = a * x - b * y
+        h = x * b + a * y
+        return g, h
+        
+    def get_e_sym(self, m):
+        assert abs(m) <= self.maxl
+        s = self.esym
+        s += 'm' if m < 0 else 'p'
+        s += str(abs(m))
+        return (_Symbol('_re' + s), _Symbol('_im' + s))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
