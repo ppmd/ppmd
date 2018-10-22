@@ -6,6 +6,22 @@ __license__ = "GPL"
 from cgen import *
 from math import *
 
+class _Symbol(object):
+    def __init__(self, sym):
+        self.sym = str(sym)
+    def __str__(self):
+        return self.sym
+    def __add__(self, other):
+        return _Symbol(str(self) + ' + ' + str(other))
+    def __sub__(self, other):
+        return _Symbol(str(self) + ' - ' + str(other))
+    def __rsub__(self, other):
+        return _Symbol(str(other) + ' - ' + str(self))    
+    def __mul__(self, other):
+        return _Symbol('' + str(self) + ' * ( ' + str(other) + ' )')
+    __rmul__ = __mul__
+    __radd__ = __add__
+
 class ALegendrePolynomialGen(object):
     def __init__(self, maxl, psym='_P', tsym='theta', ctype='double'):
         self.maxl = maxl
@@ -28,16 +44,15 @@ class ALegendrePolynomialGen(object):
             modlist += [
                 Initializer(Const(Value(self.ctype, theta_lxp1)),
                     '({theta})*({lx2p1})'.format(theta=self.tsym, lx2p1=str(float(2*lx + 1)))),
-                Initializer(Const(Value(self.ctype, self.get_p_sym(lx+1,lx+1))),
+                Initializer(Const(Value(self.ctype, str(self.get_p_sym(lx+1,lx+1)))),
                     '({m1m2lx})*({sqrttmp})*({plxlx})'.format(
-                        m1m2lx=str(float(-1.0 - 2.0*lx)), sqrttmp=sqrttmp, plxlx=self.get_p_sym(lx, lx))
+                        m1m2lx=str(float(-1.0 - 2.0*lx)), sqrttmp=sqrttmp, plxlx=str(self.get_p_sym(lx, lx)))
                 ),
                 Initializer(Const(Value(self.ctype, self.get_p_sym(lx+1,lx))),
                     '({theta_lxp1}) * ({plxlx})'.format(
-                        theta=self.tsym, theta_lxp1=theta_lxp1, plxlx=self.get_p_sym(lx,lx))
+                        theta=self.tsym, theta_lxp1=theta_lxp1, plxlx=str(self.get_p_sym(lx,lx)))
                 ),
             ]
-
 
             for mx in range(lx):
                 modlist += [
@@ -45,8 +60,8 @@ class ALegendrePolynomialGen(object):
                         '(({theta_lxp1}) * {plxmx} - ({lxpmx}) * {plx1mx} ) * ({ilxmmxp1})'.format(
                             theta_lxp1=theta_lxp1,
                             lx2p1=str(float(2*lx + 1)),
-                            plxmx=self.get_p_sym(lx,mx),
-                            plx1mx=self.get_p_sym(lx-1,mx),
+                            plxmx=str(self.get_p_sym(lx,mx)),
+                            plx1mx=str(self.get_p_sym(lx-1,mx)),
                             ilxmmxp1=str(float(1.0/(lx - mx + 1))),
                             lxpmx=str(float(lx + mx))
                         )
@@ -60,7 +75,7 @@ class ALegendrePolynomialGen(object):
         m = abs(m)
         assert m <= self.maxl
         assert l <= self.maxl
-        return '{p}l{l}m{m}'.format(p=self.psym, l=l, m=m)
+        return _Symbol('{p}l{l}m{m}'.format(p=self.psym, l=l, m=m))
     
     def _get_next_tmp(self):
         self.tmp_count += 1
@@ -140,12 +155,35 @@ class SphExpGen(object):
         return (_Symbol('_re' + s), _Symbol('_im' + s))
 
 
+class SphCoeffGen(object):
+    def __init__(self, maxl, sym='_sqrtmf', ctype='double'):
+        self.maxl = maxl
+        self.sym = sym
+        self.ctype = ctype
+        self.header = ''
+        
+        def icv_wrap(a, b):
+            return Initializer(Const(Value(self.ctype, a)), b)
+        
+        modlist = [icv_wrap(self.get_numerator_sym(lx), sqrt(factorial(lx))) for lx in range(maxl+1)]
+        modlist += [icv_wrap(self.get_denominator_sym(lx), 1.0 / sqrt(factorial(lx))) for lx in range(2*maxl+1)]
+
+        self.module = Module(modlist)
+    
+    def get_numerator_sym(self, mx):
+        assert mx > -1
+        assert abs(mx) <= self.maxl
+        return _Symbol(self.sym + '_num_' + str(mx))
+    
+    def get_denominator_sym(self, mx):
+        assert mx > -1
+        assert abs(mx) <= self.maxl
+        return _Symbol(self.sym + '_denom_' + str(mx))
 
 
-
-
-
-
+class SphGen(object):
+    def __init__(self, maxl, sym='_Y', ctype='double'):
+        pass
 
 
 

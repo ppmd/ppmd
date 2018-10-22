@@ -23,7 +23,7 @@ def test_legendre_gen_1():
     for lx in range(lmax+1):
         for mx in range(lx+1):
             assign_gen += 'out[LMAX * {lx} + {mx}] = '.format(lx=lx, mx=mx) + \
-                lpmv_gen.get_p_sym(lx, mx) + ';\n'
+                str(lpmv_gen.get_p_sym(lx, mx)) + ';\n'
 
     src = """
     #define LMAX ({LMAX})

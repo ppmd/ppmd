@@ -223,12 +223,13 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
                 stdout_fh.flush()
                 stderr_fh.flush()
                 if result != 0:
+                    print("----")
                     print(stdout)
                     print("----")
                     raise Exception(stderr)
 
     except Exception as e:
-        print(e)
+        print(str(e).encode('utf-8').decode('unicode_escape'))
         raise RuntimeError('build error: library not built.')
 
     # code prior to prefork solution
