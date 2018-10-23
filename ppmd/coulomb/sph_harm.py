@@ -23,7 +23,7 @@ class _Symbol(object):
     __radd__ = __add__
 
 class ALegendrePolynomialGen(object):
-    def __init__(self, maxl, psym='_P', tsym='theta', ctype='double'):
+    def __init__(self, maxl, psym='_P', tsym='theta', ctype='double', avoid_calls=False):
         self.maxl = maxl
         self.ctype = ctype
         self.psym = psym
@@ -31,11 +31,20 @@ class ALegendrePolynomialGen(object):
         self.tmp_count = -1
         self.tsym = tsym
         self.header = Include('math.h')
+        
 
-        sqrttmp = self._get_next_tmp()
+        modlist = []
+        if not avoid_calls:
+            sqrttmp = self._get_next_tmp()
+            sqrt_theta_sym = 'sqrt(1.0 - {theta} * {theta})'.format(theta=self.tsym)
+            modlist += [
+                Initializer(Const(Value(self.ctype, sqrttmp)), sqrt_theta_sym),
+            ]
+        else:
+            sqrttmp = 'sqrt_theta_tmp'
 
-        modlist = [
-            Initializer(Const(Value(self.ctype, sqrttmp)), 'sqrt(1.0 - {theta} * {theta})'.format(theta=self.tsym)),
+
+        modlist += [
             Initializer(Const(Value(self.ctype, self.get_p_sym(0,0))), '1.0'),
         ]
         for lx in range(self.maxl):
@@ -100,7 +109,7 @@ class _Symbol(object):
 
 
 class SphExpGen(object):
-    def __init__(self, maxl, esym='_E', psym='phi', ctype='double'):
+    def __init__(self, maxl, esym='_E', psym='phi', ctype='double', avoid_calls=False):
         self.maxl = maxl
         self.psym = psym
         self.esym = esym
@@ -114,11 +123,21 @@ class SphExpGen(object):
         def icv_wrap(a, b):
             return Initializer(Const(Value(self.ctype, a)), b)
 
-        modlist = [
+        modlist = []
+        if not avoid_calls:
+            modlist += [
+                icv_wrap(sin_phi, 'sin({phi})'.format(phi=psym)),
+                icv_wrap(cos_phi, 'cos({phi})'.format(phi=psym)),           
+            ]
+        else:
+            modlist += [
+                icv_wrap(sin_phi, 'sin_phi'),
+                icv_wrap(cos_phi, 'cos_phi'),           
+            ]
+
+        modlist += [
             icv_wrap(self.get_e_sym(0)[0], '1.0'),
             icv_wrap(self.get_e_sym(0)[1], '0.0'),
-            icv_wrap(sin_phi, 'sin({phi})'.format(phi=psym)),
-            icv_wrap(cos_phi, 'cos({phi})'.format(phi=psym)),
             icv_wrap(msin_phi, -1.0 * sin_phi),
         ]
 
@@ -183,7 +202,7 @@ class SphCoeffGen(object):
 
 
 class SphGen(object):
-    def __init__(self, maxl, sym='_Y', theta_sym='theta', phi_sym='phi', ctype='double'):
+    def __init__(self, maxl, sym='_Y', theta_sym='theta', phi_sym='phi', ctype='double', avoid_calls=False):
         self.maxl = maxl
         self.sym = sym
         self.ctype = ctype
@@ -191,13 +210,23 @@ class SphGen(object):
         
         def icv_wrap(a, b):
             return Initializer(Const(Value(self.ctype, a)), b)
+ 
+        modlist = []
+        if avoid_calls:
+           pass
+        else:
+            modlist += [
+                icv_wrap('cos_' + theta_sym, 'cos(' + theta_sym + ')'),
+            ]
 
-        lpmv_gen = ALegendrePolynomialGen(maxl=maxl, tsym='cos_' + theta_sym, ctype=ctype)
-        exp_gen = SphExpGen(maxl=maxl, psym=phi_sym, ctype=ctype)
+        lpmv_gen = ALegendrePolynomialGen(maxl=maxl, tsym='cos_' + theta_sym, ctype=ctype,
+                avoid_calls=avoid_calls)
+
+        exp_gen = SphExpGen(maxl=maxl, psym=phi_sym, ctype=ctype, avoid_calls=avoid_calls)
         coeff_gen = SphCoeffGen(maxl=maxl, ctype=ctype)
+        
 
-        modlist = [
-            icv_wrap('cos_' + theta_sym, 'cos(' + theta_sym + ')'),
+        modlist += [
             lpmv_gen.module,
             exp_gen.module,
             coeff_gen.module
