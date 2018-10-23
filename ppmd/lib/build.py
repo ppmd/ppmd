@@ -157,8 +157,8 @@ def simple_lib_creator(
 
         # need all ranks to recognise file does not exist if not build per proc
         # before rank 0 starts to build it
-        # if not ppmd.runtime.BUILD_PER_PROC:
-        #     _MPIBARRIER()
+        if not ppmd.runtime.BUILD_PER_PROC:
+            _MPIBARRIER()
 
         if (_MPIRANK == 0)  or ppmd.runtime.BUILD_PER_PROC:
             _source_write(header_code, src_code, _filename,

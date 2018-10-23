@@ -129,8 +129,8 @@ class SphExpGen(object):
             re_nm, im_nm = self.get_e_sym(-1 * mx)
             re_nmm1, im_nmm1 = self.get_e_sym(-1 * (mx - 1))
             
-            re_m_rhs, im_m_rhs = self._cmplx_mul(cos_phi, sin_phi, re_mm1, im_mm1)
-            re_nm_rhs, im_nm_rhs = self._cmplx_mul(cos_phi, msin_phi, re_nmm1, im_nmm1)
+            re_m_rhs, im_m_rhs = cmplx_mul(cos_phi, sin_phi, re_mm1, im_mm1)
+            re_nm_rhs, im_nm_rhs = cmplx_mul(cos_phi, msin_phi, re_nmm1, im_nmm1)
 
             modlist += [
                 icv_wrap(re_m, re_m_rhs),
@@ -140,12 +140,6 @@ class SphExpGen(object):
             ]
 
         self.module = Module(modlist)
-
-    @staticmethod
-    def _cmplx_mul(a, b, x, y):
-        g = a * x - b * y
-        h = x * b + a * y
-        return g, h
         
     def get_e_sym(self, m):
         assert abs(m) <= self.maxl
@@ -153,6 +147,13 @@ class SphExpGen(object):
         s += 'm' if m < 0 else 'p'
         s += str(abs(m))
         return (_Symbol('_re' + s), _Symbol('_im' + s))
+
+SphSymbol = _Symbol
+
+def cmplx_mul(a, b, x, y):
+    g = a * x - b * y
+    h = x * b + a * y
+    return g, h
 
 
 class SphCoeffGen(object):

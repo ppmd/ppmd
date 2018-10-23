@@ -106,57 +106,71 @@ def test_exp_gen_1():
 def test_sph_gen_1():
 
     lmax = 26
+    N = 10
+    M = (lmax+1) * (2*lmax+1)
 
     sph_gen = SphGen(lmax)
 
     assign_gen = ''
     for lx in range(lmax+1):
         for mx in range(-lx, lx+1):
-            assign_gen += 're_out[LMAX * {lx} + LOFFSET + {mx}] = '.format(lx=lx, mx=mx) + \
+            assign_gen += 're_out[NSTRIDE * ix + LMAX * {lx} + LOFFSET + {mx}] = '.format(lx=lx, mx=mx) + \
                 str(sph_gen.get_y_sym(lx, mx)[0]) + ';\n'
-            assign_gen += 'im_out[LMAX * {lx} + LOFFSET + {mx}] = '.format(lx=lx, mx=mx) + \
+            assign_gen += 'im_out[NSTRIDE * ix + LMAX * {lx} + LOFFSET + {mx}] = '.format(lx=lx, mx=mx) + \
                 str(sph_gen.get_y_sym(lx, mx)[1]) + ';\n'
 
 
     src = """
     #define LMAX ({LMAX})
     #define LOFFSET ({LOFFSET})
+    #define N ({N})
+    #define NSTRIDE ({NSTRIDE})
 
     extern "C" int test_sph_gen(
-        const double theta,
-        const double phi,
+        const double * RESTRICT theta_set,
+        const double * RESTRICT phi_set,
         double * RESTRICT re_out,
         double * RESTRICT im_out
     ){{
+        #pragma omp parallel for
+        for (int ix=0; ix<N ; ix++){{
+            const double theta = theta_set[ix];
+            const double phi = phi_set[ix];
         {SPH_GEN}
         {ASSIGN_GEN}
+        }}
         return 0;
     }}
     """.format(
         SPH_GEN=str(sph_gen.module),
         ASSIGN_GEN=str(assign_gen),
         LMAX=2*lmax+1,
-        LOFFSET=lmax
+        LOFFSET=lmax,
+        N=N,
+        NSTRIDE=M
     )
     header = str(sph_gen.header)
 
     lib = simple_lib_creator(header_code=header, src_code=src)['test_sph_gen']
+    
 
-    re_out = np.zeros((lmax+1, 2*lmax+1), dtype=c_double)
+    re_out = np.zeros((N, lmax+1, 2*lmax+1), dtype=c_double)
     im_out = np.zeros_like(re_out)
 
     rng = np.random.RandomState(1234)
     
-    theta_set = rng.uniform(low=0.0, high=math.pi, size=10)
-    phi_set = rng.uniform(low=0.0, high=2.*math.pi, size=10)
-
-    for theta, phi in zip(theta_set, phi_set):
-        lib(
-            c_double(theta),
-            c_double(phi),
-            re_out.ctypes.get_as_parameter(),
-            im_out.ctypes.get_as_parameter()
-        )
+    theta_set = np.array(rng.uniform(low=0.0, high=math.pi, size=N), dtype=c_double)
+    phi_set = np.array(rng.uniform(low=0.0, high=2.*math.pi, size=N), dtype=c_double)
+    lib(
+        theta_set.ctypes.get_as_parameter(),
+        phi_set.ctypes.get_as_parameter(),
+        re_out.ctypes.get_as_parameter(),
+        im_out.ctypes.get_as_parameter()
+    )
+    
+    for ix in range(N):
+        theta = theta_set[ix]
+        phi = phi_set[ix]
 
         for lx in range(lmax + 1):
             mrange = list(range(lx, -1, -1)) + list(range(1, lx+1))
@@ -175,11 +189,11 @@ def test_sph_gen_1():
                 scipy_real = re_exp * val
                 scipy_imag = im_exp * val
                 
-                re_err = abs(scipy_real - re_out[lx, lmax + mx])
-                im_err = abs(scipy_imag - im_out[lx, lmax + mx])
+                re_err = abs(scipy_real - re_out[ix, lx, lmax + mx])
+                im_err = abs(scipy_imag - im_out[ix, lx, lmax + mx])
 
-                assert re_err < 10.**-14
-                assert im_err < 10.**-14
+                assert re_err < 10.**-13
+                assert im_err < 10.**-13
 
 
 
