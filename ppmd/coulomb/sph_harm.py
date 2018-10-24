@@ -31,7 +31,7 @@ class ALegendrePolynomialGen(object):
         self.tmp_count = -1
         self.tsym = tsym
         self.header = Include('math.h')
-        
+        self.flops = {'+': 0, '-': 0, '*': 0, '/': 0}
 
         modlist = []
         if not avoid_calls:
@@ -47,6 +47,8 @@ class ALegendrePolynomialGen(object):
         modlist += [
             Initializer(Const(Value(self.ctype, self.get_p_sym(0,0))), '1.0'),
         ]
+
+
         for lx in range(self.maxl):
 
             theta_lxp1 = self._get_next_tmp()
@@ -62,6 +64,7 @@ class ALegendrePolynomialGen(object):
                         theta=self.tsym, theta_lxp1=theta_lxp1, plxlx=str(self.get_p_sym(lx,lx)))
                 ),
             ]
+            self.flops['*'] += 3
 
             for mx in range(lx):
                 modlist += [
@@ -76,6 +79,8 @@ class ALegendrePolynomialGen(object):
                         )
                     ),                    
                 ]
+                self.flops['*'] += 4
+                self.flops['-'] += 1
 
         self.module = Module(modlist)
 
@@ -115,6 +120,7 @@ class SphExpGen(object):
         self.esym = esym
         self.ctype = ctype
         self.header = Include('math.h')
+        self.flops = {'+': 0, '-': 0, '*': 0, '/': 0}
 
         cos_phi  = _Symbol('_cphi' + esym)
         sin_phi  = _Symbol('_sphi' + esym)
@@ -140,6 +146,7 @@ class SphExpGen(object):
             icv_wrap(self.get_e_sym(0)[1], '0.0'),
             icv_wrap(msin_phi, -1.0 * sin_phi),
         ]
+        self.flops['*'] += 1
 
         for mx in range(1, maxl+1):
             re_m, im_m = self.get_e_sym(mx)
@@ -150,6 +157,10 @@ class SphExpGen(object):
             
             re_m_rhs, im_m_rhs = cmplx_mul(cos_phi, sin_phi, re_mm1, im_mm1)
             re_nm_rhs, im_nm_rhs = cmplx_mul(cos_phi, msin_phi, re_nmm1, im_nmm1)
+
+            self.flops['*'] += 8
+            self.flops['+'] += 2
+            self.flops['-'] += 2
 
             modlist += [
                 icv_wrap(re_m, re_m_rhs),
@@ -181,7 +192,8 @@ class SphCoeffGen(object):
         self.sym = sym
         self.ctype = ctype
         self.header = ''
-        
+        self.flops = {'+': 0, '-': 0, '*': 0, '/': 0}
+
         def icv_wrap(a, b):
             return Initializer(Const(Value(self.ctype, a)), b)
         
@@ -207,7 +219,8 @@ class SphGen(object):
         self.sym = sym
         self.ctype = ctype
         self.header = Include('math.h')
-        
+        self.flops = {'+': 0, '-': 0, '*': 0, '/': 0}
+
         def icv_wrap(a, b):
             return Initializer(Const(Value(self.ctype, a)), b)
  
@@ -232,6 +245,9 @@ class SphGen(object):
             coeff_gen.module
         ]
         
+        for kx in self.flops.keys():
+            self.flops[kx] += lpmv_gen.flops[kx] + exp_gen.flops[kx] + coeff_gen.flops[kx]
+        
         for lx in range(maxl+1):
             modlist += [
                 icv_wrap(
@@ -247,6 +263,8 @@ class SphGen(object):
                         lpmv_gen.get_p_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[1]
                 ) for mx in range(-lx, lx+1)
             ]
+
+            self.flops['*'] += 6 * (2*lx+1)
 
         self.module = Module(modlist)
 
