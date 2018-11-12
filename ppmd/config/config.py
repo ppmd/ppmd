@@ -112,13 +112,23 @@ def load_config(dir=None):
 
 
         COMPILERS[args[0]] = compiler.Compiler(*args)
+    
+
+    mpi4py_config = mpi4py.get_config()
+    if 'mpicxx' in mpi4py_config.keys():
+        mpi_cc = mpi4py_config['mpicxx']
+    elif 'mpicc' in mpi4py_config.keys():
+        mpi_cc = mpi4py_config['mpicc']
+    else:
+        raise RuntimeError('Cannot find MPI compiler used to build mpi4py.')
+
 
 
     # create the mpi4py compiler
     tm = COMPILERS['MPI4PY']
     COMPILERS['MPI4PY'] = compiler.Compiler(
         name='MPI4PY',
-        binary=[mpi4py.get_config()['mpicxx'],],
+        binary=[mpi_cc,],
         c_flags=tm.c_flags,
         l_flags=tm.l_flags,
         opt_flags=tm.opt_flags,
