@@ -40,13 +40,15 @@ The code generation system relies on consistency of the following environment va
 Set the following environment variables to alter compilers used and default temporary directories. If these variables are not set the default behaviour is to use GCC and build temporary files to ``/tmp/build``.
 
 * ``PPMD_BUILD_DIR``: The directory used as a storage location for generated libraries. For example: ``export PPMD_BUILD_DIR=/tmp/build``
-* ``PPMD_CC_MAIN``: Name of the compiler to use from compilers defined in ``ppmd/config/compilers``. For example: ``export PPMD_CC_MAIN=ICC``
+* ``PPMD_CC_MAIN``: Name of the compiler to use from compilers defined in ``ppmd/config/compilers`` or in a directory given by ``PPMD_EXTRA_COMPILERS``. For example: ``export PPMD_CC_MAIN=ICC``
 * ``PPMD_CC_OMP``: Name of the OpenMP compiler to use, as above. For example: ``export PPMD_CC_OMP=$PPMD_CC_MAIN``
+* ``PPMD_EXTRA_COMPILERS``: Directory that should be parsed for user defined compilers.
 
 The following should be set if CUDA support is desired.
 
 * ``CUDA_SDK``: location of CUDA_SDK (or path containing the helper header files from the sdk).
 * ``MPI_HOME``: Used by the default CUDA compiler configuration to locate the desired MPI implementation.
+
 
 License
 -------

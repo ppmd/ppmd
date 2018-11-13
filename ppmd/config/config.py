@@ -14,7 +14,7 @@ import shlex
 
 # package level imports
 from ppmd.lib import compiler
-
+from glob import glob
 
 def str_to_bool(s="0"):
     return bool(int(s))
@@ -44,6 +44,11 @@ if 'PPMD_CC_OMP' in os.environ:
     cc_omp = os.environ['PPMD_CC_OMP']
 else:
     cc_omp = 'GCC'
+
+if 'PPMD_EXTRA_COMPILERS' in os.environ:
+    extra_compiler_dir = os.path.abspath(os.environ['PPMD_EXTRA_COMPILERS'])
+else:
+    extra_compiler_dir = None
 
 
 MAIN_CFG['build-dir'] = (str, build_dir)
@@ -87,9 +92,15 @@ def load_config(dir=None):
 
     # parse all config files in the compilers dir.
     cc_parser = ConfigParser.ConfigParser()
-    for cc_cfg in os.listdir(os.path.join(CFG_DIR, 'compilers')):
-        if not cc_cfg.endswith('.cfg'):
-            continue
+ 
+    compiler_dirs = glob(os.path.join(CFG_DIR, 'compilers/*.cfg'))
+    
+    if extra_compiler_dir is not None:
+        compiler_dirs += glob(os.path.join(extra_compiler_dir, '*.cfg'))
+
+    for cc_cfg in compiler_dirs:
+        #if not cc_cfg.endswith('.cfg'):
+        #    continue
         
         with open(os.path.join(os.path.join(CFG_DIR, 'compilers'), cc_cfg)) as fh:
             cnts = fh.read()
