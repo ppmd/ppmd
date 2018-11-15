@@ -142,6 +142,7 @@ class LennardJones(LennardJonesShifted):
         self._sigma2 = self._sigma ** 2
         self._shift_internal = (self._sigma / self._rc) ** 6 - (self._sigma / self._rc) ** 12
 
+
     @property
     def kernel(self):
         """

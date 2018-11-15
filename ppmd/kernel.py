@@ -49,7 +49,12 @@ class Kernel(object):
     """
 
     def __init__(self, name, code, constants=None, headers=None, reductions=None, static_args=None):
-        self._name = name
+        
+        # remove bad charaters from the name
+        self._name = re.sub(r'\W', '_', name)
+
+
+
         self._code = code
         self._headers = headers
         self._reductions = reductions
