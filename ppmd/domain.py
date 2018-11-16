@@ -154,7 +154,8 @@ class BaseDomainHalo(object):
 
     def mpi_decompose(self, mpi_grid=None):
         if self._init_decomp:
-            print("WARNING: domain already spatially decomposed")
+            return True
+            # print("WARNING: domain already spatially decomposed")
         
         mpisize = self.comm.size
 
