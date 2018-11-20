@@ -50,6 +50,16 @@ The following should be set if CUDA support is desired.
 * ``MPI_HOME``: Used by the default CUDA compiler configuration to locate the desired MPI implementation.
 
 
+Publications / Citation
+-----------------------
+
+The relevant article with which to cite this project is:
+*A domain specific language for performance portable molecular dynamics algorithms*, <https://doi.org/10.1016/j.cpc.2017.11.006>
+
+For the Ewald implementation the relevant article is:
+*Long range forces in a performance portable Molecular Dynamics framework*, Parallel Computing is Everywhere, 2018, pp. 37 – 46
+
+
 License
 -------
 
