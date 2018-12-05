@@ -913,6 +913,7 @@ class PyFMM(object):
         #if mpi.MPI.COMM_WORLD.Get_rank() == 0:
         #    print("Far:", phi_extract, "Near:", phi_near)
         self.execution_count += 1
+        # print("extract", phi_extract, "near", phi_near)
         return phi_extract + phi_near
 
     def _level_call_async(self, func, level, async):

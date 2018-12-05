@@ -627,7 +627,7 @@ class PositionDat(ParticleDat):
     def __init__(self, npart=0, ncomp=3, initial_value=None, name=None, dtype=ctypes.c_double):
         if ncomp != 3: raise RuntimeError('ncomp must be 3 for PositionDat')
         if dtype != ctypes.c_double: raise RuntimeError('dtype must be ctypes.c_double for PositionDat')
-        super().__init__(ncomp=3, dtype=ctypes.c_double)
+        super().__init__(npart=npart, ncomp=3, dtype=ctypes.c_double)
 
 # this needs deleting after cell by cell is updated
 class TypedDat(object):
