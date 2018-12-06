@@ -1010,11 +1010,11 @@ def test_wigner_c_1():
 
 def test_wigner_c_2():
     tol = 10.**-14
-    jmax = 20
+    jmax = 16
 
     E = wigner._WignerEngine()
 
-    for beta in np.random.uniform(low=-2.*math.pi, high=2.0*math.pi, size=10):
+    for beta in np.random.uniform(low=-2.*math.pi, high=2.0*math.pi, size=2):
 
         pointers, matrices = E(jmax, beta)
 
