@@ -355,9 +355,9 @@ class PyFMM(object):
         else:
             teps = 10.**-12
 
-        pbc_tool = FMMPbc(self.L, teps, domain, dtype)
+        self._pbc_tool = FMMPbc(self.L, teps, domain, dtype)
         if free_space == False:
-            self._boundary_terms = pbc_tool.compute_f() + pbc_tool.compute_g()
+            self._boundary_terms = self._pbc_tool.compute_f() + self._pbc_tool.compute_g()
             #self._boundary_terms = np.zeros((self.L * 2)**2, dtype=dtype)
 
         # create a vectors with ones for real part and zeros for imaginary part
@@ -913,6 +913,7 @@ class PyFMM(object):
         #if mpi.MPI.COMM_WORLD.Get_rank() == 0:
         #    print("Far:", phi_extract, "Near:", phi_near)
         self.execution_count += 1
+        # print("extract", phi_extract, "near", phi_near)
         return phi_extract + phi_near
 
     def _level_call_async(self, func, level, async):
@@ -1387,7 +1388,5 @@ class PyFMM(object):
         """
         return internal_to_ev()
 
-    def _test_shell_sum2(self, limit, nl=8):
-        pass
 
 
