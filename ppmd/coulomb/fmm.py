@@ -3,7 +3,6 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
-
 from math import log, ceil
 from ppmd.coulomb.octal import *
 import numpy as np
@@ -22,9 +21,6 @@ from ppmd.cuda import CUDA_IMPORT
 from ppmd.coulomb.wigner import Rzyz_set, Ry_set
 from ppmd.coulomb.fmm_pbc import FMMPbc
 from ppmd.coulomb.fmm_local import FMMLocal
-
-
-import pytest
 
 def red(input):
     try:
@@ -50,7 +46,6 @@ INT64 = ctypes.c_int64
 np.set_printoptions(threshold=np.nan)
 
 def _pdb_drop():
-    #import pytest; pytest.set_trace()
     import ipdb; ipdb.set_trace()
 
 def _isnormal(arr):
