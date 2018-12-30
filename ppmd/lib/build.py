@@ -202,7 +202,7 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
     if ppmd.runtime.OPT > 0:
         _c_cmd += CC.opt_flags
     _c_cmd += CC.shared_lib_flag
-    
+
     stdout_filename = os.path.join(dst_dir, lib + '.log')
     stderr_filename = os.path.join(dst_dir,  lib + '.err')
     try:

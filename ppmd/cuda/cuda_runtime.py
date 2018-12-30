@@ -136,6 +136,9 @@ DEVICE, DEVICE_NUMBER = cuda_set_device()
 global CONTEXT
 CONTEXT = DEVICE.make_context()
 
+ARCH_FLAG = "-arch=sm_%d%d" % CONTEXT.get_device().compute_capability()
+cuda_build.NVCC.add_cflag(ARCH_FLAG)
+
 #print("CUDA initialised")
 
 def context_cleanup():

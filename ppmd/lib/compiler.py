@@ -62,6 +62,11 @@ class Compiler(object):
     def binary(self):
         """Return Compiler binary."""
         return self._binary
+    
+    def add_cflag(self, entry):
+        assert type(entry) == str
+        if entry not in self._cflags:
+            self._cflags += [entry]
 
     @property
     def c_flags(self):
