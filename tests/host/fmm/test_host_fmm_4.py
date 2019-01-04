@@ -683,7 +683,7 @@ def test_fmm_init_4_3():
 
 
     t0 = time.time()
-    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, execute_async=ASYNC)
     t1 = time.time()
 
     local_err = abs(phi_py - local_phi_direct)

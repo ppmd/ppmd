@@ -342,8 +342,8 @@ def test_fmm_oct_1():
     A.scatter_data_from(0)
 
     t0 = time.time()
-    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
-    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    #phi_py = fmm._test_call(A.P, A.Q, execute_async=ASYNC)
+    phi_py = fmm(A.P, A.Q, execute_async=ASYNC)
     t1 = time.time()
 
     for lx in range(fmm.L):

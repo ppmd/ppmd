@@ -297,7 +297,7 @@ def test_fmm_init_5_1():
 
 
     t0 = time.time()
-    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, execute_async=ASYNC)
     t1 = time.time()
 
 
@@ -384,7 +384,7 @@ def test_fmm_init_5_3():
 
 
     t0 = time.time()
-    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, execute_async=ASYNC)
     t1 = time.time()
 
 
@@ -492,8 +492,8 @@ def test_fmm_init_5_4(level_set, tol_set, space_set):
     A.scatter_data_from(0)
 
     t0 = time.time()
-    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
-    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    #phi_py = fmm._test_call(A.P, A.Q, execute_async=ASYNC)
+    phi_py = fmm(A.P, A.Q, execute_async=ASYNC)
     t1 = time.time()
 
     if DIRECT:
@@ -594,8 +594,8 @@ def test_fmm_init_5_4_quad(level_set, tol_set, space_set):
     A.scatter_data_from(0)
 
     t0 = time.time()
-    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
-    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    #phi_py = fmm._test_call(A.P, A.Q, execute_async=ASYNC)
+    phi_py = fmm(A.P, A.Q, execute_async=ASYNC)
     t1 = time.time()
 
     if DIRECT:
@@ -701,8 +701,8 @@ def test_fmm_init_5_5_nacl(level_set_3_4):
     A.scatter_data_from(0)
 
     t0 = time.time()
-    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
-    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    #phi_py = fmm._test_call(A.P, A.Q, execute_async=ASYNC)
+    phi_py = fmm(A.P, A.Q, execute_async=ASYNC)
     t1 = time.time()
 
     dipole_src = """
@@ -811,8 +811,8 @@ def test_fmm_init_5_5_co2():
     A.scatter_data_from(0)
 
     t0 = time.time()
-    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
-    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    #phi_py = fmm._test_call(A.P, A.Q, execute_async=ASYNC)
+    phi_py = fmm(A.P, A.Q, execute_async=ASYNC)
     t1 = time.time()
 
     dipole_src = """
@@ -1123,8 +1123,8 @@ def test_fmm_init_5_4_quad2():
     A.scatter_data_from(0)
 
     t0 = time.time()
-    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
-    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    #phi_py = fmm._test_call(A.P, A.Q, execute_async=ASYNC)
+    phi_py = fmm(A.P, A.Q, execute_async=ASYNC)
     t1 = time.time()
 
     if DIRECT:
@@ -1241,8 +1241,8 @@ def test_fmm_init_5_7_quad():
 
 
     t0 = time.time()
-    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
-    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    #phi_py = fmm._test_call(A.P, A.Q, execute_async=ASYNC)
+    phi_py = fmm(A.P, A.Q, execute_async=ASYNC)
 
     t1 = time.time()
 
@@ -1405,7 +1405,7 @@ def test_fmm_init_5_7_cube():
 
 
     t0 = time.time()
-    phi_py = fmm(A.P, A.Q, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, execute_async=ASYNC)
     t1 = time.time()
 
     t2 = time.time()

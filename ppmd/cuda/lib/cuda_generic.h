@@ -81,11 +81,12 @@ lines of this file with a copy of the license included.
     return cudaSuccess;
 }
 
-    __device__ bool isnormal(double value)
-    {
-        return !(isinf(value) || isnan(value));
-    }
 
+/*__device__ bool isnormal(double value)
+{
+    return !(isinf(value) || isnan(value));
+}
+*/
 
 
 
@@ -170,6 +171,29 @@ Lines below this point are subject to the following license.
       return val;
     }
 
+#if __CUDA_ARCH__ < 350
+
+    __inline__ __device__ double atomicMaxDouble(double* address, double val)
+    {
+        unsigned long long int* address_as_ull =
+                                  (unsigned long long int*)address;
+        unsigned long long int old = *address_as_ull, assumed;
+
+        do {
+            assumed = old;
+            old = atomicCAS(address_as_ull, assumed,
+                            __double_as_longlong(
+                                max(val, __longlong_as_double(assumed))
+                            )
+            );
+
+        // Note: uses integer comparison to avoid hang in case of NaN (since NaN != NaN)
+        } while (assumed != old);
+
+        return __longlong_as_double(old);
+    }
+
+#else
 
     __inline__ __device__ double atomicMaxDouble(double *address, double val){
         union
@@ -185,6 +209,7 @@ Lines below this point are subject to the following license.
     }
 
 
+#endif
 
     // Taken from http://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/
     __inline__ __device__

@@ -791,7 +791,7 @@ class PyFMM(object):
             positions.group._fmm_cell = data.ParticleDat(ncomp=1, dtype=INT64)
             positions.group._fmm_cell.npart_local = positions.npart_local
 
-    def _cuda_translate_m_t_l(self, level, async=True):
+    def _cuda_translate_m_t_l(self, level, execute_async=True):
         if self.tree[level].local_grid_cube_size is None:
             return
         if self._cuda_mtl is None:
@@ -804,7 +804,7 @@ class PyFMM(object):
         self.timer_mtl_cuda[cl].start()
         radius = self.domain.extent[0] / \
                  self.tree[level].ncubes_side_global
-        if async:
+        if execute_async:
             self._cuda_mtl_start_async(level, radius)
         else:
             self._cuda_mtl.translate_mtl(self.tree_halo, level, radius,
@@ -834,7 +834,7 @@ class PyFMM(object):
             self.cuda_async_threads[level] = None
 
 
-    def __call__(self, positions, charges, forces=None, potential=None, async=False):
+    def __call__(self, positions, charges, forces=None, potential=None, execute_async=False):
 
         self.entry_data.zero()
         self.tree_plain.zero()
@@ -859,14 +859,14 @@ class PyFMM(object):
 
         for level in range(self.R - 1, 0, -1):
 
-            self._level_call_async(self._translate_m_to_m, level, async)
+            self._level_call_async(self._translate_m_to_m, level, execute_async)
             self._halo_exchange(level)
 
             if self.cuda and (self.R - level -1 < self.cuda_levels):
                 self._cuda_translate_m_t_l(level)
             else:
                 self._level_call_async(self._translate_m_to_l,
-                                       level, async)
+                                       level, execute_async)
 
             self._fine_to_coarse(level)
 
@@ -911,13 +911,13 @@ class PyFMM(object):
         # print("extract", phi_extract, "near", phi_near)
         return phi_extract + phi_near
 
-    def _level_call_async(self, func, level, async):
+    def _level_call_async(self, func, level, execute_async):
 
         # check previous call finished
-        if async and self._async_thread is not None:
+        if execute_async and self._async_thread is not None:
             self._async_thread.join()
             self._async_thread = None
-        if async:
+        if execute_async:
             self._async_thread = Thread(target=func, args=(level,))
             self._async_thread.start()
         else:
