@@ -397,8 +397,8 @@ def test_fmm_force_direct_1():
     A.scatter_data_from(0)
 
     t0 = time.time()
-    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
-    phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
+    #phi_py = fmm._test_call(A.P, A.Q, execute_async=ASYNC)
+    phi_py = fmm(A.P, A.Q, forces=A.F, execute_async=ASYNC)
     t1 = time.time()
 
 
@@ -617,7 +617,7 @@ def test_fmm_force_ewald_1():
     A.scatter_data_from(0)
 
     t0 = time.time()
-    phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, forces=A.F, execute_async=ASYNC)
     t1 = time.time()
 
 
@@ -659,7 +659,7 @@ def test_fmm_force_ewald_1():
     # run the same again
     A.F[:] = 0.0
     t0 = time.time()
-    phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, forces=A.F, execute_async=ASYNC)
     t1 = time.time()
 
     local_err = abs(phi_py - phi_ewald)/Q
@@ -842,7 +842,7 @@ def test_fmm_force_ewald_2():
     print("boundary", A.domain.boundary)
 
     t0 = time.time()
-    phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
+    phi_py = fmm(A.P, A.Q, forces=A.F, execute_async=ASYNC)
     t1 = time.time()
 
 
@@ -919,8 +919,8 @@ def test_fmm_force_direct_3():
     A.scatter_data_from(0)
 
     t0 = time.time()
-    #phi_py = fmm._test_call(A.P, A.Q, async=ASYNC)
-    phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
+    #phi_py = fmm._test_call(A.P, A.Q, execute_async=ASYNC)
+    phi_py = fmm(A.P, A.Q, forces=A.F, execute_async=ASYNC)
     t1 = time.time()
 
 

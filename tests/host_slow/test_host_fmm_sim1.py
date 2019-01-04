@@ -159,7 +159,7 @@ def test_fmm_sim_1():
     A.scatter_data_from(0)
 
 
-    # phi_py = fmm(A.P, A.Q, forces=A.F, async=ASYNC)
+    # phi_py = fmm(A.P, A.Q, forces=A.F, execute_async=ASYNC)
 
 
 
