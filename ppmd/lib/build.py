@@ -8,14 +8,13 @@ import ctypes
 import os
 import hashlib
 import subprocess
-
+import sys
 from pytools.prefork import call_capture_output
+import numpy as np
 
 # package level imports
 from ppmd import config, runtime, mpi, opt
-
 import ppmd.lib
-import numpy as np
 
 
 _MPIRANK = ppmd.mpi.MPI.COMM_WORLD.Get_rank()
@@ -205,58 +204,29 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
 
     stdout_filename = os.path.join(dst_dir, lib + '.log')
     stderr_filename = os.path.join(dst_dir,  lib + '.err')
-    try:
-        with open(stdout_filename, 'w') as stdout_fh:
-            with open(stderr_filename, 'w') as stderr_fh:
-                stdout_fh.write('#Compilation command:\n')
-                stdout_fh.write(' '.join(_c_cmd))
-                stdout_fh.write('\n\n')
-                stdout_fh.flush()
-                result, stdout, stderr = call_capture_output(_c_cmd)
+    with open(stdout_filename, 'w') as stdout_fh:
+        with open(stderr_filename, 'w') as stderr_fh:
+            stdout_fh.write('# Compilation command:\n')
+            stdout_fh.write(' '.join(_c_cmd))
+            stdout_fh.write('\n\n')
+            stdout_fh.flush()
+            result, stdout, stderr = call_capture_output(_c_cmd, error_on_nonzero=False)
 
-                stdout = stdout.decode('utf-8')
-                stderr = stderr.decode('utf-8')
+            stdout = stdout.decode(sys.stdout.encoding)
+            stderr = stderr.decode(sys.stdout.encoding)
 
-                stdout_fh.write(str(result) + '\n')
-                stdout_fh.write(stdout)
-                stderr_fh.write(stderr)
-                stdout_fh.flush()
-                stderr_fh.flush()
-                if result != 0:
-                    print("----")
-                    print(stdout)
-                    print("----")
-                    raise Exception(stderr)
+            stderr_fh.write(str(result) + '\n')
+            stderr_fh.write(stdout)
+            stderr_fh.write(stderr)
+            stderr_fh.flush()
+            if result != 0:
+                print("\n---- COMPILER OUTPUT START ----")
+                print(stdout)
+                print(stderr)
+                print("----- COMPILER OUTPUT END -----")
+                raise RuntimeError('PPMD build error: library not built.')
 
-    except Exception as e:
-        print(str(e).encode('utf-8').decode('unicode_escape'))
-        raise RuntimeError('build error: library not built.')
-
-    # code prior to prefork solution
-    """
-    stdout_filename = os.path.join(dst_dir, lib + '.log')
-    stderr_filename = os.path.join(dst_dir,  lib + '.err')
-    try:
-
-        with open(stdout_filename, 'w') as stdout:
-            with open(stderr_filename, 'w') as stderr:
-                stdout.write('#Compilation command:\n')
-                stdout.write(' '.join(_c_cmd))
-                stdout.write('\n\n')
-                stdout.flush()
-                #p = subprocess.Popen(_c_cmd)
-                p = subprocess.check_call(_c_cmd,
-                                     stdout=stdout,
-                                     stderr=stderr)
-                #stdout_data, stderr_data = p.communicate()
-
-    except Exception as e:
-        print(e)
-        _print_file_if_exists(stderr_filename)
-        raise RuntimeError('build error: library not built.')
-    """
-
-    # try to provide useful compile errors
+    # Check library exists in the file system
     if not os.path.exists(_lib_filename):
         print("Critical build Error: Library not found,\n" + \
                    _lib_filename + "\n rank:", _MPIRANK)
