@@ -88,7 +88,7 @@ def internal_to_ev():
     return c0 / (4.*pi*epsilon_0*l0)    
 
 class PyFMM(object):
-    def __init__(self, domain, N=None, eps=10.**-6,
+    def __init__(self, domain, N=None, eps=None,
         free_space=False, r=None, shell_width=0.0, cuda=False, cuda_levels=1,
         force_unit=1.0, energy_unit=1.0, _debug=False, l=None, cuda_local=False):
 
@@ -97,6 +97,7 @@ class PyFMM(object):
         dtype = REAL
 
         if l is None:
+            assert eps is not None
             self.L = int(-1*log(eps,2))
             """Number of multipole expansion coefficients"""
         else:
@@ -113,8 +114,6 @@ class PyFMM(object):
         _e = domain.extent
         if (abs(_e[0] - _e[1]) > 10.**-8) or (abs(_e[0] - _e[2]) > 10.**-8):
             raise RuntimeError('domain passed to constructor is not cubic')
-
-
 
         self.eps = eps
 
