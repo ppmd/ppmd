@@ -12,6 +12,8 @@ import numpy as np
 from ppmd import runtime, host, kernel, pairloop, data, access, mpi, opt
 from ppmd.lib import build
 from ppmd.coulomb.octal import shell_iterator
+from ppmd.coulomb.sph_harm import SphGen
+
 import ctypes
 import os
 import math
@@ -251,6 +253,7 @@ class FMMPbc(object):
                 err = np.linalg.norm(curr - new_vals, np.inf)
 
                 if err < self.eps*0.01:
+                    # print("g shellx", shellx, 10.**-15)
                     break
                 if shellx == 20:
                     raise RuntimeError('Periodic Boundary Coefficients did'
@@ -470,5 +473,113 @@ class _shell_test_2_FMMPbc(object):
 
 
         return terms
+
+
+class SphShellSum(object):
+    def __init__(self, lmax):
+        self._lmax = lmax
+        im_of = (lmax+1) ** 2
+        self._ncomp = 2 * im_of
+
+        sph_gen = SphGen(lmax)
+        
+        def lm_ind(L, M, OX=0):
+            return ((L) * ( (L) + 1 ) + (M) + OX)
+
+        radius_gen = 'const double iradius = 1.0/radius;\nconst double r0 = 1.0;\n'
+        assign_gen = ''
+        for lx in range(lmax+1):
+            radius_gen += 'const double r{lxp1} = r{lx} * iradius;\n'.format(lxp1=lx+1, lx=lx)
+
+            for mx in range(-lx, lx+1):
+                assign_gen += 'tmp_out[{LM_IND}] = '.format(LM_IND=lm_ind(lx, mx)) + \
+                    str(sph_gen.get_y_sym(lx, mx)[0]) + \
+                    ' * r{lx};\n'.format(lx=lx+1)
+                assign_gen += 'tmp_out[{LM_IND}] = '.format(LM_IND=lm_ind(lx, mx, im_of)) + \
+                    str(sph_gen.get_y_sym(lx, mx)[0]) + \
+                    ' * r{lx};\n'.format(lx=lx+1)
+
+
+        src = """
+        #define STRIDE ({STRIDE})
+
+        extern "C" int sph_gen(
+            const int num_threads,
+            const int N,
+            const double * RESTRICT radius_set,
+            const double * RESTRICT theta_set,
+            const double * RESTRICT phi_set,
+            double * RESTRICT gtmp_out,
+            double * RESTRICT out
+        ){{
+            for(int tx=0 ; tx<(num_threads*stride) ; tx++){{
+                gtmp_out[tx] = 0;
+            }}
+            omp_set_num_threads(num_threads);
+
+            #pragma omp parallel default(none) shared(N, radius_set, theta_set, phi_set, gtmp_out)
+            {{
+
+                const int threadid = omp_get_thread_num();
+                const inner_num_threads = omp_get_num_threads();
+
+                const int lower = N*threadid/inner_num_threads;
+                const int upper = (threadid = (inner_num_threads - 1)) ? N : N*(threadid+1)/inner_num_threads;
+                
+                double * RESTRICT tmp_out = gtmp_out + threadid * STRIDE;
+                
+                #pragma omp simd
+                for (int ix=lower; ix<upper ; ix++){{
+                    const double radius = radius_set[ix];
+                    const double theta = theta_set[ix];
+                    const double phi = phi_set[ix];
+                    {RADIUS_GEN}
+                    {SPH_GEN}
+                    {ASSIGN_GEN}
+                }}
+
+            }}
+
+            for(int tx=0 ; tx<num_threads ; tx++){{
+                for(int ix=0 ; ix<STRIDE ; ix++){{
+                    out[ix] += gtmp_out[ix + tx*STRIDE];
+                }}
+            }}
+
+            return 0;
+        }}
+        """.format(
+            RADIUS_GEN=radius_gen,
+            SPH_GEN=str(sph_gen.module),
+            ASSIGN_GEN=str(assign_gen),
+            STRIDE=self._ncomp
+        )
+        header = str(sph_gen.header)
+
+        self._lib = simple_lib_creator(header_code=header, src_code=src)['sph_gen']
+        self._nthreads = runtime.NUM_THREADS
+        self._gtmp = np.zeros(self._ncomp*self._nthreads, dtype=ctypes.c_double)
+
+    def __call__(self, radius, theta, phi, out):
+        
+        assert radius.dtype == ctypes.c_double
+        assert theta.dtype == ctypes.c_double
+        assert phi.dtype == ctypes.c_double
+        assert out.dtype == ctypes.c_double
+        assert len(theta) == len(phi)
+        assert len(theta) == len(radius)
+        assert len(out) == self._ncomp
+
+        N = len(theta)
+
+        self._lib(
+            ctypes.c_int(self._nthreads),
+            ctypes.c_int(N),
+            radius.ctypes.get_as_parameter(),
+            theta.ctypes.get_as_parameter(),
+            phi.ctypes.get_as_parameter(),
+            self._gtmp.ctypes.get_as_parameter(),
+            out.ctypes.get_as_parameter()
+        )
 
 

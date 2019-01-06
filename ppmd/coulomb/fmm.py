@@ -991,12 +991,17 @@ class PyFMM(object):
                 self.tree_parent[1][:] = 0
 
             return
+        
+
 
         if lsize is not None:
 
             moments = np.copy(self.tree_parent[1][0, 0, 0, :])
 
             self.tree_parent[1][0, 0, 0, :] = 0.0
+            #print("WARNING PBC DISABLED FOR TESTING")
+            #return
+
             self._translate_mtl_lib['mtl_test_wrapper'](
                 ctypes.c_int64(self.L),
                 ctypes.c_double(1.),            #radius=1

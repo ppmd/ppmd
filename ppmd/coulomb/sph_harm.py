@@ -5,6 +5,7 @@ __license__ = "GPL"
 
 from cgen import *
 from math import *
+from ctypes import c_double, c_int
 
 class _Symbol(object):
     def __init__(self, sym):
@@ -276,13 +277,6 @@ class SphGen(object):
         ms += str(abs(m))
         s = self.sym + 'n' + str(abs(n)) + ms
         return _Symbol('_re' + s), _Symbol('_im' + s)
-
-
-
-
-
-
-
 
 
 
