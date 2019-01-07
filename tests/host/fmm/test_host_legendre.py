@@ -13,6 +13,7 @@ c_double = ctypes.c_double
 
 import numpy as np
 from cgen import *
+from itertools import product
 
 def test_legendre_gen_1():
 
@@ -248,6 +249,129 @@ def test_sph_pbc_gen_1():
         assert err < 10.**-13
 
 
+
+
+
+def test_sph_pbc_gen_2():
+    lmax = 2
+    lold = (lmax + 1)
+
+    pbc_lold = (2*lold)
+    pbc_lmax = pbc_lold - 1
+
+    
+    E = 1.0
+    im_offset = pbc_lold ** 2
+
+    rc = 16.000001
+
+    def reY(L, M): return ((L) * ( (L) + 1 ) + (M))
+    def imY(L, M): return ((L) * ( (L) + 1 ) + (M) + im_offset)
+
+    def cart_to_sph(xyz):
+        dx = xyz[0]; dy = xyz[1]; dz = xyz[2]
+
+        dx2dy2 = dx*dx + dy*dy
+        r2 = dx2dy2 + dz*dz
+        if r2 > (rc * rc): return None
+
+        radius = math.sqrt(r2)
+        phi = math.atan2(dy, dx)
+        theta = math.atan2(math.sqrt(dx2dy2), dz)
+
+        return radius, theta, phi
+
+    gen = SphShellSum(pbc_lmax)
+
+    class DummyDomain:
+        def __init__(self, e):
+            self.extent = np.array((e,e,e), dtype=c_double)
+
+    domain = DummyDomain(E)
+
+    orig_pbc = FMMPbc(lold, 10.**-15, domain, c_double)
+    orig_vals = orig_pbc.compute_f() + orig_pbc.compute_g()
+
+
+    dmax = int(rc/E)
+    drange = list(range(-dmax, dmax+1))
+
+    radius_list = []
+    theta_list = []
+    phi_list = []
+
+    for imagex in product(drange, drange, drange):
+        nrm = max(abs(imagex[0]), abs(imagex[1]), abs(imagex[2]))
+        if nrm < 2:
+            continue
+
+        sph_coord = cart_to_sph(imagex)
+
+        if sph_coord is not None:
+            radius_list.append(sph_coord[0])
+            theta_list.append(sph_coord[1])
+            phi_list.append(sph_coord[2])
+
+
+    radius_set = np.array(radius_list, dtype=c_double)
+    theta_set = np.array(theta_list, dtype=c_double)
+    phi_set = np.array(phi_list, dtype=c_double)
+    out = np.zeros(gen.ncomp, dtype=c_double)
+
+    #print("\n" + "-" * 80)
+    #print(orig_vals)
+    #print("-" * 80)
+
+    gen(radius_set, theta_set, phi_set, out)
+    
+    #print(out)
+    #print("-" * 80)
+
+
+    N = len(phi_set)
+    def reY(L, M): return ((L) * ( (L) + 1 ) + (M))
+    def imY(L, M): return ((L) * ( (L) + 1 ) + (M) + im_offset)
+    
+    correct_out = np.zeros_like(out)
+
+    for ix in range(N):
+        radius = radius_set[ix]
+        theta = theta_set[ix]
+        phi = phi_set[ix]
+
+        for lx in range(pbc_lold):
+            mrange = list(range(lx, -1, -1)) + list(range(1, lx+1))
+            mrange2 = list(range(-1*lx, 1)) + list(range(1, lx+1))
+            scipy_p = lpmv(mrange, lx, np.cos(theta))
+
+            for mxi, mx in enumerate(mrange2):
+
+                re_exp = math.cos(mx * phi)
+                im_exp = math.sin(mx * phi)
+
+                val = math.sqrt(math.factorial(
+                    lx - abs(mx))/math.factorial(lx + abs(mx)))
+                val *= scipy_p[mxi]
+
+                scipy_real = re_exp * val / (radius ** (lx + 1))
+                scipy_imag = im_exp * val / (radius ** (lx + 1))
+                
+                correct_out[reY(lx, mx)] += scipy_real
+                correct_out[imY(lx, mx)] += scipy_imag
+    
+    for lx in range(lold):
+        for mx in range(-lx, lx+1):
+            re_err = abs(correct_out[reY(lx, mx)] - out[reY(lx, mx)])
+            im_err = abs(correct_out[imY(lx, mx)] - out[imY(lx, mx)])
+            #print(lx, mx, "|", reY(lx, mx), re_err, "|", imY(lx, mx), im_err)
+            assert re_err < 10.**-10
+            assert im_err < 10.**-10
+
+
+    #import ppmd.coulomb.fmm_pbc
+    #pyshell = ppmd.coulomb.fmm_pbc._shell_test_2_FMMPbc(lold, None, domain, c_double)
+    #shell_out = pyshell._test_shell_sum2(dmax)
+    #print(shell_out)
 
 
 
