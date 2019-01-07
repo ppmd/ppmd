@@ -1,6 +1,7 @@
 
 
 from ppmd.coulomb.sph_harm import *
+from ppmd.coulomb.fmm_pbc import *
 from ppmd.lib.build import simple_lib_creator
 
 from scipy.special import lpmv
@@ -197,8 +198,54 @@ def test_sph_gen_1():
 
 
 
+def test_sph_pbc_gen_1():
+    lmax = 20
+    im_offset = (lmax + 1) ** 2
+    N = 127
+    gen = SphShellSum(lmax)
 
+    rng = np.random.RandomState(1234)
+    
+    radius_set = np.array(rng.uniform(low=1.0, high=2.0, size=N), dtype=c_double)
+    theta_set = np.array(rng.uniform(low=0.0, high=math.pi, size=N), dtype=c_double)
+    phi_set = np.array(rng.uniform(low=0.0, high=2.*math.pi, size=N), dtype=c_double)
+    out = np.zeros(gen.ncomp, dtype=c_double)
 
+    gen(radius_set, theta_set, phi_set, out)
+
+    def reY(L, M): return ((L) * ( (L) + 1 ) + (M))
+    def imY(L, M): return ((L) * ( (L) + 1 ) + (M) + im_offset)
+    
+    correct_out = np.zeros_like(out)
+
+    for ix in range(N):
+        radius = radius_set[ix]
+        theta = theta_set[ix]
+        phi = phi_set[ix]
+
+        for lx in range(lmax + 1):
+            mrange = list(range(lx, -1, -1)) + list(range(1, lx+1))
+            mrange2 = list(range(-1*lx, 1)) + list(range(1, lx+1))
+            scipy_p = lpmv(mrange, lx, np.cos(theta))
+
+            for mxi, mx in enumerate(mrange2):
+
+                re_exp = math.cos(mx * phi)
+                im_exp = math.sin(mx * phi)
+
+                val = math.sqrt(math.factorial(
+                    lx - abs(mx))/math.factorial(lx + abs(mx)))
+                val *= scipy_p[mxi]
+
+                scipy_real = re_exp * val / (radius ** (lx + 1))
+                scipy_imag = im_exp * val / (radius ** (lx + 1))
+                
+                correct_out[reY(lx, mx)] += scipy_real
+                correct_out[imY(lx, mx)] += scipy_imag
+    
+    for tx in range(gen.ncomp):
+        err = abs(correct_out[tx] - out[tx])
+        assert err < 10.**-13
 
 
 

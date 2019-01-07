@@ -480,6 +480,7 @@ class SphShellSum(object):
         self._lmax = lmax
         im_of = (lmax+1) ** 2
         self._ncomp = 2 * im_of
+        self.ncomp = self._ncomp
 
         sph_gen = SphGen(lmax)
         
@@ -492,15 +493,16 @@ class SphShellSum(object):
             radius_gen += 'const double r{lxp1} = r{lx} * iradius;\n'.format(lxp1=lx+1, lx=lx)
 
             for mx in range(-lx, lx+1):
-                assign_gen += 'tmp_out[{LM_IND}] = '.format(LM_IND=lm_ind(lx, mx)) + \
+                assign_gen += 'tmp_out[{LM_IND}] += '.format(LM_IND=lm_ind(lx, mx)) + \
                     str(sph_gen.get_y_sym(lx, mx)[0]) + \
                     ' * r{lx};\n'.format(lx=lx+1)
-                assign_gen += 'tmp_out[{LM_IND}] = '.format(LM_IND=lm_ind(lx, mx, im_of)) + \
-                    str(sph_gen.get_y_sym(lx, mx)[0]) + \
+                assign_gen += 'tmp_out[{LM_IND}] += '.format(LM_IND=lm_ind(lx, mx, im_of)) + \
+                    str(sph_gen.get_y_sym(lx, mx)[1]) + \
                     ' * r{lx};\n'.format(lx=lx+1)
 
 
         src = """
+        #include <omp.h>
         #define STRIDE ({STRIDE})
 
         extern "C" int sph_gen(
@@ -512,7 +514,7 @@ class SphShellSum(object):
             double * RESTRICT gtmp_out,
             double * RESTRICT out
         ){{
-            for(int tx=0 ; tx<(num_threads*stride) ; tx++){{
+            for(int tx=0 ; tx<(num_threads*STRIDE) ; tx++){{
                 gtmp_out[tx] = 0;
             }}
             omp_set_num_threads(num_threads);
@@ -521,14 +523,13 @@ class SphShellSum(object):
             {{
 
                 const int threadid = omp_get_thread_num();
-                const inner_num_threads = omp_get_num_threads();
+                const int inner_num_threads = omp_get_num_threads();
 
                 const int lower = N*threadid/inner_num_threads;
-                const int upper = (threadid = (inner_num_threads - 1)) ? N : N*(threadid+1)/inner_num_threads;
+                const int upper = (threadid == (inner_num_threads - 1)) ? N : N*(threadid+1)/inner_num_threads;
                 
                 double * RESTRICT tmp_out = gtmp_out + threadid * STRIDE;
                 
-                #pragma omp simd
                 for (int ix=lower; ix<upper ; ix++){{
                     const double radius = radius_set[ix];
                     const double theta = theta_set[ix];
@@ -556,7 +557,7 @@ class SphShellSum(object):
         )
         header = str(sph_gen.header)
 
-        self._lib = simple_lib_creator(header_code=header, src_code=src)['sph_gen']
+        self._lib = build.simple_lib_creator(header_code=header, src_code=src)['sph_gen']
         self._nthreads = runtime.NUM_THREADS
         self._gtmp = np.zeros(self._ncomp*self._nthreads, dtype=ctypes.c_double)
 
