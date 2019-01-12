@@ -368,7 +368,7 @@ class LocalExpEval(object):
             moments.ctypes.get_as_parameter(),
             byref(_out)
         )
-        return _out.value, None
+        return _out.value
 
 
     def py_compute_phi_local(self, moments, disp_sph):
@@ -404,8 +404,7 @@ class LocalExpEval(object):
                 ppmd_mom_im = moments[im_lm(lx, mx)]
 
                 phi_sph_re += scipy_real*ppmd_mom_re - scipy_imag*ppmd_mom_im
-                phi_sph_im += scipy_real*ppmd_mom_im + ppmd_mom_re*scipy_imag
 
-        return phi_sph_re, phi_sph_im
+        return phi_sph_re
 
 

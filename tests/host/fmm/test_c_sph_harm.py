@@ -47,7 +47,7 @@ def test_c_sph_harm_1():
         point[2] = rng.uniform(0, pi)
 
         moments = rng.uniform(size=ncomp)
-        rec, _ = lee(moments, point)
-        rep, imp = lee.py_compute_phi_local(moments, point)
+        rec = lee(moments, point)
+        rep = lee.py_compute_phi_local(moments, point)
         rel = abs(rep)
         assert abs(rec - rep) / rel < 10.**-12

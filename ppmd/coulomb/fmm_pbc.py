@@ -12,7 +12,7 @@ import numpy as np
 from ppmd import runtime, host, kernel, pairloop, data, access, mpi, opt, loop
 from ppmd.lib import build
 from ppmd.coulomb.octal import shell_iterator
-from ppmd.coulomb.sph_harm import SphGen
+from ppmd.coulomb.sph_harm import SphGen, LocalExpEval
 
 import ctypes
 import os
@@ -80,7 +80,7 @@ def _h(j,k,n,m):
 
 
 class DipoleCorrector:
-    def __init__(self, l, extent, positions, charges):
+    def __init__(self, l, extent, positions, charges, lexp):
         self.l = l
         self._imo = l * l
         self.ncomp = self._imo * 2
@@ -88,6 +88,8 @@ class DipoleCorrector:
         self.svalues = [0,0,0]
         self.positions = positions
         self.charges = charges
+        self.lexp = lexp
+        self._lee = LocalExpEval(l-1)
 
         self.eval_points = (
             (0.5*extent[0], 0, 0),
@@ -95,14 +97,14 @@ class DipoleCorrector:
             (0, 0, 0.5*extent[2])
         )
 
-        diff_points = np.array((
+        self.diff_points = np.array((
             (-0.5*extent[0], 0.0, 0.0), (0.5*extent[0], 0.0, 0.0),
             (0.0, -0.5*extent[1], 0.0), (0.0, 0.5*extent[1], 0.0),
             (0.0, 0.0, -0.5*extent[2]), (0.0, 0.0, 0.5*extent[2])
-        )).ravel()
+        ))
 
         self.sa_eval_points = data.ScalarArray(ncomp=18, dtype=REAL)
-        self.sa_eval_points[:] = diff_points
+        self.sa_eval_points[:] = self.diff_points.ravel()
         self.ga_svalues = data.GlobalArray(ncomp=3, dtype=REAL)
         self.sa_offsets = data.ScalarArray(ncomp=27*3, dtype=REAL)
 
@@ -199,27 +201,19 @@ class DipoleCorrector:
         return ((-1.j)**(abs(k - m) - abs(k) - abs(m))) * _A(1, m) * _A(1, k) / _A(2, m - k)
     
 
-    def __call__(self, M, L, lr_correction):
+    def __call__(self):
 
         self._loop.execute()
-        """
-        near_iterset = (-1, 0, 1)
+
+        lr_correction = [0,0,0]
         for dimx in range(3):
-
-            stmp = 0.0
-            for ofx in itertools.product(near_iterset, near_iterset, near_iterset):
-                vec = tuple([ev - ox*ex for ox, ex, ev in zip(ofx, self.extent, self.eval_points[dimx])])
-
-                radius, theta, phi = spherical(vec)
-                ir2 = (1.0 / radius) ** 2.0
-                for kx in (-1, 0, 1):
-                    m_tmp = M[self._re(1, kx)] + 1.j * M[self._im(1, kx)]
-                    Y_tmp = self._Y_1(kx, theta, phi) * ir2
-                    stmp += m_tmp * Y_tmp
-
-            self.svalues[dimx] = stmp
+            lhs = self.diff_points[2*dimx]
+            lsph = spherical(lhs)
+            lphi
         
-        """
+
+
+
         self.svalues[:] = self.ga_svalues[:]
         self.svalues[0] += lr_correction[0]
         self.svalues[1] += lr_correction[1]
@@ -240,93 +234,6 @@ class DipoleCorrector:
         L[self._re(1, 0)] += -1.0 * self.svalues[2].real / (0.5 * self.extent[2])
 
         print("x direction", self.svalues[0].real, xcoeff)
-
-
-    def solve__call__(self, M, L=None):
-
-        self.A.fill(0)
-        self.x.fill(0)
-        self.b.fill(0)
-
-        near_iterset = (-1, 0, 1)
-        for dimx in range(3):
-
-            stmp = 0.0
-            for ofx in itertools.product(near_iterset, near_iterset, near_iterset):
-                vec = tuple([ev - ox*ex for ox, ex, ev in zip(ofx, self.extent, self.eval_points[dimx])])
-
-                radius, theta, phi = spherical(vec)
-                ir2 = (1.0 / radius) ** 2.0
-                for kx in (-1, 0, 1):
-                    m_tmp = M[self._re(1, kx)] + 1.j * M[self._im(1, kx)]
-                    Y_tmp = self._Y_1(kx, theta, phi) * ir2
-                    stmp += m_tmp * Y_tmp
-
-            self.svalues[dimx] = stmp
-
-        # first 3 rows are the scaled s values 
-        for dimx in range(3):
-            radius, _, _ = spherical(tuple(self.eval_points[dimx]))
-            self.b[dimx, 0] = -1.0 * self.svalues[dimx] / radius
-
-        for dimx in range(3):
-            _, theta, phi = spherical(tuple(self.eval_points[dimx]))
-            for kx in (-1, 0, 1):
-                for mx in (-1, 0, 1):
-                    m_tmp = M[self._re(1, mx)] + 1.j * M[self._im(1, mx)]
-                    coeff = self._Y_1(kx, theta, phi) * m_tmp * self._h1k1m(kx, mx)
-                    index = 2 - (mx - kx)
-                    self.A[dimx, index] += coeff
-        
-        for kxi, kx in enumerate(range(-2, 3)):
-            m_tmp = M[self._re(2, kx)] + 1.j * M[self._im(2, kx)]
-            self.A[4, kxi] = m_tmp
-
-        
-        x = np.linalg.lstsq(self.A, self.b, rcond=None)
-
-        res_err = np.linalg.norm(np.matmul(self.A, x[0]) - self.b, np.inf)
-        if res_err > 10.**-14:
-            raise RuntimeError('Failed to find coefficients')
-
-        self.x[:] = x[0]
-
-        print(x[0])
-        
-        self._make_linop()
-
-        if L is not None:
-            L[:self._imo] = self.linop.dot(M[:self._imo])
-            L[self._imo:] = self.linop.dot(M[self._imo:])
-
-        return self.x
-
-    def _make_xfull(self):
-        self.xfull.fill(0)
-        for kxi, kx in enumerate((-2, -1, 0, 1, 2)):
-            self.xfull[self._re(2, kx)] = self.x[kxi].real
-            self.xfull[self._im2(2, kx)] = self.x[kxi].imag
-
-
-    def _make_linop(self):
-        self._make_xfull()
-
-        half_ncomp = self.l**2
-        rmat = np.zeros((half_ncomp, half_ncomp), dtype=REAL)
-        row = 0
-        l = self.l
-        for jx in range(l):
-            for kx in range(-jx, jx+1):
-                col = 0
-                for nx in range(l):
-                    for mx in range(-nx, nx+1):
-                        if (not abs(mx-kx) > jx+nx):
-
-                            rmat[row, col] = _h(jx, kx, nx, mx) * self.xfull[self._re(jx+nx, mx-kx)]
-                        col += 1
-                row += 1
-        
-        self.linop = aslinearoperator(rmat)
 
 
 
