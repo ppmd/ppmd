@@ -9,7 +9,7 @@ from math import log, ceil
 from ppmd.coulomb.cached import cached
 
 import numpy as np
-from ppmd import runtime, host, kernel, pairloop, data, access, mpi, opt
+from ppmd import runtime, host, kernel, pairloop, data, access, mpi, opt, loop
 from ppmd.lib import build
 from ppmd.coulomb.octal import shell_iterator
 from ppmd.coulomb.sph_harm import SphGen
@@ -22,7 +22,10 @@ from threading import Thread
 from scipy.special import lpmv, rgamma, gammaincc, lambertw
 import sys
 
+from math import factorial, sqrt
 import itertools
+
+from scipy.sparse.linalg import aslinearoperator
 
 def red(input):
     try:
@@ -46,6 +49,289 @@ REAL = ctypes.c_double
 INT64 = ctypes.c_int64
 
 np.set_printoptions(threshold=np.nan)
+
+def spherical(xyz):
+    """
+    Converts the cartesian coordinates in xyz to spherical coordinates
+    (radius, polar angle, longitude angle)
+    """
+    sph = np.zeros(3)
+    xy = xyz[0]**2 + xyz[1]**2
+    # r
+    sph[0] = np.sqrt(xy + xyz[2]**2)
+    # polar angle
+    sph[1] = np.arctan2(np.sqrt(xy), xyz[2])
+    # longitude angle
+    sph[2] = np.arctan2(xyz[1], xyz[0])
+
+    return sph
+
+
+def _A(n,m):
+    return ((-1.0)**n)/sqrt(factorial(n-m)*factorial(n+m))
+
+
+def _h(j,k,n,m):
+    if abs(k) > j: return 0.0
+    if abs(m) > n: return 0.0
+    if abs(m-k) > j+n: return 0.0
+    icoeff = ((1.j)**(abs(k-m) - abs(k) - abs(m))).real
+    return icoeff * _A(n, m) * _A(j, k) / (((-1.0) ** n) * _A(j+n, m-k))
+
+
+class DipoleCorrector:
+    def __init__(self, l, extent, positions, charges):
+        self.l = l
+        self._imo = l * l
+        self.ncomp = self._imo * 2
+        self.extent = extent
+        self.svalues = [0,0,0]
+        self.positions = positions
+        self.charges = charges
+
+        self.eval_points = (
+            (0.5*extent[0], 0, 0),
+            (0, 0.5*extent[1], 0),
+            (0, 0, 0.5*extent[2])
+        )
+
+        diff_points = np.array((
+            (-0.5*extent[0], 0.0, 0.0), (0.5*extent[0], 0.0, 0.0),
+            (0.0, -0.5*extent[1], 0.0), (0.0, 0.5*extent[1], 0.0),
+            (0.0, 0.0, -0.5*extent[2]), (0.0, 0.0, 0.5*extent[2])
+        )).ravel()
+
+        self.sa_eval_points = data.ScalarArray(ncomp=18, dtype=REAL)
+        self.sa_eval_points[:] = diff_points
+        self.ga_svalues = data.GlobalArray(ncomp=3, dtype=REAL)
+        self.sa_offsets = data.ScalarArray(ncomp=27*3, dtype=REAL)
+
+        offsets_tmp = np.zeros((27,3), dtype=REAL)
+        near_iterset = (-1, 0, 1)
+        for ofxi, ofx in enumerate(itertools.product(near_iterset, near_iterset, near_iterset)):
+            offsets_tmp[ofxi, :] = (
+                ofx[0] * extent[0],
+                ofx[1] * extent[1],
+                ofx[2] * extent[2]
+            )
+        self.sa_offsets[:] = offsets_tmp.ravel()
+        
+        linear_kernel = kernel.Kernel(
+            'linear_kernel',
+            """
+            const double px = P.i[0];
+            const double py = P.i[1];
+            const double pz = P.i[2];
+            const double q = Q.i[0];
+            
+            double diffs[3] = {0.0, 0.0, 0.0};
+
+            for(int dx=0 ; dx<27 ; dx++){
+                const double opx = px + OFFSET[dx*3    ];
+                const double opy = py + OFFSET[dx*3 + 1];
+                const double opz = pz + OFFSET[dx*3 + 2];
+                for(int sx=0 ; sx<3 ; sx++){
+                    const double lhsx = DP[6*sx + 0];
+                    const double lhsy = DP[6*sx + 1];
+                    const double lhsz = DP[6*sx + 2];
+                    const double rhsx = DP[6*sx + 3];
+                    const double rhsy = DP[6*sx + 4];
+                    const double rhsz = DP[6*sx + 5];
+
+                    const double ldx = opx - lhsx;
+                    const double ldy = opy - lhsy;
+                    const double ldz = opz - lhsz;
+                    const double lr2 = ldx*ldx + ldy*ldy + ldz*ldz;
+                    const double lr = 1.0/sqrt(lr2);
+                    const double rdx = opx - rhsx;
+                    const double rdy = opy - rhsy;
+                    const double rdz = opz - rhsz;
+                    const double rr2 = rdx*rdx + rdy*rdy + rdz*rdz;
+                    const double rr = 1.0/sqrt(rr2);
+                    diffs[sx] += q * (rr - lr);
+                }
+            }
+
+            SVALUES[0] += diffs[0] * 0.5;
+            SVALUES[1] += diffs[1] * 0.5;
+            SVALUES[2] += diffs[2] * 0.5;
+
+            """,
+            headers=(kernel.Header('math.h'),)
+        )
+
+        self._loop = loop.ParticleLoopOMP(
+            kernel=linear_kernel,
+            dat_dict={
+                'P': self.positions(access.READ),
+                'Q': self.charges(access.READ),
+                'DP': self.sa_eval_points(access.READ),
+                'OFFSET': self.sa_offsets(access.READ),
+                'SVALUES': self.ga_svalues(access.INC_ZERO)
+            }
+        )
+
+
+        self.A = np.zeros((5,5), dtype=np.complex)
+        self.b = np.zeros((5,1), dtype=np.complex)
+        self.x = np.zeros((5,1), dtype=np.complex)
+        
+
+        self._imo2 = 4 * l * l
+        self.xfull = np.zeros(2 * self._imo2, dtype=REAL)
+        self.linop = None
+    
+    @staticmethod
+    def _Y_1(k, theta, phi):
+        if k == 0:
+            return cmath.cos(theta)
+        if abs(k) == 1:
+            return -1.0 * cmath.sqrt(0.5) * cmath.sin(theta) * cmath.exp(k * 1.j * phi)
+        else:
+            raise RuntimeError('bad k value')
+    
+    def _re(self, l, m): return (l**2) + l + m
+    def _im(self, l, m): return (l**2) + l + m + self._imo
+    def _im2(self, l, m): return (l**2) + l + m + self._imo2
+    @staticmethod
+    def _h1k1m(k,m): 
+        def _A(n,m): return ((-1.0)**n) / cmath.sqrt(factorial(n - m) * factorial(n + m))
+        return ((-1.j)**(abs(k - m) - abs(k) - abs(m))) * _A(1, m) * _A(1, k) / _A(2, m - k)
+    
+
+    def __call__(self, M, L, lr_correction):
+
+        self._loop.execute()
+        """
+        near_iterset = (-1, 0, 1)
+        for dimx in range(3):
+
+            stmp = 0.0
+            for ofx in itertools.product(near_iterset, near_iterset, near_iterset):
+                vec = tuple([ev - ox*ex for ox, ex, ev in zip(ofx, self.extent, self.eval_points[dimx])])
+
+                radius, theta, phi = spherical(vec)
+                ir2 = (1.0 / radius) ** 2.0
+                for kx in (-1, 0, 1):
+                    m_tmp = M[self._re(1, kx)] + 1.j * M[self._im(1, kx)]
+                    Y_tmp = self._Y_1(kx, theta, phi) * ir2
+                    stmp += m_tmp * Y_tmp
+
+            self.svalues[dimx] = stmp
+        
+        """
+        self.svalues[:] = self.ga_svalues[:]
+        self.svalues[0] += lr_correction[0]
+        self.svalues[1] += lr_correction[1]
+        self.svalues[2] += lr_correction[2]
+        
+        print("svalues", self.svalues)
+        # x direction
+        xcoeff = -1.0 * self.svalues[0] * (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[0])
+        L[self._re(1, -1)] += xcoeff.real
+        L[self._re(1,  1)] += xcoeff.real
+        
+        # y direction
+        ycoeff = -1.0 * self.svalues[1] * (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[1])
+        L[self._im(1, -1)] += ycoeff.real
+        L[self._im(1,  1)] -= ycoeff.real
+        
+        # z direction
+        L[self._re(1, 0)] += -1.0 * self.svalues[2].real / (0.5 * self.extent[2])
+
+        print("x direction", self.svalues[0].real, xcoeff)
+
+
+    def solve__call__(self, M, L=None):
+
+        self.A.fill(0)
+        self.x.fill(0)
+        self.b.fill(0)
+
+        near_iterset = (-1, 0, 1)
+        for dimx in range(3):
+
+            stmp = 0.0
+            for ofx in itertools.product(near_iterset, near_iterset, near_iterset):
+                vec = tuple([ev - ox*ex for ox, ex, ev in zip(ofx, self.extent, self.eval_points[dimx])])
+
+                radius, theta, phi = spherical(vec)
+                ir2 = (1.0 / radius) ** 2.0
+                for kx in (-1, 0, 1):
+                    m_tmp = M[self._re(1, kx)] + 1.j * M[self._im(1, kx)]
+                    Y_tmp = self._Y_1(kx, theta, phi) * ir2
+                    stmp += m_tmp * Y_tmp
+
+            self.svalues[dimx] = stmp
+
+        # first 3 rows are the scaled s values 
+        for dimx in range(3):
+            radius, _, _ = spherical(tuple(self.eval_points[dimx]))
+            self.b[dimx, 0] = -1.0 * self.svalues[dimx] / radius
+
+        for dimx in range(3):
+            _, theta, phi = spherical(tuple(self.eval_points[dimx]))
+            for kx in (-1, 0, 1):
+                for mx in (-1, 0, 1):
+                    m_tmp = M[self._re(1, mx)] + 1.j * M[self._im(1, mx)]
+                    coeff = self._Y_1(kx, theta, phi) * m_tmp * self._h1k1m(kx, mx)
+                    index = 2 - (mx - kx)
+                    self.A[dimx, index] += coeff
+        
+        for kxi, kx in enumerate(range(-2, 3)):
+            m_tmp = M[self._re(2, kx)] + 1.j * M[self._im(2, kx)]
+            self.A[4, kxi] = m_tmp
+
+        
+        x = np.linalg.lstsq(self.A, self.b, rcond=None)
+
+        res_err = np.linalg.norm(np.matmul(self.A, x[0]) - self.b, np.inf)
+        if res_err > 10.**-14:
+            raise RuntimeError('Failed to find coefficients')
+
+        self.x[:] = x[0]
+
+        print(x[0])
+        
+        self._make_linop()
+
+        if L is not None:
+            L[:self._imo] = self.linop.dot(M[:self._imo])
+            L[self._imo:] = self.linop.dot(M[self._imo:])
+
+        return self.x
+
+    def _make_xfull(self):
+        self.xfull.fill(0)
+        for kxi, kx in enumerate((-2, -1, 0, 1, 2)):
+            self.xfull[self._re(2, kx)] = self.x[kxi].real
+            self.xfull[self._im2(2, kx)] = self.x[kxi].imag
+
+
+    def _make_linop(self):
+        self._make_xfull()
+
+        half_ncomp = self.l**2
+        rmat = np.zeros((half_ncomp, half_ncomp), dtype=REAL)
+        row = 0
+        l = self.l
+        for jx in range(l):
+            for kx in range(-jx, jx+1):
+                col = 0
+                for nx in range(l):
+                    for mx in range(-nx, nx+1):
+                        if (not abs(mx-kx) > jx+nx):
+
+                            rmat[row, col] = _h(jx, kx, nx, mx) * self.xfull[self._re(jx+nx, mx-kx)]
+                        col += 1
+                row += 1
+        
+        self.linop = aslinearoperator(rmat)
+
+
+
+
+
 
 
 class FMMPbc(object):
@@ -72,6 +358,11 @@ class FMMPbc(object):
 
         self._lib['test1']()
 
+        vol = self.domain.extent[0] * self.domain.extent[1] * \
+              self.domain.extent[2]
+
+        self.kappa = math.sqrt(math.pi/(vol**(2./3.)))
+
 
     def re_lm(self, l,m): return (l**2) + l + m
     def im_lm(self, l,m): return (l**2) + l +  m + self.L**2
@@ -96,60 +387,54 @@ class FMMPbc(object):
         for lx !=2 and take increasingly large shells in real and reciprocal
         space until the values converge.
         """
-        vol = self.domain.extent[0] * self.domain.extent[1] * \
-              self.domain.extent[2]
 
-        kappa = math.sqrt(math.pi/(vol**(2./3.)))
         eps = min(10.**-8, self.eps)
+        kappa = self.kappa
 
+        if lx < 2:
+            raise RuntimeError('s_n cannot be computed for lx < 2.')
 
-        if lx == 2:
-            tmp = 3. * math.log(2. * kappa)
-            logtmp = log(eps)
-            if logtmp > tmp:
-                s = 1.
-                #print("BODGE WARNING")
+        elif lx == 2:
+            s2 =  3. * math.log(2. * kappa) - math.log(eps)
+            if s2 < 0:
+                #s = 1.0
+                raise RuntimeError('could not deduce (s_n)^2 (negative?)')
             else:
-                s = math.sqrt(3. * math.log(2. * kappa) - log(eps))
-                err = abs(s**(lx-2.) * math.exp(-1. * (s**2.)) -
-                ((2.*kappa)**(-1*lx - 1.))*eps)
-                assert err<10.**-14, "LAMBERT CHECK:{}".format(err)
+                s = math.sqrt(s2)
+                #err = abs(s**(lx-2.) * math.exp(-1. * (s**2.)) -
+                #((2.*kappa)**(-1*lx - 1.))*eps)
+                #assert err<10.**-14, "LAMBERT CHECK:{}".format(err)
+            return s
 
-            return s, kappa
         else:
             n = float(lx)
-            tmp = 0.5 * (2. - n) * lambertw(
-                    (2./(2. - n)) * \
-                    (
-                        (eps/( (2*kappa) ** (n + 1.) ))**(2./(n - 2.))
-                     )
-                ).real
 
-            #print("ARG", 0.5 * (2. - n) * lambertw(
-            #        (2./(2. - n)) * \
-            #        (
-            #            (eps/( (2*kappa) ** (n + 1.) ))**(2./(n - 2.))
-            #         )
-            #    ))
+            lambert_inner = (2./(2. - n)) * \
+            (
+                (eps/( (2*kappa) ** (n + 1.) ))**(2./(n - 2.))
+            )
+            tmp = 0.5 * (2. - n) * lambertw(lambert_inner, k=-1)
+            
+            def check_sn(sn):
+                import cmath
+                return (sn ** (n - 2)) * cmath.exp(-1.0 * sn * sn)
 
-            if tmp >= 0.0:
-                s = math.sqrt(tmp)
-                err = abs(s**(lx-2.) * math.exp(-1. * (s**2.)) -
-                ((2.*kappa)**(-1*lx - 1.))*eps)
-                #assert err<10.**-14, "LAMBERT CHECK: {}".format(err)
-            else:
-                #print("BODGE WARNING")
-                s = self._compute_sn(2)[0]
-
-            return s, kappa
+            if tmp.real < 0:
+                import cmath
+                sn = cmath.sqrt(tmp)
+                import ipdb; ipdb.set_trace()
+                
+                raise RuntimeError('bad (s_n)^2 computed')
+            s = math.sqrt(tmp.real)
+            return s
 
 
     def _compute_parameters(self, lx):
         if lx < 2: raise RuntimeError('not valid for lx<2')
-        sn, kappa = self._compute_sn(lx)
-        sn, kappa = self._compute_sn(2)
-        # r_c, v_c, kappa
-        return sn/kappa, kappa*sn/math.pi, kappa
+        # sn = self._compute_sn(lx)
+        sn = self._compute_sn(2)
+        # r_c, v_c
+        return sn/self.kappa, self.kappa*sn/math.pi
 
 
     def _image_to_sph(self, ind):
@@ -181,8 +466,9 @@ class FMMPbc(object):
 
 
         for lx in range(2, self.L*2, 2):
-            rc, vc, kappa = self._compute_parameters(lx)
-
+            rc, vc = self._compute_parameters(lx)
+            
+            kappa = self.kappa
             kappa2 = kappa*kappa
 
             maxt = 3
@@ -259,12 +545,14 @@ class FMMPbc(object):
                     raise RuntimeError('Periodic Boundary Coefficients did'
                                        'not converge, Please file a bug'
                                        'report.')
-
-        # explicitly extract the nearby cells
+        
+        
+        # explicitly extract the "full" contribution from nearby cells
+        # i.e. the case where the real space part included the nearest
+        # neighbours
         for lx in range(2, self.L*2, 2):
 
-            maxs = 1
-            iterset = list(range(-1*maxs, maxs+1, 1))
+            iterset = tuple(range(-1, 2, 1))
 
             for tx in itertools.product(iterset, iterset, iterset):
                 if (tx[0] != 0) or (tx[1] != 0) or (tx[2] != 0):
@@ -309,7 +597,8 @@ class FMMPbc(object):
 
         for lx in range(2, self.L*2, 2):
 
-            rc, vc, kappa = self._compute_parameters(lx)
+            rc, vc = self._compute_parameters(lx)
+            kappa = self.kappa
 
             kappa2 = kappa * kappa
             mpi2okappa2 = -1.0 * (math.pi ** 2.) / kappa2

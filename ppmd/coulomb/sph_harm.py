@@ -5,7 +5,16 @@ __license__ = "GPL"
 
 from cgen import *
 from math import *
-from ctypes import c_double, c_int
+from ctypes import c_double, c_int, byref
+
+import numpy as np
+import scipy
+from scipy.special import lpmv
+
+from functools import lru_cache
+from ppmd.lib.build import simple_lib_creator
+
+
 
 class _Symbol(object):
     def __init__(self, sym):
@@ -279,5 +288,124 @@ class SphGen(object):
         return _Symbol('_re' + s), _Symbol('_im' + s)
 
 
+class LocalExpEval(object):
+    
+    def __init__(self, L):
+        self.L = L
+        self._hmatrix_py = np.zeros((2*self.L, 2*self.L))
+        def Hfoo(nx, mx): return sqrt(float(factorial(nx - abs(mx)))/factorial(nx + abs(mx)))
+        for nx in range(self.L):
+            for mx in range(-nx, nx+1):
+                self._hmatrix_py[nx, mx] = Hfoo(nx, mx)
+        
+        self.sph_gen = SphGen(L-1)
+        sph_gen = self.sph_gen
+
+        def cube_ind(L, M):
+            return ((L) * ( (L) + 1 ) + (M) )
+
+        assign_gen = ''
+        for lx in range(self.L):
+            for mx in range(-lx, lx+1):
+                reL = SphSymbol('moments[{ind}]'.format(ind=cube_ind(lx, mx)))
+                imL = SphSymbol('moments[IM_OFFSET + {ind}]'.format(ind=cube_ind(lx, mx)))
+                reY, imY = sph_gen.get_y_sym(lx, mx)
+                phi_sym = cmplx_mul(reL, imL, reY, imY)[0]
+                assign_gen += 'tmp_energy += rhol * ({phi_sym});\n'.format(phi_sym=str(phi_sym))
+
+            assign_gen += 'rhol *= radius;\n'
+
+        src = """
+        #define IM_OFFSET ({IM_OFFSET})
+
+        {DECLARE} int local_eval(
+            const double radius,
+            const double theta,
+            const double phi,
+            const double * RESTRICT moments,
+            double * RESTRICT out
+        ){{
+            {SPH_GEN}
+            double rhol = 1.0;
+            double tmp_energy = 0.0;
+            {ASSIGN_GEN}
+
+            out[0] = tmp_energy;
+            return 0;
+        }}
+        """
+        
+        src_lib = src.format(
+            SPH_GEN=str(sph_gen.module),
+            ASSIGN_GEN=str(assign_gen),
+            IM_OFFSET=(self.L**2),
+            DECLARE=r'static inline'
+        )
+
+        src = src.format(
+            SPH_GEN=str(sph_gen.module),
+            ASSIGN_GEN=str(assign_gen),
+            IM_OFFSET=(self.L**2),
+            DECLARE=r'extern "C"'
+        )
+        header = str(sph_gen.header)
+
+
+        self.create_local_eval_header = header
+        self.create_local_eval_src = src_lib
+
+        self._local_eval_lib = simple_lib_creator(header_code=header, src_code=src)['local_eval']
+
+    
+
+    def __call__(self, moments, disp_sph):
+        assert moments.dtype == c_double
+        _out = c_double(0.0)
+        self._local_eval_lib(
+            c_double(disp_sph[0]),
+            c_double(disp_sph[1]),
+            c_double(disp_sph[2]),
+            moments.ctypes.get_as_parameter(),
+            byref(_out)
+        )
+        return _out.value, None
+
+
+    def py_compute_phi_local(self, moments, disp_sph):
+        """
+        Computes the field at the podint disp_sph given by the local expansion 
+        in moments
+        """
+
+        llimit = self.L
+    
+        phi_sph_re = 0.
+        phi_sph_im = 0.
+        def re_lm(l,m): return (l**2) + l + m
+        def im_lm(l,m): return (l**2) + l +  m + llimit**2
+
+        cosv = np.zeros(3 * llimit)
+        sinv = np.zeros(3 * llimit)
+        for mx in range(-llimit, llimit+1):
+            cosv[mx] = cos(mx * disp_sph[2])
+            sinv[mx] = sin(mx * disp_sph[2])
+
+        for lx in range(llimit):
+            scipy_p = lpmv(range(lx+1), lx, np.cos(disp_sph[1]))
+            irad = disp_sph[0] ** (lx)
+            for mx in range(-lx, lx+1):
+
+                val = self._hmatrix_py[lx, mx] * scipy_p[abs(mx)]
+
+                scipy_real = cosv[mx] * val * irad
+                scipy_imag = sinv[mx] * val * irad
+
+                ppmd_mom_re = moments[re_lm(lx, mx)]
+                ppmd_mom_im = moments[im_lm(lx, mx)]
+
+                phi_sph_re += scipy_real*ppmd_mom_re - scipy_imag*ppmd_mom_im
+                phi_sph_im += scipy_real*ppmd_mom_im + ppmd_mom_re*scipy_imag
+
+        return phi_sph_re, phi_sph_im
 
 
