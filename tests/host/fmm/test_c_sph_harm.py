@@ -51,3 +51,30 @@ def test_c_sph_harm_1():
         rep = lee.py_compute_phi_local(moments, point)
         rel = abs(rep)
         assert abs(rec - rep) / rel < 10.**-12
+
+    for tx in range(20):
+        point = [0.5,         1.57079633, -1.57079633]
+        point[0] = rng.uniform(0, 10)
+        point[1] = rng.uniform(0, 2*pi)
+        point[2] = rng.uniform(0, pi)
+
+        moments = rng.uniform(size=ncomp)
+        rec = lee(moments, point)
+        rep = lee.py_compute_phi_local(moments, point)
+        rel = abs(rep)
+        assert abs(rec - rep) / rel < 10.**-12
+
+
+    for tx in range(20):
+        point = [0.5,         1.57079633, 1.57079633]
+        point[0] = rng.uniform(0, 10)
+        point[1] = rng.uniform(0, 2*pi)
+        point[2] = rng.uniform(0, pi)
+
+        moments = rng.uniform(size=ncomp)
+        rec = lee(moments, point)
+        rep = lee.py_compute_phi_local(moments, point)
+        rel = abs(rep)
+        assert abs(rec - rep) / rel < 10.**-12
+
+

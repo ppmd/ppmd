@@ -19,7 +19,7 @@ import sys
 
 from ppmd.cuda import CUDA_IMPORT
 from ppmd.coulomb.wigner import Rzyz_set, Ry_set
-from ppmd.coulomb.fmm_pbc import FMMPbc
+from ppmd.coulomb.fmm_pbc import FMMPbc, DipoleCorrector
 from ppmd.coulomb.fmm_local import FMMLocal
 
 def red(input):
@@ -681,6 +681,11 @@ class PyFMM(object):
         #    raise RuntimeError('CUDA support was requested but intialisation'
         #                       ' failed')        
         
+        lsize = self.tree[1].parent_local_size
+        lexp = None
+        if lsize is not None:
+            lexp = self.tree_parent[1][0,0,0,:]
+        self._dpc = DipoleCorrector(self.L, self.domain.extent, lexp)
 
     def _update_opt(self):
         p = opt.PROFILE
@@ -883,6 +888,7 @@ class PyFMM(object):
         self.tree_plain[0][:] = 0.0
 
         self._compute_periodic_boundary()
+        self._correct_dipole(positions, charges)
 
         for level in range(1, self.R):
 
@@ -909,6 +915,13 @@ class PyFMM(object):
         self.execution_count += 1
         # print("extract", phi_extract, "near", phi_near)
         return phi_extract + phi_near
+    
+
+    def _correct_dipole(self, positions, charges):
+        if self.free_space == '27' or self.free_space == True:
+            return
+        self._dpc(positions, charges)
+
 
     def _level_call_async(self, func, level, execute_async):
 

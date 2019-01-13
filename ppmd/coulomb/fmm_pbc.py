@@ -80,16 +80,17 @@ def _h(j,k,n,m):
 
 
 class DipoleCorrector:
-    def __init__(self, l, extent, positions, charges, lexp):
+    def __init__(self, l, extent, lexp):
         self.l = l
         self._imo = l * l
         self.ncomp = self._imo * 2
         self.extent = extent
         self.svalues = [0,0,0]
-        self.positions = positions
-        self.charges = charges
         self.lexp = lexp
-        self._lee = LocalExpEval(l-1)
+        self._lee = LocalExpEval(l)
+        
+        self._dpos = data.ParticleDat(ncomp=3, dtype=REAL)
+        self._dq = data.ParticleDat(ncomp=1, dtype=REAL)
 
         self.eval_points = (
             (0.5*extent[0], 0, 0),
@@ -165,8 +166,8 @@ class DipoleCorrector:
         self._loop = loop.ParticleLoopOMP(
             kernel=linear_kernel,
             dat_dict={
-                'P': self.positions(access.READ),
-                'Q': self.charges(access.READ),
+                'P': self._dpos(access.READ),
+                'Q': self._dq(access.READ),
                 'DP': self.sa_eval_points(access.READ),
                 'OFFSET': self.sa_offsets(access.READ),
                 'SVALUES': self.ga_svalues(access.INC_ZERO)
@@ -201,39 +202,50 @@ class DipoleCorrector:
         return ((-1.j)**(abs(k - m) - abs(k) - abs(m))) * _A(1, m) * _A(1, k) / _A(2, m - k)
     
 
-    def __call__(self):
+    def __call__(self, positions, charges):
 
-        self._loop.execute()
-
-        lr_correction = [0,0,0]
-        for dimx in range(3):
-            lhs = self.diff_points[2*dimx]
-            lsph = spherical(lhs)
-            lphi
+        self._loop.execute(
+            dat_dict={
+                'P': positions(access.READ),
+                'Q': charges(access.READ),
+                'DP': self.sa_eval_points(access.READ),
+                'OFFSET': self.sa_offsets(access.READ),
+                'SVALUES': self.ga_svalues(access.INC_ZERO)
+            }
+        )
         
+        if self.lexp is not None:
+            lr_correction = [0, 0, 0]
+            for dimx in range(3):
+                lhs = self.diff_points[2*dimx]
+                lsph = spherical(lhs)
+                lphi = self._lee(self.lexp, lsph)
+                rhs = self.diff_points[2*dimx + 1]
+                rsph = spherical(rhs)
+                rphi = self._lee(self.lexp, rsph)
+                lr_correction[dimx] = (rphi - lphi) * 0.5
+            
+            self.svalues[:] = self.ga_svalues[:]
+            self.svalues[0] += lr_correction[0]
+            self.svalues[1] += lr_correction[1]
+            self.svalues[2] += lr_correction[2]
+            
+            L = self.lexp
+            #print("svalues", self.svalues)
+            # x direction
+            xcoeff = -1.0 * self.svalues[0] * (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[0])
+            #print("xcoeff", xcoeff)
+            L[self._re(1, -1)] += xcoeff.real
+            L[self._re(1,  1)] += xcoeff.real
+            
+            # y direction
+            ycoeff = -1.0 * self.svalues[1] * (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[1])
+            L[self._im(1, -1)] += ycoeff.real
+            L[self._im(1,  1)] -= ycoeff.real
+            
+            # z direction
+            L[self._re(1, 0)] += -1.0 * self.svalues[2].real / (0.5 * self.extent[2])
 
-
-
-        self.svalues[:] = self.ga_svalues[:]
-        self.svalues[0] += lr_correction[0]
-        self.svalues[1] += lr_correction[1]
-        self.svalues[2] += lr_correction[2]
-        
-        print("svalues", self.svalues)
-        # x direction
-        xcoeff = -1.0 * self.svalues[0] * (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[0])
-        L[self._re(1, -1)] += xcoeff.real
-        L[self._re(1,  1)] += xcoeff.real
-        
-        # y direction
-        ycoeff = -1.0 * self.svalues[1] * (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[1])
-        L[self._im(1, -1)] += ycoeff.real
-        L[self._im(1,  1)] -= ycoeff.real
-        
-        # z direction
-        L[self._re(1, 0)] += -1.0 * self.svalues[2].real / (0.5 * self.extent[2])
-
-        print("x direction", self.svalues[0].real, xcoeff)
 
 
 

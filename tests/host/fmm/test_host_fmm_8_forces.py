@@ -483,12 +483,13 @@ def test_fmm_force_ewald_1():
 
     CUDA=False
 
-    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
+    fmm = PyFMM(domain=A.domain, r=R, l=22, free_space=free_space,
                 cuda=CUDA)
 
     A.npart = N
 
     rng = np.random.RandomState(seed=1234)
+    rng = np.random.RandomState(seed=95235)
 
     A.P = data.PositionDat(ncomp=3)
     A.F = data.ParticleDat(ncomp=3)
@@ -609,6 +610,8 @@ def test_fmm_force_ewald_1():
     dipole = np.zeros(3)
     for px in range(N):
         dipole[:] += A.P[px,:]*A.Q[px,0]
+    
+    print(N, dipole)
 
     bias = np.sum(A.Q[:])
 
@@ -644,6 +647,13 @@ def test_fmm_force_ewald_1():
     local_err = abs(phi_py - phi_ewald)/Q
     if local_err > eps: serr = red(local_err)
     else: serr = green(local_err)
+
+    for px in range(A.npart_local):
+
+        assert np.linalg.norm(A.FE[px,:] - A.F[px,:], ord=np.inf) < 10.**-6
+
+
+
 
     if MPIRANK == 0 and DEBUG:
         print("\n")
