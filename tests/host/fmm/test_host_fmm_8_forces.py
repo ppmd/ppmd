@@ -611,8 +611,6 @@ def test_fmm_force_ewald_1():
     for px in range(N):
         dipole[:] += A.P[px,:]*A.Q[px,0]
     
-    print(N, dipole)
-
     bias = np.sum(A.Q[:])
 
     Q = np.sum(np.abs(A.Q[:N:,0]))
