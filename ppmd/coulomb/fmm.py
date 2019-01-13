@@ -681,11 +681,8 @@ class PyFMM(object):
         #    raise RuntimeError('CUDA support was requested but intialisation'
         #                       ' failed')        
         
-        lsize = self.tree[1].parent_local_size
-        lexp = None
-        if lsize is not None:
-            lexp = self.tree_parent[1][0,0,0,:]
-        self._dpc = DipoleCorrector(self.L, self.domain.extent, self._lr_mtl_func)
+        if not (self.free_space == '27' or self.free_space == True):
+            self._dpc = DipoleCorrector(self.L, self.domain.extent, self._lr_mtl_func)
 
     def _update_opt(self):
         p = opt.PROFILE
