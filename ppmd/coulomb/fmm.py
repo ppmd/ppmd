@@ -685,7 +685,7 @@ class PyFMM(object):
         lexp = None
         if lsize is not None:
             lexp = self.tree_parent[1][0,0,0,:]
-        self._dpc = DipoleCorrector(self.L, self.domain.extent, lexp)
+        self._dpc = DipoleCorrector(self.L, self.domain.extent, self._lr_mtl_func)
 
     def _update_opt(self):
         p = opt.PROFILE
@@ -920,7 +920,11 @@ class PyFMM(object):
     def _correct_dipole(self, positions, charges):
         if self.free_space == '27' or self.free_space == True:
             return
-        self._dpc(positions, charges)
+
+        lsize = self.tree[1].parent_local_size
+        if lsize is not None:
+            lexp = self.tree_parent[1][0, 0, 0, :]
+            self._dpc(self.tree_halo[0][2,2,2,:], lexp)
 
 
     def _level_call_async(self, func, level, execute_async):
@@ -1026,6 +1030,19 @@ class PyFMM(object):
                 extern_numpy_ptr(self._ipower_mtl),
                 extern_numpy_ptr(self.tree_parent[1][0, 0, 0, :])
             )
+
+    def _lr_mtl_func(self, M, L):
+        self._translate_mtl_lib['mtl_test_wrapper'](
+            ctypes.c_int64(self.L),
+            ctypes.c_double(1.),            #radius=1
+            extern_numpy_ptr(M),
+            extern_numpy_ptr(self._boundary_ident),
+            extern_numpy_ptr(self._boundary_terms),
+            extern_numpy_ptr(self._a),
+            extern_numpy_ptr(self._ar),
+            extern_numpy_ptr(self._ipower_mtl),
+            extern_numpy_ptr(L)
+        )
 
 
     def _join_async(self):

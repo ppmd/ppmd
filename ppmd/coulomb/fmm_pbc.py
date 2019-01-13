@@ -78,8 +78,117 @@ def _h(j,k,n,m):
     icoeff = ((1.j)**(abs(k-m) - abs(k) - abs(m))).real
     return icoeff * _A(n, m) * _A(j, k) / (((-1.0) ** n) * _A(j+n, m-k))
 
-
 class DipoleCorrector:
+    def __init__(self, l, extent, lr_func):
+        self.l = l
+        self._imo = l * l
+        self.ncomp = self._imo * 2
+        self.extent = extent
+        self.lr_func = lr_func
+        self._lee = LocalExpEval(l)
+        self.scales = [0,0,0]
+
+        # x direction
+        M = np.zeros(self.ncomp, dtype=REAL)
+        M[self._re(1, -1)] = 1.0
+        M[self._re(1,  1)] = 1.0
+        eval_point = (-0.5*extent[0], 0.0, 0.0)
+        lphi_sr =  self._sr_phi(M ,eval_point)
+        lphi_lr= self._lr_phi(M, eval_point)
+        lphi = lphi_sr + lphi_lr
+        self.scales[0] = -lphi
+
+        # y direction
+        M = np.zeros(self.ncomp, dtype=REAL)
+        M[self._im(1, -1)] = -1.0
+        M[self._im(1,  1)] =  1.0
+        eval_point = (0.0, -0.5*extent[1], 0.0)
+        lphi_sr =  self._sr_phi(M ,eval_point)
+        lphi_lr= self._lr_phi(M, eval_point)
+        lphi = lphi_sr + lphi_lr
+        self.scales[1] = -lphi
+        
+        # z direction
+        M = np.zeros(self.ncomp, dtype=REAL)
+        M[self._re(1, 0)] =  1.0
+        eval_point = (0.0, 0.0, -0.5*extent[2])
+        lphi_sr =  self._sr_phi(M ,eval_point)
+        lphi_lr= self._lr_phi(M, eval_point)
+        lphi = lphi_sr + lphi_lr
+        self.scales[2] = -lphi
+
+    def __call__(self, M, L):
+
+        svalues = [0,0,0]
+        # x direction
+        svalues[0] = M[self._re(1, 1)] * self.scales[0]
+        svalues[1] = M[self._im(1, 1)] * self.scales[1]
+        svalues[2] = M[self._re(1, 0)] * self.scales[2]
+
+        if L is not None:
+            # x direction
+            xcoeff = -1.0 * svalues[0] * (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[0])
+            #print("xcoeff", xcoeff)
+            L[self._re(1, -1)] += xcoeff.real
+            L[self._re(1,  1)] += xcoeff.real
+            
+            # y direction
+            ycoeff = -1.0 * svalues[1] * (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[1])
+            L[self._im(1, -1)] += ycoeff.real
+            L[self._im(1,  1)] -= ycoeff.real
+            
+            # z direction
+            L[self._re(1, 0)] += -1.0 * svalues[2].real / (0.5 * self.extent[2])
+
+
+    def _sr_phi(self, M, eval_point):
+        iterset = (-1, 0, 1)
+        tphi = 0.0
+        re = self._re
+        im = self._im
+        Y = self._Y_1
+        for ofx in itertools.product(iterset, iterset, iterset):
+            px = [ev - ex * ox for ev, ex, ox in zip(eval_point, self.extent, ofx)]
+            radius, theta, phi = spherical(px)
+            ir2 = 1.0 / (radius * radius)
+            tphi += (M[re(1, -1)] + M[im(1, -1)]*1.j) * Y(-1, theta, phi) * ir2
+            tphi += (M[re(1,  0)] + M[im(1,  0)]*1.j) * Y( 0, theta, phi) * ir2
+            tphi += (M[re(1,  1)] + M[im(1,  1)]*1.j) * Y( 1, theta, phi) * ir2
+
+        return tphi.real
+    
+
+    def _lr_phi(self, M, eval_point):
+        L = np.zeros_like(M)
+        self.lr_func(M, L)
+        return self._lee(L, spherical(eval_point))
+
+    
+    @staticmethod
+    def _Y_1(k, theta, phi):
+        if k == 0:
+            return cmath.cos(theta)
+        if abs(k) == 1:
+            return -1.0 * cmath.sqrt(0.5) * cmath.sin(theta) * cmath.exp(k * 1.j * phi)
+        else:
+            raise RuntimeError('bad k value')
+    
+    def _re(self, l, m): return (l**2) + l + m
+    def _im(self, l, m): return (l**2) + l + m + self._imo
+    def _im2(self, l, m): return (l**2) + l + m + self._imo2
+    @staticmethod
+    def _h1k1m(k,m): 
+        def _A(n,m): return ((-1.0)**n) / cmath.sqrt(factorial(n - m) * factorial(n + m))
+        return ((-1.j)**(abs(k - m) - abs(k) - abs(m))) * _A(1, m) * _A(1, k) / _A(2, m - k)
+    
+
+
+
+
+
+
+
+class _DipoleCorrector:
     def __init__(self, l, extent, lexp):
         self.l = l
         self._imo = l * l
@@ -230,8 +339,9 @@ class DipoleCorrector:
             self.svalues[1] += lr_correction[1]
             self.svalues[2] += lr_correction[2]
             
+            print("svalues", self.svalues)
+
             L = self.lexp
-            #print("svalues", self.svalues)
             # x direction
             xcoeff = -1.0 * self.svalues[0] * (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[0])
             #print("xcoeff", xcoeff)
