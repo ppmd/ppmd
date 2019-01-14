@@ -96,7 +96,7 @@ class DipoleCorrector:
         lphi_sr =  self._sr_phi(M ,eval_point)
         lphi_lr= self._lr_phi(M, eval_point)
         lphi = lphi_sr + lphi_lr
-        self.scales[0] = -lphi
+        self.scales[0] = lphi
 
         # y direction
         M = np.zeros(self.ncomp, dtype=REAL)
@@ -106,7 +106,7 @@ class DipoleCorrector:
         lphi_sr =  self._sr_phi(M ,eval_point)
         lphi_lr= self._lr_phi(M, eval_point)
         lphi = lphi_sr + lphi_lr
-        self.scales[1] = -lphi
+        self.scales[1] = lphi
         
         # z direction
         M = np.zeros(self.ncomp, dtype=REAL)
@@ -115,30 +115,30 @@ class DipoleCorrector:
         lphi_sr =  self._sr_phi(M ,eval_point)
         lphi_lr= self._lr_phi(M, eval_point)
         lphi = lphi_sr + lphi_lr
-        self.scales[2] = -lphi
+        self.scales[2] = lphi
+
+        # scale x,y, and z to be the actual coefficients
+
+        self.scales[0] *= (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[0])
+        self.scales[1] *= (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[1])
+        self.scales[2] *= 1.0 / (0.5 * self.extent[2])
 
     def __call__(self, M, L):
 
-        svalues = [0,0,0]
-        # x direction
-        svalues[0] = M[self._re(1, 1)] * self.scales[0]
-        svalues[1] = M[self._im(1, 1)] * self.scales[1]
-        svalues[2] = M[self._re(1, 0)] * self.scales[2]
-
         if L is not None:
             # x direction
-            xcoeff = -1.0 * svalues[0] * (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[0])
+            xcoeff = M[self._re(1, 1)] * self.scales[0]
             #print("xcoeff", xcoeff)
             L[self._re(1, -1)] += xcoeff.real
             L[self._re(1,  1)] += xcoeff.real
             
             # y direction
-            ycoeff = -1.0 * svalues[1] * (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[1])
+            ycoeff = M[self._im(1, 1)] * self.scales[1]
             L[self._im(1, -1)] += ycoeff.real
             L[self._im(1,  1)] -= ycoeff.real
             
             # z direction
-            L[self._re(1, 0)] += -1.0 * svalues[2].real / (0.5 * self.extent[2])
+            L[self._re(1, 0)] +=  M[self._re(1, 0)] * self.scales[2]
 
 
     def _sr_phi(self, M, eval_point):
@@ -181,187 +181,6 @@ class DipoleCorrector:
         def _A(n,m): return ((-1.0)**n) / cmath.sqrt(factorial(n - m) * factorial(n + m))
         return ((-1.j)**(abs(k - m) - abs(k) - abs(m))) * _A(1, m) * _A(1, k) / _A(2, m - k)
     
-
-
-
-
-
-
-
-class _DipoleCorrector:
-    def __init__(self, l, extent, lexp):
-        self.l = l
-        self._imo = l * l
-        self.ncomp = self._imo * 2
-        self.extent = extent
-        self.svalues = [0,0,0]
-        self.lexp = lexp
-        self._lee = LocalExpEval(l)
-        
-        self._dpos = data.ParticleDat(ncomp=3, dtype=REAL)
-        self._dq = data.ParticleDat(ncomp=1, dtype=REAL)
-
-        self.eval_points = (
-            (0.5*extent[0], 0, 0),
-            (0, 0.5*extent[1], 0),
-            (0, 0, 0.5*extent[2])
-        )
-
-        self.diff_points = np.array((
-            (-0.5*extent[0], 0.0, 0.0), (0.5*extent[0], 0.0, 0.0),
-            (0.0, -0.5*extent[1], 0.0), (0.0, 0.5*extent[1], 0.0),
-            (0.0, 0.0, -0.5*extent[2]), (0.0, 0.0, 0.5*extent[2])
-        ))
-
-        self.sa_eval_points = data.ScalarArray(ncomp=18, dtype=REAL)
-        self.sa_eval_points[:] = self.diff_points.ravel()
-        self.ga_svalues = data.GlobalArray(ncomp=3, dtype=REAL)
-        self.sa_offsets = data.ScalarArray(ncomp=27*3, dtype=REAL)
-
-        offsets_tmp = np.zeros((27,3), dtype=REAL)
-        near_iterset = (-1, 0, 1)
-        for ofxi, ofx in enumerate(itertools.product(near_iterset, near_iterset, near_iterset)):
-            offsets_tmp[ofxi, :] = (
-                ofx[0] * extent[0],
-                ofx[1] * extent[1],
-                ofx[2] * extent[2]
-            )
-        self.sa_offsets[:] = offsets_tmp.ravel()
-        
-        linear_kernel = kernel.Kernel(
-            'linear_kernel',
-            """
-            const double px = P.i[0];
-            const double py = P.i[1];
-            const double pz = P.i[2];
-            const double q = Q.i[0];
-            
-            double diffs[3] = {0.0, 0.0, 0.0};
-
-            for(int dx=0 ; dx<27 ; dx++){
-                const double opx = px + OFFSET[dx*3    ];
-                const double opy = py + OFFSET[dx*3 + 1];
-                const double opz = pz + OFFSET[dx*3 + 2];
-                for(int sx=0 ; sx<3 ; sx++){
-                    const double lhsx = DP[6*sx + 0];
-                    const double lhsy = DP[6*sx + 1];
-                    const double lhsz = DP[6*sx + 2];
-                    const double rhsx = DP[6*sx + 3];
-                    const double rhsy = DP[6*sx + 4];
-                    const double rhsz = DP[6*sx + 5];
-
-                    const double ldx = opx - lhsx;
-                    const double ldy = opy - lhsy;
-                    const double ldz = opz - lhsz;
-                    const double lr2 = ldx*ldx + ldy*ldy + ldz*ldz;
-                    const double lr = 1.0/sqrt(lr2);
-                    const double rdx = opx - rhsx;
-                    const double rdy = opy - rhsy;
-                    const double rdz = opz - rhsz;
-                    const double rr2 = rdx*rdx + rdy*rdy + rdz*rdz;
-                    const double rr = 1.0/sqrt(rr2);
-                    diffs[sx] += q * (rr - lr);
-                }
-            }
-
-            SVALUES[0] += diffs[0] * 0.5;
-            SVALUES[1] += diffs[1] * 0.5;
-            SVALUES[2] += diffs[2] * 0.5;
-
-            """,
-            headers=(kernel.Header('math.h'),)
-        )
-
-        self._loop = loop.ParticleLoopOMP(
-            kernel=linear_kernel,
-            dat_dict={
-                'P': self._dpos(access.READ),
-                'Q': self._dq(access.READ),
-                'DP': self.sa_eval_points(access.READ),
-                'OFFSET': self.sa_offsets(access.READ),
-                'SVALUES': self.ga_svalues(access.INC_ZERO)
-            }
-        )
-
-
-        self.A = np.zeros((5,5), dtype=np.complex)
-        self.b = np.zeros((5,1), dtype=np.complex)
-        self.x = np.zeros((5,1), dtype=np.complex)
-        
-
-        self._imo2 = 4 * l * l
-        self.xfull = np.zeros(2 * self._imo2, dtype=REAL)
-        self.linop = None
-    
-    @staticmethod
-    def _Y_1(k, theta, phi):
-        if k == 0:
-            return cmath.cos(theta)
-        if abs(k) == 1:
-            return -1.0 * cmath.sqrt(0.5) * cmath.sin(theta) * cmath.exp(k * 1.j * phi)
-        else:
-            raise RuntimeError('bad k value')
-    
-    def _re(self, l, m): return (l**2) + l + m
-    def _im(self, l, m): return (l**2) + l + m + self._imo
-    def _im2(self, l, m): return (l**2) + l + m + self._imo2
-    @staticmethod
-    def _h1k1m(k,m): 
-        def _A(n,m): return ((-1.0)**n) / cmath.sqrt(factorial(n - m) * factorial(n + m))
-        return ((-1.j)**(abs(k - m) - abs(k) - abs(m))) * _A(1, m) * _A(1, k) / _A(2, m - k)
-    
-
-    def __call__(self, positions, charges):
-
-        self._loop.execute(
-            dat_dict={
-                'P': positions(access.READ),
-                'Q': charges(access.READ),
-                'DP': self.sa_eval_points(access.READ),
-                'OFFSET': self.sa_offsets(access.READ),
-                'SVALUES': self.ga_svalues(access.INC_ZERO)
-            }
-        )
-        
-        if self.lexp is not None:
-            lr_correction = [0, 0, 0]
-            for dimx in range(3):
-                lhs = self.diff_points[2*dimx]
-                lsph = spherical(lhs)
-                lphi = self._lee(self.lexp, lsph)
-                rhs = self.diff_points[2*dimx + 1]
-                rsph = spherical(rhs)
-                rphi = self._lee(self.lexp, rsph)
-                lr_correction[dimx] = (rphi - lphi) * 0.5
-            
-            self.svalues[:] = self.ga_svalues[:]
-            self.svalues[0] += lr_correction[0]
-            self.svalues[1] += lr_correction[1]
-            self.svalues[2] += lr_correction[2]
-            
-            print("svalues", self.svalues)
-
-            L = self.lexp
-            # x direction
-            xcoeff = -1.0 * self.svalues[0] * (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[0])
-            #print("xcoeff", xcoeff)
-            L[self._re(1, -1)] += xcoeff.real
-            L[self._re(1,  1)] += xcoeff.real
-            
-            # y direction
-            ycoeff = -1.0 * self.svalues[1] * (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[1])
-            L[self._im(1, -1)] += ycoeff.real
-            L[self._im(1,  1)] -= ycoeff.real
-            
-            # z direction
-            L[self._re(1, 0)] += -1.0 * self.svalues[2].real / (0.5 * self.extent[2])
-
-
-
-
-
-
-
 
 class FMMPbc(object):
     """

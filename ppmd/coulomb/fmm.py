@@ -682,7 +682,7 @@ class PyFMM(object):
         #                       ' failed')        
         
         if not (self.free_space == '27' or self.free_space == True):
-            self._dpc = DipoleCorrector(self.L, self.domain.extent, self._lr_mtl_func)
+            self.dipole_corrector = DipoleCorrector(self.L, self.domain.extent, self._lr_mtl_func)
 
     def _update_opt(self):
         p = opt.PROFILE
@@ -921,7 +921,7 @@ class PyFMM(object):
         lsize = self.tree[1].parent_local_size
         if lsize is not None:
             lexp = self.tree_parent[1][0, 0, 0, :]
-            self._dpc(self.tree_halo[0][2,2,2,:], lexp)
+            self.dipole_corrector(self.tree_halo[0][2,2,2,:], lexp)
 
 
     def _level_call_async(self, func, level, execute_async):
