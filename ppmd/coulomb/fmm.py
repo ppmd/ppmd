@@ -885,7 +885,7 @@ class PyFMM(object):
         self.tree_plain[0][:] = 0.0
 
         self._compute_periodic_boundary()
-        self._correct_dipole(positions, charges)
+        self._correct_dipole()
 
         for level in range(1, self.R):
 
@@ -914,7 +914,7 @@ class PyFMM(object):
         return phi_extract + phi_near
     
 
-    def _correct_dipole(self, positions, charges):
+    def _correct_dipole(self):
         if self.free_space == '27' or self.free_space == True:
             return
 
