@@ -27,8 +27,11 @@ directions= (
     ((0, 0, -0.25), (0, 0, 0.25)),
 )
 
+charges = (1, -1)
+
 @pytest.mark.parametrize("direction", directions)
-def test_fmm_ewald_1(direction):
+@pytest.mark.parametrize("charge", charges)
+def test_fmm_ewald_1(direction, charge):
 
     R = 3
     L = 12
@@ -57,14 +60,14 @@ def test_fmm_ewald_1(direction):
 
     A.P[:1, 0] -= 0.2
 
-    A.Q[0,0] =  1.0
-    A.Q[1,0] = -1.0
+    A.Q[0,0] =  1.0 * charge
+    A.Q[1,0] = -1.0 * charge
 
     A.scatter_data_from(0)
 
 
     lr_fmm = PyFMM(domain=A.domain, r=R, l=L, free_space=False)
-    lr_ewald = EwaldOrthoganalHalf(A.domain, real_cutoff=rc, eps=10.**-10)
+    lr_ewald = EwaldOrthoganalHalf(A.domain, real_cutoff=rc, eps=10.**-8)
 
     phi_fmm = lr_fmm(A.P, A.Q)
     phi_ewald = lr_ewald(A.P, A.Q, A.F)
