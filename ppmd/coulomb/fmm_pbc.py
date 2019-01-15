@@ -9,9 +9,11 @@ from math import log, ceil
 from ppmd.coulomb.cached import cached
 
 import numpy as np
-from ppmd import runtime, host, kernel, pairloop, data, access, mpi, opt
+from ppmd import runtime, host, kernel, pairloop, data, access, mpi, opt, loop
 from ppmd.lib import build
 from ppmd.coulomb.octal import shell_iterator
+from ppmd.coulomb.sph_harm import SphGen, LocalExpEval
+
 import ctypes
 import os
 import math
@@ -20,7 +22,10 @@ from threading import Thread
 from scipy.special import lpmv, rgamma, gammaincc, lambertw
 import sys
 
+from math import factorial, sqrt
 import itertools
+
+from scipy.sparse.linalg import aslinearoperator
 
 def red(input):
     try:
@@ -45,6 +50,137 @@ INT64 = ctypes.c_int64
 
 np.set_printoptions(threshold=np.nan)
 
+def spherical(xyz):
+    """
+    Converts the cartesian coordinates in xyz to spherical coordinates
+    (radius, polar angle, longitude angle)
+    """
+    sph = np.zeros(3)
+    xy = xyz[0]**2 + xyz[1]**2
+    # r
+    sph[0] = np.sqrt(xy + xyz[2]**2)
+    # polar angle
+    sph[1] = np.arctan2(np.sqrt(xy), xyz[2])
+    # longitude angle
+    sph[2] = np.arctan2(xyz[1], xyz[0])
+
+    return sph
+
+
+def _A(n,m):
+    return ((-1.0)**n)/sqrt(factorial(n-m)*factorial(n+m))
+
+
+def _h(j,k,n,m):
+    if abs(k) > j: return 0.0
+    if abs(m) > n: return 0.0
+    if abs(m-k) > j+n: return 0.0
+    icoeff = ((1.j)**(abs(k-m) - abs(k) - abs(m))).real
+    return icoeff * _A(n, m) * _A(j, k) / (((-1.0) ** n) * _A(j+n, m-k))
+
+class DipoleCorrector:
+    def __init__(self, l, extent, lr_func):
+        self.l = l
+        self._imo = l * l
+        self.ncomp = self._imo * 2
+        self.extent = extent
+        self.lr_func = lr_func
+        self._lee = LocalExpEval(l)
+        self.scales = [0,0,0]
+
+        # x direction
+        M = np.zeros(self.ncomp, dtype=REAL)
+        M[self._re(1, -1)] = 1.0
+        M[self._re(1,  1)] = 1.0
+        eval_point = (-0.5*extent[0], 0.0, 0.0)
+        lphi_sr =  self._sr_phi(M ,eval_point)
+        lphi_lr= self._lr_phi(M, eval_point)
+        lphi = lphi_sr + lphi_lr
+        self.scales[0] = lphi
+
+        # y direction
+        M = np.zeros(self.ncomp, dtype=REAL)
+        M[self._im(1, -1)] = -1.0
+        M[self._im(1,  1)] =  1.0
+        eval_point = (0.0, -0.5*extent[1], 0.0)
+        lphi_sr =  self._sr_phi(M ,eval_point)
+        lphi_lr= self._lr_phi(M, eval_point)
+        lphi = lphi_sr + lphi_lr
+        self.scales[1] = lphi
+        
+        # z direction
+        M = np.zeros(self.ncomp, dtype=REAL)
+        M[self._re(1, 0)] =  1.0
+        eval_point = (0.0, 0.0, -0.5*extent[2])
+        lphi_sr =  self._sr_phi(M ,eval_point)
+        lphi_lr= self._lr_phi(M, eval_point)
+        lphi = lphi_sr + lphi_lr
+        self.scales[2] = lphi
+
+        # scale x,y, and z to be the actual coefficients
+
+        self.scales[0] *= (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[0])
+        self.scales[1] *= (-1.0 * ( 2.0 ** 0.5 ) ) / (self.extent[1])
+        self.scales[2] *= 1.0 / (0.5 * self.extent[2])
+
+    def __call__(self, M, L):
+
+        if L is not None:
+            # x direction
+            xcoeff = M[self._re(1, 1)] * self.scales[0]
+            #print("xcoeff", xcoeff)
+            L[self._re(1, -1)] += xcoeff.real
+            L[self._re(1,  1)] += xcoeff.real
+            
+            # y direction
+            ycoeff = M[self._im(1, 1)] * self.scales[1]
+            L[self._im(1, -1)] += ycoeff.real
+            L[self._im(1,  1)] -= ycoeff.real
+            
+            # z direction
+            L[self._re(1, 0)] +=  M[self._re(1, 0)] * self.scales[2]
+
+
+    def _sr_phi(self, M, eval_point):
+        iterset = (-1, 0, 1)
+        tphi = 0.0
+        re = self._re
+        im = self._im
+        Y = self._Y_1
+        for ofx in itertools.product(iterset, iterset, iterset):
+            px = [ev - ex * ox for ev, ex, ox in zip(eval_point, self.extent, ofx)]
+            radius, theta, phi = spherical(px)
+            ir2 = 1.0 / (radius * radius)
+            tphi += (M[re(1, -1)] + M[im(1, -1)]*1.j) * Y(-1, theta, phi) * ir2
+            tphi += (M[re(1,  0)] + M[im(1,  0)]*1.j) * Y( 0, theta, phi) * ir2
+            tphi += (M[re(1,  1)] + M[im(1,  1)]*1.j) * Y( 1, theta, phi) * ir2
+
+        return tphi.real
+    
+
+    def _lr_phi(self, M, eval_point):
+        L = np.zeros_like(M)
+        self.lr_func(M, L)
+        return self._lee(L, spherical(eval_point))
+
+    
+    @staticmethod
+    def _Y_1(k, theta, phi):
+        if k == 0:
+            return cmath.cos(theta)
+        if abs(k) == 1:
+            return -1.0 * cmath.sqrt(0.5) * cmath.sin(theta) * cmath.exp(k * 1.j * phi)
+        else:
+            raise RuntimeError('bad k value')
+    
+    def _re(self, l, m): return (l**2) + l + m
+    def _im(self, l, m): return (l**2) + l + m + self._imo
+    def _im2(self, l, m): return (l**2) + l + m + self._imo2
+    @staticmethod
+    def _h1k1m(k,m): 
+        def _A(n,m): return ((-1.0)**n) / cmath.sqrt(factorial(n - m) * factorial(n + m))
+        return ((-1.j)**(abs(k - m) - abs(k) - abs(m))) * _A(1, m) * _A(1, k) / _A(2, m - k)
+    
 
 class FMMPbc(object):
     """
@@ -70,6 +206,11 @@ class FMMPbc(object):
 
         self._lib['test1']()
 
+        vol = self.domain.extent[0] * self.domain.extent[1] * \
+              self.domain.extent[2]
+
+        self.kappa = math.sqrt(math.pi/(vol**(2./3.)))
+
 
     def re_lm(self, l,m): return (l**2) + l + m
     def im_lm(self, l,m): return (l**2) + l +  m + self.L**2
@@ -94,60 +235,54 @@ class FMMPbc(object):
         for lx !=2 and take increasingly large shells in real and reciprocal
         space until the values converge.
         """
-        vol = self.domain.extent[0] * self.domain.extent[1] * \
-              self.domain.extent[2]
 
-        kappa = math.sqrt(math.pi/(vol**(2./3.)))
         eps = min(10.**-8, self.eps)
+        kappa = self.kappa
 
+        if lx < 2:
+            raise RuntimeError('s_n cannot be computed for lx < 2.')
 
-        if lx == 2:
-            tmp = 3. * math.log(2. * kappa)
-            logtmp = log(eps)
-            if logtmp > tmp:
-                s = 1.
-                #print("BODGE WARNING")
+        elif lx == 2:
+            s2 =  3. * math.log(2. * kappa) - math.log(eps)
+            if s2 < 0:
+                #s = 1.0
+                raise RuntimeError('could not deduce (s_n)^2 (negative?)')
             else:
-                s = math.sqrt(3. * math.log(2. * kappa) - log(eps))
-                err = abs(s**(lx-2.) * math.exp(-1. * (s**2.)) -
-                ((2.*kappa)**(-1*lx - 1.))*eps)
-                assert err<10.**-14, "LAMBERT CHECK:{}".format(err)
+                s = math.sqrt(s2)
+                #err = abs(s**(lx-2.) * math.exp(-1. * (s**2.)) -
+                #((2.*kappa)**(-1*lx - 1.))*eps)
+                #assert err<10.**-14, "LAMBERT CHECK:{}".format(err)
+            return s
 
-            return s, kappa
         else:
             n = float(lx)
-            tmp = 0.5 * (2. - n) * lambertw(
-                    (2./(2. - n)) * \
-                    (
-                        (eps/( (2*kappa) ** (n + 1.) ))**(2./(n - 2.))
-                     )
-                ).real
 
-            #print("ARG", 0.5 * (2. - n) * lambertw(
-            #        (2./(2. - n)) * \
-            #        (
-            #            (eps/( (2*kappa) ** (n + 1.) ))**(2./(n - 2.))
-            #         )
-            #    ))
+            lambert_inner = (2./(2. - n)) * \
+            (
+                (eps/( (2*kappa) ** (n + 1.) ))**(2./(n - 2.))
+            )
+            tmp = 0.5 * (2. - n) * lambertw(lambert_inner, k=-1)
+            
+            def check_sn(sn):
+                import cmath
+                return (sn ** (n - 2)) * cmath.exp(-1.0 * sn * sn)
 
-            if tmp >= 0.0:
-                s = math.sqrt(tmp)
-                err = abs(s**(lx-2.) * math.exp(-1. * (s**2.)) -
-                ((2.*kappa)**(-1*lx - 1.))*eps)
-                #assert err<10.**-14, "LAMBERT CHECK: {}".format(err)
-            else:
-                #print("BODGE WARNING")
-                s = self._compute_sn(2)[0]
-
-            return s, kappa
+            if tmp.real < 0:
+                import cmath
+                sn = cmath.sqrt(tmp)
+                import ipdb; ipdb.set_trace()
+                
+                raise RuntimeError('bad (s_n)^2 computed')
+            s = math.sqrt(tmp.real)
+            return s
 
 
     def _compute_parameters(self, lx):
         if lx < 2: raise RuntimeError('not valid for lx<2')
-        sn, kappa = self._compute_sn(lx)
-        sn, kappa = self._compute_sn(2)
-        # r_c, v_c, kappa
-        return sn/kappa, kappa*sn/math.pi, kappa
+        # sn = self._compute_sn(lx)
+        sn = self._compute_sn(2)
+        # r_c, v_c
+        return sn/self.kappa, self.kappa*sn/math.pi
 
 
     def _image_to_sph(self, ind):
@@ -179,8 +314,9 @@ class FMMPbc(object):
 
 
         for lx in range(2, self.L*2, 2):
-            rc, vc, kappa = self._compute_parameters(lx)
-
+            rc, vc = self._compute_parameters(lx)
+            
+            kappa = self.kappa
             kappa2 = kappa*kappa
 
             maxt = 3
@@ -251,17 +387,20 @@ class FMMPbc(object):
                 err = np.linalg.norm(curr - new_vals, np.inf)
 
                 if err < self.eps*0.01:
+                    # print("g shellx", shellx, 10.**-15)
                     break
                 if shellx == 20:
                     raise RuntimeError('Periodic Boundary Coefficients did'
                                        'not converge, Please file a bug'
                                        'report.')
-
-        # explicitly extract the nearby cells
+        
+        
+        # explicitly extract the "full" contribution from nearby cells
+        # i.e. the case where the real space part included the nearest
+        # neighbours
         for lx in range(2, self.L*2, 2):
 
-            maxs = 1
-            iterset = list(range(-1*maxs, maxs+1, 1))
+            iterset = tuple(range(-1, 2, 1))
 
             for tx in itertools.product(iterset, iterset, iterset):
                 if (tx[0] != 0) or (tx[1] != 0) or (tx[2] != 0):
@@ -306,7 +445,8 @@ class FMMPbc(object):
 
         for lx in range(2, self.L*2, 2):
 
-            rc, vc, kappa = self._compute_parameters(lx)
+            rc, vc = self._compute_parameters(lx)
+            kappa = self.kappa
 
             kappa2 = kappa * kappa
             mpi2okappa2 = -1.0 * (math.pi ** 2.) / kappa2
@@ -470,5 +610,114 @@ class _shell_test_2_FMMPbc(object):
 
 
         return terms
+
+
+class SphShellSum(object):
+    def __init__(self, lmax):
+        self._lmax = lmax
+        im_of = (lmax+1) ** 2
+        self._ncomp = 2 * im_of
+        self.ncomp = self._ncomp
+
+        sph_gen = SphGen(lmax)
+        
+        def lm_ind(L, M, OX=0):
+            return ((L) * ( (L) + 1 ) + (M) + OX)
+
+        radius_gen = 'const double iradius = 1.0/radius;\nconst double r0 = 1.0;\n'
+        assign_gen = ''
+        for lx in range(lmax+1):
+            radius_gen += 'const double r{lxp1} = r{lx} * iradius;\n'.format(lxp1=lx+1, lx=lx)
+
+            for mx in range(-lx, lx+1):
+                assign_gen += 'tmp_out[{LM_IND}] += '.format(LM_IND=lm_ind(lx, mx)) + \
+                    str(sph_gen.get_y_sym(lx, mx)[0]) + \
+                    ' * r{lx};\n'.format(lx=lx+1)
+                assign_gen += 'tmp_out[{LM_IND}] += '.format(LM_IND=lm_ind(lx, mx, im_of)) + \
+                    str(sph_gen.get_y_sym(lx, mx)[1]) + \
+                    ' * r{lx};\n'.format(lx=lx+1)
+
+
+        src = """
+        #include <omp.h>
+        #define STRIDE ({STRIDE})
+
+        extern "C" int sph_gen(
+            const int num_threads,
+            const int N,
+            const double * RESTRICT radius_set,
+            const double * RESTRICT theta_set,
+            const double * RESTRICT phi_set,
+            double * RESTRICT gtmp_out,
+            double * RESTRICT out
+        ){{
+            for(int tx=0 ; tx<(num_threads*STRIDE) ; tx++){{
+                gtmp_out[tx] = 0;
+            }}
+            omp_set_num_threads(num_threads);
+
+            #pragma omp parallel default(none) shared(N, radius_set, theta_set, phi_set, gtmp_out)
+            {{
+
+                const int threadid = omp_get_thread_num();
+                const int inner_num_threads = omp_get_num_threads();
+
+                const int lower = N*threadid/inner_num_threads;
+                const int upper = (threadid == (inner_num_threads - 1)) ? N : N*(threadid+1)/inner_num_threads;
+                
+                double * RESTRICT tmp_out = gtmp_out + threadid * STRIDE;
+                
+                for (int ix=lower; ix<upper ; ix++){{
+                    const double radius = radius_set[ix];
+                    const double theta = theta_set[ix];
+                    const double phi = phi_set[ix];
+                    {RADIUS_GEN}
+                    {SPH_GEN}
+                    {ASSIGN_GEN}
+                }}
+
+            }}
+
+            for(int tx=0 ; tx<num_threads ; tx++){{
+                for(int ix=0 ; ix<STRIDE ; ix++){{
+                    out[ix] += gtmp_out[ix + tx*STRIDE];
+                }}
+            }}
+
+            return 0;
+        }}
+        """.format(
+            RADIUS_GEN=radius_gen,
+            SPH_GEN=str(sph_gen.module),
+            ASSIGN_GEN=str(assign_gen),
+            STRIDE=self._ncomp
+        )
+        header = str(sph_gen.header)
+
+        self._lib = build.simple_lib_creator(header_code=header, src_code=src)['sph_gen']
+        self._nthreads = runtime.NUM_THREADS
+        self._gtmp = np.zeros(self._ncomp*self._nthreads, dtype=ctypes.c_double)
+
+    def __call__(self, radius, theta, phi, out):
+        
+        assert radius.dtype == ctypes.c_double
+        assert theta.dtype == ctypes.c_double
+        assert phi.dtype == ctypes.c_double
+        assert out.dtype == ctypes.c_double
+        assert len(theta) == len(phi)
+        assert len(theta) == len(radius)
+        assert len(out) == self._ncomp
+
+        N = len(theta)
+
+        self._lib(
+            ctypes.c_int(self._nthreads),
+            ctypes.c_int(N),
+            radius.ctypes.get_as_parameter(),
+            theta.ctypes.get_as_parameter(),
+            phi.ctypes.get_as_parameter(),
+            self._gtmp.ctypes.get_as_parameter(),
+            out.ctypes.get_as_parameter()
+        )
 
 

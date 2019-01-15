@@ -21,9 +21,7 @@ _MPIRANK = ppmd.mpi.MPI.COMM_WORLD.Get_rank()
 _MPIWORLD = ppmd.mpi.MPI.COMM_WORLD
 _MPIBARRIER = ppmd.mpi.MPI.COMM_WORLD.Barrier
 
-###############################################################################
-# COMPILERS START
-###############################################################################
+
 
 TMPCC = ppmd.config.COMPILERS[ppmd.config.MAIN_CFG['cc-main'][1]]
 TMPCC_OpenMP = ppmd.config.COMPILERS[ppmd.config.MAIN_CFG['cc-openmp'][1]]
@@ -36,9 +34,8 @@ if not os.path.exists(build_dir) and _MPIRANK == 0:
     os.mkdir(build_dir)
 _MPIBARRIER()
 
-####################################
-# Build Lib
-####################################
+
+LOADED_LIBS = []
 
 def _md5(string):
     """Create unique hex digest"""
@@ -107,7 +104,9 @@ def _source_write(header_code, src_code, filename, extensions, dst_dir, CC):
 
 def _load(filename):
     try:
-        return ctypes.cdll.LoadLibrary(str(filename))
+        lib = ctypes.cdll.LoadLibrary(str(filename))
+        LOADED_LIBS.append(str(filename[:-3]))
+        return lib
     except Exception as e:
         print("build:load error. Could not load following library,", \
             str(filename))

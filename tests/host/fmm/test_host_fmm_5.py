@@ -759,7 +759,7 @@ def test_fmm_init_5_5_nacl(level_set_3_4):
 
 
 # system has a dipole moment
-@pytest.mark.skipif("True")
+#@pytest.mark.skipif("True")
 def test_fmm_init_5_5_co2():
     R = 3
 
@@ -779,9 +779,7 @@ def test_fmm_init_5_5_co2():
     free_space = False
 
     rc = min(10, E/4.)
-    fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
-    #shell_terms = fmm._test_shell_sum(26, fmm.L)
-    #fmm._boundary_terms[:] = shell_terms[:]
+    fmm = PyFMM(domain=A.domain, r=R, l=14, free_space=free_space)
 
     if EWALD:
         ewald = EwaldOrthoganalHalf(
@@ -832,101 +830,9 @@ def test_fmm_init_5_5_co2():
     if MPIRANK == 0 and DEBUG:
         print("Dipole moment:", dipole_ga[:])
 
-
-
-    t2 = time.time()
-    if EWALD:
-        ewald.evaluate_contributions(positions=A.P, charges=A.Q)
-        A.cri[0] = 0.0
-        ewald.extract_forces_energy_reciprocal(A.P, A.Q, A.F, A.cri)
-        A.crr[0] = 0.0
-        ewald.extract_forces_energy_real(A.P, A.Q, A.F, A.crr)
-        A.crs[0] = 0.0
-        ewald.evaluate_self_interactions(A.Q, A.crs)
-    t3 = time.time()
-
-    phi_ewald = A.cri[0] + A.crr[0] + A.crs[0]
-
-    local_err = abs(phi_py - phi_ewald)
-    if local_err > eps: serr = red(local_err)
-    else: serr = green(local_err)
-
-    if MPIRANK == 0 and DEBUG:
-        print(60*"-")
-        #opt.print_profile()
-        print(60*"-")
-        print("TIME FMM:\t", t1 - t0)
-        print("TIME EWALD:\t", t3 - t2)
-        print("ENERGY FMM:\t", phi_py)
-        print("ENERGY EWALD:\t", phi_ewald, A.cri[0], A.crr[0], A.crs[0])
-        print("ERR:\t\t", serr)
-
-    for lx in range(fmm.L):
-        for mx in range(-1*lx, lx+1):
-            py_re = 0.0
-            py_im = 0.0
-            for px in range(N):
-                r = spherical(A.P[px, :])
-                ynm = Yfoo(lx, -1*mx, r[1], r[2]) * (r[0]**float(lx)) * A.Q[px,0]
-                py_re += ynm.real
-                py_im += ynm.imag
-
-            tol = max(abs(py_re)*(10.**-9), 10.**-9)
-            assert abs(py_re - fmm.up[fmm.re_lm(lx, mx)]) < tol
-            assert abs(py_im - fmm.up[fmm.im_lm(lx, mx)]) < tol
-
-
-    shell_lim = 6
-
-    for jx in range(4):
-        print("jx:", jx)
-        for kx in range(-1*jx, jx+1):
-
-            contrib = 0.0 + 0.0*1.j
-            for oz in range(-1*shell_lim, shell_lim+1):
-                for oy in range(-1*shell_lim, shell_lim+1):
-                    for ox in range(-1*shell_lim, shell_lim+1):
-                        shell_radius = ox*ox + oy*oy + oz*oz
-                        if shell_radius > 3 and shell_radius < shell_lim**2:
-
-                            dx = np.array((ox*E, oy*E, oz*E))
-                            # r, theta, phi
-                            sph = spherical(dx)
-                            for nx in range(fmm.L):
-                                for mx in range(-1*nx, nx+1):
-
-                                    o = Ifoo(kx, mx) * Afoo(nx, mx) * Afoo(jx, kx) / \
-                                        Afoo(jx + nx, mx - kx) * ((-1.)**nx)
-
-                                    o /= (sph[0]**(jx+nx+1))
-
-                                    o *= fmm.up[fmm.re_lm(nx, mx)] + 1.j* \
-                                        fmm.up[fmm.im_lm(nx, mx)]
-
-                                    o *= Yfoo(jx+nx, mx-kx, sph[1], sph[2])
-
-                                    contrib += o
-
-            tol = 10.**-16
-
-            creal = fmm.tree_parent[1][0,0,0,fmm.re_lm(jx, kx)]
-            if abs(contrib.real - creal) > tol:
-                serr = red(creal)
-            else:
-                serr = str(creal)
-
-            cimag = fmm.tree_parent[1][0,0,0,fmm.im_lm(jx, kx)]
-
-            if abs(contrib.imag - cimag) > tol:
-                serr_im = red(cimag)
-            else:
-                serr_im = str(cimag)
-
-
-            print("\tkx:{: >5} re {: >30} {:>30} | im {: >30} {: >30}".format(
-                kx,
-                contrib.real, serr,
-                contrib.imag, serr_im))
+    phi_ewald = ewald(A.P, A.Q, A.F)
+    err = abs(phi_ewald - phi_py)
+    assert err < 10.**-5
 
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_init_5_6_1():

@@ -19,7 +19,7 @@ import sys
 
 from ppmd.cuda import CUDA_IMPORT
 from ppmd.coulomb.wigner import Rzyz_set, Ry_set
-from ppmd.coulomb.fmm_pbc import FMMPbc
+from ppmd.coulomb.fmm_pbc import FMMPbc, DipoleCorrector
 from ppmd.coulomb.fmm_local import FMMLocal
 
 def red(input):
@@ -681,6 +681,8 @@ class PyFMM(object):
         #    raise RuntimeError('CUDA support was requested but intialisation'
         #                       ' failed')        
         
+        if not (self.free_space == '27' or self.free_space == True):
+            self.dipole_corrector = DipoleCorrector(self.L, self.domain.extent, self._lr_mtl_func)
 
     def _update_opt(self):
         p = opt.PROFILE
@@ -883,6 +885,7 @@ class PyFMM(object):
         self.tree_plain[0][:] = 0.0
 
         self._compute_periodic_boundary()
+        self._correct_dipole()
 
         for level in range(1, self.R):
 
@@ -909,6 +912,17 @@ class PyFMM(object):
         self.execution_count += 1
         # print("extract", phi_extract, "near", phi_near)
         return phi_extract + phi_near
+    
+
+    def _correct_dipole(self):
+        if self.free_space == '27' or self.free_space == True:
+            return
+
+        lsize = self.tree[1].parent_local_size
+        if lsize is not None:
+            lexp = self.tree_parent[1][0, 0, 0, :]
+            self.dipole_corrector(self.tree_halo[0][2,2,2,:], lexp)
+
 
     def _level_call_async(self, func, level, execute_async):
 
@@ -991,12 +1005,17 @@ class PyFMM(object):
                 self.tree_parent[1][:] = 0
 
             return
+        
+
 
         if lsize is not None:
 
             moments = np.copy(self.tree_parent[1][0, 0, 0, :])
 
             self.tree_parent[1][0, 0, 0, :] = 0.0
+            #print("WARNING PBC DISABLED FOR TESTING")
+            #return
+
             self._translate_mtl_lib['mtl_test_wrapper'](
                 ctypes.c_int64(self.L),
                 ctypes.c_double(1.),            #radius=1
@@ -1008,6 +1027,19 @@ class PyFMM(object):
                 extern_numpy_ptr(self._ipower_mtl),
                 extern_numpy_ptr(self.tree_parent[1][0, 0, 0, :])
             )
+
+    def _lr_mtl_func(self, M, L):
+        self._translate_mtl_lib['mtl_test_wrapper'](
+            ctypes.c_int64(self.L),
+            ctypes.c_double(1.),            #radius=1
+            extern_numpy_ptr(M),
+            extern_numpy_ptr(self._boundary_ident),
+            extern_numpy_ptr(self._boundary_terms),
+            extern_numpy_ptr(self._a),
+            extern_numpy_ptr(self._ar),
+            extern_numpy_ptr(self._ipower_mtl),
+            extern_numpy_ptr(L)
+        )
 
 
     def _join_async(self):
