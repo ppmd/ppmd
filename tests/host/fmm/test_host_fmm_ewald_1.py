@@ -45,11 +45,7 @@ def test_fmm_ewald_1(direction, charge):
     A.domain = domain.BaseDomainHalo(extent=(E,E,E))
     A.domain.boundary_condition = domain.BoundaryTypePeriodic()
 
-
     A.npart = N
-
-    rng = np.random.RandomState(seed=1234)
-
     A.P = data.PositionDat(ncomp=3)
     A.F = data.ParticleDat(ncomp=3)
     A.Q = data.ParticleDat(ncomp=1)
