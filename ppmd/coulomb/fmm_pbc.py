@@ -4,12 +4,9 @@ __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
 
-from math import log, ceil
-
-from ppmd.coulomb.cached import cached
 
 import numpy as np
-from ppmd import runtime, host, kernel, pairloop, data, access, mpi, opt, loop
+from ppmd import runtime
 from ppmd.lib import build
 from ppmd.coulomb.octal import shell_iterator
 from ppmd.coulomb.sph_harm import SphGen, LocalExpEval
@@ -18,14 +15,14 @@ import ctypes
 import os
 import math
 import cmath
-from threading import Thread
 from scipy.special import lpmv, rgamma, gammaincc, lambertw
-import sys
+from scipy.sparse import csr_matrix
+from scipy.sparse.linalg import aslinearoperator
 
-from math import factorial, sqrt
+from math import factorial, sqrt, ceil
+
 import itertools
 
-from scipy.sparse.linalg import aslinearoperator
 
 def red(input):
     try:
@@ -77,6 +74,59 @@ def _h(j,k,n,m):
     if abs(m-k) > j+n: return 0.0
     icoeff = ((1.j)**(abs(k-m) - abs(k) - abs(m))).real
     return icoeff * _A(n, m) * _A(j, k) / (((-1.0) ** n) * _A(j+n, m-k))
+
+
+class LongRangeMTL:
+    def __init__(self, L, domain):
+        self.L = L
+        self.domain = domain
+
+        _pbc_tool = FMMPbc(self.L, 10.**-10, domain, REAL)
+        _rvec = _pbc_tool.compute_f() + _pbc_tool.compute_g()
+
+        self.ncomp = 2*(L**2)
+        self.half_ncomp = L**2
+        self.rmat = np.zeros((self.half_ncomp, self.half_ncomp), dtype=REAL)
+        #self.rmat = csr_matrix((self.half_ncomp, self.half_ncomp), dtype=REAL)
+
+        def _re_lm(l, m): return l**2 + l + m
+
+        row = 0
+        for jx in range(L):
+            for kx in range(-jx, jx+1):
+                col = 0
+                for nx in range(L):
+                    for mx in range(-nx, nx+1):
+                        if (not abs(mx-kx) > jx+nx) and \
+                            (not (abs(mx-kx) % 2 == 1)) and \
+                            (not (abs(jx+nx) % 2 == 1)):
+                            
+                            self.rmat[row, col] = _h(jx, kx, nx, mx) * _rvec[_re_lm(jx+nx, mx-kx)]
+                        col += 1
+                row += 1
+
+        self.sparse_rmat = csr_matrix(self.rmat)
+        self.linop = aslinearoperator(self.rmat)
+        self.sparse_linop = aslinearoperator(self.sparse_rmat)
+        self.linop_data = np.array(self.sparse_rmat.data, dtype=REAL)
+        self.linop_indptr = np.array(self.sparse_rmat.indptr, dtype=INT64)
+        self.linop_indices = np.array(self.sparse_rmat.indices, dtype=INT64)
+
+        # dipole correction vars
+        self._dpc = DipoleCorrector(L, self.domain.extent, self._apply_operator)
+        self.dipole_correction = self._dpc.scales
+
+    def _apply_operator(self, M, L):
+        L[:self.half_ncomp] = self.sparse_linop.dot(M[:self.half_ncomp])
+        L[self.half_ncomp:] = self.sparse_linop.dot(M[self.half_ncomp:])
+
+    def apply_lr_mtl(self, M, L):
+        self._apply_operator(M, L)
+        self._dpc(M, L)
+
+    def __call__(self, M, L):
+        return self.apply_lr_mtl(M, L)
+
 
 class DipoleCorrector:
     def __init__(self, l, extent, lr_func):
