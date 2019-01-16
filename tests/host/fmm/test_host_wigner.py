@@ -451,7 +451,6 @@ def test_print_1():
     P[1,:] = (0.0, 0.0, 1.0)
     P[2,:] = (-1.0, 0.0, 0.0)
     P[3,:] = (0.0, 0.0,-1.0)
-    print("\n")
 
     Q = rng.uniform(low=-1., high=1., size=N)
     Q[:] = 1.0
@@ -837,8 +836,6 @@ def test_wigner_6(theta_set2, phi_set):
     phi = phi_set
 
 
-    DEBUG = True
-    print("\n")
 
     t0 = time.time()
     orig_mtl = shift_normal(nterms, radius, theta, phi,orig)
@@ -853,7 +850,6 @@ def test_wigner_6(theta_set2, phi_set):
     beta = theta
     gamma = phi
 
-    print("alpha, beta, gamma\t", alpha, beta, gamma)
 
     t0 = time.time()
     forward_rot = rotate_moments(nterms, alpha=gamma, beta=beta, gamma=alpha,
@@ -929,9 +925,6 @@ def test_wigner_6_pi():
     phi = 1.23
 
 
-    DEBUG = True
-    print("\n")
-
     t0 = time.time()
     orig_mtl = shift_normal(nterms, radius, theta, phi,orig)
     if DEBUG:
@@ -946,7 +939,6 @@ def test_wigner_6_pi():
     #beta = -theta
     #gamma = 0.0
 
-    print("alpha, beta, gamma\t", alpha, beta, gamma)
 
     t0 = time.time()
     forward_rot = rotate_moments(nterms, alpha=gamma, beta=beta, gamma=alpha,
