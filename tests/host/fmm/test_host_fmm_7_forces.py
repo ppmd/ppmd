@@ -27,7 +27,7 @@ from math import *
 MPISIZE = MPI.COMM_WORLD.Get_size()
 MPIRANK = MPI.COMM_WORLD.Get_rank()
 MPIBARRIER = MPI.COMM_WORLD.Barrier
-DEBUG = True
+DEBUG = False
 SHARED_MEMORY = 'omp'
 
 def red(*input):
