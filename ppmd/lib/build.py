@@ -130,7 +130,8 @@ def simple_lib_creator(
     # create a base filename for the library
     _filename = prefix + '_' + str(name)
     _filename += '_' + _md5(_filename + str(header_code) + str(src_code) +
-                            str(name))
+                            str(name) + str(CC.hash))
+
     if ppmd.runtime.BUILD_PER_PROC:
         _filename += '_' + str(_MPIRANK)
 

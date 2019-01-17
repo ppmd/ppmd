@@ -18,10 +18,11 @@ class Compiler(object):
     :arg list shared_lib_flag: List of flags as strings to link as shared
     library.
     :arg string restrict_keyword: keyword to use for non aliased pointers
+    :arg cfg_hash: Hash to use for this compiler
     """
 
     def __init__(self, name, binary, c_flags, l_flags, opt_flags, dbg_flags,
-                 compile_flag, shared_lib_flag, restrict_keyword=''):
+                 compile_flag, shared_lib_flag, restrict_keyword='', cfg_hash=''):
 
         self._name = name
         self._binary = binary
@@ -32,6 +33,7 @@ class Compiler(object):
         self._compileflag = compile_flag
         self._sharedlibf = shared_lib_flag
         self._restrictkeyword = restrict_keyword
+        self._cfg_hash = cfg_hash
 
     def __str__(self):
         nl = ', '
@@ -45,6 +47,10 @@ class Compiler(object):
             str( self._compileflag ) + nl + \
             str( self._sharedlibf ) + nl + \
             str( self._restrictkeyword )
+
+    @property
+    def hash(self):
+        return self._cfg_hash
 
     def __repr__(self):
         return str(self)

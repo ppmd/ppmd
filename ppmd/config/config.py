@@ -11,6 +11,7 @@ import os
 import configparser as ConfigParser
 import mpi4py
 import shlex
+import hashlib
 
 # package level imports
 from ppmd.lib import compiler
@@ -104,7 +105,7 @@ def load_config(dir=None):
         
         with open(os.path.join(os.path.join(CFG_DIR, 'compilers'), cc_cfg)) as fh:
             cnts = fh.read()
-
+        
         cc_parser.read_string(cnts)
 
         args = []
@@ -121,6 +122,9 @@ def load_config(dir=None):
             else:
                 args.append(shlex.split(getval))
 
+        h = hashlib.md5()
+        h.update(cnts.encode('UTF-8'))
+        args.append(h.hexdigest())
 
         COMPILERS[args[0]] = compiler.Compiler(*args)
     
@@ -132,8 +136,10 @@ def load_config(dir=None):
         mpi_cc = mpi4py_config['mpicc']
     else:
         raise RuntimeError('Cannot find MPI compiler used to build mpi4py.')
-
-
+    
+    h = hashlib.md5()
+    for keyx in mpi4py_config:
+        h.update(str(keyx + mpi4py_config[keyx]).encode('UTF-8'))
 
     # create the mpi4py compiler
     tm = COMPILERS['MPI4PY']
@@ -146,7 +152,8 @@ def load_config(dir=None):
         dbg_flags=tm.dbg_flags,
         compile_flag=tm.compile_flag,
         shared_lib_flag=tm.shared_lib_flag,
-        restrict_keyword=tm.restrict_keyword
+        restrict_keyword=tm.restrict_keyword,
+        cfg_hash=h.hexdigest()
     )
 
 
