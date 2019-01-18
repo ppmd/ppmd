@@ -6,6 +6,8 @@ build system.
 from __future__ import division, print_function, absolute_import
 import ctypes
 
+from ppmd.lib.common import allowed_dtypes
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -45,18 +47,7 @@ required by the associated kernel.
 
 
 
-_ctypes_map = {ctypes.c_double: 'double',
-              ctypes.c_int: 'int',
-              ctypes.c_long: 'long',
-              ctypes.c_byte: 'char',
-              'float64': 'double',
-              'int32': 'int',
-              'doublepointerpointer': 'double **',
-              # ctypes.c_longlong: 'long long',
-              'doublepointer': 'double *',
-              'intpointer': 'int *',
-              'longpointer': 'long *',
-              ctypes.c_int64: 'int64_t'}
+
 
 
 
@@ -283,7 +274,7 @@ class StaticArgStore(object):
         :param initial: initial dat dict
         """
         assert type(initial) is dict, "expected a dict"
-        self.allow = _ctypes_map.keys()
+        self.allow = allowed_dtypes
         self._check_args_allowed(initial)
         self.initial = initial
         self.register = {}

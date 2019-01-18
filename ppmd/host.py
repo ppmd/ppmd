@@ -11,6 +11,8 @@ import collections
 # package level
 from ppmd import access, runtime
 
+from ppmd.lib.common import ctypes_map
+
 int32 = ctypes.c_int32
 int32_str = 'int'
 
@@ -21,19 +23,11 @@ uint8_str = 'uint8_t'
 
 long_str = 'long'
 
-
-
-
 double = ctypes.c_double
 double_str = 'double'
 
 
-ctypes_map = access._ctypes_map
 
-
-pointer_lookup = {ctypes.c_int: 'intpointer',
-                  ctypes.c_long: 'longpointer',
-                  ctypes.c_double: 'doublepointer'}
 
 mpi_type_map = {ctypes.c_double: 'MPI_DOUBLE', ctypes.c_int: 'MPI_INT', ctypes.c_long: 'MPI_LONG'}
 
