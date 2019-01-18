@@ -17,6 +17,7 @@ import ppmd.cell as cell
 import ppmd.modules.code_timer
 import ppmd.opt as opt
 import ppmd.runtime as runtime
+from ppmd.lib.common import ctypes_map
 
 # CUDA level
 from ppmd.cuda import cuda_build, cuda_data, cuda_cell, cuda_base
@@ -149,9 +150,9 @@ class _Base(object):
                 # KERNEL ARGS DECLS, STRUCT DECLS ----------------
 
                 dtype = dati.dtype
-                ti = cgen.Pointer(cgen.Value(cgen.dtype_to_ctype(dtype),
+                ti = cgen.Pointer(cgen.Value(ctypes_map(dtype),
                                              Restrict(self._cc.restrict_keyword,'i')))
-                tj = cgen.Pointer(cgen.Value(cgen.dtype_to_ctype(dtype),
+                tj = cgen.Pointer(cgen.Value(ctypes_map(dtype),
                                              Restrict(self._cc.restrict_keyword,'j')))
                 if not kacc.write:
                     ti = cgen.Const(ti)

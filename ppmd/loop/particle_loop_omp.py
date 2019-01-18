@@ -11,6 +11,7 @@ import cgen
 # package level
 from ppmd import runtime, host, opt, data, access
 from ppmd.loop.particle_loop import ParticleLoop
+from ppmd.lib.common import ctypes_map
 
 def Restrict(keyword, symbol):
     return str(keyword) + ' ' + str(symbol)
@@ -88,7 +89,7 @@ class ParticleLoopOMP(ParticleLoop):
             elif issubclass(type(dat[1][0]), host.Matrix):
                 # MAKE STRUCT TYPE
                 dtype = dat[1][0].dtype
-                ti = cgen.Pointer(cgen.Value(cgen.dtype_to_ctype(dtype),
+                ti = cgen.Pointer(cgen.Value(ctypes_map(dtype),
                                              Restrict(self._cc.restrict_keyword,'i')))
                 if not dat[1][1].write:
                     ti = cgen.Const(ti)

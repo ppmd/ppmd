@@ -391,7 +391,7 @@ def test_fmm_init_2():
             print(60*'~')
 
         assert red_im < 10.**-15, "bad imaginary part"
-        assert red_re > last_re, "Errors do not get better as level -> 0"
+        assert red_re >= last_re, "Errors do not get better as level -> 0"
         assert red_re < eps, "error did not meet tol"
 
 

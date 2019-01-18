@@ -16,7 +16,7 @@ from ppmd.pairloop.base import *
 from ppmd import data, runtime, access
 from ppmd.pairloop import neighbourlist_14cell
 from ppmd.pairloop import neighbourlist_27cell
-
+from ppmd.lib.common import ctypes_map
 
 
 def gather_matrix(obj, symbol_dat, symbol_tmp, loop_index):
@@ -231,9 +231,9 @@ class PairLoopNeighbourListNS(object):
             elif issubclass(type(dat[1][0]), host.Matrix):
                 # MAKE STRUCT TYPE
                 dtype = dat[1][0].dtype
-                ti = cgen.Pointer(cgen.Value(cgen.dtype_to_ctype(dtype),
+                ti = cgen.Pointer(cgen.Value(ctypes_map(dtype),
                                              Restrict(self._cc.restrict_keyword,'i')))
-                tj = cgen.Pointer(cgen.Value(cgen.dtype_to_ctype(dtype),
+                tj = cgen.Pointer(cgen.Value(ctypes_map(dtype),
                                              Restrict(self._cc.restrict_keyword,'j')))
                 if not dat[1][1].write:
                     ti = cgen.Const(ti)

@@ -16,6 +16,8 @@ import ppmd.modules.code_timer
 import ppmd.runtime as runtime
 import ppmd.opt as opt
 
+from ppmd.lib.common import ctypes_map
+
 # CUDA level
 from ppmd.cuda import cuda_build, cuda_base, cuda_data
 
@@ -281,7 +283,7 @@ class ParticleLoop(object):
                 # KERNEL ARGS DECLS, STRUCT DECLS ----------------
 
                 dtype = dati.dtype
-                ti = cgen.Pointer(cgen.Value(cgen.dtype_to_ctype(dtype),
+                ti = cgen.Pointer(cgen.Value(ctypes_map(dtype),
                                              Restrict(self._cc.restrict_keyword,'i')))
                 if not kacc.write:
                     ti = cgen.Const(ti)
