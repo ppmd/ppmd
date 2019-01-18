@@ -15,6 +15,7 @@ from ppmd.pairloop.neighbourlist import PairLoopNeighbourListNS, Restrict
 from ppmd.pairloop.neighbour_matrix_omp import NeighbourListOMP
 
 from ppmd.pairloop.list_controller import nlist_controller
+from ppmd.lib.common import ctypes_map
 
 INT64 = ctypes.c_int64
 REAL = ctypes.c_double
@@ -127,9 +128,9 @@ class PairLoopNeighbourListNSOMP(PairLoopNeighbourListNS):
             elif issubclass(type(dat[1][0]), host.Matrix):
                 # MAKE STRUCT TYPE
                 dtype = dat[1][0].dtype
-                ti = cgen.Pointer(cgen.Value(cgen.dtype_to_ctype(dtype),
+                ti = cgen.Pointer(cgen.Value(ctypes_map(dtype),
                                              Restrict(self._cc.restrict_keyword,'i')))
-                tj = cgen.Pointer(cgen.Value(cgen.dtype_to_ctype(dtype),
+                tj = cgen.Pointer(cgen.Value(ctypes_map(dtype),
                                              Restrict(self._cc.restrict_keyword,'j')))
                 if not dat[1][1].write:
                     ti = cgen.Const(ti)

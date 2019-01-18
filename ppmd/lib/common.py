@@ -35,11 +35,14 @@ class DtypeToCtype:
     def __init__(self, existing):
         self._e = existing
 
-    def __getitem__(self, key):
+    def __call__(self, key):
         if key in self._e.keys():
             return self._e[key]
         else:
             return cgen.dtype_to_ctype(key)
+
+    def __getitem__(self, key):
+        return self(key)
 
 
 ctypes_map = DtypeToCtype(_ctypes_map)

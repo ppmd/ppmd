@@ -13,7 +13,7 @@ import os
 from ppmd.pairloop.base import *
 # package level
 from ppmd import data, runtime, access
-
+from ppmd.lib.common import ctypes_map
 
 ###############################################################################
 # All To All looping Non-Symmetric
@@ -135,9 +135,9 @@ class AllToAllNS(object):
             elif issubclass(type(dat[1][0]), host.Matrix):
                 # MAKE STRUCT TYPE
                 dtype = dat[1][0].dtype
-                ti = cgen.Pointer(cgen.Value(cgen.dtype_to_ctype(dtype),
+                ti = cgen.Pointer(cgen.Value(ctypes_map(dtype),
                                              Restrict(self._cc.restrict_keyword,'i')))
-                tj = cgen.Pointer(cgen.Value(cgen.dtype_to_ctype(dtype),
+                tj = cgen.Pointer(cgen.Value(ctypes_map(dtype),
                                              Restrict(self._cc.restrict_keyword,'j')))
                 if not dat[1][1].write:
                     ti = cgen.Const(ti)

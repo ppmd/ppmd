@@ -12,7 +12,7 @@ import ctypes
 from ppmd import data, runtime, host, access, modules, opt
 from ppmd.lib import build
 from ppmd.pairloop.neighbourlist import Restrict, scatter_matrix
-
+from ppmd.lib.common import ctypes_map
 
 _offsets = (
     (-1,1,-1),
@@ -343,11 +343,11 @@ class CellByCellOMP(object):
                 # MAKE STRUCT TYPE
                 dtype = dat[1][0].dtype
                 ti = cgen.Pointer(cgen.Value(
-                    cgen.dtype_to_ctype(dtype),
+                    ctypes_map(dtype),
                     Restrict(self._cc.restrict_keyword,'i')
                 ))
                 tj = cgen.Pointer(cgen.Value(
-                    cgen.dtype_to_ctype(dtype),
+                    ctypes_map(dtype),
                     Restrict(self._cc.restrict_keyword,'j')
                 ))
                 if not dat[1][1].write:
