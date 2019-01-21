@@ -17,8 +17,6 @@ Eo2 = E/2.
 
 tol = 10.**(-12)
 
-np.set_printoptions(threshold=np.nan)
-
 
 rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 nproc = md.mpi.MPI.COMM_WORLD.Get_size()

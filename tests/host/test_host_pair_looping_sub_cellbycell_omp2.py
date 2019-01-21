@@ -5,8 +5,6 @@ import ctypes
 import numpy as np
 import math
 
-np.set_printoptions(threshold=np.nan)
-
 import ppmd as md
 from ppmd.access import *
 

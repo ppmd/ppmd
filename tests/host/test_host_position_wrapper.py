@@ -3,8 +3,6 @@ import pytest
 from ppmd import *
 import numpy as np
 
-np.set_printoptions(threshold=np.nan)
-
 
 def test_simple_shift():
     n = 4

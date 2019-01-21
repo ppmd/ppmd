@@ -57,7 +57,6 @@ def _check_dtype(arr, dtype):
 
 _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
-np.set_printoptions(threshold=np.nan)
 
 class TranslateMTLCuda(object):
     def __init__(self, dtype, tree, nlevel, a_arr, ar_arr, p_arr, e_arr,

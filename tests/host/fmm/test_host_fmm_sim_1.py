@@ -12,7 +12,6 @@ def get_res_file_path(filename):
                         filename)
 
 
-np.set_printoptions(linewidth=200)
 #from ppmd_vis import plot_spheres
 
 import itertools

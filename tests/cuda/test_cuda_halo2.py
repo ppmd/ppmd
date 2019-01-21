@@ -171,7 +171,6 @@ def test_host_halo_cube_4(state, h_state):
     '''
     print rank, h_p.shape, d_p.shape, ch
 
-    np.set_printoptions(linewidth=60)
 
     if rank == 0:
         print rank, "DEV local"

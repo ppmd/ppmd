@@ -45,7 +45,6 @@ _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 REAL = ctypes.c_double
 INT64 = ctypes.c_int64
 
-np.set_printoptions(threshold=np.nan)
 
 def spherical(xyz):
     """

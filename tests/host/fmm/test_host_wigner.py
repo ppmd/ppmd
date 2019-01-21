@@ -7,7 +7,6 @@ import pytest, ctypes, math
 from mpi4py import MPI
 import numpy as np
 
-np.set_printoptions(linewidth=200)
 #from ppmd_vis import plot_spheres
 
 import itertools
@@ -454,7 +453,6 @@ def test_print_1():
 
     Q = rng.uniform(low=-1., high=1., size=N)
     Q[:] = 1.0
-    np.set_printoptions(precision=4)
 
     def re_lm(l,m): return (l**2) + l + m
     def im_lm(l,m): return (l**2) + l +  m + nterms**2

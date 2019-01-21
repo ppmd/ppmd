@@ -113,9 +113,6 @@ def test_host_halo_cube_1(state):
 
     ca = state.domain.cell_array
 
-    #np.set_printoptions(linewidth=24)
-    #print "cell counts \n", state.get_cell_to_particle_map().cell_contents_count[:]
-
 
 
     for cx in range(ca[0]):

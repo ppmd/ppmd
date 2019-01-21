@@ -19,7 +19,6 @@ import math
 # package level
 from ppmd import access, mpi, runtime, host, opt
 
-np.set_printoptions(threshold=1000)
 SUM = mpi.MPI.SUM
 
 

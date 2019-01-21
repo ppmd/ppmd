@@ -3,7 +3,6 @@ import time
 from ppmd import *
 import numpy as np
 import sys
-np.set_printoptions(threshold=np.nan)
 
 MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
 MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
