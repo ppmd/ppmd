@@ -5,7 +5,6 @@ import ctypes
 import numpy as np
 import ppmd as md
 import sys
-np.set_printoptions(linewidth=200)
 
 from ppmd.coulomb.octal import *
 from ppmd import *

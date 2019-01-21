@@ -14,7 +14,6 @@ import numpy as np
 # package level
 from ppmd import access, mpi, host
 
-np.set_printoptions(threshold=1000)
 
 _MPI = mpi.MPI
 SUM = _MPI.SUM

@@ -22,7 +22,6 @@ from ppmd.lib import build
 
 from ppmd.data.scalar_array import ScalarArray
 
-np.set_printoptions(threshold=1000)
 
 SUM = mpi.MPI.SUM
 

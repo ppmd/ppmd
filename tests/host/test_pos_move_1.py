@@ -9,7 +9,6 @@ from ppmd.coulomb.fmm import PyFMM
 
 from math import sqrt
 import numpy as np
-np.set_printoptions(threshold=np.nan)
 
 mpi_rank = mpi.MPI.COMM_WORLD.Get_rank()
 mpi_size = mpi.MPI.COMM_WORLD.Get_size()

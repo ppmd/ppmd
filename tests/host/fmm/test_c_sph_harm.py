@@ -7,7 +7,6 @@ import pytest, ctypes, math
 from mpi4py import MPI
 import numpy as np
 
-np.set_printoptions(linewidth=200)
 
 
 from ppmd import *

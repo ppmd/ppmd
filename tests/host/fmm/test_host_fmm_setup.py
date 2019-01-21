@@ -12,7 +12,6 @@ import profile
 import pstats
 import tempfile
 
-np.set_printoptions(linewidth=200)
 #from ppmd_vis import plot_spheres
 
 import itertools

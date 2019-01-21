@@ -113,7 +113,6 @@ def test_host_halo_cube_1(state):
 
     ca = state.domain.cell_array
 
-    np.set_printoptions(linewidth=2*(ca[0]))
 
 
 
@@ -253,7 +252,6 @@ def test_host_halo_cube_3(state, h_state):
     '''
     print rank, h_p.shape, d_p.shape, ch
 
-    np.set_printoptions(linewidth=60)
 
     if rank == 0:
         print rank, "DEV local"

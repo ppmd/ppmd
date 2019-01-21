@@ -843,7 +843,6 @@ class EwaldOrthoganal(object):
         self._vars['recip_axis'] = np.zeros((2,2*recip_axis_len+1,3), dtype=ctypes.c_double)
         self._vars['recip_space'] = np.zeros((2, 2*nmax_x+1, 2*nmax_y+1, 2*nmax_z+1), dtype=ctypes.c_double)
 
-        np.set_printoptions(linewidth=400)
 
         N_LOCAL = positions.npart_local
 

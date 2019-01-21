@@ -8,7 +8,6 @@ from mpi4py import MPI
 import numpy as np
 from ctypes import *
 
-np.set_printoptions(linewidth=200)
 #from ppmd_vis import plot_spheres
 
 import itertools

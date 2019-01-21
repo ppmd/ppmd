@@ -124,7 +124,7 @@ class FMMLocal(object):
             assert potential[:].shape[0] >= positions.npart_local
         elif potential is not None:
             assert potential.shape[0] * potential.shape[1] >= \
-                    postitions.npart_local
+                    positions.npart_local
 
         self._u[0] = 0.0
 

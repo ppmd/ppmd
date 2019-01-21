@@ -13,7 +13,6 @@ __copyright__ = "Copyright 2016, W.R.Saunders"
 
 REAL = ctypes.c_double
 INT64 = ctypes.c_int64
-np.set_printoptions(threshold=np.nan)
 
 class cube_owner_map(object):
     """
