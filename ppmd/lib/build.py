@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pytools.prefork import call_capture_output
 import numpy as np
+from tempfile import TemporaryDirectory
+
 
 # package level imports
 from ppmd import config, runtime, mpi, opt
@@ -29,13 +31,27 @@ MPI_CC = ppmd.config.COMPILERS[ppmd.config.MAIN_CFG['cc-mpi'][1]]
 
 build_dir = os.path.abspath(ppmd.config.MAIN_CFG['build-dir'][1])
 
+
+
 # make the tmp build directory
 if not os.path.exists(build_dir) and _MPIRANK == 0:
     os.mkdir(build_dir)
+
 _MPIBARRIER()
+
+_lldir = ppmd.config.MAIN_CFG['local_lib_dir'][1]
+LOCAL_LIB_DIR = TemporaryDirectory(prefix='ppmd_lld_', dir=_lldir)
 
 
 LOADED_LIBS = []
+
+
+def _read_lib_as_bytes(directory, filename):
+    with open(os.path.join(directory, filename), 'rb') as fh:
+        f = fh.read()
+    return f
+
+
 
 def _md5(string):
     """Create unique hex digest"""
@@ -141,7 +157,7 @@ def simple_lib_creator(
 
     if not ppmd.runtime.BUILD_PER_PROC:
 
-        var = int(hashlib.md5(_lib_filename.encode('utf-8')).hexdigest()[:7], 16)
+        var = int(hashlib.md5(_filename.encode('utf-8')).hexdigest()[:7], 16)
         var0 = np.array([int(_build_needed), var])
         _MPIWORLD.Bcast(var0, root=0)
         if var0[1] != var:
@@ -162,15 +178,41 @@ def simple_lib_creator(
         if (_MPIRANK == 0)  or ppmd.runtime.BUILD_PER_PROC:
             _source_write(header_code, src_code, _filename,
                           extensions=extensions,
-                          dst_dir=ppmd.runtime.BUILD_DIR, CC=CC)
+                          dst_dir=dst_dir, CC=CC)
 
             build_lib(_filename, extensions=extensions, source_dir=dst_dir,
                       CC=CC, dst_dir=dst_dir, inc_dirs=inc_dirs)
         if not ppmd.runtime.BUILD_PER_PROC:
             _MPIBARRIER()
+    
+    if _MPIRANK == 0:
+        fb = _read_lib_as_bytes(dst_dir, _lib_filename)
+        a=len(fb)
+    else:
+        a=-1
+    a = np.array(a)
+
+    _MPIWORLD.Bcast(a)
+    assert a > 0
+
+    if _MPIRANK != 0:
+        fb = bytearray(a)
+
+    _MPIWORLD.Bcast(fb)
+    print(_MPIRANK, len(fb))
+    
+
+    local_filename = os.path.join(LOCAL_LIB_DIR.name, _filename + '.so')
+    print(_lib_filename)
+    print(local_filename)
+
+    with open(local_filename, 'wb') as fh:
+        fh.write(fb)
+
 
     _load_timer.start()
-    lib = _load(_lib_filename)
+    # lib = _load(_lib_filename)
+    lib = _load(local_filename)
     _load_timer.pause()
 
     opt.PROFILE['Lib-Load'] = _load_timer.time()

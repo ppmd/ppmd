@@ -51,11 +51,16 @@ if 'PPMD_EXTRA_COMPILERS' in os.environ:
 else:
     extra_compiler_dir = None
 
+if 'PPMD_LOCAL_LIB_DIR' in os.environ:
+    local_lib_dir = os.path.abspath(os.environ['PPMD_LOCAL_LIB_DIR'])
+else:
+    local_lib_dir = build_dir
 
 MAIN_CFG['build-dir'] = (str, build_dir)
 MAIN_CFG['cc-main'] = (str, cc_main)
 MAIN_CFG['cc-openmp'] = (str, cc_omp)
 MAIN_CFG['cc-mpi'] = (str, 'MPI4PY')
+MAIN_CFG['local_lib_dir'] = (str, local_lib_dir)
 
 
 def load_config(dir=None):
