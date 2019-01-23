@@ -26,7 +26,6 @@ MAIN_CFG = dict()
 
 # defaults and type defs for main options
 MAIN_CFG['opt-level'] = (int, 1)
-MAIN_CFG['debug-level'] = (int, 0)
 MAIN_CFG['verbose-level'] = (int, 0)
 MAIN_CFG['timer-level'] = (int, 1)
 MAIN_CFG['build-timer-level'] = (int, 0)
@@ -56,6 +55,12 @@ if 'PPMD_LOCAL_LIB_DIR' in os.environ:
 else:
     local_lib_dir = build_dir
 
+if 'PPMD_ENABLE_DEBUG' in os.environ:
+    MAIN_CFG['debug-level'] = (int, 1)
+else:
+    MAIN_CFG['debug-level'] = (int, 0)
+
+
 MAIN_CFG['build-dir'] = (str, build_dir)
 MAIN_CFG['cc-main'] = (str, cc_main)
 MAIN_CFG['cc-openmp'] = (str, cc_omp)
@@ -69,7 +74,7 @@ def load_config(dir=None):
     else:
         CFG_DIR = os.path.abspath(dir)
 
-
+    """
     # parse main options
     main_parser = ConfigParser.ConfigParser(os.environ)
     main_parser.read(os.path.join(CFG_DIR, 'default.cfg'))
@@ -81,7 +86,7 @@ def load_config(dir=None):
             pass
         except ConfigParser.NoOptionError:
             pass
-
+    """
 
     CC_KEYS = (
                 'name',

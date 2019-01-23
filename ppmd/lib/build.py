@@ -6,6 +6,7 @@ __license__ = "GPL"
 # system level imports
 import ctypes
 import os
+import stat
 import hashlib
 import subprocess
 import sys
@@ -146,7 +147,7 @@ def simple_lib_creator(
     # create a base filename for the library
     _filename = prefix + '_' + str(name)
     _filename += '_' + _md5(_filename + str(header_code) + str(src_code) +
-                            str(name) + str(CC.hash))
+                            str(name) + str(CC.hash) + str(ppmd.runtime.DEBUG))
 
     if ppmd.runtime.BUILD_PER_PROC:
         _filename += '_' + str(_MPIRANK)
@@ -209,6 +210,8 @@ def simple_lib_creator(
     with open(local_filename, 'wb') as fh:
         fh.write(fb)
 
+    os.chmod(local_filename, stat.S_IRWXU)
+
 
     _load_timer.start()
     # lib = _load(_lib_filename)
@@ -237,11 +240,12 @@ def build_lib(lib, extensions, source_dir, CC, dst_dir, inc_dirs):
              [_lib_filename] + CC.c_flags  + CC.l_flags + \
              ['-I' + str(d) for d in inc_dirs] + \
              ['-I' + str(source_dir)]
-
+    
     if ppmd.runtime.DEBUG > 0:
         _c_cmd += CC.dbg_flags
-    if ppmd.runtime.OPT > 0:
+    else:
         _c_cmd += CC.opt_flags
+
     _c_cmd += CC.shared_lib_flag
 
     stdout_filename = os.path.join(dst_dir, lib + '.log')
