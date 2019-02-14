@@ -33,6 +33,8 @@ def test_non_pos_1():
     new_vel = rng.uniform(size=(A.npart_local, 3))
 
     with A.V.modify_view() as m:
+        assert m.shape[0] == A.npart_local
+        assert m.shape[1] == 3
         m[:] = new_vel
 
     new_int_id = A.V._vid_int
@@ -40,7 +42,9 @@ def test_non_pos_1():
     assert np.linalg.norm(A.V[:A.npart_local,:] - new_vel, np.inf) < 10.**-16
 
 
-
+    with A.V.modify_view() as m:
+        pass
+    assert A.V._vid_int > new_int_id
     
 
     
