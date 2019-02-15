@@ -356,3 +356,8 @@ def check_pythonhashseed():
     if int(os.environ['PYTHONHASHSEED'], 10) >= 4294967295:
         raise RuntimeError(_badhashstring)
 
+
+def is_comm_null(comm):
+    return comm == MPI.COMM_NULL
+
+

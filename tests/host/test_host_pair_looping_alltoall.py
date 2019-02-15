@@ -20,6 +20,7 @@ ScalarArray = md.data.ScalarArray
 def test_host_all_to_all_NS():
 
     md.runtime.BUILD_PER_PROC = True
+
     if rank == 0:
         A = ParticleDat(
             npart=1000,
@@ -60,7 +61,7 @@ def test_host_all_to_all_NS():
 
         for i in range(N):
             assert B[i] == C[i]
-
+    
     barrier()
     md.runtime.BUILD_PER_PROC = False
     barrier()
@@ -110,7 +111,9 @@ def test_host_all_to_all():
         for i in range(N):
             assert B[i] == C[i]
 
-
     barrier()
     md.runtime.BUILD_PER_PROC = False
     barrier()
+
+
+

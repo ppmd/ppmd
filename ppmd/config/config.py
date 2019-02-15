@@ -61,6 +61,15 @@ else:
     MAIN_CFG['debug-level'] = (int, 0)
 
 
+if 'PPMD_NO_FS_COMM' in os.environ:
+    MAIN_CFG['no-fs-comm'] = (bool, True)
+else:
+    MAIN_CFG['no-fs-comm'] = (bool, False)
+
+
+
+
+
 MAIN_CFG['build-dir'] = (str, build_dir)
 MAIN_CFG['cc-main'] = (str, cc_main)
 MAIN_CFG['cc-openmp'] = (str, cc_omp)

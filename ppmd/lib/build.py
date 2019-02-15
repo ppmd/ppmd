@@ -19,29 +19,33 @@ from tempfile import TemporaryDirectory
 from ppmd import config, runtime, mpi, opt
 import ppmd.lib
 
+from ppmd.mpi import is_comm_null
+
 
 _MPIRANK = ppmd.mpi.MPI.COMM_WORLD.Get_rank()
 _MPIWORLD = ppmd.mpi.MPI.COMM_WORLD
 _MPIBARRIER = ppmd.mpi.MPI.COMM_WORLD.Barrier
+
+_SHARED_INTRACOMM = ppmd.mpi.SHMMPI_HANDLE.get_intra_comm()
+_SHARED_INTERCOMM = ppmd.mpi.SHMMPI_HANDLE.get_inter_comm()
 
 
 
 TMPCC = ppmd.config.COMPILERS[ppmd.config.MAIN_CFG['cc-main'][1]]
 TMPCC_OpenMP = ppmd.config.COMPILERS[ppmd.config.MAIN_CFG['cc-openmp'][1]]
 MPI_CC = ppmd.config.COMPILERS[ppmd.config.MAIN_CFG['cc-mpi'][1]]
-
 build_dir = os.path.abspath(ppmd.config.MAIN_CFG['build-dir'][1])
+_NO_FS_COMM = ppmd.config.MAIN_CFG['no-fs-comm'][1]
 
 
 
 # make the tmp build directory
 if not os.path.exists(build_dir) and _MPIRANK == 0:
     os.mkdir(build_dir)
-
 _MPIBARRIER()
 
-_lldir = ppmd.config.MAIN_CFG['local_lib_dir'][1]
-LOCAL_LIB_DIR = TemporaryDirectory(prefix='ppmd_lld_', dir=_lldir)
+#_lldir = ppmd.config.MAIN_CFG['local_lib_dir'][1]
+#LOCAL_LIB_DIR = TemporaryDirectory(prefix='ppmd_lld_', dir=_lldir)
 
 
 LOADED_LIBS = []
@@ -134,15 +138,20 @@ def _check_path_exists(abs_path):
 
 _load_timer = opt.Timer()
 
-def simple_lib_creator(
+
+def _load_return_lib(lib_filename):
+    _load_timer.start()
+    lib = _load(lib_filename)
+    _load_timer.pause()
+    opt.PROFILE['Lib-Load'] = _load_timer.time()
+    return lib
+
+
+def _lib_creator_per_proc(
         header_code, src_code, name='', extensions=('.h', '.cpp'),
         dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC, prefix='HOST',
         inc_dirs=(runtime.LIB_DIR,)
-):
-
-    # make build dir
-    if not os.path.exists(dst_dir) and _MPIRANK == 0:
-        os.mkdir(dst_dir)
+        ):
 
     # create a base filename for the library
     _filename = prefix + '_' + str(name)
@@ -150,77 +159,146 @@ def simple_lib_creator(
                             str(name) + str(CC.hash) + str(ppmd.runtime.DEBUG))
 
     if ppmd.runtime.BUILD_PER_PROC:
-        _filename += '_' + str(_MPIRANK)
+        _filename += '_' + str(_MPIRANK) + '_' + str(_MPIWORLD.size)
 
     _lib_filename = os.path.join(dst_dir, _filename + '.so')
-    
     _build_needed = not _check_path_exists(_lib_filename)
 
-    if not ppmd.runtime.BUILD_PER_PROC:
-
-        var = int(hashlib.md5(_filename.encode('utf-8')).hexdigest()[:7], 16)
-        var0 = np.array([int(_build_needed), var])
-        _MPIWORLD.Bcast(var0, root=0)
-        if var0[1] != var:
-            ppmd.abort('Consensus not reached on filename:' + \
-                _filename)
-
-        if var0[0] != int(_build_needed):
-            ppmd.abort('Consensus not reached on build needed:' + \
-                _filename)
-
     if _build_needed:
+        _source_write(header_code, src_code, _filename,
+                      extensions=extensions,
+                      dst_dir=dst_dir, CC=CC)
 
-        # need all ranks to recognise file does not exist if not build per proc
-        # before rank 0 starts to build it
-        if not ppmd.runtime.BUILD_PER_PROC:
-            _MPIBARRIER()
+        build_lib(_filename, extensions=extensions, source_dir=dst_dir,
+                  CC=CC, dst_dir=dst_dir, inc_dirs=inc_dirs)
 
-        if (_MPIRANK == 0)  or ppmd.runtime.BUILD_PER_PROC:
-            _source_write(header_code, src_code, _filename,
-                          extensions=extensions,
-                          dst_dir=dst_dir, CC=CC)
+    return _load_return_lib(_lib_filename)
 
-            build_lib(_filename, extensions=extensions, source_dir=dst_dir,
-                      CC=CC, dst_dir=dst_dir, inc_dirs=inc_dirs)
-        if not ppmd.runtime.BUILD_PER_PROC:
-            _MPIBARRIER()
-    
-    if _MPIRANK == 0:
-        fb = _read_lib_as_bytes(dst_dir, _lib_filename)
-        a=len(fb)
+
+
+def _lib_creator_no_fs_comm(
+        header_code, src_code, name='', extensions=('.h', '.cpp'),
+        dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC, prefix='HOST',
+        inc_dirs=(runtime.LIB_DIR,)
+        ):
+
+    # is this rank building a library
+    if not is_comm_null(_SHARED_INTERCOMM):
+        BUILDER = True if _SHARED_INTERCOMM.rank == 0 else False
     else:
-        a=-1
-    a = np.array(a)
+        BUILDER = False
 
-    _MPIWORLD.Bcast(a)
-    assert a > 0
+    # create a base filename for the library
+    _filename = prefix + '_' + str(name)
+    _filename += '_' + _md5(_filename + str(header_code) + str(src_code) +
+                            str(name) + str(CC.hash) + str(ppmd.runtime.DEBUG))
 
-    if _MPIRANK != 0:
-        fb = bytearray(a)
+    _lib_filename = os.path.join(dst_dir, _filename + '.so')
 
-    _MPIWORLD.Bcast(fb)
-    print(_MPIRANK, len(fb))
+    # consensus on filename
+    var = int(hashlib.md5(_filename.encode('utf-8')).hexdigest()[:7], 16)
+    var0 = np.array([var])
+    _MPIWORLD.Bcast(var0, root=0)
+    if var0[0] != var:
+        ppmd.abort('Consensus not reached on filename:' + _filename)
+
+    _build_needed = not _check_path_exists(_lib_filename)
+    if _build_needed and BUILDER:
+
+        _source_write(header_code, src_code, _filename, extensions=extensions,
+                      dst_dir=dst_dir, CC=CC)
+
+        build_lib(_filename, extensions=extensions, source_dir=dst_dir,
+                  CC=CC, dst_dir=dst_dir, inc_dirs=inc_dirs)
+
+    # is this rank writing to the filesystem
+    if not is_comm_null(_SHARED_INTERCOMM):
+        if _SHARED_INTERCOMM.rank == 0:
+            fb = _read_lib_as_bytes(dst_dir, _lib_filename)
+            a=len(fb)
+        else:
+            a=-1
+        a = np.array(a)
+
+        _SHARED_INTERCOMM.Bcast(a)
+        assert a > 0
+        if _SHARED_INTERCOMM.rank != 0:
+            fb = bytearray(a)
+        _SHARED_INTERCOMM.Bcast(fb)
+        if _SHARED_INTERCOMM.rank != 0:
+            with open(_lib_filename, 'wb') as fh:
+                fh.write(fb)
+            os.chmod(_lib_filename, stat.S_IRWXU)
+        
+    # load on each node
+    _SHARED_INTRACOMM.Barrier()
+    return _load_return_lib(_lib_filename)
+
+
+
+def _lib_creator_fs_comm(
+        header_code, src_code, name='', extensions=('.h', '.cpp'),
+        dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC, prefix='HOST',
+        inc_dirs=(runtime.LIB_DIR,)
+        ):
+    
+    BUILDER = True if _MPIRANK == 0 else False
+
+    # create a base filename for the library
+    _filename = prefix + '_' + str(name)
+    _filename += '_' + _md5(_filename + str(header_code) + str(src_code) +
+                            str(name) + str(CC.hash) + str(ppmd.runtime.DEBUG))
+    _lib_filename = os.path.join(dst_dir, _filename + '.so')
     
 
-    local_filename = os.path.join(LOCAL_LIB_DIR.name, _filename + '.so')
-    print(_lib_filename)
-    print(local_filename)
+    
+    _build_needed = not _check_path_exists(_lib_filename)
+    # need all ranks to recognise file does not exist if not build per proc
+    # before rank 0 starts to build it
+    _MPIBARRIER()
 
-    with open(local_filename, 'wb') as fh:
-        fh.write(fb)
+    # filename consensus
+    var = int(hashlib.md5(_filename.encode('utf-8')).hexdigest()[:7], 16)
+    var0 = np.array([int(_build_needed), var])
+    _MPIWORLD.Bcast(var0, root=0)
+    if var0[1] != var:
+        ppmd.abort('Consensus not reached on filename:' + \
+            _filename)
 
-    os.chmod(local_filename, stat.S_IRWXU)
+    if var0[0] != int(_build_needed):
+        ppmd.abort('Consensus not reached on build needed:' + \
+            _filename)
+
+    # build the lib
+    if _build_needed and BUILDER:
+
+        _source_write(header_code, src_code, _filename,
+                      extensions=extensions,
+                      dst_dir=dst_dir, CC=CC)
+
+        build_lib(_filename, extensions=extensions, source_dir=dst_dir,
+                  CC=CC, dst_dir=dst_dir, inc_dirs=inc_dirs)
+
+    _MPIBARRIER()
+    return _load_return_lib(_lib_filename)
 
 
-    _load_timer.start()
-    # lib = _load(_lib_filename)
-    lib = _load(local_filename)
-    _load_timer.pause()
 
-    opt.PROFILE['Lib-Load'] = _load_timer.time()
+def simple_lib_creator(
+        header_code, src_code, name='', extensions=('.h', '.cpp'),
+        dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC, prefix='HOST',
+        inc_dirs=(runtime.LIB_DIR,)
+):
 
-    return lib
+
+    if ppmd.runtime.BUILD_PER_PROC:
+        return _lib_creator_per_proc(header_code, src_code, name, extensions, dst_dir, CC, prefix, inc_dirs)
+    elif _NO_FS_COMM:
+        return _lib_creator_no_fs_comm(header_code, src_code, name, extensions, dst_dir, CC, prefix, inc_dirs)
+    else:
+        return _lib_creator_fs_comm(header_code, src_code, name, extensions, dst_dir, CC, prefix, inc_dirs)
+
+
 
 _build_timer = opt.Timer()
 
