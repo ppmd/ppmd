@@ -103,7 +103,6 @@ class GlobalDataMover:
             nbytes += byte_per_element(dat) * dat_ncomp(dat)
 
         send = np.zeros((lcount, nbytes), np.byte)
-        recv = np.zeros((self._recv_count[0], nbytes), np.byte)
         
         print("------->", lcount)
 

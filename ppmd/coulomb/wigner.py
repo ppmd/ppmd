@@ -292,7 +292,6 @@ class _WignerEngine(object):
             'wigner_matrix')['get_matrix_set']
 
     def __call__(self, maxj, beta, eps_scaled=False):
-
         pointers = np.zeros(maxj, dtype=ctypes.c_void_p)
         matrices = []
         
@@ -307,8 +306,8 @@ class _WignerEngine(object):
         s = 0
         for jx in range(maxj):
             p = 2*jx + 1
-            matrices.append(np.reshape(mat[s:s+p*p:].view(), (p,p)))
-            pointers[jx] = mat[s::].ctypes.data
+            matrices.append(np.reshape(mat[s:s+p*p:].copy(), (p,p)))
+            pointers[jx] = matrices[-1].ctypes.data
             s += p*p
 
         matrices.append(mat)
@@ -319,6 +318,8 @@ class _WignerEngine(object):
             ctypes.c_double(beta),
             pointers.ctypes.get_as_parameter()
         )
+
+
         if eps_scaled:
             for jx in range(maxj):
                 ncomp = 2*jx + 1
