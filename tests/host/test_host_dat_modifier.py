@@ -3,7 +3,7 @@
 import numpy as np
 import ppmd
 from ppmd.access import *
-from ppmd.data import ParticleDat, ScalarArray, GlobalArray, PositionDat
+from ppmd.data import ParticleDat, ScalarArray, GlobalArray, PositionDat, data_movement
 
 State = ppmd.state.State
 BoundaryTypePeriodic = ppmd.domain.BoundaryTypePeriodic
@@ -39,13 +39,20 @@ def test_non_pos_1():
 
     new_int_id = A.V._vid_int
     assert new_int_id > curr_int_id
-    assert np.linalg.norm(A.V[:A.npart_local,:] - new_vel, np.inf) < 10.**-16
+
+    if A.npart_local > 0:
+        assert np.linalg.norm(A.V[:A.npart_local,:] - new_vel, np.inf) < 10.**-16
 
 
     with A.V.modify_view() as m:
         pass
     assert A.V._vid_int > new_int_id
     
+    A.P[:A.npart_local:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(A.npart_local,3))
 
-    
+    ##
+    gdm = data_movement.GlobalDataMover(A)
+    gdm()
+
+
 

@@ -345,15 +345,21 @@ class BaseMDState(object):
         )
 
         bx = np.logical_not(lo)
-        self._move_controller.compress_empty_slots(np.nonzero(bx)[0])
+        self.remove_by_slot(np.nonzero(bx)[0])
 
-        self.npart_local = np.sum(lo)
+    
+    
+    def remove_by_slot(self, slots):
+        new_npart_local = self.npart_local - len(slots)
+        self._move_controller.compress_empty_slots(slots)
+        self.npart_local = new_npart_local
 
         # for px in self.particle_dats:
         #    getattr(self, px).npart_local = self.npart_local
 
         # check we did not loose some particles in the process
         self.check_npart_total()
+
 
     def check_npart_total(self):
         """Check no particles have been lost"""
