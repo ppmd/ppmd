@@ -48,11 +48,20 @@ def test_non_pos_1():
         pass
     assert A.V._vid_int > new_int_id
     
-    A.P[:A.npart_local:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(A.npart_local,3))
 
-    ##
-    gdm = data_movement.GlobalDataMover(A)
-    gdm()
+    print("")
+    print(A.domain.comm.rank, A.npart_local, "\n", A.P[:A.npart_local:, :])    
+
+    with A.P.modify_view() as m:
+        m[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(A.npart_local,3))
+
+    print("=" * 80)
+    print(A.domain.comm.rank, A.npart_local, "\n", A.P[:A.npart_local:, :])
+
+
+
+
+
 
 
 

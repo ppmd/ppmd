@@ -31,6 +31,7 @@ class ParticleDatModifier:
         if self.is_positiondat:
             self.dat.group.invalidate_lists = True
             # need to trigger MPI rank consistency/ownership here
+            self.dat.group.check_position_consistency()
 
 
 class GlobalDataMover:
@@ -42,6 +43,47 @@ class GlobalDataMover:
         self._recv_count = np.zeros(1, INT64)
         self._win = MPI.Win()
         self._win_recv_count = self._win.Create(self._recv_count, comm=self.comm)
+
+        self._recv = None
+        self._win_recv = None
+    
+
+    def _check_recv_win(self):
+        
+        nbytes = self._get_nbytes()
+
+        # MPI Win create calls are collective on the comm
+        if (self._recv is None) or \
+                (self._recv.shape[0] < self._recv_count[0]) or \
+                (self._recv.shape[1] != nbytes):
+            realloc = True
+        else:
+            realloc = False
+        realloc = np.array(realloc, np.bool)
+        result = np.array(False, np.bool)
+        self.comm.Allreduce(realloc, result, MPI.LOR)
+
+        if realloc:
+            self._recv = np.zeros((self._recv_count[0]+100, nbytes), dtype=np.byte)
+            if self._win_recv is not None:
+                self._win_recv.Free()
+            self._win_recv = self._win.Create(self._recv, disp_unit=nbytes, comm=self.comm)
+
+
+    def _byte_per_element(self, dat):
+        return getattr(self.state, dat).view[0,0].nbytes
+    def _dat_dtype(self, dat):
+        return getattr(self.state, dat).dtype
+    def _dat_ncomp(self, dat):
+        return getattr(self.state, dat).ncomp
+    def _dat_obj(self, dat):
+        return getattr(self.state, dat)
+
+    def _get_nbytes(self):
+        nbytes = 0
+        for dat in self.state.particle_dats:
+            nbytes += self._byte_per_element(dat) * self._dat_ncomp(dat)
+        return nbytes
 
 
     def __call__(self):
@@ -83,47 +125,64 @@ class GlobalDataMover:
                 lcount += 1
         
         self._recv_count[0] = 0
-        self._win_recv_count.Fence(MPI.MODE_NOSTORE)
+        #self._win_recv_count.Fence(MPI.MODE_NOSTORE)
+        self._win_recv_count.Fence(0)
         for px in range(lcount):
             rk = lrank[px]
             self._win_recv_count.Get_accumulate(np.array(1), lrind[px:px+1], rk)
         self._win_recv_count.Fence(MPI.MODE_NOSTORE)
         
-        nbytes = 0
-
-        def byte_per_element(dat):
-            return getattr(self.state, dat).view[0,0].nbytes
-        def dat_dtype(dat):
-            return getattr(self.state, dat).dtype
-        def dat_ncomp(dat):
-            return getattr(self.state, dat).ncomp
-
-
-        for dat in self.state.particle_dats:
-            nbytes += byte_per_element(dat) * dat_ncomp(dat)
+        nbytes = self._get_nbytes()
 
         send = np.zeros((lcount, nbytes), np.byte)
-        
-        print("------->", lcount)
-
-        view_dict = {}
-        s = 0
-        for dat in self.state.particle_dats:
-            w = byte_per_element(dat)
-            n = dat_ncomp(dat)
-            w *= n
-            view_dict[dat] = send[:, s:w:].view(dat_dtype(dat))
-            s += w
-
-        print(view_dict)
-
-
+        for px in range(lcount):
+            s = 0
+            for dat in self.state.particle_dats:
+                w = self._byte_per_element(dat)
+                n = self._dat_ncomp(dat)
+                w *= n
+                v = send[px, s:s+w:].view(self._dat_dtype(dat))
+                s += w
+                v[:] = self._dat_obj(dat).view[px, :].copy()
 
         # need to place the data in the remote buffers here
+        self._check_recv_win()
+
+        # RMA 
+        self._win_recv.Fence(0)
+
+        for px in range(lcount):
+            self._win_recv.Put(send[px, :], lrank[px], lrind[px])
+
+        self._win_recv.Fence(MPI.MODE_NOSTORE)
+        
+        # unpack the data recv'd into dats
+        old_npart_local = self.state.npart_local
+        self.state.npart_local = old_npart_local + self._recv_count[0]
+
+        for px in range(self._recv_count[0]):
+            s = 0
+            for dat in self.state.particle_dats:
+                w = self._byte_per_element(dat)
+                n = self._dat_ncomp(dat)
+                w *= n
+                v = self._recv[px, s:s+w:].view(self._dat_dtype(dat))
+                s += w
+                self._dat_obj(dat).view[old_npart_local + px, :] = v[:]
+        
+        self.state.remove_by_slot(lpid[:lcount])
 
 
-        #print("------->", lcount)
-        #self.state.remove_by_slot(lpid[:lcount:])
+
+
+
+
+
+
+
+
+
+
 
 
 
