@@ -49,7 +49,6 @@ class GlobalDataMover:
     
 
     def _check_recv_win(self):
-        
         nbytes = self._get_nbytes()
 
         # MPI Win create calls are collective on the comm
@@ -62,8 +61,11 @@ class GlobalDataMover:
         realloc = np.array(realloc, np.bool)
         result = np.array(False, np.bool)
         self.comm.Allreduce(realloc, result, MPI.LOR)
+        
+        if realloc and not result:
+            raise RuntimeError('''Error: realloc required but not requested? Potential bug or MPI issue.''')
 
-        if realloc:
+        if result:
             self._recv = np.zeros((self._recv_count[0]+100, nbytes), dtype=np.byte)
             if self._win_recv is not None:
                 self._win_recv.Free()
