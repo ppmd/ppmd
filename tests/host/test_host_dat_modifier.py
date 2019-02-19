@@ -190,6 +190,4 @@ def test_pos_2():
             assert np.linalg.norm(A.V[px, :] - vi[A.GID[px, 0], :], np.inf) < 10.**-16
 
 
-    ppmd.opt.print_profile()
-
 
