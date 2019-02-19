@@ -9,6 +9,8 @@ State = ppmd.state.State
 BoundaryTypePeriodic = ppmd.domain.BoundaryTypePeriodic
 BaseDomainHalo = ppmd.domain.BaseDomainHalo
 
+import ctypes
+INT64 = ctypes.c_int64
 
 def test_non_pos_1():
     
@@ -49,14 +51,97 @@ def test_non_pos_1():
     assert A.V._vid_int > new_int_id
     
 
-    print("")
-    print(A.domain.comm.rank, A.npart_local, "\n", A.P[:A.npart_local:, :])    
 
-    with A.P.modify_view() as m:
-        m[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(A.npart_local,3))
+def test_pos_1():
+    
+    rng = np.random.RandomState(97531)
 
-    print("=" * 80)
-    print(A.domain.comm.rank, A.npart_local, "\n", A.P[:A.npart_local:, :])
+    E = 1.0
+    A = State()
+    A.domain = BaseDomainHalo((E,E,E))
+    A.domain.boundary_condition = BoundaryTypePeriodic()
+    
+    N = 1
+    A.npart = N
+
+    M = 4000
+
+    A.P = PositionDat()
+    A.GID = ParticleDat(ncomp=1, dtype=INT64)
+    A.V = ParticleDat(ncomp=3)
+    
+    pi = rng.uniform(low=-0.5*E, high=0.5*E, size=(N, 3))
+    vi = rng.uniform(low=-0.5*E, high=0.5*E, size=(N, 3))
+    gi = rng.randint(0, 1000, size=(N,1))
+    A.P[:] = pi
+    A.V[:] = vi
+    A.GID[:] = gi
+
+    A.scatter_data_from(0)
+    
+    assert N == 1
+
+
+    for testx in range(M):
+        
+        pnew = rng.uniform(low=-0.5*E, high=0.5*E, size=(N, 3))
+
+        on_edge = rng.binomial(1, 0.1)
+        if on_edge:
+
+            edge_coeffs = (
+                (-0.5*E, 0.5*E, pnew[0, 0]),
+                (-0.5*E, 0.5*E, pnew[0, 1]),
+                (-0.5*E, 0.5*E, pnew[0, 2]),
+            )
+
+            coeff_inds = rng.randint(0, 2, 3)
+            pnew = np.array((
+                edge_coeffs[0][coeff_inds[0]],
+                edge_coeffs[1][coeff_inds[1]],
+                edge_coeffs[2][coeff_inds[2]]
+                ))
+
+
+
+        int_id = A.P._vid_int
+        with A.P.modify_view() as m:
+            m[:] = pnew
+        assert int_id < A.P._vid_int
+
+        if A.npart_local == 1:
+            assert A.P[0, 0] >= A.domain.boundary[0]
+            assert A.P[0, 0] <= A.domain.boundary[1]
+            assert A.P[0, 1] >= A.domain.boundary[2]
+            assert A.P[0, 1] <= A.domain.boundary[3]
+            assert A.P[0, 2] >= A.domain.boundary[4]
+            assert A.P[0, 2] <= A.domain.boundary[5]
+
+            assert np.linalg.norm(A.P[0,:] - pnew, np.inf) < 10.**-16
+            assert np.linalg.norm(A.V[0,:] - vi, np.inf) < 10.**-16
+            assert A.GID[0,0] == gi[0, 0]
+        
+        else:
+
+            assert A.npart_local == 0
+
+        lcount = np.array((A.npart_local,), np.int)
+        gcount = np.zeros_like(lcount)
+        A.domain.comm.Allreduce(lcount, gcount)
+        assert gcount[0] == N
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

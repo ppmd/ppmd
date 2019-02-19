@@ -71,7 +71,7 @@ class GlobalDataMover:
 
 
     def _byte_per_element(self, dat):
-        return getattr(self.state, dat).view[0,0].nbytes
+        return getattr(self.state, dat).view.itemsize
     def _dat_dtype(self, dat):
         return getattr(self.state, dat).dtype
     def _dat_ncomp(self, dat):
@@ -113,7 +113,7 @@ class GlobalDataMover:
                 assert _p[dx] <=  0.5 * extent[dx], "outside domain"
                 assert _p[dx] >= -0.5 * extent[dx], "outside domain"
                 tint = int((_p[dx] + 0.5 * extent[dx]) * dist_cell_widths[dx])
-                tint = min(dims[dx], tint)
+                tint = min(dims[dx]-1, tint)
                 _rk += tint * rk_offsets[dx]
             return _rk
 
