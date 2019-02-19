@@ -7,10 +7,11 @@ __license__ = "GPL"
 # system level
 import ctypes
 import numpy as np
+import time
 
 # package level
 from ppmd.lib import build
-from ppmd import mpi
+from ppmd import mpi, opt
 
 REAL = ctypes.c_double
 INT64 = ctypes.c_int64
@@ -46,9 +47,26 @@ class GlobalDataMover:
 
         self._recv = None
         self._win_recv = None
+
+        self._key_call = self.__class__.__name__ + ':__call__'
+        self._key_call_count = self.__class__.__name__ + ':__call__:count'
+        self._key_check = self.__class__.__name__ + ':win_check'
+        self._key_rma1 = self.__class__.__name__ + ':RMA_Get_accumulate'
+        self._key_rma2 = self.__class__.__name__ + ':RMA_Put'
+        self._key_local = self.__class__.__name__ + ':local_movement'
+        self._key_compress = self.__class__.__name__ + ':compress'
+
+        opt.PROFILE[self._key_call] = 0.0
+        opt.PROFILE[self._key_call_count] = 0
+        opt.PROFILE[self._key_check] = 0.0
+        opt.PROFILE[self._key_rma1] = 0.0
+        opt.PROFILE[self._key_rma2] = 0.0
+        opt.PROFILE[self._key_local] = 0.0
+        opt.PROFILE[self._key_compress] = 0.0
     
 
     def _check_recv_win(self):
+        t0 = time.time()
         nbytes = self._get_nbytes()
 
         # MPI Win create calls are collective on the comm
@@ -70,7 +88,8 @@ class GlobalDataMover:
             if self._win_recv is not None:
                 self._win_recv.Free()
             self._win_recv = self._win.Create(self._recv, disp_unit=nbytes, comm=self.comm)
-
+        
+        opt.PROFILE[self._key_check] += time.time() - t0
 
     def _byte_per_element(self, dat):
         return getattr(self.state, dat).view.itemsize
@@ -89,8 +108,14 @@ class GlobalDataMover:
 
 
     def __call__(self):
+        t0 = time.time()
+
         state = self.state
         comm = self.comm
+
+        if comm.size == 1:
+            return
+
         rank = comm.rank
         topo = mpi.cartcomm_top_xyz(comm)
         dims = mpi.cartcomm_dims_xyz(comm)
@@ -118,24 +143,30 @@ class GlobalDataMover:
                 tint = min(dims[dx]-1, tint)
                 _rk += tint * rk_offsets[dx]
             return _rk
-
+        
+        t0_local = time.time()
         for px in range(npart):
             rk = to_mpi_rank(pos[px])
             if rk != rank:
                 lrank[lcount] = rk
                 lpid[lcount] = px
                 lcount += 1
+        t_local = time.time() - t0_local
+
         
         self._recv_count[0] = 0
+
+        t1 = time.time()
         #self._win_recv_count.Fence(MPI.MODE_NOSTORE)
         self._win_recv_count.Fence(0)
         for px in range(lcount):
             rk = lrank[px]
             self._win_recv_count.Get_accumulate(np.array(1), lrind[px:px+1], rk)
         self._win_recv_count.Fence(MPI.MODE_NOSTORE)
+        opt.PROFILE[self._key_rma1] += time.time() - t1
         
+        t0_local = time.time()
         nbytes = self._get_nbytes()
-
         send = np.zeros((lcount, nbytes), np.byte)
         for px in range(lcount):
             s = 0
@@ -146,10 +177,12 @@ class GlobalDataMover:
                 v = send[px, s:s+w:].view(self._dat_dtype(dat))
                 s += w
                 v[:] = self._dat_obj(dat).view[px, :].copy()
+        t_local += time.time() - t0_local
 
         # need to place the data in the remote buffers here
         self._check_recv_win()
-
+        
+        t2 = time.time()
         # RMA 
         self._win_recv.Fence(0)
 
@@ -157,11 +190,14 @@ class GlobalDataMover:
             self._win_recv.Put(send[px, :], lrank[px], lrind[px])
 
         self._win_recv.Fence(MPI.MODE_NOSTORE)
-        
+        opt.PROFILE[self._key_rma2] += time.time() - t2
+
+
         # unpack the data recv'd into dats
         old_npart_local = self.state.npart_local
         self.state.npart_local = old_npart_local + self._recv_count[0]
-
+        
+        t0_local = time.time()
         for px in range(self._recv_count[0]):
             s = 0
             for dat in self.state.particle_dats:
@@ -171,10 +207,15 @@ class GlobalDataMover:
                 v = self._recv[px, s:s+w:].view(self._dat_dtype(dat))
                 s += w
                 self._dat_obj(dat).view[old_npart_local + px, :] = v[:]
+        t_local += time.time() - t0_local
+        opt.PROFILE[self._key_local] += t_local
         
+        t0_compress = time.time()
         self.state.remove_by_slot(lpid[:lcount])
-
-
+        opt.PROFILE[self._key_compress] += time.time() - t0_compress
+        
+        opt.PROFILE[self._key_call] += time.time() - t0
+        opt.PROFILE[self._key_call_count] += 1
 
 
 
