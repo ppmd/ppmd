@@ -46,6 +46,7 @@ class GlobalDataMover:
         self._win_recv_count = self._win.Create(self._recv_count, comm=self.comm)
 
         self._recv = None
+        self._send = None
         self._win_recv = None
 
         self._key_call = self.__class__.__name__ + ':__call__'
@@ -63,6 +64,15 @@ class GlobalDataMover:
         opt.PROFILE[self._key_rma2] = 0.0
         opt.PROFILE[self._key_local] = 0.0
         opt.PROFILE[self._key_compress] = 0.0
+
+
+    def _check_send_buffer(self, lcount, nbytes):
+        
+        if self._send is None or \
+                self._send.shape[0] < lcount or \
+                self._send.shape[1] != nbytes:
+
+            self._send = np.zeros((lcount, nbytes), np.byte)
     
 
     def _check_recv_win(self):
@@ -126,11 +136,9 @@ class GlobalDataMover:
         pos = state.get_position_dat()
         pos = pos.view
 
-        
         lcount = 0
-        lrank = np.zeros(npart, dtype=INT64)
-        lpid = np.zeros(npart, dtype=INT64)
-        lrind = np.zeros(npart, dtype=INT64)
+        lrank_dict = {}
+        lpid = []
         
         rk_offsets = (1, dims[0], dims[0]*dims[1])
 
@@ -144,40 +152,52 @@ class GlobalDataMover:
                 _rk += tint * rk_offsets[dx]
             return _rk
         
+        # find the new remote rank for leaving particles
         t0_local = time.time()
         for px in range(npart):
             rk = to_mpi_rank(pos[px])
             if rk != rank:
-                lrank[lcount] = rk
-                lpid[lcount] = px
                 lcount += 1
+                if rk not in lrank_dict.keys():
+                    lrank_dict[rk] = [px]
+                else:
+                    lrank_dict[rk].append(px)
+                lpid.append(px)
         t_local = time.time() - t0_local
-
+        num_rranks = len(lrank_dict.keys())
         
-        self._recv_count[0] = 0
-
+        # for each remote rank get accumalate
         t1 = time.time()
-        #self._win_recv_count.Fence(MPI.MODE_NOSTORE)
+        self._recv_count[0] = 0
         self._win_recv_count.Fence(0)
-        for px in range(lcount):
-            rk = lrank[px]
-            self._win_recv_count.Get_accumulate(np.array(1), lrind[px:px+1], rk)
+        lrind = np.zeros((num_rranks, 2), INT64)
+        
+        for rki, rk in enumerate(lrank_dict.keys()):
+            lrind[rki, 0] = rk
+            _size = np.array((len(lrank_dict[rk]),), INT64)
+            self._win_recv_count.Get_accumulate(_size, lrind[rki, 1:2], rk)
+        
         self._win_recv_count.Fence(MPI.MODE_NOSTORE)
         opt.PROFILE[self._key_rma1] += time.time() - t1
         
+        # pack the send buffer for all particles
         t0_local = time.time()
         nbytes = self._get_nbytes()
-        send = np.zeros((lcount, nbytes), np.byte)
-        for px in range(lcount):
-            s = 0
-            for dat in self.state.particle_dats:
-                w = self._byte_per_element(dat)
-                n = self._dat_ncomp(dat)
-                w *= n
-                v = send[px, s:s+w:].view(self._dat_dtype(dat))
-                s += w
-                v[:] = self._dat_obj(dat).view[px, :].copy()
+        self._check_send_buffer(lcount, nbytes)
+        send_offset = 0
+        for rk in lrind[:, 0]:
+            for px in lrank_dict[rk]:
+                s = 0
+                for dat in self.state.particle_dats:
+                    w = self._byte_per_element(dat)
+                    n = self._dat_ncomp(dat)
+                    w *= n
+                    v = self._send[send_offset, s:s+w:].view(self._dat_dtype(dat))
+                    s += w
+                    v[:] = self._dat_obj(dat).view[px, :].copy()
+                send_offset += 1
         t_local += time.time() - t0_local
+        
 
         # need to place the data in the remote buffers here
         self._check_recv_win()
@@ -185,13 +205,21 @@ class GlobalDataMover:
         t2 = time.time()
         # RMA 
         self._win_recv.Fence(0)
-
-        for px in range(lcount):
-            self._win_recv.Put(send[px, :], lrank[px], lrind[px])
+        
+        send_offset = 0
+        for rki in range(num_rranks):
+            rk = lrind[rki, 0]
+            ri = lrind[rki, 1]
+            nsend = len(lrank_dict[rk])
+            self._win_recv.Put(
+                self._send[send_offset:send_offset + nsend:, :],
+                rk,
+                ri
+            )
+            send_offset += nsend
 
         self._win_recv.Fence(MPI.MODE_NOSTORE)
         opt.PROFILE[self._key_rma2] += time.time() - t2
-
 
         # unpack the data recv'd into dats
         old_npart_local = self.state.npart_local
@@ -211,7 +239,7 @@ class GlobalDataMover:
         opt.PROFILE[self._key_local] += t_local
         
         t0_compress = time.time()
-        self.state.remove_by_slot(lpid[:lcount])
+        self.state.remove_by_slot(lpid)
         opt.PROFILE[self._key_compress] += time.time() - t0_compress
         
         opt.PROFILE[self._key_call] += time.time() - t0

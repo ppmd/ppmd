@@ -136,15 +136,6 @@ def test_pos_1():
 
 
 
-
-
-
-
-
-
-
-
-
 def test_pos_2():
     
     rng = np.random.RandomState(97531)
@@ -188,6 +179,56 @@ def test_pos_2():
         for px in range(A.npart_local):
             assert np.linalg.norm(A.P[px, :] - pnew[A.GID[px, 0], :], np.inf) < 10.**-16
             assert np.linalg.norm(A.V[px, :] - vi[A.GID[px, 0], :], np.inf) < 10.**-16
+
+
+
+
+
+def test_pos_3():
+    """
+    Test a large number of particles being sent to one rank
+    (Had issues with Get_accumalate seg faulting on fence with
+    OpenMPI).
+    """
+    
+    rng = np.random.RandomState(97531)
+
+    E = 1.0
+    A = State()
+    A.domain = BaseDomainHalo((E,E,E))
+    A.domain.boundary_condition = BoundaryTypePeriodic()
+    
+    N = 1000000
+    A.npart = N
+
+    A.P = PositionDat()
+    A.GID = ParticleDat(ncomp=1, dtype=INT64)
+    A.V = ParticleDat(ncomp=3)
+    
+    pi = rng.uniform(low=-0.5*E, high=0.5*E, size=(N, 3))
+    vi = rng.uniform(low=-0.5*E, high=0.5*E, size=(N, 3))
+    gi = np.arange(N)
+    A.P[:] = pi
+    A.V[:] = vi
+    A.GID[:, 0] = gi
+
+    A.scatter_data_from(0)
+    
+    pnew = np.zeros((N,3))
+    pnew[:,:] = 0.1
+
+
+    with A.P.modify_view() as m:
+        m[:] = pnew[A.GID.view[:, 0], :]
+
+    lcount = np.array((A.npart_local,), np.int)
+    gcount = np.zeros_like(lcount)
+    A.domain.comm.Allreduce(lcount, gcount)
+    assert gcount[0] == N
+
+    for px in range(A.npart_local):
+        assert np.linalg.norm(A.P[px, :] - pnew[A.GID[px, 0], :], np.inf) < 10.**-16
+        assert np.linalg.norm(A.V[px, :] - vi[A.GID[px, 0], :], np.inf) < 10.**-16
 
 
 
