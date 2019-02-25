@@ -78,6 +78,14 @@ class BaseMDState(object):
 
         self._dat_len = 0
 
+        self._gdm = None
+
+    def check_position_consistency(self):
+        if self._gdm is not None:
+            self._gdm()
+        else:
+            raise RuntimeError('Cannot check particle decomposition, was a domain added?.')
+
     def rebuild_cell_to_particle_maps(self):
         pass
 
@@ -182,6 +190,7 @@ class BaseMDState(object):
             self._domain.mpi_decompose()
 
         self._cell_particle_map_setup()
+        self._gdm = data.data_movement.GlobalDataMover(self)
 
     def get_npart_local_func(self):
         return self.as_func('npart_local')
@@ -336,6 +345,8 @@ class BaseMDState(object):
         b = self.domain.boundary
         p = self.get_position_dat()
 
+        self.npart_local = p._dat.shape[0]
+
         lo = np.logical_and(
             np.logical_and(
                 np.logical_and((b[0] <= p[::, 0]), (p[::, 0] < b[1])),
@@ -345,15 +356,21 @@ class BaseMDState(object):
         )
 
         bx = np.logical_not(lo)
-        self._move_controller.compress_empty_slots(np.nonzero(bx)[0])
+        self.remove_by_slot(np.nonzero(bx)[0])
 
-        self.npart_local = np.sum(lo)
+    
+    def remove_by_slot(self, slots):
+        new_npart_local = self.npart_local - len(slots)
+
+        self._move_controller.compress_empty_slots(slots)
+        self.npart_local = new_npart_local
 
         # for px in self.particle_dats:
         #    getattr(self, px).npart_local = self.npart_local
 
         # check we did not loose some particles in the process
         self.check_npart_total()
+
 
     def check_npart_total(self):
         """Check no particles have been lost"""

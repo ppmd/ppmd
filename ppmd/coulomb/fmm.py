@@ -128,7 +128,6 @@ class PyFMM(object):
 
 
 
-
         self._tcount = runtime.OMP_NUM_THREADS if runtime.OMP_NUM_THREADS is \
             not None else 1
         self._thread_allocation = np.zeros(1, dtype=INT64)
@@ -337,7 +336,6 @@ class PyFMM(object):
 
 
 
-
         # --- periodic boundaries ---
 
 
@@ -414,11 +412,14 @@ class PyFMM(object):
                         p=self.L,
                         alpha=sph[1], beta=sph[2], gamma=0.0,
                         dtype=self.dtype)
+                    
+                    # between here breaks efence?
                     # store the temporaries
                     self._wigner_matrices_f[(pz, py, px)] = matrices
                     self._wigner_real_pointers.append(pointers_real)
                     self._wigner_imag_pointers.append(pointers_imag)
                     # pointers
+
                     self._wigner_real[iz, iy, ix] = \
                         pointers_real.ctypes.data
                     self._wigner_imag[iz, iy, ix] = \
@@ -438,7 +439,6 @@ class PyFMM(object):
                         pointers_real.ctypes.data
                     self._wigner_b_imag[iz, iy, ix] = \
                         pointers_imag.ctypes.data
-
 
         # compute the exponential part (not needed for rotated mtl)
         for iy, py in enumerate(range(-3, 4)):

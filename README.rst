@@ -43,6 +43,7 @@ Set the following environment variables to alter compilers used and default temp
 * ``PPMD_CC_MAIN``: Name of the compiler to use from compilers defined in ``ppmd/config/compilers`` or in a directory given by ``PPMD_EXTRA_COMPILERS``. For example: ``export PPMD_CC_MAIN=ICC``
 * ``PPMD_CC_OMP``: Name of the OpenMP compiler to use, as above. For example: ``export PPMD_CC_OMP=$PPMD_CC_MAIN``
 * ``PPMD_EXTRA_COMPILERS``: Directory that should be parsed for user defined compilers.
+* ``PPMD_DISABLE_CUDA``: Disable CUDA initialisation.
 
 The following should be set if CUDA support is desired.
 

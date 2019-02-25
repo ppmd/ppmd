@@ -89,6 +89,8 @@ class LongRangeMTL:
         #self.rmat = csr_matrix((self.half_ncomp, self.half_ncomp), dtype=REAL)
 
         def _re_lm(l, m): return l**2 + l + m
+        
+        occ = 0
 
         row = 0
         for jx in range(L):
@@ -101,8 +103,10 @@ class LongRangeMTL:
                             (not (abs(jx+nx) % 2 == 1)):
                             
                             self.rmat[row, col] = _h(jx, kx, nx, mx) * _rvec[_re_lm(jx+nx, mx-kx)]
+                            occ += 1
                         col += 1
                 row += 1
+        
 
         self.sparse_rmat = csr_matrix(self.rmat)
         self.linop = aslinearoperator(self.rmat)

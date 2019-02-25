@@ -213,10 +213,18 @@ Dict available module wide for profiling. Recommended format along lines of:
 PROFILE['MPI:rank'] = _MPIRANK
 
 
-def print_profile():
-    for key, value in sorted(PROFILE.items()):
-        print(key)
-        print('\t', value)
+def print_profile(side_by_side=True):
+    if not side_by_side:
+        for key, value in sorted(PROFILE.items()):
+            print(key)
+            print('\t', value)
+    else:
+        m = 0
+        for key, value in sorted(PROFILE.items()):
+            m = max(m, len(key))
+        for key, value in sorted(PROFILE.items()):
+            print(key.ljust(m), '  |  ', value)
+
 
 
 def dump_profile():

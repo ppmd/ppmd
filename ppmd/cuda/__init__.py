@@ -20,22 +20,26 @@ __all__ = [
 ]
 
 
-try:
-    from . import cuda_base
-    from . import cuda_build
-    from . import cuda_cell
-    from . import cuda_config
-    from . import cuda_data
-    from . import cuda_domain
-    from . import cuda_halo
-    from . import cuda_loop
-    from . import cuda_mpi
-    from . import cuda_pairloop
-    from . import cuda_runtime
-    from . import cuda_state
+from os import environ
 
-    CUDA_IMPORT = True
-except Exception as e:
-    CUDA_IMPORT_ERROR = e
+if not 'PPMD_DISABLE_CUDA' in environ:
+
+    try:
+        from . import cuda_base
+        from . import cuda_build
+        from . import cuda_cell
+        from . import cuda_config
+        from . import cuda_data
+        from . import cuda_domain
+        from . import cuda_halo
+        from . import cuda_loop
+        from . import cuda_mpi
+        from . import cuda_pairloop
+        from . import cuda_runtime
+        from . import cuda_state
+
+        CUDA_IMPORT = True
+    except Exception as e:
+        CUDA_IMPORT_ERROR = e
 
 

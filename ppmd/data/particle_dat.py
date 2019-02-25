@@ -21,6 +21,7 @@ from ppmd import access, mpi, runtime, host, opt
 from ppmd.lib import build
 
 from ppmd.data.scalar_array import ScalarArray
+from ppmd.data.data_movement import ParticleDatModifier
 
 
 SUM = mpi.MPI.SUM
@@ -142,23 +143,8 @@ class ParticleDat(host.Matrix):
         # default comm is world
         self.comm = mpi.MPI.COMM_WORLD
 
-    @property
-    def data(self):
-        self._vid_int += 1
-        return self._dat
+        self._particle_dat_modifier = ParticleDatModifier(self, type(self) == PositionDat)
 
-    @data.setter
-    def data(self, value):
-        self._vid_int += 1
-        self._dat = value
-
-    def set_val(self, val):
-        """
-        Set all the entries in the particle dat to the same specified value.
-
-        :param val: Value to set all entries to.
-        """
-        self.data[..., ...] = val
 
     def zero(self, n=None):
         if n is None:
@@ -192,12 +178,32 @@ class ParticleDat(host.Matrix):
         :return:
         """
         return self.npart_local + self.npart_halo
+    
+    def mark_halos_old(self):
+        self._vid_int += 1
+
+    def modify_view(self):
+        return self._particle_dat_modifier
+
+    @property
+    def view(self):
+        return self._dat[:self.npart_local:, :].view()
+
+    @property
+    def data(self):
+        self.mark_halos_old()
+        return self._dat
+
+    @data.setter
+    def data(self, value):
+        self.mark_halos_old()
+        self._dat = value
 
     def __getitem__(self, ix):
         return np.copy(self._dat[ix])
 
     def __setitem__(self, ix, val):
-        self._vid_int += 1
+        self.mark_halos_old()
         self.data[ix] = val
         if type(self) is PositionDat and self.group is not None:
             self.group.invalidate_lists = True
@@ -307,7 +313,7 @@ class ParticleDat(host.Matrix):
         :arg access mode: Access type required by the calling method.
         """
         if mode.write:
-            self._vid_int += 1
+            self.mark_halos_old()
 
     def halo_start_shift(self, shift):
         """

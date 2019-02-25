@@ -145,7 +145,7 @@ def test_host_pair_loop_NS_5():
         if m == 0.0:
             m = 1.0
         err = np.linalg.norm((A.f[px,:] - A.f2[px,:])/m, np.inf)
-        assert err < 10.**-13
+        assert err < 2.*(10.**-13)
         if err > 10.**-10 and DEBUG:
             print(px, red_tol(err, 10.**-6), A.f[px, :], A.f2[px,:])
     
