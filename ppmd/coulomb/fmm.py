@@ -118,6 +118,7 @@ class PyFMM(object):
 
         self.free_space = free_space
 
+
         ncomp = (self.L**2) * 2
         # define the octal tree and attach data to the tree.
         self.tree = OctalTree(self.R, domain.comm)
@@ -125,7 +126,6 @@ class PyFMM(object):
         self.tree_halo = OctalDataTree(self.tree, ncomp, 'halo', dtype)
         self.tree_parent = OctalDataTree(self.tree, ncomp, 'parent', dtype)
         self.entry_data = EntryData(self.tree, ncomp, dtype)
-
 
 
         self._tcount = runtime.OMP_NUM_THREADS if runtime.OMP_NUM_THREADS is \

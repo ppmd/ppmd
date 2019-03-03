@@ -40,10 +40,9 @@ class GlobalDataMover:
     def __init__(self, state):
         self.state = state
         self.comm = state.domain.comm
-        
+
         self._recv_count = np.zeros(1, INT64)
-        self._win = MPI.Win()
-        self._win_recv_count = self._win.Create(self._recv_count, comm=self.comm)
+        self._win_recv_count = MPI.Win.Create(self._recv_count, comm=self.comm)
 
         self._recv = None
         self._send = None
@@ -97,7 +96,7 @@ class GlobalDataMover:
             self._recv = np.zeros((self._recv_count[0]+100, nbytes), dtype=np.byte)
             if self._win_recv is not None:
                 self._win_recv.Free()
-            self._win_recv = self._win.Create(self._recv, disp_unit=nbytes, comm=self.comm)
+            self._win_recv = MPI.Win.Create(self._recv, disp_unit=nbytes, comm=self.comm)
         
         opt.PROFILE[self._key_check] += time.time() - t0
 

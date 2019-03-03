@@ -402,8 +402,8 @@ class OctalGridLevel(object):
         self.parent_comm = parent_comm
         self.ncubes_global = (2**level)**3
         self.ncubes_side_global = 2**level
-
         self.comm = parent_comm
+
         self.new_comm = False
         self.local_grid_cube_size = None
         """Size of grid"""
@@ -431,11 +431,16 @@ class OctalGridLevel(object):
         self.global_to_local_parent[:] = -1
         self.global_to_local[:] = -1
 
+        self._tmp_comm = None
         if parent_comm != MPI.COMM_NULL:
             self._init_comm(parent_comm)
             self._init_decomp(parent_comm, entry_map)
+
+
         if self.comm != MPI.COMM_NULL:
             self._init_halo_exchange_method()
+
+
 
         self.nbytes = self.owners.nbytes + self.global_to_local.nbytes +\
             self.global_to_local_halo.nbytes
@@ -446,10 +451,12 @@ class OctalGridLevel(object):
 
         parent_rank = parent_comm.Get_rank()
 
+
         current_dims = parent_comm.Get_topo()[0]
         new_dims = (min(current_dims[0], work_units_per_side),
                     min(current_dims[1], work_units_per_side),
                     min(current_dims[2], work_units_per_side))
+
 
         # is the parent communicator too large?
         if not(new_dims[0] == current_dims[0] and
@@ -459,14 +466,23 @@ class OctalGridLevel(object):
             work_units = new_dims[0] * new_dims[1] * new_dims[2]
 
             color = 0 if parent_rank < work_units else MPI.UNDEFINED
+
+            #print("OctalGridLevel init broken"); return
             tmp_comm = parent_comm.Split(color=color, key=parent_rank)
-            
             if tmp_comm != MPI.COMM_NULL:
                 self.comm = tmp_comm.Create_cart(dims=new_dims,
                     periods=(1, 1, 1), reorder=False)
+                tmp_comm.Free()
             else:
                 self.comm = MPI.COMM_NULL
+
             self.new_comm = True
+
+    def __del__(self):
+        if self.comm != MPI.COMM_NULL and self.new_comm:
+            self.comm.Free()
+
+
 
 
     def _init_decomp(self, parent_comm, entry_map=None):
@@ -589,19 +605,16 @@ class OctalTree(object):
         self.num_levels = num_levels
         self.cart_comm = cart_comm
         self.levels = []
-        comm_tmp = cart_comm
-
         self.entry_map = cube_owner_map(cart_comm, 2 ** (num_levels - 1), True)
 
         # work up tree from finest level as largest cart_comm is on the finest
         # level
         for lx in range(self.num_levels - 1, -1, -1):
             m = self.entry_map if lx == self.num_levels - 1 else None
-            level_tmp = OctalGridLevel(level=lx, parent_comm=comm_tmp,
+            level_tmp = OctalGridLevel(level=lx, parent_comm=cart_comm,
                                        entry_map=m)
 
             self.levels.append(level_tmp)
-            comm_tmp = level_tmp.comm
         self.levels.reverse()
 
         self.nbytes = sum([lx.nbytes for lx in self.levels])

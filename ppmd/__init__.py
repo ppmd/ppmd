@@ -6,6 +6,7 @@ __license__ = "GPL"
 import mpi4py
 mpi4py.rc.initialize = False
 mpi4py.rc.finalize = False
+mpi4py.rc(thread_level='single')
 from mpi4py import MPI as _MPI
 _is_init = _MPI.Is_initialized()
 mpi4py.rc.initialize = True
