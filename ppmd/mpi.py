@@ -19,12 +19,21 @@ if sys.version_info[0] >= 3:
 else:
     import Queue
 
+
 if not MPI.Is_initialized():
     MPI.Init()
 
+
 # priority queue for module cleanup.
 _CLEANUP_QUEUE = Queue.PriorityQueue()
-_CLEANUP_QUEUE.put((50, MPI.Finalize))
+
+
+#def _finalise_wrapper():
+#    if MPI.Is_initialized():
+#        MPI.Finalize()
+#_CLEANUP_QUEUE.put((50, _finalise_wrapper))
+
+
 
 def _atexit_queue():
     while not _CLEANUP_QUEUE.empty():

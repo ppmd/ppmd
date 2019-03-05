@@ -74,6 +74,14 @@ class GlobalDataMover:
             self._send = np.zeros((lcount, nbytes), np.byte)
     
 
+    def __del__(self):
+        self._win_recv_count.Free()
+        del self._recv_count
+        if self._win_recv is not None:
+            self._win_recv.Free()
+        del self._recv
+
+
     def _check_recv_win(self):
         t0 = time.time()
         nbytes = self._get_nbytes()
@@ -93,9 +101,9 @@ class GlobalDataMover:
             raise RuntimeError('''Error: realloc required but not requested? Potential bug or MPI issue.''')
 
         if result:
-            self._recv = np.zeros((self._recv_count[0]+100, nbytes), dtype=np.byte)
             if self._win_recv is not None:
                 self._win_recv.Free()
+            self._recv = np.zeros((self._recv_count[0]+100, nbytes), dtype=np.byte)
             self._win_recv = MPI.Win.Create(self._recv, disp_unit=nbytes, comm=self.comm)
         
         opt.PROFILE[self._key_check] += time.time() - t0
@@ -168,15 +176,21 @@ class GlobalDataMover:
         # for each remote rank get accumalate
         t1 = time.time()
         self._recv_count[0] = 0
+        
+        # prevent sizes going out of scope
+        _size_store = []
         self._win_recv_count.Fence(0)
         lrind = np.zeros((num_rranks, 2), INT64)
         
         for rki, rk in enumerate(lrank_dict.keys()):
             lrind[rki, 0] = rk
             _size = np.array((len(lrank_dict[rk]),), INT64)
-            self._win_recv_count.Get_accumulate(_size, lrind[rki, 1:2], rk)
+            _size_store.append(_size)
+            self._win_recv_count.Get_accumulate(_size_store[-1], lrind[rki, 1:2], rk)
         
         self._win_recv_count.Fence(MPI.MODE_NOSTORE)
+        del _size_store
+
         opt.PROFILE[self._key_rma1] += time.time() - t1
         
         # pack the send buffer for all particles

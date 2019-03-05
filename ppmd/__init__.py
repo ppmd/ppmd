@@ -5,14 +5,9 @@ __license__ = "GPL"
 
 import mpi4py
 mpi4py.rc.initialize = False
-mpi4py.rc.finalize = False
-mpi4py.rc(thread_level='single')
+mpi4py.rc.finalize = True
 from mpi4py import MPI as _MPI
 _is_init = _MPI.Is_initialized()
-mpi4py.rc.initialize = True
-mpi4py.rc.finalize = True
-del mpi4py
-del _MPI
 
 if _is_init:
     print("Warning MPI was initialised before prefork, this is not supported with OpenMPI.")
