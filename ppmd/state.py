@@ -318,11 +318,13 @@ class BaseMDState(object):
     def broadcast_data_from(self, rank=0):
         # This is in terms of MPI_COMM_WORLD
         assert (rank > -1) and (rank < self._ccsize), "Invalid mpi rank"
+        
 
         if self._ccsize == 1:
             self.npart_local = self.npart
             return
         else:
+
             s = np.array([self.npart])
             self._ccomm.Bcast(s, root=rank)
             self.npart_local = s[0]

@@ -483,8 +483,6 @@ class OctalGridLevel(object):
             self.comm.Free()
 
 
-
-
     def _init_decomp(self, parent_comm, entry_map=None):
         if self.comm != MPI.COMM_NULL:
             dims = self.comm.Get_topo()[0]
