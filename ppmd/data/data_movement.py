@@ -42,7 +42,7 @@ class GlobalDataMover:
         self.comm = state.domain.comm
 
         self._recv_count = np.zeros(1, INT64)
-        self._win_recv_count = MPI.Win.Create(self._recv_count, comm=self.comm)
+        self._win_recv_count = None
 
         self._recv = None
         self._send = None
@@ -72,17 +72,15 @@ class GlobalDataMover:
                 self._send.shape[1] != nbytes:
 
             self._send = np.zeros((lcount, nbytes), np.byte)
-    
 
-    def __del__(self):
-        self._win_recv_count.Free()
-        del self._recv_count
-        if self._win_recv is not None:
-            self._win_recv.Free()
-        del self._recv
+    
+    def _check_recv_count_win(self):
+        assert self._win_recv_count is None
+        self._win_recv_count = MPI.Win.Create(self._recv_count, comm=self.comm)
 
 
     def _check_recv_win(self):
+        assert self._win_recv is None
         t0 = time.time()
         nbytes = self._get_nbytes()
 
@@ -90,23 +88,21 @@ class GlobalDataMover:
         if (self._recv is None) or \
                 (self._recv.shape[0] < self._recv_count[0]) or \
                 (self._recv.shape[1] != nbytes):
-            realloc = True
-        else:
-            realloc = False
-        realloc = np.array(realloc, np.bool)
-        result = np.array(False, np.bool)
-        self.comm.Allreduce(realloc, result, MPI.LOR)
-        
-        if realloc and not result:
-            raise RuntimeError('''Error: realloc required but not requested? Potential bug or MPI issue.''')
 
-        if result:
-            if self._win_recv is not None:
-                self._win_recv.Free()
             self._recv = np.zeros((self._recv_count[0]+100, nbytes), dtype=np.byte)
-            self._win_recv = MPI.Win.Create(self._recv, disp_unit=nbytes, comm=self.comm)
+
+        self._win_recv = MPI.Win.Create(self._recv, disp_unit=nbytes, comm=self.comm)
         
         opt.PROFILE[self._key_check] += time.time() - t0
+
+    
+    def _free_wins(self):
+        self._win_recv.Free()
+        self._win_recv_count.Free()
+        self._win_recv = None
+        self._win_recv_count = None
+
+
 
     def _byte_per_element(self, dat):
         return getattr(self.state, dat).view.itemsize
@@ -176,6 +172,7 @@ class GlobalDataMover:
         # for each remote rank get accumalate
         t1 = time.time()
         self._recv_count[0] = 0
+        self._check_recv_count_win()
         
         # prevent sizes going out of scope
         _size_store = []
@@ -255,6 +252,7 @@ class GlobalDataMover:
         self.state.remove_by_slot(lpid)
         opt.PROFILE[self._key_compress] += time.time() - t0_compress
         
+        self._free_wins()
         opt.PROFILE[self._key_call] += time.time() - t0
         opt.PROFILE[self._key_call_count] += 1
 
