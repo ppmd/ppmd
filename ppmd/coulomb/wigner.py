@@ -239,7 +239,8 @@ def Rzyz_set_2(p, alpha, beta, gamma, dtype):
 
     wp, wm = _wigner_engine(p, beta, eps_scaled=True)
 
-    matrices = {'real': [], 'imag': []}
+    matrices = {'real': [], 'imag': [], 'orig':[]}
+    matrices['orig'].append((wp, wm))
     for px in range(p):
         r = R_zyz_given_y(px, alpha, beta, gamma, wm[px])
         matrices['real'].append(np.array(r.real, dtype=dtype))

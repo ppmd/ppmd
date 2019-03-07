@@ -377,6 +377,7 @@ class PyFMM(object):
         self._wigner_matrices_b = {}
         self._wigner_real_pointers = []
         self._wigner_imag_pointers = []
+        
 
         # compute the lengendre polynomial coefficients
         for iz, pz in enumerate(range(-3, 4)):
@@ -408,6 +409,7 @@ class PyFMM(object):
 
                     # sph = self._cart_to_sph((px, py, pz))
                     # forward rotate
+                    
                     pointers_real, pointers_imag, matrices = Rzyz_set(
                         p=self.L,
                         alpha=sph[1], beta=sph[2], gamma=0.0,
@@ -419,7 +421,6 @@ class PyFMM(object):
                     self._wigner_real_pointers.append(pointers_real)
                     self._wigner_imag_pointers.append(pointers_imag)
                     # pointers
-
                     self._wigner_real[iz, iy, ix] = \
                         pointers_real.ctypes.data
                     self._wigner_imag[iz, iy, ix] = \
@@ -866,7 +867,7 @@ class PyFMM(object):
 
             self._level_call_async(self._translate_m_to_m, level, execute_async)
             self._halo_exchange(level)
-
+            
             if self.cuda and (self.R - level -1 < self.cuda_levels):
                 self._cuda_translate_m_t_l(level)
             else:
