@@ -478,9 +478,12 @@ class OctalGridLevel(object):
 
             self.new_comm = True
 
-    def __del__(self):
+    def free(self):
         if self.comm != MPI.COMM_NULL and self.new_comm:
             self.comm.Free()
+
+    def __del__(self):
+        self.free()
 
 
     def _init_decomp(self, parent_comm, entry_map=None):
@@ -625,6 +628,10 @@ class OctalTree(object):
 
     def __getitem__(self, item):
         return self.levels[item]
+
+    def free(self):
+        for lvl in self.levels:
+            lvl.free()
 
 
 class EntryData(object):

@@ -682,6 +682,11 @@ class PyFMM(object):
         
         if not (self.free_space == '27' or self.free_space == True):
             self.dipole_corrector = DipoleCorrector(self.L, self.domain.extent, self._lr_mtl_func)
+    
+
+    def free(self):
+        self.tree.free()
+
 
     def _update_opt(self):
         p = opt.PROFILE
