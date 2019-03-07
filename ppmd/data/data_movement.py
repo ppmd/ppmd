@@ -214,21 +214,25 @@ class GlobalDataMover:
         
         t2 = time.time()
         # RMA 
-        self._win_recv.Fence(0)
+        #self._win_recv.Fence(0)
         
         send_offset = 0
         for rki in range(num_rranks):
             rk = lrind[rki, 0]
             ri = lrind[rki, 1]
             nsend = len(lrank_dict[rk])
+            self._win_recv.Lock(rk, MPI.LOCK_SHARED)
+            #self._win_recv.Lock(rk, MPI.LOCK_EXCLUSIVE)
             self._win_recv.Put(
                 self._send[send_offset:send_offset + nsend:, :],
                 rk,
                 ri
             )
+            self._win_recv.Unlock(rk)
             send_offset += nsend
-
-        self._win_recv.Fence(MPI.MODE_NOSTORE)
+        
+        self.comm.Barrier()
+        #self._win_recv.Fence(MPI.MODE_NOSTORE)
         opt.PROFILE[self._key_rma2] += time.time() - t2
 
         # unpack the data recv'd into dats
