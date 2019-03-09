@@ -239,15 +239,44 @@ def Rzyz_set_2(p, alpha, beta, gamma, dtype):
 
     wp, wm = _wigner_engine(p, beta, eps_scaled=True)
 
-    matrices = {'real': [], 'imag': [], 'orig':[]}
-    matrices['orig'].append((wp, wm))
-    for px in range(p):
-        r = R_zyz_given_y(px, alpha, beta, gamma, wm[px])
-        matrices['real'].append(np.array(r.real, dtype=dtype))
-        pointers_real[px] = matrices['real'][-1].ctypes.data
-        matrices['imag'].append(np.array(r.imag, dtype=dtype))
-        pointers_imag[px] = matrices['imag'][-1].ctypes.data
 
+    s = 0
+    for jx in range(p):
+        n = 2*jx + 1
+        s += n*n
+    
+    arr_size = s
+    
+    store = np.zeros((2, arr_size), dtype)
+    matrices = {
+        'real': [], 
+        'imag': [], 
+        '_store': store,
+        '_real_store': store[0,:].view(),
+        '_imag_store': store[1,:].view()
+    }
+    
+    s = 0
+    for px in range(p):
+        n = 2 * px + 1
+        e = s + n * n
+
+        r = R_zyz_given_y(px, alpha, beta, gamma, wm[px])
+        
+        mr = r.real
+        mi = r.imag
+
+        matrices['_real_store'][s:e:] = mr.ravel()
+        matrices['_imag_store'][s:e:] = mi.ravel()
+
+        matrices['real'].append(matrices['_real_store'][s:e:].view().reshape(n,n))
+        pointers_real[px] = matrices['real'][-1].ctypes.data
+        matrices['imag'].append(matrices['_imag_store'][s:e:].view().reshape(n,n))
+        pointers_imag[px] = matrices['imag'][-1].ctypes.data
+        s = e
+    
+    del wm
+    del wp
     return pointers_real, pointers_imag, matrices
 
 def Ry_set(p, beta, dtype):
@@ -307,7 +336,7 @@ class _WignerEngine(object):
         s = 0
         for jx in range(maxj):
             p = 2*jx + 1
-            matrices.append(np.reshape(mat[s:s+p*p:].copy(), (p,p)))
+            matrices.append(np.reshape(mat[s:s+p*p:].view(), (p,p)))
             pointers[jx] = matrices[-1].ctypes.data
             s += p*p
 

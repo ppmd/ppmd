@@ -406,7 +406,8 @@ class PyFMM(object):
                                 raise RuntimeError('unexpected imag part')
                             self._interaction_p[iz, iy, ix, 
                                 self.re_lm(lx, mx)] = val
-
+                    
+                    continue
                     # sph = self._cart_to_sph((px, py, pz))
                     # forward rotate
                     
