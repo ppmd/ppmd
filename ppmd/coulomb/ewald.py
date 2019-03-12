@@ -187,11 +187,13 @@ class EwaldOrthoganal(object):
                    8*nmax_z*nmax_x +\
                    16*nmax_x*nmax_y*nmax_z
 
+
         self._vars['recip_space_kernel'] = data.GlobalArray(
             size=reciplen,
             dtype=ctypes.c_double,
             shared_memory=shared_memory
         )
+
         self._vars['recip_space_energy'] = data.GlobalArray(
             size=1,
             dtype=ctypes.c_double,
