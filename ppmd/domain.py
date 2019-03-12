@@ -61,7 +61,8 @@ class BaseDomainHalo(object):
         self._boundary_cell_version = -1
         self._boundary_cells = None
 
-        self.comm = comm
+        self.comm = None
+        self._parent_comm = comm
 
     @property
     def dims(self):
@@ -157,7 +158,7 @@ class BaseDomainHalo(object):
             return True
             # print("WARNING: domain already spatially decomposed")
         
-        mpisize = self.comm.size
+        mpisize = self._parent_comm.size
 
         if mpi_grid is None:
             if self._init_extent:
@@ -180,7 +181,7 @@ class BaseDomainHalo(object):
          # Create cartesian communicator
         _dims = tuple(_dims)
         
-        self.comm = self.comm.Create_cart(
+        self.comm = self._parent_comm.Create_cart(
             _dims[::-1], 
             (bool(self._periods[2]), bool(self._periods[1]), bool(self._periods[0])),
             True

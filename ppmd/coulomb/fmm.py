@@ -118,6 +118,7 @@ class PyFMM(object):
 
         self.free_space = free_space
 
+
         ncomp = (self.L**2) * 2
         # define the octal tree and attach data to the tree.
         self.tree = OctalTree(self.R, domain.comm)
@@ -125,7 +126,6 @@ class PyFMM(object):
         self.tree_halo = OctalDataTree(self.tree, ncomp, 'halo', dtype)
         self.tree_parent = OctalDataTree(self.tree, ncomp, 'parent', dtype)
         self.entry_data = EntryData(self.tree, ncomp, dtype)
-
 
 
         self._tcount = runtime.OMP_NUM_THREADS if runtime.OMP_NUM_THREADS is \
@@ -377,6 +377,7 @@ class PyFMM(object):
         self._wigner_matrices_b = {}
         self._wigner_real_pointers = []
         self._wigner_imag_pointers = []
+        
 
         # compute the lengendre polynomial coefficients
         for iz, pz in enumerate(range(-3, 4)):
@@ -405,9 +406,11 @@ class PyFMM(object):
                                 raise RuntimeError('unexpected imag part')
                             self._interaction_p[iz, iy, ix, 
                                 self.re_lm(lx, mx)] = val
-
+                    
+                    continue
                     # sph = self._cart_to_sph((px, py, pz))
                     # forward rotate
+                    
                     pointers_real, pointers_imag, matrices = Rzyz_set(
                         p=self.L,
                         alpha=sph[1], beta=sph[2], gamma=0.0,
@@ -419,7 +422,6 @@ class PyFMM(object):
                     self._wigner_real_pointers.append(pointers_real)
                     self._wigner_imag_pointers.append(pointers_imag)
                     # pointers
-
                     self._wigner_real[iz, iy, ix] = \
                         pointers_real.ctypes.data
                     self._wigner_imag[iz, iy, ix] = \
@@ -682,6 +684,11 @@ class PyFMM(object):
         
         if not (self.free_space == '27' or self.free_space == True):
             self.dipole_corrector = DipoleCorrector(self.L, self.domain.extent, self._lr_mtl_func)
+    
+
+    def free(self):
+        self.tree.free()
+
 
     def _update_opt(self):
         p = opt.PROFILE
@@ -861,7 +868,7 @@ class PyFMM(object):
 
             self._level_call_async(self._translate_m_to_m, level, execute_async)
             self._halo_exchange(level)
-
+            
             if self.cuda and (self.R - level -1 < self.cuda_levels):
                 self._cuda_translate_m_t_l(level)
             else:

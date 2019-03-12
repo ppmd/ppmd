@@ -198,7 +198,7 @@ def test_pos_3():
     A.domain = BaseDomainHalo((E,E,E))
     A.domain.boundary_condition = BoundaryTypePeriodic()
     
-    N = 1000000
+    N = 100000
     A.npart = N
 
     A.P = PositionDat()
