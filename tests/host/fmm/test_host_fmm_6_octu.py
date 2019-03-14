@@ -474,7 +474,7 @@ def test_fmm_oct_1():
 
 
 
-
+    fmm.free()
 
 
 

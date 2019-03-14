@@ -393,6 +393,7 @@ def test_fmm_init_2():
         assert red_re >= last_re, "Errors do not get better as level -> 0"
         assert red_re < eps, "error did not meet tol"
 
+    fmm.free()
 
 def test_fmm_init_3():
 
@@ -512,7 +513,7 @@ def test_fmm_init_3():
         assert red_im < 10.**-15, "bad imaginary part"
         assert red_re > last_re, "Errors do not get better as level -> 0"
         assert red_re < eps, "error did not meet tol"
-
+    fmm.free()
 
 @pytest.fixture(
     scope="module",
@@ -744,7 +745,7 @@ def test_fmm_init_4():
         assert err_re < eps, "bad real part"
         assert err_im < 10.**-15, "bad imag part"
 
-
+    fmm.free()
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_init_5():
 
@@ -1026,8 +1027,8 @@ def test_fmm_init_5():
 
             MPIBARRIER()
 
-
-
+    fmm.free()
+    fmm2.free()
 
 
 

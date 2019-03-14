@@ -458,6 +458,9 @@ def test_fmm_force_direct_1():
         print("\t\tFORCE DIR :",direct_forces[px,:])
         print("\t\tFORCE FMMC:",A.F[px,:], err_re_c)
 
+    fmm.free()
+
+
 #@pytest.mark.skipif("MPISIZE>1")
 #@pytest.mark.skipif("True")
 def test_fmm_force_ewald_1():
@@ -687,7 +690,7 @@ def test_fmm_force_ewald_1():
         print("ENERGY FMM:\t", phi_py)
         print("ERR:\t\t", serr)
 
-
+    fmm.free()
 
 
 @pytest.mark.skipif("True")
@@ -869,7 +872,9 @@ def test_fmm_force_ewald_2():
             print("\t\tFORCE FMM:",A.F[px,:])
 
 
-# def test
+    fmm.free()
+
+
 @pytest.mark.skipif("True")
 def test_fmm_force_direct_3():
 
@@ -1013,7 +1018,7 @@ def test_fmm_force_direct_3():
         print("\t\tFORCE FMMC:",A.F[px,:], err_re_c)
         print("\t\tFORCE py  :",fpy, err_re_p)
 
-
+    fmm.free()
 
 def force_from_multipole(py_mom, fmm, disp, charge):
 
@@ -1086,3 +1091,5 @@ def force_from_multipole(py_mom, fmm, disp, charge):
     Fv[:] -= radius_coeff2 * rhat  + theta_coeff2 * thetahat + phi_coeff2 * phihat
 
     return Fv
+
+

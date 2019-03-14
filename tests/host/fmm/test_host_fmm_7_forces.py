@@ -844,6 +844,8 @@ def test_fmm_oct_1():
         print("POINT PHI:\t", point_phi.real, sph, cell)
         print("OTHER PHI:\t", dphi, "DX:", point-other)
 
+    fmm.free()
+
 
 
 @pytest.mark.skipif("MPISIZE>1")
@@ -1142,7 +1144,7 @@ def test_fmm_force_direct_2():
                            fmm.tree_halo[lvl][halo_ind]
 
 
-
+    fmm.free()
 
 
 

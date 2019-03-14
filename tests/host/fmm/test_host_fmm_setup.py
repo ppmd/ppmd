@@ -137,6 +137,8 @@ def test_fmm_setup_time_1():
 
     p.sort_stats('cumulative').print_stats(10)
 
+    fmm.free()
+
 
 @pytest.mark.skipif("True")
 def test_fmm_setup_time_2():
@@ -160,7 +162,7 @@ def test_fmm_setup_time_2():
     free_space = False
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space, l=10)
 
-
+    fmm.free()
 
 
 

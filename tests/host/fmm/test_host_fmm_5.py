@@ -328,6 +328,9 @@ def test_fmm_init_5_1():
         print("ENERGY EWALD:", phi_ewald, A.cri[0], A.crr[0], A.crs[0])
         #print("LOCAL PHI ERR:", serr, phi_py, green(local_phi_direct))
 
+    fmm.free()
+
+
 @pytest.mark.skipif("True")
 def test_fmm_init_5_3():
     rc = 1.
@@ -415,6 +418,8 @@ def test_fmm_init_5_3():
         print("ENERGY EWALD:\t", phi_ewald, A.cri[0], A.crr[0], A.crs[0])
         print("ERR:\t\t", serr)
 
+    fmm.free()
+
 
 @pytest.fixture(
     scope="module",
@@ -467,6 +472,7 @@ def test_fmm_init_5_4(level_set, tol_set, space_set):
     DIRECT = True if MPISIZE == 1 else False
 
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space)
+    
 
     A.npart = N
 
@@ -530,7 +536,10 @@ def test_fmm_init_5_4(level_set, tol_set, space_set):
         print("ENERGY FMM:\t", phi_py)
         print("ERR:\t\t", serr)
 
+
     assert local_err/Q < eps
+
+    fmm.free()
 
 
 def test_fmm_init_5_4_quad(level_set, tol_set, space_set):
@@ -635,6 +644,8 @@ def test_fmm_init_5_4_quad(level_set, tol_set, space_set):
 
     assert local_err/Q < eps*2
 
+
+    fmm.free()
 
 
 @pytest.fixture(
@@ -754,7 +765,7 @@ def test_fmm_init_5_5_nacl(level_set_3_4):
         print("ENERGY EWALD:\t", phi_ewald, A.cri[0], A.crr[0], A.crs[0])
         print("ERR:\t\t", serr)
 
-
+    fmm.free()
 
 
 # system has a dipole moment
@@ -833,6 +844,8 @@ def test_fmm_init_5_5_co2():
     err = abs(phi_ewald - phi_py)
     assert err < 10.**-5
 
+    fmm.free()
+
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_init_5_6_1():
 
@@ -908,6 +921,9 @@ def test_fmm_init_5_6_1():
             assert abs(contrib_re - l00[fmm.re_lm(jx, kx)]) < 10.**-15
             assert abs(contrib_im - l00[fmm.im_lm(jx, kx)]) < 10.**-15
 
+
+    fmm.free()
+
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_init_5_6_2():
 
@@ -947,6 +963,8 @@ def test_fmm_init_5_6_2():
                 assert abs(ev) < azero
             if (nx == 2):
                 assert abs(ev) < azero
+
+    fmm.free()
 
 
 def test_fmm_init_5_4_quad2():
@@ -1069,7 +1087,7 @@ def test_fmm_init_5_4_quad2():
 
     #assert local_err < eps
 
-
+    fmm.free()
 
 
 @pytest.mark.skipif("MPISIZE>1")
@@ -1190,6 +1208,7 @@ def test_fmm_init_5_7_quad():
     print("EV FMM:  \t", ewald.internal_to_ev()*phi_py, "\t err:\t",
           abs(dl_phi - ewald.internal_to_ev()*phi_py))
 
+    fmm.free()
 
 
 def nacl_lattice(crn, e, sd=0.05, seed=87712846):
@@ -1344,6 +1363,6 @@ def test_fmm_init_5_7_cube():
     if MPIRANK == 0 and DEBUG:
         print("Dipole moment:", dipole_ga[:])
 
-
+    fmm.free()
 
 

@@ -331,6 +331,9 @@ def test_fmm_init_4_1():
             #print("P", ll)
             #print("C", fmm.tree_plain[level][tx[2], tx[1], tx[0],:])
 
+    fmm.free()
+
+
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_init_4_2():
 
@@ -584,6 +587,8 @@ def test_fmm_init_4_2():
 
                     assert err < eps
 
+    fmm.free()
+
 
 
 def test_fmm_init_4_3():
@@ -700,7 +705,7 @@ def test_fmm_init_4_3():
         print("LOCAL PHI ERR:", serr, phi_py, green(local_phi_direct))
 
 
-
+    fmm.free()
 
 
 

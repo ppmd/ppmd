@@ -3,6 +3,7 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
+
 import mpi4py
 mpi4py.rc.initialize = False
 mpi4py.rc.finalize = True

@@ -252,3 +252,5 @@ def test_fmm_sim_1():
         print(60*"-")
 
 
+    fmm.free()
+

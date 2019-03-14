@@ -41,12 +41,18 @@ class GlobalDataMover:
         self.state = state
         self.comm = state.domain.comm
 
-        self._recv_count = np.zeros(1, INT64)
         self._win_recv_count = None
 
         self._recv = None
+        self._recv_p = None
+
         self._send = None
         self._win_recv = None
+
+        self._recv_count_p = MPI.Alloc_mem(ctypes.sizeof(INT64))
+        pp = ctypes.cast(self._recv_count_p.address, ctypes.POINTER(INT64))
+        self._recv_count = np.ctypeslib.as_array(pp, shape=(1,))
+
 
         self._key_call = self.__class__.__name__ + ':__call__'
         self._key_call_count = self.__class__.__name__ + ':__call__:count'
@@ -75,6 +81,8 @@ class GlobalDataMover:
 
     
     def _check_recv_count_win(self):
+
+        self._recv_count[0] = 0
         assert self._win_recv_count is None
         self._win_recv_count = MPI.Win.Create(self._recv_count, comm=self.comm)
 
@@ -89,7 +97,16 @@ class GlobalDataMover:
                 (self._recv.shape[0] < self._recv_count[0]) or \
                 (self._recv.shape[1] != nbytes):
 
-            self._recv = np.zeros((self._recv_count[0]+100, nbytes), dtype=np.byte)
+            if self._recv is not None:
+                del self._recv
+            if self._recv_p is not None:
+                MPI.Free_mem(self._recv_p)
+                self._recv_p = None
+
+            nrow = self._recv_count[0]+100
+            self._recv_p = MPI.Alloc_mem(nrow * nbytes)
+            pp = ctypes.cast(self._recv_p.address, ctypes.POINTER(ctypes.c_byte))
+            self._recv = np.ctypeslib.as_array(pp, shape=(nrow, nbytes))
 
         self._win_recv = MPI.Win.Create(self._recv, disp_unit=nbytes, comm=self.comm)
         
@@ -97,11 +114,20 @@ class GlobalDataMover:
 
     
     def _free_wins(self):
+
         self._win_recv.Free()
         self._win_recv_count.Free()
         self._win_recv = None
         self._win_recv_count = None
 
+    
+    def __del__(self):
+        MPI.Free_mem(self._recv_count_p)
+        del self._recv_count
+        if self._recv_p is not None:
+            MPI.Free_mem(self._recv_p)
+        if self._recv is not None:
+            del self._recv
 
 
     def _byte_per_element(self, dat):
@@ -171,21 +197,25 @@ class GlobalDataMover:
         
         # for each remote rank get accumalate
         t1 = time.time()
-        self._recv_count[0] = 0
         self._check_recv_count_win()
         
         # prevent sizes going out of scope
         _size_store = []
-        self._win_recv_count.Fence(0)
+        #self._win_recv_count.Fence(0)
         lrind = np.zeros((num_rranks, 2), INT64)
         
+
         for rki, rk in enumerate(lrank_dict.keys()):
             lrind[rki, 0] = rk
             _size = np.array((len(lrank_dict[rk]),), INT64)
             _size_store.append(_size)
+            self._win_recv_count.Lock(rk, MPI.LOCK_SHARED)
             self._win_recv_count.Get_accumulate(_size_store[-1], lrind[rki, 1:2], rk)
+            self._win_recv_count.Unlock(rk)
         
-        self._win_recv_count.Fence(MPI.MODE_NOSTORE)
+
+        self.comm.Barrier()
+        #self._win_recv_count.Fence(MPI.MODE_NOSTORE)
         del _size_store
 
         opt.PROFILE[self._key_rma1] += time.time() - t1
@@ -214,7 +244,6 @@ class GlobalDataMover:
         
         t2 = time.time()
         # RMA 
-        #self._win_recv.Fence(0)
         
         send_offset = 0
         for rki in range(num_rranks):
@@ -232,7 +261,6 @@ class GlobalDataMover:
             send_offset += nsend
         
         self.comm.Barrier()
-        #self._win_recv.Fence(MPI.MODE_NOSTORE)
         opt.PROFILE[self._key_rma2] += time.time() - t2
 
         # unpack the data recv'd into dats
