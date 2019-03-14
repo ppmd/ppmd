@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import numpy as np
+
 import ppmd
 from ppmd.access import *
 from ppmd.data import ParticleDat, ScalarArray, GlobalArray, PositionDat, data_movement
@@ -11,6 +12,7 @@ BaseDomainHalo = ppmd.domain.BaseDomainHalo
 
 import ctypes
 INT64 = ctypes.c_int64
+
 
 def test_non_pos_1():
     

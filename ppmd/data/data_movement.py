@@ -16,7 +16,9 @@ from ppmd import mpi, opt
 REAL = ctypes.c_double
 INT64 = ctypes.c_int64
 
+
 MPI = mpi.MPI
+
 
 class ParticleDatModifier:
 
@@ -52,7 +54,7 @@ class GlobalDataMover:
         self._recv_count_p = MPI.Alloc_mem(ctypes.sizeof(INT64))
         pp = ctypes.cast(self._recv_count_p.address, ctypes.POINTER(INT64))
         self._recv_count = np.ctypeslib.as_array(pp, shape=(1,))
-
+        
 
         self._key_call = self.__class__.__name__ + ':__call__'
         self._key_call_count = self.__class__.__name__ + ':__call__:count'
@@ -105,7 +107,7 @@ class GlobalDataMover:
 
             nrow = self._recv_count[0]+100
             self._recv_p = MPI.Alloc_mem(nrow * nbytes)
-            pp = ctypes.cast(self._recv_p.address, ctypes.POINTER(ctypes.c_byte))
+            pp = ctypes.cast(self._recv_p.address, ctypes.POINTER(ctypes.c_char))
             self._recv = np.ctypeslib.as_array(pp, shape=(nrow, nbytes))
 
         self._win_recv = MPI.Win.Create(self._recv, disp_unit=nbytes, comm=self.comm)
@@ -126,6 +128,7 @@ class GlobalDataMover:
         del self._recv_count
         if self._recv_p is not None:
             MPI.Free_mem(self._recv_p)
+            self._recv_p = None
         if self._recv is not None:
             del self._recv
 
