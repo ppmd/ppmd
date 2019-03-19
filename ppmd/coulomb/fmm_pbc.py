@@ -709,7 +709,7 @@ class SphShellSum(object):
             }}
             omp_set_num_threads(num_threads);
 
-            #pragma omp parallel default(none) shared(N, radius_set, theta_set, phi_set, gtmp_out)
+            #pragma omp parallel default(none) shared(radius_set, theta_set, phi_set, gtmp_out)
             {{
 
                 const int threadid = omp_get_thread_num();
