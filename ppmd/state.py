@@ -113,7 +113,6 @@ class BaseMDState(object):
         # Can only setup a cell to particle map after a domain and a position
         # dat is set
         if (self._domain is not None) and (self._position_dat is not None):
-            # print "setting up cell list"
 
             self._domain.boundary_condition.set_state(self)
 
@@ -219,7 +218,7 @@ class BaseMDState(object):
                 self.particle_dats.append(name)
             else:
                 raise RuntimeError('This property is already assigned')
-
+            
             # Recreate the move library.
             self._move_controller.reset()
 
@@ -464,6 +463,8 @@ class _move_controller(object):
 
     def reset(self):
         # Reset these to ensure that move libs are rebuilt.
+
+        self._compressing_lib = None
         self._move_packing_lib = None
         self._move_unpacking_lib = None
         self._move_send_buffer = None
@@ -490,8 +491,7 @@ class _move_controller(object):
         self.move_timer.start()
 
         if self._move_packing_lib is None:
-            self._move_packing_lib = _move_controller.build_pack_lib(
-                self.state)
+            self._move_packing_lib = _move_controller.build_pack_lib(self.state)
 
         _send_total = dir_send_totals.data.sum()
         # Make/resize send buffer.
@@ -593,7 +593,6 @@ class _move_controller(object):
         self._compress_particle_dats(_send_total - _recv_total)
 
         if _send_total > 0 or _recv_total > 0:
-            # print "invalidating lists in move"
             self.state.invalidate_lists = True
 
         self.move_timer.pause()
@@ -859,6 +858,7 @@ class _move_controller(object):
                 }
             }
         return 0;}''' % {'DYNAMIC_DATS': _dynamic_dats_shift, 'ARGS': args}
+
         return build.simple_lib_creator(hsrc, src, 'move_pack')['move_pack']
 
     @staticmethod

@@ -688,7 +688,9 @@ class PyFMM(object):
 
     def free(self):
         self.tree.free()
-
+        del self._fmm_local_cuda
+        del self._cuda_mtl
+    
 
     def _update_opt(self):
         p = opt.PROFILE

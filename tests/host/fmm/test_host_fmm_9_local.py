@@ -296,7 +296,7 @@ def test_fmm_init_2_1():
 
 
 
-
+    fmm.free()
 
 
 

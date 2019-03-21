@@ -243,6 +243,8 @@ def test_fmm_init_3_1():
         print("ERROR:", abs(phi_ga[0] - phi_fmm))
     assert abs(phi_ga[0] - phi_fmm) < 10.**-10
 
+    fmm.free()
+
 
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_init_3_2():
@@ -357,7 +359,7 @@ def test_fmm_init_3_2():
     assert abs(phi_ga[0] - phi_fmm) < eps
 
 
-
+    fmm.free()
 
 
 

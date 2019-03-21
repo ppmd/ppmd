@@ -70,4 +70,4 @@ def test_fmm_ewald_1(direction, charge):
     diff = abs(phi_fmm - phi_ewald)
     assert diff < 10.**-4
     
-
+    lr_fmm.free()

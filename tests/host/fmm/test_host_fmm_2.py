@@ -278,7 +278,7 @@ def test_fmm_init_2_1():
         "expansions:", phi_sph_re)
     assert abs(phi_ga[0] - phi_sph_re - phi_local) < eps, "bad real part"
 
-
+    fmm.free()
 
 
 

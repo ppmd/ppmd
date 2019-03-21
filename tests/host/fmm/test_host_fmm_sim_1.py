@@ -92,6 +92,6 @@ def test_fmm_sim_1():
             print("ERROR:", abs(phi_direct - phi_fmm))
 
 
-
+    fmm.free()
 
 
