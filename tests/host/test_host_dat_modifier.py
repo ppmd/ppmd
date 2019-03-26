@@ -32,6 +32,10 @@ def test_non_pos_1():
     A.P[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
     A.V[:] = rng.uniform(low=-0.5*E, high=0.5*E, size=(N,3))
     A.scatter_data_from(0)
+
+    A.post = ParticleDat(ncomp=1, dtype=INT64)
+    assert A.post.npart_local == A.P.npart_local
+
     
     curr_int_id = A.V._vid_int
     new_vel = rng.uniform(size=(A.npart_local, 3))

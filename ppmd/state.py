@@ -241,6 +241,9 @@ class BaseMDState(object):
                 getattr(self, name).resize(self._npart_local, _callback=False)
             else:
                 getattr(self, name).resize(self._npart, _callback=False)
+            
+            getattr(self, name).npart_local = self._npart_local
+
 
             if type(value) is data.PositionDat:
                 if self._position_dat is None:
