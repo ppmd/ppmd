@@ -434,16 +434,14 @@ class OctalGridLevel(object):
         self._tmp_comm = None
         if parent_comm != MPI.COMM_NULL:
             self._init_comm(parent_comm)
-            self._init_decomp(parent_comm, entry_map)
-
+        self._init_decomp(entry_map)
 
         if self.comm != MPI.COMM_NULL:
             self._init_halo_exchange_method()
 
-
-
         self.nbytes = self.owners.nbytes + self.global_to_local.nbytes +\
             self.global_to_local_halo.nbytes
+
 
     def _init_comm(self, parent_comm):
         # set the min work per process at a 2x2x2 block of cubes for levels>1.
@@ -486,7 +484,7 @@ class OctalGridLevel(object):
         self.free()
 
 
-    def _init_decomp(self, parent_comm, entry_map=None):
+    def _init_decomp(self, entry_map=None):
         if self.comm != MPI.COMM_NULL:
             dims = self.comm.Get_topo()[0]
             top = self.comm.Get_topo()[2]
@@ -568,18 +566,7 @@ class OctalGridLevel(object):
             else:
                 self.owners[0, 0, 0] = 0
 
-        # need the owner map on the parent comm ranks to send data up and down
-        # the tree
-        color = MPI.UNDEFINED
-        if self.comm != MPI.COMM_NULL:
-            if self.comm.Get_rank() == 0: color = 0
-        else:
-            color = 0
-        remain_comm = parent_comm.Split(color=color,
-                                        key=parent_comm.Get_rank())
-        if color != MPI.UNDEFINED:
-            remain_comm.Bcast(self.owners[:], root=0)
-            remain_comm.Free()
+            self.comm.Bcast(self.owners[:], root=0)
 
 
     def _init_halo_exchange_method(self):
