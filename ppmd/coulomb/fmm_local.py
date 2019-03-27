@@ -85,6 +85,7 @@ class FMMLocal(object):
         self._tmp_real_qi = host.ThreadSpace(n=bn, dtype=REAL)
         self._tmp_real_qj = host.ThreadSpace(n=bn, dtype=REAL)
         self._tmp_real_fi = host.ThreadSpace(n=bn, dtype=REAL)
+        self._tmp_real_ui = host.ThreadSpace(n=bn, dtype=REAL)
 
         self.exec_count = 0
 
