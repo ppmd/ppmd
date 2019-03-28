@@ -640,6 +640,8 @@ class CellByCellOMP(object):
         self.wrapper_timer.start()
         method(*args)
         self.wrapper_timer.pause()
+        
+        self._kernel_execution_count += 1
 
         self._update_opt()
         self._post_execute_dats(dat_dict)
