@@ -84,7 +84,7 @@ class CellByCellOMP(object):
         if self._group is not None:
             self._make_cell_list(self._group)
 
-        self._kernel_execution_count = 0
+        self._kernel_execution_count = -1
         self._invocations = 0
 
         self._jstore = [host.Array(ncomp=100, dtype=ctypes.c_int) for tx in \
@@ -640,6 +640,7 @@ class CellByCellOMP(object):
         self.wrapper_timer.start()
         method(*args)
         self.wrapper_timer.pause()
+        
 
         self._update_opt()
         self._post_execute_dats(dat_dict)

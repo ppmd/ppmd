@@ -652,6 +652,12 @@ def test_entry_data_2():
                     sys.stdout.flush()
             cc.Barrier()
 
+    if cc1 != MPI.COMM_NULL:
+        cc.Free()
+    
+    if cc1 != MPI.COMM_NULL:
+        cc1.Free()
+
 
 def test_entry_data_3():
 

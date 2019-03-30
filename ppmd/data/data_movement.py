@@ -63,6 +63,8 @@ class GlobalDataMover:
         self._key_rma2 = self.__class__.__name__ + ':RMA_Put'
         self._key_local = self.__class__.__name__ + ':local_movement'
         self._key_compress = self.__class__.__name__ + ':compress'
+        self._key_nsend = self.__class__.__name__ + ':nsend'
+        self._key_nrecv = self.__class__.__name__ + ':nrecv'
 
         opt.PROFILE[self._key_call] = 0.0
         opt.PROFILE[self._key_call_count] = 0
@@ -71,6 +73,8 @@ class GlobalDataMover:
         opt.PROFILE[self._key_rma2] = 0.0
         opt.PROFILE[self._key_local] = 0.0
         opt.PROFILE[self._key_compress] = 0.0
+        opt.PROFILE[self._key_nsend] = 0
+        opt.PROFILE[self._key_nrecv] = 0
 
 
     def _check_send_buffer(self, lcount, nbytes):
@@ -161,7 +165,10 @@ class GlobalDataMover:
         rank = comm.rank
         topo = mpi.cartcomm_top_xyz(comm)
         dims = mpi.cartcomm_dims_xyz(comm)
+
         extent = state.domain.extent
+        boundary = state.domain.boundary
+
         dist_cell_widths = [1.0 / (ex / dx) for ex, dx in zip(extent, dims)]
         dist_cell_widths = np.array(dist_cell_widths, dtype=REAL)
         npart = state.npart_local
@@ -174,7 +181,15 @@ class GlobalDataMover:
         
         rk_offsets = (1, dims[0], dims[0]*dims[1])
 
+
         def to_mpi_rank(_p):
+            # avoid send if possible
+            if ((_p[0] >= boundary[0]) and (_p[0] <= boundary[1]) and \
+                (_p[1] >= boundary[2]) and (_p[1] <= boundary[3]) and \
+                (_p[2] >= boundary[4]) and (_p[2] <= boundary[5])):
+                return rank
+            
+            # case where particle needs sending to another rank
             _rk = 0
             for dx in range(3):
                 assert _p[dx] <=  0.5 * extent[dx], "outside domain"
@@ -182,8 +197,10 @@ class GlobalDataMover:
                 tint = int((_p[dx] + 0.5 * extent[dx]) * dist_cell_widths[dx])
                 tint = min(dims[dx]-1, tint)
                 _rk += tint * rk_offsets[dx]
+
             return _rk
         
+
         # find the new remote rank for leaving particles
         t0_local = time.time()
         for px in range(npart):
@@ -222,6 +239,7 @@ class GlobalDataMover:
         del _size_store
 
         opt.PROFILE[self._key_rma1] += time.time() - t1
+        opt.PROFILE[self._key_nsend] += lcount
         
         # pack the send buffer for all particles
         t0_local = time.time()
@@ -265,6 +283,8 @@ class GlobalDataMover:
         
         self.comm.Barrier()
         opt.PROFILE[self._key_rma2] += time.time() - t2
+        opt.PROFILE[self._key_nrecv] += self._recv_count[0]
+
 
         # unpack the data recv'd into dats
         old_npart_local = self.state.npart_local
@@ -294,18 +314,6 @@ class GlobalDataMover:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-        
 
 
 
