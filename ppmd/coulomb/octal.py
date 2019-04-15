@@ -6,6 +6,7 @@ import numpy as np
 from mpi4py import MPI
 from ppmd import pygcl
 
+from ppmd.mpi import AllocMem
 from ppmd.coulomb.cached import cached
 
 __author__ = "W.R.Saunders"
@@ -876,7 +877,10 @@ class OctalDataTree(object):
         self.ncomp = ncomp
         self.dtype = dtype
         self.mode = mode
+        
+        self._data_list = []
         self.data = []
+
         self.num_data = []
         self._num_cells = []
 
@@ -892,7 +896,12 @@ class OctalDataTree(object):
                     shape = list(lvl.parent_local_size) + [ncomp]
             else:
                 shape = (0,0,0,0)
-            self.data.append(np.zeros(shape=shape, dtype=dtype))
+            
+            # these arrays are alloced with MPI.Alloc_mem so they can portably
+            # be used with MPI.Win.Create
+            self._data_list.append(AllocMem(shape=shape, dtype=dtype))
+            self.data.append(self._data_list[-1].array)
+
             self.num_data.append(shape[0]*shape[1]*shape[2]*shape[3])
             self._num_cells.append(shape[0]*shape[1]*shape[2])
 
@@ -954,8 +963,8 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
     comm = tree[src_level].comm
     rank = comm.Get_rank()
 
-    dst = halo_data_tree[src_level - 1].ravel()
-    src = parent_data_tree[src_level].ravel()
+    dst = halo_data_tree[src_level - 1].view().ravel()
+    src = parent_data_tree[src_level].view().ravel()
 
     dst_g2l = tree[src_level - 1].global_to_local_halo
     src_g2l = tree[src_level].global_to_local_parent

@@ -261,15 +261,23 @@ def check_pythonhashseed():
 
 class AllocMem:
     def __init__(self, shape, dtype):
-        length = reduce(lambda x, y : x * y, shape)
-        self._mpi_alloc_ptr = MPI.Alloc_mem(ctypes.sizeof(dtype) * length)
-        pp = ctypes.cast(self._mpi_alloc_ptr.address, ctypes.POINTER(dtype))
-        self.array = np.ctypeslib.as_array(pp, shape=shape)
+        self._length = reduce(lambda x, y : x * y, shape)
+        if self._length > 0:
+            self._mpi_alloc_ptr = MPI.Alloc_mem(ctypes.sizeof(dtype) * self._length)
+            pp = ctypes.cast(self._mpi_alloc_ptr.address, ctypes.POINTER(dtype))
+            self._array = np.ctypeslib.as_array(pp, shape=shape)
+            self.array = self._array.view(dtype)
+        else:
+            self._array = np.zeros(shape, dtype)
+            self.array = self._array.view(dtype)
+        self.array.fill(0)
 
     def __del__(self):
         del self.array
-        MPI.Free_mem(self._mpi_alloc_ptr)
-        del self._mpi_alloc_ptr
+        del self._array
+        if self._length > 0:
+            MPI.Free_mem(self._mpi_alloc_ptr)
+            del self._mpi_alloc_ptr
 
 
 
