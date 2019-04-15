@@ -9,9 +9,9 @@ mpi4py.rc(thread_level='serialized')
 
 from mpi4py import MPI
 import sys, atexit, traceback
-import ctypes as ct
+import ctypes
 import numpy as np
-
+from functools import reduce
 import os
 
 if sys.version_info[0] >= 3:
@@ -45,10 +45,10 @@ atexit.register(_atexit_queue)
 
 
 mpi_map = {
-    ct.c_double: MPI.DOUBLE,
-    ct.c_int: MPI.INT,
+    ctypes.c_double: MPI.DOUBLE,
+    ctypes.c_int: MPI.INT,
     int: MPI.INT,
-    ct.c_byte: MPI.BYTE
+    ctypes.c_byte: MPI.BYTE
 }
 
 # shifts defined as (x, y, z)
@@ -257,4 +257,24 @@ def check_pythonhashseed():
         raise RuntimeError(_badhashstring)
     if int(os.environ['PYTHONHASHSEED'], 10) >= 4294967295:
         raise RuntimeError(_badhashstring)
+
+
+class AllocMem:
+    def __init__(self, shape, dtype):
+        length = reduce(lambda x, y : x * y, shape)
+        self._mpi_alloc_ptr = MPI.Alloc_mem(ctypes.sizeof(dtype) * length)
+        pp = ctypes.cast(self._mpi_alloc_ptr.address, ctypes.POINTER(dtype))
+        self.array = np.ctypeslib.as_array(pp, shape=shape)
+
+    def __del__(self):
+        del self.array
+        MPI.Free_mem(self._mpi_alloc_ptr)
+        del self._mpi_alloc_ptr
+
+
+
+
+
+
+
 

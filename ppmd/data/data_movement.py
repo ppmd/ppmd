@@ -18,6 +18,7 @@ INT64 = ctypes.c_int64
 
 
 MPI = mpi.MPI
+AllocMem = mpi.AllocMem
 
 
 class ParticleDatModifier:
@@ -46,14 +47,11 @@ class GlobalDataMover:
         self._win_recv_count = None
 
         self._recv = None
-        self._recv_p = None
 
         self._send = None
         self._win_recv = None
 
-        self._recv_count_p = MPI.Alloc_mem(ctypes.sizeof(INT64))
-        pp = ctypes.cast(self._recv_count_p.address, ctypes.POINTER(INT64))
-        self._recv_count = np.ctypeslib.as_array(pp, shape=(1,))
+        self._recv_count = AllocMem(shape=(1,), dtype=INT64)
         
 
         self._key_call = self.__class__.__name__ + ':__call__'
@@ -88,9 +86,9 @@ class GlobalDataMover:
     
     def _check_recv_count_win(self):
 
-        self._recv_count[0] = 0
+        self._recv_count.array[0] = 0
         assert self._win_recv_count is None
-        self._win_recv_count = MPI.Win.Create(self._recv_count, comm=self.comm)
+        self._win_recv_count = MPI.Win.Create(self._recv_count.array, comm=self.comm)
 
 
     def _check_recv_win(self):
@@ -100,21 +98,16 @@ class GlobalDataMover:
 
         # MPI Win create calls are collective on the comm
         if (self._recv is None) or \
-                (self._recv.shape[0] < self._recv_count[0]) or \
-                (self._recv.shape[1] != nbytes):
+                (self._recv.array.shape[0] < self._recv_count.array[0]) or \
+                (self._recv.array.shape[1] != nbytes):
 
             if self._recv is not None:
                 del self._recv
-            if self._recv_p is not None:
-                MPI.Free_mem(self._recv_p)
-                self._recv_p = None
 
-            nrow = self._recv_count[0]+100
-            self._recv_p = MPI.Alloc_mem(nrow * nbytes)
-            pp = ctypes.cast(self._recv_p.address, ctypes.POINTER(ctypes.c_char))
-            self._recv = np.ctypeslib.as_array(pp, shape=(nrow, nbytes))
+            nrow = self._recv_count.array[0]+100
+            self._recv = AllocMem(shape=(nrow, nbytes), dtype=ctypes.c_char)
 
-        self._win_recv = MPI.Win.Create(self._recv, disp_unit=nbytes, comm=self.comm)
+        self._win_recv = MPI.Win.Create(self._recv.array, disp_unit=nbytes, comm=self.comm)
         
         opt.PROFILE[self._key_check] += time.time() - t0
 
@@ -128,11 +121,7 @@ class GlobalDataMover:
 
     
     def __del__(self):
-        MPI.Free_mem(self._recv_count_p)
         del self._recv_count
-        if self._recv_p is not None:
-            MPI.Free_mem(self._recv_p)
-            self._recv_p = None
         if self._recv is not None:
             del self._recv
 
@@ -283,21 +272,21 @@ class GlobalDataMover:
         
         self.comm.Barrier()
         opt.PROFILE[self._key_rma2] += time.time() - t2
-        opt.PROFILE[self._key_nrecv] += self._recv_count[0]
+        opt.PROFILE[self._key_nrecv] += self._recv_count.array[0]
 
 
         # unpack the data recv'd into dats
         old_npart_local = self.state.npart_local
-        self.state.npart_local = old_npart_local + self._recv_count[0]
+        self.state.npart_local = old_npart_local + self._recv_count.array[0]
         
         t0_local = time.time()
-        for px in range(self._recv_count[0]):
+        for px in range(self._recv_count.array[0]):
             s = 0
             for dat in self.state.particle_dats:
                 w = self._byte_per_element(dat)
                 n = self._dat_ncomp(dat)
                 w *= n
-                v = self._recv[px, s:s+w:].view(self._dat_dtype(dat))
+                v = self._recv.array[px, s:s+w:].view(self._dat_dtype(dat))
                 s += w
                 self._dat_obj(dat).view[old_npart_local + px, :] = v[:]
         t_local += time.time() - t0_local
