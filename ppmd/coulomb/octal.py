@@ -420,6 +420,10 @@ class OctalGridLevel(object):
         """Map from global cube index to owning MPI rank"""
         self.global_to_local = np.zeros(shape=(2**level, 2**level, 2**level),
                                dtype=INT64)
+
+        self._global_to_local = AllocMem(shape=(2**level, 2**level, 2**level), dtype=INT64)
+        self.global_to_local = self._global_to_local.array
+
         """Map from global cube index to local cube index"""
         self.global_to_local_halo = np.zeros(
             shape=(2**level, 2**level, 2**level), dtype=INT64)

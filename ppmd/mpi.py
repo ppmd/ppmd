@@ -260,16 +260,23 @@ def check_pythonhashseed():
 
 
 class AllocMem:
+    """
+    AllocMem behaves similarly to np.zeros except the memory is allocated with
+    MPI.Alloc_mem.
+    """
     def __init__(self, shape, dtype):
         self._length = reduce(lambda x, y : x * y, shape)
         if self._length > 0:
             self._mpi_alloc_ptr = MPI.Alloc_mem(ctypes.sizeof(dtype) * self._length)
             pp = ctypes.cast(self._mpi_alloc_ptr.address, ctypes.POINTER(dtype))
             self._array = np.ctypeslib.as_array(pp, shape=shape)
-            self.array = self._array.view(dtype)
         else:
             self._array = np.zeros(shape, dtype)
-            self.array = self._array.view(dtype)
+
+        self.array = self._array.view(dtype)
+        """Numpy array formed from allocated memory."""
+
+        assert self._array.itemsize == ctypes.sizeof(dtype)
         self.array.fill(0)
 
     def __del__(self):
