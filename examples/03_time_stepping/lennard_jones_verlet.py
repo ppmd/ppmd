@@ -5,6 +5,7 @@ import numpy as np
 from ctypes import *
 from ppmd import *
 import sys
+import time
 
 # some alias for readability and easy modification if we ever
 # wish to use CUDA.
@@ -125,7 +126,7 @@ if __name__ == '__main__':
     steps = 10000
     dt = 0.001
     shell_steps = 10
-    N1 = 40
+    N1 = 10
     
     if len(sys.argv) > 1:
         N1 = int(sys.argv[1])
@@ -199,14 +200,20 @@ if __name__ == '__main__':
 
 
     # main timestepping loop
+    t0 = time.time()
     for it in IntegratorRange(steps, dt, A.vel, shell_steps, delta, verbose=False):
         
         vv1.execute()
         lj_pairloop.execute()
         vv2.execute()
         
-        if A.domain.comm.rank == 0:
+
+        if A.domain.comm.rank == 0 and it % 10 == 0:
             print("{: 8d} | {: 12.8e} {: 12.8e} | {: 12.8e}".format(it, lj_energy[0], ke_energy[0], lj_energy[0] + ke_energy[0]))
+    t1 = time.time()
+
+    if A.domain.comm.rank == 0:
+        print("Time taken: \t", t1 - t0)
 
 
 
