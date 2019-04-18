@@ -33,7 +33,6 @@ def test_state_modifier_1():
     A.P = PositionDat()
     A.V = ParticleDat(ncomp=3)
 
-    
 
     with A.modify() as m:
 
@@ -44,14 +43,7 @@ def test_state_modifier_1():
             }
         )
  
-
-    with A.modify() as m:
-        if A.npart_local == 2:
-            m.remove((0,1))
-
-
-    if MPIRANK == 0:
-        print('\n')
+    print('\n')
     MPIBARRIER()
 
     for rk in range(MPISIZE):
