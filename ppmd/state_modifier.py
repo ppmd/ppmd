@@ -36,6 +36,17 @@ class StateModifier:
         self._to_remove = set()
 
     def add(self, values):
+
+        if type(values) != dict:
+            raise RuntimeError("Values should be passed as a dict.")
+        num = np.atleast_2d(next(iter(values.values()))).shape[0]
+        for vx in values.items():
+            v = np.atleast_2d(vx[1])
+            if v.shape[0] != num:
+                raise RuntimeError("Numpy arrays of propoerties have varying numbers of rows.")
+            if vx[0].ncomp != v.shape[1]:
+                raise RuntimeError("Numpy arrays of propoerties has wrong number of columns for corresponding ParticleDat.")
+
         if len(values) > 0:
             self._to_add.append(values)
 
