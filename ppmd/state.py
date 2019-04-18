@@ -14,6 +14,8 @@ import numpy as np
 from ppmd import data, cell, host, mpi, runtime, halo
 import ppmd.lib.build as build
 
+from ppmd.state_modifier import StateModifier, StateModifierContext
+
 SUM = mpi.MPI.SUM
 
 
@@ -79,6 +81,14 @@ class BaseMDState(object):
         self._dat_len = 0
 
         self._gdm = None
+
+        self._state_modifier_context = StateModifierContext(self)
+        self.modifier = StateModifier(self)
+
+    
+    def modify(self):
+        return self._state_modifier_context
+
 
     def check_position_consistency(self):
         if self._gdm is not None:
@@ -285,6 +295,10 @@ class BaseMDState(object):
 
         :arg value: New number of local particles.
         """
+
+        # resize dats if needed
+        self._resize_callback(value)
+
         self._npart_local = int(value)
         for ix in self.particle_dats:
             _dat = getattr(self, ix)
@@ -380,7 +394,7 @@ class BaseMDState(object):
         """Check no particles have been lost"""
         t = self.sum_npart_local()
         if t != self.npart:
-            raise RuntimeError("Particles lost! Expected {} found {}.".
+            raise RuntimeError("Particles lost or Gained! Expected {} found {}.".
                                format(self.npart, t))
 
     def sum_npart_local(self):
