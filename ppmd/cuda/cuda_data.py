@@ -18,6 +18,7 @@ import ppmd.data as data
 import ppmd.opt
 import ppmd.opt as opt
 
+from ppmd.data.data_movement import ParticleDatModifier
 # cuda imports
 from ppmd.cuda import cuda_base, cuda_build, cuda_mpi, cuda_runtime
 
@@ -192,6 +193,29 @@ class ParticleDat(cuda_base.Matrix):
 
         self._halo_timer = ppmd.opt.Timer()
 
+        self._particle_dat_modifier = ParticleDatModifier(self, type(self) == PositionDat)
+
+
+    def modify_view(self):
+        return self._particle_dat_modifier
+
+    def sync_view_to_data(self):
+        # on devices where the actual data is separate to the view data
+        # this is a syncrohisation call
+        self._h_mirror.copy_to_device()
+
+    @property
+    def npart_local(self):
+        return self._npart_local.value
+
+    @npart_local.setter
+    def npart_local(self, value):
+        self._npart_local.value = value
+
+    @property
+    def view(self):
+        self._h_mirror.copy_from_device()
+        return self._h_mirror.mirror.data[:self.npart_local:, :].view()
 
     def zero(self, n=None):
         if n is None:
@@ -202,8 +226,7 @@ class ParticleDat(cuda_base.Matrix):
                 ctypes.c_int(0),
                 ctypes.c_size_t(n*self.ncomp*ctypes.sizeof(self.dtype))
             )
-            #self[:n:,:] = 0
-        self._vid_int += 1
+        self.mark_halos_old()
 
     def max(self):
         t = gpuarray.max(self._dat[0:self.npart_local:,:])
@@ -253,7 +276,7 @@ class ParticleDat(cuda_base.Matrix):
         :arg access mode: Access type required by the calling method.
         """
         if mode.write:
-            self._vid_int += 1
+            self.mark_halos_old()
 
     def _init_struct(self):
         self._struct = type('ParticleDatT', (ctypes.Structure,),
@@ -656,7 +679,10 @@ class ParticleDat(cuda_base.Matrix):
 #########################################################################
 
 class PositionDat(ParticleDat):
-    pass
+    def __init__(self, npart=0, ncomp=3, initial_value=None, name=None, dtype=ctypes.c_double):
+        if ncomp != 3: raise RuntimeError('ncomp must be 3 for PositionDat')
+        if dtype != ctypes.c_double: raise RuntimeError('dtype must be ctypes.c_double for PositionDat')
+        super().__init__(npart=npart, ncomp=3, dtype=ctypes.c_double)
 
 
 

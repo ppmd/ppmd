@@ -289,6 +289,9 @@ class Matrix(object):
         """
         return self._vid_int
 
+    def mark_halos_old(self):
+        self._vid_int += 1
+
     def inc_version(self, inc=1):
         """
         Increment the version by the specified amount
@@ -354,7 +357,6 @@ class Matrix(object):
 
     def __getitem__(self, key):
         self._h_mirror.copy_from_device()
-
         return self._h_mirror.mirror.data[key]
 
     def __setitem__(self, key, value):
@@ -365,7 +367,7 @@ class Matrix(object):
         self._h_mirror.mirror.data[key] = value
 
         self._h_mirror.copy_to_device()
-        self._vid_int += 1
+        self.mark_halos_old()
 
     def __repr__(self):
         return str(self.__getitem__(slice(None, None, None)))

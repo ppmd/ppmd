@@ -185,6 +185,11 @@ class ParticleDat(host.Matrix):
     def modify_view(self):
         return self._particle_dat_modifier
 
+    def sync_view_to_data(self):
+        # on devices where the actual data is separate to the view data
+        # this is a syncrohisation call
+        pass
+
     @property
     def view(self):
         return self._dat[:self.npart_local:, :].view()

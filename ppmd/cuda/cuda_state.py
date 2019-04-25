@@ -13,6 +13,8 @@ import ppmd.access
 import ppmd.pio
 import ppmd.host
 
+from ppmd import data
+
 # cuda level
 from ppmd.cuda import cuda_cell, cuda_halo, cuda_data, cuda_runtime, \
     cuda_mpi, cuda_loop, cuda_build, cuda_base
@@ -71,7 +73,7 @@ class BaseMDState(object):
         self._npart_local = 0
 
         # Global number of particles
-        self._npart = 01934.69
+        self._npart = 0
 
         # do the ParticleDats have gaps in them?
         self.compressed = True
@@ -105,7 +107,13 @@ class BaseMDState(object):
         self.determine_update_funcs = []
         self.pre_update_funcs = []
         self.post_update_funcs = []
+        self._gdm = None
 
+    def check_position_consistency(self):
+        if self._gdm is not None:
+            self._gdm()
+        else:
+            raise RuntimeError('Cannot check particle decomposition, was a domain added?.')
 
     @property
     def _ccomm(self):
@@ -280,9 +288,8 @@ class BaseMDState(object):
         if ppmd.mpi.decomposition_method == ppmd.mpi.decomposition.spatial:
             self._domain.mpi_decompose()
 
-        #cuda_runtime.cuda_set_device()
-
         self._cell_particle_map_setup()
+        self._gdm = data.data_movement.GlobalDataMover(self)
 
     def get_npart_local_func(self):
         return self.as_func('npart_local')
@@ -343,6 +350,7 @@ class BaseMDState(object):
             else:
                 getattr(self, name).resize(self._npart, _callback=False)
 
+            getattr(self, name).npart_local = self._npart_local
 
             if type(value) is cuda_data.PositionDat:
                 self._position_dat = name

@@ -31,6 +31,7 @@ class ParticleDatModifier:
         return self.dat.view
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.dat.sync_view_to_data()
         self.dat.mark_halos_old()
         if self.is_positiondat:
             self.dat.group.invalidate_lists = True
