@@ -465,14 +465,9 @@ class BaseMDState(object):
                        empty_slots,
                        num_slots_to_fill,
                        new_npart):
-
-
-        #n = self.npart
-        #n2 = n - new_npart
-        #new_n = new_npart
-
-        #test = np.zeros([n+1, 2])
-        #test[:,0] = empty_per_particle_flag[:,0]
+        """
+        empty_per_particle_flag takes the form of an exlusive sum array
+        """
 
 
         replacement_slots = \
@@ -657,7 +652,77 @@ class State(BaseMDState):
 
 
 
-class _FilterOnDomain(object):
+class _BaseRemover:
+
+    def __init__(self):
+
+        self._empty_slots = cuda_data.ScalarArray(dtype=ctypes.c_int)
+        self._replacement_slots = None
+        self._per_particle_flag = cuda_data.ParticleDat(ncomp=1, dtype=ctypes.c_int)
+        self._find_indices_method = _FindCompressionIndices()
+
+    def _specific_method(self, n):
+        pass
+
+    def apply(self, n):
+
+        self._per_particle_flag.resize(n+1)
+        self._per_particle_flag.zero()
+        
+        self._specific_method(n)
+
+
+        # exclusive scan on array of flags
+        cuda_runtime.LIB_CUDA_MISC['cudaExclusiveScanInt'](
+                                   self._per_particle_flag.ctypes_data,
+                                   ctypes.c_int(n+1))
+
+        # number leaving is in element n+1
+        end_ptr = ppmd.host.pointer_offset(self._per_particle_flag.ctypes_data,
+                                           n*ctypes.sizeof(ctypes.c_int))
+
+        n2_ = ctypes.c_int()
+        cuda_runtime.cuda_mem_cpy(ctypes.byref(n2_),
+                                  end_ptr,
+                                  ctypes.c_size_t(ctypes.sizeof(ctypes.c_int)),
+                                  'cudaMemcpyDeviceToHost')
+        n2 = n2_.value
+
+        # compute new npart_local
+        new_n = n-n2
+
+        # the empty slots before the new end need filling
+        end_ptr = ppmd.host.pointer_offset(self._per_particle_flag.ctypes_data,
+                                           new_n*ctypes.sizeof(ctypes.c_int))
+        n_to_fill_ = ctypes.c_int()
+        cuda_runtime.cuda_mem_cpy(ctypes.byref(n_to_fill_),
+                                  end_ptr,
+                                  ctypes.c_size_t(ctypes.sizeof(ctypes.c_int)),
+                                  'cudaMemcpyDeviceToHost')
+
+        # number to fill in [0, npart_local - 1]
+        n_to_fill = n_to_fill_.value
+
+        # if there are empty slots
+        if n2 > 0:
+            self._empty_slots.resize(n_to_fill)
+            self._empty_slots.zero()
+
+            args = list(cuda_runtime.kernel_launch_args_1d(new_n, threads=1024)) + \
+                   [self._per_particle_flag.ctypes_data,
+                    ctypes.c_int(new_n),
+                    self._empty_slots.ctypes_data]
+
+            cuda_runtime.cuda_err_check(cuda_mpi.LIB_CUDA_MPI['cudaFindEmptySlots'](
+                *args
+                )
+            )
+
+        # this first returned array actaully is an exclusive sum of the flags
+        return self._per_particle_flag, self._empty_slots, n_to_fill, new_n
+
+
+class _FilterOnDomain(_BaseRemover):
     """
     Use a domain boundary and a PositionDat to construct and return:
     A new number of local particles
@@ -669,29 +734,18 @@ class _FilterOnDomain(object):
     """
 
     def __init__(self, domain_in, positions_in):
+
+        super().__init__()
+
         self._domain = domain_in
         self._positions = positions_in
 
-
-        self._empty_slots = cuda_data.ScalarArray(dtype=ctypes.c_int)
-        self._replacement_slots = None
-        self._per_particle_flag = cuda_data.ParticleDat(ncomp=1, dtype=ctypes.c_int)
-
         kernel1_code = """
-
         int _F = 0;
-
-        if ((P(0) < B0) ||  (P(0) >= B1)) {
-            _F = 1;
-        }
-        if ((P(1) < B2) ||  (P(1) >= B3)) {
-            _F = 1;
-        }
-        if ((P(2) < B4) ||  (P(2) >= B5)) {
-            _F = 1;
-        }
+        if ((P(0) < B0) ||  (P(0) >= B1)) { _F = 1; }
+        if ((P(1) < B2) ||  (P(1) >= B3)) { _F = 1; }
+        if ((P(2) < B4) ||  (P(2) >= B5)) { _F = 1; }
         F(0) = _F;
-
         """
 
         kernel1_dict = {
@@ -714,13 +768,10 @@ class _FilterOnDomain(object):
                                      static_args=kernel1_statics)
 
         self._loop1 = cuda_loop.ParticleLoop(kernel1, kernel1_dict)
+    
 
-        self._find_indices_method = _FindCompressionIndices()
+    def _specific_method(self, n):
 
-
-    def apply(self, n):
-
-        self._per_particle_flag.resize(n+1)
         B = self._domain.boundary
 
         kernel1_statics = {
@@ -732,65 +783,9 @@ class _FilterOnDomain(object):
             'B5': ctypes.c_double(B[5])
         }
 
-
-        self._per_particle_flag.zero()
-
-
         # find particles to remove
         self._loop1.execute(n=self._positions.group.npart_local,
                             static_args=kernel1_statics)
-
-
-
-
-
-        # exclusive scan on array of flags
-        cuda_runtime.LIB_CUDA_MISC['cudaExclusiveScanInt'](
-                                   self._per_particle_flag.ctypes_data,
-                                   ctypes.c_int(n+1))
-
-
-
-        end_ptr = ppmd.host.pointer_offset(self._per_particle_flag.ctypes_data,
-                                           n*ctypes.sizeof(ctypes.c_int))
-
-
-        n2_ = ctypes.c_int()
-        cuda_runtime.cuda_mem_cpy(ctypes.byref(n2_),
-                                  end_ptr,
-                                  ctypes.c_size_t(ctypes.sizeof(ctypes.c_int)),
-                                  'cudaMemcpyDeviceToHost')
-        n2 = n2_.value
-        new_n = n-n2
-
-
-        end_ptr = ppmd.host.pointer_offset(self._per_particle_flag.ctypes_data,
-                                           new_n*ctypes.sizeof(ctypes.c_int))
-        n_to_fill_ = ctypes.c_int()
-        cuda_runtime.cuda_mem_cpy(ctypes.byref(n_to_fill_),
-                                  end_ptr,
-                                  ctypes.c_size_t(ctypes.sizeof(ctypes.c_int)),
-                                  'cudaMemcpyDeviceToHost')
-        n_to_fill = n_to_fill_.value
-
-
-        if n2 > 0:
-            self._empty_slots.resize(n_to_fill)
-            self._empty_slots.zero()
-
-            args = list(cuda_runtime.kernel_launch_args_1d(new_n, threads=1024)) + \
-                   [self._per_particle_flag.ctypes_data,
-                    ctypes.c_int(new_n),
-                    self._empty_slots.ctypes_data]
-
-            cuda_runtime.cuda_err_check(cuda_mpi.LIB_CUDA_MPI['cudaFindEmptySlots'](
-                *args
-                )
-            )
-
-
-        return self._per_particle_flag, self._empty_slots, n_to_fill, new_n
-
 
 
 class _FindCompressionIndices(object):
