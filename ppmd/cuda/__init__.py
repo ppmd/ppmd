@@ -42,4 +42,3 @@ if not 'PPMD_DISABLE_CUDA' in environ:
     except Exception as e:
         CUDA_IMPORT_ERROR = e
 
-

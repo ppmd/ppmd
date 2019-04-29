@@ -203,6 +203,7 @@ class ParticleDat(cuda_base.Matrix):
         # on devices where the actual data is separate to the view data
         # this is a syncrohisation call
         self._h_mirror.copy_to_device()
+        self.mark_halos_old()
 
     @property
     def npart_local(self):

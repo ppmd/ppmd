@@ -256,7 +256,8 @@ class BaseMDState(object):
 
 
             # initialise the filter method now we have a domain and positions
-            self._filter_method = _FilterOnDomain(self._domain,
+            self._filter_method = _FilterOnDomain(self,
+                                                  self._domain,
                                                   self.get_position_dat())
             if self._ccsize == 1:
                 self._halo_manager = cuda_halo.CartesianHalo(self._cell_to_particle_map)
@@ -313,9 +314,10 @@ class BaseMDState(object):
         :param value: Value of parameter.
         :return:
         """
-
+        
         # Add to instance list of particle dats.
-        if (issubclass(type(value), cuda_data.ParticleDat) and not name.startswith('_') ):
+        if issubclass(type(value), cuda_data.ParticleDat):
+
             object.__setattr__(self, name, value)
             self.particle_dats.append(name)
 
@@ -388,8 +390,6 @@ class BaseMDState(object):
             _dat = getattr(self,ix)
             _dat.npart_local = int(value)
             _dat.halo_start_reset()
-        # print "N set:", value
-
 
     @property
     def npart(self):
@@ -445,19 +445,19 @@ class BaseMDState(object):
         for px in self.particle_dats:
             getattr(self, px).free()
 
-    def filter_on_domain_boundary(self, n=None):
+    def filter_on_domain_boundary(self):
         """
         Remove particles that do not reside in this subdomain. State requires a
         domain and a PositionDat
         """
+        self._compress_dats(*self._filter_method.apply())
 
-        if n is None:
-            if self.npart_local > 0:
-                n = self.npart_local
-            else:
-                n = self.npart
 
-        self._compress_dats(*self._filter_method.apply(n))
+    def remove_by_slot(self, slots):
+
+        remover = _RemoveBySlot(self, slots)
+        self._compress_dats(*remover.apply())
+
 
 
     def _compress_dats(self,
@@ -654,23 +654,24 @@ class State(BaseMDState):
 
 class _BaseRemover:
 
-    def __init__(self):
+    def __init__(self, state):
 
         self._empty_slots = cuda_data.ScalarArray(dtype=ctypes.c_int)
         self._replacement_slots = None
+        self.state = state
         self._per_particle_flag = cuda_data.ParticleDat(ncomp=1, dtype=ctypes.c_int)
         self._find_indices_method = _FindCompressionIndices()
 
-    def _specific_method(self, n):
+    def _specific_method(self):
         pass
 
-    def apply(self, n):
+    def apply(self):
 
+        n = self.state.npart_local
         self._per_particle_flag.resize(n+1)
         self._per_particle_flag.zero()
         
-        self._specific_method(n)
-
+        self._specific_method()
 
         # exclusive scan on array of flags
         cuda_runtime.LIB_CUDA_MISC['cudaExclusiveScanInt'](
@@ -722,6 +723,21 @@ class _BaseRemover:
         return self._per_particle_flag, self._empty_slots, n_to_fill, new_n
 
 
+
+class _RemoveBySlot(_BaseRemover):
+
+    def __init__(self, state, slots_to_remove):
+        super().__init__(state)
+
+        self._slots = slots_to_remove
+
+    def _specific_method(self):
+        
+        with self._per_particle_flag.modify_view() as m:
+            m[self._slots, 0] = 1
+
+
+
 class _FilterOnDomain(_BaseRemover):
     """
     Use a domain boundary and a PositionDat to construct and return:
@@ -733,9 +749,9 @@ class _FilterOnDomain(_BaseRemover):
     The output can then be used to compress ParticleDats.
     """
 
-    def __init__(self, domain_in, positions_in):
+    def __init__(self, state, domain_in, positions_in):
 
-        super().__init__()
+        super().__init__(state)
 
         self._domain = domain_in
         self._positions = positions_in
@@ -768,9 +784,8 @@ class _FilterOnDomain(_BaseRemover):
                                      static_args=kernel1_statics)
 
         self._loop1 = cuda_loop.ParticleLoop(kernel1, kernel1_dict)
-    
 
-    def _specific_method(self, n):
+    def _specific_method(self):
 
         B = self._domain.boundary
 

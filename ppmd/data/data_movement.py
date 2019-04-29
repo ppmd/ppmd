@@ -151,6 +151,7 @@ class GlobalDataMover:
 
         if comm.size == 1:
             return
+        
 
         rank = comm.rank
         topo = mpi.cartcomm_top_xyz(comm)
@@ -290,6 +291,14 @@ class GlobalDataMover:
                 v = self._recv.array[px, s:s+w:].view(self._dat_dtype(dat))
                 s += w
                 self._dat_obj(dat).view[old_npart_local + px, :] = v[:]
+        
+        
+        # on some architectures the memory used for compute is different to the
+        # exposed numpy view
+        for dat in self.state.particle_dats:
+            self._dat_obj(dat).sync_view_to_data()
+        
+
         t_local += time.time() - t0_local
         opt.PROFILE[self._key_local] += t_local
         
