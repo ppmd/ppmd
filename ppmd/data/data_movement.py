@@ -234,6 +234,15 @@ class GlobalDataMover:
         
         # pack the send buffer for all particles
         t0_local = time.time()
+
+        # get the views before the copy to avoid excessive syncing with the case
+        # of CUDA
+        views = {}
+        bytes_per_element = {}
+        for dat in self.state.particle_dats:
+            views[dat] = self._dat_obj(dat).view.view()
+            bytes_per_element[dat] = self._byte_per_element(dat)
+
         nbytes = self._get_nbytes()
         self._check_send_buffer(lcount, nbytes)
         send_offset = 0
@@ -241,12 +250,12 @@ class GlobalDataMover:
             for px in lrank_dict[rk]:
                 s = 0
                 for dat in self.state.particle_dats:
-                    w = self._byte_per_element(dat)
+                    w = bytes_per_element[dat]
                     n = self._dat_ncomp(dat)
                     w *= n
                     v = self._send[send_offset, s:s+w:].view(self._dat_dtype(dat))
                     s += w
-                    v[:] = self._dat_obj(dat).view[px, :].copy()
+                    v[:] = views[dat][px, :].copy()
                 send_offset += 1
         t_local += time.time() - t0_local
         
@@ -281,16 +290,24 @@ class GlobalDataMover:
         old_npart_local = self.state.npart_local
         self.state.npart_local = old_npart_local + self._recv_count.array[0]
         
+        # get the views before the copy to avoid excessive syncing with the case
+        # of CUDA
+        views = {}
+        bytes_per_element = {}
+        for dat in self.state.particle_dats:
+            views[dat] = self._dat_obj(dat).view.view()
+            bytes_per_element[dat] = self._byte_per_element(dat)
+
         t0_local = time.time()
         for px in range(self._recv_count.array[0]):
             s = 0
             for dat in self.state.particle_dats:
-                w = self._byte_per_element(dat)
+                w = bytes_per_element[dat]
                 n = self._dat_ncomp(dat)
                 w *= n
                 v = self._recv.array[px, s:s+w:].view(self._dat_dtype(dat))
                 s += w
-                self._dat_obj(dat).view[old_npart_local + px, :] = v[:]
+                views[dat][old_npart_local + px, :] = v[:]
         
         
         # on some architectures the memory used for compute is different to the

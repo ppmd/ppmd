@@ -669,6 +669,7 @@ class _BaseRemover:
 
         n = self.state.npart_local
         self._per_particle_flag.resize(n+1)
+        self._per_particle_flag.npart_local = n
         self._per_particle_flag.zero()
         
         self._specific_method()
