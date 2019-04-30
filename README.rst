@@ -3,25 +3,11 @@
 Introduction
 ------------
 
-<Project Name> is a portable high level framework to create high performance Molecular Dynamics codes. The principle idea is that a simulation consists of sets of particles and most operations on these particles can be described using either a loop over all particles or a loop over particle pairs and applying some operation.
+PPMD is a portable high level framework to create high performance Molecular Dynamics codes. The principle idea is that a simulation consists of sets of particles and most operations on these particles can be described using either a loop over all particles or a loop over particle pairs and applying some operation.
 
 
-Installation
-------------
-
-The recomended installation method is to create a Python virtual enviroment then install PPMD with:
-
-``pip install git+https://bitbucket.org/wrs20/ppmd@master``
-
-For CUDA support please subsequently install PyCUDA:
-
-``pip install pycuda``
-
-The installation can then by customised with the enviroment variables defined below.
-
-
-Dependencies
-~~~~~~~~~~~~
+Dependencies and Installation 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Required System tools:
 
@@ -30,13 +16,15 @@ Required System tools:
 * A C/C++ compiler, preferably intel (see ``PPMD_CC_MAIN`` environment variable).
 * CUDA Toolkit if targeting CUDA.
 
-To pip install python packages:
+The recomended installation method is to create a Python virtual enviroment then install PPMD with:
 
-``pip install --no-cache-dir -r requirements.txt``
+``pip install --no-cache-dir git+https://bitbucket.org/wrs20/ppmd@master``
 
-For CUDA support:
+For CUDA support please subsequently install PyCUDA:
 
-``pip install --no-cache-dir -r requirements_cuda.txt``
+``pip install --no-cache-dir pycuda``
+
+The installation can then by customised with the enviroment variables defined below.
 
 
 Environment Variables
