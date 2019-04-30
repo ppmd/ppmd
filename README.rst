@@ -13,6 +13,10 @@ The recomended installation method is to create a Python virtual enviroment then
 
 ``pip install git+https://bitbucket.org/wrs20/ppmd@master``
 
+For CUDA support please subsequently install PyCUDA:
+
+``pip install pycuda``
+
 The installation can then by customised with the enviroment variables defined below.
 
 
