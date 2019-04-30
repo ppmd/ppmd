@@ -20,7 +20,7 @@ The recomended installation method is to create a Python virtual enviroment then
 
 ``pip install --no-cache-dir git+https://bitbucket.org/wrs20/ppmd@master``
 
-For CUDA support please subsequently install PyCUDA:
+For CUDA support please install PyCUDA:
 
 ``pip install --no-cache-dir pycuda``
 
