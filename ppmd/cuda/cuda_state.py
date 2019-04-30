@@ -13,6 +13,9 @@ import ppmd.access
 import ppmd.pio
 import ppmd.host
 
+
+from ppmd.state_modifier import StateModifier, StateModifierContext
+
 from ppmd import data
 
 # cuda level
@@ -108,6 +111,13 @@ class BaseMDState(object):
         self.pre_update_funcs = []
         self.post_update_funcs = []
         self._gdm = None
+
+        self._state_modifier_context = StateModifierContext(self)
+        self.modifier = StateModifier(self)
+
+    def modify(self):
+        return self._state_modifier_context
+
 
     def check_position_consistency(self):
         if self._gdm is not None:
@@ -385,11 +395,15 @@ class BaseMDState(object):
 
         :arg value: New number of local particles.
         """
+        # resize dats if needed
+        self._resize_callback(value)
+
         self._npart_local = int(value)
         for ix in self.particle_dats:
             _dat = getattr(self,ix)
             _dat.npart_local = int(value)
             _dat.halo_start_reset()
+
 
     @property
     def npart(self):
