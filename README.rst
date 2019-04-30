@@ -16,7 +16,7 @@ Required System tools:
 * A C/C++ compiler, preferably intel (see ``PPMD_CC_MAIN`` environment variable).
 * CUDA Toolkit if targeting CUDA.
 
-The recomended installation method is to create a Python virtual enviroment then install PPMD with:
+The recommended installation method is to create a Python virtual environment then install PPMD with:
 
 ``pip install --no-cache-dir git+https://bitbucket.org/wrs20/ppmd@master``
 
@@ -24,12 +24,12 @@ For CUDA support please install PyCUDA:
 
 ``pip install --no-cache-dir pycuda``
 
-The installation can then by customised with the enviroment variables defined below.
+The installation can then by customised with the environment variables defined below.
 
 
 Environment Variables
 ---------------------
-The code generation system relies on consistency of the following environment variable accross all MPI processes, this value must be set for parallel MPI execution.
+The code generation system relies on consistency of the following environment variable across all MPI processes, this value must be set for parallel MPI execution.
 
 * ``PYTHONHASHSEED``: e.g ``export PYTHONHASHSEED=123``.
 
@@ -45,6 +45,22 @@ The following should be set if CUDA support is desired.
 
 * ``CUDA_SDK``: location of CUDA_SDK (or path containing the helper header files from the sdk).
 * ``MPI_HOME``: Used by the default CUDA compiler configuration to locate the desired MPI implementation.
+
+
+Publications / Citation
+-----------------------
+
+The relevant article with which to cite this project is:
+
+*A domain specific language for performance portable molecular dynamics algorithms*, https://doi.org/10.1016/j.cpc.2017.11.006
+
+For the Ewald implementation the relevant article is:
+
+*Long range forces in a performance portable Molecular Dynamics framework*, Parallel Computing is Everywhere, 2018, pp. 37 – 46
+
+Further discussion of the motivations and methodology can be found in:
+
+*Development Of A Performance-Portable Framework For Atomistic Simulations*, http://people.bath.ac.uk/wrs20/wrs20_thesis.pdf
 
 
 License
