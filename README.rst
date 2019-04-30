@@ -9,7 +9,11 @@ Introduction
 Installation
 ------------
 
-The contents of this git repository should be placed somewhere found by the ``PYTHONPATH`` environment variable.
+The recomended installation method is to create a Python virtual enviroment then install PPMD with:
+
+``pip install git+https://bitbucket.org/wrs20/ppmd@master``
+
+The installation can then by customised with the enviroment variables defined below.
 
 
 Dependencies
