@@ -5,9 +5,9 @@ long_description = """PPMD is a portable high level framework to create high per
 
 install_requires = []
 with open('requirements.txt') as fh:
-    l = fh.readline()
-    if len(l) > 0:
-        install_requires.append(l)
+    for l in fh:
+        if len(l) > 0:
+            install_requires.append(l)
 
 setup(
    name='ppmd',
