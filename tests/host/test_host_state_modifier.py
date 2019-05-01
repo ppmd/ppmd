@@ -5,10 +5,15 @@ import numpy as np
 import ppmd
 from ppmd.access import *
 from ppmd.data import ParticleDat, ScalarArray, GlobalArray, PositionDat, data_movement
+from ppmd.kernel import Kernel
+from ppmd.pairloop import CellByCellOMP
+
 
 State = ppmd.state.State
 BoundaryTypePeriodic = ppmd.domain.BoundaryTypePeriodic
 BaseDomainHalo = ppmd.domain.BaseDomainHalo
+
+
 
 import ctypes
 INT64 = ctypes.c_int64
@@ -123,6 +128,157 @@ def test_state_modifier_1():
             gid2 = A.GID[lx, 0]
             # this should have been removed
             assert np.linalg.norm(A.P[lx, :] - pi2[gid2, :], np.inf) < 10.**-16
+
+
+
+
+
+
+
+def test_state_modifier_2():
+
+    rng = np.random.RandomState(96713)
+    common_rng = np.random.RandomState(59171)
+
+    E = 4.0
+    N = 50
+    Eo2 = E * 0.5
+
+    N2 = 2*N
+    cutoff = E/8
+    
+    A = State()
+    A.domain = BaseDomainHalo((E,E,E))
+    A.domain.boundary_condition = BoundaryTypePeriodic()
+    
+    A.P = PositionDat()
+    A.GID = ParticleDat(ncomp=1, dtype=INT64)
+    A.NNL = ParticleDat(ncomp=1, dtype=INT64)
+
+
+    pi = rng.uniform(low=-0.5*E, high=0.5*E, size=(N2, 3))
+    gi = np.reshape(np.arange(N2), (N2,1))
+    nnp = np.zeros_like(gi)
+
+    active_ids = set(gi[:N, 0])
+    inactive_ids = set(gi[N:, 0])
+
+    with A.modify() as m:
+        if MPIRANK == 0:
+            m.add(
+                {
+                    A.P: pi[:N, :],
+                    A.GID: gi[:N, :]
+                }
+            )
+
+
+    def _direct():
+
+        for ix in active_ids:
+            tnn = 0
+            ir = pi[ix, :]
+            for jx in active_ids:
+                if ix == jx: continue
+                jr = pi[jx, :]
+                r = np.zeros_like(ir)
+
+                for dx in (0,1,2):
+                    r[dx] = ir[dx] - jr[dx]
+                    if r[dx] >=  Eo2: r[dx] -= E 
+                    elif r[dx] <= -Eo2: r[dx] += E 
+
+                if np.linalg.norm(r) <= cutoff:
+                    tnn += 1
+
+            nnp[ix, 0] = tnn
+    
+    
+    nnl_kernel_src = """
+    const double r0 = P.i[0] - P.j[0];
+    const double r1 = P.i[1] - P.j[1];
+    const double r2 = P.i[2] - P.j[2];
+    const double rr = r0 * r0 + r1*r1 + r2*r2;
+    if (rr <= {cutoff}) {{
+        NNL.i[0]++;
+    }}
+    """.format(
+        cutoff=cutoff * cutoff
+    )
+
+    nnl_kernel = Kernel('nnl_kernel', nnl_kernel_src)
+    nnl = CellByCellOMP(
+        kernel=nnl_kernel,
+        dat_dict={
+            'P': A.P(READ),
+            'NNL': A.NNL(INC_ZERO)
+        },
+        shell_cutoff = 1.02 * cutoff
+    )
+
+    
+    def _check():
+
+        assert A.npart == len(active_ids)
+        assert len(active_ids) + len(inactive_ids) == N2
+
+        nnl.execute()
+        _direct()
+
+        for ix in range(A.npart_local):
+            gid = A.GID[ix, 0]
+            correct = nnp[gid, 0]
+            lid = np.where(A.GID.view[:, 0] == gid)[0]
+            to_test = A.NNL[lid, 0]
+            assert correct == to_test
+    
+
+    _check()
+
+
+    for testx in range(200):
+
+        add_bool = common_rng.randint(0, 2)
+        remove_bool = common_rng.randint(0, 2) and bool(A.npart)
+        
+        if remove_bool:
+
+            gid_to_remove = sorted(active_ids)[common_rng.randint(0, len(active_ids))]
+            active_ids.remove(gid_to_remove)
+            inactive_ids.add(gid_to_remove)
+
+            lid = np.where(A.GID.view[:, 0] == gid_to_remove)
+            lid = lid[0][0] if len(lid[0]) > 0 else None
+
+            with A.modify() as m:
+                if lid is not None:
+                    m.remove((lid,))
+
+            _check()
+        
+        if add_bool:
+
+            gid_to_add = sorted(inactive_ids)[common_rng.randint(0, len(inactive_ids))]
+            active_ids.add(gid_to_add)
+            inactive_ids.remove(gid_to_add) 
+
+            ##pick a random rank to add the particle
+            rank = common_rng.randint(0, MPISIZE)
+
+            with A.modify() as m:
+                if MPIRANK == rank:
+                    m.add({
+                        A.P: pi[gid_to_add, :],
+                        A.GID: gi[gid_to_add, :],
+                    })
+
+            _check()
+
+
+
+
+
+
 
 
 
