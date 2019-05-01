@@ -133,9 +133,14 @@ def test_state_modifier_1():
 
 
 
+@pytest.fixture(
+    scope="module",
+    params=(CellByCellOMP, )
+)
+def PL(request):
+    return request.param
 
-
-def test_state_modifier_2():
+def test_state_modifier_2(PL):
 
     rng = np.random.RandomState(96713)
     common_rng = np.random.RandomState(59171)
@@ -207,7 +212,7 @@ def test_state_modifier_2():
     )
 
     nnl_kernel = Kernel('nnl_kernel', nnl_kernel_src)
-    nnl = CellByCellOMP(
+    nnl = PL(
         kernel=nnl_kernel,
         dat_dict={
             'P': A.P(READ),
