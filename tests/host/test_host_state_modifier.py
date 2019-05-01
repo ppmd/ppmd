@@ -1,13 +1,16 @@
 #!/usr/bin/python
 
+import pytest
+
 import numpy as np
 
 import ppmd
 from ppmd.access import *
 from ppmd.data import ParticleDat, ScalarArray, GlobalArray, PositionDat, data_movement
 from ppmd.kernel import Kernel
-from ppmd.pairloop import CellByCellOMP
 
+from ppmd.pairloop import CellByCellOMP, SubCellByCellOMP, PairLoopNeighbourListNSOMP
+from ppmd.loop import ParticleLoop, ParticleLoopOMP
 
 State = ppmd.state.State
 BoundaryTypePeriodic = ppmd.domain.BoundaryTypePeriodic
@@ -135,12 +138,14 @@ def test_state_modifier_1():
 
 @pytest.fixture(
     scope="module",
-    params=(CellByCellOMP, )
+    params=(CellByCellOMP, SubCellByCellOMP, PairLoopNeighbourListNSOMP)
 )
 def PL(request):
     return request.param
 
 def test_state_modifier_2(PL):
+
+    # Checks pair loop functionality with add/remove particles
 
     rng = np.random.RandomState(96713)
     common_rng = np.random.RandomState(59171)
@@ -280,6 +285,120 @@ def test_state_modifier_2(PL):
             _check()
 
 
+@pytest.fixture(
+    scope="module",
+    params=(ParticleLoop, ParticleLoopOMP)
+)
+def PL(request):
+    return request.param
+
+def test_state_modifier_3(PL):
+
+    # Checks particle loop functionality with add/remove particles
+
+    rng = np.random.RandomState(96713)
+    common_rng = np.random.RandomState(59171)
+
+    E = 4.0
+    N = 50
+    Eo2 = E * 0.5
+
+    N2 = 2*N
+    cutoff = E/8
+    
+    A = State()
+    A.domain = BaseDomainHalo((E,E,E))
+    A.domain.boundary_condition = BoundaryTypePeriodic()
+    
+    A.P = PositionDat()
+    A.GID = ParticleDat(ncomp=1, dtype=INT64)
+    A.NNL = ParticleDat(ncomp=1, dtype=INT64)
+
+    A.VALUE = ScalarArray(ncomp=1, dtype=INT64)
+    A.VALUE[0] = 42
+
+
+    pi = rng.uniform(low=-0.5*E, high=0.5*E, size=(N2, 3))
+    gi = np.reshape(np.arange(N2), (N2,1))
+
+    active_ids = set(gi[:N, 0])
+    inactive_ids = set(gi[N:, 0])
+
+    with A.modify() as m:
+        if MPIRANK == 0:
+            m.add(
+                {
+                    A.P: pi[:N, :],
+                    A.GID: gi[:N, :]
+                }
+            )
+
+    nnl_kernel_src = """
+    NNL.i[0] = VALUE[0] * GID.i[0];
+    """
+    nnl_kernel = Kernel('nnl2_kernel', nnl_kernel_src)
+    nnl = PL(
+        kernel=nnl_kernel,
+        dat_dict={
+            'GID': A.GID(READ),
+            'VALUE': A.VALUE(READ),
+            'NNL': A.NNL(WRITE)
+        }
+    )
+
+    
+    def _check():
+
+        assert A.npart == len(active_ids)
+        assert len(active_ids) + len(inactive_ids) == N2
+
+        nnl.execute()
+
+        for ix in range(A.npart_local):
+            assert A.NNL.view[ix, 0] == A.GID.view[ix, 0] * A.VALUE[0]
+
+    _check()
+
+
+    for testx in range(200):
+
+        A.VALUE[0] = common_rng.randint(0, 100000)
+
+        add_bool = common_rng.randint(0, 2)
+        remove_bool = common_rng.randint(0, 2) and bool(A.npart)
+        
+        if remove_bool:
+
+            gid_to_remove = sorted(active_ids)[common_rng.randint(0, len(active_ids))]
+            active_ids.remove(gid_to_remove)
+            inactive_ids.add(gid_to_remove)
+
+            lid = np.where(A.GID.view[:, 0] == gid_to_remove)
+            lid = lid[0][0] if len(lid[0]) > 0 else None
+
+            with A.modify() as m:
+                if lid is not None:
+                    m.remove((lid,))
+
+            _check()
+        
+        if add_bool:
+
+            gid_to_add = sorted(inactive_ids)[common_rng.randint(0, len(inactive_ids))]
+            active_ids.add(gid_to_add)
+            inactive_ids.remove(gid_to_add) 
+
+            ##pick a random rank to add the particle
+            rank = common_rng.randint(0, MPISIZE)
+
+            with A.modify() as m:
+                if MPIRANK == rank:
+                    m.add({
+                        A.P: pi[gid_to_add, :],
+                        A.GID: gi[gid_to_add, :],
+                    })
+
+            _check()
 
 
 
