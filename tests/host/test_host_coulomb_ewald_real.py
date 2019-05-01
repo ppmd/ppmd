@@ -8,21 +8,22 @@ import scipy.constants
 from math import pi
 import pytest
 
-import ppmd as md
-
+import ppmd
+import ppmd.coulomb.ewald
 
 import os
 def get_res_file_path(filename):
     return os.path.join(os.path.join(os.path.dirname(__file__), '../res'), filename)
 
 
-mpi_rank = md.mpi.MPI.COMM_WORLD.Get_rank()
-mpi_size = md.mpi.MPI.COMM_WORLD.Get_size()
-ParticleDat = md.data.ParticleDat
-PositionDat = md.data.PositionDat
-ScalarArray = md.data.ScalarArray
-State = md.state.BaseMDState
-GlobalArray = md.data.GlobalArray
+mpi_rank = ppmd.mpi.MPI.COMM_WORLD.Get_rank()
+mpi_size = ppmd.mpi.MPI.COMM_WORLD.Get_size()
+ParticleDat = ppmd.data.ParticleDat
+PositionDat = ppmd.data.PositionDat
+ScalarArray = ppmd.data.ScalarArray
+State = ppmd.state.BaseMDState
+GlobalArray = ppmd.data.GlobalArray
+
 
 @pytest.mark.skipif(mpi_size>1, reason="MPI::Get_size()>1")
 def test_ewald_energy_python_nacl_1():
@@ -39,8 +40,8 @@ def test_ewald_energy_python_nacl_1():
     rc = 12.
 
     e = 30.0
-    domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    c = md.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=rc, alpha=alpha)
+    domain = ppmd.domain.BaseDomainHalo(extent=(e,e,e))
+    c = ppmd.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=rc, alpha=alpha)
 
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
@@ -80,8 +81,8 @@ def test_ewald_energy_python_co2_1():
     rc = 12.
 
     e = 24.47507
-    domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    c = md.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=rc, alpha=alpha)
+    domain = ppmd.domain.BaseDomainHalo(extent=(e,e,e))
+    c = ppmd.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=rc, alpha=alpha)
 
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
@@ -119,8 +120,8 @@ def test_ewald_energy_python_nacl_2():
         return
 
     e = 30.0
-    domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    c = md.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=12.)
+    domain = ppmd.domain.BaseDomainHalo(extent=(e,e,e))
+    c = ppmd.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=12.)
     assert abs(c.recip_cutoff - 0.28601*scipy.constants.pi*2.0) < 10.**-1, "recip space cutoff"
     assert abs(c.real_cutoff - 12.) < 10.**-15., "real space cutoff"
     assert c.kmax[0] == 9, "kmax_x"
@@ -142,8 +143,8 @@ def test_ewald_energy_python_co2_2():
         return
 
     e = 24.4750735
-    domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    c = md.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=12.)
+    domain = ppmd.domain.BaseDomainHalo(extent=(e,e,e))
+    c = ppmd.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=12.)
     assert abs(c.recip_cutoff - 0.28601*scipy.constants.pi*2.0) < 10.**-1, "recip space cutoff"
     assert abs(c.real_cutoff - 12.) < 10.**-15., "real space cutoff"
     assert c.kmax[0] == 7, "kmax_x"
@@ -169,8 +170,8 @@ def test_ewald_energy_python_co2_3():
     e1 = 40.
     e2 = 50.
 
-    domain = md.domain.BaseDomainHalo(extent=(e0,e1,e2))
-    c = md.coulomb.ewald.EwaldOrthoganal(
+    domain = ppmd.domain.BaseDomainHalo(extent=(e0,e1,e2))
+    c = ppmd.coulomb.ewald.EwaldOrthoganal(
         domain=domain,
         real_cutoff=12.,
         alpha=0.26506**2.,

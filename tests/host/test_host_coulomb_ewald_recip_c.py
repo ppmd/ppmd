@@ -8,14 +8,17 @@ import scipy.constants
 
 import pytest
 
-import ppmd as md
+import ppmd
+import ppmd.coulomb.ewald
 
-mpi_rank = md.mpi.MPI.COMM_WORLD.Get_rank()
-mpi_size = md.mpi.MPI.COMM_WORLD.Get_size()
-ParticleDat = md.data.ParticleDat
-PositionDat = md.data.PositionDat
-ScalarArray = md.data.ScalarArray
-State = md.state.BaseMDState
+mpi_rank = ppmd.mpi.MPI.COMM_WORLD.Get_rank()
+mpi_size = ppmd.mpi.MPI.COMM_WORLD.Get_size()
+ParticleDat = ppmd.data.ParticleDat
+PositionDat = ppmd.data.PositionDat
+ScalarArray = ppmd.data.ScalarArray
+State = ppmd.state.BaseMDState
+
+
 import os
 def get_res_file_path(filename):
     return os.path.join(os.path.join(os.path.dirname(__file__), '../res'), filename)
@@ -35,8 +38,8 @@ def test_ewald_energy_python_co2_1():
     rc = 12.
 
     e = 24.47507
-    domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    c = md.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=rc, alpha=alpha)
+    domain = ppmd.domain.BaseDomainHalo(extent=(e,e,e))
+    c = ppmd.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=rc, alpha=alpha)
 
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
@@ -395,8 +398,8 @@ def test_ewald_energy_python_co2_2():
     e1 = 40.
     e2 = 50.
 
-    domain = md.domain.BaseDomainHalo(extent=(e0,e1,e2))
-    c = md.coulomb.ewald.EwaldOrthoganal(
+    domain = ppmd.domain.BaseDomainHalo(extent=(e0,e1,e2))
+    c = ppmd.coulomb.ewald.EwaldOrthoganal(
         domain=domain,
         real_cutoff=12.,
         alpha=alpha,
@@ -471,8 +474,8 @@ def test_ewald_energy_python_co2_3():
     e1 = 40.
     e2 = 50.
 
-    domain = md.domain.BaseDomainHalo(extent=(e0,e1,e2))
-    c = md.coulomb.ewald.EwaldOrthoganal(
+    domain = ppmd.domain.BaseDomainHalo(extent=(e0,e1,e2))
+    c = ppmd.coulomb.ewald.EwaldOrthoganal(
         domain=domain,
         real_cutoff=12.,
         alpha=alpha,
@@ -524,8 +527,8 @@ def test_ewald_energy_python_co2_4():
     rc = 12.
 
     e = 24.47507
-    domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    c = md.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=rc, alpha=alpha)
+    domain = ppmd.domain.BaseDomainHalo(extent=(e,e,e))
+    c = ppmd.coulomb.ewald.EwaldOrthoganal(domain=domain, real_cutoff=rc, alpha=alpha)
 
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
@@ -582,10 +585,10 @@ def test_ewald_energy_python_co2_5():
     N = data.shape[0]
     A = State()
     A.npart = N
-    A.domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.domain = ppmd.domain.BaseDomainHalo(extent=(e,e,e))
+    A.domain.boundary_condition = ppmd.domain.BoundaryTypePeriodic()
 
-    c = md.coulomb.ewald.EwaldOrthoganal(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory=False)
+    c = ppmd.coulomb.ewald.EwaldOrthoganal(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory=False)
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
@@ -943,10 +946,10 @@ def test_ewald_energy_python_co2_6():
     N = data.shape[0]
     A = State()
     A.npart = N
-    A.domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.domain = ppmd.domain.BaseDomainHalo(extent=(e,e,e))
+    A.domain.boundary_condition = ppmd.domain.BoundaryTypePeriodic()
 
-    c = md.coulomb.ewald.EwaldOrthoganal(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory='mpi')
+    c = ppmd.coulomb.ewald.EwaldOrthoganal(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory='mpi')
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
@@ -1297,10 +1300,10 @@ def test_ewald_energy_python_co2_6_omp():
     N = data.shape[0]
     A = State()
     A.npart = N
-    A.domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.domain = ppmd.domain.BaseDomainHalo(extent=(e,e,e))
+    A.domain.boundary_condition = ppmd.domain.BoundaryTypePeriodic()
 
-    c = md.coulomb.ewald.EwaldOrthoganal(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory='omp')
+    c = ppmd.coulomb.ewald.EwaldOrthoganal(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory='omp')
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
