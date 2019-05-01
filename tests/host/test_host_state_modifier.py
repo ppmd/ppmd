@@ -289,10 +289,10 @@ def test_state_modifier_2(PL):
     scope="module",
     params=(ParticleLoop, ParticleLoopOMP)
 )
-def PL(request):
+def PL2(request):
     return request.param
 
-def test_state_modifier_3(PL):
+def test_state_modifier_3(PL2):
 
     # Checks particle loop functionality with add/remove particles
 
@@ -337,7 +337,7 @@ def test_state_modifier_3(PL):
     NNL.i[0] = VALUE[0] * GID.i[0];
     """
     nnl_kernel = Kernel('nnl2_kernel', nnl_kernel_src)
-    nnl = PL(
+    nnl = PL2(
         kernel=nnl_kernel,
         dat_dict={
             'GID': A.GID(READ),
