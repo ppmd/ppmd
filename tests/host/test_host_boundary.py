@@ -82,7 +82,6 @@ def test_host_boundary_z0(state):
             i = d1x*crN + d2x
             pi[i, ::] = np.array([d1[d1x, d2x], d2[d1x, d2x], 0 ])
     
-    
     # pj sets particles to be outside the domain, they should be swapped
     # to the opposite side of the domain
     

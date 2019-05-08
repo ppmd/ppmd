@@ -533,7 +533,7 @@ class PairLoopNeighbourListNS(_Base):
             obj = dat[1][0]
             mode = dat[1][1]
             dargs.append(obj.ctypes_data_access(mode, pair=True))
-
+        
         if cell2part.version_id > self.neighbour_list.version_id:
             self.neighbour_list.update()
 

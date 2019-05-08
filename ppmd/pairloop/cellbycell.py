@@ -294,7 +294,7 @@ class PairLoopRapaportHalo(_Base):
             self._dat_dict = dat_dict
 
         if n is not None:
-            print "warning option depreciated"
+            print("warning option depreciated")
             #_N = n
         else:
             _N = cell.cell_list.cell_list[cell.cell_list.cell_list.end]

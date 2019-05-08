@@ -228,16 +228,16 @@ class CellList(object):
             self._cell_sort_setup()
 
             if not self._init:
-                print("Initalisation failed")
-                return False
-
+                raise RuntimeError("Cell list Initalisation failed")
 
         if (self.update_required is True) or self._update_tracking():
             self._pre_update()
 
             self.sort()
+
             if self._update_func_post is not None:
                 self._update_func_post()
+
             return True
         else:
             return False

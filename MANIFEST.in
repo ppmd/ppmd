@@ -1,0 +1,12 @@
+include *.txt
+recursive-include doc *.py
+recursive-include doc *.rst
+recursive-include doc Makefile
+recursive-include examples *.py
+recursive-include ppmd *.cfg
+recursive-include ppmd *.cpp
+recursive-include ppmd *.cu
+recursive-include ppmd *.h
+recursive-include tests *.lmps
+recursive-include tests *.npy
+recursive-include tests *.py

@@ -299,6 +299,8 @@ def cuda_mem_cpy(d_ptr=None, s_ptr=None, size=None, cpy_type=None):
     assert type(size) is ctypes.c_size_t, "cuda_runtime:cuda_mem_cpy error: No size or size of incorrect type."
 
     assert cpy_type in ['cudaMemcpyHostToDevice', 'cudaMemcpyDeviceToHost', 'cudaMemcpyDeviceToDevice'], "cuda_runtime:cuda_mem_cpy error: No copy of that type."
+    assert size.value >= 0
+
 
 
     if cpy_type == 'cudaMemcpyHostToDevice':

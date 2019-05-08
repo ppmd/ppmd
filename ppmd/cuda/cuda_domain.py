@@ -182,7 +182,7 @@ class BoundaryTypePeriodic(object):
                 dir_counts=self._escape_dir_count
             )
 
-            self.state.filter_on_domain_boundary(self.state.npart_local)
+            self.state.filter_on_domain_boundary()
 
 
 

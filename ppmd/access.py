@@ -5,6 +5,7 @@ build system.
 """
 from __future__ import division, print_function, absolute_import
 import ctypes
+from collections import OrderedDict
 
 from ppmd.lib.common import allowed_dtypes
 
@@ -45,13 +46,6 @@ required by the associated kernel.
 }rst_doc
 """
 
-
-
-
-
-
-
-
 _lookup = {'R': 'Read only',
            'W': 'Write only',
            'RW': 'Read and write',
@@ -59,6 +53,19 @@ _lookup = {'R': 'Read only',
            'INC0': 'Incremental from zero',
            'NULL': 'NULL'
            }
+
+
+def _define_dict_ordering(dict_in):
+
+    dict_out = OrderedDict()
+
+    keys = tuple(dict_in.keys())
+    keys = sorted(keys)
+
+    for kx in keys:
+        dict_out[kx] = dict_in[kx]
+
+    return dict_out
 
 
 class AccessType(object):
@@ -148,6 +155,8 @@ INC_ZERO = INC0
 all_access_types = (READ, WRITE, INC_ZERO, INC, RW)
 
 
+
+
 class DatArgStore(object):
     def __init__(self, allow, initial):
         """
@@ -159,11 +168,13 @@ class DatArgStore(object):
         """
         assert type(allow) is dict, "expected a dict"
         assert type(initial) is dict, "expected a dict"
+
+
         self.allow = allow
         self._check_args_allowed(initial)
-        self.initial = initial
+        self.initial = _define_dict_ordering(initial)
         self.register = {}
-        self.symbols = dict()
+        self.symbols = OrderedDict()
         self.looping_tuples = ()
         self.dats = tuple()
         self._register_initial()
