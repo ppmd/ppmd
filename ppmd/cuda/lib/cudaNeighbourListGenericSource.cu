@@ -143,9 +143,10 @@
 
         CreateNeighbourList<<<bs,ts>>>(d_W.ptr, d_positions.ptr, d_CRL.ptr, d_OM.ptr, d_ccc.ptr);
         checkCudaErrors(cudaDeviceSynchronize());
-
-        int minfound = cudaMinElementInt(d_W.ptr, h_npart);
-
+        
+        int minfound;
+        cudaError_t err = cudaMinElementInt(d_W.ptr, h_npart, &minfound);
+        if (err != cudaSuccess) {getLastCudaError("NeighbourListLayerBased library failed \n");}
         getLastCudaError("NeighbourListLayerBased library failed \n");
 
         return minfound;

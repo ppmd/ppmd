@@ -2,6 +2,81 @@
 
 
 
+
+
+
+
+
+__global__ void cudaLInfNorm_k_int(
+    const int * __restrict__ d_ptr,
+    const int len,
+    int * __restrict__ d_val
+){
+
+    int ix = threadIdx.x + blockDim.x*blockIdx.x;
+    int t = 0;
+    if (ix<len){
+        t = (int) abs(d_ptr[ix]);
+    }
+
+    t = warpReduceMax(t);
+
+    __shared__ int dt[1];
+
+    if (  (int)(threadIdx.x & (warpSize - 1)) == 0){
+      dt[0] = 0;
+    }
+
+    __syncthreads();
+
+
+    if (  (int)(threadIdx.x & (warpSize - 1)) == 0){
+        atomicMax(&dt[0], t);
+    }
+    __syncthreads();
+
+    if (threadIdx.x == 0){
+         atomicMax(&d_val[0], dt[0]);
+    }
+
+    return;
+}
+
+
+cudaError_t cudaLInfNormInt(
+    const int * __restrict__ d_ptr,
+    const int len,
+    int *val
+)
+{
+    cudaError_t err;
+    dim3 bs, ts;
+    *val = 0;
+
+    int *d_val;
+    err = cudaMalloc(&d_val, sizeof(int));
+    if (err != cudaSuccess) {return err;}
+    err = cudaMemcpy(d_val, val, sizeof(int), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {return err;}
+
+    err = cudaCreateLaunchArgs(len, 512, &bs, &ts);
+    if (err != cudaSuccess) { return err; }
+
+    cudaLInfNorm_k_int<<<bs, ts>>>(
+        d_ptr,
+        len,
+        d_val
+    );
+
+    err = cudaDeviceSynchronize();
+    if (err != cudaSuccess) {return err;}
+
+    return cudaMemcpy(val, d_val, sizeof(int), cudaMemcpyDeviceToHost);
+}
+
+
+
+
 // DIrectly based on MPI
 
 int MPIErrorCheck_cuda(const int error_code){
@@ -444,6 +519,16 @@ namespace _cudaHaloArrayCopyScan
 
 
 
+
+
+
+
+
+
+
+
+
+
 int cudaHaloArrayCopyScan(
     const int length,
     const int* __restrict__ d_map,
@@ -452,6 +537,7 @@ int cudaHaloArrayCopyScan(
     int* __restrict__ h_max
 ){
 
+    if (length == 0){ return 0; }
 
     dim3 bs, ts;
     cudaError_t err;
@@ -461,8 +547,12 @@ int cudaHaloArrayCopyScan(
     _cudaHaloArrayCopyScan::masked_copy<<<bs,ts>>>(length, d_map, d_ccc, d_scan);
     err = cudaDeviceSynchronize();
     if (err != cudaSuccess) { return err; }
+    
+    // thrust library is failing
+    // err = cudaMaxElementInt(d_scan, length, h_max);
+    err = cudaLInfNormInt(d_scan, length, h_max);
+    if (err != cudaSuccess) { return err; }
 
-    *h_max = cudaMaxElementInt(d_scan, length);
     cudaExclusiveScanInt(d_scan, length+1);
 
 

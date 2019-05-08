@@ -249,6 +249,7 @@ def test_state_modifier_2(PL):
     for testx in range(200):
 
         add_bool = common_rng.randint(0, 2)
+        add_bool = False if (len(inactive_ids) == 0) else add_bool
         remove_bool = common_rng.randint(0, 2) and bool(A.npart)
         
         if remove_bool:
@@ -365,6 +366,7 @@ def test_state_modifier_3(PL2):
         A.VALUE[0] = common_rng.randint(0, 100000)
 
         add_bool = common_rng.randint(0, 2)
+        add_bool = False if (len(inactive_ids) == 0) else add_bool
         remove_bool = common_rng.randint(0, 2) and bool(A.npart)
         
         if remove_bool:

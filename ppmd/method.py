@@ -137,11 +137,8 @@ class ListUpdateController(object):
 
         _ret = 0
 
-
-        # print self._test_count, self._state.invalidate_lists, self._moved_distance
         if (self._moved_distance >= 0.5 * self._delta) or \
-                (self._step_counter % self._step_count == 0) or \
-                self._state.invalidate_lists:
+                (self._step_counter % self._step_count == 0):
 
             _ret = 1
 
@@ -166,7 +163,6 @@ class ListUpdateController(object):
     def _reset_moved_distance(self):
         self._test_count = 0
         self._moved_distance = 0.0
-        self._state.invalidate_lists = False
 
     def execute_boundary_conditions(self):
         """

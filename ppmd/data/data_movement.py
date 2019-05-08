@@ -34,7 +34,7 @@ class ParticleDatModifier:
         self.dat.sync_view_to_data()
         self.dat.mark_halos_old()
         if self.is_positiondat:
-            self.dat.group.invalidate_lists = True
+            self.dat.group.invalidate_lists()
             # need to trigger MPI rank consistency/ownership here
             self.dat.group.check_position_consistency()
 

@@ -196,6 +196,23 @@ class ParticleDat(cuda_base.Matrix):
         self._particle_dat_modifier = ParticleDatModifier(self, type(self) == PositionDat)
 
 
+    def __getitem__(self, key):
+        self._h_mirror.copy_from_device()
+        return self._h_mirror.mirror.data[key].copy()
+
+    def __setitem__(self, key, value):
+
+        value = np.array(value, dtype=self.dtype)
+        self._h_mirror.copy_from_device()
+
+        self._h_mirror.mirror.data[key] = value
+
+        self._h_mirror.copy_to_device()
+        self.mark_halos_old()
+        if type(self) is PositionDat and self.group is not None:
+            self.group.invalidate_lists()
+
+
     def modify_view(self):
         return self._particle_dat_modifier
 

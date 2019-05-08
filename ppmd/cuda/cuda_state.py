@@ -104,8 +104,6 @@ class BaseMDState(object):
         self._empty_per_particle_flag = None
 
         # move vars.
-
-        self.invalidate_lists = False
         """If true, all cell lists/ neighbour lists should be rebuilt."""
         self.determine_update_funcs = []
         self.pre_update_funcs = []
@@ -114,6 +112,10 @@ class BaseMDState(object):
 
         self._state_modifier_context = StateModifierContext(self)
         self.modifier = StateModifier(self)
+
+    def invalidate_lists(self):
+        if self._cell_to_particle_map is not None:
+            self._cell_to_particle_map.update_required = True
 
     def modify(self):
         return self._state_modifier_context
