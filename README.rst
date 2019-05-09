@@ -18,7 +18,7 @@ Required System tools:
 
 The recommended installation method is to create a Python virtual environment then install PPMD with:
 
-``pip install --no-cache-dir git+https://bitbucket.org/wrs20/ppmd@master``
+``pip install --no-cache-dir git+https://github.com/ppmd/ppmd@master``
 
 For CUDA support please install PyCUDA:
 

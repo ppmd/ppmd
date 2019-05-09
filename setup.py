@@ -17,7 +17,7 @@ setup(
    long_description=long_description,
    author='William R Saunders',
    author_email='W.R.Saunders@bath.ac.uk',
-   url="https://bitbucket.org/wrs20/ppmd",
+   url="https://github.com/ppmd/ppmd",
    packages=find_packages(),
    install_requires=install_requires,
    scripts=[],
