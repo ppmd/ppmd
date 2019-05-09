@@ -8,3 +8,4 @@ pytest-xdist
 pymbolic
 ConfigParser
 transforms3d
+sphinx
