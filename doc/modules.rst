@@ -1,5 +1,4 @@
-Generated Module Documentation
-==============================
+
 
 .. toctree::
    :maxdepth: 4
@@ -17,7 +16,5 @@ Generated Module Documentation
    mpi
    pairloop
    pio
-   potential
    runtime
-   simulation
    state

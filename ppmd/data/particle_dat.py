@@ -36,8 +36,8 @@ data Module
 
 .. automodule:: data
 
-Scalar Array
-~~~~~~~~~~~~
+ScalarArray
+~~~~~~~~~~~
 
 The class :class:`~data.ScalarArray` is a generic one dimensional array that should be used
 to store data within simulations that is not associated with any particular particles. For
@@ -50,8 +50,8 @@ radial distribution.
     :members:
 
 
-Particle Dat
-~~~~~~~~~~~~
+ParticleDat
+~~~~~~~~~~~
 
 This classes should be considered as a two dimensional matrix with each row storing the properties
 of a particle. The order of rows in relation to which particle they correspond to should always
@@ -114,12 +114,10 @@ class ParticleDat(host.Matrix):
         )
 
         self.max_npart = self._dat.shape[0]
-        """:return: The maximum number of particles which can be stored within
-        this particle dat."""
+        """:return: The maximum number of particles which can be stored within this particle dat."""
 
         self.npart_local = self._dat.shape[0]
-        """:return: The number of particles with properties stored in the
-        particle dat."""
+        """:return: The number of particles with properties stored in the particle dat."""
 
         self.ncomp = self.ncol
         """:return: The number of components stored for each particle."""

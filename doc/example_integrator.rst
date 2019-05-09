@@ -5,14 +5,14 @@ Velocity-Verlet Integrator
 ==========================
 
 In this example we will demonstrate how to loop over particle data in a manner that is typical of an time integrator. We shall assume that our system has the following ParticleDat data structures defined.
+
 ::
-
-    P = PositionDat(ncomp=3, dtype=ctypes.c_double)
-    V = ParticleDat(ncomp=3, dtype=ctypes.c_double)
-    F = ParticleDat(ncomp=3, dtype=ctypes.c_double)
-    M = ParticleDat(ncomp=1, dtype=ctypes.c_double)
-
-
+    
+    # Note: positions stored in PositionDat
+    A.P = PositionDat(ncomp=3, dtype=ctypes.c_double)
+    A.V = ParticleDat(ncomp=3, dtype=ctypes.c_double)
+    A.F = ParticleDat(ncomp=3, dtype=ctypes.c_double)
+    A.M = ParticleDat(ncomp=1, dtype=ctypes.c_double)
 
 As Velocity-Verlet is a two stage integrator we shall use two ParticleLoops, one for each stage of the algorithm. The first stage of Velocity-Verlet is a half timestep update of the velocities and a full timestep update of positions. We use superscripts to denote timesteps and subscripts to denote particle indices:
 
@@ -30,6 +30,7 @@ Between stage one described above and the second stage a PairLoop will typically
 
 
 We write a kernel for each stage as a portion of C code in a Python string:
+
 ::
 
     # -- Stage 1 --
@@ -52,6 +53,7 @@ We write a kernel for each stage as a portion of C code in a Python string:
     '''
 
 In the two C kernels above we use values (:code:`dt` = :math:`\delta t` and :code:`dht` = :math:`\frac{\delta t}{2}`) which, in our example, are constant. We declare constant values using :class:`kernel.Constant` instances as follows:
+
 ::
 
     dt = 0.0001
@@ -61,10 +63,12 @@ In the two C kernels above we use values (:code:`dt` = :math:`\delta t` and :cod
     ]
 
 We may then combine the strings containing the kernel code with the declared constants to create a :class:`kernel.Kernel` instance that describes the operations that we wish to perform in a container that can be passed to a looping method. For a first argument we pass a user specified name to aid profiling, names are user chosen and are not required to contain any information:
+
 ::
 
     vv_kernel1 = kernel.Kernel('vv1', vv_kernel1_code, constants)
     vv_kernel2 = kernel.Kernel('vv2', vv_kernel2_code, constants)
+
 
 
 
@@ -90,6 +94,7 @@ The final step is to create two :class:`ParticleLoop` instances, one for each ke
 
 
 To execute our two kernels over all particles we call the :code:`execute` method on each ParticleLoop instance:
+
 ::
 
     # Execute kernel 1

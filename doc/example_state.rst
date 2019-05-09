@@ -1,6 +1,7 @@
 .. highlight:: python
 
 
+
 State Containers
 ================
 
@@ -9,10 +10,11 @@ The state object couples multiple ParticleDats with a simulation domain that not
 By adding ParticleDat instances to a state object boundary conditions and the movement of data between MPI ranks can be handled automatically by the framework. Instances of state objects follow the convention that ``npart`` returns the total number of particles in the system. ``npart_local`` returns the number of particles currently stored on the calling MPI rank.
 
 
-Base case
+Base Case
 ~~~~~~~~~
 
 The base case state object is designed with NVE ensembles in mind. In the example below we create a state object called ``A`` and set the total number of particles in the system.
+
 ::
 
     from ppmd import *
@@ -24,12 +26,14 @@ The base case state object is designed with NVE ensembles in mind. In the exampl
 
 
 Here we add boundary conditions to the state called ``A``.
+
 ::
 
     A.domain = domain.BaseDomainHalo(extent=(10., 10., 10.))
     A.domain.boundary_condition = PBC()
 
 The second requirement for a state object is that a particular type of ParticleDat is added called a PositionDat. With a domain and a PositionDat the state object can handle the movement of particle data between processes.
+
 ::
 
     PositionDat = data.PositionDat
@@ -47,6 +51,7 @@ Initialise Data Scatter Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In this example we will create initial data on rank 0 then scatter that data across available MPI ranks. When scattering data from a rank the total number of particles ``State.npart`` should be set on the state object prior to scattering.
+
 ::
 
     import numpy as np

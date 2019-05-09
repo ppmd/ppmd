@@ -241,7 +241,7 @@ class CartesianHaloSix(object):
         Also returns an data.Array of 27 elements with the
         starting positions of each halo within the previous array.
 
-        :return: Tuple, array of local cell indices to pack, array of starting
+        :return: Tuple, array of local cell indices to pack, array of starting \
         points within the first array.
         """
         self._update_domain()
@@ -257,7 +257,7 @@ class CartesianHaloSix(object):
         etc. Also returns an data.Array of 27 elements with the starting
         positions of each halo within the previous array.
 
-        :return: Tuple, array of local halo cell indices to unpack into, array
+        :return: Tuple, array of local halo cell indices to unpack into, array \
         of starting points within the first array.
         """
         self._update_domain()
@@ -272,7 +272,7 @@ class CartesianHaloSix(object):
         These are needed such that the cell list can be created without
         inspecting the positions of recvd particles.
 
-        :return: Tuple: Cell contents count for each cell in same order as
+        :return: Tuple: Cell contents count for each cell in same order as \
         local boundary cell list, Exchange sizes for each halo.
         """
         if not self._init:

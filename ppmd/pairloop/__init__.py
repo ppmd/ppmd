@@ -4,13 +4,6 @@ __copyright__ = "Copyright 2016, W.R.Saunders"
 
 
 
-__all__ = [
-    'alltoall',
-    #'cellbycell',
-    'neighbourlist'
-]
-
-
 from ppmd.pairloop.alltoall import *
 from ppmd.pairloop.alltoall_omp import *
 from ppmd.pairloop.cellbycell_omp import *
