@@ -24,7 +24,7 @@ These sections are generated from the source code and may not be readily digesti
 .. toctree::
     :glob:
     
-    modules/*
+    modules/ppmd
 
 
 Indices and tables
