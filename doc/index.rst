@@ -22,9 +22,9 @@ Generated Module Documentation
 These sections are generated from the source code and may not be readily digestible.
 
 .. toctree::
-    :maxdepth: 4
-
-    modules
+    :glob:
+    
+    modules/*
 
 
 Indices and tables

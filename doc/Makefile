@@ -42,7 +42,8 @@ clean:
 	-rm -rf $(BUILDDIR)/*
 
 html:
-	python py2rst.py -I ../ppmd -O .
+	SPHINX_APIDOC_OPTIONS=members,undoc-members
+	sphinx-apidoc --implicit-namespaces -M -f -e -o ./modules ../ppmd
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."

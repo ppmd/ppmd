@@ -1,11 +1,13 @@
+"""
+This module contains the `ParticleDat` class for adding data to particles.
+"""
+
 from __future__ import print_function, division, absolute_import
 
 import ppmd.opt
 import ppmd.runtime
 
-"""
-This module contains high level arrays and matrices.
-"""
+
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
@@ -26,45 +28,45 @@ from ppmd.data.data_movement import ParticleDatModifier
 
 SUM = mpi.MPI.SUM
 
-"""
-rst_doc{
-
-.. contents:
-
-data Module
-===========
-
-.. automodule:: data
-
-ScalarArray
-~~~~~~~~~~~
-
-The class :class:`~data.ScalarArray` is a generic one dimensional array that should be used
-to store data within simulations that is not associated with any particular particles. For
-example the kinetic energy of the system or the array used to bin values when calculating a
-radial distribution.
-
-.. autoclass:: data.ScalarArray
-    :show-inheritance:
-    :undoc-members:
-    :members:
-
-
-ParticleDat
-~~~~~~~~~~~
-
-This classes should be considered as a two dimensional matrix with each row storing the properties
-of a particle. The order of rows in relation to which particle they correspond to should always
-be conserved. This is the default behaviour of any sorting methods implemented in this framework.
-
-.. autoclass:: data.ParticleDat
-    :show-inheritance:
-    :undoc-members:
-    :members:
-
-
-}rst_doc
-"""
+##"""
+##rst_doc{
+##
+##.. contents:
+##
+##data Module
+##===========
+##
+##.. automodule:: data
+##
+##ScalarArray
+##~~~~~~~~~~~
+##
+##The class :class:`~data.ScalarArray` is a generic one dimensional array that should be used
+##to store data within simulations that is not associated with any particular particles. For
+##example the kinetic energy of the system or the array used to bin values when calculating a
+##radial distribution.
+##
+##.. autoclass:: data.ScalarArray
+##    :show-inheritance:
+##    :undoc-members:
+##    :members:
+##
+##
+##ParticleDat
+##~~~~~~~~~~~
+##
+##This classes should be considered as a two dimensional matrix with each row storing the properties
+##of a particle. The order of rows in relation to which particle they correspond to should always
+##be conserved. This is the default behaviour of any sorting methods implemented in this framework.
+##
+##.. autoclass:: data.ParticleDat
+##    :show-inheritance:
+##    :undoc-members:
+##    :members:
+##
+##
+##}rst_doc
+##"""
 
 ###############################################################################
 # ParticleDat.
