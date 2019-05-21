@@ -38,7 +38,7 @@ REAL = c_double
 
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_cplx_matvec_1():
-    R = 2
+    R = 3
     eps = 10.**-2
     free_space = True
     N = 2
@@ -140,7 +140,7 @@ def test_fmm_cplx_matvec_1():
 
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_translate_1():
-    R = 2
+    R = 3
     eps = 10.**-2
     free_space = True
     N = 2
@@ -222,7 +222,7 @@ def test_fmm_translate_1():
 
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_translate_2():
-    R = 2
+    R = 3
     eps = 10.**-4
     free_space = True
     N = 2
@@ -410,7 +410,7 @@ def test_fmm_translate_3():
 
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_translate_split_1():
-    R = 2
+    R = 3
     eps = 10.**-4
     free_space = True
     N = 2

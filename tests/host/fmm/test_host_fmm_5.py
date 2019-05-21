@@ -430,7 +430,7 @@ def tol_set(request):
 
 @pytest.fixture(
     scope="module",
-    params=(2,3,4)
+    params=(3,4)
 )
 def level_set(request):
     return request.param
@@ -858,7 +858,7 @@ def test_fmm_init_5_6_1():
     eps = 10.**-5
     azero = 10.**-14
 
-    fmm = PyFMM(domain=A.domain, r=2, eps=eps, free_space=False)
+    fmm = PyFMM(domain=A.domain, r=3, eps=eps, free_space=False)
 
     #shell_terms = np.load(get_res_file_path('coulomb/r_coeffs_e2_L32.npy'))
 
@@ -935,7 +935,7 @@ def test_fmm_init_5_6_2():
 
     eps = 10.**-5
     azero = 10.**-9
-    fmm = PyFMM(domain=A.domain, r=2, eps=eps, free_space=False)
+    fmm = PyFMM(domain=A.domain, r=3, eps=eps, free_space=False)
 
 
     shelltest2 = fmm_pbc._shell_test_2_FMMPbc(
@@ -1092,7 +1092,7 @@ def test_fmm_init_5_4_quad2():
 
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_init_5_7_quad():
-    R = 2
+    R = 3
 
     N = 2
     E = 4.

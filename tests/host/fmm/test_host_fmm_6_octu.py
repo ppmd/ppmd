@@ -228,7 +228,7 @@ def get_p_exp(fmm, disp_sph):
 @pytest.mark.skipif("MPISIZE>1")
 def test_fmm_oct_1():
 
-    R = 2
+    R = 3
     eps = 10.**-2
     free_space = '27'
 

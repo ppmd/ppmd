@@ -148,7 +148,6 @@ static inline INT64 compute_cell(
         return -1;
     }
 
-
     return cx + cube_dim[2] * (cy + cube_dim[1] * cz);
 }
 
@@ -357,9 +356,11 @@ INT64 particle_contribution(
                 position[ix*3+2], boundary, cube_offset, cube_dim,
                 &radius, &ctheta, &cphi, &sphi, &msphi
             );
-
-            //printf("%d \t radius: %f cos(theta): %f cos(phi): %f sin(phi): %f -1*sin(phi): %f\n", 
-            //ix, radius, ctheta, cphi, sphi, msphi);
+            
+            //if (ix_cell == 464){
+            //    printf("%d \t radius: %f cos(theta): %f cos(phi): %f sin(phi): %f -1*sin(phi): %f\n", 
+            //    ix, radius, ctheta, cphi, sphi, msphi);
+            //}
             
             if (tx != ix_cell % thread_max) {           
                 #pragma omp critical

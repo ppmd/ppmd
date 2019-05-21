@@ -100,11 +100,13 @@ class PyFMM(object):
             self.L = int(-1*log(eps,2))
             """Number of multipole expansion coefficients"""
         else:
-            self.L = l
+            self.L = int(l)
 
-        if r is None: self.R = int(log(N, 8))
+        if r is None: self.R = max(int(log(N, 8)), 3)
         else: self.R = int(r)
         """Number of levels in octal tree."""
+
+        assert self.R > 2
 
         self.dtype = dtype
         """Floating point datatype used."""
@@ -894,6 +896,7 @@ class PyFMM(object):
 
         self._compute_periodic_boundary()
         self._correct_dipole()
+
 
         for level in range(1, self.R):
 
