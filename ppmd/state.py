@@ -382,6 +382,9 @@ class BaseMDState(object):
 
     
     def remove_by_slot(self, slots):
+
+        slots = sorted(slots)
+
         new_npart_local = self.npart_local - len(slots)
 
         self._move_controller.compress_empty_slots(slots)

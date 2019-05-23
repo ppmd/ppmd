@@ -471,6 +471,7 @@ class BaseMDState(object):
 
     def remove_by_slot(self, slots):
 
+        slots = sorted(slots)
         remover = _RemoveBySlot(self, slots)
         self._compress_dats(*remover.apply())
 
