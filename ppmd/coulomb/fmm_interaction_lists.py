@@ -53,7 +53,7 @@ def compute_interaction_lists(extent, subdivision=(2,2,2), c=(4/(3**0.5))-1):
                     ])
                 )
     
-    return tuple(il)
+    return tuple(il), excl_tuples
 
 
 

@@ -12,7 +12,7 @@ def test_cube():
 
     extent = (8,8,8)
 
-    l = fmm_interaction_lists.compute_interaction_lists(extent)
+    l, _ = fmm_interaction_lists.compute_interaction_lists(extent)
     
     
     children = (
