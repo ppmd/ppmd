@@ -712,12 +712,17 @@ class _move_controller(object):
                 _status
             )
 
+    def _build_compressing_lib(self):
+        self._compressing_lib = _move_controller.build_compress_lib(self.state)
+
     def _compress_particle_dats(self, num_slots_to_fill):
         """
         Compress the particle dats held in the state. Compressing removes empty rows.
         """
         _compressing_n_new = host.Array([0], dtype=ctypes.c_int)
-        assert self._compressing_lib is not None
+        if self._compressing_lib is None:
+            self._build_compressing_lib()
+
         if self.compressed is True:
             return
         else:
@@ -738,8 +743,7 @@ class _move_controller(object):
 
     def compress_empty_slots(self, slots):
         if self._compressing_lib is None:
-            self._compressing_lib = _move_controller.build_compress_lib(
-                self.state)
+            self._build_compressing_lib()
 
         le = len(slots)
         if le > 0:
