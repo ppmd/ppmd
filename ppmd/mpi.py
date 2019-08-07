@@ -280,14 +280,23 @@ class AllocMem:
         if self._length > 0:
             self._mpi_alloc_ptr = MPI.Alloc_mem(ctypes.sizeof(dtype) * self._length)
             pp = ctypes.cast(self._mpi_alloc_ptr.address, ctypes.POINTER(dtype))
+            
+            # numpy/ctypes will sometimes raise a RuntimeWarning (PEP3118)
+            # relating to the deduced itemsize of the datatype passed.
+            # Here we check that the created array has the correct itemsize, 
+            # shape and dtype.
             self._array = np.ctypeslib.as_array(pp, shape=shape)
+            assert self._array.shape == tuple(shape)
+            assert self._array.itemsize == ctypes.sizeof(dtype)
+            assert self._array.dtype == dtype
+
+
         else:
             self._array = np.zeros(shape, dtype)
 
         self.array = self._array.view(dtype)
         """Numpy array formed from allocated memory."""
 
-        assert self._array.itemsize == ctypes.sizeof(dtype)
         self.array.fill(0)
 
     def __del__(self):
