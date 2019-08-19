@@ -234,7 +234,6 @@ class CellList(object):
             self._pre_update()
             
             self.sort()
-            import ipdb; ipdb.set_trace()
 
             if self._update_func_post is not None:
                 self._update_func_post()
