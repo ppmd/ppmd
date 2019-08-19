@@ -16,6 +16,8 @@ import numpy as np
 from ppmd import config, runtime, mpi, opt
 import ppmd.lib
 
+from ppmd.kernel import Header
+
 
 _MPIRANK = ppmd.mpi.MPI.COMM_WORLD.Get_rank()
 _MPIWORLD = ppmd.mpi.MPI.COMM_WORLD
@@ -36,6 +38,34 @@ _MPIBARRIER()
 
 
 LOADED_LIBS = []
+
+
+def write_header(header_src, extension='.h', dst_dir=ppmd.runtime.BUILD_DIR):
+    """
+    Write the passed string as a header file in the build directory. Returns
+    a `ppmd.kernel.Header` instance that can be passed to `ppmd.kernel.Kernel`
+    constructors.
+
+    :param header_src: Source code for header.
+    :param extension: File extension for header file, default '.h'.
+    :param dst_dir: Directory to write file into, default `ppmd.runtime.BUILD_DIR`.
+    :returns: `ppmd.kernel.Header` instance.
+    """
+
+    _make_dir_if_needed(dst_dir)
+    h = _md5(header_src)
+    filename = os.path.join(dst_dir, h + extension)
+    if _MPIRANK == 0 and not _check_path_exists(filename):
+        with open(filename, 'w') as fh:
+            fh.write(header_src)
+    _MPIBARRIER()
+    return Header(filename, system=False)
+    
+
+def _make_dir_if_needed(dst_dir):
+    if not os.path.exists(dst_dir) and _MPIRANK == 0:
+        os.mkdir(dst_dir)
+
 
 def _md5(string):
     """Create unique hex digest"""
@@ -124,8 +154,7 @@ def simple_lib_creator(
 ):
 
     # make build dir
-    if not os.path.exists(dst_dir) and _MPIRANK == 0:
-        os.mkdir(dst_dir)
+    _make_dir_if_needed(dst_dir)
 
     # create a base filename for the library
     _filename = prefix + '_' + str(name)

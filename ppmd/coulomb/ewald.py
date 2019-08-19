@@ -623,7 +623,9 @@ class EwaldOrthoganal(object):
         e += self.extract_forces_energy_reciprocal(positions, charges, forces, energy=None, potential=potential)
         e += self.extract_forces_energy_real(positions, charges, forces, energy=None, potential=potential)
         e += self.evaluate_self_interactions(charges, energy=None, potential=potential)
-        
+
+        if forces is not None: forces.ctypes_data_post(access.WRITE)
+        if potential is not None: potential.ctypes_data_post(access.WRITE)
         return e
 
 

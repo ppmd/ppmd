@@ -71,22 +71,22 @@ class PyMM:
 
         self.sph_gen = SphGen(l-1)
 
-        self._widths_x = data.ScalarArray(ncomp=self.R, dtype=REAL)
-        self._widths_y = data.ScalarArray(ncomp=self.R, dtype=REAL)
-        self._widths_z = data.ScalarArray(ncomp=self.R, dtype=REAL)
+        self.widths_x = data.ScalarArray(ncomp=self.R, dtype=REAL)
+        self.widths_y = data.ScalarArray(ncomp=self.R, dtype=REAL)
+        self.widths_z = data.ScalarArray(ncomp=self.R, dtype=REAL)
         
         e = self.domain.extent
         s = self.subdivision
-        self._widths_x[:] = [e[0] / (s[0] ** rx) for rx in range(self.R)]
-        self._widths_y[:] = [e[1] / (s[1] ** rx) for rx in range(self.R)]
-        self._widths_z[:] = [e[2] / (s[2] ** rx) for rx in range(self.R)]
+        self.widths_x[:] = [e[0] / (s[0] ** rx) for rx in range(self.R)]
+        self.widths_y[:] = [e[1] / (s[1] ** rx) for rx in range(self.R)]
+        self.widths_z[:] = [e[2] / (s[2] ** rx) for rx in range(self.R)]
 
-        self._ncells_x = data.ScalarArray(ncomp=self.R, dtype=INT64)
-        self._ncells_y = data.ScalarArray(ncomp=self.R, dtype=INT64)
-        self._ncells_z = data.ScalarArray(ncomp=self.R, dtype=INT64)
-        self._ncells_x[:] = [int(s[0] ** rx) for rx in range(self.R)]
-        self._ncells_y[:] = [int(s[1] ** rx) for rx in range(self.R)]
-        self._ncells_z[:] = [int(s[2] ** rx) for rx in range(self.R)]
+        self.ncells_x = data.ScalarArray(ncomp=self.R, dtype=INT64)
+        self.ncells_y = data.ScalarArray(ncomp=self.R, dtype=INT64)
+        self.ncells_z = data.ScalarArray(ncomp=self.R, dtype=INT64)
+        self.ncells_x[:] = [int(s[0] ** rx) for rx in range(self.R)]
+        self.ncells_y[:] = [int(s[1] ** rx) for rx in range(self.R)]
+        self.ncells_z[:] = [int(s[2] ** rx) for rx in range(self.R)]
 
         self._extract_energy = data.GlobalArray(ncomp=1, dtype=REAL)
 
@@ -98,7 +98,7 @@ class PyMM:
         self._init_extract_loop()
 
         # direct part
-        max_cell_width = max((self._widths_x[-1], self._widths_y[-1], self._widths_z[-1])) * 2.0
+        max_cell_width = max((self.widths_x[-1], self.widths_y[-1], self.widths_z[-1])) * 2.0
         
         # find the max distance in the direct part using the exclusion lists
         widths = [ex / (sx ** (self.R - 1)) for ex, sx in zip(self.domain.extent, self.subdivision)]
@@ -109,9 +109,9 @@ class PyMM:
         )
         self.sh = pairloop.state_handler.StateHandler(state=None, shell_cutoff=max_cell_width)
         
-        self._cell_list = np.zeros(1000, INT64)
-        self._cell_occ = np.zeros(1000, INT64)
-        self._cell_remaps = np.zeros((1000, 3), INT64)
+        self.cell_list = np.zeros(1000, INT64)
+        self.cell_occ = np.zeros(1000, INT64)
+        self.cell_remaps = np.zeros((1000, 3), INT64)
 
         self._direct_lib = None
         self._cell_remap_lib = None
@@ -375,31 +375,34 @@ class PyMM:
 
         nlocal, nhalo, ncell = self.sh.pre_execute(dats=dats)
 
-        if self._cell_remaps.shape[0] < (nlocal + nhalo):
-            self._cell_remaps = np.zeros((nlocal + nhalo + 100, 3), INT64)
+        if self.cell_remaps.shape[0] < (nlocal + nhalo):
+            self.cell_remaps = np.zeros((nlocal + nhalo + 100, 3), INT64)
 
         self._cell_remap_lib(
             INT64(nlocal + nhalo),
             INT64(nlocal),
             self.sh.get_pointer(positions(access.READ)),
             self.sh.get_pointer(self.group._mm_fine_cells(access.READ)),
-            self._cell_remaps.ctypes.get_as_parameter()
+            self.cell_remaps.ctypes.get_as_parameter()
         )
 
-        minc = np.array(np.min(self._cell_remaps[:nlocal + nhalo, :], 0), dtype=INT64)
-        maxc = np.array(np.max(self._cell_remaps[:nlocal + nhalo, :], 0), dtype=INT64)
+        minc = np.array(np.min(self.cell_remaps[:nlocal + nhalo, :], 0), dtype=INT64)
+        self.minc = minc
+        maxc = np.array(np.max(self.cell_remaps[:nlocal + nhalo, :], 0), dtype=INT64)
         max_occ = np.max(self.cell_occupation_ga[:])
+        self.max_occ = max_occ
         widths = np.array(maxc - minc + 1, INT64) 
+        self.widths = widths
 
         ncells = widths[0] * widths[1] * widths[2]
         
         # storage for cell to particle map
-        if self._cell_occ.shape[0] < ncells:
-            self._cell_occ = np.zeros(ncells + 100, INT64)
-        if self._cell_list.shape[0] < (ncells * max_occ):
-            self._cell_list = np.zeros(ncells * max_occ + 100, INT64)
+        if self.cell_occ.shape[0] < ncells:
+            self.cell_occ = np.zeros(ncells + 100, INT64)
+        if self.cell_list.shape[0] < (ncells * max_occ):
+            self.cell_list = np.zeros(ncells * max_occ + 100, INT64)
 
-        self._cell_occ[:] = 0
+        self.cell_occ[:] = 0
         
         tmp_energy = np.zeros(1, REAL)
 
@@ -412,11 +415,11 @@ class PyMM:
             self.il_earray.ctypes.get_as_parameter(),
             self.sh.get_pointer(positions(access.READ)),
             self.sh.get_pointer(charges(access.READ)),
-            self._cell_remaps.ctypes.get_as_parameter(),
+            self.cell_remaps.ctypes.get_as_parameter(),
             minc.ctypes.get_as_parameter(),
             widths.ctypes.get_as_parameter(),
-            self._cell_occ.ctypes.get_as_parameter(),
-            self._cell_list.ctypes.get_as_parameter(),
+            self.cell_occ.ctypes.get_as_parameter(),
+            self.cell_list.ctypes.get_as_parameter(),
             tmp_energy.ctypes.get_as_parameter()
         )
         t1d = time.time()
@@ -498,10 +501,10 @@ class PyMM:
 
             for( int level=R-1 ; level>=0 ; level-- ){{
                 
-                // cell widths for cell centre computation
-                const double wx = EX / ncx;
-                const double wy = EY / ncy;
-                const double wz = EZ / ncz;
+                // // cell widths for cell centre computation
+                // const double wx = EX / ncx;
+                // const double wy = EY / ncy;
+                // const double wz = EZ / ncz;
 
                 // child on this level
 
@@ -524,10 +527,10 @@ class PyMM:
                 cfy /= SDY;
                 cfz /= SDZ;
 
-                // number of cells in each dim for the next level
-                ncx /= SDX;
-                ncy /= SDY;
-                ncz /= SDZ;
+                //// number of cells in each dim for the next level
+                //ncx /= SDX;
+                //ncy /= SDY;
+                //ncz /= SDZ;
             }}
 
 
@@ -606,12 +609,12 @@ class PyMM:
             'MM_CHILD_INDEX': g._mm_child_index(access.WRITE),
             'OCC_GA': self.cell_occupation_ga(access.INC_ZERO),
             'TREE': self.tree(access.INC_ZERO),
-            'WIDTHS_X': self._widths_x(access.READ),
-            'WIDTHS_Y': self._widths_y(access.READ),
-            'WIDTHS_Z': self._widths_z(access.READ),
-            'NCELLS_X': self._ncells_x(access.READ),
-            'NCELLS_Y': self._ncells_y(access.READ),
-            'NCELLS_Z': self._ncells_z(access.READ),
+            'WIDTHS_X': self.widths_x(access.READ),
+            'WIDTHS_Y': self.widths_y(access.READ),
+            'WIDTHS_Z': self.widths_z(access.READ),
+            'NCELLS_X': self.ncells_x(access.READ),
+            'NCELLS_Y': self.ncells_y(access.READ),
+            'NCELLS_Z': self.ncells_z(access.READ),
         }
 
         self._contrib_loop = loop.ParticleLoopOMP(kernel=k, dat_dict=dat_dict)
@@ -737,6 +740,7 @@ class PyMM:
                 //printf("---> %d | %f | ci = %d\n", level, particle_energy, ci);
 
             }}
+
             
             //for(int ix=0 ; ix<4536 ; ix++){{
             //    printf("%d,", IL[ix]);
@@ -781,12 +785,12 @@ class PyMM:
             'MM_CELLS': g._mm_cells(access.READ),
             'MM_CHILD_INDEX': g._mm_child_index(access.READ),
             'TREE': self.tree(access.READ),
-            'WIDTHS_X': self._widths_x(access.READ),
-            'WIDTHS_Y': self._widths_y(access.READ),
-            'WIDTHS_Z': self._widths_z(access.READ),                            
-            'NCELLS_X': self._ncells_x(access.READ),
-            'NCELLS_Y': self._ncells_y(access.READ),
-            'NCELLS_Z': self._ncells_z(access.READ),                     
+            'WIDTHS_X': self.widths_x(access.READ),
+            'WIDTHS_Y': self.widths_y(access.READ),
+            'WIDTHS_Z': self.widths_z(access.READ),                            
+            'NCELLS_X': self.ncells_x(access.READ),
+            'NCELLS_Y': self.ncells_y(access.READ),
+            'NCELLS_Z': self.ncells_z(access.READ),                     
             'OUT_ENERGY': self._extract_energy(access.INC_ZERO),
         }
 
@@ -794,6 +798,8 @@ class PyMM:
 
 
     def __call__(self, positions, charges, forces=None, potential=None):
+        if potential is not None or forces is not None:
+            raise RuntimeError('Potential and Forces not implemented')
 
         self._contrib_loop.execute(
              dat_dict = {
@@ -804,12 +810,12 @@ class PyMM:
                 'MM_CHILD_INDEX': self.group._mm_child_index(access.WRITE),
                 'OCC_GA': self.cell_occupation_ga(access.INC_ZERO),
                 'TREE': self.tree(access.INC_ZERO),
-                'WIDTHS_X': self._widths_x(access.READ),
-                'WIDTHS_Y': self._widths_y(access.READ),
-                'WIDTHS_Z': self._widths_z(access.READ),
-                'NCELLS_X': self._ncells_x(access.READ),
-                'NCELLS_Y': self._ncells_y(access.READ),
-                'NCELLS_Z': self._ncells_z(access.READ),
+                'WIDTHS_X': self.widths_x(access.READ),
+                'WIDTHS_Y': self.widths_y(access.READ),
+                'WIDTHS_Z': self.widths_z(access.READ),
+                'NCELLS_X': self.ncells_x(access.READ),
+                'NCELLS_Y': self.ncells_y(access.READ),
+                'NCELLS_Z': self.ncells_z(access.READ),
             }               
         )
 
@@ -821,12 +827,12 @@ class PyMM:
                 'MM_CELLS': self.group._mm_cells(access.READ),
                 'MM_CHILD_INDEX': self.group._mm_child_index(access.READ),
                 'TREE': self.tree(access.READ),
-                'WIDTHS_X': self._widths_x(access.READ),
-                'WIDTHS_Y': self._widths_y(access.READ),
-                'WIDTHS_Z': self._widths_z(access.READ),                            
-                'NCELLS_X': self._ncells_x(access.READ),
-                'NCELLS_Y': self._ncells_y(access.READ),
-                'NCELLS_Z': self._ncells_z(access.READ),                     
+                'WIDTHS_X': self.widths_x(access.READ),
+                'WIDTHS_Y': self.widths_y(access.READ),
+                'WIDTHS_Z': self.widths_z(access.READ),                            
+                'NCELLS_X': self.ncells_x(access.READ),
+                'NCELLS_Y': self.ncells_y(access.READ),
+                'NCELLS_Z': self.ncells_z(access.READ),                     
                 'OUT_ENERGY': self._extract_energy(access.INC_ZERO),
             }
         )

@@ -242,11 +242,11 @@ class SphGen(object):
                 icv_wrap('cos_' + theta_sym, 'cos(' + theta_sym + ')'),
             ]
 
-        lpmv_gen = ALegendrePolynomialGen(maxl=maxl, tsym='cos_' + theta_sym, ctype=ctype,
+        lpmv_gen = ALegendrePolynomialGen(maxl=maxl, psym='_P'+sym, tsym='cos_' + theta_sym, ctype=ctype,
                 avoid_calls=avoid_calls)
 
-        exp_gen = SphExpGen(maxl=maxl, psym=phi_sym, ctype=ctype, avoid_calls=avoid_calls)
-        coeff_gen = SphCoeffGen(maxl=maxl, ctype=ctype)
+        exp_gen = SphExpGen(maxl=maxl, esym='_E'+sym, psym=phi_sym, ctype=ctype, avoid_calls=avoid_calls)
+        coeff_gen = SphCoeffGen(maxl=maxl, sym='_sqrtmf'+sym, ctype=ctype)
         
 
         modlist += [
