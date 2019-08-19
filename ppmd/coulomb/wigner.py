@@ -279,6 +279,7 @@ def Rzyz_set_2(p, alpha, beta, gamma, dtype):
     del wp
     return pointers_real, pointers_imag, matrices
 
+@cached(maxsize=4096)
 def Ry_set(p, beta, dtype):
     """
     Returns the set of matrices needed to rotate all p moments by beta around
