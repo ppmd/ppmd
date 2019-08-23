@@ -24,19 +24,19 @@ INT64 = ctypes.c_int64
 
 PROFILE = opt.PROFILE
 
-class PyMM(mm_lm_common.MM_LM_Common):
+class PyLM(mm_lm_common.MM_LM_Common):
     
     def _init_dats(self):
         g = self.group
         pd = type(self.charges)
         # xyz fmm cells
-        g._mm_fine_cells = pd(ncomp=3, dtype=INT64)
-        g._mm_cells = pd(ncomp=3*self.R, dtype=INT64)
-        g._mm_child_index = pd(ncomp=3*self.R, dtype=INT64)
+        g._lm_fine_cells = pd(ncomp=3, dtype=INT64)
+        g._lm_cells = pd(ncomp=3*self.R, dtype=INT64)
+        g._lm_child_index = pd(ncomp=3*self.R, dtype=INT64)
 
-        self._dat_fine_cells = g._mm_fine_cells
-        self._dat_cells = g._mm_cells
-        self._dat_child_index = g._mm_child_index
+        self._dat_fine_cells = g._lm_fine_cells
+        self._dat_cells = g._lm_cells
+        self._dat_child_index = g._lm_child_index
 
 
     def _init_contrib_loop(self):
@@ -44,15 +44,16 @@ class PyMM(mm_lm_common.MM_LM_Common):
         g = self.group
         extent = self.domain.extent
         cell_widths = [1.0 / (ex / (sx**(self.R - 1))) for ex, sx in zip(extent, self.subdivision)]
-
+        
+        L = self.L
 
         sph_gen = self.sph_gen
 
         def cube_ind(L, M):
             return ((L) * ( (L) + 1 ) + (M) )
 
-        assign_gen =  'double rhol = 1.0;\n'
-        assign_gen += 'double rholcharge = rhol * charge;\n'
+        assign_gen =  'const double iradius = 1.0 / radius;\n'
+        assign_gen += 'double rholcharge = iradius * charge;\n'
         for lx in range(self.L):
             for mx in range(-lx, lx+1):
                 assign_gen += 'TREE[OFFSET + {ind}] += {ylmm} * rholcharge;\n'.format(
@@ -63,18 +64,17 @@ class PyMM(mm_lm_common.MM_LM_Common):
                         ind=cube_ind(lx, mx),
                         ylmm=str(sph_gen.get_y_sym(lx, -mx)[1])
                     )
-            assign_gen += 'rhol *= radius;\n'
-            assign_gen += 'rholcharge = rhol * charge;\n'
-
+            assign_gen += 'rholcharge *= iradius;\n'
 
 
         k = kernel.Kernel(
-            'mm_contrib_loop',
+            'lm_contrib_loop',
             r'''
             
             const double rx = P.i[0];
             const double ry = P.i[1];
             const double rz = P.i[2];
+            const double charge = Q.i[0];
 
             // bin into finest level cell
             const double srx = rx + HEX;
@@ -89,11 +89,6 @@ class PyMM(mm_lm_common.MM_LM_Common):
             cfy = (cfy < LCX) ? cfy : (LCY - 1);
             cfz = (cfz < LCX) ? cfz : (LCZ - 1);
             
-            // number of cells in each direction
-            int64_t ncx = LCX;
-            int64_t ncy = LCY;
-            int64_t ncz = LCZ;
-            
             // increment the occupancy for this cell
             OCC_GA[cfx + LCX * (cfy + LCY * cfz)]++;
 
@@ -102,7 +97,7 @@ class PyMM(mm_lm_common.MM_LM_Common):
             MM_FINE_CELLS.i[2] = cfz;
 
             for( int level=R-1 ; level>=0 ; level-- ){{
-                
+
                 // child on this level
 
                 const int64_t cix = cfx % SDX;
@@ -127,29 +122,63 @@ class PyMM(mm_lm_common.MM_LM_Common):
             }}
 
 
-
-            // compute the multipole expansions
+            // compute the local expansions
             for( int level=0 ; level<R ; level++) {{
-
-                const int64_t cellx = MM_CELLS.i[level * 3 + 0];
-                const int64_t celly = MM_CELLS.i[level * 3 + 1];
-                const int64_t cellz = MM_CELLS.i[level * 3 + 2];
-
-                const double dx = rx - ((-HEX) + (0.5  + cellx) * WIDTHS_X[level]);
-                const double dy = ry - ((-HEY) + (0.5  + celly) * WIDTHS_Y[level]);
-                const double dz = rz - ((-HEZ) + (0.5  + cellz) * WIDTHS_Z[level]);
-
-                const double xy2 = dx * dx + dy * dy;
-                const double radius = sqrt(xy2 + dz * dz);
-                const double theta = atan2(sqrt(xy2), dz);
-                const double phi = atan2(dy, dx);
-                const double charge = Q.i[0];
                 
-                const int64_t lin_ind = cellx + NCELLS_X[level] * (celly + NCELLS_Y[level] * cellz);
-                const int64_t OFFSET = LEVEL_OFFSETS[level] + NCOMP * lin_ind;
+                // cell on this level
+                const int64_t cfx = MM_CELLS.i[level * 3 + 0];
+                const int64_t cfy = MM_CELLS.i[level * 3 + 1];
+                const int64_t cfz = MM_CELLS.i[level * 3 + 2];
 
-                {SPH_GEN}
-                {ASSIGN_GEN}
+                // child on this level
+                const int64_t cix = cfx % SDX;
+                const int64_t ciy = cfy % SDY;
+                const int64_t ciz = cfz % SDZ;
+                const int64_t ci = cix + SDX * (ciy + SDY * ciz);
+
+                // cell widths on this level
+                const double wx = WIDTHS_X[level];
+                const double wy = WIDTHS_Y[level];
+                const double wz = WIDTHS_Z[level];
+
+                // number of cells on this level
+                const int64_t ncx = NCELLS_X[level];
+                const int64_t ncy = NCELLS_Y[level];
+                const int64_t ncz = NCELLS_Z[level];
+
+
+                // loop over IL for this child cell
+                for( int ox=0 ; ox<IL_NO ; ox++){{
+
+                    const int64_t ocx = cfx + IL[ci * IL_STRIDE_OUTER + ox * 3 + 0];
+                    const int64_t ocy = cfy + IL[ci * IL_STRIDE_OUTER + ox * 3 + 1];
+                    const int64_t ocz = cfz + IL[ci * IL_STRIDE_OUTER + ox * 3 + 2];
+
+                    // free space for now
+                    if (ocx < 0) {{continue;}}
+                    if (ocy < 0) {{continue;}}
+                    if (ocz < 0) {{continue;}}
+                    if (ocx >= ncx) {{continue;}}
+                    if (ocy >= ncy) {{continue;}}
+                    if (ocz >= ncz) {{continue;}}
+
+                    const int64_t lin_ind = ocx + NCELLS_X[level] * (ocy + NCELLS_Y[level] * ocz);
+
+                    const double dx = rx - ((-HEX) + (0.5 * wx) + (ocx * wx));
+                    const double dy = ry - ((-HEY) + (0.5 * wy) + (ocy * wy));
+                    const double dz = rz - ((-HEZ) + (0.5 * wz) + (ocz * wz));
+
+                    const double xy2 = dx * dx + dy * dy;
+                    const double radius = sqrt(xy2 + dz * dz);
+                    const double theta = atan2(sqrt(xy2), dz);
+                    const double phi = atan2(dy, dx);
+                    
+                    const int64_t OFFSET = LEVEL_OFFSETS[level] + NCOMP * lin_ind;
+
+                    {SPH_GEN}
+                    {ASSIGN_GEN}
+
+                }}
             }}
 
 
@@ -158,7 +187,6 @@ class PyMM(mm_lm_common.MM_LM_Common):
                 ASSIGN_GEN=str(assign_gen)
             ),
             (
-                Constant('R', self.R),
                 Constant('EX', extent[0]),
                 Constant('EY', extent[1]),
                 Constant('EZ', extent[2]),
@@ -208,15 +236,15 @@ class PyMM(mm_lm_common.MM_LM_Common):
         )
 
         dat_dict = {
+            'IL': self.il_scalararray(access.READ),
             'P': self.positions(access.READ),
             'Q': self.charges(access.READ),
             'MM_FINE_CELLS': self._dat_fine_cells(access.WRITE),
             'MM_CELLS': self._dat_cells(access.WRITE),
             'MM_CHILD_INDEX': self._dat_child_index(access.WRITE),
             'OCC_GA': self.cell_occupation_ga(access.INC_ZERO),
-            'TREE': self.tree(access.INC_ZERO),
+            'TREE': self.tree(access.INC_ZERO)
         }
-
         self._contrib_loop = loop.ParticleLoopOMP(kernel=k, dat_dict=dat_dict)
     
         
@@ -228,28 +256,41 @@ class PyMM(mm_lm_common.MM_LM_Common):
         cell_widths = [1.0 / (ex / (sx**(self.R - 1))) for ex, sx in zip(extent, self.subdivision)]
 
 
+        L = self.L
         sph_gen = self.sph_gen
+
 
         def cube_ind(L, M):
             return ((L) * ( (L) + 1 ) + (M) )
 
 
-        assign_gen = ''
-        for lx in range(self.L):
+        EC = ''
+        for lx in range(L):
+
             for mx in range(-lx, lx+1):
-                reL = SphSymbol('TREE[OFFSET + {ind}]'.format(ind=cube_ind(lx, mx)))
-                imL = SphSymbol('TREE[OFFSET + IM_OFFSET + {ind}]'.format(ind=cube_ind(lx, mx)))
-                reY, imY = sph_gen.get_y_sym(lx, mx)
-                phi_sym = cmplx_mul(reL, imL, reY, imY)[0]
-                assign_gen += 'tmp_energy += rhol * ({phi_sym});\n'.format(phi_sym=str(phi_sym))
+                smx = 'n' if mx < 0 else 'p'
+                smx += str(abs(mx))
 
-            assign_gen += 'rhol *= iradius;\n'
+                re_lnm = SphSymbol('reln{lx}m{mx}'.format(lx=lx, mx=smx))
+                im_lnm = SphSymbol('imln{lx}m{mx}'.format(lx=lx, mx=smx))
 
-
+                EC += '''
+                const double {re_lnm} = TREE[OFFSET + {cx}];
+                const double {im_lnm} = TREE[OFFSET + IM_OFFSET + {cx}];
+                '''.format(
+                    re_lnm=str(re_lnm),
+                    im_lnm=str(im_lnm),
+                    cx=str(cube_ind(lx, mx))
+                )
+                cm_re, cm_im = cmplx_mul(re_lnm, im_lnm, sph_gen.get_y_sym(lx, mx)[0],
+                    sph_gen.get_y_sym(lx, mx)[1])
+                EC += 'tmp_energy += ({cm_re}) * rhol;\n'.format(cm_re=cm_re)
+                
+            EC += 'rhol *= radius;\n'
 
 
         k = kernel.Kernel(
-            'mm_extract_loop',
+            'lm_extract_loop',
             r'''
             
             const double rx = P.i[0];
@@ -261,68 +302,30 @@ class PyMM(mm_lm_common.MM_LM_Common):
 
             for( int level=0 ; level<R ; level++ ){{
 
-                // cell on this level
-                const int64_t cfx = MM_CELLS.i[level*3 + 0];
-                const int64_t cfy = MM_CELLS.i[level*3 + 1];
-                const int64_t cfz = MM_CELLS.i[level*3 + 2];
+                const int64_t cellx = MM_CELLS.i[level * 3 + 0];
+                const int64_t celly = MM_CELLS.i[level * 3 + 1];
+                const int64_t cellz = MM_CELLS.i[level * 3 + 2];
 
-                // number of cells on this level
-                const int64_t ncx = NCELLS_X[level];
-                const int64_t ncy = NCELLS_Y[level];
-                const int64_t ncz = NCELLS_Z[level];
+                const double dx = rx - ((-HEX) + (0.5  + cellx) * WIDTHS_X[level]);
+                const double dy = ry - ((-HEY) + (0.5  + celly) * WIDTHS_Y[level]);
+                const double dz = rz - ((-HEZ) + (0.5  + cellz) * WIDTHS_Z[level]);
 
-
-                // child on this level
-                const int64_t cix = MM_CHILD_INDEX.i[level * 3 + 0];
-                const int64_t ciy = MM_CHILD_INDEX.i[level * 3 + 1];
-                const int64_t ciz = MM_CHILD_INDEX.i[level * 3 + 2];
-                const int64_t ci = cix + SDX * (ciy + SDY * ciz);
-
-                const double wx = WIDTHS_X[level];
-                const double wy = WIDTHS_Y[level];
-                const double wz = WIDTHS_Z[level];
-
+                const double xy2 = dx * dx + dy * dy;
+                const double radius = sqrt(xy2 + dz * dz);
+                const double theta = atan2(sqrt(xy2), dz);
+                const double phi = atan2(dy, dx);
                 
-                // loop over IL for this child cell
-                for( int ox=0 ; ox<IL_NO ; ox++){{
-                    
-                    
-                    const int64_t ocx = cfx + IL[ci * IL_STRIDE_OUTER + ox * 3 + 0];
-                    const int64_t ocy = cfy + IL[ci * IL_STRIDE_OUTER + ox * 3 + 1];
-                    const int64_t ocz = cfz + IL[ci * IL_STRIDE_OUTER + ox * 3 + 2];
+                const int64_t lin_ind = cellx + NCELLS_X[level] * (celly + NCELLS_Y[level] * cellz);
+                const int64_t OFFSET = LEVEL_OFFSETS[level] + NCOMP * lin_ind;
+                 
+                {SPH_GEN}
 
-                    // free space for now
-                    if (ocx < 0) {{continue;}}
-                    if (ocy < 0) {{continue;}}
-                    if (ocz < 0) {{continue;}}
-                    if (ocx >= ncx) {{continue;}}
-                    if (ocy >= ncy) {{continue;}}
-                    if (ocz >= ncz) {{continue;}}
+                double tmp_energy = 0.0;
+                double rhol = 1.0;
 
-                    const int64_t lin_ind = ocx + NCELLS_X[level] * (ocy + NCELLS_Y[level] * ocz);
+                {ENERGY_COMP}
 
-                    const double dx = rx - ((-HEX) + (0.5 * wx) + (ocx * wx));
-                    const double dy = ry - ((-HEY) + (0.5 * wy) + (ocy * wy));
-                    const double dz = rz - ((-HEZ) + (0.5 * wz) + (ocz * wz));
-
-                    const double xy2 = dx * dx + dy * dy;
-                    const double radius = sqrt(xy2 + dz * dz);
-                    const double theta = atan2(sqrt(xy2), dz);
-                    const double phi = atan2(dy, dx);
-                    
-                    const int64_t OFFSET = LEVEL_OFFSETS[level] + NCOMP * lin_ind;
-
-                    {SPH_GEN}
-                    const double iradius = 1.0 / radius;
-                    double rhol = iradius;
-                    double tmp_energy = 0.0;
-                    {ASSIGN_GEN}
-
-                    particle_energy += tmp_energy;
-                    
-
-                }}
-
+                particle_energy += tmp_energy;
 
             }}
 
@@ -331,7 +334,7 @@ class PyMM(mm_lm_common.MM_LM_Common):
 
             '''.format(
                 SPH_GEN=str(sph_gen.module),
-                ASSIGN_GEN=str(assign_gen)
+                ENERGY_COMP=str(EC)
             ),
             (
                 Constant('R', self.R),
@@ -386,7 +389,6 @@ class PyMM(mm_lm_common.MM_LM_Common):
         dat_dict = {
             'P': self.positions(access.READ),
             'Q': self.charges(access.READ),
-            'IL': self.il_scalararray(access.READ),
             'MM_CELLS': self._dat_cells(access.READ),
             'MM_CHILD_INDEX': self._dat_child_index(access.READ),
             'TREE': self.tree(access.READ),
@@ -397,24 +399,20 @@ class PyMM(mm_lm_common.MM_LM_Common):
 
 
 
-
-
-
-
-
     def __call__(self, positions, charges, forces=None, potential=None):
         if potential is not None or forces is not None:
             raise RuntimeError('Potential and Forces not implemented')
 
         self._contrib_loop.execute(
              dat_dict = {
+                'IL': self.il_scalararray(access.READ),
                 'P': positions(access.READ),
                 'Q': charges(access.READ),
                 'MM_FINE_CELLS': self._dat_fine_cells(access.WRITE),
                 'MM_CELLS': self._dat_cells(access.WRITE),
                 'MM_CHILD_INDEX': self._dat_child_index(access.WRITE),
                 'OCC_GA': self.cell_occupation_ga(access.INC_ZERO),
-                'TREE': self.tree(access.INC_ZERO),
+                'TREE': self.tree(access.INC_ZERO)
             }               
         )
 
@@ -422,7 +420,6 @@ class PyMM(mm_lm_common.MM_LM_Common):
             dat_dict = {
                 'P': positions(access.READ),
                 'Q': charges(access.READ),
-                'IL': self.il_scalararray(access.READ),
                 'MM_CELLS': self._dat_cells(access.READ),
                 'MM_CHILD_INDEX': self._dat_child_index(access.READ),
                 'TREE': self.tree(access.READ),
@@ -431,8 +428,12 @@ class PyMM(mm_lm_common.MM_LM_Common):
         )
 
         direct_energy = self._execute_direct(positions, charges, forces, potential)
-        
+
         return self._extract_energy[0] + direct_energy
+
+
+
+
 
 
 

@@ -1,7 +1,10 @@
 import numpy as np
+
+import pytest
 from ppmd import *
 
 from ppmd.coulomb import mm
+from ppmd.coulomb import lm
 from ppmd.coulomb.fmm import *
 
 import math
@@ -98,13 +101,14 @@ class FreeSpaceDirect:
         
         return phi.value
 
+@pytest.mark.parametrize("MM_LM", (mm.PyMM, lm.PyLM))
+def test_free_space_1(MM_LM):
+    
 
-def test_free_space_1():
-
-    N = 100000
+    N = 10000
     e = 10.
     R = 5
-    L = 5
+    L = 6
 
 
     rng = np.random.RandomState(3418)
@@ -130,28 +134,27 @@ def test_free_space_1():
             })
 
     
-    MM = mm.PyMM(A.P, A.Q, A.domain, 'free_space', R, L)
+    MM = MM_LM(A.P, A.Q, A.domain, 'free_space', R, L)
+    fmm = PyFMM(A.domain, r=R, l=L, free_space=True)
     
+
     t0c = time.time()
     energy_to_test = MM(A.P, A.Q)
     t1c = time.time()
     
+
     t0f = time.time()
-    fmm = PyFMM(A.domain, r=R, l=L, free_space=True)
-    t1f = time.time()
-    
-
     energy_fmm = fmm(A.P, A.Q)
-
+    t1f = time.time()
 
 
 
     DFS = FreeSpaceDirect()
-    
-
 
     if MPISIZE > 1:
         correct = energy_fmm
+        t0 = 0.0
+        t1 = 0.0
     else:
         t0 = time.time()
         correct = DFS(N, A.P.view, A.Q.view)
@@ -161,11 +164,10 @@ def test_free_space_1():
     err_fmm = abs(energy_fmm - correct) / abs(correct)
     assert err < 10.**-6
     
-
-    #if MPIRANK == 0:
-    #    print(err, err_fmm, energy_to_test, energy_fmm, correct)
-    #    opt.print_profile()
-    #    print(t1 - t0, t1c - t0c, t1f - t0f)
+    return
+    if MPIRANK == 0:
+        print(err, err_fmm, energy_to_test, energy_fmm, correct)
+        print("Direct", t1 - t0, MM_LM, t1c - t0c, "FMM", t1f - t0f)
 
 
 

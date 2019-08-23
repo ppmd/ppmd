@@ -223,8 +223,39 @@ class SphCoeffGen(object):
         return _Symbol(self.sym + '_denom_' + str(mx))
 
 
+
+class PRadiusModifier:
+    def __init__(self, lpmv_gen, radius_symbol=False):
+        
+        self.lpmv_gen = lpmv_gen
+        self.radius_symbol = radius_symbol
+        modules = []
+        
+        if self.radius_symbol:
+            maxl = lpmv_gen.maxl
+            for lx in range(maxl + 1):
+                for mx in range(lx+1):
+                    modules += [
+                        Initializer(Const(Value(lpmv_gen.ctype, self.get_p_sym(lx, mx))), lpmv_gen.get_p_sym(lx, mx) * self.get_radius_sym(lx))
+                    ]
+
+        self.module = Module(modules)
+
+    def get_p_sym(self, l, m):
+        if not self.radius_symbol:
+            return self.lpmv_gen.get_p_sym(l, m)
+        else:
+            return _Symbol('rc_{}'.format(self.lpmv_gen.get_p_sym(l, m)))
+
+    def get_radius_sym(self, l):
+        assert self.radius_symbol
+        return _Symbol(self.radius_symbol+'_'+str(l))
+
+
+
+
 class SphGen(object):
-    def __init__(self, maxl, sym='_Y', theta_sym='theta', phi_sym='phi', ctype='double', avoid_calls=False):
+    def __init__(self, maxl, sym='_Y', theta_sym='theta', phi_sym='phi', ctype='double', avoid_calls=False, radius_symbol=False):
         self.maxl = maxl
         self.sym = sym
         self.ctype = ctype
@@ -245,38 +276,58 @@ class SphGen(object):
         lpmv_gen = ALegendrePolynomialGen(maxl=maxl, psym='_P'+sym, tsym='cos_' + theta_sym, ctype=ctype,
                 avoid_calls=avoid_calls)
 
+        radius_lpmv_gen = PRadiusModifier(lpmv_gen, radius_symbol=radius_symbol)
+
         exp_gen = SphExpGen(maxl=maxl, esym='_E'+sym, psym=phi_sym, ctype=ctype, avoid_calls=avoid_calls)
-        coeff_gen = SphCoeffGen(maxl=maxl, sym='_sqrtmf'+sym, ctype=ctype)
+        #coeff_gen = SphCoeffGen(maxl=maxl, sym='_sqrtmf'+sym, ctype=ctype)
         
 
         modlist += [
             lpmv_gen.module,
+            radius_lpmv_gen.module,
             exp_gen.module,
-            coeff_gen.module
+            #coeff_gen.module
         ]
         
         for kx in self.flops.keys():
-            self.flops[kx] += lpmv_gen.flops[kx] + exp_gen.flops[kx] + coeff_gen.flops[kx]
+            self.flops[kx] += lpmv_gen.flops[kx] + exp_gen.flops[kx]# + coeff_gen.flops[kx]
+
+        
+        def H(lx, mx):
+            return _Symbol(str(sqrt(factorial(lx - abs(mx)) / factorial(lx + abs(mx)))))
+
+
+        for lx in range(maxl+1):
+            modlist += [
+                icv_wrap(
+                    self._get_intermediate_sym(lx, mx),
+                    H(lx, mx) * radius_lpmv_gen.get_p_sym(lx, abs(mx))
+                ) for mx in range(0, lx+1)
+            ]
+            self.flops['*'] += lx+1
+
+
         
         for lx in range(maxl+1):
             modlist += [
                 icv_wrap(
                     self.get_y_sym(lx, mx)[0],
-                    coeff_gen.get_numerator_sym(lx - abs(mx)) * coeff_gen.get_denominator_sym(lx + abs(mx)) * \
-                        lpmv_gen.get_p_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[0]
+                    self._get_intermediate_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[0]
                 ) for mx in range(-lx, lx+1)
             ]
             modlist += [
                 icv_wrap(
                     self.get_y_sym(lx, mx)[1],
-                    coeff_gen.get_numerator_sym(lx - abs(mx)) * coeff_gen.get_denominator_sym(lx + abs(mx)) * \
-                        lpmv_gen.get_p_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[1]
+                    self._get_intermediate_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[1]
                 ) for mx in range(-lx, lx+1)
             ]
 
-            self.flops['*'] += 6 * (2*lx+1)
+            self.flops['*'] += 2 * (2*lx+1)
+
+
 
         self.module = Module(modlist)
+        self.radius_lpmv_gen = radius_lpmv_gen
 
     def get_y_sym(self, n, m):
         assert n > -1
@@ -286,6 +337,18 @@ class SphGen(object):
         ms += str(abs(m))
         s = self.sym + 'n' + str(abs(n)) + ms
         return _Symbol('_re' + s), _Symbol('_im' + s)
+
+    def _get_intermediate_sym(self, n, m):
+        assert n > -1
+        assert n <= self.maxl
+        assert abs(m) <= n
+        ms = 'mn' if m < 0 else 'mp'
+        ms += str(abs(m))
+        s = self.sym + 'n' + str(abs(n)) + ms
+        return _Symbol('_Hnm_' + s)
+
+    def get_radius_sym(self, n):
+        return self.radius_lpmv_gen.get_radius_sym(n)
 
 
 class LocalExpEval(object):

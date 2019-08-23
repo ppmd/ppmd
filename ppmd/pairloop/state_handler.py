@@ -51,9 +51,9 @@ class StateHandler(object):
         obj = dat[0]
         mode = dat[1]
         if issubclass(type(obj), data.GlobalArrayClassic):
-            return obj.ctypes_data_access(mode, pair=True, threaded=True)
+            return obj.ctypes_data_access(mode, pair=self._pair, threaded=True)
         else:
-            return obj.ctypes_data_access(mode, pair=True)
+            return obj.ctypes_data_access(mode, pair=self._pair)
 
     def post_execute(self, dats):
         for d in dats.values():
