@@ -24,6 +24,8 @@ INT64 = ctypes.c_int64
 
 PROFILE = opt.PROFILE
 
+BCType = mm_lm_common.BCType
+
 class PyLM(mm_lm_common.MM_LM_Common):
     
     def _init_dats(self):
@@ -40,6 +42,27 @@ class PyLM(mm_lm_common.MM_LM_Common):
 
 
     def _init_contrib_loop(self):
+
+        bc = self.boundary_condition
+        if bc == BCType.FREE_SPACE:
+            bc_block = r'''
+                if (ocx < 0) {{continue;}}
+                if (ocy < 0) {{continue;}}
+                if (ocz < 0) {{continue;}}
+                if (ocx >= ncx) {{continue;}}
+                if (ocy >= ncy) {{continue;}}
+                if (ocz >= ncz) {{continue;}}
+            '''
+        elif bc in (BCType.NEAREST, BCType.PBC):
+            bc_block = r'''
+                ocx = (ocx + ncx) % ncx;
+                ocy = (ocy + ncy) % ncy;
+                ocz = (ocz + ncz) % ncz;
+            '''
+        else:
+            raise RuntimeError('Unkown boundary condition.')
+
+
         
         g = self.group
         extent = self.domain.extent
@@ -123,7 +146,7 @@ class PyLM(mm_lm_common.MM_LM_Common):
 
 
             // compute the local expansions
-            for( int level=0 ; level<R ; level++) {{
+            for( int level=1 ; level<R ; level++) {{
                 
                 // cell on this level
                 const int64_t cfx = MM_CELLS.i[level * 3 + 0];
@@ -150,23 +173,19 @@ class PyLM(mm_lm_common.MM_LM_Common):
                 // loop over IL for this child cell
                 for( int ox=0 ; ox<IL_NO ; ox++){{
 
-                    const int64_t ocx = cfx + IL[ci * IL_STRIDE_OUTER + ox * 3 + 0];
-                    const int64_t ocy = cfy + IL[ci * IL_STRIDE_OUTER + ox * 3 + 1];
-                    const int64_t ocz = cfz + IL[ci * IL_STRIDE_OUTER + ox * 3 + 2];
-
-                    // free space for now
-                    if (ocx < 0) {{continue;}}
-                    if (ocy < 0) {{continue;}}
-                    if (ocz < 0) {{continue;}}
-                    if (ocx >= ncx) {{continue;}}
-                    if (ocy >= ncy) {{continue;}}
-                    if (ocz >= ncz) {{continue;}}
-
-                    const int64_t lin_ind = ocx + NCELLS_X[level] * (ocy + NCELLS_Y[level] * ocz);
+                    int64_t ocx = cfx + IL[ci * IL_STRIDE_OUTER + ox * 3 + 0];
+                    int64_t ocy = cfy + IL[ci * IL_STRIDE_OUTER + ox * 3 + 1];
+                    int64_t ocz = cfz + IL[ci * IL_STRIDE_OUTER + ox * 3 + 2];
 
                     const double dx = rx - ((-HEX) + (0.5 * wx) + (ocx * wx));
                     const double dy = ry - ((-HEY) + (0.5 * wy) + (ocy * wy));
                     const double dz = rz - ((-HEZ) + (0.5 * wz) + (ocz * wz));
+
+                    {BC_BLOCK}
+
+                    const int64_t lin_ind = ocx + NCELLS_X[level] * (ocy + NCELLS_Y[level] * ocz);
+
+
 
                     const double xy2 = dx * dx + dy * dy;
                     const double radius = sqrt(xy2 + dz * dz);
@@ -183,6 +202,7 @@ class PyLM(mm_lm_common.MM_LM_Common):
 
 
             '''.format(
+                BC_BLOCK=bc_block,
                 SPH_GEN=str(sph_gen.module),
                 ASSIGN_GEN=str(assign_gen)
             ),
@@ -429,7 +449,9 @@ class PyLM(mm_lm_common.MM_LM_Common):
 
         direct_energy = self._execute_direct(positions, charges, forces, potential)
 
-        return self._extract_energy[0] + direct_energy
+        pbc_energy = self._compute_pbc_contrib()
+
+        return self._extract_energy[0] + direct_energy + pbc_energy
 
 
 

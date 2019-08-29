@@ -6,10 +6,14 @@ __license__ = "GPL"
 
 
 import numpy as np
+
 from ppmd import data, loop, kernel, access, lib, opt, pairloop
 from ppmd.coulomb import fmm_interaction_lists
 
 from ppmd.coulomb.sph_harm import *
+
+from ppmd.coulomb.fmm_pbc import LongRangeMTL
+
 
 import ctypes
 import math
@@ -22,17 +26,29 @@ INT64 = ctypes.c_int64
 PROFILE = opt.PROFILE
 
 
+from enum import Enum
+class BCType(Enum):
+    """
+    Enum to indicate boundary condition type.
+    """
+    PBC = 'pbc'
+    """Fully periodic boundary conditions"""
+    FREE_SPACE = 'free_space'
+    """Free-space, e.g. vacuum, boundary conditions."""
+    NEAREST = '27'
+    """Primary image and the surrounding 26 nearest neighbours."""
+
+
+
 class MM_LM_Common:
 
     def __init__(self, positions, charges, domain, boundary_condition, r, l):
-
-        assert boundary_condition == 'free_space'
 
         self.positions = positions
         self.charges = charges
         self.domain = domain
         self.comm = self.domain.comm
-        self.boundary_condition = boundary_condition
+        self.boundary_condition = BCType(boundary_condition)
         self.R = r
         self.L = l
         self.ncomp = (self.L ** 2) * 2
@@ -137,10 +153,29 @@ class MM_LM_Common:
         self._cell_remap_lib = None
         self._init_direct_libs()
 
+        if self.boundary_condition == BCType.PBC:
+            self._init_pbc()
+
 
 
     def _init_direct_libs(self):
 
+        
+        bc = self.boundary_condition
+        if bc == BCType.FREE_SPACE:
+            bc_block = r'''
+                // free space BCs
+                if (ocx < 0) {{continue;}}
+                if (ocy < 0) {{continue;}}
+                if (ocz < 0) {{continue;}}
+                if (ocx >= LCX) {{continue;}}
+                if (ocy >= LCY) {{continue;}}
+                if (ocz >= LCZ) {{continue;}}
+            '''
+        elif bc in (BCType.NEAREST, BCType.PBC):
+            bc_block = ''
+        else:
+            raise RuntimeError('Unknown boundary condition.')
 
         source = r'''
         extern "C" int direct_interactions(
@@ -194,14 +229,8 @@ class MM_LM_Common:
                     INT64 ocy = ciy + NNMAP[ox * 3 + 1];
                     INT64 ocz = ciz + NNMAP[ox * 3 + 2];
                     
-                    // free space BCs
-                    if (ocx < 0) {{continue;}}
-                    if (ocy < 0) {{continue;}}
-                    if (ocz < 0) {{continue;}}
-                    if (ocx >= LCX) {{continue;}}
-                    if (ocy >= LCY) {{continue;}}
-                    if (ocz >= LCZ) {{continue;}}
-                    
+                    {BC_BLOCK}
+
                     ocx -= cell_mins[0];
                     ocy -= cell_mins[1];
                     ocz -= cell_mins[2];
@@ -275,6 +304,7 @@ class MM_LM_Common:
         }}
 
         '''.format(
+            BC_BLOCK=bc_block
         )
 
         header = r'''
@@ -465,5 +495,117 @@ class MM_LM_Common:
             PROFILE[key] = inc
         else:
             PROFILE[key] += inc
+
+
+
+    def _init_pbc(self):
+        
+        self.top_multipole_expansion_ga = data.GlobalArray(ncomp=self.ncomp, dtype=REAL)
+        self.top_dot_vector_ga = data.GlobalArray(ncomp=self.ncomp, dtype=REAL)
+        self.lrc = LongRangeMTL(self.L, self.domain)
+
+
+        sph_gen = self.sph_gen
+
+        def cube_ind(L, M):
+            return ((L) * ( (L) + 1 ) + (M) )
+
+        assign_gen =  'double rhol = charge;\n'
+        for lx in range(self.L):
+            for mx in range(-lx, lx+1):
+
+                res, ims = sph_gen.get_y_sym(lx, -mx)
+                offset = cube_ind(lx, mx)
+
+                assign_gen += ''.join(['MULTIPOLE[{}] += {} * rhol;\n'.format(*args) for args in (
+                        (offset, str(res)),
+                        (offset + self.L**2, str(ims))
+                    )
+                ])
+
+                res, ims = sph_gen.get_y_sym(lx, mx)
+                assign_gen += ''.join(['DOT_VEC[{}] += {} * rhol;\n'.format(*args) for args in (
+                        (offset, str(res)),
+                        (offset + self.L**2, '-1.0 * ' + str(ims))
+                    )
+                ])
+
+            assign_gen += 'rhol *= radius;\n'
+
+
+        lr_kernel = kernel.Kernel(
+            'mm_lm_lr_kernel',
+            r'''
+            const double dx = P.i[0];
+            const double dy = P.i[1];
+            const double dz = P.i[2];
+
+            const double xy2 = dx * dx + dy * dy;
+            const double radius = sqrt(xy2 + dz * dz);
+            const double theta = atan2(sqrt(xy2), dz);
+            const double phi = atan2(dy, dx);
+            const double charge = Q.i[0];
+
+            {SPH_GEN}
+            {ASSIGN_GEN}
+
+
+            '''.format(
+                SPH_GEN=str(sph_gen.module),
+                ASSIGN_GEN=str(assign_gen)
+            ),
+            headers=(
+                lib.build.write_header(
+                    r'''
+                    #include <math.h>
+                    '''
+                ),
+            )
+        )
+
+        
+        self._lr_loop = loop.ParticleLoopOMP(
+            lr_kernel,
+            dat_dict={
+                'P': self.positions(access.READ),
+                'Q': self.charges(access.READ),
+                'MULTIPOLE': self.top_multipole_expansion_ga(access.INC_ZERO),
+                'DOT_VEC': self.top_dot_vector_ga(access.INC_ZERO),
+            }
+        )
+
+
+    def _compute_pbc_contrib(self):
+
+        if not self.boundary_condition == BCType.PBC:
+            return 0.0
+        
+        self._lr_loop.execute()
+
+        multipole_exp = self.top_multipole_expansion_ga[:].copy()
+        L_tmp = np.zeros_like(multipole_exp)
+        self.L_tmp = L_tmp
+
+        self.lrc(multipole_exp, L_tmp)
+
+        return 0.5 * np.dot(self.top_dot_vector_ga[:].copy(), L_tmp)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

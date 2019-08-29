@@ -921,7 +921,7 @@ class PyFMM(object):
         #if mpi.MPI.COMM_WORLD.Get_rank() == 0:
         #    print("Far:", phi_extract, "Near:", phi_near)
         self.execution_count += 1
-        # print("extract", phi_extract, "near", phi_near)
+        #print("extract", phi_extract, "near", phi_near)
 
         if forces is not None: forces.ctypes_data_post(access.WRITE)
         if potential is not None: potential.ctypes_data_post(access.WRITE)
