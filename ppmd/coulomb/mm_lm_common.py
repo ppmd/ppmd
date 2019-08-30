@@ -584,11 +584,16 @@ class MM_LM_Common:
 
         multipole_exp = self.top_multipole_expansion_ga[:].copy()
         L_tmp = np.zeros_like(multipole_exp)
-        self.L_tmp = L_tmp
 
         self.lrc(multipole_exp, L_tmp)
 
-        return 0.5 * np.dot(self.top_dot_vector_ga[:].copy(), L_tmp)
+        self.mvector = multipole_exp
+        self.evector = self.top_dot_vector_ga[:].copy()
+
+        self.lr_energy = 0.5 * np.dot(self.evector, L_tmp)
+
+
+        return self.lr_energy
 
 
 

@@ -286,7 +286,6 @@ def test_free_space_1(MM_LM, BC):
     t1f = time.time()
 
 
-
     if BC == 'free_space':
         DFS = FreeSpaceDirect()
     elif BC == '27':
