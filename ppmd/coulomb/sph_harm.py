@@ -471,3 +471,268 @@ class LocalExpEval(object):
         return phi_sph_re
 
 
+class MultipoleExpCreator:
+    """
+    Class to compute multipole expansions.
+
+    :arg int L: Number of expansion terms.
+    """
+    
+    def __init__(self, L):
+        self.L = L
+        self._hmatrix_py = np.zeros((2*self.L, 2*self.L))
+        def Hfoo(nx, mx): return sqrt(float(factorial(nx - abs(mx)))/factorial(nx + abs(mx)))
+        for nx in range(self.L):
+            for mx in range(-nx, nx+1):
+                self._hmatrix_py[nx, mx] = Hfoo(nx, mx)
+        
+        self.sph_gen = SphGen(L-1)
+        self._multipole_lib = None
+        self._generate_host_libs()
+
+    def _generate_host_libs(self):
+
+        sph_gen = self.sph_gen
+
+        def cube_ind(L, M):
+            return ((L) * ( (L) + 1 ) + (M) )
+
+        assign_gen =  'double rhol = 1.0;\n'
+        assign_gen += 'double rholcharge = rhol * charge;\n'
+        for lx in range(self.L):
+            for mx in range(-lx, lx+1):
+                assign_gen += 'out[{ind}] += {ylmm} * rholcharge;\n'.format(
+                        ind=cube_ind(lx, mx),
+                        ylmm=str(sph_gen.get_y_sym(lx, -mx)[0])
+                    )
+                assign_gen += 'out[IM_OFFSET + {ind}] += {ylmm} * rholcharge;\n'.format(
+                        ind=cube_ind(lx, mx),
+                        ylmm=str(sph_gen.get_y_sym(lx, -mx)[1])
+                    )
+            assign_gen += 'rhol *= radius;\n'
+            assign_gen += 'rholcharge = rhol * charge;\n'
+
+        src = """
+        #define IM_OFFSET ({IM_OFFSET})
+
+        {DECLARE} int multipole_exp(
+            const double charge,
+            const double radius,
+            const double theta,
+            const double phi,
+            double * RESTRICT out
+        ){{
+            {SPH_GEN}
+            {ASSIGN_GEN}
+            return 0;
+        }}
+        """
+        header = str(sph_gen.header)
+        
+        src_lib = src.format(
+            SPH_GEN=str(sph_gen.module),
+            ASSIGN_GEN=str(assign_gen),
+            IM_OFFSET=(self.L**2),
+            DECLARE=r'static inline'
+        )
+
+        src = src.format(
+            SPH_GEN=str(sph_gen.module),
+            ASSIGN_GEN=str(assign_gen),
+            IM_OFFSET=(self.L**2),
+            DECLARE=r'extern "C"'
+        )
+
+        self.create_multipole_header = header
+        self.create_multipole_src = src_lib
+
+        self._multipole_lib = simple_lib_creator(header_code=header, src_code=src)['multipole_exp']
+
+
+    def multipole_exp(self, sph, charge, arr):
+        """
+        For a charge at the point sph computes the multipole moments at the origin
+        and appends them onto arr.
+        """
+
+        assert arr.dtype == c_double
+        self._multipole_lib(
+            c_double(charge),
+            c_double(sph[0]),
+            c_double(sph[1]),
+            c_double(sph[2]),
+            arr.ctypes.get_as_parameter()
+        )
+
+
+    def py_multipole_exp(self, sph, charge, arr):
+        """
+        For a charge at the point sph computes the multipole moments at the origin
+        and appends them onto arr.
+        """
+
+        llimit = self.L
+        def re_lm(l,m): return (l**2) + l + m
+        def im_lm(l,m): return (l**2) + l +  m + llimit**2
+        
+        cosv = np.zeros(3 * llimit)
+        sinv = np.zeros(3 * llimit)
+        for mx in range(-llimit, llimit+1):
+            cosv[mx] = cos(-1.0 * mx * sph[2])
+            sinv[mx] = sin(-1.0 * mx * sph[2])
+
+        for lx in range(self.L):
+            scipy_p = lpmv(range(lx+1), lx, cos(sph[1]))
+            radn = sph[0] ** lx
+            for mx in range(-lx, lx+1):
+                coeff = charge * radn * self._hmatrix_py[lx, mx] * scipy_p[abs(mx)] 
+                arr[re_lm(lx, mx)] += cosv[mx] * coeff
+                arr[im_lm(lx, mx)] += sinv[mx] * coeff
+
+
+
+class MultipoleDotVecCreator:
+    """
+    Class to compute multipole expansions and corresponding expansions that can be used to compute
+    energies from local expansions by using a dot product.
+
+    :arg int L: Number of expansion terms.
+    """
+    
+    def __init__(self, L):
+        self.L = L
+        self._hmatrix_py = np.zeros((2*self.L, 2*self.L))
+        def Hfoo(nx, mx): return sqrt(float(factorial(nx - abs(mx)))/factorial(nx + abs(mx)))
+        for nx in range(self.L):
+            for mx in range(-nx, nx+1):
+                self._hmatrix_py[nx, mx] = Hfoo(nx, mx)
+        
+        self.sph_gen = SphGen(L-1)
+        self._multipole_lib = None
+        self._generate_host_libs()
+
+    def _generate_host_libs(self):
+
+        sph_gen = self.sph_gen
+
+        def cube_ind(L, M):
+            return ((L) * ( (L) + 1 ) + (M) )
+
+        # --- lib to create vector to dot product and mutlipole expansions --- 
+
+        assign_gen =  'double rhol = 1.0;\n'
+        assign_gen += 'double rholcharge = rhol * charge;\n'
+        flops = {'+': 0, '-': 0, '*': 0, '/': 0}
+
+        for lx in range(self.L):
+            for mx in range(-lx, lx+1):
+
+                assign_gen += 'out_mul[{ind}] += {ylmm} * rholcharge;\n'.format(
+                        ind=cube_ind(lx, mx),
+                        ylmm=str(sph_gen.get_y_sym(lx, -mx)[0])
+                    )
+                assign_gen += 'out_mul[IM_OFFSET + {ind}] += {ylmm} * rholcharge;\n'.format(
+                        ind=cube_ind(lx, mx),
+                        ylmm=str(sph_gen.get_y_sym(lx, -mx)[1])
+                    )
+                assign_gen += 'out_vec[{ind}] += {ylmm} * rholcharge;\n'.format(
+                        ind=cube_ind(lx, mx),
+                        ylmm=str(sph_gen.get_y_sym(lx, mx)[0])
+                    )
+                assign_gen += 'out_vec[IM_OFFSET + {ind}] += (-1.0) * {ylmm} * rholcharge;\n'.format(
+                        ind=cube_ind(lx, mx),
+                        ylmm=str(sph_gen.get_y_sym(lx, mx)[1])
+                    )
+
+                flops['+'] += 4
+                flops['*'] += 5
+
+            assign_gen += 'rhol *= radius;\n'
+            assign_gen += 'rholcharge = rhol * charge;\n'
+            flops['*'] += 2
+
+        flops['+'] += sph_gen.flops['*']
+        flops['-'] += sph_gen.flops['*']
+        flops['*'] += sph_gen.flops['*']
+        flops['/'] += sph_gen.flops['*']
+
+        src = """
+        #define IM_OFFSET ({IM_OFFSET})
+
+        {DECLARE} int local_dot_vec_multipole(
+            const double charge,
+            const double radius,
+            const double theta,
+            const double phi,
+            double * RESTRICT out_vec,
+            double * RESTRICT out_mul
+        ){{
+            {SPH_GEN}
+            {ASSIGN_GEN}
+            return 0;
+        }}
+        """
+        header = str(sph_gen.header)
+        
+        src_lib = src.format(
+            SPH_GEN=str(sph_gen.module),
+            ASSIGN_GEN=str(assign_gen),
+            IM_OFFSET=(self.L**2),
+            DECLARE='static inline'
+        )
+
+        src = src.format(
+            SPH_GEN=str(sph_gen.module),
+            ASSIGN_GEN=str(assign_gen),
+            IM_OFFSET=(self.L**2),
+            DECLARE=r'extern "C"'
+        )
+
+        self.create_dot_vec_multipole_header = header
+        self.create_dot_vec_multipole_src = src_lib
+        self.create_dot_vec_multipole_flops = flops
+
+        self._dot_vec_multipole_lib = simple_lib_creator(header_code=header, src_code=src)['local_dot_vec_multipole']
+        
+
+    def dot_vec_multipole(self, sph, charge, arr_vec, arr_mul):
+        """
+        For a charge at the point sph computes the coefficients at the origin
+        and appends them onto arr that can be used in a dot product to compute
+        the energy.
+        """
+        assert arr_vec.dtype == c_double
+        assert arr_mul.dtype == c_double
+        self._dot_vec_multipole_lib(
+            c_double(charge),
+            c_double(sph[0]),
+            c_double(sph[1]),
+            c_double(sph[2]),
+            arr_vec.ctypes.get_as_parameter(),
+            arr_mul.ctypes.get_as_parameter()
+       ) 
+
+
+    def py_dot_vec(self, sph, charge, arr):
+        """
+        For a charge at the point sph computes the multipole moments at the origin
+        and appends them onto arr.
+        """
+
+        llimit = self.L
+        def re_lm(l,m): return (l**2) + l + m
+        def im_lm(l,m): return (l**2) + l +  m + llimit**2
+        
+        cosv = np.zeros(3 * llimit)
+        sinv = np.zeros(3 * llimit)
+        for mx in range(-llimit, llimit+1):
+            cosv[mx] = cos(mx * sph[2])
+            sinv[mx] = sin(mx * sph[2])
+
+        for lx in range(self.L):
+            scipy_p = lpmv(range(lx+1), lx, cos(sph[1]))
+            radn = sph[0] ** lx
+            for mx in range(-lx, lx+1):
+                coeff = charge * radn * self._hmatrix_py[lx, mx] * scipy_p[abs(mx)] 
+                arr[re_lm(lx, mx)] += cosv[mx] * coeff
+                arr[im_lm(lx, mx)] -= sinv[mx] * coeff       

@@ -28,7 +28,7 @@ import ctypes
 INT64 = ctypes.c_int64
 REAL = ctypes.c_double
 
-from ppmd.coulomb.sph_harm import LocalExpEval
+from ppmd.coulomb.sph_harm import LocalExpEval, MultipoleExpCreator, MultipoleDotVecCreator
 
 
 def test_c_sph_harm_1():
@@ -75,5 +75,53 @@ def test_c_sph_harm_1():
         rep = lee.py_compute_phi_local(moments, point)
         rel = abs(rep)
         assert abs(rec - rep) / rel < 10.**-12
+
+
+
+
+
+def test_c_sph_harm_2():
+    rng = np.random.RandomState(9473)
+    N = 20
+    L = 20
+    ncomp = (L**2)*2
+
+    lee = MultipoleExpCreator(L-1)
+    lee2 = MultipoleDotVecCreator(L-1)
+    
+    for tx in range(20):
+
+        radius = rng.uniform()
+        phi = rng.uniform(0, math.pi * 2)
+        theta = rng.uniform(0, math.pi)
+
+        sph = (radius, theta, phi)
+
+        correct = np.zeros(ncomp, REAL)
+        correctd = np.zeros(ncomp, REAL)
+        to_test = np.zeros(ncomp, REAL)
+        to_testm = np.zeros(ncomp, REAL)
+        to_testd = np.zeros(ncomp, REAL)
+
+
+        lee.multipole_exp(sph, 1.0, to_test)
+        lee.py_multipole_exp(sph, 1.0, correct)
+        lee2.dot_vec_multipole(sph, 1.0, to_testd, to_testm)
+
+        err = np.linalg.norm(to_test - correct, np.inf)
+        assert err < 10.**-14
+        err = np.linalg.norm(to_testm - correct, np.inf)
+        assert err < 10.**-14
+
+        lee2.py_dot_vec(sph, 1.0, correctd)
+        
+        err = np.linalg.norm(to_testd - correctd, np.inf)
+        assert err < 10.**-14
+
+
+
+
+
+
 
 
