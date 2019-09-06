@@ -9,6 +9,7 @@ INT64 = ctypes.c_int64
 from itertools import product
 
 from ppmd.coulomb.fmm_pbc import LongRangeMTL
+from ppmd.coulomb.fmm_interaction_lists import compute_interaction_lists
 
 import numpy as np
 
@@ -16,7 +17,7 @@ from cgen import *
 
 from ppmd.coulomb.sph_harm import MultipoleDotVecCreator
 
-
+from collections.abc import Iterable
 
 def spherical(xyz):
     """
@@ -126,13 +127,22 @@ class FreeSpaceDirect:
 
 
 class NearestDirect:
-    def __init__(self, E):
+    def __init__(self, E, tuples=None):
 
-        ox_range = tuple(range(-1, 2))
+        if not isinstance(E, Iterable):
+            E = (E, E, E)
+        
+        
+        if tuples is None:
+            ox_range = tuple(range(-1, 2))
+            tuples = []
+            for ox in product(ox_range, ox_range, ox_range):
+                if ox[0] != 0 or ox[1] != 0 or ox[2] != 0:
+                    tuples.append(ox)
 
         inner = ''
 
-        for oxi, ox in enumerate(product(ox_range, ox_range, ox_range)):
+        for oxi, ox in enumerate(tuples):
                 if ox[0] != 0 or ox[1] != 0 or ox[2] != 0:
                     inner += """
                             d0 = jp0 - ip0 + {OX};
@@ -144,9 +154,9 @@ class NearestDirect:
 
                     """.format(
                         OXI=oxi,
-                        OX=ox[0] * E,
-                        OY=ox[1] * E,
-                        OZ=ox[2] * E
+                        OX=ox[0] * E[0],
+                        OY=ox[1] * E[1],
+                        OZ=ox[2] * E[2]
                     )
         
         
@@ -223,6 +233,7 @@ class NearestDirect:
             INNER=inner
         )
 
+
         self._lib = build.simple_lib_creator(header_code=header, src_code=src, name="kmc_fmm_nearest_direct")['nearest_direct']
 
 
@@ -242,10 +253,20 @@ class NearestDirect:
 
 class PBCDirect:
     def __init__(self, E, domain, L):
-        
-        self.lrc = LongRangeMTL(L, domain)
 
-        self._nd = NearestDirect(E)
+        if not isinstance(E, Iterable):
+            E = (E, E, E)
+
+        if abs(E[0] - E[1]) < 10**-14 and abs(E[0] - E[2]) < 10**-14:
+            il = None
+            ex = None
+        else:
+            il, ex = compute_interaction_lists(domain.extent)
+
+        
+        self.lrc = LongRangeMTL(L, domain, exclude_tuples=ex)
+
+        self._nd = NearestDirect(E, tuples=ex)
 
         self.ncomp = 2*(L**2)
         self.half_ncomp = L**2

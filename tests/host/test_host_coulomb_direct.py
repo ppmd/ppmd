@@ -58,7 +58,7 @@ ox_range = tuple(range(-1, 2))
 
 def test_nearest_1():
 
-    E = 39.
+    E = np.array((39., 71., 51.))
     ND = NearestDirect(E)
 
 
@@ -82,7 +82,7 @@ def test_nearest_1():
                 for jx in range(N):
                     for ox in product(ox_range, ox_range, ox_range):
                         if ox[0] != 0 or ox[1] != 0 or ox[2] != 0:
-                            rij = np.linalg.norm(ppi[jx,:] - ppi[ix,:] + (E*np.array(ox)))
+                            rij = np.linalg.norm(ppi[jx,:] - ppi[ix,:] + (np.multiply(E, np.array(ox))))
                             _phi_direct += 0.5 * qi[ix, 0] * qi[jx, 0] / rij
 
             return _phi_direct
@@ -137,19 +137,11 @@ def test_pbc_1():
     A.scatter_data_from(0)
 
     EWALD = EwaldOrthoganalHalf(domain=A.domain, real_cutoff=rc, shared_memory='omp', eps=10.**-8)
-    FMM = PyFMM(A.domain, N=N, free_space=False, r=3, l=L)
     PBCD = PBCDirect(E, A.domain, L)
 
     def _check1():
 
-        phi_e = EWALD(positions=A.P, charges=A.Q, forces=A.F)
-        phi_f = FMM(positions=A.P, charges=A.Q)
-
-        rel = abs(phi_f)
-        rel = 1.0 if rel == 0 else rel
-        err = abs(phi_e - phi_f) / rel
-        assert err < 10.**-4
-        return phi_f
+        return EWALD(positions=A.P, charges=A.Q, forces=A.F)
     
     phi_f = _check1()
 
@@ -176,7 +168,104 @@ def test_pbc_1():
         assert err < 10.**-4
          
 
-    FMM.free()
+
+def test_pbc_2():
+
+    E = (50., 40, 30)
+
+    L = 12
+    N = 40
+    rc = np.min(E)/4
+
+    rng  = np.random.RandomState(seed=8123)
+
+    A = state.State()
+    A.domain = domain.BaseDomainHalo(extent=E)
+    A.domain.boundary_condition = domain.BoundaryTypePeriodic()
+    A.npart = N
+    A.P = data.PositionDat(ncomp=3)
+    A.Q = data.ParticleDat(ncomp=1)
+    A.F = data.ParticleDat(ncomp=3)
+    A.G = data.ParticleDat(ncomp=1, dtype=INT64)
+
+    pi = np.zeros((N, 3), REAL)
+    qi = np.zeros((N, 1), REAL)
+    gi = np.zeros((N, 1), INT64)
+    
+    gi[:, 0] = np.arange(N)
+    for dx in (0,1,2):
+        pi[:, dx] = rng.uniform(-0.5*E[dx], 0.5*E[dx], N)
+
+    
+    if N == 8:
+        pi[:,:] = (
+            (-1.0, -1.0, -1.0),
+            ( 1.0, -1.0, -1.0),
+            ( 1.0,  1.0, -1.0),
+            (-1.0,  1.0, -1.0),
+            (-1.0, -1.0,  1.0),
+            ( 1.0, -1.0,  1.0),
+            ( 1.0,  1.0,  1.0),
+            (-1.0,  1.0,  1.0),            
+        )
+
+
+    for px in range(N):
+        qi[px,0] = (-1.0)**(px+1)
+    bias = np.sum(qi)/N
+    qi[:] -= bias
+
+    if N == 8:
+        qi[:,0] = (
+            ( 1.0),
+            (-1.0),
+            ( 1.0),
+            (-1.0),
+            (-1.0),
+            ( 1.0),
+            (-1.0),
+            ( 1.0),            
+        )
+
+
+    A.P[:] = pi
+    A.Q[:] = qi
+    A.G[:] = gi
+
+    A.scatter_data_from(0)
+
+    EWALD = EwaldOrthoganalHalf(domain=A.domain, real_cutoff=rc, shared_memory='omp', eps=10.**-10)
+    PBCD = PBCDirect(E, A.domain, L)
+
+    def _check1():
+
+        return EWALD(positions=A.P, charges=A.Q, forces=A.F)
+    
+    phi_f = _check1()
+
+    phi_c = PBCD(N, pi, qi)
+    rel = abs(phi_f)
+    rel = 1.0 if rel == 0 else rel
+    err = abs(phi_c - phi_f) / rel    
+    assert err < 10.**-5
+ 
+    for testx in range(100):
+
+        for dx in (0,1,2):
+            pi[:, dx] = rng.uniform(-0.5*E[dx], 0.5*E[dx], N)
+
+        with A.P.modify_view() as m:
+            for px in range(A.npart_local):
+                g = A.G[px, 0]
+                A.P[px, :] = pi[g, :]
+    
+        phi_f = _check1()
+
+        phi_c = PBCD(N, pi, qi)
+        rel = abs(phi_f)
+        rel = 1.0 if rel == 0 else rel
+        err = abs(phi_c - phi_f) / rel  
+        assert err < 10.**-4
 
 
 

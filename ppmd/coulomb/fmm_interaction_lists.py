@@ -1,6 +1,6 @@
 
 from itertools import product
-
+from math import ceil
 
 def compute_interaction_lists(extent, subdivision=(2,2,2), c=(4/(3**0.5))-1):
     """
@@ -19,9 +19,9 @@ def compute_interaction_lists(extent, subdivision=(2,2,2), c=(4/(3**0.5))-1):
     rho = (c + 1) * a
 
     excl = (
-        int(rho / e[0]) - 1,
-        int(rho / e[1]) - 1,
-        int(rho / e[2]) - 1,
+        int(ceil(rho / e[0])) - 1,
+        int(ceil(rho / e[1])) - 1,
+        int(ceil(rho / e[2])) - 1,
     )
 
     assert excl[0] > 0
@@ -52,7 +52,7 @@ def compute_interaction_lists(extent, subdivision=(2,2,2), c=(4/(3**0.5))-1):
                         ) if tuple(px) not in excl_tuples
                     ])
                 )
-    
+
     return tuple(il), excl_tuples
 
 
