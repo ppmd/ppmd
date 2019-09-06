@@ -99,11 +99,6 @@ class MM_LM_Common:
 
         self._extract_energy = data.GlobalArray(ncomp=1, dtype=REAL)
 
-
-
-
-        # direct part
-        max_cell_width = max((self.widths_x[-1], self.widths_y[-1], self.widths_z[-1])) * 2.0
         
         # find the max distance in the direct part using the exclusion lists
         widths = [ex / (sx ** (self.R - 1)) for ex, sx in zip(self.domain.extent, self.subdivision)]
@@ -502,7 +497,7 @@ class MM_LM_Common:
         
         self.top_multipole_expansion_ga = data.GlobalArray(ncomp=self.ncomp, dtype=REAL)
         self.top_dot_vector_ga = data.GlobalArray(ncomp=self.ncomp, dtype=REAL)
-        self.lrc = LongRangeMTL(self.L, self.domain)
+        self.lrc = LongRangeMTL(self.L, self.domain, exclude_tuples=self.il[1])
 
 
         sph_gen = self.sph_gen
