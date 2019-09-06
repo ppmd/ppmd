@@ -54,12 +54,13 @@ def test_free_space_1():
 
 
 
-ox_range = tuple(range(-1, 2))
 
 def test_nearest_1():
 
+    tuples = tuple(product(range(-1, 2), range(-1, 2), range(-2, 3)))
+
     E = np.array((39., 71., 51.))
-    ND = NearestDirect(E)
+    ND = NearestDirect(E, tuples)
 
 
     for testx in range(max(10, 20//MPISIZE)):
@@ -80,7 +81,7 @@ def test_nearest_1():
                     _phi_direct += qi[ix, 0] * qi[jx, 0] / rij
 
                 for jx in range(N):
-                    for ox in product(ox_range, ox_range, ox_range):
+                    for ox in tuples:
                         if ox[0] != 0 or ox[1] != 0 or ox[2] != 0:
                             rij = np.linalg.norm(ppi[jx,:] - ppi[ix,:] + (np.multiply(E, np.array(ox))))
                             _phi_direct += 0.5 * qi[ix, 0] * qi[jx, 0] / rij

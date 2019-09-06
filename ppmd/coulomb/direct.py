@@ -135,10 +135,7 @@ class NearestDirect:
         
         if tuples is None:
             ox_range = tuple(range(-1, 2))
-            tuples = []
-            for ox in product(ox_range, ox_range, ox_range):
-                if ox[0] != 0 or ox[1] != 0 or ox[2] != 0:
-                    tuples.append(ox)
+            tuples = product(ox_range, ox_range, ox_range)
 
         inner = ''
 
