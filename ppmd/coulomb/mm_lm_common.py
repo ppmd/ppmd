@@ -109,6 +109,12 @@ class MM_LM_Common:
         )
         self.max_cell_width = max_cell_width
 
+        assert max_cell_width <= np.min(self.domain.extent[:])
+
+
+        self.max_il_offset = np.max(np.abs(self.il[0]))
+
+
         self.widths_x_str = ','.join([str(ix) for ix in  self.widths_x])
         self.widths_y_str = ','.join([str(ix) for ix in  self.widths_y])
         self.widths_z_str = ','.join([str(ix) for ix in  self.widths_z])
@@ -329,6 +335,12 @@ class MM_LM_Common:
                   INT64 * RESTRICT cell_remaps
         ){{ 
 
+            const REAL CWX = EX / LCX;
+            const REAL CWY = EY / LCY;
+            const REAL CWZ = EZ / LCZ;
+
+
+
             // bin into cells
             #pragma omp parallel for
             for(INT64 ix=0 ; ix<N_TOTAL ; ix++){{
@@ -352,14 +364,65 @@ class MM_LM_Common:
                     const REAL hpx = positions[3*ix + 0];
                     const REAL hpy = positions[3*ix + 1];
                     const REAL hpz = positions[3*ix + 2];
+                
+                ///*
+
+                         if ( (hpx >  HEX ) && ( ocx <  (LCX-1)   ))  {{ tcx += LCX; }} // obvious halo case upper
+                    else if ( (hpx >= HEX ) && ( ocx == 0         ))  {{ tcx += LCX; }}
+                    else if ( (hpx <  HEX ) && ( ocx == 0         ) && ( hpx > (HEX - CWX) ))  {{ tcx += LCX; }} 
+                    else if ( (hpx > EX ) && ( ocx == (LCX-1)   ))  {{ tcx += LCX; }} 
+
+
+                    else if ( (hpx <  -1.0*HEX) && (  ocx >  0         ))  {{ tcx -= LCX; }} // obvious halo case lower
+                    else if ( (hpx <= -1.0*HEX ) && ( ocx == (LCX-1)   ))  {{ tcx -= LCX; }}
+                    else if ( (hpx >  -1.0*HEX ) && ( ocx == (LCX-1) ) && ( hpx < (-1.0*HEX + CWX) ))  {{ tcx -= LCX; }}
+                    else if ( (hpx < -1.0 * EX ) && ( ocx == 0   ))  {{ tcx -= LCX; }} 
+
+
+                         if ( (hpy >  HEY ) && ( ocy <  (LCY-1)   ))  {{ tcy += LCY; }} // obvious halo case upper
+                    else if ( (hpy >= HEY ) && ( ocy == 0         ))  {{ tcy += LCY; }}
+                    else if ( (hpy <  HEY ) && ( ocy == 0         ) && ( hpy > (HEY - CWY) ))  {{ tcy += LCY; }} 
+                    else if ( (hpy > EY ) && ( ocy == (LCY-1)   ))  {{ tcy += LCY; }} 
+
+
+                    else if ( (hpy <  -1.0*HEY) && (  ocy >  0         ))  {{ tcy -= LCY; }} // obvious halo case lower
+                    else if ( (hpy <= -1.0*HEY ) && ( ocy == (LCY-1)   ))  {{ tcy -= LCY; }}
+                    else if ( (hpy >  -1.0*HEY ) && ( ocy == (LCY-1) ) && ( hpy < (-1.0*HEY + CWY) ))  {{ tcy -= LCY; }}
+                    else if ( (hpy < -1.0 * EY ) && ( ocy == 0   ))  {{ tcy -= LCY; }} 
+
+                         if ( (hpz >  HEZ ) && ( ocz <  (LCZ-1)   ))  {{ tcz += LCZ; }} // obvious halo case upper
+                    else if ( (hpz >= HEZ ) && ( ocz == 0         ))  {{ tcz += LCZ; }}
+                    else if ( (hpz <  HEZ ) && ( ocz == 0         ) && ( hpz > (HEZ - CWZ) ))  {{ tcz += LCZ; }} 
+                    else if ( (hpz > EZ ) && ( ocz == (LCZ-1)   ))  {{ tcz += LCZ; }} 
+
+                    else if ( (hpz <  -1.0*HEZ) && (  ocz >  0         ))  {{ tcz -= LCZ; }} // obvious halo case lower
+                    else if ( (hpz <= -1.0*HEZ ) && ( ocz == (LCZ-1)   ))  {{ tcz -= LCZ; }}
+                    else if ( (hpz >  -1.0*HEZ ) && ( ocz == (LCZ-1) ) && ( hpz < (-1.0*HEZ + CWZ) ))  {{ tcz -= LCZ; }}
+                    else if ( (hpz < -1.0 * EZ ) && ( ocz == 0   ))  {{ tcz -= LCZ; }} 
+
+                //*/
+
+
+                    //if ((hpx >= HEX) && (ocx < (LCX)))    {{ tcx += LCX; }}
+                    //if ((hpx <= -1.0*HEX) && (  ocx >= 0 ))  {{ tcx -= LCX; }}
+                    //if ((hpy >= HEY) && ( ocy < (LCX) ))  {{ tcy += LCY; }}
+                    //if ((hpy <= -1.0*HEY) && ( ocy >= 0 ) )  {{ tcy -= LCY; }}
+                    //if ((hpz >= HEZ) && (ocz < (LCX)))    {{ tcz += LCZ; }}
+                    //if ((hpz <= -1.0*HEZ) && (ocz >= 0))     {{ tcz -= LCZ; }}
+
                     
 
-                    if ((hpx >= HEX) && (ocx < (LCX-1)))    {{ tcx += LCX; }}
-                    if ((hpx <= -1.0*HEX) && (  ocx > 0 ))  {{ tcx -= LCX; }}
-                    if ((hpy >= HEY) && ( ocy < (LCX-1) ))  {{ tcy += LCY; }}
-                    if ((hpy <= -1.0*HEY) && ( ocy > 0 ) )  {{ tcy -= LCY; }}
-                    if ((hpz >= HEZ) && (ocz < (LCX-1)))    {{ tcz += LCZ; }}
-                    if ((hpz <= -1.0*HEZ) && (ocz > 0))     {{ tcz -= LCZ; }}
+                    //if ((hpx >= HEX) && (ocx < (LCX-1)))    {{ tcx += LCX; }}
+                    //if ((hpx <= -1.0*HEX) && (  ocx > 0 ))  {{ tcx -= LCX; }}
+                    //if ((hpy >= HEY) && ( ocy < (LCX-1) ))  {{ tcy += LCY; }}
+                    //if ((hpy <= -1.0*HEY) && ( ocy > 0 ) )  {{ tcy -= LCY; }}
+                    //if ((hpz >= HEZ) && (ocz < (LCX-1)))    {{ tcz += LCZ; }}
+                    //if ((hpz <= -1.0*HEZ) && (ocz > 0))     {{ tcz -= LCZ; }}
+
+                    
+    
+
+
 
 
                     cell_remaps[ix * 3 + 0] = tcx;

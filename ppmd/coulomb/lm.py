@@ -55,10 +55,10 @@ class PyLM(mm_lm_common.MM_LM_Common):
             '''
         elif bc in (BCType.NEAREST, BCType.PBC):
             bc_block = r'''
-                ocx = (ocx + ncx) % ncx;
-                ocy = (ocy + ncy) % ncy;
-                ocz = (ocz + ncz) % ncz;
-            '''
+                ocx = (ocx + ({O})*ncx) % ncx;
+                ocy = (ocy + ({O})*ncy) % ncy;
+                ocz = (ocz + ({O})*ncz) % ncz;
+            '''.format(O=self.max_il_offset*2)
         else:
             raise RuntimeError('Unkown boundary condition.')
 

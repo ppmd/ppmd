@@ -2,7 +2,7 @@
 from itertools import product
 from math import ceil
 
-def compute_interaction_lists(extent, subdivision=(2,2,2), c=(4/(3**0.5))-1):
+def compute_interaction_lists(extent, subdivision=(2,2,2), c=(4/(3**0.5))-1.0000001):
     """
     Returns the interaction lists for child cells, numbered lexicographically, for a simulation domain
     extent and a subdivision rule.
@@ -52,7 +52,7 @@ def compute_interaction_lists(extent, subdivision=(2,2,2), c=(4/(3**0.5))-1):
                         ) if tuple(px) not in excl_tuples
                     ])
                 )
-
+    
     return tuple(il), excl_tuples
 
 

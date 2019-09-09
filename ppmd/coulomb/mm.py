@@ -70,7 +70,6 @@ class PyMM(mm_lm_common.MM_LM_Common):
             assign_gen += 'rholcharge = rhol * charge;\n'
 
 
-
         k = kernel.Kernel(
             'mm_contrib_loop',
             r'''
@@ -88,9 +87,16 @@ class PyMM(mm_lm_common.MM_LM_Common):
             int64_t cfy = sry * CWY;
             int64_t cfz = srz * CWZ;
 
+            
+
+
             cfx = (cfx < LCX) ? cfx : (LCX - 1);
             cfy = (cfy < LCX) ? cfy : (LCY - 1);
             cfz = (cfz < LCX) ? cfz : (LCZ - 1);
+
+            
+
+
             
             // number of cells in each direction
             int64_t ncx = LCX;
@@ -221,6 +227,7 @@ class PyMM(mm_lm_common.MM_LM_Common):
         }
 
         self._contrib_loop = loop.ParticleLoopOMP(kernel=k, dat_dict=dat_dict)
+        #self._contrib_loop = loop.ParticleLoop(kernel=k, dat_dict=dat_dict)
     
         
 
@@ -261,10 +268,10 @@ class PyMM(mm_lm_common.MM_LM_Common):
             '''
         elif bc in (BCType.NEAREST, BCType.PBC):
             bc_block = r'''
-                ocx = (ocx + ncx) % ncx;
-                ocy = (ocy + ncy) % ncy;
-                ocz = (ocz + ncz) % ncz;
-            '''
+                ocx = (ocx + ({O})*ncx) % ncx;
+                ocy = (ocy + ({O})*ncy) % ncy;
+                ocz = (ocz + ({O})*ncz) % ncz;
+            '''.format(O=self.max_il_offset*2)
         else:
             raise RuntimeError('Unkown boundary condition.')
 
@@ -333,7 +340,14 @@ class PyMM(mm_lm_common.MM_LM_Common):
                     double rhol = iradius;
                     double tmp_energy = 0.0;
                     {ASSIGN_GEN}
-
+                    
+                    //if (isnan(tmp_energy)){{
+                    //    printf(
+                    //        "radius %f theta %f phi %f\n",
+                    //        radius, theta, phi
+                    //    );
+                    //    std::raise(SIGINT);
+                    //}}
                     particle_energy += tmp_energy;
                     
 
@@ -375,6 +389,7 @@ class PyMM(mm_lm_common.MM_LM_Common):
             headers=(
                 lib.build.write_header(
                     """
+                    #include <csignal>
                     #define R {R}
                     const double WIDTHS_X[R] = {{ {WIDTHS_X} }};
                     const double WIDTHS_Y[R] = {{ {WIDTHS_Y} }};
@@ -411,6 +426,7 @@ class PyMM(mm_lm_common.MM_LM_Common):
         }
 
         self._extract_loop = loop.ParticleLoopOMP(kernel=k, dat_dict=dat_dict)
+        #self._extract_loop = loop.ParticleLoop(kernel=k, dat_dict=dat_dict)
 
 
 
@@ -450,7 +466,11 @@ class PyMM(mm_lm_common.MM_LM_Common):
         direct_energy = self._execute_direct(positions, charges, forces, potential)
 
         pbc_energy = self._compute_pbc_contrib()
-        
+
+        # print('self._extract_energy[0]', 'direct_energy', 'pbc_energy',
+        # self._extract_energy[0], direct_energy, pbc_energy)
+
+
         return self._extract_energy[0] + direct_energy + pbc_energy
 
 

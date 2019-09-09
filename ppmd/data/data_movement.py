@@ -175,9 +175,9 @@ class GlobalDataMover:
 
         def to_mpi_rank(_p):
             # avoid send if possible
-            if ((_p[0] >= boundary[0]) and (_p[0] <= boundary[1]) and \
-                (_p[1] >= boundary[2]) and (_p[1] <= boundary[3]) and \
-                (_p[2] >= boundary[4]) and (_p[2] <= boundary[5])):
+            if ((_p[0] >= boundary[0]) and (_p[0] < boundary[1]) and \
+                (_p[1] >= boundary[2]) and (_p[1] < boundary[3]) and \
+                (_p[2] >= boundary[4]) and (_p[2] < boundary[5])):
                 return rank
             
             # case where particle needs sending to another rank

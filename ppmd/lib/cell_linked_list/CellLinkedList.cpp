@@ -21,8 +21,7 @@ int CellLinkedList(
     const REAL _b2 = B[2];
     const REAL _b4 = B[4];
 
-    #pragma omp parallel for default(none) \
-     shared(err, q, CCC, CRL, B,P,CEL,CA)
+    #pragma omp parallel for default(none) shared(err, q, CCC, CRL, B,P,CEL,CA)
     for (INT ix=0; ix<end_ix; ix++) {
 
         INT C0 = 1 + (INT)((P[ix*3]     - _b0)*_icel0);
@@ -57,15 +56,19 @@ int CellLinkedList(
         }
 
         const INT val = (C2*CA[1] + C1)*CA[0] + C0;
-        #pragma omp critical
-        {
-            if (write_ok == 1){
-                CCC[val]++;
-                CRL[ix] = val;
-                q[ix] = q[n + val];
-                q[n + val] = ix;
+        CRL[ix] = val;
+
+        if (write_ok == 1){
+    #pragma omp critical
+            {
+                    CCC[val]++;
+                    q[ix] = q[n + val];
+                    q[n + val] = ix;
+
             }
         }
+
+
 
     }
 
