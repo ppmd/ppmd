@@ -115,6 +115,9 @@ class ParticleDat(host.Matrix):
             ncol=ncomp
         )
 
+        self._ptr = None
+        self._ptr_count = 0
+
         self.max_npart = self._dat.shape[0]
         """:return: The maximum number of particles which can be stored within this particle dat."""
 
@@ -203,6 +206,7 @@ class ParticleDat(host.Matrix):
     def data(self, value):
         self.mark_halos_old()
         self._dat = value
+        self._ptr = None
 
     def __getitem__(self, ix):
         return np.copy(self._dat[ix])
@@ -277,6 +281,7 @@ class ParticleDat(host.Matrix):
 
             if self.comm.Get_rank() == rank:
                 self._dat = tmp
+                self._ptr = None
 
     def ctypes_data_access(self, mode=access.RW, pair=True):
         """
@@ -309,8 +314,19 @@ class ParticleDat(host.Matrix):
 
             self._vid_halo = self._vid_int
             self.vid_halo_cell_list = celllist.version_id
+        
+        if self._ptr is None:
+            #self._ptr = self._dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+            self._ptr = self._dat.ctypes.get_as_parameter()
 
-        return self._dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+        self._ptr_count += 1
+        if self._ptr_count % 100 == 0:
+            # Check that NumPy has not swapped out the buffer for some reason (or we failed to 
+            # get the pointer on a realloc).
+            assert self._ptr.value == self._dat.ctypes.get_as_parameter().value
+
+        return self._ptr
+
 
     def ctypes_data_post(self, mode=access.RW):
         """

@@ -232,6 +232,7 @@ class Matrix(object):
 
         self._version = 0
 
+        self._ptr = None
 
     @property
     def version(self):
@@ -255,6 +256,7 @@ class Matrix(object):
     @data.setter
     def data(self, value):
         self._dat = value
+        self._ptr = None
 
     @property
     def nrow(self):
@@ -290,7 +292,8 @@ class Matrix(object):
 
 
         if self.ncol != ncol or self.nrow != nrow:
-            self.data = np.resize(self.data,[nrow, ncol])
+            self._ptr = None
+            self._dat = np.resize(self.data,[nrow, ncol])
 
 
 
