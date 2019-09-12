@@ -159,8 +159,11 @@ def test_cell_by_cell_single():
     A.NN = ParticleDat(ncomp=1, dtype=ctypes.c_int)
     A.NM = ParticleDat(ncomp=1, dtype=ctypes.c_int)
     A.D1 = ParticleDat(ncomp=8, dtype=ctypes.c_double)
+    A.GA = GlobalArray(ncomp=1, dtype=ctypes.c_int)
+    A.SA = ScalarArray(ncomp=1, dtype=ctypes.c_int)
 
     cutoff = E/5.
+    A.SA[:] = 2
 
 
     rng = np.random.RandomState(11111)
@@ -184,6 +187,7 @@ def test_cell_by_cell_single():
         const double r2 = rx*rx + ry*ry + rz*rz;
         if (r2 < ({RC}*{RC})){{
             NN.i[0]++;
+            GA[0] += SA[0];
         }}
 
         '''.format(
@@ -196,6 +200,8 @@ def test_cell_by_cell_single():
         {
             'P': A.P(READ),
             'NN': A.NN(INC_ZERO),
+            'SA': A.SA(READ),
+            'GA': A.GA(INC_ZERO)
         },
         cutoff
     )
@@ -205,7 +211,9 @@ def test_cell_by_cell_single():
         {
             'P': A.P(READ),
             'NN': A.NM(INC_ZERO),
-            'D1': A.D1(INC_ZERO)
+            'D1': A.D1(INC_ZERO),
+            'SA': A.SA(READ),
+            'GA': A.GA(INC_ZERO)
         },
         cutoff
     )
@@ -224,6 +232,8 @@ def test_cell_by_cell_single():
 
         assert np.linalg.norm(A.D1[local_id, :], np.inf) < 10.**-16
         assert A.NN[local_id, 0] == A.NM[local_id, 0]
+        assert A.GA[0] == 2 * A.NM[local_id, 0]
+
 
     assert np.linalg.norm(A.D1[:N, :]) < 10.**-16
 
