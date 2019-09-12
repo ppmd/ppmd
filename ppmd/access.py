@@ -55,6 +55,9 @@ _lookup = {'R': 'Read only',
            }
 
 
+
+
+
 def _define_dict_ordering(dict_in):
 
     dict_out = OrderedDict()
@@ -355,6 +358,16 @@ class StaticArgStore(object):
         return dats
 
 
+
+# This indicates when a ParticleLoop or a PairLoop is launched in single particle mode
+class _LocalIDFalse:
+    pass
+_local_id_false = _LocalIDFalse()
+
+class _ParticleSetAccess:
+    def __init__(self, mode, local_ids):
+        self.mode = mode
+        self.local_ids = local_ids
 
 
 

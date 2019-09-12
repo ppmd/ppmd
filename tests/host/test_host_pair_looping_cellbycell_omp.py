@@ -17,8 +17,8 @@ Eo2 = E/2.
 
 tol = 10.**(-12)
 
-rank = md.mpi.MPI.COMM_WORLD.Get_rank()
-nproc = md.mpi.MPI.COMM_WORLD.Get_size()
+MPIRANK = md.mpi.MPI.COMM_WORLD.Get_rank()
+MPISIZE = md.mpi.MPI.COMM_WORLD.Get_size()
 
 
 PositionDat = md.data.PositionDat
@@ -52,25 +52,8 @@ def state():
 
     return A
 
-@pytest.fixture
-def s_nd():
-    """
-    State with no domain, hence will not spatially decompose
-    """
-    A = State()
-    A.npart = N
-    A.p = PositionDat(ncomp=3)
-    A.v = ParticleDat(ncomp=3)
-    A.f = ParticleDat(ncomp=3)
-    A.gid = ParticleDat(ncomp=1, dtype=ctypes.c_int)
-    A.nc = ParticleDat(ncomp=1, dtype=ctypes.c_int)
 
-    A.u = GlobalArray(ncomp=1)
-    A.u.halo_aware = True
-
-    return A
-
-@pytest.fixture(scope="module", params=(0, nproc-1))
+@pytest.fixture(scope="module", params=(0, MPISIZE-1))
 def base_rank(request):
     return request.param
 
@@ -158,5 +141,102 @@ def test_host_pair_loop_NS_2(state):
     loop.execute()
     for ix in range(state.npart_local):
         assert state.nc[ix] == 6
+
+
+
+def test_cell_by_cell_single():
+
+    E = 8.0
+    N = 1000
+
+    A = State()
+    A.npart = N
+    A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
+    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    
+    A.P = PositionDat(ncomp=3)
+
+    A.NN = ParticleDat(ncomp=1, dtype=ctypes.c_int)
+    A.NM = ParticleDat(ncomp=1, dtype=ctypes.c_int)
+    A.D1 = ParticleDat(ncomp=8, dtype=ctypes.c_double)
+
+    cutoff = E/5.
+
+
+    rng = np.random.RandomState(11111)
+    pi = rng.uniform(low=-0.5*E, high=0.5*E, size=(N, 3))
+    d1i = rng.uniform(size=(N, 8))
+
+    with A.modify() as m:
+        if MPIRANK == 0:
+            m.add({
+                A.P: pi,
+                A.D1: d1i
+            })
+
+
+    k = Kernel(
+        'kall',
+        r'''
+        const double rx = P.j[0] - P.i[0];
+        const double ry = P.j[1] - P.i[1];
+        const double rz = P.j[2] - P.i[2];
+        const double r2 = rx*rx + ry*ry + rz*rz;
+        if (r2 < ({RC}*{RC})){{
+            NN.i[0]++;
+        }}
+
+        '''.format(
+            RC=cutoff
+        ),
+    )
+
+    l1 = PairLoop(
+        k, 
+        {
+            'P': A.P(READ),
+            'NN': A.NN(INC_ZERO),
+        },
+        cutoff
+    )
+
+    l2 = PairLoop(
+        k, 
+        {
+            'P': A.P(READ),
+            'NN': A.NM(INC_ZERO),
+            'D1': A.D1(INC_ZERO)
+        },
+        cutoff
+    )
+
+
+    l1.execute()
+
+    order = rng.permutation(range(N))
+
+    assert np.linalg.norm(A.NM[:N, 0]) < 10.**-16
+
+    for px in range(N):
+        local_id = order[px]
+
+        l2.execute(local_id=local_id)
+
+        assert np.linalg.norm(A.D1[local_id, :], np.inf) < 10.**-16
+        assert A.NN[local_id, 0] == A.NM[local_id, 0]
+
+    assert np.linalg.norm(A.D1[:N, :]) < 10.**-16
+
+
+
+
+
+
+
+
+
+
+
+
 
 

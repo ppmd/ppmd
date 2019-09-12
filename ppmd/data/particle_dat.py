@@ -289,8 +289,20 @@ class ParticleDat(host.Matrix):
         :return: The pointer to the data.
         """
 
+        # if this is being launched in single particle mode we need to extract the access descriptor
+        # and the particle ids
+        if isinstance(mode, access._ParticleSetAccess):
+            local_ids = mode.local_ids
+            mode = mode.mode
+        else:
+            local_ids = None
+
+
         if mode is access.INC0:
-            self.zero(self.npart_local)
+            if local_ids is None:
+                self.zero(self.npart_local)
+            else:
+                self.data[local_ids, :] = 0
 
         exchange = False
 
@@ -333,6 +345,13 @@ class ParticleDat(host.Matrix):
         Call after excuting a method on the data.
         :arg access mode: Access type required by the calling method.
         """
+
+        # if this is being launched in single particle mode we need to extract the access descriptor
+        # and the particle ids
+        if isinstance(mode, access._ParticleSetAccess):
+            local_ids = mode.local_ids
+            mode = mode.mode
+
         if mode.write:
             self.mark_halos_old()
 
