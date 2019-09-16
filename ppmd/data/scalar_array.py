@@ -56,7 +56,9 @@ class ScalarArray(host.Array):
         self.data = host._make_array(initial_value=initial_value,
                                      dtype=dtype,
                                      ncol=ncomp)
-
+        self._ptr = None
+        self._ptr_count = 0
+        self._ptr_id = 0
         self._version = 0
 
     def __call__(self, mode=access.RW, halo=True):
@@ -85,7 +87,7 @@ class ScalarArray(host.Array):
 
         :arg val: Coefficient to scale all elements by.
         """
-        self.data = self.data * np.array([val], dtype=self.dtype)
+        self.data[:] = self.data[:] * np.array([val], dtype=self.dtype)
 
     @property
     def ctypes_value(self):

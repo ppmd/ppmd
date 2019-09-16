@@ -134,9 +134,20 @@ class Array(_Array):
         self.data = _make_array(initial_value=initial_value,
                                     dtype=dtype,
                                     ncol=ncomp)
+        
+        self._ptr = None
+        self._ptr_count = 0
+        self._ptr_id = 0
 
         self._version = 0
         self.name = name
+
+    
+    def _update_ptr(self):
+        self._ptr = self.data.ctypes.get_as_parameter()
+        # ids are only unique for the lifetime of the object, but his gives some
+        # defense to the underlying array being swapped out under us.
+        self._ptr_id = id(self.data)
 
     @property
     def ctype(self):
@@ -152,13 +163,23 @@ class Array(_Array):
 
     @property
     def ctypes_data(self):
-        return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
+
+        if self._ptr is None:
+            self._update_ptr()
+
+        if self._ptr_count % 100 == 0:
+            assert self._ptr.value == self.data.ctypes.get_as_parameter().value
+        
+        assert self._ptr_id == id(self.data)
+
+        self._ptr_count += 1
+        return self._ptr
 
     def ctypes_data_access(self, mode=access.RW, pair=False):
         if mode is access.INC0:
             self.zero()
 
-        return self.data.ctypes.data_as(ctypes.POINTER(self.dtype))
+        return self.ctypes_data
 
     def ctypes_data_post(self, mode=access.RW):
         pass
@@ -173,6 +194,7 @@ class Array(_Array):
                 str(available_free_memory())
 
             self.data = np.resize(self.data, length)
+            self._ptr = None
 
     def zero(self):
         self.data.fill(0)
@@ -338,7 +360,7 @@ class ThreadSpace(object):
         self.n = n
         for nx in range(runtime.NUM_THREADS):
             self.data.append(np.zeros(n, dtype=dtype))
-            self.pointers[nx] = self.data[-1].ctypes.data
+            self.pointers[nx] = self.data[-1].ctypes.get_as_parameter().value
 
     @property
     def ctypes_data(self):

@@ -502,6 +502,7 @@ class BoundaryTypePeriodic(object):
         """
         Enforce the boundary conditions on the held state.
         """
+
         comm = self.state.domain.comm
         self.timer_apply.start()
 
