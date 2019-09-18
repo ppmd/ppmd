@@ -628,8 +628,9 @@ class CellByCellOMP(object):
 
     def execute(self, n=None, dat_dict=None, static_args=None, local_id=access._local_id_false):
 
-
         _group = self._group # could be None
+        
+
         if _group is None:
             for pd in self._dat_dict.items(dat_dict):
                 if issubclass(type(pd[1][0]), data.PositionDat):
@@ -638,6 +639,10 @@ class CellByCellOMP(object):
             self._make_cell_list(_group)
 
         assert _group is not None, "no group"
+
+        if local_id != access._local_id_false:
+            assert _group.domain.comm.size == 1
+
         cell2part = _group.get_cell_to_particle_map()
         cell2part.check()
         self._make_cell_list(_group)

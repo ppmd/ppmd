@@ -143,7 +143,7 @@ def test_host_pair_loop_NS_2(state):
         assert state.nc[ix] == 6
 
 
-
+@pytest.mark.skipif("MPISIZE>1")
 def test_cell_by_cell_single():
 
     E = 8.0
