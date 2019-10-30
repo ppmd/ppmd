@@ -29,11 +29,11 @@ TMPCC = ppmd.config.COMPILERS[ppmd.config.MAIN_CFG['cc-main'][1]]
 TMPCC_OpenMP = ppmd.config.COMPILERS[ppmd.config.MAIN_CFG['cc-openmp'][1]]
 MPI_CC = ppmd.config.COMPILERS[ppmd.config.MAIN_CFG['cc-mpi'][1]]
 
-build_dir = os.path.abspath(ppmd.config.MAIN_CFG['build-dir'][1])
+#build_dir = os.path.abspath(ppmd.config.MAIN_CFG['build-dir'][1])
 
 # make the tmp build directory
-if not os.path.exists(build_dir) and _MPIRANK == 0:
-    os.mkdir(build_dir)
+if not os.path.exists(ppmd.runtime.BUILD_DIR) and _MPIRANK == 0:
+    os.mkdir(ppmd.runtime.BUILD_DIR)
 _MPIBARRIER()
 
 
@@ -149,9 +149,12 @@ _load_timer = opt.Timer()
 
 def simple_lib_creator(
         header_code, src_code, name='', extensions=('.h', '.cpp'),
-        dst_dir=ppmd.runtime.BUILD_DIR, CC=TMPCC, prefix='HOST',
+        dst_dir=None, CC=TMPCC, prefix='HOST',
         inc_dirs=(runtime.LIB_DIR,)
-):
+):  
+
+    if dst_dir is None:
+        dst_dir = ppmd.runtime.BUILD_DIR
 
     # make build dir
     _make_dir_if_needed(dst_dir)

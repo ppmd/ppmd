@@ -141,7 +141,9 @@ class EwaldOrthoganal(object):
         nmax_t = max(nmax_x, nmax_y, nmax_z)
         #print "nmax_t", nmax_t
         
-        
+        self.last_real_energy = None
+        self.last_recip_energy = None
+        self.last_self_energy = None
 
         self.kmax = (nmax_x, nmax_y, nmax_z)
         """Number of reciporcal vectors taken in each direction."""
@@ -620,9 +622,15 @@ class EwaldOrthoganal(object):
         
 
         e = 0.0
-        e += self.extract_forces_energy_reciprocal(positions, charges, forces, energy=None, potential=potential)
-        e += self.extract_forces_energy_real(positions, charges, forces, energy=None, potential=potential)
-        e += self.evaluate_self_interactions(charges, energy=None, potential=potential)
+        e0 = self.extract_forces_energy_reciprocal(positions, charges, forces, energy=None, potential=potential)
+        e1 = self.extract_forces_energy_real(positions, charges, forces, energy=None, potential=potential)
+        e2 = self.evaluate_self_interactions(charges, energy=None, potential=potential)
+
+        self.last_real_energy = e1
+        self.last_recip_energy = e0
+        self.last_self_energy = e2
+
+        e = e0 + e1 + e2
 
         if forces is not None: forces.ctypes_data_post(access.WRITE)
         if potential is not None: potential.ctypes_data_post(access.WRITE)
@@ -1145,3 +1153,4 @@ def _ctol(a, b, m='No message given.', tol=10.**-15):
         print(err, m)
 
 
+EwaldOrthogonal = EwaldOrthoganal

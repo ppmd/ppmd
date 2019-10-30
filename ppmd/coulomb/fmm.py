@@ -15,6 +15,7 @@ import cmath
 from threading import Thread
 import scipy
 from scipy.special import lpmv, rgamma, gammaincc, lambertw
+import scipy.constants
 import sys
 
 from ppmd.cuda import CUDA_IMPORT
@@ -249,6 +250,7 @@ class PyFMM(object):
         with open(str(_SRC_DIR) + \
                           '/FMMSource/TranslateMTM.h') as fh:
             hpp = fh.read()
+
         self._translate_mtm_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_translate_mtm')['translate_mtm']
 

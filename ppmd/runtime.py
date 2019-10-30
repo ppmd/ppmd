@@ -7,6 +7,7 @@ __license__ = "GPL"
 # system level
 import os
 import sys
+import tempfile
 
 # package level
 import ppmd.config as config
@@ -20,7 +21,19 @@ TIMER = config.MAIN_CFG['timer-level'][1]
 BUILD_TIMER = config.MAIN_CFG['build-timer-level'][1]
 ERROR_LEVEL = config.MAIN_CFG['error-level'][1]
 
-BUILD_DIR = os.path.abspath(config.MAIN_CFG['build-dir'][1])
+
+
+
+_B = config.MAIN_CFG['build-dir'][1]
+if _B == 'ephemeral':
+    _B = tempfile.TemporaryDirectory(prefix='ppmd-build-')
+    BUILD_DIR = os.path.abspath(_B.name)
+else:
+    BUILD_DIR = os.path.abspath(_B)
+
+
+
+
 LIB_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib/'))
 
 BUILD_PER_PROC = False

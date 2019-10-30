@@ -13,6 +13,8 @@ from ppmd.coulomb.ewald import EwaldOrthoganal
 
 _SRC_DIR = os.path.dirname(os.path.realpath(__file__))
 
+
+
 class EwaldOrthoganalHalf(EwaldOrthoganal):
 
     def _init_libs(self):
@@ -207,13 +209,4 @@ class EwaldOrthoganalHalf(EwaldOrthoganal):
         print("2", values[0])
 
 
-
-
-
-
-
-
-
-
-
-
+EwaldOrthogonalHalf = EwaldOrthoganalHalf

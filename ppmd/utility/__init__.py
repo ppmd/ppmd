@@ -7,5 +7,5 @@ __all__ = [
     'sanitise'
 ]
 
-from ppmd.utility import dl_poly, lattice, xyz, high_method, potential, sanitise
+from ppmd.utility import dl_poly, lattice, xyz, high_method, potential, sanitise, dl_monte
 
