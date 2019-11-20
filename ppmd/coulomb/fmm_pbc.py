@@ -111,9 +111,15 @@ class LongRangeMTL:
         self.sparse_rmat = csr_matrix(self.rmat)
         self.linop = aslinearoperator(self.rmat)
         self.sparse_linop = aslinearoperator(self.sparse_rmat)
+
         self.linop_data = np.array(self.sparse_rmat.data, dtype=REAL)
         self.linop_indptr = np.array(self.sparse_rmat.indptr, dtype=INT64)
         self.linop_indices = np.array(self.sparse_rmat.indices, dtype=INT64)
+
+        self.linop_ptr_data = self.linop_data.ctypes.get_as_parameter()
+        self.linop_ptr_indptr = self.linop_indptr.ctypes.get_as_parameter()
+        self.linop_ptr_indices = self.linop_indices.ctypes.get_as_parameter()
+
 
         # dipole correction vars
         self._dpc = DipoleCorrector(L, self.domain.extent, self._apply_operator, exclude_tuples)
