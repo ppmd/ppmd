@@ -278,6 +278,8 @@ def test_c_ephemeral_harm_lexp_1():
         TO_TEST_GEN=m
     )
     
+    print(src)
+
     lib = simple_lib_creator(header_code='', src_code=src)['test']
 
     rng = np.random.RandomState(149135315)
@@ -316,6 +318,10 @@ def test_c_ephemeral_harm_lexp_1():
     err = np.linalg.norm(correct - to_test, np.inf)
 
     #print(err)
+
+    #print(correct)
+    #print("----------------")
+    #print(to_test)
 
     assert err < 10.**-13
 

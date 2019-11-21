@@ -795,18 +795,80 @@ class ALegendrePolynomialGenEphemeral(object):
         modlist += [
             Initializer(Const(Value(self.ctype, self.get_p_sym(0,0))), '1.0'),
         ]
+        
 
 
+        basetmp = self._get_next_tmp()
+        theta_lxp1 = [basetmp + '_{}'.format(str(lx)) for lx in range(self.maxl+1)]
+        
+
+        modlist += [
+            Initializer(Const(Value(self.ctype, theta_lxp1[lx])),
+                '({theta})*({lx2p1})'.format(theta=self.tsym, lx2p1=str(float(2*lx + 1)))) for lx in range(0, self.maxl+1)
+        ]
+
+        for mx in range(0, self.maxl):
+            modlist += [
+                Initializer(Const(Value(self.ctype, self.get_p_sym(mx+1, mx))),
+                    '({theta_lxp1}) * ({plxlx})'.format(
+                        theta=self.tsym, theta_lxp1=theta_lxp1[mx], plxlx=str(self.get_p_sym(mx, mx)))
+                )
+            ]
+            if (mx, mx) in d.keys():
+                modlist += [
+                    Line(str(dx)) for dx in d[(mx, mx)] 
+                ]
+            if (mx+1, mx) in d.keys():
+                modlist += [
+                    Line(str(dx)) for dx in d[(mx+1, mx)] 
+                ]
+
+            for lx in range(mx+1, self.maxl):
+                modlist += [
+                    Initializer(Const(Value(self.ctype, self.get_p_sym(lx+1, mx))),
+                        '(({theta_lxp1}) * {plxmx} - ({lxpmx}) * {plx1mx} ) * ({ilxmmxp1})'.format(
+                            theta_lxp1=theta_lxp1[lx],
+                            lx2p1=str(float(2*lx + 1)),
+                            plxmx=str(self.get_p_sym(lx,mx)),
+                            plx1mx=str(self.get_p_sym(lx-1,mx)),
+                            ilxmmxp1=str(float(1.0/(lx - mx + 1))),
+                            lxpmx=str(float(lx + mx))
+                        )
+                    )
+                ]
+                if (lx+1, mx) in d.keys():
+                    modlist += [
+                        Line(str(dx)) for dx in d[(lx+1, mx)] 
+                    ]
+
+
+            modlist += [
+                Initializer(Const(Value(self.ctype, str(self.get_p_sym(mx+1,mx+1)))),
+                    '({m1m2lx})*({sqrttmp})*({plxlx})'.format(
+                        m1m2lx=str(float(-1.0 - 2.0*mx)), sqrttmp=sqrttmp, plxlx=str(self.get_p_sym(mx, mx)))
+                )
+            ]
+
+        if (self.maxl, self.maxl) in d.keys():
+            modlist += [
+                Line(str(dx)) for dx in d[(self.maxl, self.maxl)] 
+            ]
+
+
+
+        """
         for lx in range(self.maxl):
 
             theta_lxp1 = self._get_next_tmp()
             modlist += [
                 Initializer(Const(Value(self.ctype, theta_lxp1)),
                     '({theta})*({lx2p1})'.format(theta=self.tsym, lx2p1=str(float(2*lx + 1)))),
+
                 Initializer(Const(Value(self.ctype, str(self.get_p_sym(lx+1,lx+1)))),
                     '({m1m2lx})*({sqrttmp})*({plxlx})'.format(
                         m1m2lx=str(float(-1.0 - 2.0*lx)), sqrttmp=sqrttmp, plxlx=str(self.get_p_sym(lx, lx)))
                 ),
+
                 Initializer(Const(Value(self.ctype, self.get_p_sym(lx+1,lx))),
                     '({theta_lxp1}) * ({plxlx})'.format(
                         theta=self.tsym, theta_lxp1=theta_lxp1, plxlx=str(self.get_p_sym(lx,lx)))
@@ -830,7 +892,7 @@ class ALegendrePolynomialGenEphemeral(object):
                             ilxmmxp1=str(float(1.0/(lx - mx + 1))),
                             lxpmx=str(float(lx + mx))
                         )
-                    ),                    
+                    )
                 ]
                 self.flops['*'] += 4
                 self.flops['-'] += 1
@@ -847,7 +909,7 @@ class ALegendrePolynomialGenEphemeral(object):
                 modlist += [
                     Line(str(dx)) for dx in d[(lx, mx)] 
                 ]
-
+        """
 
 
 
