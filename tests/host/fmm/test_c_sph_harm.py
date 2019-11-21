@@ -233,7 +233,6 @@ def test_c_ephemeral_harm_lexp_1():
             )
 
 
-
     m = to_test_gen(d)
 
     src = """
@@ -279,7 +278,6 @@ def test_c_ephemeral_harm_lexp_1():
         TO_TEST_GEN=m
     )
     
-    print(src)
     lib = simple_lib_creator(header_code='', src_code=src)['test']
 
     rng = np.random.RandomState(149135315)
