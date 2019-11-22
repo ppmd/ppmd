@@ -35,6 +35,15 @@ static inline void global_local_cell_tuple(
     *gcx = *cx + cox;
     *gcy = *cy + coy;
     *gcz = *cz + coz;
+    
+    // this kills the vectorisation but should never be triggered
+    // which avoids vectorisation effecting the cell binning
+    // there is almost certainly a better solution that is portable
+    if ( (abs(px - boundary[0] - 1) < 0.01) || (abs(py - boundary[1] - 1) < 0.01) || (abs(pz - boundary[2] - 1) < 0.01) ) {
+        printf("px %f, pxs %f, rgx %f, cx %d, gcx %d\n", px, pxs, rgx, *cx, *gcx);
+        printf("py %f, pys %f, rgy %f, cy %d, gcy %d\n", py, pys, rgy, *cy, *gcy);
+        printf("pz %f, pzs %f, rgz %f, cz %d, gcz %d\n", pz, pzs, rgz, *cz, *gcz);
+    }
 }
 
 
@@ -138,7 +147,6 @@ static inline INT64 compute_cell(
         printf("err: Negative global cell\n");
         return -1;
     }
-
 
     return cx + cube_dim[2] * (cy + cube_dim[1] * cz);
 }
@@ -284,8 +292,7 @@ INT64 particle_contribution(
             #pragma omp atomic capture
             thread_layer = ++thread_assign[thread_owner];
 
-            thread_assign[thread_max + npart*thread_owner + thread_layer - 1]\
-                = ix;
+            thread_assign[thread_max + npart*thread_owner + thread_layer - 1] = ix;
 
             // assign this particle a cell for short range part
             fmm_cell[ix] = global_cell;
@@ -349,9 +356,11 @@ INT64 particle_contribution(
                 position[ix*3+2], boundary, cube_offset, cube_dim,
                 &radius, &ctheta, &cphi, &sphi, &msphi
             );
-
-            //printf("%d \t radius: %f cos(theta): %f cos(phi): %f sin(phi): %f -1*sin(phi): %f\n", 
-            //ix, radius, ctheta, cphi, sphi, msphi);
+            
+            //if (ix_cell == 464){
+            //    printf("%d \t radius: %f cos(theta): %f cos(phi): %f sin(phi): %f -1*sin(phi): %f\n", 
+            //    ix, radius, ctheta, cphi, sphi, msphi);
+            //}
             
             if (tx != ix_cell % thread_max) {           
                 #pragma omp critical

@@ -1,3 +1,14 @@
+"""
+Auto doc module
+
+.. autoclass:: AllocMem
+    :show-inheritance:
+    :undoc-members:
+    :members:
+
+
+"""
+
 from __future__ import print_function, division, absolute_import
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
@@ -5,13 +16,13 @@ __license__ = "GPL"
 
 # system level
 import mpi4py
-# mpi4py.rc(thread_level='serialized')
+mpi4py.rc(thread_level='serialized')
 
 from mpi4py import MPI
 import sys, atexit, traceback
-import ctypes as ct
+import ctypes
 import numpy as np
-
+from functools import reduce
 import os
 
 if sys.version_info[0] >= 3:
@@ -19,12 +30,21 @@ if sys.version_info[0] >= 3:
 else:
     import Queue
 
+
 if not MPI.Is_initialized():
     MPI.Init()
 
+
 # priority queue for module cleanup.
 _CLEANUP_QUEUE = Queue.PriorityQueue()
-_CLEANUP_QUEUE.put((50, MPI.Finalize))
+
+
+#def _finalise_wrapper():
+#    if MPI.Is_initialized():
+#        MPI.Finalize()
+#_CLEANUP_QUEUE.put((50, _finalise_wrapper))
+
+
 
 def _atexit_queue():
     while not _CLEANUP_QUEUE.empty():
@@ -36,10 +56,10 @@ atexit.register(_atexit_queue)
 
 
 mpi_map = {
-    ct.c_double: MPI.DOUBLE,
-    ct.c_int: MPI.INT,
+    ctypes.c_double: MPI.DOUBLE,
+    ctypes.c_int: MPI.INT,
     int: MPI.INT,
-    ct.c_byte: MPI.BYTE
+    ctypes.c_byte: MPI.BYTE
 }
 
 # shifts defined as (x, y, z)
@@ -97,113 +117,6 @@ def all_reduce(array):
     )
     return rarr
 
-###############################################################################
-# shared memory mpi handle
-###############################################################################
-
-class MPISHM(object):
-    """
-    This class controls two mpi communicators (assuming MPI3 or higher). 
-
-    The first communicator from:
-        MPI_Comm_split_type(..., MPI_COMM_TYPE_SHARED,...).
-    
-    The second a communicator between rank 0 of the shared memory regions.
-    """
-
-    def __init__(self, parent_comm=MPI.COMM_WORLD):
-        self.init = False
-        self.parent_comm = parent_comm
-        self.inter_comm = None
-        self.intra_comm = None
-
-
-    def _init_comms(self):
-        """
-        Initialise the communicators.
-        """
-
-        if not self.init:
-            assert MPI.VERSION >= 3, "MPI ERROR: mpi4py is not built against"\
-                + " a MPI3 or higher MPI distribution."
-
-            self.intra_comm = self.parent_comm.Split_type(MPI.COMM_TYPE_SHARED)
-
-            if self.intra_comm.Get_rank() == 0:
-                colour = 0
-            else:
-                colour = MPI.UNDEFINED
-
-            self.inter_comm = self.parent_comm.Split(color=colour)
-
-            self.init = True
-
-    def _print_comm_info(self):
-        self._init_comms()
-        print(self.intra_comm.Get_rank(), self.intra_comm.Get_size())
-        if self.intra_comm.Get_rank() == 0:
-            print(self.inter_comm.Get_rank(), self.inter_comm.Get_size())
-
-    def get_intra_comm(self):
-        """
-        get communicator for shared memory region.
-        """
-        self._init_comms()
-        return self.intra_comm
-
-    def get_inter_comm(self):
-        """
-        get communicator between shared memory regions. Only valid on rank 0 of
-        the intracomm
-        """
-        self._init_comms()
-        return self.inter_comm
-
-###############################################################################
-# shared memory default
-###############################################################################
-
-SHMMPI_HANDLE = MPISHM()
-
-
-###############################################################################
-# shared memory mpi handle
-###############################################################################
-
-class SHMWIN(object):
-    """
-    Create a shared memory window in each shared memory region
-    """
-    def __init__(self, size=None, intracomm=None):
-        """
-        Allocate a shared memory region.
-        :param size: Number of bytes per process.
-        :param intracomm: Intracomm to use.
-        """
-        assert size is not None, "No size passed"
-        assert intracomm is not None, "No intracomm passed"
-        self._swin = MPI.Win()
-        """temp window object."""
-        self.win = self._swin.Allocate_shared(size=size, comm=intracomm)
-        """Win instance with shared memory allocated"""
-
-        assert self.win.model == MPI.WIN_UNIFIED, "Memory model is not MPI_WIN_UNIFIED"
-
-        self.size = size
-        """Size in allocated per process in intercomm"""
-        self.intercomm = intracomm
-        """Intercomm for RMA shared memory window"""
-        self.base = ct.c_void_p(self.win.Get_attr(MPI.WIN_BASE))
-        """base pointer for calling rank in shared memory window"""
-
-
-    def _test(self):
-        lib = ct.cdll.LoadLibrary("/home/wrs20/md_workspace/test1.so")
-
-        self.win.Fence()
-        MPI.COMM_WORLD.Barrier()
-
-        ptr = ct.c_void_p(self.win.Get_attr(MPI.WIN_BASE))
 
 ###############################################################################
 # MPI_HANDLE
@@ -359,5 +272,46 @@ def check_pythonhashseed():
 
 def is_comm_null(comm):
     return comm == MPI.COMM_NULL
+
+class AllocMem:
+    """
+    AllocMem behaves similarly to np.zeros except the memory is allocated with
+    MPI.Alloc_mem.
+    """
+    def __init__(self, shape, dtype):
+        self._length = reduce(lambda x, y : x * y, shape)
+        if self._length > 0:
+            self._mpi_alloc_ptr = MPI.Alloc_mem(ctypes.sizeof(dtype) * self._length)
+            pp = ctypes.cast(self._mpi_alloc_ptr.address, ctypes.POINTER(dtype))
+            
+            # numpy/ctypes will sometimes raise a RuntimeWarning (PEP3118)
+            # relating to the deduced itemsize of the datatype passed.
+            # Here we check that the created array has the correct itemsize, 
+            # shape and dtype.
+            self._array = np.ctypeslib.as_array(pp, shape=shape)
+            assert self._array.shape == tuple(shape)
+            assert self._array.itemsize == ctypes.sizeof(dtype)
+            assert self._array.dtype == dtype
+
+
+        else:
+            self._array = np.zeros(shape, dtype)
+
+        self.array = self._array.view(dtype)
+        """Numpy array formed from allocated memory."""
+
+        self.array.fill(0)
+
+    def __del__(self):
+        del self.array
+        del self._array
+        if self._length > 0:
+            MPI.Free_mem(self._mpi_alloc_ptr)
+            del self._mpi_alloc_ptr
+
+
+
+
+
 
 

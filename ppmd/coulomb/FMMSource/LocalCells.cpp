@@ -250,6 +250,10 @@ shared(ll_array, ll_ccc_array, C, P, global_size)
             err = -12;
         }
 
+        const INT64 ocx = tcx;
+        const INT64 ocy = tcy;
+        const INT64 ocz = tcz;
+
         tcx += 3;
         tcy += 3;
         tcz += 3;
@@ -260,13 +264,23 @@ shared(ll_array, ll_ccc_array, C, P, global_size)
             const REAL hpx = P[3*nx+0];
             const REAL hpy = P[3*nx+1];
             const REAL hpz = P[3*nx+2];
-            if (hpx >= hex)         { tcx += hshift_x; }
-            if (hpx <= -1.0*hex)    { tcx -= hshift_x; }
-            if (hpy >= hey)         { tcy += hshift_y; }
-            if (hpy <= -1.0*hey)    { tcy -= hshift_y; }
-            if (hpz >= hez)         { tcz += hshift_z; }
-            if (hpz <= -1.0*hez)    { tcz -= hshift_z; }
+
+
+            //// if the particle is on (or above) the upper bound but the cell is from the lower half then this is a halo particle
+            //// copied over the periodic boundary
+            // same logic for lower bound
+
+
+            if ((hpx >= hex) && (ocx < (global_size[2]-1)))         { tcx += hshift_x; }
+            if ((hpx <= -1.0*hex) && (  ocx > 0 ))                  { tcx -= hshift_x; }
+
+            if ((hpy >= hey) && ( ocy < (global_size[1]-1) ))       { tcy += hshift_y; }
+            if ((hpy <= -1.0*hey) && ( ocy > 0 ) )                  { tcy -= hshift_y; }
+
+            if ((hpz >= hez) && (ocz < (global_size[0]-1)))         { tcz += hshift_z; }
+            if ((hpz <= -1.0*hez) && (ocz > 0))                     { tcz -= hshift_z; }
             
+
             // halo particle is very far from this domain
             if ((tcx < 0) || (tcx>=pgsx)){
                 skip = 1;
@@ -280,6 +294,7 @@ shared(ll_array, ll_ccc_array, C, P, global_size)
                 skip = 1;
                 continue;
             }
+
         }
 
         tcell = tcx + pgsx*(tcy + tcz*pgsy);

@@ -3,6 +3,16 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
+
+import mpi4py
+mpi4py.rc.initialize = False
+mpi4py.rc.finalize = True
+from mpi4py import MPI as _MPI
+_is_init = _MPI.Is_initialized()
+
+if _is_init:
+    print("Warning MPI was initialised before prefork, this is not supported with OpenMPI.")
+
 from pytools import prefork
 prefork.enable_prefork()
 
@@ -48,5 +58,5 @@ from . import plain_cell_list
 abort = mpi.abort
 check = mpi.check
 
-mpi.check_pythonhashseed()
+#mpi.check_pythonhashseed()
 

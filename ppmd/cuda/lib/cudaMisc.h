@@ -9,8 +9,8 @@
 
 using namespace std;
 
-
 namespace _thrust {
+
     template <typename T>
     int thrust_exclusive_scan(T* d_ptr, const int len){
 
@@ -20,22 +20,56 @@ namespace _thrust {
         return 0;
     }
 
-    template <typename T>
-    T thrust_max_element(T* d_ptr, const int len){
 
-        thrust::device_ptr<T> td_ptr = thrust::device_pointer_cast(d_ptr);
-        return *(thrust::max_element(td_ptr, td_ptr + len));
+    template <typename T>
+    cudaError_t check_pointer_is_device(const T * d_ptr){
+        
+        cudaPointerAttributes attributes;
+        cudaError_t err = cudaPointerGetAttributes(&attributes, d_ptr);
+        if (err != cudaSuccess) { return err; }
+        
+        // if pointer cannot be dereferenced on device
+        if (attributes.devicePointer == NULL) {return cudaErrorInvalidDevicePointer;}
+
+        return err;
     }
 
     template <typename T>
-    T thrust_min_element(T* d_ptr, const int len){
+    cudaError_t thrust_max_element(T* d_ptr, const int len, T * max_element){
+        
+        cudaError_t err = check_pointer_is_device<T>(d_ptr);
+        if (err != cudaSuccess) { return err; }
+
+        thrust::device_ptr<T> td_ptr_start = thrust::device_pointer_cast(d_ptr);
+        *max_element = *(thrust::max_element(td_ptr_start, td_ptr_start + len));
+
+        return cudaSuccess;
+    }
+
+    template <typename T>
+    cudaError_t thrust_min_element(T* d_ptr, const int len, T * min_element){
+
+        cudaError_t err = check_pointer_is_device<T>(d_ptr);
+        if (err != cudaSuccess) { return err; }
 
         thrust::device_ptr<T> td_ptr = thrust::device_pointer_cast(d_ptr);
-        return *(thrust::min_element(td_ptr, td_ptr + len));
+        *min_element = *(thrust::min_element(td_ptr, td_ptr + len));
+        
+        return cudaSuccess;
     }
 
 
 }
+
+
+
+
+
+
+
+
+
+
 
 
 extern "C" int cudaExclusiveScanDouble(double * d_ptr, const int len){
@@ -48,13 +82,14 @@ extern "C" int cudaExclusiveScanInt(int * d_ptr, const int len){
     return 0;
 }
 
-extern "C" int cudaMaxElementInt(int * d_ptr, const int len){
-    return _thrust::thrust_max_element<int>(d_ptr, len);
-}
-extern "C" int cudaMinElementInt(int * d_ptr, const int len){
-    return _thrust::thrust_min_element<int>(d_ptr, len);
+extern "C" cudaError_t cudaMaxElementInt(int * d_ptr, const int len, int * max_element){
+    return _thrust::thrust_max_element<int>(d_ptr, len, max_element);
 }
 
+
+extern "C" cudaError_t cudaMinElementInt(int * d_ptr, const int len, int * min_element){
+    return _thrust::thrust_min_element<int>(d_ptr, len, min_element);
+}
 
 
 
@@ -69,6 +104,18 @@ extern "C" int cudaMemSetZero(
 		count
 	);
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

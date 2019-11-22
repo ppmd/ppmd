@@ -4,8 +4,11 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
+# system level
+import time
+
 # package level
-from ppmd import data
+from ppmd import data, opt
 
 class StateHandler(object):
 
@@ -18,6 +21,11 @@ class StateHandler(object):
 
         if self._group is not None:
             flag = self._group.cell_decompose(self.shell_cutoff)
+        
+        key = self.__class__.__name__ + ':get_pointer'
+        if key not in opt.PROFILE.keys():
+            opt.PROFILE[key] = 0.0
+        self._key = key
 
     def pre_execute(self, dats):
         """
@@ -50,10 +58,14 @@ class StateHandler(object):
     def get_pointer(self, dat):
         obj = dat[0]
         mode = dat[1]
+        t0 = time.time()
         if issubclass(type(obj), data.GlobalArrayClassic):
-            return obj.ctypes_data_access(mode, pair=True, threaded=True)
+            ptr = obj.ctypes_data_access(mode, pair=self._pair, threaded=True)
         else:
-            return obj.ctypes_data_access(mode, pair=True)
+            ptr = obj.ctypes_data_access(mode, pair=self._pair)
+        t1 = time.time()
+        opt.PROFILE[self._key] += t1 - t0
+        return ptr
 
     def post_execute(self, dats):
         for d in dats.values():

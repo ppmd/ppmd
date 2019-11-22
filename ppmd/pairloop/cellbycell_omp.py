@@ -4,6 +4,7 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
+import numpy as np
 import cgen
 import ctypes
 
@@ -47,6 +48,7 @@ _offsets = (
 )
 
 
+
 class CellByCellOMP(object):
 
     def __init__(self, kernel=None, dat_dict=None, shell_cutoff=None):
@@ -84,7 +86,7 @@ class CellByCellOMP(object):
         if self._group is not None:
             self._make_cell_list(self._group)
 
-        self._kernel_execution_count = 0
+        self._kernel_execution_count = -1
         self._invocations = 0
 
         self._jstore = [host.Array(ncomp=100, dtype=ctypes.c_int) for tx in \
@@ -200,6 +202,7 @@ class CellByCellOMP(object):
     def _generate_lib_specific_args(self):
         self._components['LIB_ARG_DECLS'] = [
             cgen.Const(cgen.Value(host.int32_str, '_NUM_THREADS')),
+            cgen.Const(cgen.Value(host.int32_str, '_N_START')),
             cgen.Const(cgen.Value(host.int32_str, '_N_LOCAL')),
             cgen.Const(cgen.Value(host.int32_str, '_LIST_OFFSET')),
             cgen.Const(
@@ -538,7 +541,7 @@ class CellByCellOMP(object):
         loop = cgen.Module([
             cgen.Line('omp_set_num_threads(_NUM_THREADS);'),
             pragma,
-            cgen.For('int ' + i + '=0',
+            cgen.For('int ' + i + '= _N_START',
                     i + '<_N_LOCAL',
                     i+'++',
                     block)
@@ -553,30 +556,46 @@ class CellByCellOMP(object):
             self._jstore = [host.Array(ncomp=100+n, dtype=ctypes.c_int) for tx\
                             in range(runtime.NUM_THREADS)]
 
+        self._jptrs = np.zeros(runtime.NUM_THREADS, ctypes.c_void_p)
+        for tx in range(runtime.NUM_THREADS):
+            self._jptrs[tx] = self._jstore[tx].ctypes_data.value
+        
+        return self._jptrs.ctypes.get_as_parameter()
         return (ctypes.POINTER(ctypes.c_int) * runtime.NUM_THREADS)(*[
-            self._jstore[tx].ctypes_data for tx in range(runtime.NUM_THREADS)
+            ctypes.POINTER(ctypes.c_int)(self._jstore[tx].ctypes_data) for tx in range(runtime.NUM_THREADS)
         ])
 
-    def _get_class_lib_args(self, cell2part):
+    def _get_class_lib_args(self, cell2part, local_id):
         assert ctypes.c_int == cell2part.cell_list.dtype
         assert ctypes.c_int == cell2part.cell_reverse_lookup.dtype
         assert ctypes.c_int == cell2part.cell_contents_count.dtype
         jstore = self._init_jstore(cell2part)
         offset = cell2part.cell_list.end - cell2part.domain.cell_count
 
+        n_start = 0
+        n_end = cell2part.num_particles
+        if local_id != access._local_id_false:
+            if local_id is not None:
+                n_start = int(local_id)
+                n_end = n_start + 1
+            else:
+                n_start = 0
+                n_end = 0
+
         return [
             ctypes.c_int(runtime.NUM_THREADS),
-            ctypes.c_int(cell2part.num_particles),
+            ctypes.c_int(n_start),
+            ctypes.c_int(n_end),
             ctypes.c_int(offset),
             cell2part.cell_list.ctypes_data,
             cell2part.cell_reverse_lookup.ctypes_data,
             cell2part.cell_contents_count.ctypes_data,
             self._offset_list.ctypes_data,
-            ctypes.byref(jstore),
+            jstore,
             self.loop_timer.get_python_parameters()
         ]
 
-    def _get_dat_lib_args(self, dats):
+    def _get_dat_lib_args(self, dats, local_id=access._local_id_false):
         args = []
         for dat_orig in self._dat_dict.values(dats):
             assert type(dat_orig) is tuple
@@ -587,10 +606,14 @@ class CellByCellOMP(object):
                     obj.ctypes_data_access(mode, pair=True, threaded=True)
                 )
             else:
+                if local_id != access._local_id_false:
+                    mode = access._ParticleSetAccess(mode, (local_id,))
+
                 args.append(obj.ctypes_data_access(mode, pair=True))
+
         return args
 
-    def _post_execute_dats(self, dats):
+    def _post_execute_dats(self, dats, local_id=access._local_id_false):
         for dat_orig in self._dat_dict.values(dats):
             assert type(dat_orig) is tuple
             obj = dat_orig[0]
@@ -598,12 +621,16 @@ class CellByCellOMP(object):
             if issubclass(type(obj), data.GlobalArrayClassic):
                 obj.ctypes_data_post(mode, threaded=True)
             else:
+                if local_id != access._local_id_false:
+                    mode = access._ParticleSetAccess(mode, (local_id,))
                 obj.ctypes_data_post(mode)
 
 
-    def execute(self, n=None, dat_dict=None, static_args=None):
+    def execute(self, n=None, dat_dict=None, static_args=None, local_id=access._local_id_false):
 
         _group = self._group # could be None
+        
+
         if _group is None:
             for pd in self._dat_dict.items(dat_dict):
                 if issubclass(type(pd[1][0]), data.PositionDat):
@@ -612,6 +639,10 @@ class CellByCellOMP(object):
             self._make_cell_list(_group)
 
         assert _group is not None, "no group"
+
+        if local_id != access._local_id_false:
+            assert _group.domain.comm.size == 1
+
         cell2part = _group.get_cell_to_particle_map()
         cell2part.check()
         self._make_cell_list(_group)
@@ -625,12 +656,12 @@ class CellByCellOMP(object):
 
         # Add pointer arguments to launch command
         self._init_dat_lib_args(dat_dict)
-        args+=self._get_dat_lib_args(dat_dict)
+        args+=self._get_dat_lib_args(dat_dict, local_id)
 
         # Rebuild neighbour list potentially
         self._invocations += 1
 
-        args2 = self._get_class_lib_args(cell2part)
+        args2 = self._get_class_lib_args(cell2part, local_id)
 
         args = args2 + args
 
@@ -640,9 +671,10 @@ class CellByCellOMP(object):
         self.wrapper_timer.start()
         method(*args)
         self.wrapper_timer.pause()
+        
 
         self._update_opt()
-        self._post_execute_dats(dat_dict)
+        self._post_execute_dats(dat_dict, local_id)
 
 
 

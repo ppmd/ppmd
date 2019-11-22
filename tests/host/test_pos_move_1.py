@@ -122,7 +122,7 @@ def test_new_position_values_1():
         assert abs( (fmm_phi - ewald_phi) / abs(ewald_phi) ) < 10.**-4
 
 
-
+    fmm.free()
 
 
 

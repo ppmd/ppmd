@@ -208,6 +208,9 @@ def test_matmul_1():
             err_im = np.linalg.norm(im_oall[:] - bre_oall[bncall+s:bncall+e:], np.inf)
             assert err_im < 10.**-14
 
+    fmm.free()
+
+
     
 def test_blocked_mtl_z_1():
     R = 3
@@ -270,7 +273,7 @@ def test_blocked_mtl_z_1():
         assert err_im < 10.**-10
 
 
-
+    fmm.free()
 
 
 

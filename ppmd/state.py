@@ -14,6 +14,8 @@ import numpy as np
 from ppmd import data, cell, host, mpi, runtime, halo
 import ppmd.lib.build as build
 
+from ppmd.state_modifier import StateModifier, StateModifierContext
+
 SUM = mpi.MPI.SUM
 
 
@@ -62,11 +64,6 @@ class BaseMDState(object):
         # number of particles including halos
         self.npart_halo = 0
 
-        self.version_id = 0
-
-        self.invalidate_lists = False
-        """If true, all cell lists/ neighbour lists should be rebuilt."""
-
         self._move_controller = _move_controller(state=self)
 
         # halo vars
@@ -77,6 +74,27 @@ class BaseMDState(object):
         self.post_update_funcs = []
 
         self._dat_len = 0
+
+        self._gdm = None
+
+        self._state_modifier_context = StateModifierContext(self)
+        self.modifier = StateModifier(self)
+    
+    
+    def invalidate_lists(self):
+        if self._cell_to_particle_map is not None:
+            self._cell_to_particle_map.update_required = True
+    
+
+    def modify(self):
+        return self._state_modifier_context
+
+
+    def check_position_consistency(self):
+        if self._gdm is not None:
+            self._gdm()
+        else:
+            raise RuntimeError('Cannot check particle decomposition, was a domain added?.')
 
     def rebuild_cell_to_particle_maps(self):
         pass
@@ -91,7 +109,7 @@ class BaseMDState(object):
             assert self._domain.cell_decompose(cell_width) is True, "Requested new cell size cannot be made"
             self._base_cell_width = cell_width
             self._cell_particle_map_setup()
-            self.invalidate_lists = True
+            self.invalidate_lists()
 
             for dat in self.particle_dats:
                 getattr(self, dat).vid_halo_cell_list = -1
@@ -105,7 +123,6 @@ class BaseMDState(object):
         # Can only setup a cell to particle map after a domain and a position
         # dat is set
         if (self._domain is not None) and (self._position_dat is not None):
-            # print "setting up cell list"
 
             self._domain.boundary_condition.set_state(self)
 
@@ -141,6 +158,10 @@ class BaseMDState(object):
             return True
 
         v = False
+        
+        if self._cell_to_particle_map is not None:
+            v |= self._cell_to_particle_map.update_required
+
         for foo in self.determine_update_funcs:
             v |= foo()
         return v
@@ -182,6 +203,7 @@ class BaseMDState(object):
             self._domain.mpi_decompose()
 
         self._cell_particle_map_setup()
+        self._gdm = data.data_movement.GlobalDataMover(self)
 
     def get_npart_local_func(self):
         return self.as_func('npart_local')
@@ -210,7 +232,7 @@ class BaseMDState(object):
                 self.particle_dats.append(name)
             else:
                 raise RuntimeError('This property is already assigned')
-
+            
             # Recreate the move library.
             self._move_controller.reset()
 
@@ -233,6 +255,9 @@ class BaseMDState(object):
                 getattr(self, name).resize(self._npart_local, _callback=False)
             else:
                 getattr(self, name).resize(self._npart, _callback=False)
+            
+            getattr(self, name).npart_local = self._npart_local
+
 
             if type(value) is data.PositionDat:
                 if self._position_dat is None:
@@ -274,6 +299,10 @@ class BaseMDState(object):
 
         :arg value: New number of local particles.
         """
+
+        # resize dats if needed
+        self._resize_callback(value)
+
         self._npart_local = int(value)
         for ix in self.particle_dats:
             _dat = getattr(self, ix)
@@ -309,11 +338,13 @@ class BaseMDState(object):
     def broadcast_data_from(self, rank=0):
         # This is in terms of MPI_COMM_WORLD
         assert (rank > -1) and (rank < self._ccsize), "Invalid mpi rank"
+        
 
         if self._ccsize == 1:
             self.npart_local = self.npart
             return
         else:
+
             s = np.array([self.npart])
             self._ccomm.Bcast(s, root=rank)
             self.npart_local = s[0]
@@ -336,6 +367,8 @@ class BaseMDState(object):
         b = self.domain.boundary
         p = self.get_position_dat()
 
+        self.npart_local = p._dat.shape[0]
+
         lo = np.logical_and(
             np.logical_and(
                 np.logical_and((b[0] <= p[::, 0]), (p[::, 0] < b[1])),
@@ -345,9 +378,17 @@ class BaseMDState(object):
         )
 
         bx = np.logical_not(lo)
-        self._move_controller.compress_empty_slots(np.nonzero(bx)[0])
+        self.remove_by_slot(np.nonzero(bx)[0])
 
-        self.npart_local = np.sum(lo)
+    
+    def remove_by_slot(self, slots):
+
+        slots = sorted(slots)
+
+        new_npart_local = self.npart_local - len(slots)
+
+        self._move_controller.compress_empty_slots(slots)
+        self.npart_local = new_npart_local
 
         # for px in self.particle_dats:
         #    getattr(self, px).npart_local = self.npart_local
@@ -355,11 +396,12 @@ class BaseMDState(object):
         # check we did not loose some particles in the process
         self.check_npart_total()
 
+
     def check_npart_total(self):
         """Check no particles have been lost"""
         t = self.sum_npart_local()
         if t != self.npart:
-            raise RuntimeError("Particles lost! Expected {} found {}.".
+            raise RuntimeError("Particles lost or Gained! Expected {} found {}.".
                                format(self.npart, t))
 
     def sum_npart_local(self):
@@ -445,6 +487,8 @@ class _move_controller(object):
 
     def reset(self):
         # Reset these to ensure that move libs are rebuilt.
+
+        self._compressing_lib = None
         self._move_packing_lib = None
         self._move_unpacking_lib = None
         self._move_send_buffer = None
@@ -471,8 +515,7 @@ class _move_controller(object):
         self.move_timer.start()
 
         if self._move_packing_lib is None:
-            self._move_packing_lib = _move_controller.build_pack_lib(
-                self.state)
+            self._move_packing_lib = _move_controller.build_pack_lib(self.state)
 
         _send_total = dir_send_totals.data.sum()
         # Make/resize send buffer.
@@ -574,8 +617,7 @@ class _move_controller(object):
         self._compress_particle_dats(_send_total - _recv_total)
 
         if _send_total > 0 or _recv_total > 0:
-            # print "invalidating lists in move"
-            self.state.invalidate_lists = True
+            self.state.invalidate_lists()
 
         self.move_timer.pause()
 
@@ -670,12 +712,17 @@ class _move_controller(object):
                 _status
             )
 
+    def _build_compressing_lib(self):
+        self._compressing_lib = _move_controller.build_compress_lib(self.state)
+
     def _compress_particle_dats(self, num_slots_to_fill):
         """
         Compress the particle dats held in the state. Compressing removes empty rows.
         """
         _compressing_n_new = host.Array([0], dtype=ctypes.c_int)
-        assert self._compressing_lib is not None
+        if self._compressing_lib is None:
+            self._build_compressing_lib()
+
         if self.compressed is True:
             return
         else:
@@ -696,8 +743,7 @@ class _move_controller(object):
 
     def compress_empty_slots(self, slots):
         if self._compressing_lib is None:
-            self._compressing_lib = _move_controller.build_compress_lib(
-                self.state)
+            self._build_compressing_lib()
 
         le = len(slots)
         if le > 0:
@@ -840,6 +886,7 @@ class _move_controller(object):
                 }
             }
         return 0;}''' % {'DYNAMIC_DATS': _dynamic_dats_shift, 'ARGS': args}
+
         return build.simple_lib_creator(hsrc, src, 'move_pack')['move_pack']
 
     @staticmethod

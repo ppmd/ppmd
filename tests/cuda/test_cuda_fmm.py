@@ -19,11 +19,12 @@ cuda = pytest.mark.skipif("CUDA_IMPORT is False")
 MPIRANK = mpi.MPI.COMM_WORLD.Get_rank()
 MPISIZE = mpi.MPI.COMM_WORLD.Get_size()
 
+# some MPI COMM collective is broken
+@pytest.mark.skipif("True")
 @pytest.mark.xfail
 @cuda
 def test_cuda_fmm_1():
     R = 4
-
     crN = 10
     N = crN**3
 
@@ -44,6 +45,7 @@ def test_cuda_fmm_1():
     fmm = PyFMM(domain=A.domain, r=R, eps=eps, free_space=free_space,
                 cuda=CUDA)
 
+
     rng = np.random.RandomState(seed=1234)
 
     lx = 3
@@ -61,8 +63,11 @@ def test_cuda_fmm_1():
     for px in range(lx_cuda.ravel().shape[0]):
         assert abs(fmm.tree_plain[lx].ravel()[px] - lx_cuda.ravel()[px]) < \
                 10.** -12
+    fmm.free()
 
 
+# some MPI COMM collective is broken
+@pytest.mark.skipif("True")
 @pytest.mark.xfail
 @cuda
 def test_cuda_fmm_2():
@@ -70,7 +75,6 @@ def test_cuda_fmm_2():
 
     crN = 10
     N = crN**3
-
     E = 3.*crN
 
     rc = 10.
@@ -112,7 +116,11 @@ def test_cuda_fmm_2():
     assert np.linalg.norm(lx_cuda.ravel() - fmm.tree_plain[lx].ravel(),
                           np.inf) < 10.**-14
 
+    fmm.free()
 
+
+# some MPI COMM collective is broken
+@pytest.mark.skipif("True")
 def test_cuda_local_1():
     R = 4
 
@@ -165,9 +173,12 @@ def test_cuda_local_1():
     assert err1 < 10**-12
     assert err2 < 10**-12
 
+    fmm.free()
+    fmmc.free()
 
 
-
+# some MPI COMM collective is broken
+@pytest.mark.skipif("True")
 def test_cuda_local_2():
     R = 4
 
@@ -220,7 +231,8 @@ def test_cuda_local_2():
     assert err1 < 10**-11
     assert err2 < 10**-11
 
-
+    fmm.free()
+    fmmc.free()    
 
 
 

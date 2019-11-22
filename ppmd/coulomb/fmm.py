@@ -15,6 +15,7 @@ import cmath
 from threading import Thread
 import scipy
 from scipy.special import lpmv, rgamma, gammaincc, lambertw
+import scipy.constants
 import sys
 
 from ppmd.cuda import CUDA_IMPORT
@@ -100,11 +101,13 @@ class PyFMM(object):
             self.L = int(-1*log(eps,2))
             """Number of multipole expansion coefficients"""
         else:
-            self.L = l
+            self.L = int(l)
 
-        if r is None: self.R = int(log(N, 8))
+        if r is None: self.R = max(int(log(N, 8)), 3)
         else: self.R = int(r)
         """Number of levels in octal tree."""
+
+        assert self.R > 2
 
         self.dtype = dtype
         """Floating point datatype used."""
@@ -118,6 +121,7 @@ class PyFMM(object):
 
         self.free_space = free_space
 
+
         ncomp = (self.L**2) * 2
         # define the octal tree and attach data to the tree.
         self.tree = OctalTree(self.R, domain.comm)
@@ -125,8 +129,6 @@ class PyFMM(object):
         self.tree_halo = OctalDataTree(self.tree, ncomp, 'halo', dtype)
         self.tree_parent = OctalDataTree(self.tree, ncomp, 'parent', dtype)
         self.entry_data = EntryData(self.tree, ncomp, dtype)
-
-
 
 
         self._tcount = runtime.OMP_NUM_THREADS if runtime.OMP_NUM_THREADS is \
@@ -248,6 +250,7 @@ class PyFMM(object):
         with open(str(_SRC_DIR) + \
                           '/FMMSource/TranslateMTM.h') as fh:
             hpp = fh.read()
+
         self._translate_mtm_lib = build.simple_lib_creator(hpp, cpp,
             'fmm_translate_mtm')['translate_mtm']
 
@@ -337,7 +340,6 @@ class PyFMM(object):
 
 
 
-
         # --- periodic boundaries ---
 
 
@@ -379,6 +381,7 @@ class PyFMM(object):
         self._wigner_matrices_b = {}
         self._wigner_real_pointers = []
         self._wigner_imag_pointers = []
+        
 
         # compute the lengendre polynomial coefficients
         for iz, pz in enumerate(range(-3, 4)):
@@ -407,13 +410,17 @@ class PyFMM(object):
                                 raise RuntimeError('unexpected imag part')
                             self._interaction_p[iz, iy, ix, 
                                 self.re_lm(lx, mx)] = val
-
+                    
+                    continue
                     # sph = self._cart_to_sph((px, py, pz))
                     # forward rotate
+                    
                     pointers_real, pointers_imag, matrices = Rzyz_set(
                         p=self.L,
                         alpha=sph[1], beta=sph[2], gamma=0.0,
                         dtype=self.dtype)
+                    
+                    # between here breaks efence?
                     # store the temporaries
                     self._wigner_matrices_f[(pz, py, px)] = matrices
                     self._wigner_real_pointers.append(pointers_real)
@@ -438,7 +445,6 @@ class PyFMM(object):
                         pointers_real.ctypes.data
                     self._wigner_b_imag[iz, iy, ix] = \
                         pointers_imag.ctypes.data
-
 
         # compute the exponential part (not needed for rotated mtl)
         for iy, py in enumerate(range(-3, 4)):
@@ -682,6 +688,13 @@ class PyFMM(object):
         
         if not (self.free_space == '27' or self.free_space == True):
             self.dipole_corrector = DipoleCorrector(self.L, self.domain.extent, self._lr_mtl_func)
+    
+
+    def free(self):
+        self.tree.free()
+        del self._fmm_local_cuda
+        del self._cuda_mtl
+    
 
     def _update_opt(self):
         p = opt.PROFILE
@@ -861,7 +874,7 @@ class PyFMM(object):
 
             self._level_call_async(self._translate_m_to_m, level, execute_async)
             self._halo_exchange(level)
-
+            
             if self.cuda and (self.R - level -1 < self.cuda_levels):
                 self._cuda_translate_m_t_l(level)
             else:
@@ -886,6 +899,7 @@ class PyFMM(object):
         self._compute_periodic_boundary()
         self._correct_dipole()
 
+
         for level in range(1, self.R):
 
             #print("DOWN START", level)
@@ -909,7 +923,10 @@ class PyFMM(object):
         #if mpi.MPI.COMM_WORLD.Get_rank() == 0:
         #    print("Far:", phi_extract, "Near:", phi_near)
         self.execution_count += 1
-        # print("extract", phi_extract, "near", phi_near)
+        #print("extract", phi_extract, "near", phi_near)
+
+        if forces is not None: forces.ctypes_data_post(access.WRITE)
+        if potential is not None: potential.ctypes_data_post(access.WRITE)
         return phi_extract + phi_near
     
 

@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to PPMD's documentation!
-================================
+Performance Portable Molecular Dynamics
+=======================================
 
 Contents:
 
@@ -16,10 +16,15 @@ Contents:
     examples
 
 
-.. toctree::
-    :maxdepth: 4
+Generated Module Documentation
+==============================
 
-    modules
+These sections are generated from the source code and may not be readily digestible.
+
+.. toctree::
+    :glob:
+    
+    modules/ppmd
 
 
 Indices and tables

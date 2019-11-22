@@ -16,8 +16,9 @@ from math import *
 
 REAL = ctypes.c_double
 
-def test_fmm_lr_mtl_tool_1():
 
+
+def test_fmm_lr_mtl_tool_1():
     R = 3
     L = 4
     eps = 10.**-8
@@ -51,7 +52,11 @@ def test_fmm_lr_mtl_tool_1():
         err = np.linalg.norm(L1 - L2, np.inf)
         assert err < 10.**-15
         
-        
+    fmm.free()
+
+
+
+
 
 
 

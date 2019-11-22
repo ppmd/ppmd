@@ -8,7 +8,9 @@ import pytest
 
 from math import pi
 
-import ppmd as md
+import ppmd
+import ppmd.coulomb.ewald
+import ppmd.coulomb.ewald_half
 
 
 import os
@@ -16,12 +18,12 @@ def get_res_file_path(filename):
     return os.path.join(os.path.join(os.path.dirname(__file__), '../res'), filename)
 
 
-mpi_rank = md.mpi.MPI.COMM_WORLD.Get_rank()
-mpi_ncomp = md.mpi.MPI.COMM_WORLD.Get_size()
-ParticleDat = md.data.ParticleDat
-PositionDat = md.data.PositionDat
-ScalarArray = md.data.ScalarArray
-State = md.state.BaseMDState
+mpi_rank = ppmd.mpi.MPI.COMM_WORLD.Get_rank()
+mpi_ncomp = ppmd.mpi.MPI.COMM_WORLD.Get_size()
+ParticleDat = ppmd.data.ParticleDat
+PositionDat = ppmd.data.PositionDat
+ScalarArray = ppmd.data.ScalarArray
+State = ppmd.state.BaseMDState
 
 def assert_tol(val, tol, msg="tolerance not met"):
     assert abs(val) < 10.**(-1*tol), msg
@@ -44,10 +46,10 @@ def test_ewald_energy_python_co2_2_1():
     N = data.shape[0]
     A = State()
     A.npart = N
-    A.domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.domain = ppmd.domain.BaseDomainHalo(extent=(e,e,e))
+    A.domain.boundary_condition = ppmd.domain.BoundaryTypePeriodic()
 
-    c = md.coulomb.ewald_half.EwaldOrthoganalHalf(domain=A.domain, real_cutoff=rc, alpha=alpha)
+    c = ppmd.coulomb.ewald_half.EwaldOrthoganalHalf(domain=A.domain, real_cutoff=rc, alpha=alpha)
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
@@ -93,10 +95,10 @@ def test_ewald_energy_per_particle():
     N = data.shape[0]
     A = State()
     A.npart = N
-    A.domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.domain = ppmd.domain.BaseDomainHalo(extent=(e,e,e))
+    A.domain.boundary_condition = ppmd.domain.BoundaryTypePeriodic()
 
-    c = md.coulomb.ewald_half.EwaldOrthoganalHalf(domain=A.domain, real_cutoff=rc, alpha=alpha)
+    c = ppmd.coulomb.ewald_half.EwaldOrthoganalHalf(domain=A.domain, real_cutoff=rc, alpha=alpha)
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
@@ -133,10 +135,10 @@ def test_ewald_energy_python_co2_2_2():
     N = data.shape[0]
     A = State()
     A.npart = N
-    A.domain = md.domain.BaseDomainHalo(extent=(e,e,e))
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.domain = ppmd.domain.BaseDomainHalo(extent=(e,e,e))
+    A.domain.boundary_condition = ppmd.domain.BoundaryTypePeriodic()
 
-    c = md.coulomb.ewald_half.EwaldOrthoganalHalf(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory='mpi')
+    c = ppmd.coulomb.ewald_half.EwaldOrthoganalHalf(domain=A.domain, real_cutoff=rc, alpha=alpha, shared_memory='mpi')
     assert c.alpha == alpha, "unexpected alpha"
     assert c.real_cutoff == rc, "unexpected rc"
 
@@ -179,10 +181,10 @@ def test_ewald_energy_python_co2_2_3():
     N = data.shape[0]
     A = State()
     A.npart = N
-    A.domain = md.domain.BaseDomainHalo(extent=(e0,e1,e2))
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.domain = ppmd.domain.BaseDomainHalo(extent=(e0,e1,e2))
+    A.domain.boundary_condition = ppmd.domain.BoundaryTypePeriodic()
 
-    c = md.coulomb.ewald_half.EwaldOrthoganalHalf(
+    c = ppmd.coulomb.ewald_half.EwaldOrthoganalHalf(
         domain=A.domain,
         real_cutoff=12.,
         alpha=alpha,
@@ -244,10 +246,10 @@ def test_ewald_energy_python_co2_2_3_omp():
     N = data.shape[0]
     A = State()
     A.npart = N
-    A.domain = md.domain.BaseDomainHalo(extent=(e0,e1,e2))
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.domain = ppmd.domain.BaseDomainHalo(extent=(e0,e1,e2))
+    A.domain.boundary_condition = ppmd.domain.BoundaryTypePeriodic()
 
-    c = md.coulomb.ewald_half.EwaldOrthoganalHalf(
+    c = ppmd.coulomb.ewald_half.EwaldOrthoganalHalf(
         domain=A.domain,
         real_cutoff=12.,
         alpha=alpha,
@@ -315,10 +317,10 @@ def test_ewald_energy_python_co2_2_3_mpi():
     N = data.shape[0]
     A = State()
     A.npart = N
-    A.domain = md.domain.BaseDomainHalo(extent=(e0,e1,e2))
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.domain = ppmd.domain.BaseDomainHalo(extent=(e0,e1,e2))
+    A.domain.boundary_condition = ppmd.domain.BoundaryTypePeriodic()
 
-    c = md.coulomb.ewald_half.EwaldOrthoganalHalf(
+    c = ppmd.coulomb.ewald_half.EwaldOrthoganalHalf(
         domain=A.domain,
         real_cutoff=12.,
         alpha=alpha,

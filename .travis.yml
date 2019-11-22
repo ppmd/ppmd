@@ -1,0 +1,33 @@
+dist:  bionic
+language: python
+python:
+    - "3.7"
+
+branches:
+    only:
+        - master
+
+before_install:
+    - sudo apt update
+    - sudo apt install -y libopenmpi-dev openmpi-bin mpi-default-bin
+
+install:
+    - pip install git+https://github.com/ppmd/ppmd@master
+
+
+script:
+    - cd doc
+    - make html
+    - touch _build/html/.nojekyll
+    - ls -l _build/html/.nojekyll
+
+deploy:
+    provider: pages
+    repo: ppmd/ppmd
+    target-branch: gh-pages
+    local-dir: doc/_build/html
+    github_token: $GITHUB_TOKEN
+    skip-cleanup: true
+    on:
+      branch: master
+      python: 3.7

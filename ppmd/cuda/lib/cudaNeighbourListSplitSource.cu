@@ -258,6 +258,13 @@ int NeighbourList2(
     checkCudaErrors(cudaDeviceSynchronize());
     getLastCudaError("NeighbourListLayerBased (split) library failed \n");
 
-    int minfound = cudaMinElementInt(d_W.ptr, h_npart);
+    int minfound;
+    cudaError_t err = cudaMinElementInt(d_W.ptr, h_npart, &minfound);
+    if (err != cudaSuccess) {getLastCudaError("NeighbourListLayerBased library failed \n");}
+    getLastCudaError("NeighbourListLayerBased library failed \n");
+
     return minfound;
 }
+
+
+

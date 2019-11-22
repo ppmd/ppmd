@@ -83,8 +83,6 @@ class GlobalArrayClassic(host._Array):
         self.size = size
         """Number of elements in the array."""
         self.dtype = dtype
-        """Data type of array."""
-        self.shared_memory_type = 'thread'
 
         self.comm = comm
 
@@ -97,6 +95,7 @@ class GlobalArrayClassic(host._Array):
         self._timer = ppmd.opt.Timer(runtime.TIMER)
 
         self.thread_count = runtime.NUM_THREADS
+
         self._kdata = None
         self._write_pointers = None
         self._read_pointers = None
@@ -202,211 +201,19 @@ class GlobalArrayClassic(host._Array):
         self._sync_status = True
 
 
-class GlobalArrayShared(host._Array):
-    """
-    Class for global data. This class may be: globally set, incremented and
-    read. This class is constructed with a MPI reduction operator, currently
-    only MPI.SUM is avaialbe, which defines the addition operator. Global
-    setting sets all values in the array to the same value across all ranks.
-    All calls must be made on all ranks in parent communicator.
-    """
 
-    def __init__(self, size=1, dtype=ctypes.c_double, comm=mpi.MPI.COMM_WORLD,
-                 op=mpi.MPI.SUM):
-        # if no shared mem, numpy array, if shared mem, view into window
-        self._data = None
-        # array to swap with self._data to avoid copying in allreduce
-        self._rdata = None
-        # MPI shared RMA window
-        self._win = None
-        # sync status
-        self._sync_status = True
+class GlobalArrayShared(GlobalArrayClassic):
+    def __init__(self, size=1, dtype=ctypes.c_double, comm=mpi.MPI.COMM_WORLD, op=mpi.MPI.SUM):
+        super().__init__(size=size, dtype=dtype, comm=comm, op=op)
+        self.thread_count = 1
+        self._threaded = False
 
-        assert op is mpi.MPI.SUM, "no other reduction operators are currently implemented"
-
-        self._timer = ppmd.opt.Timer(runtime.TIMER)
-
-        self.op = op
-        """MPI Reduction operation"""
-        self.identity_element = 0
-        """Identity element for operation"""
-        self.size = size
-        """Number of elements in the array."""
-        self.dtype = dtype
-        """Data type of array."""
-
-        self.shared_memory_type = 'mpi'
-
-        self.shared_memory = (mpi.MPI.VERSION >= 3) and runtime.MPI_SHARED_MEM
-        """True if shared memory is enabled"""
-        self.comm = comm
-
-    @property
-    def comm(self):
-        return self._comm
-
-    @comm.setter
-    def comm(self, comm):
-        self._comm = comm
-        # aquire/create split communicator for window
-        if comm is mpi.MPI.COMM_WORLD and self.shared_memory:
-            self._split_comm = mpi.SHMMPI_HANDLE
-            self._redcomm = self._split_comm.get_inter_comm()
-        elif self.shared_memory:
-            self._split_comm = mpi.MPISHM(parent_comm=comm)
-            self._redcomm = self._split_comm.get_inter_comm()
-        else:
-            # problems
-            print("critical error in GlobalArrayShared init")
-
-        # create shared memory windows and numpy views
-
-        # the write space
-        self._win = mpi.SHMWIN(size=self.size * ctypes.sizeof(self.dtype),
-                               intracomm=mpi.SHMMPI_HANDLE.get_intra_comm())
-
-        if hasattr(self._win.win, 'memory'):
-            self._data_memview = np.array(self._win.win.memory, copy=False)
-            self._data = self._data_memview.view(dtype=self.dtype)
-        elif hasattr(self._win.win, 'tomemory'):
-            self._data_memview = np.frombuffer(self._win.win.tomemory(),
-                                               dtype=self.dtype)
-            self._data = self._data_memview.view()
-        else:
-            raise RuntimeError('cannot get shared memory from window')
-
-        # reduction and read space
-        rsize = int(self._split_comm.get_intra_comm().Get_rank() < 1) * \
-            self.size * ctypes.sizeof(self.dtype)
-
-        # window 1 ===========================================================
-        self._rwin = mpi.SHMWIN(size=rsize,
-                                intracomm=mpi.SHMMPI_HANDLE.get_intra_comm())
-        # view into memory on node rank 0
-        rwin_root_memview = self._rwin.win.Shared_query(0)[0]
-        self._rdata_memview = np.array(rwin_root_memview, copy=False)
-        self._rdata = self._rdata_memview.view(dtype=self.dtype)
-
-        # window 2 ===========================================================
-        self._rwin2 = mpi.SHMWIN(size=rsize,
-                                 intracomm=mpi.SHMMPI_HANDLE.get_intra_comm())
-        # view into memory on node rank 0
-        rwin_root_memview2 = self._rwin2.win.Shared_query(0)[0]
-        self._rdata_memview2 = np.array(rwin_root_memview2, copy=False)
-        self._rdata2 = self._rdata_memview2.view(dtype=self.dtype)
-
-        self._flip = True
-        # ====================================================================
-
-        # reduction sizes
-        self._msize = None
-        self._lsize = self._split_comm.get_intra_comm().Get_size()
-        self._lrank = self._split_comm.get_intra_comm().Get_rank()
-        if self.size <= self._lsize:
-            self._msize = int(self._lrank < self.size)
-            self._mstart = self._lrank
-        else:
-            bsize = int(math.floor(float(self.size) / self._lsize))
-            self._msize = bsize
-            mrem = (self.size - self._msize * self._lsize) % self._lsize
-            self._msize += int(self._lrank < mrem)
-            self._mstart = int(self._lrank < mrem) * self._lrank * self._msize + \
-                int(self._lrank >= mrem) * (mrem * (bsize + 1) + (self._lrank - mrem) * bsize)
-
-        # view into all of shared memory, list of arrays
-        rwin_root_memview = [self._win.win.Shared_query(ix)[0] for ix in range(self._lsize)]
-        self._data_root_memview = [np.array(rwin_root_memview[ix], copy=False) for ix in range(self._lsize)]
-        self._data_root = [self._data_root_memview[ix].view(dtype=self.dtype) for ix in range(self._lsize)]
-
-    @property
-    def ncomp(self):
-        return self.size
-
-    def set(self, val):
-        self._sync_wait()
-
-        self._split_comm.get_intra_comm().Barrier()
-        self._rwin.win.Fence()
-        self._rdata[self._mstart:self._mstart + self._msize:] = val
-        self._rwin.win.Fence()
-        self._split_comm.get_intra_comm().Barrier()
-
-        self._data.fill(self.identity_element)
-        self._sync_status = True
-
-    def __getitem__(self, item):
-        self._sync_wait()
-        return np.array(self._rdata[item])
-
-    def __call__(self, mode=access.INC):
-        assert mode in _global_array_access
-        return self, mode
-
-    @property
-    def ctype(self):
-        return host.ctypes_map[self.dtype]
-
-    def ctypes_data_access(self, mode=None, pair=False, threaded=False):
-        assert threaded is False, "this global array is not thread safe"
-
-        self._sync_wait()
-
-        assert mode in _global_array_access
-
-        if mode in (access.INC0, access.INC_ZERO):
-            self.set(0)
-
-        if mode.write:
-            return self._win.base
-        else:
-            return self._rdata.ctypes.data_as(ctypes.POINTER(self.dtype))
-
-    def ctypes_data_post(self, mode=None, threaded=False):
-        assert threaded is False, "this global array is not thread safe"
-        if mode.write:
-            self._sync_init()
-
-    def _sync_init(self):
-        self._timer.start()
-
-        self._sync_status = False
-
-        self._split_comm.get_intra_comm().Barrier()
-        self._rwin.win.Fence()
-
-        for rx in range(self._lsize):
-            self._rdata[self._mstart:self._mstart + self._msize:] += \
-                self._data_root[rx][self._mstart:self._mstart + self._msize:]
-
-        self._rwin.win.Fence()
-        self._split_comm.get_intra_comm().Barrier()
-
-        if self._lrank == 0:
-            self._redcomm.Allreduce(self._rdata, self._rdata2, self.op)
-
-        self._data.fill(self.identity_element)
-
-        self._split_comm.get_intra_comm().Barrier()
-
-        if self._flip:
-            self._rdata = self._rdata_memview2.view(dtype=self.dtype)
-            self._rdata2 = self._rdata_memview.view(dtype=self.dtype)
-        else:
-            self._rdata = self._rdata_memview.view(dtype=self.dtype)
-            self._rdata2 = self._rdata_memview2.view(dtype=self.dtype)
-        self._flip = not self._flip
-
-        self._split_comm.get_intra_comm().Barrier()
-
-        self._timer.pause()
-
-        opt.PROFILE[
-            self.__class__.__name__ + ':{}--{}:{}:'.format(self.dtype, self.size, id(self))
-        ] = (self._timer.time())
-
-    def _sync_wait(self):
-        if self._sync_status:
+    def _init_shared_memory(self):
+        if self._threaded is True:
             return
-        self._sync_status = True
-        self._split_comm.get_intra_comm().Barrier()
+        self._kdata = [np.zeros(shape=self.size, dtype=self.dtype) for tx in range(self.thread_count)]
+        self._write_pointers = self._kdata[0].ctypes.get_as_parameter()
+        self._read_pointers = self._data.ctypes.get_as_parameter()
+        self._threaded = True
+
 

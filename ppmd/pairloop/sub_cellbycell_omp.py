@@ -4,6 +4,8 @@ __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
 
+import numpy as np
+
 import cgen
 import ctypes
 
@@ -809,9 +811,12 @@ class SubCellByCellOMP(object):
             self._jstore = [host.Array(ncomp=100+n, dtype=ctypes.c_int) for tx\
                             in range(runtime.NUM_THREADS)]
 
-        return (ctypes.POINTER(ctypes.c_int) * runtime.NUM_THREADS)(*[
-            self._jstore[tx].ctypes_data for tx in range(runtime.NUM_THREADS)
-        ])
+        self._jptrs = np.zeros(runtime.NUM_THREADS, ctypes.c_void_p)
+        for tx in range(runtime.NUM_THREADS):
+            self._jptrs[tx] = self._jstore[tx].ctypes_data.value
+        
+        return self._jptrs.ctypes.get_as_parameter()
+
 
     def _get_class_lib_args(self, cell2part):
         assert ctypes.c_int == cell2part.cell_list.dtype
@@ -832,7 +837,7 @@ class SubCellByCellOMP(object):
             cell2part.cell_reverse_lookup.ctypes_data,
             cell2part.cell_contents_count.ctypes_data,
             self._offset_list.ctypes_data,
-            ctypes.byref(jstore),
+            jstore,
             self._gather_space.ctypes_data,
             INT64(cell2part.max_cell_contents_count),
             ctypes.byref(self._kernel_execution_count),

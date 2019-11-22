@@ -9,6 +9,8 @@ from math import pi
 import ctypes
 import ppmd as md
 
+import ppmd.coulomb.ewald
+
 
 import os
 def get_res_file_path(filename):
@@ -94,6 +96,7 @@ def test_ewald_energy_python_nacl_c_1_mpi():
     e1 = 30.
     e2 = 30.
     eo2 = 15.
+    
 
     data = np.load(get_res_file_path('coulomb/NACL.npy'))
 

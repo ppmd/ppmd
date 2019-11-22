@@ -8,59 +8,50 @@ Installation
 PPMD is developed to run on Linux 64bit machines. Other operating systems may work but are not actively developed upon at this time. 
 
 
-Git Repository
-~~~~~~~~~~~~~~
+Dependencies and Installation 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-https://bitbucket.org/wrs20/ppmd/src
+Required System tools:
 
-
-Dependencies
-~~~~~~~~~~~~
-
-Required tools:
-
-* Python 2.7
-* mpi4py compatible MPI
-* A C compiler, preferably intel
+* Python 3+ (``PYTHONHASHSEED`` must be set to the same non-zero value on all MPI hosts).
+* mpi4py compatible MPI3.0+ (with development headers e.g. ``libopenmpi-dev openmpi-bin mpi-default-bin`` on ubuntu 17.04.).
+* A C/C++ compiler, preferably intel (see ``PPMD_CC_MAIN`` environment variable).
 * CUDA Toolkit if targeting CUDA.
 
+The recommended installation method is to create a Python virtual environment then install PPMD with:
 
-Required Python Packages
+``pip install --no-cache-dir git+https://github.com/ppmd/ppmd@master``
 
-* NumPy
-* MPI4Py
-* ctypes
-* cgen
-* PyCUDA (If targeting CUDA)
+For CUDA support please install PyCUDA:
 
+``pip install --no-cache-dir pycuda``
 
-Optional Python Packages
-
-* matplotlib (if plotting is required)
-
-To generate gpu code PPMD requires that the CUDA Toolkit is installed see further: :ref:`cuda`.
-
+The installation can then by customised with the environment variables defined below.
 
 
 Environment Variables
 ---------------------
+The code generation system relies on consistency of the following environment variable across all MPI processes, this value must be set for parallel MPI execution.
 
-* ``MPI_HOME``: Used by the default CUDA and MPI compiler configurations to locate the desired MPI implementation.
-* ``BUILD_DIR``: The directory used as a storage location for generated libraries, default ``/tmp/build``.
+* ``PYTHONHASHSEED``: e.g ``export PYTHONHASHSEED=123``.
 
+Set the following environment variables to alter compilers used and default temporary directories. If these variables are not set the default behaviour is to use GCC and build temporary files to ``/tmp/build``.
 
-Compilers
-~~~~~~~~~
-
-Compliers are defined in the ``compilers`` sub-directory of the ``config_dir`` directory found in the main library directory. Future versions will support loading configurations from alternative directories. Each complier is defined in a separate file and is identified by name in the main configuration file.
-
+* ``PPMD_BUILD_DIR``: The directory used as a storage location for generated libraries. For example: ``export PPMD_BUILD_DIR=/tmp/build``
+* ``PPMD_CC_MAIN``: Name of the compiler to use from compilers defined in ``ppmd/config/compilers`` or in a directory given by ``PPMD_EXTRA_COMPILERS``. For example: ``export PPMD_CC_MAIN=ICC``
+* ``PPMD_CC_OMP``: Name of the OpenMP compiler to use, as above. For example: ``export PPMD_CC_OMP=$PPMD_CC_MAIN``
+* ``PPMD_EXTRA_COMPILERS``: Directory that should be parsed for user defined compilers.
+* ``PPMD_DISABLE_CUDA``: Disable CUDA initialisation.
 
 
 .. _cuda:
 
-CUDA
-~~~~
-The PPMD CUDA toolchain :mod:`~gpucuda` expects to find a CUDA toolkit installed at the environment variable ``CUDA_INSTALL_PATH``.
+The following should be set if CUDA support is desired.
+
+* ``CUDA_SDK``: location of CUDA_SDK (or path containing the helper header files from the sdk).
+* ``MPI_HOME``: Used by the default CUDA compiler configuration to locate the desired MPI implementation.
+
+
 
 
 

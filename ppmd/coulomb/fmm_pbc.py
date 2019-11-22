@@ -76,11 +76,11 @@ def _h(j,k,n,m):
 
 
 class LongRangeMTL:
-    def __init__(self, L, domain):
+    def __init__(self, L, domain, exclude_tuples=None):
         self.L = L
         self.domain = domain
 
-        _pbc_tool = FMMPbc(self.L, 10.**-10, domain, REAL)
+        _pbc_tool = FMMPbc(self.L, 10.**-10, domain, REAL, exclude_tuples)
         _rvec = _pbc_tool.compute_f() + _pbc_tool.compute_g()
 
         self.ncomp = 2*(L**2)
@@ -89,6 +89,8 @@ class LongRangeMTL:
         #self.rmat = csr_matrix((self.half_ncomp, self.half_ncomp), dtype=REAL)
 
         def _re_lm(l, m): return l**2 + l + m
+        
+        occ = 0
 
         row = 0
         for jx in range(L):
@@ -101,18 +103,26 @@ class LongRangeMTL:
                             (not (abs(jx+nx) % 2 == 1)):
                             
                             self.rmat[row, col] = _h(jx, kx, nx, mx) * _rvec[_re_lm(jx+nx, mx-kx)]
+                            occ += 1
                         col += 1
                 row += 1
+        
 
         self.sparse_rmat = csr_matrix(self.rmat)
         self.linop = aslinearoperator(self.rmat)
         self.sparse_linop = aslinearoperator(self.sparse_rmat)
+
         self.linop_data = np.array(self.sparse_rmat.data, dtype=REAL)
         self.linop_indptr = np.array(self.sparse_rmat.indptr, dtype=INT64)
         self.linop_indices = np.array(self.sparse_rmat.indices, dtype=INT64)
 
+        self.linop_ptr_data = self.linop_data.ctypes.get_as_parameter()
+        self.linop_ptr_indptr = self.linop_indptr.ctypes.get_as_parameter()
+        self.linop_ptr_indices = self.linop_indices.ctypes.get_as_parameter()
+
+
         # dipole correction vars
-        self._dpc = DipoleCorrector(L, self.domain.extent, self._apply_operator)
+        self._dpc = DipoleCorrector(L, self.domain.extent, self._apply_operator, exclude_tuples)
         self.dipole_correction = self._dpc.scales
 
     def _apply_operator(self, M, L):
@@ -128,7 +138,7 @@ class LongRangeMTL:
 
 
 class DipoleCorrector:
-    def __init__(self, l, extent, lr_func):
+    def __init__(self, l, extent, lr_func, exclude_tuples=None):
         self.l = l
         self._imo = l * l
         self.ncomp = self._imo * 2
@@ -136,6 +146,14 @@ class DipoleCorrector:
         self.lr_func = lr_func
         self._lee = LocalExpEval(l)
         self.scales = [0,0,0]
+
+        if exclude_tuples is None:
+            exclude_tuples = []
+            iterset = (-1, 0, 1)
+            for tx in itertools.product(iterset, iterset, iterset):
+                exclude_tuples.append(tx)
+        
+        self.exclude_tuples = exclude_tuples
 
         # x direction
         M = np.zeros(self.ncomp, dtype=REAL)
@@ -196,7 +214,7 @@ class DipoleCorrector:
         re = self._re
         im = self._im
         Y = self._Y_1
-        for ofx in itertools.product(iterset, iterset, iterset):
+        for ofx in self.exclude_tuples:
             px = [ev - ex * ox for ev, ex, ox in zip(eval_point, self.extent, ofx)]
             radius, theta, phi = spherical(px)
             ir2 = 1.0 / (radius * radius)
@@ -237,7 +255,7 @@ class FMMPbc(object):
     Method", Takashi Amisaki, Journal of Computational Chemistry, Vol21,
     No 12, 1075-1087, 2000
     """
-    def __init__(self, L, eps, domain, dtype):
+    def __init__(self, L, eps, domain, dtype, exclude_tuples=None):
         self.L = L
         self.eps = eps
         self.domain = domain
@@ -259,6 +277,16 @@ class FMMPbc(object):
               self.domain.extent[2]
 
         self.kappa = math.sqrt(math.pi/(vol**(2./3.)))
+        
+        if exclude_tuples is None:
+            exclude_tuples = []
+            iterset = (-1, 0, 1)
+            for tx in itertools.product(iterset, iterset, iterset):
+                if (tx[0] != 0) or (tx[1] != 0) or (tx[2] != 0):
+                    exclude_tuples.append(tx)
+        
+        self.exclude_tuples = exclude_tuples
+
 
 
     def re_lm(self, l,m): return (l**2) + l + m
@@ -449,11 +477,8 @@ class FMMPbc(object):
         # neighbours
         for lx in range(2, self.L*2, 2):
 
-            iterset = tuple(range(-1, 2, 1))
-
-            for tx in itertools.product(iterset, iterset, iterset):
+            for tx in self.exclude_tuples:
                 if (tx[0] != 0) or (tx[1] != 0) or (tx[2] != 0):
-
                     dx = tx[0]*bx + tx[1]*by + tx[2]*bz
 
                     dispt = self._cart_to_sph(dx)
@@ -705,7 +730,7 @@ class SphShellSum(object):
             }}
             omp_set_num_threads(num_threads);
 
-            #pragma omp parallel default(none) shared(N, radius_set, theta_set, phi_set, gtmp_out)
+            #pragma omp parallel default(none) shared(radius_set, theta_set, phi_set, gtmp_out)
             {{
 
                 const int threadid = omp_get_thread_num();

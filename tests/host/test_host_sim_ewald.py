@@ -8,25 +8,28 @@ import os
 
 
 
-import ppmd as md
+import ppmd
+
+
+import ppmd.coulomb.ewald
 
 VERBOSE = True
 SHARED_MEMORY = False
 
 
-rank = md.mpi.MPI.COMM_WORLD.Get_rank()
-nproc = md.mpi.MPI.COMM_WORLD.Get_size()
+rank = ppmd.mpi.MPI.COMM_WORLD.Get_rank()
+nproc = ppmd.mpi.MPI.COMM_WORLD.Get_size()
 
 
-PositionDat = md.data.PositionDat
-ParticleDat = md.data.ParticleDat
-ScalarArray = md.data.ScalarArray
-State = md.state.State
-ParticleLoop = md.loop.ParticleLoop
-Pairloop = md.pairloop.PairLoopNeighbourListNS
-PBC = md.domain.BoundaryTypePeriodic()
-GlobalArray = md.data.GlobalArray
-State = md.state.State
+PositionDat = ppmd.data.PositionDat
+ParticleDat = ppmd.data.ParticleDat
+ScalarArray = ppmd.data.ScalarArray
+State = ppmd.state.State
+ParticleLoop = ppmd.loop.ParticleLoop
+Pairloop = ppmd.pairloop.PairLoopNeighbourListNS
+PBC = ppmd.domain.BoundaryTypePeriodic()
+GlobalArray = ppmd.data.GlobalArray
+State = ppmd.state.State
 
 
 vv_kernel1_code = '''
@@ -113,8 +116,8 @@ def test_host_sim_1(directiong):
     A.npart = 2
     E = 80.
     extent = (E, E, E)
-    A.domain = md.domain.BaseDomainHalo(extent=extent)
-    A.domain.boundary_condition = md.domain.BoundaryTypePeriodic()
+    A.domain = ppmd.domain.BaseDomainHalo(extent=extent)
+    A.domain.boundary_condition = ppmd.domain.BoundaryTypePeriodic()
 
     # init state
     A.p = PositionDat(ncomp=3)
@@ -147,7 +150,7 @@ def test_host_sim_1(directiong):
     A.filter_on_domain_boundary()
 
 
-    c = md.coulomb.ewald.EwaldOrthoganal(
+    c = ppmd.coulomb.ewald.EwaldOrthoganal(
         domain=A.domain,
         real_cutoff=12.,
         shared_memory=SHARED_MEMORY

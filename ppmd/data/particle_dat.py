@@ -1,11 +1,13 @@
+"""
+This module contains the `ParticleDat` class for adding data to particles.
+"""
+
 from __future__ import print_function, division, absolute_import
 
 import ppmd.opt
 import ppmd.runtime
 
-"""
-This module contains high level arrays and matrices.
-"""
+
 
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
@@ -21,49 +23,50 @@ from ppmd import access, mpi, runtime, host, opt
 from ppmd.lib import build
 
 from ppmd.data.scalar_array import ScalarArray
+from ppmd.data.data_movement import ParticleDatModifier
 
 
 SUM = mpi.MPI.SUM
 
-"""
-rst_doc{
-
-.. contents:
-
-data Module
-===========
-
-.. automodule:: data
-
-Scalar Array
-~~~~~~~~~~~~
-
-The class :class:`~data.ScalarArray` is a generic one dimensional array that should be used
-to store data within simulations that is not associated with any particular particles. For
-example the kinetic energy of the system or the array used to bin values when calculating a
-radial distribution.
-
-.. autoclass:: data.ScalarArray
-    :show-inheritance:
-    :undoc-members:
-    :members:
-
-
-Particle Dat
-~~~~~~~~~~~~
-
-This classes should be considered as a two dimensional matrix with each row storing the properties
-of a particle. The order of rows in relation to which particle they correspond to should always
-be conserved. This is the default behaviour of any sorting methods implemented in this framework.
-
-.. autoclass:: data.ParticleDat
-    :show-inheritance:
-    :undoc-members:
-    :members:
-
-
-}rst_doc
-"""
+##"""
+##rst_doc{
+##
+##.. contents:
+##
+##data Module
+##===========
+##
+##.. automodule:: data
+##
+##ScalarArray
+##~~~~~~~~~~~
+##
+##The class :class:`~data.ScalarArray` is a generic one dimensional array that should be used
+##to store data within simulations that is not associated with any particular particles. For
+##example the kinetic energy of the system or the array used to bin values when calculating a
+##radial distribution.
+##
+##.. autoclass:: data.ScalarArray
+##    :show-inheritance:
+##    :undoc-members:
+##    :members:
+##
+##
+##ParticleDat
+##~~~~~~~~~~~
+##
+##This classes should be considered as a two dimensional matrix with each row storing the properties
+##of a particle. The order of rows in relation to which particle they correspond to should always
+##be conserved. This is the default behaviour of any sorting methods implemented in this framework.
+##
+##.. autoclass:: data.ParticleDat
+##    :show-inheritance:
+##    :undoc-members:
+##    :members:
+##
+##
+##}rst_doc
+##"""
 
 ###############################################################################
 # ParticleDat.
@@ -112,13 +115,14 @@ class ParticleDat(host.Matrix):
             ncol=ncomp
         )
 
+        self._ptr = None
+        self._ptr_count = 0
+
         self.max_npart = self._dat.shape[0]
-        """:return: The maximum number of particles which can be stored within
-        this particle dat."""
+        """:return: The maximum number of particles which can be stored within this particle dat."""
 
         self.npart_local = self._dat.shape[0]
-        """:return: The number of particles with properties stored in the
-        particle dat."""
+        """:return: The number of particles with properties stored in the particle dat."""
 
         self.ncomp = self.ncol
         """:return: The number of components stored for each particle."""
@@ -142,23 +146,8 @@ class ParticleDat(host.Matrix):
         # default comm is world
         self.comm = mpi.MPI.COMM_WORLD
 
-    @property
-    def data(self):
-        self._vid_int += 1
-        return self._dat
+        self._particle_dat_modifier = ParticleDatModifier(self, type(self) == PositionDat)
 
-    @data.setter
-    def data(self, value):
-        self._vid_int += 1
-        self._dat = value
-
-    def set_val(self, val):
-        """
-        Set all the entries in the particle dat to the same specified value.
-
-        :param val: Value to set all entries to.
-        """
-        self.data[..., ...] = val
 
     def zero(self, n=None):
         if n is None:
@@ -192,15 +181,41 @@ class ParticleDat(host.Matrix):
         :return:
         """
         return self.npart_local + self.npart_halo
+    
+    def mark_halos_old(self):
+        self._vid_int += 1
+
+    def modify_view(self):
+        return self._particle_dat_modifier
+
+    def sync_view_to_data(self):
+        # on devices where the actual data is separate to the view data
+        # this is a syncrohisation call
+        pass
+
+    @property
+    def view(self):
+        return self._dat[:self.npart_local:, :].view()
+
+    @property
+    def data(self):
+        self.mark_halos_old()
+        return self._dat
+
+    @data.setter
+    def data(self, value):
+        self.mark_halos_old()
+        self._dat = value
+        self._ptr = None
 
     def __getitem__(self, ix):
         return np.copy(self._dat[ix])
 
     def __setitem__(self, ix, val):
-        self._vid_int += 1
+        self.mark_halos_old()
         self.data[ix] = val
         if type(self) is PositionDat and self.group is not None:
-            self.group.invalidate_lists = True
+            self.group.invalidate_lists()
 
     def __str__(self):
         return str(self.data[::])
@@ -266,6 +281,7 @@ class ParticleDat(host.Matrix):
 
             if self.comm.Get_rank() == rank:
                 self._dat = tmp
+                self._ptr = None
 
     def ctypes_data_access(self, mode=access.RW, pair=True):
         """
@@ -273,8 +289,20 @@ class ParticleDat(host.Matrix):
         :return: The pointer to the data.
         """
 
+        # if this is being launched in single particle mode we need to extract the access descriptor
+        # and the particle ids
+        if isinstance(mode, access._ParticleSetAccess):
+            local_ids = mode.local_ids
+            mode = mode.mode
+        else:
+            local_ids = None
+
+
         if mode is access.INC0:
-            self.zero(self.npart_local)
+            if local_ids is None:
+                self.zero(self.npart_local)
+            else:
+                self.data[local_ids, :] = 0
 
         exchange = False
 
@@ -298,16 +326,34 @@ class ParticleDat(host.Matrix):
 
             self._vid_halo = self._vid_int
             self.vid_halo_cell_list = celllist.version_id
+        
+        if self._ptr is None:
+            #self._ptr = self._dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+            self._ptr = self._dat.ctypes.get_as_parameter()
 
-        return self._dat.ctypes.data_as(ctypes.POINTER(self.dtype))
+        self._ptr_count += 1
+        if self._ptr_count % 100 == 0:
+            # Check that NumPy has not swapped out the buffer for some reason (or we failed to 
+            # get the pointer on a realloc).
+            assert self._ptr.value == self._dat.ctypes.get_as_parameter().value
+
+        return self._ptr
+
 
     def ctypes_data_post(self, mode=access.RW):
         """
         Call after excuting a method on the data.
         :arg access mode: Access type required by the calling method.
         """
+
+        # if this is being launched in single particle mode we need to extract the access descriptor
+        # and the particle ids
+        if isinstance(mode, access._ParticleSetAccess):
+            local_ids = mode.local_ids
+            mode = mode.mode
+
         if mode.write:
-            self._vid_int += 1
+            self.mark_halos_old()
 
     def halo_start_shift(self, shift):
         """

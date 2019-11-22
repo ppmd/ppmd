@@ -228,16 +228,16 @@ class CellList(object):
             self._cell_sort_setup()
 
             if not self._init:
-                print("Initalisation failed")
-                return False
-
+                raise RuntimeError("Cell list Initalisation failed")
 
         if (self.update_required is True) or self._update_tracking():
             self._pre_update()
-
+            
             self.sort()
+
             if self._update_func_post is not None:
                 self._update_func_post()
+
             return True
         else:
             return False
@@ -283,11 +283,21 @@ class CellList(object):
 
         self.timer_sort.start()
 
+        if self._cell_reverse_lookup.ncomp < self._positions.max_npart:
+            self._cell_reverse_lookup.realloc(self._positions.max_npart)
+
+        if self._cell_list.ncomp < self._positions.max_npart + self._domain.cell_count + 1:
+            self._cell_list.realloc(self._positions.max_npart + self._domain.cell_count + 1)
+
+
         _n = self._cell_list.end - self._domain.cell_count
 
         self._cell_list[self._cell_list.end] = _n
         self._cell_list.data[_n:self._cell_list.end:] = ct.c_int(-1)
         self._cell_contents_count.zero()
+        
+
+
 
         err = self._cell_sort_lib(
             ct.c_int(self._n()),
@@ -392,46 +402,6 @@ class CellList(object):
         self.halo_version_id += 1
         self._max_count = np.max(self.cell_contents_count[:])
 
-    #def sort_halo_cells(self,local_cell_indices_array, cell_contents_recv,
-    #                    npart, total_size):
-
-    #    self.timer_sort.start()
-
-    #    cell_count = self._domain.cell_array[0] *\
-    #                 self._domain.cell_array[1] * self._domain.cell_array[2]
-
-    #    if total_size + cell_count + 1 > self._cell_list.ncomp:
-    #        cell_start = self._cell_list[self._cell_list.end]
-    #        cell_end = self._cell_list.end
-
-    #        self._cell_list.realloc(total_size + cell_count + 1)
-
-    #        self._cell_list.data[self._cell_list.end - cell_count:
-    #        self._cell_list.end:] = self._cell_list.data[cell_start:cell_end:]
-
-    #        self._cell_list.data[self._cell_list.end] = self._cell_list.end - \
-    #                                                    cell_count
-    #        # cell reverse lookup
-    #        self._cell_reverse_lookup.realloc(total_size)
-    #    assert ct.c_int == self._cell_list.dtype
-    #    assert ct.c_int == local_cell_indices_array.dtype
-    #    assert ct.c_int == cell_contents_recv.dtype
-    #    assert ct.c_int == self._cell_contents_count.dtype
-    #    assert ct.c_int == self.cell_reverse_lookup.dtype
-    #    self._halo_cell_sort_lib(
-    #        ct.c_int(cell_contents_recv.ncomp),
-    #        ct.c_int(npart),
-    #        ct.c_int(self._cell_list[self._cell_list.end]),
-    #        self._cell_list.ctypes_data,
-    #        local_cell_indices_array.ctypes_data,
-    #        cell_contents_recv.ctypes_data,
-    #        self._cell_contents_count.ctypes_data,
-    #        self.cell_reverse_lookup.ctypes_data
-    #    )
-    #    self._max_count = np.max(self.cell_contents_count[:])
-    #    print("halo sort max:", self._max_count)
-    #    self.halo_version_id += 1
-    #    self.timer_sort.pause()
 
     @property
     def num_particles(self):

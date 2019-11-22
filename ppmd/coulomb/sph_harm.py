@@ -223,8 +223,43 @@ class SphCoeffGen(object):
         return _Symbol(self.sym + '_denom_' + str(mx))
 
 
+
+class PRadiusModifier:
+    def __init__(self, lpmv_gen, radius_symbol=False):
+        
+        self.lpmv_gen = lpmv_gen
+        self.radius_symbol = radius_symbol
+        modules = []
+        
+        if self.radius_symbol:
+            maxl = lpmv_gen.maxl
+            for lx in range(maxl + 1):
+                for mx in range(lx+1):
+                    modules += [self.get_line(lx, mx)]
+
+        self.module = Module(modules)
+
+    def get_p_sym(self, l, m):
+        if not self.radius_symbol:
+            return self.lpmv_gen.get_p_sym(l, m)
+        else:
+            return _Symbol('rc_{}'.format(self.lpmv_gen.get_p_sym(l, m)))
+
+    def get_radius_sym(self, l):
+        assert self.radius_symbol
+        return _Symbol(self.radius_symbol+'_'+str(l))
+
+    def get_line(self, lx, mx):
+        return Initializer(
+            Const(
+                Value(self.lpmv_gen.ctype, self.get_p_sym(lx, mx))
+            ), 
+            self.lpmv_gen.get_p_sym(lx, mx) * self.get_radius_sym(lx)
+        )
+
+
 class SphGen(object):
-    def __init__(self, maxl, sym='_Y', theta_sym='theta', phi_sym='phi', ctype='double', avoid_calls=False):
+    def __init__(self, maxl, sym='_Y', theta_sym='theta', phi_sym='phi', ctype='double', avoid_calls=False, radius_symbol=False):
         self.maxl = maxl
         self.sym = sym
         self.ctype = ctype
@@ -242,41 +277,61 @@ class SphGen(object):
                 icv_wrap('cos_' + theta_sym, 'cos(' + theta_sym + ')'),
             ]
 
-        lpmv_gen = ALegendrePolynomialGen(maxl=maxl, tsym='cos_' + theta_sym, ctype=ctype,
+        lpmv_gen = ALegendrePolynomialGen(maxl=maxl, psym='_P'+sym, tsym='cos_' + theta_sym, ctype=ctype,
                 avoid_calls=avoid_calls)
 
-        exp_gen = SphExpGen(maxl=maxl, psym=phi_sym, ctype=ctype, avoid_calls=avoid_calls)
-        coeff_gen = SphCoeffGen(maxl=maxl, ctype=ctype)
+        radius_lpmv_gen = PRadiusModifier(lpmv_gen, radius_symbol=radius_symbol)
+
+        exp_gen = SphExpGen(maxl=maxl, esym='_E'+sym, psym=phi_sym, ctype=ctype, avoid_calls=avoid_calls)
+        #coeff_gen = SphCoeffGen(maxl=maxl, sym='_sqrtmf'+sym, ctype=ctype)
         
 
         modlist += [
             lpmv_gen.module,
+            radius_lpmv_gen.module,
             exp_gen.module,
-            coeff_gen.module
+            #coeff_gen.module
         ]
         
         for kx in self.flops.keys():
-            self.flops[kx] += lpmv_gen.flops[kx] + exp_gen.flops[kx] + coeff_gen.flops[kx]
+            self.flops[kx] += lpmv_gen.flops[kx] + exp_gen.flops[kx]# + coeff_gen.flops[kx]
+
+        
+        def H(lx, mx):
+            return _Symbol(str(sqrt(factorial(lx - abs(mx)) / factorial(lx + abs(mx)))))
+
+
+        for lx in range(maxl+1):
+            modlist += [
+                icv_wrap(
+                    self._get_intermediate_sym(lx, mx),
+                    H(lx, mx) * radius_lpmv_gen.get_p_sym(lx, abs(mx))
+                ) for mx in range(0, lx+1)
+            ]
+            self.flops['*'] += lx+1
+
+
         
         for lx in range(maxl+1):
             modlist += [
                 icv_wrap(
                     self.get_y_sym(lx, mx)[0],
-                    coeff_gen.get_numerator_sym(lx - abs(mx)) * coeff_gen.get_denominator_sym(lx + abs(mx)) * \
-                        lpmv_gen.get_p_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[0]
+                    self._get_intermediate_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[0]
                 ) for mx in range(-lx, lx+1)
             ]
             modlist += [
                 icv_wrap(
                     self.get_y_sym(lx, mx)[1],
-                    coeff_gen.get_numerator_sym(lx - abs(mx)) * coeff_gen.get_denominator_sym(lx + abs(mx)) * \
-                        lpmv_gen.get_p_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[1]
+                    self._get_intermediate_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[1]
                 ) for mx in range(-lx, lx+1)
             ]
 
-            self.flops['*'] += 6 * (2*lx+1)
+            self.flops['*'] += 2 * (2*lx+1)
+
+
 
         self.module = Module(modlist)
+        self.radius_lpmv_gen = radius_lpmv_gen
 
     def get_y_sym(self, n, m):
         assert n > -1
@@ -286,6 +341,18 @@ class SphGen(object):
         ms += str(abs(m))
         s = self.sym + 'n' + str(abs(n)) + ms
         return _Symbol('_re' + s), _Symbol('_im' + s)
+
+    def _get_intermediate_sym(self, n, m):
+        assert n > -1
+        assert n <= self.maxl
+        assert abs(m) <= n
+        ms = 'mn' if m < 0 else 'mp'
+        ms += str(abs(m))
+        s = self.sym + 'n' + str(abs(n)) + ms
+        return _Symbol('_Hnm_' + s)
+
+    def get_radius_sym(self, n):
+        return self.radius_lpmv_gen.get_radius_sym(n)
 
 
 class LocalExpEval(object):
@@ -406,5 +473,683 @@ class LocalExpEval(object):
                 phi_sph_re += scipy_real*ppmd_mom_re - scipy_imag*ppmd_mom_im
 
         return phi_sph_re
+
+
+class MultipoleExpCreator:
+    """
+    Class to compute multipole expansions.
+
+    :arg int L: Number of expansion terms.
+    """
+    
+    def __init__(self, L):
+        self.L = L
+        self._hmatrix_py = np.zeros((2*self.L, 2*self.L))
+        def Hfoo(nx, mx): return sqrt(float(factorial(nx - abs(mx)))/factorial(nx + abs(mx)))
+        for nx in range(self.L):
+            for mx in range(-nx, nx+1):
+                self._hmatrix_py[nx, mx] = Hfoo(nx, mx)
+        
+        self.sph_gen = SphGen(L-1)
+        self._multipole_lib = None
+        self._generate_host_libs()
+
+    def _generate_host_libs(self):
+
+        sph_gen = self.sph_gen
+
+        def cube_ind(L, M):
+            return ((L) * ( (L) + 1 ) + (M) )
+
+        assign_gen =  'double rhol = 1.0;\n'
+        assign_gen += 'double rholcharge = rhol * charge;\n'
+        for lx in range(self.L):
+            for mx in range(-lx, lx+1):
+                assign_gen += 'out[{ind}] += {ylmm} * rholcharge;\n'.format(
+                        ind=cube_ind(lx, mx),
+                        ylmm=str(sph_gen.get_y_sym(lx, -mx)[0])
+                    )
+                assign_gen += 'out[IM_OFFSET + {ind}] += {ylmm} * rholcharge;\n'.format(
+                        ind=cube_ind(lx, mx),
+                        ylmm=str(sph_gen.get_y_sym(lx, -mx)[1])
+                    )
+            assign_gen += 'rhol *= radius;\n'
+            assign_gen += 'rholcharge = rhol * charge;\n'
+
+        src = """
+        #define IM_OFFSET ({IM_OFFSET})
+
+        {DECLARE} int multipole_exp(
+            const double charge,
+            const double radius,
+            const double theta,
+            const double phi,
+            double * RESTRICT out
+        ){{
+            {SPH_GEN}
+            {ASSIGN_GEN}
+            return 0;
+        }}
+        """
+        header = str(sph_gen.header)
+        
+        src_lib = src.format(
+            SPH_GEN=str(sph_gen.module),
+            ASSIGN_GEN=str(assign_gen),
+            IM_OFFSET=(self.L**2),
+            DECLARE=r'static inline'
+        )
+
+        src = src.format(
+            SPH_GEN=str(sph_gen.module),
+            ASSIGN_GEN=str(assign_gen),
+            IM_OFFSET=(self.L**2),
+            DECLARE=r'extern "C"'
+        )
+
+        self.create_multipole_header = header
+        self.create_multipole_src = src_lib
+
+        self._multipole_lib = simple_lib_creator(header_code=header, src_code=src)['multipole_exp']
+
+
+    def multipole_exp(self, sph, charge, arr):
+        """
+        For a charge at the point sph computes the multipole moments at the origin
+        and appends them onto arr.
+        """
+
+        assert arr.dtype == c_double
+        self._multipole_lib(
+            c_double(charge),
+            c_double(sph[0]),
+            c_double(sph[1]),
+            c_double(sph[2]),
+            arr.ctypes.get_as_parameter()
+        )
+
+
+    def py_multipole_exp(self, sph, charge, arr):
+        """
+        For a charge at the point sph computes the multipole moments at the origin
+        and appends them onto arr.
+        """
+
+        llimit = self.L
+        def re_lm(l,m): return (l**2) + l + m
+        def im_lm(l,m): return (l**2) + l +  m + llimit**2
+        
+        cosv = np.zeros(3 * llimit)
+        sinv = np.zeros(3 * llimit)
+        for mx in range(-llimit, llimit+1):
+            cosv[mx] = cos(-1.0 * mx * sph[2])
+            sinv[mx] = sin(-1.0 * mx * sph[2])
+
+        for lx in range(self.L):
+            scipy_p = lpmv(range(lx+1), lx, cos(sph[1]))
+            radn = sph[0] ** lx
+            for mx in range(-lx, lx+1):
+                coeff = charge * radn * self._hmatrix_py[lx, mx] * scipy_p[abs(mx)] 
+                arr[re_lm(lx, mx)] += cosv[mx] * coeff
+                arr[im_lm(lx, mx)] += sinv[mx] * coeff
+
+
+
+class MultipoleDotVecCreator:
+    """
+    Class to compute multipole expansions and corresponding expansions that can be used to compute
+    energies from local expansions by using a dot product.
+
+    :arg int L: Number of expansion terms.
+    """
+    
+    def __init__(self, L):
+        self.L = L
+        self._hmatrix_py = np.zeros((2*self.L, 2*self.L))
+        def Hfoo(nx, mx): return sqrt(float(factorial(nx - abs(mx)))/factorial(nx + abs(mx)))
+        for nx in range(self.L):
+            for mx in range(-nx, nx+1):
+                self._hmatrix_py[nx, mx] = Hfoo(nx, mx)
+        
+        self.sph_gen = SphGen(L-1)
+        self._multipole_lib = None
+        self._generate_host_libs()
+
+    def _generate_host_libs(self):
+
+        sph_gen = self.sph_gen
+
+        def cube_ind(L, M):
+            return ((L) * ( (L) + 1 ) + (M) )
+
+        # --- lib to create vector to dot product and mutlipole expansions --- 
+
+        assign_gen =  'double rhol = 1.0;\n'
+        assign_gen += 'double rholcharge = rhol * charge;\n'
+        flops = {'+': 0, '-': 0, '*': 0, '/': 0}
+
+        for lx in range(self.L):
+            for mx in range(-lx, lx+1):
+
+                assign_gen += 'out_mul[{ind}] += {ylmm} * rholcharge;\n'.format(
+                        ind=cube_ind(lx, mx),
+                        ylmm=str(sph_gen.get_y_sym(lx, -mx)[0])
+                    )
+                assign_gen += 'out_mul[IM_OFFSET + {ind}] += {ylmm} * rholcharge;\n'.format(
+                        ind=cube_ind(lx, mx),
+                        ylmm=str(sph_gen.get_y_sym(lx, -mx)[1])
+                    )
+                assign_gen += 'out_vec[{ind}] += {ylmm} * rholcharge;\n'.format(
+                        ind=cube_ind(lx, mx),
+                        ylmm=str(sph_gen.get_y_sym(lx, mx)[0])
+                    )
+                assign_gen += 'out_vec[IM_OFFSET + {ind}] += (-1.0) * {ylmm} * rholcharge;\n'.format(
+                        ind=cube_ind(lx, mx),
+                        ylmm=str(sph_gen.get_y_sym(lx, mx)[1])
+                    )
+
+                flops['+'] += 4
+                flops['*'] += 5
+
+            assign_gen += 'rhol *= radius;\n'
+            assign_gen += 'rholcharge = rhol * charge;\n'
+            flops['*'] += 2
+
+        flops['+'] += sph_gen.flops['*']
+        flops['-'] += sph_gen.flops['*']
+        flops['*'] += sph_gen.flops['*']
+        flops['/'] += sph_gen.flops['*']
+
+        src = """
+        #define IM_OFFSET ({IM_OFFSET})
+
+        {DECLARE} int local_dot_vec_multipole(
+            const double charge,
+            const double radius,
+            const double theta,
+            const double phi,
+            double * RESTRICT out_vec,
+            double * RESTRICT out_mul
+        ){{
+            {SPH_GEN}
+            {ASSIGN_GEN}
+            return 0;
+        }}
+        """
+        header = str(sph_gen.header)
+        
+        src_lib = src.format(
+            SPH_GEN=str(sph_gen.module),
+            ASSIGN_GEN=str(assign_gen),
+            IM_OFFSET=(self.L**2),
+            DECLARE='static inline'
+        )
+
+        src = src.format(
+            SPH_GEN=str(sph_gen.module),
+            ASSIGN_GEN=str(assign_gen),
+            IM_OFFSET=(self.L**2),
+            DECLARE=r'extern "C"'
+        )
+
+        self.create_dot_vec_multipole_header = header
+        self.create_dot_vec_multipole_src = src_lib
+        self.create_dot_vec_multipole_flops = flops
+
+        self._dot_vec_multipole_lib = simple_lib_creator(header_code=header, src_code=src)['local_dot_vec_multipole']
+        
+
+    def dot_vec_multipole(self, sph, charge, arr_vec, arr_mul):
+        """
+        For a charge at the point sph computes the coefficients at the origin
+        and appends them onto arr that can be used in a dot product to compute
+        the energy.
+        """
+        assert arr_vec.dtype == c_double
+        assert arr_mul.dtype == c_double
+        self._dot_vec_multipole_lib(
+            c_double(charge),
+            c_double(sph[0]),
+            c_double(sph[1]),
+            c_double(sph[2]),
+            arr_vec.ctypes.get_as_parameter(),
+            arr_mul.ctypes.get_as_parameter()
+       ) 
+
+
+    def py_dot_vec(self, sph, charge, arr):
+        """
+        For a charge at the point sph computes the multipole moments at the origin
+        and appends them onto arr.
+        """
+
+        llimit = self.L
+        def re_lm(l,m): return (l**2) + l + m
+        def im_lm(l,m): return (l**2) + l +  m + llimit**2
+        
+        cosv = np.zeros(3 * llimit)
+        sinv = np.zeros(3 * llimit)
+        for mx in range(-llimit, llimit+1):
+            cosv[mx] = cos(mx * sph[2])
+            sinv[mx] = sin(mx * sph[2])
+
+        for lx in range(self.L):
+            scipy_p = lpmv(range(lx+1), lx, cos(sph[1]))
+            radn = sph[0] ** lx
+            for mx in range(-lx, lx+1):
+                coeff = charge * radn * self._hmatrix_py[lx, mx] * scipy_p[abs(mx)] 
+                arr[re_lm(lx, mx)] += cosv[mx] * coeff
+                arr[im_lm(lx, mx)] -= sinv[mx] * coeff       
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class ALegendrePolynomialGenEphemeral(object):
+    def __init__(self, maxl, psym='_P', tsym='theta', ctype='double', avoid_calls=False):
+        self.maxl = maxl
+        self.ctype = ctype
+        self.avoid_calls = avoid_calls
+        self.psym = psym
+        self.ptmp = psym + 'tmp'
+        self.tmp_count = -1
+        self.tsym = tsym
+        self.header = Include('math.h')
+        self.flops = {'+': 0, '-': 0, '*': 0, '/': 0}
+    
+    def __call__(self, d):
+
+        modlist = []
+        if not self.avoid_calls:
+            sqrttmp = self._get_next_tmp()
+            sqrt_theta_sym = 'sqrt(1.0 - {theta} * {theta})'.format(theta=self.tsym)
+            modlist += [
+                Initializer(Const(Value(self.ctype, sqrttmp)), sqrt_theta_sym),
+            ]
+        else:
+            sqrttmp = 'sqrt_theta_tmp'
+
+
+        modlist += [
+            Initializer(Const(Value(self.ctype, self.get_p_sym(0,0))), '1.0'),
+        ]
+        
+
+
+        basetmp = self._get_next_tmp()
+        theta_lxp1 = [basetmp + '_{}'.format(str(lx)) for lx in range(self.maxl+1)]
+        
+
+        modlist += [
+            Initializer(Const(Value(self.ctype, theta_lxp1[lx])),
+                '({theta})*({lx2p1})'.format(theta=self.tsym, lx2p1=str(float(2*lx + 1)))) for lx in range(0, self.maxl+1)
+        ]
+
+        for mx in range(0, self.maxl):
+            modlist += [
+                Initializer(Const(Value(self.ctype, self.get_p_sym(mx+1, mx))),
+                    '({theta_lxp1}) * ({plxlx})'.format(
+                        theta=self.tsym, theta_lxp1=theta_lxp1[mx], plxlx=str(self.get_p_sym(mx, mx)))
+                )
+            ]
+            if (mx, mx) in d.keys():
+                modlist += [
+                    Line(str(dx)) for dx in d[(mx, mx)] 
+                ]
+            if (mx+1, mx) in d.keys():
+                modlist += [
+                    Line(str(dx)) for dx in d[(mx+1, mx)] 
+                ]
+
+            for lx in range(mx+1, self.maxl):
+                modlist += [
+                    Initializer(Const(Value(self.ctype, self.get_p_sym(lx+1, mx))),
+                        '(({theta_lxp1}) * {plxmx} - ({lxpmx}) * {plx1mx} ) * ({ilxmmxp1})'.format(
+                            theta_lxp1=theta_lxp1[lx],
+                            lx2p1=str(float(2*lx + 1)),
+                            plxmx=str(self.get_p_sym(lx,mx)),
+                            plx1mx=str(self.get_p_sym(lx-1,mx)),
+                            ilxmmxp1=str(float(1.0/(lx - mx + 1))),
+                            lxpmx=str(float(lx + mx))
+                        )
+                    )
+                ]
+                if (lx+1, mx) in d.keys():
+                    modlist += [
+                        Line(str(dx)) for dx in d[(lx+1, mx)] 
+                    ]
+
+
+            modlist += [
+                Initializer(Const(Value(self.ctype, str(self.get_p_sym(mx+1,mx+1)))),
+                    '({m1m2lx})*({sqrttmp})*({plxlx})'.format(
+                        m1m2lx=str(float(-1.0 - 2.0*mx)), sqrttmp=sqrttmp, plxlx=str(self.get_p_sym(mx, mx)))
+                )
+            ]
+
+        if (self.maxl, self.maxl) in d.keys():
+            modlist += [
+                Line(str(dx)) for dx in d[(self.maxl, self.maxl)] 
+            ]
+
+
+
+        """
+        for lx in range(self.maxl):
+
+            theta_lxp1 = self._get_next_tmp()
+            modlist += [
+                Initializer(Const(Value(self.ctype, theta_lxp1)),
+                    '({theta})*({lx2p1})'.format(theta=self.tsym, lx2p1=str(float(2*lx + 1)))),
+
+                Initializer(Const(Value(self.ctype, str(self.get_p_sym(lx+1,lx+1)))),
+                    '({m1m2lx})*({sqrttmp})*({plxlx})'.format(
+                        m1m2lx=str(float(-1.0 - 2.0*lx)), sqrttmp=sqrttmp, plxlx=str(self.get_p_sym(lx, lx)))
+                ),
+
+                Initializer(Const(Value(self.ctype, self.get_p_sym(lx+1,lx))),
+                    '({theta_lxp1}) * ({plxlx})'.format(
+                        theta=self.tsym, theta_lxp1=theta_lxp1, plxlx=str(self.get_p_sym(lx,lx)))
+                ),
+            ]
+            self.flops['*'] += 3
+
+            if (lx, 0) in d.keys():
+                modlist += [
+                    Line(str(dx)) for dx in d[(lx, 0)] 
+                ]
+
+            for mx in range(lx):
+                modlist += [
+                    Initializer(Const(Value(self.ctype, self.get_p_sym(lx+1, mx))),
+                        '(({theta_lxp1}) * {plxmx} - ({lxpmx}) * {plx1mx} ) * ({ilxmmxp1})'.format(
+                            theta_lxp1=theta_lxp1,
+                            lx2p1=str(float(2*lx + 1)),
+                            plxmx=str(self.get_p_sym(lx,mx)),
+                            plx1mx=str(self.get_p_sym(lx-1,mx)),
+                            ilxmmxp1=str(float(1.0/(lx - mx + 1))),
+                            lxpmx=str(float(lx + mx))
+                        )
+                    )
+                ]
+                self.flops['*'] += 4
+                self.flops['-'] += 1
+
+                if (lx, mx+1) in d.keys():
+                    modlist += [
+                        Line(str(dx)) for dx in d[(lx, mx+1)] 
+                    ]
+
+
+        lx = self.maxl
+        for mx in range(0, lx+1):
+            if (lx, mx) in d.keys():
+                modlist += [
+                    Line(str(dx)) for dx in d[(lx, mx)] 
+                ]
+        """
+
+
+
+        self.module = Module(modlist)
+        return modlist
+        
+
+    def get_p_sym(self, l, m):
+        assert l > -1
+        m = abs(m)
+        assert m <= self.maxl
+        assert l <= self.maxl
+        return _Symbol('{p}l{l}m{m}'.format(p=self.psym, l=l, m=m))
+    
+    def _get_next_tmp(self):
+        self.tmp_count += 1
+        return self.ptmp + str(self.tmp_count)
+
+
+
+
+
+
+
+
+
+
+
+class SphGenEphemeral(object):
+    def __init__(self, maxl, sym='_Y', theta_sym='theta', phi_sym='phi', ctype='double', avoid_calls=False, radius_symbol=False):
+        self.maxl = maxl
+        self.sym = sym
+        self.theta_sym = theta_sym
+        self.phi_sym = phi_sym
+        self.ctype = ctype
+        self.avoid_calls = avoid_calls
+        self.radius_symbol = radius_symbol
+        self.header = Include('math.h')
+        self.flops = {'+': 0, '-': 0, '*': 0, '/': 0}
+        self.lpmv_gen = ALegendrePolynomialGenEphemeral(maxl=self.maxl, psym='_P'+sym, tsym='cos_' + theta_sym, ctype=self.ctype,
+                avoid_calls=self.avoid_calls)
+
+        radius_lpmv_gen = PRadiusModifier(self.lpmv_gen, radius_symbol=radius_symbol)
+        self.radius_lpmv_gen = radius_lpmv_gen
+
+
+
+    def __call__(self, din):
+
+        def icv_wrap(a, b):
+            return Initializer(Const(Value(self.ctype, a)), b)
+ 
+        modlist = []
+        if self.avoid_calls:
+           pass
+        else:
+            modlist += [
+                icv_wrap('cos_' + self.theta_sym, 'cos(' + self.theta_sym + ')'),
+            ]
+
+
+
+        exp_gen = SphExpGen(maxl=self.maxl, esym='_E'+self.sym, psym=self.phi_sym, ctype=self.ctype, avoid_calls=self.avoid_calls)
+        #coeff_gen = SphCoeffGen(maxl=maxl, sym='_sqrtmf'+sym, ctype=self.ctype)
+        
+
+        modlist += [
+            exp_gen.module,
+        ]
+        
+        for kx in self.flops.keys():
+            self.flops[kx] += self.lpmv_gen.flops[kx] + exp_gen.flops[kx]# + coeff_gen.flops[kx]
+
+        
+        def H(lx, mx):
+            return _Symbol(str(sqrt(factorial(lx - abs(mx)) / factorial(lx + abs(mx)))))
+
+        
+        d = {}
+
+        for lx in range(self.maxl+1):
+            self.flops['*'] += lx+1
+            self.flops['*'] += 2 * (2*lx+1)
+
+            mx = 0
+
+            ml = [
+                self.radius_lpmv_gen.get_line(lx, mx),
+                icv_wrap(
+                    self._get_intermediate_sym(lx, mx),
+                    H(lx, mx) * self.radius_lpmv_gen.get_p_sym(lx, abs(mx))
+                ),
+                icv_wrap(
+                    self.get_y_sym(lx, mx)[0],
+                    self._get_intermediate_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[0]
+                ),
+                icv_wrap(
+                    self.get_y_sym(lx, mx)[1],
+                    self._get_intermediate_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[1]
+                )
+            ]
+            if (lx, mx) in din.keys():
+                ml += [
+                    Line(str(dx)) for dx in din[(lx, mx)] 
+                ]
+
+            d[(lx, mx)] = ml
+
+            for mx in range(1, lx+1):
+                ml = [
+                    self.radius_lpmv_gen.get_line(lx, mx),
+                    icv_wrap(
+                        self._get_intermediate_sym(lx, mx),
+                        H(lx, mx) * self.radius_lpmv_gen.get_p_sym(lx, abs(mx))
+                    ),
+                    icv_wrap(
+                        self.get_y_sym(lx, mx)[0],
+                        self._get_intermediate_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[0]
+                    ),
+                    icv_wrap(
+                        self.get_y_sym(lx, mx)[1],
+                        self._get_intermediate_sym(lx, abs(mx)) * exp_gen.get_e_sym(mx)[1]
+                    ),
+                    icv_wrap(
+                        self.get_y_sym(lx, -mx)[0],
+                        self._get_intermediate_sym(lx, abs(mx)) * exp_gen.get_e_sym(-mx)[0]
+                    ),
+                    icv_wrap(
+                        self.get_y_sym(lx, -mx)[1],
+                        self._get_intermediate_sym(lx, abs(mx)) * exp_gen.get_e_sym(-mx)[1]
+                    )
+                ]
+                if (lx, mx) in din.keys():
+                    ml += [
+                        Line(str(dx)) for dx in din[(lx, mx)] 
+                    ]
+                if (lx, -mx) in din.keys():
+                    ml += [
+                        Line(str(dx)) for dx in din[(lx, -mx)] 
+                    ]
+
+
+                d[(lx, mx)] = ml
+
+
+        modlist += self.lpmv_gen(d)
+
+
+        self.module = Module(modlist)
+
+        return self.module
+
+
+
+
+
+    def get_y_sym(self, n, m):
+        assert n > -1
+        assert n <= self.maxl
+        assert abs(m) <= n
+        ms = 'mn' if m < 0 else 'mp'
+        ms += str(abs(m))
+        s = self.sym + 'n' + str(abs(n)) + ms
+        return _Symbol('_re' + s), _Symbol('_im' + s)
+
+
+    def _get_intermediate_sym(self, n, m):
+        assert n > -1
+        assert n <= self.maxl
+        assert abs(m) <= n
+        ms = 'mn' if m < 0 else 'mp'
+        ms += str(abs(m))
+        s = self.sym + 'n' + str(abs(n)) + ms
+        return _Symbol('_Hnm_' + s)
+
+
+    def get_radius_sym(self, n):
+        return self.radius_lpmv_gen.get_radius_sym(n)
+
+
+
+def py_multipole_exp(L, sph, charge, arr):
+    """
+    For a charge at the point sph computes the multipole moments at the origin
+    and appends them onto arr.
+    """
+
+    llimit = L
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + llimit**2
+    def Hfoo(nx, mx): return sqrt(float(factorial(nx - abs(mx)))/factorial(nx + abs(mx)))
+    
+    cosv = np.zeros(3 * llimit)
+    sinv = np.zeros(3 * llimit)
+    for mx in range(-llimit, llimit+1):
+        cosv[mx] = cos(-1.0 * mx * sph[2])
+        sinv[mx] = sin(-1.0 * mx * sph[2])
+
+    for lx in range(L):
+        scipy_p = lpmv(range(lx+1), lx, cos(sph[1]))
+        radn = sph[0] ** lx
+        for mx in range(-lx, lx+1):
+            coeff = charge * radn * Hfoo(lx, mx) * scipy_p[abs(mx)] 
+            arr[re_lm(lx, mx)] += cosv[mx] * coeff
+            arr[im_lm(lx, mx)] += sinv[mx] * coeff
+
+
+def py_local_exp(L, sph, charge, arr):
+    """
+    For a charge at the point sph computes the local moments at the origin
+    and appends them onto arr.
+    """
+
+    llimit = L
+    def re_lm(l,m): return (l**2) + l + m
+    def im_lm(l,m): return (l**2) + l +  m + llimit**2
+    def Hfoo(nx, mx): return sqrt(float(factorial(nx - abs(mx)))/factorial(nx + abs(mx)))
+    
+    cosv = np.zeros(3 * llimit)
+    sinv = np.zeros(3 * llimit)
+    for mx in range(-llimit, llimit+1):
+        cosv[mx] = cos(-1.0 * mx * sph[2])
+        sinv[mx] = sin(-1.0 * mx * sph[2])
+
+    for lx in range(L):
+        scipy_p = lpmv(range(lx+1), lx, cos(sph[1]))
+        radn = 1.0 / (sph[0] ** (lx+1))
+        for mx in range(-lx, lx+1):
+            coeff = charge * radn * Hfoo(lx, mx) * scipy_p[abs(mx)] 
+            arr[re_lm(lx, mx)] += cosv[mx] * coeff
+            arr[im_lm(lx, mx)] += sinv[mx] * coeff
+
+
+
+
+
+
+
+
+
+
 
 

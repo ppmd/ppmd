@@ -6,6 +6,7 @@ import numpy as np
 from mpi4py import MPI
 from ppmd import pygcl
 
+from ppmd.mpi import AllocMem
 from ppmd.coulomb.cached import cached
 
 __author__ = "W.R.Saunders"
@@ -402,8 +403,8 @@ class OctalGridLevel(object):
         self.parent_comm = parent_comm
         self.ncubes_global = (2**level)**3
         self.ncubes_side_global = 2**level
-
         self.comm = parent_comm
+
         self.new_comm = False
         self.local_grid_cube_size = None
         """Size of grid"""
@@ -419,6 +420,10 @@ class OctalGridLevel(object):
         """Map from global cube index to owning MPI rank"""
         self.global_to_local = np.zeros(shape=(2**level, 2**level, 2**level),
                                dtype=INT64)
+
+        self._global_to_local = AllocMem(shape=(2**level, 2**level, 2**level), dtype=INT64)
+        self.global_to_local = self._global_to_local.array
+
         """Map from global cube index to local cube index"""
         self.global_to_local_halo = np.zeros(
             shape=(2**level, 2**level, 2**level), dtype=INT64)
@@ -431,11 +436,16 @@ class OctalGridLevel(object):
         self.global_to_local_parent[:] = -1
         self.global_to_local[:] = -1
 
+        self._tmp_comm = None
         if parent_comm != MPI.COMM_NULL:
             self._init_comm(parent_comm)
             self._init_decomp(parent_comm, entry_map)
+
+
         if self.comm != MPI.COMM_NULL:
             self._init_halo_exchange_method()
+
+
 
         self.nbytes = self.owners.nbytes + self.global_to_local.nbytes +\
             self.global_to_local_halo.nbytes
@@ -446,10 +456,12 @@ class OctalGridLevel(object):
 
         parent_rank = parent_comm.Get_rank()
 
+
         current_dims = parent_comm.Get_topo()[0]
         new_dims = (min(current_dims[0], work_units_per_side),
                     min(current_dims[1], work_units_per_side),
                     min(current_dims[2], work_units_per_side))
+
 
         # is the parent communicator too large?
         if not(new_dims[0] == current_dims[0] and
@@ -459,14 +471,24 @@ class OctalGridLevel(object):
             work_units = new_dims[0] * new_dims[1] * new_dims[2]
 
             color = 0 if parent_rank < work_units else MPI.UNDEFINED
+
+            #print("OctalGridLevel init broken"); return
             tmp_comm = parent_comm.Split(color=color, key=parent_rank)
-            
             if tmp_comm != MPI.COMM_NULL:
                 self.comm = tmp_comm.Create_cart(dims=new_dims,
                     periods=(1, 1, 1), reorder=False)
+                tmp_comm.Free()
             else:
                 self.comm = MPI.COMM_NULL
+
             self.new_comm = True
+
+    def free(self):
+        if self.comm != MPI.COMM_NULL and self.new_comm:
+            self.comm.Free()
+
+    def __del__(self):
+        self.free()
 
 
     def _init_decomp(self, parent_comm, entry_map=None):
@@ -589,19 +611,16 @@ class OctalTree(object):
         self.num_levels = num_levels
         self.cart_comm = cart_comm
         self.levels = []
-        comm_tmp = cart_comm
-
         self.entry_map = cube_owner_map(cart_comm, 2 ** (num_levels - 1), True)
 
         # work up tree from finest level as largest cart_comm is on the finest
         # level
         for lx in range(self.num_levels - 1, -1, -1):
             m = self.entry_map if lx == self.num_levels - 1 else None
-            level_tmp = OctalGridLevel(level=lx, parent_comm=comm_tmp,
+            level_tmp = OctalGridLevel(level=lx, parent_comm=cart_comm,
                                        entry_map=m)
 
             self.levels.append(level_tmp)
-            comm_tmp = level_tmp.comm
         self.levels.reverse()
 
         self.nbytes = sum([lx.nbytes for lx in self.levels])
@@ -614,6 +633,10 @@ class OctalTree(object):
 
     def __getitem__(self, item):
         return self.levels[item]
+
+    def free(self):
+        for lvl in self.levels:
+            lvl.free()
 
 
 class EntryData(object):
@@ -858,7 +881,10 @@ class OctalDataTree(object):
         self.ncomp = ncomp
         self.dtype = dtype
         self.mode = mode
+        
+        self._data_list = []
         self.data = []
+
         self.num_data = []
         self._num_cells = []
 
@@ -874,7 +900,12 @@ class OctalDataTree(object):
                     shape = list(lvl.parent_local_size) + [ncomp]
             else:
                 shape = (0,0,0,0)
-            self.data.append(np.zeros(shape=shape, dtype=dtype))
+            
+            # these arrays are alloced with MPI.Alloc_mem so they can portably
+            # be used with MPI.Win.Create
+            self._data_list.append(AllocMem(shape=shape, dtype=dtype))
+            self.data.append(self._data_list[-1].array)
+
             self.num_data.append(shape[0]*shape[1]*shape[2]*shape[3])
             self._num_cells.append(shape[0]*shape[1]*shape[2])
 
@@ -936,8 +967,8 @@ def send_parent_to_halo(src_level, parent_data_tree, halo_data_tree):
     comm = tree[src_level].comm
     rank = comm.Get_rank()
 
-    dst = halo_data_tree[src_level - 1].ravel()
-    src = parent_data_tree[src_level].ravel()
+    dst = halo_data_tree[src_level - 1].view().ravel()
+    src = parent_data_tree[src_level].view().ravel()
 
     dst_g2l = tree[src_level - 1].global_to_local_halo
     src_g2l = tree[src_level].global_to_local_parent

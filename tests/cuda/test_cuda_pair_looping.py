@@ -7,12 +7,16 @@ import math
 
 
 import ppmd as md
-import ppmd.cuda as mdc
+
+import ppmd.cuda
+import ppmd.cuda.cuda_pairloop
+
+
 from ppmd.access import *
 Kernel = md.kernel.Kernel
 
 
-cuda = pytest.mark.skipif("mdc.CUDA_IMPORT is False")
+cuda = pytest.mark.skipif("ppmd.cuda.CUDA_IMPORT is False")
 
 N = 1000
 crN = 10 #cubert(N)
@@ -26,11 +30,11 @@ rank = md.mpi.MPI.COMM_WORLD.Get_rank()
 nproc = md.mpi.MPI.COMM_WORLD.Get_size()
 
 
-if mdc.CUDA_IMPORT:
-    PositionDat = mdc.cuda_data.PositionDat
-    ParticleDat = mdc.cuda_data.ParticleDat
-    ScalarArray = mdc.cuda_data.ScalarArray
-    State = mdc.cuda_state.State
+if ppmd.cuda.CUDA_IMPORT:
+    PositionDat = ppmd.cuda.cuda_data.PositionDat
+    ParticleDat = ppmd.cuda.cuda_data.ParticleDat
+    ScalarArray = ppmd.cuda.cuda_data.ScalarArray
+    State = ppmd.cuda.cuda_state.State
 
 h_PositionDat = md.data.PositionDat
 h_ParticleDat = md.data.ParticleDat
@@ -43,13 +47,13 @@ h_State = md.state.State
 @cuda
 @pytest.fixture
 def state(request):
-    if mdc.CUDA_IMPORT_ERROR is not None:
-        print(mdc.CUDA_IMPORT_ERROR)
+    if ppmd.cuda.CUDA_IMPORT_ERROR is not None:
+        print(ppmd.cuda.CUDA_IMPORT_ERROR)
 
     A = State()
     A.npart = N
     A.domain = md.domain.BaseDomainHalo(extent=(E,E,E))
-    A.domain.boundary_condition = mdc.cuda_domain.BoundaryTypePeriodic()
+    A.domain.boundary_condition = ppmd.cuda.cuda_domain.BoundaryTypePeriodic()
 
     A.p = PositionDat(ncomp=3)
     A.v = ParticleDat(ncomp=3)
@@ -113,7 +117,7 @@ def test_cuda_pair_loop_1(state):
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
-    loop = mdc.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
+    loop = ppmd.cuda.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
                                                      dat_dict=kernel_map,
                                                      shell_cutoff=cell_width-tol)
 
@@ -153,7 +157,7 @@ def test_cuda_pair_loop_2(state):
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
-    loop = mdc.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
+    loop = ppmd.cuda.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
                                                      dat_dict=kernel_map,
                                                      shell_cutoff=cell_width+tol)
 
@@ -193,7 +197,7 @@ def test_cuda_pair_loop_3(state):
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
-    loop = mdc.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
+    loop = ppmd.cuda.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
                                                      dat_dict=kernel_map,
                                                      shell_cutoff=math.sqrt(2.)*cell_width-tol)
 
@@ -233,7 +237,7 @@ def test_cuda_pair_loop_4(state):
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
-    loop = mdc.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
+    loop = ppmd.cuda.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
                                                      dat_dict=kernel_map,
                                                      shell_cutoff=math.sqrt(2.)*cell_width+tol)
 
@@ -275,7 +279,7 @@ def test_cuda_pair_loop_5(state):
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
-    loop = mdc.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
+    loop = ppmd.cuda.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
                                                      dat_dict=kernel_map,
                                                      shell_cutoff=math.sqrt(3.)*cell_width-tol)
 
@@ -317,7 +321,7 @@ def test_cuda_pair_loop_ns_1(state):
     kernel_map = {'P': state.p(md.access.R),
                   'NC': state.nc(md.access.W)}
 
-    loop = mdc.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
+    loop = ppmd.cuda.cuda_pairloop.PairLoopNeighbourListNS(kernel=kernel,
                                                      dat_dict=kernel_map,
                                                      shell_cutoff=math.sqrt(3.)*cell_width+tol)
 
@@ -329,7 +333,7 @@ def test_cuda_pair_loop_ns_1(state):
         assert nc[ix] == 26
 
 
-PairLoop = mdc.cuda_pairloop.PairLoopNeighbourListNS
+PairLoop = ppmd.cuda.cuda_pairloop.PairLoopNeighbourListNS
 @pytest.fixture(scope="module", params=list({ctypes.c_int, ctypes.c_double}))
 def DTYPE(request):
     return request.param
