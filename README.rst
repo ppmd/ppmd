@@ -24,9 +24,9 @@ Required System tools:
 * A C/C++ compiler, preferably intel (see ``PPMD_CC_MAIN`` environment variable).
 * CUDA Toolkit if targeting CUDA.
 
-The recommended installation method is to create a Python virtual environment then install PPMD with:
+The recommended installation method is to create a Python virtual environment then install (or upgrade) PPMD with:
 
-``pip install --no-cache-dir git+https://github.com/ppmd/ppmd@master``
+``pip install --upgrade --no-cache-dir git+https://github.com/ppmd/ppmd@master``
 
 For CUDA support please install PyCUDA:
 
