@@ -39,7 +39,7 @@ static inline void global_local_cell_tuple(
     // this kills the vectorisation but should never be triggered
     // which avoids vectorisation effecting the cell binning
     // there is almost certainly a better solution that is portable
-    if ( (abs(px - boundary[0] - 1) < 0.01) || (abs(py - boundary[1] - 1) < 0.01) || (abs(pz - boundary[2] - 1) < 0.01) ) {
+    if ( (ABS(px - boundary[0] - 1) < 0.01) || (ABS(py - boundary[1] - 1) < 0.01) || (ABS(pz - boundary[2] - 1) < 0.01) ) {
         printf("px %f, pxs %f, rgx %f, cx %d, gcx %d\n", px, pxs, rgx, *cx, *gcx);
         printf("py %f, pys %f, rgy %f, cy %d, gcy %d\n", py, pys, rgy, *cy, *gcy);
         printf("pz %f, pzs %f, rgz %f, cz %d, gcz %d\n", pz, pzs, rgz, *cz, *gcz);

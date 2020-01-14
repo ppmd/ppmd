@@ -519,7 +519,7 @@ INT64 particle_extraction(
 
             for( int mx=-1*lx ; mx<=lx ; mx++ ){
                 // energy computation
-                const INT64 abs_mx = abs(mx);
+                const INT64 abs_mx = ABS(mx);
 
                 const REAL ycoeff = sqrt(factorial_vec[lx - abs_mx]/
                     factorial_vec[lx + abs_mx]);

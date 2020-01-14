@@ -21,6 +21,7 @@ using namespace std;
 
 #define MIN(x, y) ((x < y) ? x : y)
 
+#define ABS(x) ((x) > 0 ? (x) : -1*(x))
 /*
 Layout of memory used by above macros.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

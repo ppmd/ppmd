@@ -250,12 +250,16 @@ class PRadiusModifier:
         return _Symbol(self.radius_symbol+'_'+str(l))
 
     def get_line(self, lx, mx):
-        return Initializer(
-            Const(
-                Value(self.lpmv_gen.ctype, self.get_p_sym(lx, mx))
-            ), 
-            self.lpmv_gen.get_p_sym(lx, mx) * self.get_radius_sym(lx)
-        )
+
+        if self.radius_symbol:
+            return Initializer(
+                Const(
+                    Value(self.lpmv_gen.ctype, self.get_p_sym(lx, mx))
+                ), 
+                self.lpmv_gen.get_p_sym(lx, mx) * self.get_radius_sym(lx)
+            )
+        else:
+            return Comment('No radius coefficient for l={} m={}'.format(lx, mx))
 
 
 class SphGen(object):

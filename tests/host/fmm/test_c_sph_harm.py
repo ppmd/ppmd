@@ -189,7 +189,7 @@ def test_c_ephemeral_harm_1():
             ctypes.byref(err)
         )
 
-        assert abs(err.value) < 10.**-16
+        assert abs(err.value) < 10.**-15
 
 
 
@@ -278,7 +278,6 @@ def test_c_ephemeral_harm_lexp_1():
         TO_TEST_GEN=m
     )
     
-    print(src)
 
     lib = simple_lib_creator(header_code='', src_code=src)['test']
 

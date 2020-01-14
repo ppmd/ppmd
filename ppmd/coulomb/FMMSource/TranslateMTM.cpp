@@ -147,7 +147,7 @@ int translate_mtm(
                 for(INT64 nx=0     ; nx<=jx ; nx++){
                 for(INT64 mx=-1*nx ; mx<=nx ; mx++){
                     
-                    const bool km_jn = abs(kx - mx) <= (jx-nx);
+                    const bool km_jn = ABS(kx - mx) <= (jx-nx);
                     //const REAL mask = (km_jn) ? 1.0 : 0.0;
                     const REAL mask = 1.0;
 
