@@ -38,11 +38,11 @@ def create_halo_pairs_slice_halo(comm, cell_array, slicexyz, direction,
     wy = width[1]
     wz = width[0]
 
-    if not isinstance(xr, collections.Iterable):
+    if not isinstance(xr, collections.abc.Iterable):
         xr = [xr]
-    if not isinstance(yr, collections.Iterable):
+    if not isinstance(yr, collections.abc.Iterable):
         yr = [yr]
-    if not isinstance(zr, collections.Iterable):
+    if not isinstance(zr, collections.abc.Iterable):
         zr = [zr]
 
     l = len(xr) * len(yr) * len(zr)

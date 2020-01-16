@@ -45,11 +45,11 @@ def create_halo_pairs_slice_halo(domain_in, slicexyz, direction):
     yr = range(0, cell_array[1])[slicexyz[1]]
     zr = range(0, cell_array[2])[slicexyz[2]]
 
-    if not isinstance(xr, collections.Iterable):
+    if not isinstance(xr, collections.abc.Iterable):
         xr = [xr]
-    if not isinstance(yr, collections.Iterable):
+    if not isinstance(yr, collections.abc.Iterable):
         yr = [yr]
-    if not isinstance(zr, collections.Iterable):
+    if not isinstance(zr, collections.abc.Iterable):
         zr = [zr]
 
     l = len(xr) * len(yr) * len(zr)
