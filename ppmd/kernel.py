@@ -135,7 +135,7 @@ class Reduction(object):
     @property
     def index(self):
         """Returns index in C pointer syntax, eg u[0] returns 0"""
-        return re.match('(' + self._var + '\[)(.*)(\])', self._pointer).group(2)
+        return re.match('(' + self._var + r'\[)(.*)(\])', self._pointer).group(2)
 
 
 
@@ -165,7 +165,7 @@ class Constant(object):
 
         # forbiddenChars='[^a-zA-Z0-9_]' #='[\W]'='[^\w]'
 
-        forbiddenchars = '[\W]'
+        forbiddenchars = r'[\W]'
         regex = '(?<=' + forbiddenchars + ')(' + self._name + ')(?=' + forbiddenchars + ')'
 
         return re.sub(regex, str(repr(self._value)), s)

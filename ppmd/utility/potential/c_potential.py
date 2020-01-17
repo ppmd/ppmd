@@ -12,7 +12,7 @@ from ppmd import kernel, data, access
 
 
 class BasePotential(object):
-    """Abstract base class for inter-atomic potentials.
+    r"""Abstract base class for inter-atomic potentials.
 
     Inter-atomic potentials can be described by a scalar
     function :math:`V(r)` which depends on the distance :math:`r=|\\vec{r}_i-\\vec{r}_j|`
@@ -29,7 +29,7 @@ class BasePotential(object):
 ################################################################################################################          
 
 class LennardJonesShifted(BasePotential):
-    """Shifted Lennard Jones potential.
+    r"""Shifted Lennard Jones potential.
     
     .. math:
         V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + 1/4)
@@ -116,7 +116,7 @@ class LennardJonesShifted(BasePotential):
 ################################################################################################################  
 
 class LennardJones(LennardJonesShifted):
-    """Lennard Jones potential.
+    r"""Lennard Jones potential.
     
     .. math:
         V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + u(5/2 \sigma))
@@ -257,10 +257,10 @@ class NULL(object):
 
 
 class LennardJonesCounter(LennardJones):
-    """Lennard Jones potential.
+    r"""Lennard Jones potential.
     
     .. math:
-        V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + u(5/2 \sigma))
+        V(r) = 4 \epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + u(5/2 \sigma))
         
     for :math:`r>r_c=(5/2) \sigma` the potential (and force) is set to zero.
 
@@ -353,7 +353,7 @@ class LennardJonesCounter(LennardJones):
                 'OUTCOUNT': self._counter_outer(access.INC)}
 
 class TestPotential1(LennardJones):
-    """Lennard Jones potential.
+    r"""Lennard Jones potential.
 
     .. math:
         V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + u(5/2 \sigma))
@@ -398,7 +398,7 @@ class TestPotential1(LennardJones):
 
 
 class TestPotential2(LennardJones):
-    """Lennard Jones potential.
+    r"""Lennard Jones potential.
 
     .. math:
         V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + u(5/2 \sigma))
@@ -457,7 +457,7 @@ class TestPotential2(LennardJones):
 
 
 class TestPotential3(LennardJones):
-    """Lennard Jones potential.
+    r"""Lennard Jones potential.
 
     .. math:
         V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + u(5/2 \sigma))
@@ -515,7 +515,7 @@ class TestPotential3(LennardJones):
 
 
 class TestPotential4(LennardJones):
-    """Lennard Jones potential.
+    r"""Lennard Jones potential.
 
     .. math:
         V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + u(5/2 \sigma))
@@ -595,7 +595,7 @@ class TestPotential4(LennardJones):
 
 
 class TestPotential4p(LennardJones):
-    """Lennard Jones potential.
+    r"""Lennard Jones potential.
 
     .. math:
         V(r) = 4\epsilon ((r/\sigma)^{-6} - (r/\sigma)^{-12} + u(5/2 \sigma))
