@@ -19,7 +19,7 @@ def Restrict(keyword, symbol):
 class ParticleLoopOMP(ParticleLoop):
     def _get_allowed_types(self):
         return {
-            data.ScalarArray: (access.READ,),
+            data.ScalarArray: (access.READ, access._INTERNAL_RW),
             data.ParticleDat: access.all_access_types,
             data.PositionDat: access.all_access_types,
             data.GlobalArrayClassic: (access.INC_ZERO, access.INC, access.READ),
@@ -82,8 +82,8 @@ class ParticleLoopOMP(ParticleLoop):
                 _kernel_arg_decls.append(kernel_arg)
 
                 if mode.write is True:
-                    assert issubclass(type(obj), data.GlobalArrayClassic), "global array must be a thread safe type for \
-                    write access. Type is:" + str(type(obj))
+                    assert issubclass(type(obj), data.GlobalArrayClassic) or mode == access._INTERNAL_RW, \
+                        "global array must be a thread safe type for write access. Type is:" + str(type(obj))
 
 
             elif issubclass(type(dat[1][0]), host.Matrix):

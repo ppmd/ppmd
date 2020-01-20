@@ -157,7 +157,7 @@ INC_ZERO = INC0
 
 all_access_types = (READ, WRITE, INC_ZERO, INC, RW)
 
-
+_INTERNAL_RW = AccessType("RW")
 
 
 class DatArgStore(object):
