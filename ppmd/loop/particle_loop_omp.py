@@ -11,7 +11,7 @@ import cgen
 # package level
 from ppmd import runtime, host, opt, data, access
 from ppmd.loop.particle_loop import ParticleLoop
-from ppmd.lib.common import ctypes_map
+from ppmd.lib.common import ctypes_map, OMP_DECOMP_HEADER
 
 def Restrict(keyword, symbol):
     return str(keyword) + ' ' + str(symbol)
@@ -31,7 +31,7 @@ class ParticleLoopOMP(ParticleLoop):
         self._components = {
             'LIB_PAIR_INDEX_0': '_i',
             'LIB_NAME': str(self._kernel.name) + '_wrapper',
-            'LIB_HEADERS': [cgen.Include('omp.h', system=True),],
+            'LIB_HEADERS': [cgen.Include('omp.h', system=True), cgen.Line(OMP_DECOMP_HEADER)],
             'OMP_THREAD_INDEX_SYM': '_threadid',
             'OMP_SHARED_SYMS': []
         }
@@ -175,17 +175,24 @@ class ParticleLoopOMP(ParticleLoop):
             shared+= sx+','
         shared = shared[:-1]
 
-        pragma = cgen.Pragma('omp parallel for default(none) schedule(static) shared(' + shared + ')')
-        if runtime.OMP_NUM_THREADS is None:
-            pragma = cgen.Comment(pragma)
+        pragma = cgen.Pragma('omp parallel default(none) shared(' + shared + ')')
+        
+        parallel_region = cgen.Block(
+            (
+                cgen.Value('int', '_thread_start'),
+                cgen.Value('int', '_thread_end'),
+                cgen.Line('get_thread_decomp((int)_N_LOCAL, &_thread_start, &_thread_end);'),
+                cgen.For('int ' + i + '= _thread_start',
+                        i + '< _thread_end',
+                        i+'++',
+                        block)
+            )
+        )
 
         loop = cgen.Module([
             cgen.Line('omp_set_num_threads(_NUM_THREADS);'),
             pragma,
-            cgen.For('int ' + i + '=0',
-                    i + '<_N_LOCAL',
-                    i+'++',
-                    block)
+            parallel_region
         ])
 
         self._components['LIB_OUTER_LOOP'] = loop

@@ -47,4 +47,61 @@ class DtypeToCtype:
 
 ctypes_map = DtypeToCtype(_ctypes_map)
 
+OMP_DECOMP_HEADER=r'''
 
+#include <stdlib.h>
+
+#ifndef TESTING
+#include <omp.h>
+#endif
+
+#ifndef TESTING
+#define get_num_threads omp_get_num_threads
+#else
+#define get_num_threads test_get_num_threads
+#endif
+
+#ifndef TESTING
+#define get_thread_num omp_get_thread_num
+#else
+#define get_thread_num test_get_thread_num
+#endif
+
+#ifdef TESTING
+static int num_threads = 0;
+static int thread_num = 0;
+
+static int test_get_num_threads(){return num_threads;}
+static int test_get_thread_num(){return thread_num;}
+
+extern "C"
+int test_set_num_threads(const int n){num_threads = n; return 0;}
+
+extern "C"
+int test_set_thread_num(const int n){thread_num = n; return 0;}
+#endif
+
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
+#ifdef TESTING
+extern "C"
+#else
+static inline
+#endif
+int get_thread_decomp(const int N, int * rstart, int * rend){
+    
+    const div_t pq = div(N, get_num_threads());
+    const int i = get_thread_num();
+    const int p = pq.quot;
+    const int q = pq.rem;
+    const int n = (i < q) ? (p + 1) : p;
+    const int start = (MIN(i, q) * (p + 1)) + ((i > q) ? (i - q) * p : 0);
+    const int end = start + n;
+    
+    *rstart = start;
+    *rend = end;
+    
+    return 0;
+}
+
+'''
