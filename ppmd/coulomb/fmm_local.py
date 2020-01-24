@@ -45,19 +45,7 @@ class FMMLocal(object):
 
         self.sh = pairloop.state_handler.StateHandler(state=None, shell_cutoff=width)
 
-        with open(str(_SRC_DIR) + \
-                          '/FMMSource/LocalCells.cpp') as fh:
-            cpp = fh.read()
-        with open(str(_SRC_DIR) + \
-                          '/FMMSource/LocalCells.h') as fh:
-            hpp = fh.read()
-
-        hpp = hpp % {
-            'SUB_FORCE_UNIT': str(force_unit),
-            'SUB_ENERGY_UNIT': str(energy_unit)
-        }
-
-        self._lib = build.simple_lib_creator(hpp, cpp, 'fmm_local')['local_cell_by_cell']
+        self._build_lib(force_unit, energy_unit)
 
         self._global_size = np.zeros(3, dtype=INT64)
         self._global_size[:] = entry_map.cube_side_count
@@ -88,6 +76,21 @@ class FMMLocal(object):
         self._tmp_real_ui = host.ThreadSpace(n=bn, dtype=REAL)
 
         self.exec_count = 0
+    
+    def _build_lib(self, force_unit, energy_unit):
+
+        with open(str(_SRC_DIR) + '/FMMSource/LocalCells.cpp') as fh:
+            cpp = fh.read()
+        with open(str(_SRC_DIR) + '/FMMSource/LocalCells.h') as fh:
+            hpp = fh.read()
+
+        hpp = hpp % {
+            'SUB_FORCE_UNIT': str(force_unit),
+            'SUB_ENERGY_UNIT': str(energy_unit)
+        }
+
+        self._lib = build.simple_lib_creator(hpp, cpp, 'fmm_local')['local_cell_by_cell']       
+
 
     def __call__(self, positions, charges, forces, cells, potential=None):
         """

@@ -203,6 +203,10 @@ int local_cell_by_cell(
     const REAL hex = ex*0.5;
     const REAL hey = ey*0.5;
     const REAL hez = ez*0.5;
+
+    const REAL CWX = extent[0] / ((REAL) global_size[2]);
+    const REAL CWY = extent[1] / ((REAL) global_size[1]);
+    const REAL CWZ = extent[2] / ((REAL) global_size[0]);
     
     INT64 _exec_count = 0;
 
@@ -269,16 +273,41 @@ shared(ll_array, ll_ccc_array, C, P, global_size)
             //// if the particle is on (or above) the upper bound but the cell is from the lower half then this is a halo particle
             //// copied over the periodic boundary
             // same logic for lower bound
+            
+
+                 if ( (hpx >  hex ) && ( ocx <  (hshift_x-1)   ))                       {{ tcx += hshift_x; }} // obvious halo case upper
+            else if ( (hpx >= hex ) && ( ocx == 0         ))                            {{ tcx += hshift_x; }}
+            else if ( (hpx <  hex ) && ( ocx == 0         ) && ( hpx > (hex - CWX) ))   {{ tcx += hshift_x; }} 
+            else if ( (hpx > ex ) && ( ocx == (hshift_x-1)   ))                         {{ tcx += hshift_x; }} 
 
 
-            if ((hpx >= hex) && (ocx < (global_size[2]-1)))         { tcx += hshift_x; }
-            if ((hpx <= -1.0*hex) && (  ocx > 0 ))                  { tcx -= hshift_x; }
+            else if ( (hpx <  -1.0*hex) && (  ocx >  0         ))                                   {{ tcx -= hshift_x; }} // obvious halo case lower
+            else if ( (hpx <= -1.0*hex ) && ( ocx == (hshift_x-1)   ))                              {{ tcx -= hshift_x; }}
+            else if ( (hpx >  -1.0*hex ) && ( ocx == (hshift_x-1) ) && ( hpx < (-1.0*hex + CWX) ))  {{ tcx -= hshift_x; }}
+            else if ( (hpx < -1.0 * ex ) && ( ocx == 0   ))                                         {{ tcx -= hshift_x; }} 
 
-            if ((hpy >= hey) && ( ocy < (global_size[1]-1) ))       { tcy += hshift_y; }
-            if ((hpy <= -1.0*hey) && ( ocy > 0 ) )                  { tcy -= hshift_y; }
 
-            if ((hpz >= hez) && (ocz < (global_size[0]-1)))         { tcz += hshift_z; }
-            if ((hpz <= -1.0*hez) && (ocz > 0))                     { tcz -= hshift_z; }
+                 if ( (hpy >  hey ) && ( ocy <  (hshift_y-1)   ))                       {{ tcy += hshift_y; }} // obvious halo case upper
+            else if ( (hpy >= hey ) && ( ocy == 0         ))                            {{ tcy += hshift_y; }}
+            else if ( (hpy <  hey ) && ( ocy == 0         ) && ( hpy > (hey - CWY) ))   {{ tcy += hshift_y; }} 
+            else if ( (hpy > ey ) && ( ocy == (hshift_y-1)   ))                         {{ tcy += hshift_y; }} 
+
+
+            else if ( (hpy <  -1.0*hey) && (  ocy >  0         ))                                   {{ tcy -= hshift_y; }} // obvious halo case lower
+            else if ( (hpy <= -1.0*hey ) && ( ocy == (hshift_y-1)   ))                              {{ tcy -= hshift_y; }}
+            else if ( (hpy >  -1.0*hey ) && ( ocy == (hshift_y-1) ) && ( hpy < (-1.0*hey + CWY) ))  {{ tcy -= hshift_y; }}
+            else if ( (hpy < -1.0 * ey ) && ( ocy == 0   ))                                         {{ tcy -= hshift_y; }} 
+
+                 if ( (hpz >  hez ) && ( ocz <  (hshift_z-1)   ))                       {{ tcz += hshift_z; }} // obvious halo case upper
+            else if ( (hpz >= hez ) && ( ocz == 0         ))                            {{ tcz += hshift_z; }}
+            else if ( (hpz <  hez ) && ( ocz == 0         ) && ( hpz > (hez - CWZ) ))   {{ tcz += hshift_z; }} 
+            else if ( (hpz > ez ) && ( ocz == (hshift_z-1)   ))                         {{ tcz += hshift_z; }} 
+
+            else if ( (hpz <  -1.0*hez) && (  ocz >  0         ))                                   {{ tcz -= hshift_z; }} // obvious halo case lower
+            else if ( (hpz <= -1.0*hez ) && ( ocz == (hshift_z-1)   ))                              {{ tcz -= hshift_z; }}
+            else if ( (hpz >  -1.0*hez ) && ( ocz == (hshift_z-1) ) && ( hpz < (-1.0*hez + CWZ) ))  {{ tcz -= hshift_z; }}
+            else if ( (hpz < -1.0 * ez ) && ( ocz == 0   ))                                         {{ tcz -= hshift_z; }} 
+
             
 
             // halo particle is very far from this domain
@@ -294,6 +323,7 @@ shared(ll_array, ll_ccc_array, C, P, global_size)
                 skip = 1;
                 continue;
             }
+
 
         }
 

@@ -868,7 +868,9 @@ class PyFMM(object):
                                                        potential=potential)
         else:
             self._cuda_start_local(positions, charges, forces=forces,
-                potential=potential)
+                potential=potential)    
+
+
 
         for level in range(self.R - 1, 0, -1):
 
