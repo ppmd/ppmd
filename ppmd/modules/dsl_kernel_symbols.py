@@ -3,6 +3,7 @@ regex alter kernel symbols
 """
 
 from __future__ import division, print_function, absolute_import
+
 __author__ = "W.R.Saunders"
 __copyright__ = "Copyright 2016, W.R.Saunders"
 __license__ = "GPL"
@@ -15,17 +16,11 @@ import re
 class DSLKernelSymSub(object):
     def __init__(self, kernel):
         self.kernel = kernel
-    
+
     def sub_sym(self, old_sym, new_sym):
 
-        #fchars = '[\W]'
-        fchars = '[^a-zA-Z0-9_]' #='[\W]'='[^\w]'
-        regex = '(?<=' + fchars + ')(' + old_sym + ')(?=' + fchars + ')'
+        fchars = "[^a-zA-Z0-9_]"  # ='[\W]'='[^\w]'
+        regex = "(?<=" + fchars + ")(" + re.escape(old_sym) + ")"
 
-
-        regex = old_sym
-        self.kernel = re.sub(regex, new_sym, self.kernel)
-
-
-
-
+        k = re.sub(regex, new_sym, self.kernel)
+        self.kernel = k
