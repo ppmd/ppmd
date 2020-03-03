@@ -3,3 +3,4 @@ ppmd/config/default.cfg
 *.pyc
 .idea
 bitbucket-pipelines.yml
+*.swp
