@@ -31,11 +31,11 @@ static inline REAL compute_interactions_same_cell(
         const REAL pz = pi[2*si + pxi];
         const REAL q = qi[pxi];
 
-#pragma omp simd \
-reduction(+:energyi) \
-reduction(+:fx) \
-reduction(+:fy) \
-reduction(+:fz) //\
+//#pragma omp simd \
+//reduction(+:energyi) \
+//reduction(+:fx) \
+//reduction(+:fy) \
+//reduction(+:fz) //\
 //simdlen(8)
         for(INT64 pxj=0 ; pxj<nj ; pxj++){
             const REAL dx = pj[     + pxj] - px ;
@@ -97,11 +97,11 @@ static inline REAL compute_interactions(
         const REAL py = pi[1*si + pxi];
         const REAL pz = pi[2*si + pxi];
         const REAL q = qi[pxi];
-#pragma omp simd \
-reduction(+:energyi) \
-reduction(+:fx) \
-reduction(+:fy) \
-reduction(+:fz) //\
+//#pragma omp simd \
+//reduction(+:energyi) \
+//reduction(+:fx) \
+//reduction(+:fy) \
+//reduction(+:fz) //\
 //simdlen(8)        
         for(INT64 pxj=0 ; pxj<nj ; pxj++){
             const REAL dx = pj[      + pxj ] - px ;

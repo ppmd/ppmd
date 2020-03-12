@@ -440,7 +440,7 @@ static inline void mtl_z(
 //const REAL outer_coeff = ia_jn * m1tn * rr_jn1;
             const REAL outer_coeff = m1 * rr_jn1;
 
-#pragma omp simd 
+//#pragma omp simd 
             for(INT64 kx=-1*kmax ; kx<=kmax    ; kx++){
                 const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
                 const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + kx];
@@ -461,7 +461,7 @@ static inline void mtl_z(
 //const REAL outer_coeff = ia_jn * m1tn * rr_jn1;
             const REAL outer_coeff = m1 * rr_jn1;
 
-#pragma omp simd 
+//#pragma omp simd 
             for(INT64 kx=-1*kmax ; kx<=kmax    ; kx++){
                 const REAL ajk = a_array[jx * ASTRIDE1 + ASTRIDE2 + kx];     // A_j^k
                 const REAL anm = a_array[nx*ASTRIDE1 + ASTRIDE2 + kx];
@@ -756,7 +756,7 @@ static inline void blocked_wigner_matvec(
             for(INT64 rx=0 ; rx<p ; rx++){
                 REAL hre = 0.0;
                 REAL lre = 0.0;
-#pragma omp simd reduction(+:hre) reduction(+:lre)
+//#pragma omp simd reduction(+:hre) reduction(+:lre)
                 for(INT64 cx=0 ; cx<n ; cx++){
                     const REAL a = W[rx*n + cx];
                     hre += a * re_bz[cx+blk*stride];
@@ -980,7 +980,7 @@ static inline void blocked_mtl_z(
 
                 const INT64 lind = blkx*im_offset + CUBE_IND(jx, 0);
                 const INT64 oind = blkx*im_offset + CUBE_IND(nx, 0);
-#pragma omp simd
+//#pragma omp simd
                 for(INT64 kx=-1*kmax ; kx<=kmax    ; kx++){
                     const REAL coeff_re = coeff_arr[kx];
 
