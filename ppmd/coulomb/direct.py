@@ -248,22 +248,10 @@ class NearestDirect:
         return phi.value
 
 
-class PBCDirect:
-    def __init__(self, E, domain, L):
+class FarFieldDirect:
+    def __init__(self, domain, L, ex=None):
 
-        if not isinstance(E, Iterable):
-            E = (E, E, E)
-
-        if abs(E[0] - E[1]) < 10**-14 and abs(E[0] - E[2]) < 10**-14:
-            il = None
-            ex = None
-        else:
-            il, ex = compute_interaction_lists(domain.extent)
-
-        
         self.lrc = LongRangeMTL(L, domain, exclude_tuples=ex)
-
-        self._nd = NearestDirect(E, tuples=ex)
 
         self.ncomp = 2*(L**2)
         self.half_ncomp = L**2
@@ -274,8 +262,6 @@ class PBCDirect:
         self.local_dot_coeffs = np.zeros(self.ncomp, dtype=REAL)
 
     def __call__(self, N, P, Q):
-
-        sr = self._nd(N, P, Q)
 
         self.multipole_exp.fill(0)
         self.local_dot_coeffs.fill(0)
@@ -294,6 +280,30 @@ class PBCDirect:
         self.lrc(self.multipole_exp, L_tmp)
 
         lr = 0.5 * np.dot(L_tmp, self.local_dot_coeffs)
+
+        return lr
+
+
+class PBCDirect:
+    def __init__(self, E, domain, L):
+
+        if not isinstance(E, Iterable):
+            E = (E, E, E)
+
+        if abs(E[0] - E[1]) < 10**-14 and abs(E[0] - E[2]) < 10**-14:
+            il = None
+            ex = None
+        else:
+            il, ex = compute_interaction_lists(domain.extent)
+
+        self._ffd = FarFieldDirect(domain, L, ex)
+        self._nd = NearestDirect(E, tuples=ex)
+
+
+    def __call__(self, N, P, Q):
+
+        sr = self._nd(N, P, Q)
+        lr = self._ffd(N, P, Q)
 
         return sr + lr
 
