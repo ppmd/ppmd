@@ -43,9 +43,9 @@ class StateModifier:
         for vx in values.items():
             v = np.atleast_2d(vx[1])
             if v.shape[0] != num:
-                raise RuntimeError("Numpy arrays of propoerties have varying numbers of rows.")
+                raise RuntimeError("Numpy arrays of properties have varying numbers of rows.")
             if vx[0].ncomp != v.shape[1]:
-                raise RuntimeError("Numpy arrays of propoerties has wrong number of columns for corresponding ParticleDat.")
+                raise RuntimeError("Numpy arrays of properties has wrong number of columns for corresponding ParticleDat.")
 
         if len(values) > 0:
             self._to_add.append(values)

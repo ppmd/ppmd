@@ -32,7 +32,7 @@ class BaseDomainHalo(object):
 
     """
 
-    def __init__(self, extent=None, periods=(1, 1, 1), comm=mpi.MPI.COMM_WORLD):
+    def __init__(self, extent=None, periods=(1, 1, 1), comm=mpi.MPI.COMM_WORLD, boundary_condition=None):
         self._init_cells = False
         self._init_decomp = False
 
@@ -54,8 +54,7 @@ class BaseDomainHalo(object):
 
         self._halos = True
 
-
-        self.boundary_condition = None
+        self.boundary_condition = boundary_condition
 
         #vars to return boudary cells
         self._boundary_cell_version = -1

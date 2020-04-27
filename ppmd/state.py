@@ -79,6 +79,13 @@ class BaseMDState(object):
 
         self._state_modifier_context = StateModifierContext(self)
         self.modifier = StateModifier(self)
+
+        if 'domain' in kwargs.keys():
+            self.domain = kwargs['domain']
+
+        if 'particle_dats' in kwargs.keys():
+            for ix in kwargs['particle_dats'].items():
+                setattr(self, ix[0], ix[1])
     
     
     def invalidate_lists(self):
