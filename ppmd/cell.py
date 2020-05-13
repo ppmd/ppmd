@@ -247,7 +247,6 @@ class CellList(object):
         Creates looping for cell list creation
         """
 
-        print("Cell list setup")
         # Construct initial cell list
         self._cell_list = host.Array(dtype=ct.c_int,
             ncomp=self._positions.max_npart + self._domain.cell_count + 1)
@@ -285,13 +284,10 @@ class CellList(object):
 
         self.timer_sort.start()
         
-        print(self._cell_list.ncomp, self._positions.max_npart + self._domain.cell_count + 1, self._cell_reverse_lookup.ncomp, self._positions.max_npart)
         if self._cell_reverse_lookup.ncomp < self._positions.max_npart:
-            print("Realloc hit 1")
             self._cell_reverse_lookup.realloc(self._positions.max_npart)
 
         if self._cell_list.ncomp < self._positions.max_npart + self._domain.cell_count + 1:
-            print("Realloc hit 2")
             self._cell_list.realloc(self._positions.max_npart + self._domain.cell_count + 1)
 
 
