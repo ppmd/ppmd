@@ -44,10 +44,13 @@ reduction(+ : totaln) reduction(min: err)
 
                     // check if close enough
                     if ( (rj0*rj0 + rj1*rj1+ rj2*rj2) <= cutoff2 ) {
+        if ((nn+1) > STRIDE) {printf("bad neighbour count\n"); err=-1;}
+        if (ndx+(nn+1) > STRIDE*NPART) {printf("bad neighbour index\n"); err=-2;}
                         NLIST[ndx+nn] = jx;
                         nn++;
                     }
                 }
+
                 jx = qlist[jx];
             }
         }
