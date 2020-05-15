@@ -53,14 +53,18 @@ class NeighbourListOMPSub(object):
         self.timer_update.start()
         
         n = npart_local
+        if self.ncount.shape[0] < n:
+            self.ncount = np.zeros(n+10, dtype=INT64)
+
         needed_stride = self.cell_list.max_cell_contents_count*27
 
         if self.stride.value < needed_stride:
             self.stride.value = needed_stride
-        if self.ncount.shape[0] < n:
-            self.ncount = np.zeros(n+100, dtype=INT64)
-        if self.matrix.shape[0] < n*needed_stride:
-            self.matrix = np.zeros((n+100)*needed_stride, dtype=INT64)
+
+        if self.matrix.shape[0] < n*self.stride.value:
+            self.matrix = np.zeros((n+10)*self.stride.value, dtype=INT64)
+
+        assert self.matrix.size >= npart_local * self.stride.value
 
         _nt = INT64(0)
         ret = self._lib(

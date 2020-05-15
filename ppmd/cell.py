@@ -246,6 +246,7 @@ class CellList(object):
         """
         Creates looping for cell list creation
         """
+
         # Construct initial cell list
         self._cell_list = host.Array(dtype=ct.c_int,
             ncomp=self._positions.max_npart + self._domain.cell_count + 1)
@@ -282,7 +283,7 @@ class CellList(object):
         assert ct.c_int == self._cell_reverse_lookup.dtype
 
         self.timer_sort.start()
-
+        
         if self._cell_reverse_lookup.ncomp < self._positions.max_npart:
             self._cell_reverse_lookup.realloc(self._positions.max_npart)
 
@@ -394,8 +395,8 @@ class CellList(object):
 
             self._cell_list.data[self._cell_list.end] = self._cell_list.end -\
                                                         cell_count
-
-            # cell reverse lookup
+        
+        if self._cell_reverse_lookup.ncomp < total_size:
             self._cell_reverse_lookup.realloc(total_size)
 
     def post_halo_exchange(self):
