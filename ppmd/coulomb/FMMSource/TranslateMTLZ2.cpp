@@ -1051,12 +1051,15 @@ int translate_mtl(
     //const INT64 block_end = 0;
     
 //printf("block_count %d, peel_size %d\n", block_count, ncells-block_end);
-
-    #pragma omp parallel for default(none) schedule(static, 1) \
-    shared(dim_child, multipole_moments, local_moments, \
-    alm, almr, i_array, int_list, int_tlookup, \
-    int_plookup, int_radius, dim_eight, dim_halo, \
-    wig_forw, wig_back, exp_re, exp_im, gthread_space)
+    
+    //TODO
+    //#pragma omp parallel for default(none) schedule(static, 1) \
+    //shared(dim_child, multipole_moments, local_moments, \
+    //alm, almr, i_array, int_list, int_tlookup, \
+    //int_plookup, int_radius, dim_eight, dim_halo, \
+    //wig_forw, wig_back, exp_re, exp_im, gthread_space)
+    
+    #pragma omp parallel for schedule(static, 1)
     for( INT64 blk=0 ; blk<block_end ; blk+=block_size ){
 
         const int tid = omp_get_thread_num();
@@ -1127,11 +1130,15 @@ int translate_mtl(
     //return 0;
 
     // peel loop
-    #pragma omp parallel for default(none) schedule(dynamic) \
-    shared(dim_child, multipole_moments, local_moments, \
-    alm, almr, i_array, int_list, int_tlookup, \
-    int_plookup, int_radius, dim_eight, dim_halo, \
-    wig_forw, wig_back, exp_re, exp_im, gthread_space)
+    // TODO
+    //#pragma omp parallel for default(none) schedule(dynamic) \
+    //shared(dim_child, multipole_moments, local_moments, \
+    //alm, almr, i_array, int_list, int_tlookup, \
+    //int_plookup, int_radius, dim_eight, dim_halo, \
+    //wig_forw, wig_back, exp_re, exp_im, gthread_space)
+
+
+    #pragma omp parallel for schedule(dynamic)
     for( INT64 pcx=0 ; pcx<ncells ; pcx++ ){
         INT64 cx, cy, cz;
         lin_to_xyz(dim_child, pcx, &cx, &cy, &cz);

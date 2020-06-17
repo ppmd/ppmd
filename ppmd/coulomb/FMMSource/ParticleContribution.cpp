@@ -275,8 +275,12 @@ INT64 particle_contribution(
     };
 
     // loop over particle and assign them to threads based on cell
-    #pragma omp parallel for default(none) shared(thread_assign, position, \
-    boundary, cube_offset, cube_dim, cube_ilen, charge, fmm_cell, cube_side_counts) \
+    // TODO
+    //#pragma omp parallel for default(none) shared(thread_assign, position, \
+    //boundary, cube_offset, cube_dim, cube_ilen, charge, fmm_cell, cube_side_counts) \
+    //reduction(min: err)
+
+    #pragma omp parallel for \
     reduction(min: err)
     for(INT64 ix=0 ; ix<npart ; ix++){
 
@@ -339,11 +343,16 @@ INT64 particle_contribution(
 
 
     INT64 count = 0;
-    #pragma omp parallel for default(none) shared(thread_assign, position, boundary, \
-        cube_offset, cube_dim, err, cube_data, exp_space, factorial_vec, double_factorial_vec, P_SPACE_VEC, \
-        cube_half_side_len, cube_ilen, charge) \
+    // TODO
+    //#pragma omp parallel for default(none) shared(thread_assign, position, boundary, \
+    //    cube_offset, cube_dim, err, cube_data, exp_space, factorial_vec, double_factorial_vec, P_SPACE_VEC, \
+    //    cube_half_side_len, cube_ilen, charge) \
+    //    schedule(static,1) \
+    //    reduction(+: count)
+
+    #pragma omp parallel for \
         schedule(static,1) \
-        reduction(+: count)
+        reduction(+: count)   
     for(INT64 tx=0 ; tx<thread_max ; tx++){
         const int tid = omp_get_thread_num();
         const INT64 ncomp = nlevel*nlevel*2;

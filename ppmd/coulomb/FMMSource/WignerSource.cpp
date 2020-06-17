@@ -143,7 +143,7 @@ int get_matrix_set(
 		const INT64 p = 2*jx+1;
         if (p > nthreads){
             const INT64 wp = p*inthreads;
-#pragma omp parallel for default(none) shared(mat_re, jx) schedule(static, wp)
+#pragma omp parallel for schedule(static, wp)
             for(INT64 mpx=-1*jx ; mpx<=jx ; mpx++){
                 for(INT64 mx=-1*jx ; mx<=jx ; mx++){
                     mat_re[jx][(mpx+jx)*p + (mx+jx)] = rec(jx, mx, mpx, cb, sb, mat_re[jx-1]);

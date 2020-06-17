@@ -404,12 +404,15 @@ int translate_mtl(
 
     const INT64 phi_stride = 8*nlevel + 2;
     const INT64 theta_stride = 4 * nlevel * nlevel;
+    
+    //TODO
+    //#pragma omp parallel for default(none) schedule(dynamic) \
+    //shared(dim_child, multipole_moments, local_moments, \
+    //alm, almr, i_array, int_list, int_tlookup, \
+    //int_plookup, int_radius, dim_eight, dim_halo, \
+    //re_mat_back, im_mat_back, im_mat_forw, re_mat_forw, gthread_space)
 
-    #pragma omp parallel for default(none) schedule(dynamic) \
-    shared(dim_child, multipole_moments, local_moments, \
-    alm, almr, i_array, int_list, int_tlookup, \
-    int_plookup, int_radius, dim_eight, dim_halo, \
-    re_mat_back, im_mat_back, im_mat_forw, re_mat_forw, gthread_space)
+    #pragma omp parallel for schedule(dynamic)   
     for( INT64 pcx=0 ; pcx<ncells ; pcx++ ){
         INT64 cx, cy, cz;
         lin_to_xyz(dim_child, pcx, &cx, &cy, &cz);

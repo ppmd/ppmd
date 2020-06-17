@@ -383,11 +383,16 @@ INT64 particle_extraction(
     INT64 _shift_no = 0;
 
     REAL potential_energy = 0.0;
-    #pragma omp parallel for default(none) shared(thread_assign, position, \
-        boundary, cube_offset, cube_dim, err, exp_space, force, \
-        factorial_vec, P_SPACE_VEC, L_SPACE_VEC,\
-        cube_half_side_len, cube_ilen, charge, local_moments, fmm_cell, cube_side_counts,\
-        alm, almr, i_array, potential_array) \
+    // TODO
+    //#pragma omp parallel for default(none) shared(thread_assign, position, \
+    //    boundary, cube_offset, cube_dim, err, exp_space, force, \
+    //    factorial_vec, P_SPACE_VEC, L_SPACE_VEC,\
+    //    cube_half_side_len, cube_ilen, charge, local_moments, fmm_cell, cube_side_counts,\
+    //    alm, almr, i_array, potential_array) \
+    //    schedule(dynamic) \
+    //    reduction(+: count) reduction(+: potential_energy) reduction(+:_shift_yes) reduction(+:_shift_no)
+
+    #pragma omp parallel for \
         schedule(dynamic) \
         reduction(+: count) reduction(+: potential_energy) reduction(+:_shift_yes) reduction(+:_shift_no)
     for(INT64 ix=0 ; ix<npart ; ix++){

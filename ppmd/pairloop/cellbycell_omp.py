@@ -534,7 +534,7 @@ class CellByCellOMP(object):
         for sx in self._components['OMP_SHARED_SYMS']:
             shared+= sx+','
         shared = shared[:-1]
-        pragma = cgen.Pragma('omp parallel for default(none) schedule(dynamic) shared(' + shared + ')')
+        pragma = cgen.Pragma('omp parallel for schedule(dynamic) // default(none) shared(' + shared + ')')
         if runtime.OMP_NUM_THREADS is None:
             pragma = cgen.Comment(pragma)
 

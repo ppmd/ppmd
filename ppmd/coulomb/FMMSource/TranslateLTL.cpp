@@ -203,9 +203,11 @@ int translate_ltl(
     const INT64 im_offset = nlevel*nlevel;
     const INT64 im_offset2 = 4*nlevel*nlevel;
 
-    #pragma omp parallel for default(none) schedule(dynamic) \
-    shared(dim_parent, dim_child, moments_child, moments_parent, \
-    ylm, alm, almr, i_array)
+    //#pragma omp parallel for default(none) schedule(dynamic) \
+    //shared(dim_parent, dim_child, moments_child, moments_parent, \
+    //ylm, alm, almr, i_array)
+    
+    #pragma omp parallel for schedule(dynamic)
     for( INT64 pcx=0 ; pcx<nparent_cells ; pcx++ ){
         INT64 cx, cy, cz;
         lin_to_xyz(dim_parent, pcx, &cx, &cy, &cz);
