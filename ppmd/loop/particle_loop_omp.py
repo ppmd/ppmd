@@ -175,7 +175,7 @@ class ParticleLoopOMP(ParticleLoop):
             shared+= sx+','
         shared = shared[:-1]
 
-        pragma = cgen.Pragma('omp parallel default(none) shared(' + shared + ')')
+        pragma = cgen.Pragma('omp parallel //default(none) shared(' + shared + ')')
         
         parallel_region = cgen.Block(
             (
