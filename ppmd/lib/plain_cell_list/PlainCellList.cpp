@@ -19,9 +19,11 @@ int PlainCellList(
     const INT64 static_size = (npart/max_threads)+1;
 
     // bin particles into cells
-#pragma omp parallel for default(none) \
-shared(positions, crl, inverse_cell_lengths, cell_array,\
-local_boundary) schedule(static, static_size)
+    // TODO
+//#pragma omp parallel for default(none) \
+//shared(positions, crl, inverse_cell_lengths, cell_array,\
+//local_boundary) schedule(static, static_size)
+#pragma omp parallel for default(none) schedule(static, static_size)   
     for(INT64 px=0 ; px<npart ; px++){
         const REAL rx = positions[px*3]   - local_boundary[0];
         const REAL ry = positions[px*3+1] - local_boundary[1];
@@ -45,8 +47,11 @@ local_boundary) schedule(static, static_size)
 
     // construct cell list from binned particles
     // might be quicker in serial
-#pragma omp parallel default(none) \
-shared(crl, ccc, cell_array, list)
+    // TODO
+//#pragma omp parallel default(none) \
+//shared(crl, ccc, cell_array, list)
+
+#pragma omp parallel 
     {
         const INT64 nthread = omp_get_num_threads();
         const INT64 threadid = omp_get_thread_num();

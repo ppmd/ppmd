@@ -23,9 +23,13 @@ int OMPNeighbourMatrixSub(
     
     const REAL cutoff2 = cutoff*cutoff;
 
-#pragma omp parallel for default(none) schedule(dynamic)\
-shared(NLIST, NNEIG, P, qlist, CRL, tmp_offset) \
-reduction(+ : totaln) reduction(min: err)
+    //TODO
+//#pragma omp parallel for default(none) schedule(dynamic)\
+//shared(NLIST, NNEIG, P, qlist, CRL, tmp_offset) \
+//reduction(+ : totaln) reduction(min: err)
+
+#pragma omp parallel for schedule(dynamic)\
+reduction(+ : totaln) reduction(min: err)   
     for(INT64 px=0 ; px<NPART ; px++){
         const INT64 my_cell = CRL[px];
         // NNEIG[px] contains the number of neighbours of particle px. The start position is px*stride, neighbours
