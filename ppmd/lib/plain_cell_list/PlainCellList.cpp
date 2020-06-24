@@ -23,7 +23,7 @@ int PlainCellList(
 //#pragma omp parallel for default(none) \
 //shared(positions, crl, inverse_cell_lengths, cell_array,\
 //local_boundary) schedule(static, static_size)
-#pragma omp parallel for default(none) schedule(static, static_size)   
+#pragma omp parallel for schedule(static, static_size)   
     for(INT64 px=0 ; px<npart ; px++){
         const REAL rx = positions[px*3]   - local_boundary[0];
         const REAL ry = positions[px*3+1] - local_boundary[1];
