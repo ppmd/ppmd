@@ -1,0 +1,7 @@
+ppmd.cuda.cuda\_halo module
+===========================
+
+.. automodule:: ppmd.cuda.cuda_halo
+   :members:
+   :undoc-members:
+   :show-inheritance:

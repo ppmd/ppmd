@@ -1,0 +1,7 @@
+ppmd.state\_modifier module
+===========================
+
+.. automodule:: ppmd.state_modifier
+   :members:
+   :undoc-members:
+   :show-inheritance:

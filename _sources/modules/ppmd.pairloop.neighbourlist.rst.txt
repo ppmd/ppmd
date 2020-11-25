@@ -1,0 +1,7 @@
+ppmd.pairloop.neighbourlist module
+==================================
+
+.. automodule:: ppmd.pairloop.neighbourlist
+   :members:
+   :undoc-members:
+   :show-inheritance:

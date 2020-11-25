@@ -1,0 +1,7 @@
+ppmd.coulomb.ewald module
+=========================
+
+.. automodule:: ppmd.coulomb.ewald
+   :members:
+   :undoc-members:
+   :show-inheritance:

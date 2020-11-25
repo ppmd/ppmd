@@ -1,0 +1,7 @@
+ppmd.coulomb.fmm\_cuda module
+=============================
+
+.. automodule:: ppmd.coulomb.fmm_cuda
+   :members:
+   :undoc-members:
+   :show-inheritance:

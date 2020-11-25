@@ -1,0 +1,170 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Installation &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Examples" href="examples.html" />
+    <link rel="prev" title="Introduction" href="concept.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="contents topic" id="contents">
+<p class="topic-title">Contents</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#installation" id="id1">Installation</a></p>
+<ul>
+<li><p><a class="reference internal" href="#dependencies-and-installation" id="id2">Dependencies and Installation</a></p>
+<ul>
+<li><p><a class="reference internal" href="#environment-variables" id="id3">Environment Variables</a></p></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="installation">
+<h1><a class="toc-backref" href="#id1">Installation</a><a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<p>PPMD is developed to run on Linux 64bit machines. Other operating systems may work but are not actively developed upon at this time.</p>
+<div class="section" id="dependencies-and-installation">
+<h2><a class="toc-backref" href="#id2">Dependencies and Installation</a><a class="headerlink" href="#dependencies-and-installation" title="Permalink to this headline">¶</a></h2>
+<p>Required System tools:</p>
+<ul class="simple">
+<li><p>Python 3+ (<code class="docutils literal notranslate"><span class="pre">PYTHONHASHSEED</span></code> must be set to the same non-zero value on all MPI hosts).</p></li>
+<li><p>mpi4py compatible MPI3.0+ (with development headers e.g. <code class="docutils literal notranslate"><span class="pre">libopenmpi-dev</span> <span class="pre">openmpi-bin</span> <span class="pre">mpi-default-bin</span></code> on ubuntu 17.04.).</p></li>
+<li><p>A C/C++ compiler, preferably intel (see <code class="docutils literal notranslate"><span class="pre">PPMD_CC_MAIN</span></code> environment variable).</p></li>
+<li><p>CUDA Toolkit if targeting CUDA.</p></li>
+</ul>
+<p>The recommended installation method (and upgrade method) is to create a Python virtual environment then install (or upgrade) PPMD with:</p>
+<p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">--upgrade</span> <span class="pre">--no-cache-dir</span> <span class="pre">git+https://github.com/ppmd/ppmd&#64;master</span></code></p>
+<p>For CUDA support please install PyCUDA:</p>
+<p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">--no-cache-dir</span> <span class="pre">pycuda</span></code></p>
+<p>The installation can then by customised with the environment variables defined below.</p>
+<div class="section" id="environment-variables">
+<h3><a class="toc-backref" href="#id3">Environment Variables</a><a class="headerlink" href="#environment-variables" title="Permalink to this headline">¶</a></h3>
+<p>The code generation system relies on consistency of the following environment variable across all MPI processes, this value must be set for parallel MPI execution.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">PYTHONHASHSEED</span></code>: e.g <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">PYTHONHASHSEED=123</span></code>.</p></li>
+</ul>
+<p>Set the following environment variables to alter compilers used and default temporary directories. If these variables are not set the default behaviour is to use GCC and build temporary files to <code class="docutils literal notranslate"><span class="pre">/tmp/build</span></code>.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">PPMD_BUILD_DIR</span></code>: The directory used as a storage location for generated libraries. For example: <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">PPMD_BUILD_DIR=/tmp/build</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PPMD_CC_MAIN</span></code>: Name of the compiler to use from compilers defined in <code class="docutils literal notranslate"><span class="pre">ppmd/config/compilers</span></code> or in a directory given by <code class="docutils literal notranslate"><span class="pre">PPMD_EXTRA_COMPILERS</span></code>. For example: <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">PPMD_CC_MAIN=ICC</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PPMD_CC_OMP</span></code>: Name of the OpenMP compiler to use, as above. For example: <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">PPMD_CC_OMP=$PPMD_CC_MAIN</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PPMD_EXTRA_COMPILERS</span></code>: Directory that should be parsed for user defined compilers.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PPMD_DISABLE_CUDA</span></code>: Disable CUDA initialisation.</p></li>
+</ul>
+<p id="cuda">The following should be set if CUDA support is desired.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">CUDA_SDK</span></code>: location of CUDA_SDK (or path containing the helper header files from the sdk).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MPI_HOME</span></code>: Used by the default CUDA compiler configuration to locate the desired MPI implementation.</p></li>
+</ul>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="concept.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#dependencies-and-installation">Dependencies and Installation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#environment-variables">Environment Variables</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/ppmd.html">ppmd package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="concept.html" title="previous chapter">Introduction</a></li>
+      <li>Next: <a href="examples.html" title="next chapter">Examples</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/installation.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

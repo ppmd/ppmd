@@ -1,0 +1,7 @@
+ppmd.pairloop.base module
+=========================
+
+.. automodule:: ppmd.pairloop.base
+   :members:
+   :undoc-members:
+   :show-inheritance:

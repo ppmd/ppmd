@@ -1,0 +1,7 @@
+ppmd.coulomb.wigner module
+==========================
+
+.. automodule:: ppmd.coulomb.wigner
+   :members:
+   :undoc-members:
+   :show-inheritance:

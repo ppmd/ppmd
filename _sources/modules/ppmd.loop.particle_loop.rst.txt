@@ -1,0 +1,7 @@
+ppmd.loop.particle\_loop module
+===============================
+
+.. automodule:: ppmd.loop.particle_loop
+   :members:
+   :undoc-members:
+   :show-inheritance:

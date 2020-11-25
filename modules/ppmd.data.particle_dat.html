@@ -1,0 +1,366 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.data.particle_dat module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.data.scalar_array module" href="ppmd.data.scalar_array.html" />
+    <link rel="prev" title="ppmd.data.global_array module" href="ppmd.data.global_array.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.data.particle_dat">
+<span id="ppmd-data-particle-dat-module"></span><h1>ppmd.data.particle_dat module<a class="headerlink" href="#module-ppmd.data.particle_dat" title="Permalink to this headline">¶</a></h1>
+<p>This module contains the <cite>ParticleDat</cite> class for adding data to particles.</p>
+<dl class="py class">
+<dt id="ppmd.data.particle_dat.ParticleDat">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.data.particle_dat.</code><code class="sig-name descname">ParticleDat</code><span class="sig-paren">(</span><em class="sig-param">npart=0</em>, <em class="sig-param">ncomp=1</em>, <em class="sig-param">initial_value=None</em>, <em class="sig-param">name=None</em>, <em class="sig-param">dtype=&lt;class 'ctypes.c_double'&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="ppmd.host.html#ppmd.host.Matrix" title="ppmd.host.Matrix"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.host.Matrix</span></code></a></p>
+<p>Base class to hold properties of particles. This could be considered as a two dimensional matrix
+with each row representing the stored properties of a particle.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>npart</strong> (<em>int</em>) – Number of particles (Number of row in matrix).</p></li>
+<li><p><strong>ncol</strong> (<em>int</em>) – Dimension of property to store per particle (Number of columns in matrix).</p></li>
+<li><p><strong>initial_value</strong> – Value to initialise array with, default zeros.</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Collective name of stored vars eg positions.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.broadcast_data_from">
+<code class="sig-name descname">broadcast_data_from</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rank</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">_resize_callback</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.broadcast_data_from" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.copy">
+<code class="sig-name descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.copy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.ctypes_data_access">
+<code class="sig-name descname">ctypes_data_access</code><span class="sig-paren">(</span><em class="sig-param">mode=Read and write.</em>, <em class="sig-param">pair=True</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.ctypes_data_access" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>mode</strong> (<em>access</em>) – Access type required by the calling method.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The pointer to the data.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.ctypes_data_post">
+<code class="sig-name descname">ctypes_data_post</code><span class="sig-paren">(</span><em class="sig-param">mode=Read and write.</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.ctypes_data_post" title="Permalink to this definition">¶</a></dt>
+<dd><p>Call after excuting a method on the data.
+:arg access mode: Access type required by the calling method.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.data">
+<em class="property">property </em><code class="sig-name descname">data</code><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.gather_data_on">
+<code class="sig-name descname">gather_data_on</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rank</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">_resize_callback</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.gather_data_on" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.halo_exchange">
+<code class="sig-name descname">halo_exchange</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.halo_exchange" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform a halo exchange for the particle dat.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.data.particle_dat.ParticleDat.halo_start">
+<code class="sig-name descname">halo_start</code><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.halo_start" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The starting index of the halo region of the particle dat.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.halo_start_reset">
+<code class="sig-name descname">halo_start_reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.halo_start_reset" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Reset the starting postion of the halo region in the particle dat to</dt><dd><p>the end of the local particles.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.halo_start_set">
+<code class="sig-name descname">halo_start_set</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">index</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.halo_start_set" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Set the start of the halo region in the particle dat to the specified</dt><dd><p>index.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.halo_start_shift">
+<code class="sig-name descname">halo_start_shift</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shift</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.halo_start_shift" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shift the starting point of the halo in the particle dat by the
+specified shift.
+:param int shift: Offset to shift by.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.mark_halos_old">
+<code class="sig-name descname">mark_halos_old</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.mark_halos_old" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.max">
+<code class="sig-name descname">max</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.max" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Maximum of local particles</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.data.particle_dat.ParticleDat.max_npart">
+<code class="sig-name descname">max_npart</code><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.max_npart" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The maximum number of particles which can be stored within this particle dat.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.modify_view">
+<code class="sig-name descname">modify_view</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.modify_view" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.data.particle_dat.ParticleDat.name">
+<code class="sig-name descname">name</code><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.name" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The name of the ParticleDat instance.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.data.particle_dat.ParticleDat.ncomp">
+<code class="sig-name descname">ncomp</code><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.ncomp" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The number of components stored for each particle.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.norm_linf">
+<code class="sig-name descname">norm_linf</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.norm_linf" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the L1 norm of the array</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.data.particle_dat.ParticleDat.npart_local">
+<code class="sig-name descname">npart_local</code><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.npart_local" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The number of particles with properties stored in the particle dat.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.data.particle_dat.ParticleDat.npart_local_halo">
+<code class="sig-name descname">npart_local_halo</code><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.npart_local_halo" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The number of particles currently stored within the halo region of the particle dat.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.npart_total">
+<em class="property">property </em><code class="sig-name descname">npart_total</code><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.npart_total" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the total number of particles in the dat including halo particles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.resize">
+<code class="sig-name descname">resize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span></em>, <em class="sig-param"><span class="n">_callback</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.resize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resize particle dat to be at least a certain size, does not resize if
+already large enough.
+:arg int n: New minimum size.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.sync_view_to_data">
+<code class="sig-name descname">sync_view_to_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.sync_view_to_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.view">
+<em class="property">property </em><code class="sig-name descname">view</code><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.view" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.particle_dat.ParticleDat.zero">
+<code class="sig-name descname">zero</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.ParticleDat.zero" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.data.particle_dat.PositionDat">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.data.particle_dat.</code><code class="sig-name descname">PositionDat</code><span class="sig-paren">(</span><em class="sig-param">npart=0</em>, <em class="sig-param">ncomp=3</em>, <em class="sig-param">initial_value=None</em>, <em class="sig-param">name=None</em>, <em class="sig-param">dtype=&lt;class 'ctypes.c_double'&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.particle_dat.PositionDat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.data.particle_dat.ParticleDat" title="ppmd.data.particle_dat.ParticleDat"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.data.particle_dat.ParticleDat</span></code></a></p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.data.particle_dat.TypedDat">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.data.particle_dat.</code><code class="sig-name descname">TypedDat</code><a class="headerlink" href="#ppmd.data.particle_dat.TypedDat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.data.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l5"><a class="reference internal" href="ppmd.data.data_movement.html">ppmd.data.data_movement module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.data.global_array.html">ppmd.data.global_array module</a></li>
+<li class="toctree-l5 current"><a class="current reference internal" href="#">ppmd.data.particle_dat module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.data.scalar_array.html">ppmd.data.scalar_array module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.data.html">ppmd.data package</a><ul>
+      <li>Previous: <a href="ppmd.data.global_array.html" title="previous chapter">ppmd.data.global_array module</a></li>
+      <li>Next: <a href="ppmd.data.scalar_array.html" title="next chapter">ppmd.data.scalar_array module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.data.particle_dat.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

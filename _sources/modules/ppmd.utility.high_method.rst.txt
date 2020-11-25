@@ -1,0 +1,7 @@
+ppmd.utility.high\_method module
+================================
+
+.. automodule:: ppmd.utility.high_method
+   :members:
+   :undoc-members:
+   :show-inheritance:

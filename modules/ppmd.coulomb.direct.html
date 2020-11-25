@@ -1,0 +1,190 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.coulomb.direct module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.coulomb.ewald module" href="ppmd.coulomb.ewald.html" />
+    <link rel="prev" title="ppmd.coulomb.cached module" href="ppmd.coulomb.cached.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.coulomb.direct">
+<span id="ppmd-coulomb-direct-module"></span><h1>ppmd.coulomb.direct module<a class="headerlink" href="#module-ppmd.coulomb.direct" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.coulomb.direct.FarFieldDirect">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.direct.</code><code class="sig-name descname">FarFieldDirect</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">domain</span></em>, <em class="sig-param"><span class="n">L</span></em>, <em class="sig-param"><span class="n">ex</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.direct.FarFieldDirect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.direct.FreeSpaceDirect">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.direct.</code><code class="sig-name descname">FreeSpaceDirect</code><a class="headerlink" href="#ppmd.coulomb.direct.FreeSpaceDirect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.direct.NearestDirect">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.direct.</code><code class="sig-name descname">NearestDirect</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em>, <em class="sig-param"><span class="n">tuples</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.direct.NearestDirect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.direct.PBCDirect">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.direct.</code><code class="sig-name descname">PBCDirect</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">E</span></em>, <em class="sig-param"><span class="n">domain</span></em>, <em class="sig-param"><span class="n">L</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.direct.PBCDirect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.direct.spherical">
+<code class="sig-prename descclassname">ppmd.coulomb.direct.</code><code class="sig-name descname">spherical</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">xyz</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.direct.spherical" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts the cartesian coordinates in xyz to spherical coordinates
+(radius, polar angle, longitude angle)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>xyz</strong> – Input xyz coordinates as Numpy array or tuple/list.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.coulomb.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.cached.html">ppmd.coulomb.cached module</a></li>
+<li class="toctree-l5 current"><a class="current reference internal" href="#">ppmd.coulomb.direct module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.ewald.html">ppmd.coulomb.ewald module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.ewald_half.html">ppmd.coulomb.ewald_half module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm.html">ppmd.coulomb.fmm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_cuda.html">ppmd.coulomb.fmm_cuda module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_interaction_lists.html">ppmd.coulomb.fmm_interaction_lists module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_local.html">ppmd.coulomb.fmm_local module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_pbc.html">ppmd.coulomb.fmm_pbc module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.lm.html">ppmd.coulomb.lm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.mm.html">ppmd.coulomb.mm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.mm_lm_common.html">ppmd.coulomb.mm_lm_common module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.octal.html">ppmd.coulomb.octal module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.sph_harm.html">ppmd.coulomb.sph_harm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.wigner.html">ppmd.coulomb.wigner module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.coulomb.html">ppmd.coulomb package</a><ul>
+      <li>Previous: <a href="ppmd.coulomb.cached.html" title="previous chapter">ppmd.coulomb.cached module</a></li>
+      <li>Next: <a href="ppmd.coulomb.ewald.html" title="next chapter">ppmd.coulomb.ewald module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.coulomb.direct.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,228 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.pygcl.halo_exchange_3d module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.utility package" href="ppmd.utility.html" />
+    <link rel="prev" title="ppmd.pygcl package" href="ppmd.pygcl.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.pygcl.halo_exchange_3d">
+<span id="ppmd-pygcl-halo-exchange-3d-module"></span><h1>ppmd.pygcl.halo_exchange_3d module<a class="headerlink" href="#module-ppmd.pygcl.halo_exchange_3d" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.pygcl.halo_exchange_3d.CellSlice">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.pygcl.halo_exchange_3d.</code><code class="sig-name descname">CellSlice</code><a class="headerlink" href="#ppmd.pygcl.halo_exchange_3d.CellSlice" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.pygcl.halo_exchange_3d.HaloExchange3D">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.pygcl.halo_exchange_3d.</code><code class="sig-name descname">HaloExchange3D</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">comm</span></em>, <em class="sig-param"><span class="n">dim</span></em>, <em class="sig-param"><span class="n">width</span><span class="o">=</span><span class="default_value">(1, 1, 1)</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.pygcl.halo_exchange_3d.HaloExchange3D" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt id="ppmd.pygcl.halo_exchange_3d.HaloExchange3D.boundary_cells">
+<code class="sig-name descname">boundary_cells</code><a class="headerlink" href="#ppmd.pygcl.halo_exchange_3d.HaloExchange3D.boundary_cells" title="Permalink to this definition">¶</a></dt>
+<dd><p>See self.boundary starts, cells to pack from.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.pygcl.halo_exchange_3d.HaloExchange3D.boundary_starts">
+<code class="sig-name descname">boundary_starts</code><a class="headerlink" href="#ppmd.pygcl.halo_exchange_3d.HaloExchange3D.boundary_starts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tuple 7x1, if this tuple is labeled b then direction i packs 
+elements c_{b_i} to c_{b_{i+1}} where c is self.boundary cells.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.pygcl.halo_exchange_3d.HaloExchange3D.comm">
+<code class="sig-name descname">comm</code><a class="headerlink" href="#ppmd.pygcl.halo_exchange_3d.HaloExchange3D.comm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cartesian communicator used.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.pygcl.halo_exchange_3d.HaloExchange3D.dim">
+<code class="sig-name descname">dim</code><a class="headerlink" href="#ppmd.pygcl.halo_exchange_3d.HaloExchange3D.dim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dimensions of local domain plus halo regions.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.pygcl.halo_exchange_3d.HaloExchange3D.exchange">
+<code class="sig-name descname">exchange</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">array</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.pygcl.halo_exchange_3d.HaloExchange3D.exchange" title="Permalink to this definition">¶</a></dt>
+<dd><p>Halo exchange the passed array using the setup scheme.
+:param array: Array size (n2, n1, n0, d) where (n2, n1, n0) is the 
+tuple the halo exchange scheme was constructed with. d is the number of
+components at each point (automatically determined). Data type needs to
+be compatible with mpi4py (automatically determined).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>None, Passed array is modified.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.pygcl.halo_exchange_3d.HaloExchange3D.halo_cells">
+<code class="sig-name descname">halo_cells</code><a class="headerlink" href="#ppmd.pygcl.halo_exchange_3d.HaloExchange3D.halo_cells" title="Permalink to this definition">¶</a></dt>
+<dd><p>See self.boundary_starts, cells to unpack into.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.pygcl.halo_exchange_3d.HaloExchange3D.halo_starts">
+<code class="sig-name descname">halo_starts</code><a class="headerlink" href="#ppmd.pygcl.halo_exchange_3d.HaloExchange3D.halo_starts" title="Permalink to this definition">¶</a></dt>
+<dd><p>See self.bounadry_starts, same but for halo cells to unpack into.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.pygcl.halo_exchange_3d.HaloExchange3D.recv_ranks">
+<code class="sig-name descname">recv_ranks</code><a class="headerlink" href="#ppmd.pygcl.halo_exchange_3d.HaloExchange3D.recv_ranks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tuple 6x1, MPI ranks in self.comm this rank will recv from.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.pygcl.halo_exchange_3d.HaloExchange3D.send_ranks">
+<code class="sig-name descname">send_ranks</code><a class="headerlink" href="#ppmd.pygcl.halo_exchange_3d.HaloExchange3D.send_ranks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tuple 6x1, MPI ranks in self.comm this rank will send to.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.pygcl.halo_exchange_3d.create_halo_pairs_slice_halo">
+<code class="sig-prename descclassname">ppmd.pygcl.halo_exchange_3d.</code><code class="sig-name descname">create_halo_pairs_slice_halo</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">comm</span></em>, <em class="sig-param"><span class="n">cell_array</span></em>, <em class="sig-param"><span class="n">slicexyz</span></em>, <em class="sig-param"><span class="n">direction</span></em>, <em class="sig-param"><span class="n">width</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.pygcl.halo_exchange_3d.create_halo_pairs_slice_halo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Automatically create the pairs of cells for halos. Slices through 
+whole domain including halo cells.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.pygcl.halo_exchange_3d.get_cart_rank_offset">
+<code class="sig-prename descclassname">ppmd.pygcl.halo_exchange_3d.</code><code class="sig-name descname">get_cart_rank_offset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">comm</span></em>, <em class="sig-param"><span class="n">offset</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.pygcl.halo_exchange_3d.get_cart_rank_offset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.pygcl.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l5 current"><a class="current reference internal" href="#">ppmd.pygcl.halo_exchange_3d module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.pygcl.html">ppmd.pygcl package</a><ul>
+      <li>Previous: <a href="ppmd.pygcl.html" title="previous chapter">ppmd.pygcl package</a></li>
+      <li>Next: <a href="ppmd.utility.html" title="next chapter">ppmd.utility package</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.pygcl.halo_exchange_3d.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

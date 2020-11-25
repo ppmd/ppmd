@@ -1,0 +1,15 @@
+ppmd.config package
+===================
+
+.. automodule:: ppmd.config
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ppmd.config.config

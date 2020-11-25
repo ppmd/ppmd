@@ -1,0 +1,284 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.kernel module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.method module" href="ppmd.method.html" />
+    <link rel="prev" title="ppmd.host module" href="ppmd.host.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.kernel">
+<span id="ppmd-kernel-module"></span><h1>ppmd.kernel module<a class="headerlink" href="#module-ppmd.kernel" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.kernel.Constant">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.kernel.</code><code class="sig-name descname">Constant</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name</span></em>, <em class="sig-param"><span class="n">value</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.kernel.Constant" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class representing a numerical constant.</p>
+<p>This class can be used to use placeholders for constants
+in kernels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of constant</p></li>
+<li><p><strong>value</strong> – Numerical value (can actually be any data type)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.kernel.Constant.replace">
+<code class="sig-name descname">replace</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">s</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.kernel.Constant.replace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Replace all occurrences in a string and return result</p>
+<p>Ignores the constant if it is not a C-variable. For example,
+if the name of the constant is <code class="docutils literal notranslate"><span class="pre">mass</span></code>, then it would not replace
+it in <code class="docutils literal notranslate"><span class="pre">mass1</span></code> or <code class="docutils literal notranslate"><span class="pre">Hmass</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>s</strong> (<em>str</em>) – string to work on</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.kernel.Header">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.kernel.</code><code class="sig-name descname">Header</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">system</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">block</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.kernel.Header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.kernel.Kernel">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.kernel.</code><code class="sig-name descname">Kernel</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name</span></em>, <em class="sig-param"><span class="n">code</span></em>, <em class="sig-param"><span class="n">constants</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">headers</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">reductions</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">static_args</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.kernel.Kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Computational kernel, i.e. C-code + numerical constants.</p>
+<p>Stores the C source code of a kernel and substitutes in any 
+numerical constants that are to be copied it when the class is
+created.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> – name of the kernel</p></li>
+<li><p><strong>code</strong> – C source code</p></li>
+<li><p><strong>constants</strong> – List of constants (type <a class="reference internal" href="#ppmd.kernel.Constant" title="ppmd.kernel.Constant"><code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code></a>) which are to be substituted in.</p></li>
+<li><p><strong>reductions</strong> – list of reductions required by kernel if using parallel looping.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.kernel.Kernel.code">
+<em class="property">property </em><code class="sig-name descname">code</code><a class="headerlink" href="#ppmd.kernel.Kernel.code" title="Permalink to this definition">¶</a></dt>
+<dd><p>Kernel source code after substitution of numerical constants</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.kernel.Kernel.headers">
+<em class="property">property </em><code class="sig-name descname">headers</code><a class="headerlink" href="#ppmd.kernel.Kernel.headers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return C headers required for kernel</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.kernel.Kernel.hexdigest">
+<code class="sig-name descname">hexdigest</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.kernel.Kernel.hexdigest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unique md5 hexdigest which is used for identifying the kernel.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.kernel.Kernel.name">
+<em class="property">property </em><code class="sig-name descname">name</code><a class="headerlink" href="#ppmd.kernel.Kernel.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Kernel name.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.kernel.Kernel.reduction_variable_lookup">
+<code class="sig-name descname">reduction_variable_lookup</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">var</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.kernel.Kernel.reduction_variable_lookup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides a method to determine if a variable undergoes a Reduction.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.kernel.Kernel.static_args">
+<em class="property">property </em><code class="sig-name descname">static_args</code><a class="headerlink" href="#ppmd.kernel.Kernel.static_args" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.kernel.Reduction">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.kernel.</code><code class="sig-name descname">Reduction</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">variable</span></em>, <em class="sig-param"><span class="n">pointer</span></em>, <em class="sig-param"><span class="n">operator</span><span class="o">=</span><span class="default_value">'+'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.kernel.Reduction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Object to store Reduction operations required by kernels. Currently holds only one Reduction per instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>variable</strong> (<em>str</em>) – Variable name eg ‘u’.</p></li>
+<li><p><strong>pointer</strong> (<em>str</em>) – C pointer syntax of variable being reduced upon eg ‘u[0]’.</p></li>
+<li><p><strong>operator</strong> (<em>char</em>) – operator performed in Reduction, default ‘+’.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.kernel.Reduction.index">
+<em class="property">property </em><code class="sig-name descname">index</code><a class="headerlink" href="#ppmd.kernel.Reduction.index" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns index in C pointer syntax, eg u[0] returns 0</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.kernel.Reduction.operator">
+<em class="property">property </em><code class="sig-name descname">operator</code><a class="headerlink" href="#ppmd.kernel.Reduction.operator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns C operator</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.kernel.Reduction.pointer">
+<em class="property">property </em><code class="sig-name descname">pointer</code><a class="headerlink" href="#ppmd.kernel.Reduction.pointer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns C pointer syntax</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.kernel.Reduction.variable">
+<em class="property">property </em><code class="sig-name descname">variable</code><a class="headerlink" href="#ppmd.kernel.Reduction.variable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns variable name</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.kernel.analyse">
+<code class="sig-prename descclassname">ppmd.kernel.</code><code class="sig-name descname">analyse</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">kernel_in</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dat_dict</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.kernel.analyse" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>kernel_in</strong> (<em>kernel</em>) – Kernel to analyse.</p></li>
+<li><p><strong>dat_dict</strong> (<em>list</em>) – List of variables which should be assumed are in global memory.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Dict of operations and their estimated number of occurences.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.access.html">ppmd.access module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cell.html">ppmd.cell module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.domain.html">ppmd.domain module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.halo.html">ppmd.halo module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.host.html">ppmd.host module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">ppmd.kernel module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.method.html">ppmd.method module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.mpi.html">ppmd.mpi module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.opt.html">ppmd.opt module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pio.html">ppmd.pio module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.plain_cell_list.html">ppmd.plain_cell_list module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.runtime.html">ppmd.runtime module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state.html">ppmd.state module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state_modifier.html">ppmd.state_modifier module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+      <li>Previous: <a href="ppmd.host.html" title="previous chapter">ppmd.host module</a></li>
+      <li>Next: <a href="ppmd.method.html" title="next chapter">ppmd.method module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.kernel.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

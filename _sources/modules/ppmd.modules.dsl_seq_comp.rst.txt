@@ -1,0 +1,7 @@
+ppmd.modules.dsl\_seq\_comp module
+==================================
+
+.. automodule:: ppmd.modules.dsl_seq_comp
+   :members:
+   :undoc-members:
+   :show-inheritance:

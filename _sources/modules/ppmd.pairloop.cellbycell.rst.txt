@@ -1,0 +1,7 @@
+ppmd.pairloop.cellbycell module
+===============================
+
+.. automodule:: ppmd.pairloop.cellbycell
+   :members:
+   :undoc-members:
+   :show-inheritance:

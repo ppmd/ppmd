@@ -1,0 +1,7 @@
+ppmd.modules.dsl\_record\_local module
+======================================
+
+.. automodule:: ppmd.modules.dsl_record_local
+   :members:
+   :undoc-members:
+   :show-inheritance:

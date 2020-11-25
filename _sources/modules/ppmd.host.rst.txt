@@ -1,0 +1,7 @@
+ppmd.host module
+================
+
+.. automodule:: ppmd.host
+   :members:
+   :undoc-members:
+   :show-inheritance:

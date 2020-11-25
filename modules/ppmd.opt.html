@@ -1,0 +1,268 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.opt module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.pio module" href="ppmd.pio.html" />
+    <link rel="prev" title="ppmd.mpi module" href="ppmd.mpi.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.opt">
+<span id="ppmd-opt-module"></span><h1>ppmd.opt module<a class="headerlink" href="#module-ppmd.opt" title="Permalink to this headline">¶</a></h1>
+<p>Optimisation and profiling tools</p>
+<dl class="py class">
+<dt id="ppmd.opt.Code">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.opt.</code><code class="sig-name descname">Code</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">init</span><span class="o">=</span><span class="default_value">''</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.Code" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.opt.Code.add">
+<code class="sig-name descname">add</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">code</span><span class="o">=</span><span class="default_value">''</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.Code.add" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.opt.Code.add_line">
+<code class="sig-name descname">add_line</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">line</span><span class="o">=</span><span class="default_value">''</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.Code.add_line" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.opt.Code.string">
+<em class="property">property </em><code class="sig-name descname">string</code><a class="headerlink" href="#ppmd.opt.Code.string" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py data">
+<dt id="ppmd.opt.PROFILE">
+<code class="sig-prename descclassname">ppmd.opt.</code><code class="sig-name descname">PROFILE</code><em class="property"> = {'Build:g++:': 0.7397804260253906, 'Lib-Load': 0.0005249977111816406, 'MPI:rank': 0}</em><a class="headerlink" href="#ppmd.opt.PROFILE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dict available module wide for profiling. Recommended format along lines of:</p>
+<dl class="simple">
+<dt>{</dt><dd><p>‘description’</p>
+</dd>
+</dl>
+<dl>
+<dt>:</dt><dd><dl class="simple">
+<dt>(</dt><dd><p>total_time_taken</p>
+</dd>
+</dl>
+<p>)</p>
+</dd>
+</dl>
+<p>}</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.opt.SynchronizedTimer">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.opt.</code><code class="sig-name descname">SynchronizedTimer</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">level_object</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">level</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">start</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.SynchronizedTimer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.opt.Timer" title="ppmd.opt.Timer"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.opt.Timer</span></code></a></p>
+<dl class="py method">
+<dt id="ppmd.opt.SynchronizedTimer.pause">
+<code class="sig-name descname">pause</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.SynchronizedTimer.pause" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pause the timer.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.opt.SynchronizedTimer.start">
+<code class="sig-name descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.SynchronizedTimer.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start the timer.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.opt.SynchronizedTimer.stop">
+<code class="sig-name descname">stop</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">str</span><span class="o">=</span><span class="default_value">''</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.SynchronizedTimer.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop timer and print time.
+:arg string str: string to append after time. If None time printing will be suppressed.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.opt.Timer">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.opt.</code><code class="sig-name descname">Timer</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">level_object</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">level</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">start</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.Timer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Automatic timing class.</p>
+<dl class="py method">
+<dt id="ppmd.opt.Timer.pause">
+<code class="sig-name descname">pause</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.Timer.pause" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pause the timer.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.opt.Timer.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">str</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.Timer.reset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resets the timer. Returns the time taken up until the reset.
+:arg string str: If not None will print time followed by string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.opt.Timer.start">
+<code class="sig-name descname">start</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.Timer.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start the timer.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.opt.Timer.stop">
+<code class="sig-name descname">stop</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">str</span><span class="o">=</span><span class="default_value">''</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.Timer.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop timer and print time.
+:arg string str: string to append after time. If None time printing will be suppressed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.opt.Timer.time">
+<code class="sig-name descname">time</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">str</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.Timer.time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return current total time.
+:arg string str: string to append after time. If None time printing will be suppressed.
+:return: Current total time as float.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.opt.dump_profile">
+<code class="sig-prename descclassname">ppmd.opt.</code><code class="sig-name descname">dump_profile</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.dump_profile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.opt.get_timer_accuracy">
+<code class="sig-prename descclassname">ppmd.opt.</code><code class="sig-name descname">get_timer_accuracy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.get_timer_accuracy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.opt.load_last_profiles">
+<code class="sig-prename descclassname">ppmd.opt.</code><code class="sig-name descname">load_last_profiles</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.load_last_profiles" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.opt.load_profiles">
+<code class="sig-prename descclassname">ppmd.opt.</code><code class="sig-name descname">load_profiles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dir</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.load_profiles" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.opt.print_profile">
+<code class="sig-prename descclassname">ppmd.opt.</code><code class="sig-name descname">print_profile</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">side_by_side</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.opt.print_profile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.access.html">ppmd.access module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cell.html">ppmd.cell module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.domain.html">ppmd.domain module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.halo.html">ppmd.halo module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.host.html">ppmd.host module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.kernel.html">ppmd.kernel module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.method.html">ppmd.method module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.mpi.html">ppmd.mpi module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">ppmd.opt module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pio.html">ppmd.pio module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.plain_cell_list.html">ppmd.plain_cell_list module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.runtime.html">ppmd.runtime module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state.html">ppmd.state module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state_modifier.html">ppmd.state_modifier module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+      <li>Previous: <a href="ppmd.mpi.html" title="previous chapter">ppmd.mpi module</a></li>
+      <li>Next: <a href="ppmd.pio.html" title="next chapter">ppmd.pio module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.opt.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

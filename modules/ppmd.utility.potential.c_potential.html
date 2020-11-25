@@ -1,0 +1,499 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.utility.potential.c_potential module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.utility.potential.sym_potential module" href="ppmd.utility.potential.sym_potential.html" />
+    <link rel="prev" title="ppmd.utility.potential package" href="ppmd.utility.potential.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.utility.potential.c_potential">
+<span id="ppmd-utility-potential-c-potential-module"></span><h1>ppmd.utility.potential.c_potential module<a class="headerlink" href="#module-ppmd.utility.potential.c_potential" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.BasePotential">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">BasePotential</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.BasePotential" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Abstract base class for inter-atomic potentials.</p>
+<p>Inter-atomic potentials can be described by a scalar
+function <span class="math notranslate nohighlight">\(V(r)\)</span> which depends on the distance <span class="math notranslate nohighlight">\(r=|\\vec{r}_i-\\vec{r}_j|\)</span>
+between two atoms i and j. In MD simulations we need this potential and
+the force <span class="math notranslate nohighlight">\(\\vec{F}(r) = -\\nabla V(r)\)</span>.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.Buckingham">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">Buckingham</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">a</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">b</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">c</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">2.5</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.Buckingham" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.BasePotential" title="ppmd.utility.potential.c_potential.BasePotential"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.BasePotential</span></code></a></p>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.Buckingham.datdict">
+<code class="sig-name descname">datdict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">input_state</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.Buckingham.datdict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map between state variables and kernel variables, returns required dictonary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>input_state</strong> (<em>state</em>) – state with containing variables.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.Buckingham.get_data_map">
+<code class="sig-name descname">get_data_map</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">positions</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">forces</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">potential_energy</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.Buckingham.get_data_map" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.Buckingham.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.Buckingham.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.BuckinghamSymmetric">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">BuckinghamSymmetric</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">a</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">b</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">c</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">2.5</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.BuckinghamSymmetric" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.Buckingham" title="ppmd.utility.potential.c_potential.Buckingham"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.Buckingham</span></code></a></p>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.BuckinghamSymmetric.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.BuckinghamSymmetric.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.LennardJones">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">LennardJones</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epsilon</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">sigma</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.LennardJones" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.LennardJonesShifted" title="ppmd.utility.potential.c_potential.LennardJonesShifted"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.LennardJonesShifted</span></code></a></p>
+<p>Lennard Jones potential.</p>
+<p>for <span class="math notranslate nohighlight">\(r&gt;r_c=(5/2) \sigma\)</span> the potential (and force) is set to zero.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>epsilon</strong> – Potential parameter <span class="math notranslate nohighlight">\(\epsilon\)</span></p></li>
+<li><p><strong>sigma</strong> – Potential parameter <span class="math notranslate nohighlight">\(\sigma\)</span></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.LennardJones.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.LennardJones.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.LennardJonesCounter">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">LennardJonesCounter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epsilon</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">sigma</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.LennardJonesCounter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.LennardJones" title="ppmd.utility.potential.c_potential.LennardJones"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.LennardJones</span></code></a></p>
+<p>Lennard Jones potential.</p>
+<p>for <span class="math notranslate nohighlight">\(r&gt;r_c=(5/2) \sigma\)</span> the potential (and force) is set to zero.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>epsilon</strong> – Potential parameter <span class="math notranslate nohighlight">\(\epsilon\)</span></p></li>
+<li><p><strong>sigma</strong> – Potential parameter <span class="math notranslate nohighlight">\(\sigma\)</span></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.LennardJonesCounter.datdict">
+<code class="sig-name descname">datdict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">input_state</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.LennardJonesCounter.datdict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map between state variables and kernel variables, returns required dictonary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>input_state</strong> (<em>state</em>) – state with containing variables.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.LennardJonesCounter.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.LennardJonesCounter.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.LennardJonesShifted">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">LennardJonesShifted</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epsilon</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">sigma</span><span class="o">=</span><span class="default_value">1.0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.LennardJonesShifted" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.BasePotential" title="ppmd.utility.potential.c_potential.BasePotential"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.BasePotential</span></code></a></p>
+<p>Shifted Lennard Jones potential.</p>
+<p>for <span class="math notranslate nohighlight">\(r&gt;r_c=2^{1/6}\)</span> the potential (and force) is set to zero.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>epsilon</strong> – Potential parameter <span class="math notranslate nohighlight">\(\epsilon\)</span></p></li>
+<li><p><strong>sigma</strong> – Potential parameter <span class="math notranslate nohighlight">\(\sigma\)</span></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.LennardJonesShifted.datdict">
+<code class="sig-name descname">datdict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">input_state</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.LennardJonesShifted.datdict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map between state variables and kernel variables, returns required dictonary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>input_state</strong> (<em>state</em>) – state with containing variables.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.LennardJonesShifted.get_data_map">
+<code class="sig-name descname">get_data_map</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">positions</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">forces</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">potential_energy</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.LennardJonesShifted.get_data_map" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.LennardJonesShifted.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.LennardJonesShifted.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.LennardJonesShifted.rc">
+<em class="property">property </em><code class="sig-name descname">rc</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.LennardJonesShifted.rc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Value of cufoff distance <span class="math notranslate nohighlight">\(r_c\)</span></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.NULL">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">NULL</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.NULL" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>NULL potential</p>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.NULL.datdict">
+<em class="property">static </em><code class="sig-name descname">datdict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">input_state</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.NULL.datdict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map between state variables and kernel variables, returns required dictonary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>input_state</strong> (<em>state</em>) – state with containing variables.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.NULL.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.NULL.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.NULL.rc">
+<em class="property">property </em><code class="sig-name descname">rc</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.NULL.rc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Value of cufoff distance <span class="math notranslate nohighlight">\(r_c\)</span></p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.NULL.rn">
+<em class="property">property </em><code class="sig-name descname">rn</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.NULL.rn" title="Permalink to this definition">¶</a></dt>
+<dd><p>Value of cufoff distance <span class="math notranslate nohighlight">\(r_c\)</span></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.NoVLennardJones">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">NoVLennardJones</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epsilon</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">sigma</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.NoVLennardJones" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.LennardJones" title="ppmd.utility.potential.c_potential.LennardJones"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.LennardJones</span></code></a></p>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.NoVLennardJones.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.NoVLennardJones.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.TestPotential1">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">TestPotential1</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epsilon</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">sigma</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.TestPotential1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.LennardJones" title="ppmd.utility.potential.c_potential.LennardJones"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.LennardJones</span></code></a></p>
+<p>Lennard Jones potential.</p>
+<p>for <span class="math notranslate nohighlight">\(r&gt;r_c=(5/2) \sigma\)</span> the potential (and force) is set to zero.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>epsilon</strong> – Potential parameter <span class="math notranslate nohighlight">\(\epsilon\)</span></p></li>
+<li><p><strong>sigma</strong> – Potential parameter <span class="math notranslate nohighlight">\(\sigma\)</span></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.TestPotential1.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.TestPotential1.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.TestPotential2">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">TestPotential2</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epsilon</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">sigma</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.TestPotential2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.LennardJones" title="ppmd.utility.potential.c_potential.LennardJones"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.LennardJones</span></code></a></p>
+<p>Lennard Jones potential.</p>
+<p>for <span class="math notranslate nohighlight">\(r&gt;r_c=(5/2) \sigma\)</span> the potential (and force) is set to zero.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>epsilon</strong> – Potential parameter <span class="math notranslate nohighlight">\(\epsilon\)</span></p></li>
+<li><p><strong>sigma</strong> – Potential parameter <span class="math notranslate nohighlight">\(\sigma\)</span></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.TestPotential2.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.TestPotential2.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.TestPotential3">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">TestPotential3</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epsilon</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">sigma</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.TestPotential3" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.LennardJones" title="ppmd.utility.potential.c_potential.LennardJones"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.LennardJones</span></code></a></p>
+<p>Lennard Jones potential.</p>
+<p>for <span class="math notranslate nohighlight">\(r&gt;r_c=(5/2) \sigma\)</span> the potential (and force) is set to zero.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>epsilon</strong> – Potential parameter <span class="math notranslate nohighlight">\(\epsilon\)</span></p></li>
+<li><p><strong>sigma</strong> – Potential parameter <span class="math notranslate nohighlight">\(\sigma\)</span></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.TestPotential3.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.TestPotential3.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.TestPotential4">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">TestPotential4</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epsilon</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">sigma</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.TestPotential4" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.LennardJones" title="ppmd.utility.potential.c_potential.LennardJones"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.LennardJones</span></code></a></p>
+<p>Lennard Jones potential.</p>
+<p>for <span class="math notranslate nohighlight">\(r&gt;r_c=(5/2) \sigma\)</span> the potential (and force) is set to zero.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>epsilon</strong> – Potential parameter <span class="math notranslate nohighlight">\(\epsilon\)</span></p></li>
+<li><p><strong>sigma</strong> – Potential parameter <span class="math notranslate nohighlight">\(\sigma\)</span></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.TestPotential4.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.TestPotential4.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.TestPotential4p">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">TestPotential4p</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epsilon</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">sigma</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.TestPotential4p" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.LennardJones" title="ppmd.utility.potential.c_potential.LennardJones"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.LennardJones</span></code></a></p>
+<p>Lennard Jones potential.</p>
+<p>for <span class="math notranslate nohighlight">\(r&gt;r_c=(5/2) \sigma\)</span> the potential (and force) is set to zero.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>epsilon</strong> – Potential parameter <span class="math notranslate nohighlight">\(\epsilon\)</span></p></li>
+<li><p><strong>sigma</strong> – Potential parameter <span class="math notranslate nohighlight">\(\sigma\)</span></p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.TestPotential4p.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.TestPotential4p.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.VLennardJones">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">VLennardJones</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epsilon</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">sigma</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.VLennardJones" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.LennardJones" title="ppmd.utility.potential.c_potential.LennardJones"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.LennardJones</span></code></a></p>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.VLennardJones.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.VLennardJones.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.VLennardJones2">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">VLennardJones2</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epsilon</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">sigma</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.VLennardJones2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.LennardJones" title="ppmd.utility.potential.c_potential.LennardJones"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.LennardJones</span></code></a></p>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.VLennardJones2.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.VLennardJones2.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.potential.c_potential.VLennardJonesNoU">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.potential.c_potential.</code><code class="sig-name descname">VLennardJonesNoU</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">epsilon</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">sigma</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">rc</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.VLennardJonesNoU" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.potential.c_potential.LennardJones" title="ppmd.utility.potential.c_potential.LennardJones"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.potential.c_potential.LennardJones</span></code></a></p>
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.VLennardJonesNoU.get_data_map">
+<code class="sig-name descname">get_data_map</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">positions</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">forces</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">potential_energy</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.potential.c_potential.VLennardJonesNoU.get_data_map" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.potential.c_potential.VLennardJonesNoU.kernel">
+<em class="property">property </em><code class="sig-name descname">kernel</code><a class="headerlink" href="#ppmd.utility.potential.c_potential.VLennardJonesNoU.kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a kernel class for the potential.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.utility.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l5 current"><a class="reference internal" href="ppmd.utility.potential.html">ppmd.utility.potential package</a><ul class="current">
+<li class="toctree-l6 current"><a class="reference internal" href="ppmd.utility.potential.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l7 current"><a class="current reference internal" href="#">ppmd.utility.potential.c_potential module</a></li>
+<li class="toctree-l7"><a class="reference internal" href="ppmd.utility.potential.sym_potential.html">ppmd.utility.potential.sym_potential module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="ppmd.utility.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.utility.html">ppmd.utility package</a><ul>
+  <li><a href="ppmd.utility.potential.html">ppmd.utility.potential package</a><ul>
+      <li>Previous: <a href="ppmd.utility.potential.html" title="previous chapter">ppmd.utility.potential package</a></li>
+      <li>Next: <a href="ppmd.utility.potential.sym_potential.html" title="next chapter">ppmd.utility.potential.sym_potential module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.utility.potential.c_potential.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

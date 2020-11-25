@@ -1,0 +1,261 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.access module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.cell module" href="ppmd.cell.html" />
+    <link rel="prev" title="ppmd.utility.xyz module" href="ppmd.utility.xyz.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.access">
+<span id="ppmd-access-module"></span><h1>ppmd.access module<a class="headerlink" href="#module-ppmd.access" title="Permalink to this headline">¶</a></h1>
+<p>This module contains the access descriptor class and the pre-defined access
+descriptors to use when passing instances of ParticleDat and ScalarArray to the
+build system.</p>
+<dl class="py class">
+<dt id="ppmd.access.AccessType">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.access.</code><code class="sig-name descname">AccessType</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">mode</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.access.AccessType" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to hold an access descriptor for data. In a pyop2 style manner. (WIP)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>mode</strong> (<em>str</em>) – Access mode, must be from: <code class="docutils literal notranslate"><span class="pre">&quot;R&quot;,</span> <span class="pre">&quot;W&quot;,</span> <span class="pre">&quot;RW&quot;,</span> <span class="pre">&quot;INC&quot;</span></code></p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.access.AccessType.halo">
+<em class="property">property </em><code class="sig-name descname">halo</code><a class="headerlink" href="#ppmd.access.AccessType.halo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Does this access type need halo exchange in pairwise
+operations
+:return: Bool.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.access.AccessType.incremented">
+<em class="property">property </em><code class="sig-name descname">incremented</code><a class="headerlink" href="#ppmd.access.AccessType.incremented" title="Permalink to this definition">¶</a></dt>
+<dd><p>Does this access perform reductions, True/False.
+:return: Bool</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.access.AccessType.mode">
+<em class="property">property </em><code class="sig-name descname">mode</code><a class="headerlink" href="#ppmd.access.AccessType.mode" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The held access mode.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.access.AccessType.read">
+<em class="property">property </em><code class="sig-name descname">read</code><a class="headerlink" href="#ppmd.access.AccessType.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Does this access type read the data, True/False.
+:return: Bool.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.access.AccessType.write">
+<em class="property">property </em><code class="sig-name descname">write</code><a class="headerlink" href="#ppmd.access.AccessType.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Does this access type write data, True/False.
+:return: Bool.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.access.DatArgStore">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.access.</code><code class="sig-name descname">DatArgStore</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">allow</span></em>, <em class="sig-param"><span class="n">initial</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.access.DatArgStore" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.access.DatArgStore.items">
+<code class="sig-name descname">items</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">new_dats</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.access.DatArgStore.items" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the dats in a consistent order</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.access.DatArgStore.values">
+<code class="sig-name descname">values</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">new_dats</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.access.DatArgStore.values" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the dat values in a consistent order</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py data">
+<dt id="ppmd.access.INC">
+<code class="sig-prename descclassname">ppmd.access.</code><code class="sig-name descname">INC</code><em class="property"> = Incremental.</em><a class="headerlink" href="#ppmd.access.INC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Access descriptor for data that is incremented.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="ppmd.access.INC_ZERO">
+<code class="sig-prename descclassname">ppmd.access.</code><code class="sig-name descname">INC_ZERO</code><em class="property"> = Incremental from zero.</em><a class="headerlink" href="#ppmd.access.INC_ZERO" title="Permalink to this definition">¶</a></dt>
+<dd><p>Access descriptor for data that is incremented from zero.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="ppmd.access.NULL">
+<code class="sig-prename descclassname">ppmd.access.</code><code class="sig-name descname">NULL</code><em class="property"> = NULL.</em><a class="headerlink" href="#ppmd.access.NULL" title="Permalink to this definition">¶</a></dt>
+<dd><p>NULL access descriptor for data.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="ppmd.access.READ">
+<code class="sig-prename descclassname">ppmd.access.</code><code class="sig-name descname">READ</code><em class="property"> = Read only.</em><a class="headerlink" href="#ppmd.access.READ" title="Permalink to this definition">¶</a></dt>
+<dd><p>Access descriptor for read only data.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="ppmd.access.RW">
+<code class="sig-prename descclassname">ppmd.access.</code><code class="sig-name descname">RW</code><em class="property"> = Read and write.</em><a class="headerlink" href="#ppmd.access.RW" title="Permalink to this definition">¶</a></dt>
+<dd><p>Descriptor for data that has accessed for both read and write.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.access.StaticArgStore">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.access.</code><code class="sig-name descname">StaticArgStore</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">initial</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.access.StaticArgStore" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.access.StaticArgStore.get_args">
+<code class="sig-name descname">get_args</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">values</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.access.StaticArgStore.get_args" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.access.StaticArgStore.items">
+<code class="sig-name descname">items</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.access.StaticArgStore.items" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the dats in a guaranteed order</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py data">
+<dt id="ppmd.access.WRITE">
+<code class="sig-prename descclassname">ppmd.access.</code><code class="sig-name descname">WRITE</code><em class="property"> = Write only.</em><a class="headerlink" href="#ppmd.access.WRITE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Access descriptor for write only data.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">ppmd.access module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cell.html">ppmd.cell module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.domain.html">ppmd.domain module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.halo.html">ppmd.halo module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.host.html">ppmd.host module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.kernel.html">ppmd.kernel module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.method.html">ppmd.method module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.mpi.html">ppmd.mpi module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.opt.html">ppmd.opt module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pio.html">ppmd.pio module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.plain_cell_list.html">ppmd.plain_cell_list module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.runtime.html">ppmd.runtime module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state.html">ppmd.state module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state_modifier.html">ppmd.state_modifier module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+      <li>Previous: <a href="ppmd.utility.xyz.html" title="previous chapter">ppmd.utility.xyz module</a></li>
+      <li>Next: <a href="ppmd.cell.html" title="next chapter">ppmd.cell module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.access.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

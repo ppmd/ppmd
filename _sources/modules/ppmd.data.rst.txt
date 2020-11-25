@@ -1,0 +1,18 @@
+ppmd.data package
+=================
+
+.. automodule:: ppmd.data
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ppmd.data.data_movement
+   ppmd.data.global_array
+   ppmd.data.particle_dat
+   ppmd.data.scalar_array

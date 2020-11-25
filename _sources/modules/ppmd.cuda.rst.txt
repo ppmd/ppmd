@@ -1,0 +1,27 @@
+ppmd.cuda package
+=================
+
+.. automodule:: ppmd.cuda
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ppmd.cuda.cuda_base
+   ppmd.cuda.cuda_build
+   ppmd.cuda.cuda_cell
+   ppmd.cuda.cuda_config
+   ppmd.cuda.cuda_data
+   ppmd.cuda.cuda_domain
+   ppmd.cuda.cuda_generation
+   ppmd.cuda.cuda_halo
+   ppmd.cuda.cuda_loop
+   ppmd.cuda.cuda_mpi
+   ppmd.cuda.cuda_pairloop
+   ppmd.cuda.cuda_runtime
+   ppmd.cuda.cuda_state

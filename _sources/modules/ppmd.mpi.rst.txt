@@ -1,0 +1,7 @@
+ppmd.mpi module
+===============
+
+.. automodule:: ppmd.mpi
+   :members:
+   :undoc-members:
+   :show-inheritance:

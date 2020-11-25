@@ -1,0 +1,7 @@
+ppmd.coulomb.octal module
+=========================
+
+.. automodule:: ppmd.coulomb.octal
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,29 @@
+ppmd.coulomb package
+====================
+
+.. automodule:: ppmd.coulomb
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ppmd.coulomb.cached
+   ppmd.coulomb.direct
+   ppmd.coulomb.ewald
+   ppmd.coulomb.ewald_half
+   ppmd.coulomb.fmm
+   ppmd.coulomb.fmm_cuda
+   ppmd.coulomb.fmm_interaction_lists
+   ppmd.coulomb.fmm_local
+   ppmd.coulomb.fmm_pbc
+   ppmd.coulomb.lm
+   ppmd.coulomb.mm
+   ppmd.coulomb.mm_lm_common
+   ppmd.coulomb.octal
+   ppmd.coulomb.sph_harm
+   ppmd.coulomb.wigner

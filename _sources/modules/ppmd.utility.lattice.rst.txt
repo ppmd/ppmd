@@ -1,0 +1,7 @@
+ppmd.utility.lattice module
+===========================
+
+.. automodule:: ppmd.utility.lattice
+   :members:
+   :undoc-members:
+   :show-inheritance:

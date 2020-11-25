@@ -1,0 +1,178 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="ppmd">
+<h1>ppmd<a class="headerlink" href="#ppmd" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="ppmd.html">ppmd package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ppmd.config.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ppmd.coulomb.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ppmd.cuda.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ppmd.data.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ppmd.lib.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ppmd.loop.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ppmd.modules.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ppmd.pairloop.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ppmd.pygcl.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ppmd.utility.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ppmd.utility.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.access.html">ppmd.access module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cell.html">ppmd.cell module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.domain.html">ppmd.domain module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.halo.html">ppmd.halo module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.host.html">ppmd.host module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.kernel.html">ppmd.kernel module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.method.html">ppmd.method module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.mpi.html">ppmd.mpi module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.opt.html">ppmd.opt module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pio.html">ppmd.pio module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.plain_cell_list.html">ppmd.plain_cell_list module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.runtime.html">ppmd.runtime module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state.html">ppmd.state module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state_modifier.html">ppmd.state_modifier module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="ppmd.html">ppmd package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/modules.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,7 @@
+ppmd.method module
+==================
+
+.. automodule:: ppmd.method
+   :members:
+   :undoc-members:
+   :show-inheritance:

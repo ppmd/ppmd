@@ -1,0 +1,7 @@
+ppmd.config.config module
+=========================
+
+.. automodule:: ppmd.config.config
+   :members:
+   :undoc-members:
+   :show-inheritance:

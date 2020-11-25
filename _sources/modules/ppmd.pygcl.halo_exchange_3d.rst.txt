@@ -1,0 +1,7 @@
+ppmd.pygcl.halo\_exchange\_3d module
+====================================
+
+.. automodule:: ppmd.pygcl.halo_exchange_3d
+   :members:
+   :undoc-members:
+   :show-inheritance:

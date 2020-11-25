@@ -1,0 +1,7 @@
+ppmd.cuda.cuda\_config module
+=============================
+
+.. automodule:: ppmd.cuda.cuda_config
+   :members:
+   :undoc-members:
+   :show-inheritance:

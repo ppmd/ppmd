@@ -1,0 +1,229 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.data.global_array module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.data.particle_dat module" href="ppmd.data.particle_dat.html" />
+    <link rel="prev" title="ppmd.data.data_movement module" href="ppmd.data.data_movement.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.data.global_array">
+<span id="ppmd-data-global-array-module"></span><h1>ppmd.data.global_array module<a class="headerlink" href="#module-ppmd.data.global_array" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.data.global_array.GlobalArray">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.data.global_array.</code><code class="sig-name descname">GlobalArray</code><span class="sig-paren">(</span><em class="sig-param">size=1</em>, <em class="sig-param">dtype=&lt;class 'ctypes.c_double'&gt;</em>, <em class="sig-param">comm=&lt;mpi4py.MPI.Intracomm object&gt;</em>, <em class="sig-param">op=&lt;mpi4py.MPI.Op object&gt;</em>, <em class="sig-param">shared_memory=False</em>, <em class="sig-param">ncomp=None</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.global_array.GlobalArray" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class for global data. This class may be: globally set, incremented and
+read. This class is constructed with a MPI reduction operator, currently
+only MPI.SUM is avaialbe, which defines the addition operator. Global
+setting sets all values in the array to the same value across all ranks.
+All calls must be made on all ranks in parent communicator.</p>
+<dl class="py method">
+<dt id="ppmd.data.global_array.GlobalArray.ncomp">
+<em class="property">property </em><code class="sig-name descname">ncomp</code><a class="headerlink" href="#ppmd.data.global_array.GlobalArray.ncomp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.data.global_array.GlobalArrayClassic">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.data.global_array.</code><code class="sig-name descname">GlobalArrayClassic</code><span class="sig-paren">(</span><em class="sig-param">size=1</em>, <em class="sig-param">dtype=&lt;class 'ctypes.c_double'&gt;</em>, <em class="sig-param">comm=&lt;mpi4py.MPI.Intracomm object&gt;</em>, <em class="sig-param">op=&lt;mpi4py.MPI.Op object&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.global_array.GlobalArrayClassic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.host._Array</span></code></p>
+<p>Class for global data. This class may be: globally set, incremented and
+read. This class is constructed with a MPI reduction operator, currently
+only MPI.SUM is avaialbe, which defines the addition operator. Global
+setting sets all values in the array to the same value across all ranks.
+All calls must be made on all ranks in parent communicator.</p>
+<dl class="py method">
+<dt id="ppmd.data.global_array.GlobalArrayClassic.ctype">
+<em class="property">property </em><code class="sig-name descname">ctype</code><a class="headerlink" href="#ppmd.data.global_array.GlobalArrayClassic.ctype" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.global_array.GlobalArrayClassic.ctypes_data_access">
+<code class="sig-name descname">ctypes_data_access</code><span class="sig-paren">(</span><em class="sig-param">mode=Read only.</em>, <em class="sig-param">pair=False</em>, <em class="sig-param">threaded=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.global_array.GlobalArrayClassic.ctypes_data_access" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.global_array.GlobalArrayClassic.ctypes_data_post">
+<code class="sig-name descname">ctypes_data_post</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">mode</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">threaded</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.global_array.GlobalArrayClassic.ctypes_data_post" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.global_array.GlobalArrayClassic.ctypes_data_read">
+<em class="property">property </em><code class="sig-name descname">ctypes_data_read</code><a class="headerlink" href="#ppmd.data.global_array.GlobalArrayClassic.ctypes_data_read" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.global_array.GlobalArrayClassic.ctypes_data_write">
+<em class="property">property </em><code class="sig-name descname">ctypes_data_write</code><a class="headerlink" href="#ppmd.data.global_array.GlobalArrayClassic.ctypes_data_write" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.data.global_array.GlobalArrayClassic.identity_element">
+<code class="sig-name descname">identity_element</code><a class="headerlink" href="#ppmd.data.global_array.GlobalArrayClassic.identity_element" title="Permalink to this definition">¶</a></dt>
+<dd><p>Identity element for operation</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.global_array.GlobalArrayClassic.ncomp">
+<em class="property">property </em><code class="sig-name descname">ncomp</code><a class="headerlink" href="#ppmd.data.global_array.GlobalArrayClassic.ncomp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.data.global_array.GlobalArrayClassic.op">
+<code class="sig-name descname">op</code><a class="headerlink" href="#ppmd.data.global_array.GlobalArrayClassic.op" title="Permalink to this definition">¶</a></dt>
+<dd><p>MPI Reduction operation</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.global_array.GlobalArrayClassic.set">
+<code class="sig-name descname">set</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">val</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.global_array.GlobalArrayClassic.set" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.data.global_array.GlobalArrayClassic.size">
+<code class="sig-name descname">size</code><a class="headerlink" href="#ppmd.data.global_array.GlobalArrayClassic.size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of elements in the array.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.data.global_array.GlobalArrayShared">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.data.global_array.</code><code class="sig-name descname">GlobalArrayShared</code><span class="sig-paren">(</span><em class="sig-param">size=1</em>, <em class="sig-param">dtype=&lt;class 'ctypes.c_double'&gt;</em>, <em class="sig-param">comm=&lt;mpi4py.MPI.Intracomm object&gt;</em>, <em class="sig-param">op=&lt;mpi4py.MPI.Op object&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.global_array.GlobalArrayShared" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.data.global_array.GlobalArrayClassic" title="ppmd.data.global_array.GlobalArrayClassic"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.data.global_array.GlobalArrayClassic</span></code></a></p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.data.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l5"><a class="reference internal" href="ppmd.data.data_movement.html">ppmd.data.data_movement module</a></li>
+<li class="toctree-l5 current"><a class="current reference internal" href="#">ppmd.data.global_array module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.data.particle_dat.html">ppmd.data.particle_dat module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.data.scalar_array.html">ppmd.data.scalar_array module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.data.html">ppmd.data package</a><ul>
+      <li>Previous: <a href="ppmd.data.data_movement.html" title="previous chapter">ppmd.data.data_movement module</a></li>
+      <li>Next: <a href="ppmd.data.particle_dat.html" title="next chapter">ppmd.data.particle_dat module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.data.global_array.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

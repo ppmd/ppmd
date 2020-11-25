@@ -1,0 +1,16 @@
+ppmd.utility.potential package
+==============================
+
+.. automodule:: ppmd.utility.potential
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ppmd.utility.potential.c_potential
+   ppmd.utility.potential.sym_potential

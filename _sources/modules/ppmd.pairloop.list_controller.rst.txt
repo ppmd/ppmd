@@ -1,0 +1,7 @@
+ppmd.pairloop.list\_controller module
+=====================================
+
+.. automodule:: ppmd.pairloop.list_controller
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,262 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.coulomb.ewald module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.coulomb.ewald_half module" href="ppmd.coulomb.ewald_half.html" />
+    <link rel="prev" title="ppmd.coulomb.direct module" href="ppmd.coulomb.direct.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.coulomb.ewald">
+<span id="ppmd-coulomb-ewald-module"></span><h1>ppmd.coulomb.ewald module<a class="headerlink" href="#module-ppmd.coulomb.ewald" title="Permalink to this headline">¶</a></h1>
+<p>Methods for Coulombic forces and energies with the classical Ewald method.</p>
+<dl class="py class">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.ewald.</code><code class="sig-name descname">EwaldOrthoganal</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">domain</span></em>, <em class="sig-param"><span class="n">eps</span><span class="o">=</span><span class="default_value">1e-06</span></em>, <em class="sig-param"><span class="n">real_cutoff</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">alpha</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">recip_cutoff</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">recip_nmax</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">shared_memory</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">shell_width</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">work_ratio</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">force_unit</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">energy_unit</span><span class="o">=</span><span class="default_value">1.0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.alpha">
+<code class="sig-name descname">alpha</code><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.alpha" title="Permalink to this definition">¶</a></dt>
+<dd><p>alpha</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.evaluate_contributions">
+<code class="sig-name descname">evaluate_contributions</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">positions</span></em>, <em class="sig-param"><span class="n">charges</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.evaluate_contributions" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.evaluate_self_interactions">
+<code class="sig-name descname">evaluate_self_interactions</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">charges</span></em>, <em class="sig-param"><span class="n">energy</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">potential</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.evaluate_self_interactions" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.extract_forces_energy_real">
+<code class="sig-name descname">extract_forces_energy_real</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">positions</span></em>, <em class="sig-param"><span class="n">charges</span></em>, <em class="sig-param"><span class="n">forces</span></em>, <em class="sig-param"><span class="n">energy</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">potential</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.extract_forces_energy_real" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.extract_forces_energy_reciprocal">
+<code class="sig-name descname">extract_forces_energy_reciprocal</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">positions</span></em>, <em class="sig-param"><span class="n">charges</span></em>, <em class="sig-param"><span class="n">forces</span></em>, <em class="sig-param"><span class="n">energy</span></em>, <em class="sig-param"><span class="n">potential</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.extract_forces_energy_reciprocal" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.internal_to_ev">
+<em class="property">static </em><code class="sig-name descname">internal_to_ev</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.internal_to_ev" title="Permalink to this definition">¶</a></dt>
+<dd><p>Multiply by this constant to convert from internal units to eV.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.kmax">
+<code class="sig-name descname">kmax</code><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.kmax" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of reciporcal vectors taken in each direction.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.real_cutoff">
+<code class="sig-name descname">real_cutoff</code><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.real_cutoff" title="Permalink to this definition">¶</a></dt>
+<dd><p>Real space cutoff</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.recip_cutoff">
+<code class="sig-name descname">recip_cutoff</code><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.recip_cutoff" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reciprocal space cutoff.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.recip_vectors">
+<code class="sig-name descname">recip_vectors</code><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.recip_vectors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reciprocal lattice vectors</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.shell_width">
+<code class="sig-name descname">shell_width</code><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.shell_width" title="Permalink to this definition">¶</a></dt>
+<dd><p>Real space padding width</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.test_evaluate_python_lr">
+<code class="sig-name descname">test_evaluate_python_lr</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">positions</span></em>, <em class="sig-param"><span class="n">charges</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.test_evaluate_python_lr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.test_evaluate_python_self">
+<code class="sig-name descname">test_evaluate_python_self</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">charges</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.test_evaluate_python_self" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.ewald.EwaldOrthoganal.test_evaluate_python_sr">
+<code class="sig-name descname">test_evaluate_python_sr</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">positions</span></em>, <em class="sig-param"><span class="n">charges</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthoganal.test_evaluate_python_sr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.ewald.EwaldOrthogonal">
+<code class="sig-prename descclassname">ppmd.coulomb.ewald.</code><code class="sig-name descname">EwaldOrthogonal</code><a class="headerlink" href="#ppmd.coulomb.ewald.EwaldOrthogonal" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <a class="reference internal" href="#ppmd.coulomb.ewald.EwaldOrthoganal" title="ppmd.coulomb.ewald.EwaldOrthoganal"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.coulomb.ewald.EwaldOrthoganal</span></code></a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.ewald.compute_alpha">
+<code class="sig-prename descclassname">ppmd.coulomb.ewald.</code><code class="sig-name descname">compute_alpha</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">N</span></em>, <em class="sig-param"><span class="n">L</span></em>, <em class="sig-param"><span class="n">ratio</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.ewald.compute_alpha" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute an optimal alpha to give O(N^{3/2}) scaling for ewald summation. 
+tau_r: Real space time cost per pair of particles (time cost per real space
+kernel executin)
+tau_f: Time for reciprocal component per particle per reciprocal vector.
+:param N: Number of particles
+:param L: Domain extent (assumes cubic)
+:param ratio: ratio: tau_r/tau_f. 
+:return: optimal alpha</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.ewald.compute_rc_nc_cutoff">
+<code class="sig-prename descclassname">ppmd.coulomb.ewald.</code><code class="sig-name descname">compute_rc_nc_cutoff</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">alpha</span></em>, <em class="sig-param"><span class="n">L</span></em>, <em class="sig-param"><span class="n">eps</span><span class="o">=</span><span class="default_value">1e-06</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.ewald.compute_rc_nc_cutoff" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.coulomb.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.cached.html">ppmd.coulomb.cached module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.direct.html">ppmd.coulomb.direct module</a></li>
+<li class="toctree-l5 current"><a class="current reference internal" href="#">ppmd.coulomb.ewald module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.ewald_half.html">ppmd.coulomb.ewald_half module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm.html">ppmd.coulomb.fmm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_cuda.html">ppmd.coulomb.fmm_cuda module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_interaction_lists.html">ppmd.coulomb.fmm_interaction_lists module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_local.html">ppmd.coulomb.fmm_local module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_pbc.html">ppmd.coulomb.fmm_pbc module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.lm.html">ppmd.coulomb.lm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.mm.html">ppmd.coulomb.mm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.mm_lm_common.html">ppmd.coulomb.mm_lm_common module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.octal.html">ppmd.coulomb.octal module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.sph_harm.html">ppmd.coulomb.sph_harm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.wigner.html">ppmd.coulomb.wigner module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.coulomb.html">ppmd.coulomb package</a><ul>
+      <li>Previous: <a href="ppmd.coulomb.direct.html" title="previous chapter">ppmd.coulomb.direct module</a></li>
+      <li>Next: <a href="ppmd.coulomb.ewald_half.html" title="next chapter">ppmd.coulomb.ewald_half module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.coulomb.ewald.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

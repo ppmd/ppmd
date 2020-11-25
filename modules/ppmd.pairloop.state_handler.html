@@ -1,0 +1,178 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.pairloop.state_handler module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.pairloop.sub_cell module" href="ppmd.pairloop.sub_cell.html" />
+    <link rel="prev" title="ppmd.pairloop.neighbourlist_omp module" href="ppmd.pairloop.neighbourlist_omp.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.pairloop.state_handler">
+<span id="ppmd-pairloop-state-handler-module"></span><h1>ppmd.pairloop.state_handler module<a class="headerlink" href="#module-ppmd.pairloop.state_handler" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.pairloop.state_handler.StateHandler">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.pairloop.state_handler.</code><code class="sig-name descname">StateHandler</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span></em>, <em class="sig-param"><span class="n">shell_cutoff</span></em>, <em class="sig-param"><span class="n">pair</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">threaded</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.pairloop.state_handler.StateHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.pairloop.state_handler.StateHandler.get_pointer">
+<code class="sig-name descname">get_pointer</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dat</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.pairloop.state_handler.StateHandler.get_pointer" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.pairloop.state_handler.StateHandler.post_execute">
+<code class="sig-name descname">post_execute</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dats</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.pairloop.state_handler.StateHandler.post_execute" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.pairloop.state_handler.StateHandler.pre_execute">
+<code class="sig-name descname">pre_execute</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dats</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.pairloop.state_handler.StateHandler.pre_execute" title="Permalink to this definition">¶</a></dt>
+<dd><p>The halo exchange process may reallocate all in the group. Hence this
+function loops over all dats to ensure pointers collected in the second
+pass over the dats are valid.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.pairloop.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.alltoall.html">ppmd.pairloop.alltoall module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.alltoall_omp.html">ppmd.pairloop.alltoall_omp module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.base.html">ppmd.pairloop.base module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.cellbycell.html">ppmd.pairloop.cellbycell module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.cellbycell_omp.html">ppmd.pairloop.cellbycell_omp module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.list_controller.html">ppmd.pairloop.list_controller module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.neighbour_matrix_omp.html">ppmd.pairloop.neighbour_matrix_omp module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.neighbour_matrix_omp_sub.html">ppmd.pairloop.neighbour_matrix_omp_sub module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.neighbourlist.html">ppmd.pairloop.neighbourlist module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.neighbourlist_14cell.html">ppmd.pairloop.neighbourlist_14cell module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.neighbourlist_27cell.html">ppmd.pairloop.neighbourlist_27cell module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.neighbourlist_omp.html">ppmd.pairloop.neighbourlist_omp module</a></li>
+<li class="toctree-l5 current"><a class="current reference internal" href="#">ppmd.pairloop.state_handler module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.sub_cell.html">ppmd.pairloop.sub_cell module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.pairloop.sub_cellbycell_omp.html">ppmd.pairloop.sub_cellbycell_omp module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.pairloop.html">ppmd.pairloop package</a><ul>
+      <li>Previous: <a href="ppmd.pairloop.neighbourlist_omp.html" title="previous chapter">ppmd.pairloop.neighbourlist_omp module</a></li>
+      <li>Next: <a href="ppmd.pairloop.sub_cell.html" title="next chapter">ppmd.pairloop.sub_cell module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.pairloop.state_handler.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

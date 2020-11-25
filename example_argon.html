@@ -1,0 +1,322 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Low-level Argon Example &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="ppmd package" href="modules/ppmd.html" />
+    <link rel="prev" title="Velocity-Verlet Integrator" href="example_integrator.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="low-level-argon-example">
+<h1>Low-level Argon Example<a class="headerlink" href="#low-level-argon-example" title="Permalink to this headline">¶</a></h1>
+<p>We start by importing required modules and the package under the name <code class="docutils literal notranslate"><span class="pre">md</span></code>. We create aliases to certain classes that may need to be altered to run on CUDA capable GPUs.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/python</span>
+
+<span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">import</span> <span class="nn">ppmd</span> <span class="k">as</span> <span class="nn">md</span>
+
+
+<span class="n">rank</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">mpi</span><span class="o">.</span><span class="n">MPI_HANDLE</span><span class="o">.</span><span class="n">rank</span>
+
+<span class="n">PositionDat</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">PositionDat</span>
+<span class="n">ParticleDat</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ParticleDat</span>
+<span class="n">ScalarArray</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ScalarArray</span>
+<span class="n">State</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">State</span>
+<span class="n">ParticleLoop</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">ParticleLoop</span>
+<span class="n">Pairloop</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">pairloop</span><span class="o">.</span><span class="n">PairLoopNeighbourListNS</span>
+</pre></div>
+</div>
+<p>In this example we will create random positions and velocities on rank 0 then distribute these across the available processes.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">N</span> <span class="o">=</span> <span class="mi">1000</span>
+
+<span class="c1"># create a state called A</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">State</span><span class="p">()</span>
+
+<span class="c1"># set the number of particles in the system to be N</span>
+<span class="n">A</span><span class="o">.</span><span class="n">npart</span> <span class="o">=</span> <span class="n">N</span>
+
+<span class="c1"># Initialise a domain with extents 8x8x8 with periodic boundaries.</span>
+<span class="n">A</span><span class="o">.</span><span class="n">domain</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">BaseDomainHalo</span><span class="p">(</span><span class="n">extent</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">8.</span><span class="p">,</span> <span class="mf">8.</span><span class="p">,</span> <span class="mf">8.</span><span class="p">]))</span>
+<span class="n">A</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">boundary_condition</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">BoundaryTypePeriodic</span><span class="p">()</span>
+
+
+<span class="c1"># In our system each particle has a position, velocity, mass and acceleration,</span>
+<span class="c1"># we indicate these properties by adding appropriate ParticleDats to the state</span>
+<span class="c1"># A</span>
+
+<span class="c1"># We indicate to the framework which property contains our positions with a</span>
+<span class="c1"># specific data type called PositionDat.</span>
+
+<span class="n">A</span><span class="o">.</span><span class="n">p</span> <span class="o">=</span> <span class="n">PositionDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">f</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">mass</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># As ParticleDats default to containing double values, when we want a dat that</span>
+<span class="c1"># stores a golbal id we add an additional parameter to indicate that this dat</span>
+<span class="c1"># contains int type values.</span>
+<span class="n">A</span><span class="o">.</span><span class="n">gid</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">)</span>
+
+<span class="c1"># We add global properties to our state through ScalarArray objects. Values in</span>
+<span class="c1"># these structures are not tied to any particular particle. Here we add a</span>
+<span class="c1"># ScalarArray for the potential energy `u`.</span>
+
+<span class="n">A</span><span class="o">.</span><span class="n">u</span> <span class="o">=</span> <span class="n">ScalarArray</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;u&#39;</span><span class="p">)</span>
+
+<span class="c1"># Initialise the data structures with random values.</span>
+<span class="c1"># we will later use the values which were assigned on rank 0</span>
+
+<span class="c1"># sequential global ids.</span>
+<span class="n">A</span><span class="o">.</span><span class="n">gid</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">npart</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">p</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="p">[</span><span class="n">N</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="n">A</span><span class="o">.</span><span class="n">v</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="n">A</span><span class="o">.</span><span class="n">mass</span><span class="p">[:]</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+<span class="n">A</span><span class="o">.</span><span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+
+<span class="c1"># distribute the data on rank 0 to the reset of the system.</span>
+<span class="n">A</span><span class="o">.</span><span class="n">scatter_data_from</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For this example we recreate the Buckingham potential and set constants suitable for modelling Argon.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">kernel_code</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">const double R0 = P.j[0] - P.i[0];</span>
+<span class="s1">const double R1 = P.j[1] - P.i[1];</span>
+<span class="s1">const double R2 = P.j[2] - P.i[2];</span>
+
+<span class="s1">const double r2 = R0*R0 + R1*R1 + R2*R2;</span>
+
+<span class="s1">const double r = sqrt(r2);</span>
+<span class="s1">// </span><span class="se">\\</span><span class="s1">exp{-B*r}</span>
+<span class="s1">const double exp_mbr = exp(_MB*r);</span>
+
+<span class="s1">// r^{-2, -4, -6}</span>
+<span class="s1">const double r_m1 = 1.0/r;</span>
+<span class="s1">const double r_m2 = r_m1*r_m1;</span>
+<span class="s1">const double r_m4 = r_m2*r_m2;</span>
+<span class="s1">const double r_m6 = r_m4*r_m2;</span>
+
+<span class="s1">// </span><span class="se">\\</span><span class="s1">frac</span><span class="si">{C}</span><span class="s1">{r^6}</span>
+<span class="s1">const double crm6 = _C*r_m6;</span>
+
+<span class="s1">// A </span><span class="se">\\</span><span class="s1">exp{-Br} - </span><span class="se">\\</span><span class="s1">frac</span><span class="si">{C}</span><span class="s1">{r^6}</span>
+<span class="s1">u[0]+= (r2 &lt; rc2) ? 0.5*(_A*exp_mbr - crm6 + internalshift) : 0.0;</span>
+
+<span class="s1">// = AB </span><span class="se">\\</span><span class="s1">exp{-Br} - </span><span class="se">\\</span><span class="s1">frac</span><span class="si">{C}</span><span class="s1">{r^6}*</span><span class="se">\\</span><span class="s1">frac</span><span class="si">{6}{r}</span><span class="s1"></span>
+<span class="s1">const double term2 = crm6*(-6.0)*r_m1;</span>
+<span class="s1">const double f_tmp = _AB * exp_mbr + term2;</span>
+
+<span class="s1">F.i[0]+= (r2 &lt; rc2) ? f_tmp*R0 : 0.0;</span>
+<span class="s1">F.i[1]+= (r2 &lt; rc2) ? f_tmp*R1 : 0.0;</span>
+<span class="s1">F.i[2]+= (r2 &lt; rc2) ? f_tmp*R2 : 0.0;</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+<span class="n">a</span><span class="o">=</span><span class="mf">1.69</span><span class="o">*</span><span class="mi">10</span><span class="o">**-</span><span class="mf">8.0</span><span class="p">,</span>
+<span class="n">b</span><span class="o">=</span><span class="mf">1.0</span><span class="o">/</span><span class="mf">0.273</span><span class="p">,</span>
+<span class="n">c</span><span class="o">=</span><span class="mi">102</span><span class="o">*</span><span class="mi">10</span><span class="o">**-</span><span class="mi">12</span><span class="p">,</span>
+
+<span class="n">rc</span> <span class="o">=</span> <span class="mf">2.5</span>
+<span class="n">rn</span> <span class="o">=</span> <span class="mf">1.1</span> <span class="o">*</span> <span class="n">rc</span>
+
+<span class="n">shift_internal</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span> <span class="o">*</span> <span class="n">a</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">b</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="o">/</span><span class="n">rc</span><span class="p">))</span> <span class="o">+</span> <span class="n">c</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="o">/</span><span class="p">(</span><span class="n">rc</span><span class="o">**</span><span class="mf">6.0</span><span class="p">))</span>
+
+<span class="n">kernel_constants</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">kernel</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s1">&#39;_A&#39;</span><span class="p">,</span> <span class="n">a</span><span class="p">),</span>
+    <span class="n">kernel</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s1">&#39;_AB&#39;</span><span class="p">,</span> <span class="n">a</span><span class="o">*</span><span class="n">b</span><span class="p">),</span>
+    <span class="n">kernel</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s1">&#39;_B&#39;</span><span class="p">,</span> <span class="n">b</span><span class="p">),</span>
+    <span class="n">kernel</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s1">&#39;_MB&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="o">*</span><span class="n">b</span><span class="p">),</span>
+    <span class="n">kernel</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s1">&#39;_C&#39;</span><span class="p">,</span> <span class="n">c</span><span class="p">),</span>
+    <span class="n">kernel</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s1">&#39;rc2&#39;</span><span class="p">,</span> <span class="n">rc</span> <span class="o">**</span> <span class="mi">2</span><span class="p">),</span>
+    <span class="n">kernel</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s1">&#39;internalshift&#39;</span><span class="p">,</span> <span class="n">shift_internal</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">B_kernel</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">Kernel</span><span class="p">(</span><span class="s1">&#39;Buckingham&#39;</span><span class="p">,</span> <span class="n">kernel_code</span><span class="p">,</span> <span class="n">kernel_constants</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;math.h&#39;</span><span class="p">])</span>
+
+
+<span class="c1"># pairloop to update forces and potential energy</span>
+<span class="n">force_updater</span> <span class="o">=</span> <span class="n">Pairloop</span><span class="p">(</span>
+    <span class="n">kernel</span><span class="o">=</span><span class="n">B_kernel</span><span class="p">,</span>
+    <span class="n">dat_dict</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;P&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">p</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">R</span><span class="p">),</span>
+        <span class="s1">&#39;F&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">f</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">INC0</span><span class="p">),</span>
+        <span class="s1">&#39;u&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">u</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">INC0</span><span class="p">)</span>
+    <span class="p">},</span>
+    <span class="n">shell_cutoff</span><span class="o">=</span><span class="n">rn</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>To integrate the system forward in time we will define a Velocity Verlet integrator using two <cite>ParticleLoop</cite> instances.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">dt</span> <span class="o">=</span> <span class="mf">0.0001</span>
+
+<span class="n">vv_kernel1_code</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">const double M_tmp = 1.0 / M.i[0];</span>
+<span class="s1">V.i[0] += dht * F.i[0] * M_tmp;</span>
+<span class="s1">V.i[1] += dht * F.i[1] * M_tmp;</span>
+<span class="s1">V.i[2] += dht * F.i[2] * M_tmp;</span>
+<span class="s1">P.i[0] += dt * V.i[0];</span>
+<span class="s1">P.i[1] += dt * V.i[1];</span>
+<span class="s1">P.i[2] += dt * V.i[2];</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+<span class="n">vv_kernel2_code</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">const double M_tmp = 1.0 / M.i[0];</span>
+<span class="s1">V.i[0] += dht * F.i[0] * M_tmp;</span>
+<span class="s1">V.i[1] += dht * F.i[1] * M_tmp;</span>
+<span class="s1">V.i[2] += dht * F.i[2] * M_tmp;</span>
+<span class="s1">&#39;&#39;&#39;</span>
+<span class="n">constants</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">md</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s1">&#39;dt&#39;</span><span class="p">,</span> <span class="n">dt</span><span class="p">),</span>
+    <span class="n">md</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s1">&#39;dht&#39;</span><span class="p">,</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">dt</span><span class="p">),</span>
+<span class="p">]</span>
+
+<span class="n">vv_kernel1</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">Kernel</span><span class="p">(</span><span class="s1">&#39;vv1&#39;</span><span class="p">,</span> <span class="n">vv_kernel1_code</span><span class="p">,</span> <span class="n">constants</span><span class="p">)</span>
+<span class="n">vv_p1</span> <span class="o">=</span> <span class="n">ParticleLoop</span><span class="p">(</span>
+    <span class="n">kernel</span><span class="o">=</span><span class="n">vv_kernel1</span><span class="p">,</span>
+    <span class="n">dat_dict</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;P&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">p</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">W</span><span class="p">),</span>
+              <span class="s1">&#39;V&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">W</span><span class="p">),</span>
+              <span class="s1">&#39;F&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">f</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">R</span><span class="p">),</span>
+              <span class="s1">&#39;M&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">mass</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">R</span><span class="p">)}</span>
+<span class="p">)</span>
+
+<span class="n">vv_kernel2</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">Kernel</span><span class="p">(</span><span class="s1">&#39;vv2&#39;</span><span class="p">,</span> <span class="n">vv_kernel2_code</span><span class="p">,</span> <span class="n">constants</span><span class="p">)</span>
+<span class="n">vv_p2</span> <span class="o">=</span> <span class="n">ParticleLoop</span><span class="p">(</span>
+    <span class="n">kernel</span><span class="o">=</span><span class="n">vv_kernel2</span><span class="p">,</span>
+    <span class="n">dat_dict</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;V&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">v</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">W</span><span class="p">),</span>
+              <span class="s1">&#39;F&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">f</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">R</span><span class="p">),</span>
+              <span class="s1">&#39;M&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">mass</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">R</span><span class="p">)}</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>By using a custom Python iterator <cite>IntegratorRange</cite> the framework internally controls when intermediate lists are rebuilt. By passing our velocity dat and a timestep the framework is able to monitor maximum velocities to ensure particles do not move too far between list updates. The penultimate parameter defines the maximum number of iterations to keep internal lists for and the last parameter declares the distance between the cutoff used by the pairloop and the cutoff used by the potential.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">u_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="n">md</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">IntegratorRange</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">A</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">):</span>
+
+    <span class="n">vv_p1</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+    <span class="n">force_updater</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+    <span class="n">vv_p2</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">it</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">u_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">u</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+<span class="n">u_array</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">mpi</span><span class="o">.</span><span class="n">all_reduce</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">u_list</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Boundary conditions are automatically applied by the framework using the domain and boundary condition declared earlier.</p>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="examples.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="example_data.html">Particle Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_state.html">State Containers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_kernel.html">Kernels</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_integrator.html">Velocity-Verlet Integrator</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Low-level Argon Example</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/ppmd.html">ppmd package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="examples.html">Examples</a><ul>
+      <li>Previous: <a href="example_integrator.html" title="previous chapter">Velocity-Verlet Integrator</a></li>
+      <li>Next: <a href="modules/ppmd.html" title="next chapter">ppmd package</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/example_argon.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

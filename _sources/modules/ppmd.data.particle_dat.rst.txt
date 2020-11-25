@@ -1,0 +1,7 @@
+ppmd.data.particle\_dat module
+==============================
+
+.. automodule:: ppmd.data.particle_dat
+   :members:
+   :undoc-members:
+   :show-inheritance:

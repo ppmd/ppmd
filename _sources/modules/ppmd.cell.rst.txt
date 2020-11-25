@@ -1,0 +1,7 @@
+ppmd.cell module
+================
+
+.. automodule:: ppmd.cell
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+ppmd.utility.sanitise module
+============================
+
+.. automodule:: ppmd.utility.sanitise
+   :members:
+   :undoc-members:
+   :show-inheritance:

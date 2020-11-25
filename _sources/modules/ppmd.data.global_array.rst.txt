@@ -1,0 +1,7 @@
+ppmd.data.global\_array module
+==============================
+
+.. automodule:: ppmd.data.global_array
+   :members:
+   :undoc-members:
+   :show-inheritance:

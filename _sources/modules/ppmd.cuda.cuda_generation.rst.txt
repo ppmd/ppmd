@@ -1,0 +1,7 @@
+ppmd.cuda.cuda\_generation module
+=================================
+
+.. automodule:: ppmd.cuda.cuda_generation
+   :members:
+   :undoc-members:
+   :show-inheritance:

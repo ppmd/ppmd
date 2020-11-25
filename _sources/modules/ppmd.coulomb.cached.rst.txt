@@ -1,0 +1,7 @@
+ppmd.coulomb.cached module
+==========================
+
+.. automodule:: ppmd.coulomb.cached
+   :members:
+   :undoc-members:
+   :show-inheritance:

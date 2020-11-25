@@ -1,0 +1,7 @@
+ppmd.lib.compiler module
+========================
+
+.. automodule:: ppmd.lib.compiler
+   :members:
+   :undoc-members:
+   :show-inheritance:

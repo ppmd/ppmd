@@ -1,0 +1,229 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.halo module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.host module" href="ppmd.host.html" />
+    <link rel="prev" title="ppmd.domain module" href="ppmd.domain.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.halo">
+<span id="ppmd-halo-module"></span><h1>ppmd.halo module<a class="headerlink" href="#module-ppmd.halo" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.halo.CartesianHaloSix">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.halo.</code><code class="sig-name descname">CartesianHaloSix</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">domain_func</span></em>, <em class="sig-param"><span class="n">cell_to_particle_map</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.halo.CartesianHaloSix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.halo.CartesianHaloSix.exchange_cell_counts">
+<code class="sig-name descname">exchange_cell_counts</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.halo.CartesianHaloSix.exchange_cell_counts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exchange the contents count of cells between processes. This is
+provided as a method in halo to avoid repeated exchanging of cell
+occupancy counts if multiple ParticleDat objects are being
+communicated.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.halo.CartesianHaloSix.get_boundary_cell_contents_count">
+<code class="sig-name descname">get_boundary_cell_contents_count</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.halo.CartesianHaloSix.get_boundary_cell_contents_count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the number of particles in the corresponding cells for each halo.
+These are needed such that the cell list can be created without
+inspecting the positions of recvd particles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Tuple: Cell contents count for each cell in same order as         local boundary cell list, Exchange sizes for each halo.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.halo.CartesianHaloSix.get_boundary_cell_groups">
+<code class="sig-name descname">get_boundary_cell_groups</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.halo.CartesianHaloSix.get_boundary_cell_groups" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the local boundary cells to pack for each halo. Formatted as an
+host.Array. Cells for halo 0 first followed by cells for halo 1 etc.
+Also returns an data.Array of 27 elements with the
+starting positions of each halo within the previous array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Tuple, array of local cell indices to pack, array of starting         points within the first array.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.halo.CartesianHaloSix.get_dir_counts">
+<code class="sig-name descname">get_dir_counts</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.halo.CartesianHaloSix.get_dir_counts" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.halo.CartesianHaloSix.get_halo_cell_groups">
+<code class="sig-name descname">get_halo_cell_groups</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.halo.CartesianHaloSix.get_halo_cell_groups" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the local halo cells to unpack into for each halo. Formatted as an
+cuda_base.Array. Cells for halo 0 first followed by cells for halo 1
+etc. Also returns an data.Array of 27 elements with the starting
+positions of each halo within the previous array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Tuple, array of local halo cell indices to unpack into, array         of starting points within the first array.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.halo.CartesianHaloSix.get_position_shifts">
+<code class="sig-name descname">get_position_shifts</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.halo.CartesianHaloSix.get_position_shifts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate flag to determine if a boundary between processes is also
+a boundary in domain.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.halo.CartesianHaloSix.get_recv_ranks">
+<code class="sig-name descname">get_recv_ranks</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.halo.CartesianHaloSix.get_recv_ranks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the mpi ranks to recv from.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.halo.CartesianHaloSix.get_send_ranks">
+<code class="sig-name descname">get_send_ranks</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.halo.CartesianHaloSix.get_send_ranks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the mpi ranks to send to.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.halo.CellSlice">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.halo.</code><code class="sig-name descname">CellSlice</code><a class="headerlink" href="#ppmd.halo.CellSlice" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.halo.create_halo_pairs_slice_halo">
+<code class="sig-prename descclassname">ppmd.halo.</code><code class="sig-name descname">create_halo_pairs_slice_halo</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">domain_in</span></em>, <em class="sig-param"><span class="n">slicexyz</span></em>, <em class="sig-param"><span class="n">direction</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.halo.create_halo_pairs_slice_halo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Automatically create the pairs of cells for halos. Slices through 
+whole domain including halo cells.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.access.html">ppmd.access module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cell.html">ppmd.cell module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.domain.html">ppmd.domain module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">ppmd.halo module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.host.html">ppmd.host module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.kernel.html">ppmd.kernel module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.method.html">ppmd.method module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.mpi.html">ppmd.mpi module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.opt.html">ppmd.opt module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pio.html">ppmd.pio module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.plain_cell_list.html">ppmd.plain_cell_list module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.runtime.html">ppmd.runtime module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state.html">ppmd.state module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state_modifier.html">ppmd.state_modifier module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+      <li>Previous: <a href="ppmd.domain.html" title="previous chapter">ppmd.domain module</a></li>
+      <li>Next: <a href="ppmd.host.html" title="next chapter">ppmd.host module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.halo.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

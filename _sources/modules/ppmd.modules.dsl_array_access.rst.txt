@@ -1,0 +1,7 @@
+ppmd.modules.dsl\_array\_access module
+======================================
+
+.. automodule:: ppmd.modules.dsl_array_access
+   :members:
+   :undoc-members:
+   :show-inheritance:

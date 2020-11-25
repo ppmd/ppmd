@@ -1,0 +1,7 @@
+ppmd.coulomb.sph\_harm module
+=============================
+
+.. automodule:: ppmd.coulomb.sph_harm
+   :members:
+   :undoc-members:
+   :show-inheritance:

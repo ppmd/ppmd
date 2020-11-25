@@ -1,0 +1,229 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.coulomb.fmm module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.coulomb.fmm_cuda module" href="ppmd.coulomb.fmm_cuda.html" />
+    <link rel="prev" title="ppmd.coulomb.ewald_half module" href="ppmd.coulomb.ewald_half.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.coulomb.fmm">
+<span id="ppmd-coulomb-fmm-module"></span><h1>ppmd.coulomb.fmm module<a class="headerlink" href="#module-ppmd.coulomb.fmm" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.coulomb.fmm.PyFMM">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.fmm.</code><code class="sig-name descname">PyFMM</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">domain</span></em>, <em class="sig-param"><span class="n">N</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">eps</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">free_space</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">r</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">shell_width</span><span class="o">=</span><span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">cuda</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">cuda_levels</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">force_unit</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">energy_unit</span><span class="o">=</span><span class="default_value">1.0</span></em>, <em class="sig-param"><span class="n">_debug</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">l</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">cuda_local</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.fmm.PyFMM" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt id="ppmd.coulomb.fmm.PyFMM.L">
+<code class="sig-name descname">L</code><a class="headerlink" href="#ppmd.coulomb.fmm.PyFMM.L" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of multipole expansion coefficients</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.fmm.PyFMM.cuda_flop_rate_mtl">
+<code class="sig-name descname">cuda_flop_rate_mtl</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.fmm.PyFMM.cuda_flop_rate_mtl" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.fmm.PyFMM.dtype">
+<code class="sig-name descname">dtype</code><a class="headerlink" href="#ppmd.coulomb.fmm.PyFMM.dtype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Floating point datatype used.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.fmm.PyFMM.flop_rate_mtl">
+<code class="sig-name descname">flop_rate_mtl</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.fmm.PyFMM.flop_rate_mtl" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.fmm.PyFMM.free">
+<code class="sig-name descname">free</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.fmm.PyFMM.free" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.fmm.PyFMM.im_lm">
+<code class="sig-name descname">im_lm</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">l</span></em>, <em class="sig-param"><span class="n">m</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.fmm.PyFMM.im_lm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.fmm.PyFMM.internal_to_ev">
+<em class="property">static </em><code class="sig-name descname">internal_to_ev</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.fmm.PyFMM.internal_to_ev" title="Permalink to this definition">¶</a></dt>
+<dd><p>Multiply by this constant to convert from internal units to eV.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.fmm.PyFMM.re_lm">
+<code class="sig-name descname">re_lm</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">l</span></em>, <em class="sig-param"><span class="n">m</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.fmm.PyFMM.re_lm" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.fmm.extern_numpy_ptr">
+<code class="sig-prename descclassname">ppmd.coulomb.fmm.</code><code class="sig-name descname">extern_numpy_ptr</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">arr</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.fmm.extern_numpy_ptr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.fmm.green">
+<code class="sig-prename descclassname">ppmd.coulomb.fmm.</code><code class="sig-name descname">green</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">input</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.fmm.green" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.fmm.internal_to_ev">
+<code class="sig-prename descclassname">ppmd.coulomb.fmm.</code><code class="sig-name descname">internal_to_ev</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.fmm.internal_to_ev" title="Permalink to this definition">¶</a></dt>
+<dd><p>Multiply by this constant to convert from internal units to eV.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.fmm.red">
+<code class="sig-prename descclassname">ppmd.coulomb.fmm.</code><code class="sig-name descname">red</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">input</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.fmm.red" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.fmm.yellow">
+<code class="sig-prename descclassname">ppmd.coulomb.fmm.</code><code class="sig-name descname">yellow</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">input</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.fmm.yellow" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.coulomb.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.cached.html">ppmd.coulomb.cached module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.direct.html">ppmd.coulomb.direct module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.ewald.html">ppmd.coulomb.ewald module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.ewald_half.html">ppmd.coulomb.ewald_half module</a></li>
+<li class="toctree-l5 current"><a class="current reference internal" href="#">ppmd.coulomb.fmm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_cuda.html">ppmd.coulomb.fmm_cuda module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_interaction_lists.html">ppmd.coulomb.fmm_interaction_lists module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_local.html">ppmd.coulomb.fmm_local module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_pbc.html">ppmd.coulomb.fmm_pbc module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.lm.html">ppmd.coulomb.lm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.mm.html">ppmd.coulomb.mm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.mm_lm_common.html">ppmd.coulomb.mm_lm_common module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.octal.html">ppmd.coulomb.octal module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.sph_harm.html">ppmd.coulomb.sph_harm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.wigner.html">ppmd.coulomb.wigner module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.coulomb.html">ppmd.coulomb package</a><ul>
+      <li>Previous: <a href="ppmd.coulomb.ewald_half.html" title="previous chapter">ppmd.coulomb.ewald_half module</a></li>
+      <li>Next: <a href="ppmd.coulomb.fmm_cuda.html" title="next chapter">ppmd.coulomb.fmm_cuda module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.coulomb.fmm.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

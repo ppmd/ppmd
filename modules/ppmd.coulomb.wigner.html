@@ -1,0 +1,241 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.coulomb.wigner module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.cuda package" href="ppmd.cuda.html" />
+    <link rel="prev" title="ppmd.coulomb.sph_harm module" href="ppmd.coulomb.sph_harm.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.coulomb.wigner">
+<span id="ppmd-coulomb-wigner-module"></span><h1>ppmd.coulomb.wigner module<a class="headerlink" href="#module-ppmd.coulomb.wigner" title="Permalink to this headline">¶</a></h1>
+<dl class="py function">
+<dt id="ppmd.coulomb.wigner.R_y">
+<code class="sig-prename descclassname">ppmd.coulomb.wigner.</code><code class="sig-name descname">R_y</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em>, <em class="sig-param"><span class="n">x</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.wigner.R_y" title="Permalink to this definition">¶</a></dt>
+<dd><p>matrix to apply to complex vector of p moments to rotate the basis functions
+used to compute the moments around the y-axis by angle x.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.wigner.R_z">
+<code class="sig-prename descclassname">ppmd.coulomb.wigner.</code><code class="sig-name descname">R_z</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em>, <em class="sig-param"><span class="n">x</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.wigner.R_z" title="Permalink to this definition">¶</a></dt>
+<dd><p>matrix to apply to complex vector of p moments to rotate the basis functions
+used to compute the moments around the z-axis by angle x.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.wigner.R_z_vec">
+<code class="sig-prename descclassname">ppmd.coulomb.wigner.</code><code class="sig-name descname">R_z_vec</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em>, <em class="sig-param"><span class="n">x</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.wigner.R_z_vec" title="Permalink to this definition">¶</a></dt>
+<dd><p>matrix to apply to complex vector of p moments to rotate the basis functions
+used to compute the moments around the z-axis by angle x.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.wigner.R_zy">
+<code class="sig-prename descclassname">ppmd.coulomb.wigner.</code><code class="sig-name descname">R_zy</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em>, <em class="sig-param"><span class="n">alpha</span></em>, <em class="sig-param"><span class="n">beta</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.wigner.R_zy" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.wigner.R_zyz">
+<code class="sig-prename descclassname">ppmd.coulomb.wigner.</code><code class="sig-name descname">R_zyz</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em>, <em class="sig-param"><span class="n">alpha</span></em>, <em class="sig-param"><span class="n">beta</span></em>, <em class="sig-param"><span class="n">gamma</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.wigner.R_zyz" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.wigner.R_zyz_given_y">
+<code class="sig-prename descclassname">ppmd.coulomb.wigner.</code><code class="sig-name descname">R_zyz_given_y</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em>, <em class="sig-param"><span class="n">alpha</span></em>, <em class="sig-param"><span class="n">beta</span></em>, <em class="sig-param"><span class="n">gamma</span></em>, <em class="sig-param"><span class="n">m1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.wigner.R_zyz_given_y" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.wigner.Ry_set">
+<code class="sig-prename descclassname">ppmd.coulomb.wigner.</code><code class="sig-name descname">Ry_set</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em>, <em class="sig-param"><span class="n">beta</span></em>, <em class="sig-param"><span class="n">dtype</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.wigner.Ry_set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the set of matrices needed to rotate all p moments by beta around
+the y axis.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.wigner.Rzyz_set">
+<code class="sig-prename descclassname">ppmd.coulomb.wigner.</code><code class="sig-name descname">Rzyz_set</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em>, <em class="sig-param"><span class="n">alpha</span></em>, <em class="sig-param"><span class="n">beta</span></em>, <em class="sig-param"><span class="n">gamma</span></em>, <em class="sig-param"><span class="n">dtype</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.wigner.Rzyz_set" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.wigner.Rzyz_set_2">
+<code class="sig-prename descclassname">ppmd.coulomb.wigner.</code><code class="sig-name descname">Rzyz_set_2</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em>, <em class="sig-param"><span class="n">alpha</span></em>, <em class="sig-param"><span class="n">beta</span></em>, <em class="sig-param"><span class="n">gamma</span></em>, <em class="sig-param"><span class="n">dtype</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.wigner.Rzyz_set_2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the set of matrices needed to rotate all p moments by beta around
+the y axis.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.wigner.Rzyz_set_orig">
+<code class="sig-prename descclassname">ppmd.coulomb.wigner.</code><code class="sig-name descname">Rzyz_set_orig</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em>, <em class="sig-param"><span class="n">alpha</span></em>, <em class="sig-param"><span class="n">beta</span></em>, <em class="sig-param"><span class="n">gamma</span></em>, <em class="sig-param"><span class="n">dtype</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.wigner.Rzyz_set_orig" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the set of matrices needed to rotate all p moments by beta around
+the y axis.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.wigner.eps_m">
+<code class="sig-prename descclassname">ppmd.coulomb.wigner.</code><code class="sig-name descname">eps_m</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">m</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.wigner.eps_m" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.wigner.wigner_d">
+<code class="sig-prename descclassname">ppmd.coulomb.wigner.</code><code class="sig-name descname">wigner_d</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">j</span></em>, <em class="sig-param"><span class="n">mp</span></em>, <em class="sig-param"><span class="n">m</span></em>, <em class="sig-param"><span class="n">beta</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.wigner.wigner_d" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the Wigner d-matrix d_{m’, m}^j(eta) using Jacobi polynomials.
+Taken from wikipedia which claims Wigner, E.P. 1931 as a source. Matches
+the recursion based method in wigner_d_rec.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.wigner.wigner_d_rec">
+<code class="sig-prename descclassname">ppmd.coulomb.wigner.</code><code class="sig-name descname">wigner_d_rec</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">j</span></em>, <em class="sig-param"><span class="n">mp</span></em>, <em class="sig-param"><span class="n">m</span></em>, <em class="sig-param"><span class="n">beta</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.wigner.wigner_d_rec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the Wigner d-matrix d_{m’, m}^j(eta) using recursion relations
+Uses recursion relations in:</p>
+<p>“A fast and stable method for rotating spherical harmonic expansions”,
+Z. Gimbutas, L.Greengard</p>
+<p>Corrections:
+Equation (11), last term, numerator in square root should be:
+(n-m)(n-m-1) not (n-m)(n-m+1) to match the Jacobi Polynomial version.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.coulomb.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.cached.html">ppmd.coulomb.cached module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.direct.html">ppmd.coulomb.direct module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.ewald.html">ppmd.coulomb.ewald module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.ewald_half.html">ppmd.coulomb.ewald_half module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm.html">ppmd.coulomb.fmm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_cuda.html">ppmd.coulomb.fmm_cuda module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_interaction_lists.html">ppmd.coulomb.fmm_interaction_lists module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_local.html">ppmd.coulomb.fmm_local module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_pbc.html">ppmd.coulomb.fmm_pbc module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.lm.html">ppmd.coulomb.lm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.mm.html">ppmd.coulomb.mm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.mm_lm_common.html">ppmd.coulomb.mm_lm_common module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.octal.html">ppmd.coulomb.octal module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.sph_harm.html">ppmd.coulomb.sph_harm module</a></li>
+<li class="toctree-l5 current"><a class="current reference internal" href="#">ppmd.coulomb.wigner module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.coulomb.html">ppmd.coulomb package</a><ul>
+      <li>Previous: <a href="ppmd.coulomb.sph_harm.html" title="previous chapter">ppmd.coulomb.sph_harm module</a></li>
+      <li>Next: <a href="ppmd.cuda.html" title="next chapter">ppmd.cuda package</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.coulomb.wigner.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

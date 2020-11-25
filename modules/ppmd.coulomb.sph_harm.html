@@ -1,0 +1,348 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.coulomb.sph_harm module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.coulomb.wigner module" href="ppmd.coulomb.wigner.html" />
+    <link rel="prev" title="ppmd.coulomb.octal module" href="ppmd.coulomb.octal.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.coulomb.sph_harm">
+<span id="ppmd-coulomb-sph-harm-module"></span><h1>ppmd.coulomb.sph_harm module<a class="headerlink" href="#module-ppmd.coulomb.sph_harm" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.coulomb.sph_harm.ALegendrePolynomialGen">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">ALegendrePolynomialGen</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">maxl</span></em>, <em class="sig-param"><span class="n">psym</span><span class="o">=</span><span class="default_value">'_P'</span></em>, <em class="sig-param"><span class="n">tsym</span><span class="o">=</span><span class="default_value">'theta'</span></em>, <em class="sig-param"><span class="n">ctype</span><span class="o">=</span><span class="default_value">'double'</span></em>, <em class="sig-param"><span class="n">avoid_calls</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.ALegendrePolynomialGen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.ALegendrePolynomialGen.get_p_sym">
+<code class="sig-name descname">get_p_sym</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">l</span></em>, <em class="sig-param"><span class="n">m</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.ALegendrePolynomialGen.get_p_sym" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.sph_harm.ALegendrePolynomialGenEphemeral">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">ALegendrePolynomialGenEphemeral</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">maxl</span></em>, <em class="sig-param"><span class="n">psym</span><span class="o">=</span><span class="default_value">'_P'</span></em>, <em class="sig-param"><span class="n">tsym</span><span class="o">=</span><span class="default_value">'theta'</span></em>, <em class="sig-param"><span class="n">ctype</span><span class="o">=</span><span class="default_value">'double'</span></em>, <em class="sig-param"><span class="n">avoid_calls</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.ALegendrePolynomialGenEphemeral" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.ALegendrePolynomialGenEphemeral.get_p_sym">
+<code class="sig-name descname">get_p_sym</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">l</span></em>, <em class="sig-param"><span class="n">m</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.ALegendrePolynomialGenEphemeral.get_p_sym" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.sph_harm.LocalExpEval">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">LocalExpEval</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">L</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.LocalExpEval" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.LocalExpEval.py_compute_phi_local">
+<code class="sig-name descname">py_compute_phi_local</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">moments</span></em>, <em class="sig-param"><span class="n">disp_sph</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.LocalExpEval.py_compute_phi_local" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the field at the podint disp_sph given by the local expansion 
+in moments</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.sph_harm.MultipoleDotVecCreator">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">MultipoleDotVecCreator</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">L</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.MultipoleDotVecCreator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to compute multipole expansions and corresponding expansions that can be used to compute
+energies from local expansions by using a dot product.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>L</strong> (<em>int</em>) – Number of expansion terms.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.MultipoleDotVecCreator.dot_vec_multipole">
+<code class="sig-name descname">dot_vec_multipole</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sph</span></em>, <em class="sig-param"><span class="n">charge</span></em>, <em class="sig-param"><span class="n">arr_vec</span></em>, <em class="sig-param"><span class="n">arr_mul</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.MultipoleDotVecCreator.dot_vec_multipole" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a charge at the point sph computes the coefficients at the origin
+and appends them onto arr that can be used in a dot product to compute
+the energy.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.MultipoleDotVecCreator.py_dot_vec">
+<code class="sig-name descname">py_dot_vec</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sph</span></em>, <em class="sig-param"><span class="n">charge</span></em>, <em class="sig-param"><span class="n">arr</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.MultipoleDotVecCreator.py_dot_vec" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a charge at the point sph computes the multipole moments at the origin
+and appends them onto arr.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.sph_harm.MultipoleExpCreator">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">MultipoleExpCreator</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">L</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.MultipoleExpCreator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to compute multipole expansions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>L</strong> (<em>int</em>) – Number of expansion terms.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.MultipoleExpCreator.multipole_exp">
+<code class="sig-name descname">multipole_exp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sph</span></em>, <em class="sig-param"><span class="n">charge</span></em>, <em class="sig-param"><span class="n">arr</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.MultipoleExpCreator.multipole_exp" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a charge at the point sph computes the multipole moments at the origin
+and appends them onto arr.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.MultipoleExpCreator.py_multipole_exp">
+<code class="sig-name descname">py_multipole_exp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">sph</span></em>, <em class="sig-param"><span class="n">charge</span></em>, <em class="sig-param"><span class="n">arr</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.MultipoleExpCreator.py_multipole_exp" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a charge at the point sph computes the multipole moments at the origin
+and appends them onto arr.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.sph_harm.PRadiusModifier">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">PRadiusModifier</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">lpmv_gen</span></em>, <em class="sig-param"><span class="n">radius_symbol</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.PRadiusModifier" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.PRadiusModifier.get_line">
+<code class="sig-name descname">get_line</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">lx</span></em>, <em class="sig-param"><span class="n">mx</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.PRadiusModifier.get_line" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.PRadiusModifier.get_p_sym">
+<code class="sig-name descname">get_p_sym</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">l</span></em>, <em class="sig-param"><span class="n">m</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.PRadiusModifier.get_p_sym" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.PRadiusModifier.get_radius_sym">
+<code class="sig-name descname">get_radius_sym</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">l</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.PRadiusModifier.get_radius_sym" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.sph_harm.SphCoeffGen">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">SphCoeffGen</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">maxl</span></em>, <em class="sig-param"><span class="n">sym</span><span class="o">=</span><span class="default_value">'_sqrtmf'</span></em>, <em class="sig-param"><span class="n">ctype</span><span class="o">=</span><span class="default_value">'double'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.SphCoeffGen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.SphCoeffGen.get_denominator_sym">
+<code class="sig-name descname">get_denominator_sym</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">mx</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.SphCoeffGen.get_denominator_sym" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.SphCoeffGen.get_numerator_sym">
+<code class="sig-name descname">get_numerator_sym</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">mx</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.SphCoeffGen.get_numerator_sym" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.sph_harm.SphExpGen">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">SphExpGen</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">maxl</span></em>, <em class="sig-param"><span class="n">esym</span><span class="o">=</span><span class="default_value">'_E'</span></em>, <em class="sig-param"><span class="n">psym</span><span class="o">=</span><span class="default_value">'phi'</span></em>, <em class="sig-param"><span class="n">ctype</span><span class="o">=</span><span class="default_value">'double'</span></em>, <em class="sig-param"><span class="n">avoid_calls</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.SphExpGen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.SphExpGen.get_e_sym">
+<code class="sig-name descname">get_e_sym</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">m</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.SphExpGen.get_e_sym" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.sph_harm.SphGen">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">SphGen</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">maxl</span></em>, <em class="sig-param"><span class="n">sym</span><span class="o">=</span><span class="default_value">'_Y'</span></em>, <em class="sig-param"><span class="n">theta_sym</span><span class="o">=</span><span class="default_value">'theta'</span></em>, <em class="sig-param"><span class="n">phi_sym</span><span class="o">=</span><span class="default_value">'phi'</span></em>, <em class="sig-param"><span class="n">ctype</span><span class="o">=</span><span class="default_value">'double'</span></em>, <em class="sig-param"><span class="n">avoid_calls</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">radius_symbol</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.SphGen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.SphGen.get_radius_sym">
+<code class="sig-name descname">get_radius_sym</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.SphGen.get_radius_sym" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.SphGen.get_y_sym">
+<code class="sig-name descname">get_y_sym</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span></em>, <em class="sig-param"><span class="n">m</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.SphGen.get_y_sym" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.sph_harm.SphGenEphemeral">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">SphGenEphemeral</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">maxl</span></em>, <em class="sig-param"><span class="n">sym</span><span class="o">=</span><span class="default_value">'_Y'</span></em>, <em class="sig-param"><span class="n">theta_sym</span><span class="o">=</span><span class="default_value">'theta'</span></em>, <em class="sig-param"><span class="n">phi_sym</span><span class="o">=</span><span class="default_value">'phi'</span></em>, <em class="sig-param"><span class="n">ctype</span><span class="o">=</span><span class="default_value">'double'</span></em>, <em class="sig-param"><span class="n">avoid_calls</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">radius_symbol</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.SphGenEphemeral" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.SphGenEphemeral.get_radius_sym">
+<code class="sig-name descname">get_radius_sym</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.SphGenEphemeral.get_radius_sym" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.sph_harm.SphGenEphemeral.get_y_sym">
+<code class="sig-name descname">get_y_sym</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span></em>, <em class="sig-param"><span class="n">m</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.SphGenEphemeral.get_y_sym" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.sph_harm.SphSymbol">
+<code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">SphSymbol</code><a class="headerlink" href="#ppmd.coulomb.sph_harm.SphSymbol" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.coulomb.sph_harm._Symbol</span></code></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.sph_harm.cmplx_mul">
+<code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">cmplx_mul</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">a</span></em>, <em class="sig-param"><span class="n">b</span></em>, <em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">y</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.cmplx_mul" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.sph_harm.py_local_exp">
+<code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">py_local_exp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">L</span></em>, <em class="sig-param"><span class="n">sph</span></em>, <em class="sig-param"><span class="n">charge</span></em>, <em class="sig-param"><span class="n">arr</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.py_local_exp" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a charge at the point sph computes the local moments at the origin
+and appends them onto arr.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.sph_harm.py_multipole_exp">
+<code class="sig-prename descclassname">ppmd.coulomb.sph_harm.</code><code class="sig-name descname">py_multipole_exp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">L</span></em>, <em class="sig-param"><span class="n">sph</span></em>, <em class="sig-param"><span class="n">charge</span></em>, <em class="sig-param"><span class="n">arr</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.sph_harm.py_multipole_exp" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a charge at the point sph computes the multipole moments at the origin
+and appends them onto arr.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.coulomb.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.cached.html">ppmd.coulomb.cached module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.direct.html">ppmd.coulomb.direct module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.ewald.html">ppmd.coulomb.ewald module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.ewald_half.html">ppmd.coulomb.ewald_half module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm.html">ppmd.coulomb.fmm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_cuda.html">ppmd.coulomb.fmm_cuda module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_interaction_lists.html">ppmd.coulomb.fmm_interaction_lists module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_local.html">ppmd.coulomb.fmm_local module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_pbc.html">ppmd.coulomb.fmm_pbc module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.lm.html">ppmd.coulomb.lm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.mm.html">ppmd.coulomb.mm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.mm_lm_common.html">ppmd.coulomb.mm_lm_common module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.octal.html">ppmd.coulomb.octal module</a></li>
+<li class="toctree-l5 current"><a class="current reference internal" href="#">ppmd.coulomb.sph_harm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.wigner.html">ppmd.coulomb.wigner module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.coulomb.html">ppmd.coulomb package</a><ul>
+      <li>Previous: <a href="ppmd.coulomb.octal.html" title="previous chapter">ppmd.coulomb.octal module</a></li>
+      <li>Next: <a href="ppmd.coulomb.wigner.html" title="next chapter">ppmd.coulomb.wigner module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.coulomb.sph_harm.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

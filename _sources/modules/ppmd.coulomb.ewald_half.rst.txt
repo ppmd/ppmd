@@ -1,0 +1,7 @@
+ppmd.coulomb.ewald\_half module
+===============================
+
+.. automodule:: ppmd.coulomb.ewald_half
+   :members:
+   :undoc-members:
+   :show-inheritance:

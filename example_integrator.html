@@ -1,0 +1,199 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Velocity-Verlet Integrator &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Low-level Argon Example" href="example_argon.html" />
+    <link rel="prev" title="Kernels" href="example_kernel.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="velocity-verlet-integrator">
+<h1>Velocity-Verlet Integrator<a class="headerlink" href="#velocity-verlet-integrator" title="Permalink to this headline">¶</a></h1>
+<p>In this example we will demonstrate how to loop over particle data in a manner that is typical of an time integrator. We shall assume that our system has the following ParticleDat data structures defined.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Note: positions stored in PositionDat</span>
+<span class="n">A</span><span class="o">.</span><span class="n">P</span> <span class="o">=</span> <span class="n">PositionDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_double</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">V</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_double</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">F</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_double</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">M</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_double</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>As Velocity-Verlet is a two stage integrator we shall use two ParticleLoops, one for each stage of the algorithm. The first stage of Velocity-Verlet is a half timestep update of the velocities and a full timestep update of positions. We use superscripts to denote timesteps and subscripts to denote particle indices:</p>
+<div class="math notranslate nohighlight">
+\[ \begin{align}\begin{aligned}V^{n+\frac{1}{2}}_{i} = V^{n}_{i} + \frac{\delta t}{2} \frac{F^{n}_{i}}{M_{i}}\\P^{n+1}_{i} = P^{n}_{i} + \delta t V^{n+\frac{1}{2}}_{i}\end{aligned}\end{align} \]</div>
+<p>Between stage one described above and the second stage a PairLoop will typically be used to update the forces using the positions we updated in the first stage. Assuming up-to-date forces the second stage of Velocity-Verlet updates the velocites using the newly computed forces.</p>
+<div class="math notranslate nohighlight">
+\[V^{n+1}_{i} = V^{n+\frac{1}{2}}_{i} + \frac{\delta t}{2} \frac{F^{n + 1}_{i}}{M_{i}}\]</div>
+<p>We write a kernel for each stage as a portion of C code in a Python string:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># -- Stage 1 --</span>
+<span class="n">vv_kernel1_code</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">const double M_tmp = 1.0 / M.i[0];</span>
+<span class="s1">V.i[0] += dht * F.i[0] * M_tmp;</span>
+<span class="s1">V.i[1] += dht * F.i[1] * M_tmp;</span>
+<span class="s1">V.i[2] += dht * F.i[2] * M_tmp;</span>
+<span class="s1">P.i[0] += dt * V.i[0];</span>
+<span class="s1">P.i[1] += dt * V.i[1];</span>
+<span class="s1">P.i[2] += dt * V.i[2];</span>
+<span class="s1">&#39;&#39;&#39;</span>
+
+<span class="c1"># -- Stage 2 --</span>
+<span class="n">vv_kernel2_code</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">const double M_tmp = 1.0 / M.i[0];</span>
+<span class="s1">V.i[0] += dht * F.i[0] * M_tmp;</span>
+<span class="s1">V.i[1] += dht * F.i[1] * M_tmp;</span>
+<span class="s1">V.i[2] += dht * F.i[2] * M_tmp;</span>
+<span class="s1">&#39;&#39;&#39;</span>
+</pre></div>
+</div>
+<p>In the two C kernels above we use values (<code class="code docutils literal notranslate"><span class="pre">dt</span></code> = <span class="math notranslate nohighlight">\(\delta t\)</span> and <code class="code docutils literal notranslate"><span class="pre">dht</span></code> = <span class="math notranslate nohighlight">\(\frac{\delta t}{2}\)</span>) which, in our example, are constant. We declare constant values using <code class="xref py py-class docutils literal notranslate"><span class="pre">kernel.Constant</span></code> instances as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">dt</span> <span class="o">=</span> <span class="mf">0.0001</span>
+<span class="n">constants</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">kernel</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s1">&#39;dt&#39;</span><span class="p">,</span> <span class="n">dt</span><span class="p">),</span>
+    <span class="n">kernel</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="s1">&#39;dht&#39;</span><span class="p">,</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">dt</span><span class="p">),</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p>We may then combine the strings containing the kernel code with the declared constants to create a <code class="xref py py-class docutils literal notranslate"><span class="pre">kernel.Kernel</span></code> instance that describes the operations that we wish to perform in a container that can be passed to a looping method. For a first argument we pass a user specified name to aid profiling, names are user chosen and are not required to contain any information:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">vv_kernel1</span> <span class="o">=</span> <span class="n">kernel</span><span class="o">.</span><span class="n">Kernel</span><span class="p">(</span><span class="s1">&#39;vv1&#39;</span><span class="p">,</span> <span class="n">vv_kernel1_code</span><span class="p">,</span> <span class="n">constants</span><span class="p">)</span>
+<span class="n">vv_kernel2</span> <span class="o">=</span> <span class="n">kernel</span><span class="o">.</span><span class="n">Kernel</span><span class="p">(</span><span class="s1">&#39;vv2&#39;</span><span class="p">,</span> <span class="n">vv_kernel2_code</span><span class="p">,</span> <span class="n">constants</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The final step is to create two <code class="xref py py-class docutils literal notranslate"><span class="pre">ParticleLoop</span></code> instances, one for each kernel. Each ParticleLoop is constructed with a kernel and a Python dictionary refered to as the <code class="code docutils literal notranslate"><span class="pre">dat_dict</span></code>. The dictionary matches the symbols used in the C kernel with the corresponding data structure, the data structures are called as show below with an access descriptor. By using access descriptors we indicate to the ParticleLoop how the kernel will access data.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">loop1</span> <span class="o">=</span> <span class="n">ParticleLoop</span><span class="p">(</span>
+    <span class="n">kernel</span><span class="o">=</span><span class="n">vv_kernel1</span><span class="p">,</span>
+    <span class="n">dat_dict</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;P&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">P</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">W</span><span class="p">),</span>
+              <span class="s1">&#39;V&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">V</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">W</span><span class="p">),</span>
+              <span class="s1">&#39;F&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">F</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">R</span><span class="p">),</span>
+              <span class="s1">&#39;M&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">M</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">R</span><span class="p">)}</span>
+<span class="p">)</span>
+
+<span class="n">loop2</span> <span class="o">=</span> <span class="n">ParticleLoop</span><span class="p">(</span>
+    <span class="n">kernel</span><span class="o">=</span><span class="n">vv_kernel2</span><span class="p">,</span>
+    <span class="n">dat_dict</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;V&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">V</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">W</span><span class="p">),</span>
+              <span class="s1">&#39;F&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">F</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">R</span><span class="p">),</span>
+              <span class="s1">&#39;M&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">M</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">R</span><span class="p">),</span>
+              <span class="s1">&#39;k&#39;</span><span class="p">:</span> <span class="n">A</span><span class="o">.</span><span class="n">KE</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">access</span><span class="o">.</span><span class="n">INC0</span><span class="p">)}</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>To execute our two kernels over all particles we call the <code class="code docutils literal notranslate"><span class="pre">execute</span></code> method on each ParticleLoop instance:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Execute kernel 1</span>
+<span class="n">loop1</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+
+<span class="c1"># -- update forces using a pairloop --</span>
+
+<span class="c1"># Execute kernel 2</span>
+<span class="n">loop2</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="examples.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="example_data.html">Particle Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_state.html">State Containers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_kernel.html">Kernels</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Velocity-Verlet Integrator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_argon.html">Low-level Argon Example</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/ppmd.html">ppmd package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="examples.html">Examples</a><ul>
+      <li>Previous: <a href="example_kernel.html" title="previous chapter">Kernels</a></li>
+      <li>Next: <a href="example_argon.html" title="next chapter">Low-level Argon Example</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/example_integrator.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

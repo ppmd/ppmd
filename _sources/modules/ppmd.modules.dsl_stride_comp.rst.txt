@@ -1,0 +1,7 @@
+ppmd.modules.dsl\_stride\_comp module
+=====================================
+
+.. automodule:: ppmd.modules.dsl_stride_comp
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+ppmd.opt module
+===============
+
+.. automodule:: ppmd.opt
+   :members:
+   :undoc-members:
+   :show-inheritance:

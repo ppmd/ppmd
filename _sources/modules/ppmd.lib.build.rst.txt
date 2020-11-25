@@ -1,0 +1,7 @@
+ppmd.lib.build module
+=====================
+
+.. automodule:: ppmd.lib.build
+   :members:
+   :undoc-members:
+   :show-inheritance:

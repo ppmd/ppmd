@@ -1,0 +1,45 @@
+ppmd package
+============
+
+.. automodule:: ppmd
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ppmd.config
+   ppmd.coulomb
+   ppmd.cuda
+   ppmd.data
+   ppmd.lib
+   ppmd.loop
+   ppmd.modules
+   ppmd.pairloop
+   ppmd.pygcl
+   ppmd.utility
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ppmd.access
+   ppmd.cell
+   ppmd.domain
+   ppmd.halo
+   ppmd.host
+   ppmd.kernel
+   ppmd.method
+   ppmd.mpi
+   ppmd.opt
+   ppmd.pio
+   ppmd.plain_cell_list
+   ppmd.runtime
+   ppmd.state
+   ppmd.state_modifier

@@ -1,0 +1,320 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.cell module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.domain module" href="ppmd.domain.html" />
+    <link rel="prev" title="ppmd.access module" href="ppmd.access.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.cell">
+<span id="ppmd-cell-module"></span><h1>ppmd.cell module<a class="headerlink" href="#module-ppmd.cell" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.cell.CellList">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.cell.</code><code class="sig-name descname">CellList</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n_func</span></em>, <em class="sig-param"><span class="n">positions</span></em>, <em class="sig-param"><span class="n">domain</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.CellList" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to handle cell lists for a given domain.</p>
+<dl class="py method">
+<dt id="ppmd.cell.CellList.cell_array">
+<em class="property">property </em><code class="sig-name descname">cell_array</code><a class="headerlink" href="#ppmd.cell.CellList.cell_array" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.cell_contents_count">
+<em class="property">property </em><code class="sig-name descname">cell_contents_count</code><a class="headerlink" href="#ppmd.cell.CellList.cell_contents_count" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The cell contents count lookup</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.cell_list">
+<em class="property">property </em><code class="sig-name descname">cell_list</code><a class="headerlink" href="#ppmd.cell.CellList.cell_list" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The held cell list.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.cell_reverse_lookup">
+<em class="property">property </em><code class="sig-name descname">cell_reverse_lookup</code><a class="headerlink" href="#ppmd.cell.CellList.cell_reverse_lookup" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The Reverse lookup map.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.cell_width">
+<em class="property">property </em><code class="sig-name descname">cell_width</code><a class="headerlink" href="#ppmd.cell.CellList.cell_width" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the cell width used to setup the cell structure. N.B. cells may 
+be larger than this.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.check">
+<code class="sig-name descname">check</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.CellList.check" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if the cell_linked_list needs updating and update if required.
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.create">
+<code class="sig-name descname">create</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.CellList.create" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.domain">
+<em class="property">property </em><code class="sig-name descname">domain</code><a class="headerlink" href="#ppmd.cell.CellList.domain" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The domain used.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.get_setup_parameters">
+<code class="sig-name descname">get_setup_parameters</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.CellList.get_setup_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the values/function handles used to setup the cell list.
+:return:</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.cell.CellList.halo_version_id">
+<code class="sig-name descname">halo_version_id</code><a class="headerlink" href="#ppmd.cell.CellList.halo_version_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>halo version id incremented when halo cell list is updated.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.cell.CellList.instance_id">
+<code class="sig-name descname">instance_id</code><em class="property"> = 0</em><a class="headerlink" href="#ppmd.cell.CellList.instance_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.max_cell_contents_count">
+<em class="property">property </em><code class="sig-name descname">max_cell_contents_count</code><a class="headerlink" href="#ppmd.cell.CellList.max_cell_contents_count" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.num_particles">
+<em class="property">property </em><code class="sig-name descname">num_particles</code><a class="headerlink" href="#ppmd.cell.CellList.num_particles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the number of particles in the cell list</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.offset">
+<em class="property">property </em><code class="sig-name descname">offset</code><a class="headerlink" href="#ppmd.cell.CellList.offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the offset required to find the starting position of the cells in
+the cell list.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>int start of cells in cell list.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.post_halo_exchange">
+<code class="sig-name descname">post_halo_exchange</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.CellList.post_halo_exchange" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.prepare_halo_sort">
+<code class="sig-name descname">prepare_halo_sort</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">total_size</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.CellList.prepare_halo_sort" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.reset_callbacks">
+<code class="sig-name descname">reset_callbacks</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.CellList.reset_callbacks" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.setup_callback_on_update">
+<code class="sig-name descname">setup_callback_on_update</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">func</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.CellList.setup_callback_on_update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Setup a function to be ran after the cell list if updated.
+:param func: Function to run.
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.setup_pre_update">
+<code class="sig-name descname">setup_pre_update</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">func</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.CellList.setup_pre_update" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.setup_update_tracking">
+<code class="sig-name descname">setup_update_tracking</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">func</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.CellList.setup_update_tracking" title="Permalink to this definition">¶</a></dt>
+<dd><p>Setup an automatic cell update.
+:param func:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.sort">
+<code class="sig-name descname">sort</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.CellList.sort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sort local particles into cell list.
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.total_num_particles">
+<em class="property">property </em><code class="sig-name descname">total_num_particles</code><a class="headerlink" href="#ppmd.cell.CellList.total_num_particles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of local particles + halo particles.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.cell.CellList.trigger_update">
+<code class="sig-name descname">trigger_update</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.CellList.trigger_update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Trigger an update of the cell list.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.cell.CellList.version_id">
+<code class="sig-name descname">version_id</code><a class="headerlink" href="#ppmd.cell.CellList.version_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Version id, incremented when the list is updated.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.cell.convert_offset_tuples">
+<code class="sig-prename descclassname">ppmd.cell.</code><code class="sig-name descname">convert_offset_tuples</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">offsets</span></em>, <em class="sig-param"><span class="n">cell_array</span></em>, <em class="sig-param"><span class="n">remove_zero</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.convert_offset_tuples" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.cell.radius_cell_decompose">
+<code class="sig-prename descclassname">ppmd.cell.</code><code class="sig-name descname">radius_cell_decompose</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rc</span></em>, <em class="sig-param"><span class="n">rd</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.cell.radius_cell_decompose" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns list of cell offset tuples for cell sub-division with cell width
+rd matching a interaction cutoff rc.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.access.html">ppmd.access module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">ppmd.cell module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.domain.html">ppmd.domain module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.halo.html">ppmd.halo module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.host.html">ppmd.host module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.kernel.html">ppmd.kernel module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.method.html">ppmd.method module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.mpi.html">ppmd.mpi module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.opt.html">ppmd.opt module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pio.html">ppmd.pio module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.plain_cell_list.html">ppmd.plain_cell_list module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.runtime.html">ppmd.runtime module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state.html">ppmd.state module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state_modifier.html">ppmd.state_modifier module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+      <li>Previous: <a href="ppmd.access.html" title="previous chapter">ppmd.access module</a></li>
+      <li>Next: <a href="ppmd.domain.html" title="next chapter">ppmd.domain module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.cell.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

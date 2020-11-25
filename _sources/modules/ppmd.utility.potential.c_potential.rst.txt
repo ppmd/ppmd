@@ -1,0 +1,7 @@
+ppmd.utility.potential.c\_potential module
+==========================================
+
+.. automodule:: ppmd.utility.potential.c_potential
+   :members:
+   :undoc-members:
+   :show-inheritance:

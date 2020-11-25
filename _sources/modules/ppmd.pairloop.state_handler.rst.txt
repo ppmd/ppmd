@@ -1,0 +1,7 @@
+ppmd.pairloop.state\_handler module
+===================================
+
+.. automodule:: ppmd.pairloop.state_handler
+   :members:
+   :undoc-members:
+   :show-inheritance:

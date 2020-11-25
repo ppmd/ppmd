@@ -1,0 +1,7 @@
+ppmd.modules.code\_timer module
+===============================
+
+.. automodule:: ppmd.modules.code_timer
+   :members:
+   :undoc-members:
+   :show-inheritance:

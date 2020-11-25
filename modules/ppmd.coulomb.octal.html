@@ -1,0 +1,495 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.coulomb.octal module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.coulomb.sph_harm module" href="ppmd.coulomb.sph_harm.html" />
+    <link rel="prev" title="ppmd.coulomb.mm_lm_common module" href="ppmd.coulomb.mm_lm_common.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.coulomb.octal">
+<span id="ppmd-coulomb-octal-module"></span><h1>ppmd.coulomb.octal module<a class="headerlink" href="#module-ppmd.coulomb.octal" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.coulomb.octal.EntryData">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">EntryData</code><span class="sig-paren">(</span><em class="sig-param">tree</em>, <em class="sig-param">ncomp</em>, <em class="sig-param">dtype=&lt;class 'ctypes.c_double'&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.EntryData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.coulomb.octal.EntryData.add_onto">
+<code class="sig-name descname">add_onto</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">octal_data_tree</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.EntryData.add_onto" title="Permalink to this definition">¶</a></dt>
+<dd><p>add data onto a OctalDataTree of mode=’halo’
+:param octal_data_tree:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.octal.EntryData.extract_from">
+<code class="sig-name descname">extract_from</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">octal_data_tree</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.EntryData.extract_from" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract data from a OctalDataTree of mode=’plain’
+:param octal_data_tree:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.octal.EntryData.zero">
+<code class="sig-name descname">zero</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.EntryData.zero" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.octal.OctalDataTree">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">OctalDataTree</code><span class="sig-paren">(</span><em class="sig-param">tree</em>, <em class="sig-param">ncomp</em>, <em class="sig-param">mode=None</em>, <em class="sig-param">dtype=&lt;class 'ctypes.c_double'&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.OctalDataTree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.coulomb.octal.OctalDataTree.halo_exchange_level">
+<code class="sig-name descname">halo_exchange_level</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">level</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.OctalDataTree.halo_exchange_level" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.octal.OctalDataTree.num_cells">
+<code class="sig-name descname">num_cells</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">start</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">end</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.OctalDataTree.num_cells" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.octal.OctalDataTree.zero">
+<code class="sig-name descname">zero</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.OctalDataTree.zero" title="Permalink to this definition">¶</a></dt>
+<dd><p>Zero all stored data.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.octal.OctalGridLevel">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">OctalGridLevel</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">level</span></em>, <em class="sig-param"><span class="n">parent_comm</span></em>, <em class="sig-param"><span class="n">entry_map</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.OctalGridLevel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.coulomb.octal.OctalGridLevel.free">
+<code class="sig-name descname">free</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.OctalGridLevel.free" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.OctalGridLevel.global_to_local">
+<code class="sig-name descname">global_to_local</code><a class="headerlink" href="#ppmd.coulomb.octal.OctalGridLevel.global_to_local" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map from global cube index to local cube index</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.OctalGridLevel.global_to_local_halo">
+<code class="sig-name descname">global_to_local_halo</code><a class="headerlink" href="#ppmd.coulomb.octal.OctalGridLevel.global_to_local_halo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map from global cube index to local cube index with halos</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.OctalGridLevel.global_to_local_parent">
+<code class="sig-name descname">global_to_local_parent</code><a class="headerlink" href="#ppmd.coulomb.octal.OctalGridLevel.global_to_local_parent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map from global cube index to local parent index</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.OctalGridLevel.grid_cube_size">
+<code class="sig-name descname">grid_cube_size</code><a class="headerlink" href="#ppmd.coulomb.octal.OctalGridLevel.grid_cube_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Size of grid plus halos</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.octal.OctalGridLevel.halo_exchange">
+<code class="sig-name descname">halo_exchange</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">arr</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.OctalGridLevel.halo_exchange" title="Permalink to this definition">¶</a></dt>
+<dd><p>Halo exchange the passed numpy array of shape self.grid_cube_size.
+:param arr: numpy array to exchange.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.OctalGridLevel.local_grid_cube_size">
+<code class="sig-name descname">local_grid_cube_size</code><a class="headerlink" href="#ppmd.coulomb.octal.OctalGridLevel.local_grid_cube_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Size of grid</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.OctalGridLevel.local_grid_offset">
+<code class="sig-name descname">local_grid_offset</code><a class="headerlink" href="#ppmd.coulomb.octal.OctalGridLevel.local_grid_offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Offset in global coodinates to the local sub-domain</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.OctalGridLevel.owners">
+<code class="sig-name descname">owners</code><a class="headerlink" href="#ppmd.coulomb.octal.OctalGridLevel.owners" title="Permalink to this definition">¶</a></dt>
+<dd><p>Map from global cube index to owning MPI rank</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.OctalGridLevel.parent_local_size">
+<code class="sig-name descname">parent_local_size</code><a class="headerlink" href="#ppmd.coulomb.octal.OctalGridLevel.parent_local_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Size of parent grid with matching ownership</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.octal.OctalTree">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">OctalTree</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">num_levels</span></em>, <em class="sig-param"><span class="n">cart_comm</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.OctalTree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.coulomb.octal.OctalTree.free">
+<code class="sig-name descname">free</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.OctalTree.free" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.octal.compute_interaction_lists">
+<code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">compute_interaction_lists</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">local_size</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.compute_interaction_lists" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the local interaction offset lists for a local domain. Child cubes
+are indexed lexicographically from 0.
+:param local_size: tuple of local cube domain dimensions (fast to slow)
+:return: 8x189 INT64 offsets numpy array.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.octal.compute_interaction_offsets">
+<code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">compute_interaction_offsets</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cube_index</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.compute_interaction_offsets" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the interaction offsets for a given child cube. Child cubes are
+indexed with a tuple.
+:param cube_index: Tuple of child cube to compute offsets for.
+:return: numpy array type INT64 size 189x3 of offsets.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.octal.compute_interaction_plookup">
+<code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">compute_interaction_plookup</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.compute_interaction_plookup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the 8x189 lookup table to map from offset index to recomputed
+spherical harmonics. Phi part.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.octal.compute_interaction_radius">
+<code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">compute_interaction_radius</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.compute_interaction_radius" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the coefficients such that when multiplied by the cube with they 
+give the radius to the box centre.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.octal.compute_interaction_tlookup">
+<code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">compute_interaction_tlookup</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.compute_interaction_tlookup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the 8x189 lookup table to map from offset index to recomputed
+spherical harmonics. Theta part.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.octal.compute_local_size_offset">
+<code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">compute_local_size_offset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">owners</span></em>, <em class="sig-param"><span class="n">dims</span></em>, <em class="sig-param"><span class="n">top</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.compute_local_size_offset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.coulomb.octal.cube_owner_map">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">cube_owner_map</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cart_comm</span></em>, <em class="sig-param"><span class="n">cube_side_count</span></em>, <em class="sig-param"><span class="n">group_children</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.cube_owner_map" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Compute the global map from cube index (lexicographic) to owning MPI rank
+and map to MPI ranks with sub-domains of non-empty intersection with each
+cube.</p>
+<p>Assumes that in each dimension ranks are assigned equal shares of the 
+domain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cart_comm</strong> – MPI cartesian communicator.</p></li>
+<li><p><strong>cube_side_count</strong> – Integer subdivision level of domain.</p></li>
+<li><p><strong>group_children</strong> – Consider cube subdivision to be the final mesh l of</p></li>
+</ul>
+</dd>
+</dl>
+<p>an octal tree and group cubes such that all children of cubes in mesh l-1
+are on the same MPI rank.</p>
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.cube_owner_map.cart_comm">
+<code class="sig-name descname">cart_comm</code><a class="headerlink" href="#ppmd.coulomb.octal.cube_owner_map.cart_comm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cartesian communicator used</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.octal.cube_owner_map.compute_grid_ownership">
+<em class="property">static </em><code class="sig-name descname">compute_grid_ownership</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dims</span></em>, <em class="sig-param"><span class="n">top</span></em>, <em class="sig-param"><span class="n">cube_side_count</span></em>, <em class="sig-param"><span class="n">group_children</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.cube_owner_map.compute_grid_ownership" title="Permalink to this definition">¶</a></dt>
+<dd><p>For each dimension compute the owner and contributing ranks. Does
+not perform out product to compute the full map.
+:param dims: tuple of mpi dims.
+:param top: tuple of top.
+:param cube_side_count: int, number of cubes in each dimension
+:param group_children: See class doc string.
+:return: tuple: ranks of each cube owner, contributing ranks.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.octal.cube_owner_map.compute_map_product_contribs">
+<em class="property">static </em><code class="sig-name descname">compute_map_product_contribs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cart_comm</span></em>, <em class="sig-param"><span class="n">cube_to_mpi</span></em>, <em class="sig-param"><span class="n">dim_contribs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.cube_owner_map.compute_map_product_contribs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the full map from cube index to mpi rank owner, cube index to
+mpi ranks of contributors.
+:param cart_comm: MPI cart_comm to use for logical coord to rank 
+conversion. Owner map per dimension, elements are ints.
+:param cube_to_mpi: ndims x cube_side_count tuple representing cube to 
+owner map per dimension, elements are ints.        
+:param dim_contribs: tuple ndims x cube_side_count tuple containing
+lists of contributors.
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.coulomb.octal.cube_owner_map.compute_map_product_owners">
+<em class="property">static </em><code class="sig-name descname">compute_map_product_owners</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cart_comm</span></em>, <em class="sig-param"><span class="n">dim_owners</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.cube_owner_map.compute_map_product_owners" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the full map from cube index to mpi rank owner.
+:param cart_comm: MPI cart_comm to use for logical coord to rank 
+conversion.
+:param dim_owners: ndims x cube_side_count tuple representing cube to 
+owner map per dimension, elements are ints.
+lists of contributors.
+:return: array, length number of cubes, cube global index to mpi rank
+owner.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.cube_owner_map.contrib_mpi">
+<code class="sig-name descname">contrib_mpi</code><a class="headerlink" href="#ppmd.coulomb.octal.cube_owner_map.contrib_mpi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Array containing ranks contributing to a cube</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.cube_owner_map.contrib_starts">
+<code class="sig-name descname">contrib_starts</code><a class="headerlink" href="#ppmd.coulomb.octal.cube_owner_map.contrib_starts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cube i has contributing coefficients from ranks x_s_i to x_s_{i-1}
+where s is contrib_starts and x is contrib_mpi</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.cube_owner_map.cube_count">
+<code class="sig-name descname">cube_count</code><a class="headerlink" href="#ppmd.coulomb.octal.cube_owner_map.cube_count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Total number of cubes</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.cube_owner_map.cube_side_count">
+<code class="sig-name descname">cube_side_count</code><a class="headerlink" href="#ppmd.coulomb.octal.cube_owner_map.cube_side_count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Side count of octal tree on domain</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.cube_owner_map.cube_to_mpi">
+<code class="sig-name descname">cube_to_mpi</code><a class="headerlink" href="#ppmd.coulomb.octal.cube_owner_map.cube_to_mpi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Array from cube global index to owning mpi rank</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.coulomb.octal.cube_owner_map.cube_to_send">
+<code class="sig-name descname">cube_to_send</code><a class="headerlink" href="#ppmd.coulomb.octal.cube_owner_map.cube_to_send" title="Permalink to this definition">¶</a></dt>
+<dd><p>Array if this mpi rank contributes to cube i then x_i is owning
+rank of cube i else x_i = -1</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.octal.cube_tuple_to_lin_xyz">
+<code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">cube_tuple_to_lin_xyz</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ii</span></em>, <em class="sig-param"><span class="n">n</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.cube_tuple_to_lin_xyz" title="Permalink to this definition">¶</a></dt>
+<dd><p>convert xyz tuple ii to linear index in cube of side length n.
+:param ii:  (x,y,z) tuple.
+:param n: side length</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.octal.cube_tuple_to_lin_zyx">
+<code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">cube_tuple_to_lin_zyx</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ii</span></em>, <em class="sig-param"><span class="n">n</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.cube_tuple_to_lin_zyx" title="Permalink to this definition">¶</a></dt>
+<dd><p>convert xyz tuple ii to linear index in cube of side length n.
+:param ii:  (z,y,x) tuple.
+:param n: side length</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.octal.send_parent_to_halo">
+<code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">send_parent_to_halo</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">src_level</span></em>, <em class="sig-param"><span class="n">parent_data_tree</span></em>, <em class="sig-param"><span class="n">halo_data_tree</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.send_parent_to_halo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy the data from parent mode OctalDataTree to halo mode OctalDataTree.</p>
+<p>This function enables the movement of data up the octal tree. Data is sent
+from src_level to src_level - 1.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src_level</strong> – parent level to send into the halo level</p></li>
+<li><p><strong>parent_data_tree</strong> – OctalDataTree of mode parent.</p></li>
+<li><p><strong>halo_data_tree</strong> – OctalDataTree of mode halo</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>halo_data_tree will be modified.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.octal.send_plain_to_parent">
+<code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">send_plain_to_parent</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">src_level</span></em>, <em class="sig-param"><span class="n">plain_data_tree</span></em>, <em class="sig-param"><span class="n">parent_data_tree</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.send_plain_to_parent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy the data from plain mode OctalDataTree to parent mode OctalDataTree.</p>
+<p>This function enables the movement of data down the octal tree. Data is 
+sent from src_level to src_level + 1.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src_level</strong> – plain level to send into the parent level</p></li>
+<li><p><strong>plain_data_tree</strong> – OctalDataTree of mode plain.</p></li>
+<li><p><strong>parent_data_tree</strong> – OctalDataTree of mode parent</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>parent_data_tree will be modified.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.coulomb.octal.shell_iterator">
+<code class="sig-prename descclassname">ppmd.coulomb.octal.</code><code class="sig-name descname">shell_iterator</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">width</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.coulomb.octal.shell_iterator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iterator to loop over the outer shell of a cube.
+:param width: Number of cells between a centred cube and the outer most
+cube.</p>
+<dl class="simple">
+<dt>width   = 0 -&gt; a single cube.</dt><dd><p>= 1 -&gt; all cubes in a 3x3x3 block except the very middle cube.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.coulomb.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.cached.html">ppmd.coulomb.cached module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.direct.html">ppmd.coulomb.direct module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.ewald.html">ppmd.coulomb.ewald module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.ewald_half.html">ppmd.coulomb.ewald_half module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm.html">ppmd.coulomb.fmm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_cuda.html">ppmd.coulomb.fmm_cuda module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_interaction_lists.html">ppmd.coulomb.fmm_interaction_lists module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_local.html">ppmd.coulomb.fmm_local module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.fmm_pbc.html">ppmd.coulomb.fmm_pbc module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.lm.html">ppmd.coulomb.lm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.mm.html">ppmd.coulomb.mm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.mm_lm_common.html">ppmd.coulomb.mm_lm_common module</a></li>
+<li class="toctree-l5 current"><a class="current reference internal" href="#">ppmd.coulomb.octal module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.sph_harm.html">ppmd.coulomb.sph_harm module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.coulomb.wigner.html">ppmd.coulomb.wigner module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.coulomb.html">ppmd.coulomb package</a><ul>
+      <li>Previous: <a href="ppmd.coulomb.mm_lm_common.html" title="previous chapter">ppmd.coulomb.mm_lm_common module</a></li>
+      <li>Next: <a href="ppmd.coulomb.sph_harm.html" title="next chapter">ppmd.coulomb.sph_harm module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.coulomb.octal.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,7 @@
+ppmd.utility.potential.sym\_potential module
+============================================
+
+.. automodule:: ppmd.utility.potential.sym_potential
+   :members:
+   :undoc-members:
+   :show-inheritance:

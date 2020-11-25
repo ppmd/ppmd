@@ -1,0 +1,29 @@
+ppmd.pairloop package
+=====================
+
+.. automodule:: ppmd.pairloop
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ppmd.pairloop.alltoall
+   ppmd.pairloop.alltoall_omp
+   ppmd.pairloop.base
+   ppmd.pairloop.cellbycell
+   ppmd.pairloop.cellbycell_omp
+   ppmd.pairloop.list_controller
+   ppmd.pairloop.neighbour_matrix_omp
+   ppmd.pairloop.neighbour_matrix_omp_sub
+   ppmd.pairloop.neighbourlist
+   ppmd.pairloop.neighbourlist_14cell
+   ppmd.pairloop.neighbourlist_27cell
+   ppmd.pairloop.neighbourlist_omp
+   ppmd.pairloop.state_handler
+   ppmd.pairloop.sub_cell
+   ppmd.pairloop.sub_cellbycell_omp

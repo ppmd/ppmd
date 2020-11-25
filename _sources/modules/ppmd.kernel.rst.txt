@@ -1,0 +1,7 @@
+ppmd.kernel module
+==================
+
+.. automodule:: ppmd.kernel
+   :members:
+   :undoc-members:
+   :show-inheritance:

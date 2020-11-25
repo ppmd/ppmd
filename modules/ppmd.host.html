@@ -1,0 +1,326 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.host module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.kernel module" href="ppmd.kernel.html" />
+    <link rel="prev" title="ppmd.halo module" href="ppmd.halo.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.host">
+<span id="ppmd-host-module"></span><h1>ppmd.host module<a class="headerlink" href="#module-ppmd.host" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.host.Array">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.host.</code><code class="sig-name descname">Array</code><span class="sig-paren">(</span><em class="sig-param">initial_value=None</em>, <em class="sig-param">name=None</em>, <em class="sig-param">ncomp=1</em>, <em class="sig-param">dtype=&lt;class 'ctypes.c_double'&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.Array" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.host._Array</span></code></p>
+<p>Basic dynamic memory array on host, with some methods.</p>
+<dl class="py method">
+<dt id="ppmd.host.Array.ctype">
+<em class="property">property </em><code class="sig-name descname">ctype</code><a class="headerlink" href="#ppmd.host.Array.ctype" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Array.ctypes_data">
+<em class="property">property </em><code class="sig-name descname">ctypes_data</code><a class="headerlink" href="#ppmd.host.Array.ctypes_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Array.ctypes_data_access">
+<code class="sig-name descname">ctypes_data_access</code><span class="sig-paren">(</span><em class="sig-param">mode=Read and write.</em>, <em class="sig-param">pair=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.Array.ctypes_data_access" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Array.ctypes_data_post">
+<code class="sig-name descname">ctypes_data_post</code><span class="sig-paren">(</span><em class="sig-param">mode=Read and write.</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.Array.ctypes_data_post" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Array.dtype">
+<em class="property">property </em><code class="sig-name descname">dtype</code><a class="headerlink" href="#ppmd.host.Array.dtype" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Array.end">
+<em class="property">property </em><code class="sig-name descname">end</code><a class="headerlink" href="#ppmd.host.Array.end" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns end index of array.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Array.inc_version">
+<code class="sig-name descname">inc_version</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">inc</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.Array.inc_version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Increment the version by the specified amount
+:param int inc: amount to increment version by.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Array.ncomp">
+<em class="property">property </em><code class="sig-name descname">ncomp</code><a class="headerlink" href="#ppmd.host.Array.ncomp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Array.realloc">
+<code class="sig-name descname">realloc</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">length</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.Array.realloc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Array.size">
+<em class="property">property </em><code class="sig-name descname">size</code><a class="headerlink" href="#ppmd.host.Array.size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Array.version">
+<em class="property">property </em><code class="sig-name descname">version</code><a class="headerlink" href="#ppmd.host.Array.version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the version of this array.
+:return int version:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Array.zero">
+<code class="sig-name descname">zero</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.Array.zero" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.host.Matrix">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.host.</code><code class="sig-name descname">Matrix</code><span class="sig-paren">(</span><em class="sig-param">nrow=1</em>, <em class="sig-param">ncol=1</em>, <em class="sig-param">initial_value=None</em>, <em class="sig-param">dtype=&lt;class 'ctypes.c_double'&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.Matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Basic dynamic memory matrix on host, with some methods.</p>
+<dl class="py method">
+<dt id="ppmd.host.Matrix.ctype">
+<em class="property">property </em><code class="sig-name descname">ctype</code><a class="headerlink" href="#ppmd.host.Matrix.ctype" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Matrix.ctypes_data">
+<em class="property">property </em><code class="sig-name descname">ctypes_data</code><a class="headerlink" href="#ppmd.host.Matrix.ctypes_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Matrix.ctypes_data_access">
+<code class="sig-name descname">ctypes_data_access</code><span class="sig-paren">(</span><em class="sig-param">mode=Read and write.</em>, <em class="sig-param">pair=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.Matrix.ctypes_data_access" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>mode</strong> (<em>access</em>) – Access type required by the calling method.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The pointer to the data.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Matrix.ctypes_data_post">
+<code class="sig-name descname">ctypes_data_post</code><span class="sig-paren">(</span><em class="sig-param">mode=Read and write.</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.Matrix.ctypes_data_post" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Matrix.data">
+<em class="property">property </em><code class="sig-name descname">data</code><a class="headerlink" href="#ppmd.host.Matrix.data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Matrix.dtype">
+<em class="property">property </em><code class="sig-name descname">dtype</code><a class="headerlink" href="#ppmd.host.Matrix.dtype" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Matrix.inc_version">
+<code class="sig-name descname">inc_version</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">inc</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.Matrix.inc_version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Increment the version by the specified amount
+:param int inc: amount to increment version by.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Matrix.ncol">
+<em class="property">property </em><code class="sig-name descname">ncol</code><a class="headerlink" href="#ppmd.host.Matrix.ncol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Matrix.nrow">
+<em class="property">property </em><code class="sig-name descname">nrow</code><a class="headerlink" href="#ppmd.host.Matrix.nrow" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Matrix.realloc">
+<code class="sig-name descname">realloc</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">nrow</span></em>, <em class="sig-param"><span class="n">ncol</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.Matrix.realloc" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Matrix.size">
+<em class="property">property </em><code class="sig-name descname">size</code><a class="headerlink" href="#ppmd.host.Matrix.size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Matrix.version">
+<em class="property">property </em><code class="sig-name descname">version</code><a class="headerlink" href="#ppmd.host.Matrix.version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the version of this array.
+:return int version:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.host.Matrix.zero">
+<code class="sig-name descname">zero</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.Matrix.zero" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.host.ThreadSpace">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.host.</code><code class="sig-name descname">ThreadSpace</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">n</span></em>, <em class="sig-param"><span class="n">dtype</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.ThreadSpace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.host.ThreadSpace.ctypes_data">
+<em class="property">property </em><code class="sig-name descname">ctypes_data</code><a class="headerlink" href="#ppmd.host.ThreadSpace.ctypes_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.host.available_free_memory">
+<code class="sig-prename descclassname">ppmd.host.</code><code class="sig-name descname">available_free_memory</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.available_free_memory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get available free memory in bytes.
+:return: Free memory in bytes.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.host.null_matrix">
+<code class="sig-prename descclassname">ppmd.host.</code><code class="sig-name descname">null_matrix</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dtype</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.null_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Null*Matrix based on passed type.
+:param dtype: Data type of Null matrix.
+:return: Null Matrix.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="ppmd.host.pointer_offset">
+<code class="sig-prename descclassname">ppmd.host.</code><code class="sig-name descname">pointer_offset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ptr</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">offset</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.host.pointer_offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add offset number of bytes to pointer ptr, returns ctypes void ptr
+:param ptr:     original pointer
+:param offset:  offset in bytes</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.access.html">ppmd.access module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cell.html">ppmd.cell module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.domain.html">ppmd.domain module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.halo.html">ppmd.halo module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">ppmd.host module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.kernel.html">ppmd.kernel module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.method.html">ppmd.method module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.mpi.html">ppmd.mpi module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.opt.html">ppmd.opt module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pio.html">ppmd.pio module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.plain_cell_list.html">ppmd.plain_cell_list module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.runtime.html">ppmd.runtime module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state.html">ppmd.state module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state_modifier.html">ppmd.state_modifier module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+      <li>Previous: <a href="ppmd.halo.html" title="previous chapter">ppmd.halo module</a></li>
+      <li>Next: <a href="ppmd.kernel.html" title="next chapter">ppmd.kernel module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.host.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,7 @@
+ppmd.coulomb.direct module
+==========================
+
+.. automodule:: ppmd.coulomb.direct
+   :members:
+   :undoc-members:
+   :show-inheritance:

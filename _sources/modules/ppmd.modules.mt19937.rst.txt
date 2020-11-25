@@ -1,0 +1,7 @@
+ppmd.modules.mt19937 module
+===========================
+
+.. automodule:: ppmd.modules.mt19937
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,515 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.utility.high_method module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.utility.lattice module" href="ppmd.utility.lattice.html" />
+    <link rel="prev" title="ppmd.utility.dl_poly module" href="ppmd.utility.dl_poly.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.utility.high_method">
+<span id="ppmd-utility-high-method-module"></span><h1>ppmd.utility.high_method module<a class="headerlink" href="#module-ppmd.utility.high_method" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.utility.high_method.DrawParticles">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.high_method.</code><code class="sig-name descname">DrawParticles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.DrawParticles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to plot n particles with given positions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Number of particles.</p></li>
+<li><p><strong>pos</strong> (<em>np.array</em><em>(</em><em>n</em><em>,</em><em>3</em><em>)</em>) – particle positions.</p></li>
+<li><p><strong>extent</strong> (<em>np.array</em><em>(</em><em>3</em><em>,</em><em>1</em><em>)</em>) – domain extents.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.high_method.DrawParticles.cleanup">
+<code class="sig-name descname">cleanup</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.DrawParticles.cleanup" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.DrawParticles.draw">
+<code class="sig-name descname">draw</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.DrawParticles.draw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update current plot, use for real time plotting.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.DrawParticles.norm_vec">
+<code class="sig-name descname">norm_vec</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">in_vec</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.DrawParticles.norm_vec" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.high_method.EnergyStore">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.high_method.</code><code class="sig-name descname">EnergyStore</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.EnergyStore" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to hold energy data more sensibly</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>state</strong> (<em>state</em>) – Input state to track energy of.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.high_method.EnergyStore.plot">
+<code class="sig-name descname">plot</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">_plot</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.EnergyStore.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the stored energy data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.EnergyStore.update">
+<code class="sig-name descname">update</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.EnergyStore.update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update energy tracking of tracked state.
+:return:</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.high_method.IntegratorVelocityVerlet">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.high_method.</code><code class="sig-name descname">IntegratorVelocityVerlet</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">positions</span></em>, <em class="sig-param"><span class="n">forces</span></em>, <em class="sig-param"><span class="n">velocities</span></em>, <em class="sig-param"><span class="n">masses</span></em>, <em class="sig-param"><span class="n">force_updater</span></em>, <em class="sig-param"><span class="n">interaction_cutoff</span></em>, <em class="sig-param"><span class="n">list_reuse_count</span></em>, <em class="sig-param"><span class="n">looping_method</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.IntegratorVelocityVerlet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.utility.high_method.IntegratorVelocityVerlet.integrate">
+<code class="sig-name descname">integrate</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span></em>, <em class="sig-param"><span class="n">t</span></em>, <em class="sig-param"><span class="n">schedule</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.IntegratorVelocityVerlet.integrate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.high_method.KineticEnergyTracker">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.high_method.</code><code class="sig-name descname">KineticEnergyTracker</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">velocities</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">masses</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">kinetic_energy_dat</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">looping_method</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.KineticEnergyTracker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.utility.high_method.KineticEnergyTracker.execute">
+<code class="sig-name descname">execute</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.KineticEnergyTracker.execute" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.KineticEnergyTracker.get_kinetic_energy_array">
+<code class="sig-name descname">get_kinetic_energy_array</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.KineticEnergyTracker.get_kinetic_energy_array" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.high_method.ParticleTracker">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.high_method.</code><code class="sig-name descname">ParticleTracker</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dat</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">index</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">filename</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.ParticleTracker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.utility.high_method.ParticleTracker.finalise">
+<code class="sig-name descname">finalise</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.ParticleTracker.finalise" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.ParticleTracker.write">
+<code class="sig-name descname">write</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.ParticleTracker.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Call to write at a particular point in time.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.high_method.PercentagePrinter">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.high_method.</code><code class="sig-name descname">PercentagePrinter</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span></em>, <em class="sig-param"><span class="n">t</span></em>, <em class="sig-param"><span class="n">percent</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.PercentagePrinter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to print percentage completion to console.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dt</strong> (<em>float</em>) – Time step size.</p></li>
+<li><p><strong>t</strong> (<em>float</em>) – End time.</p></li>
+<li><p><strong>percent</strong> (<em>int</em>) – Percent to print on.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.high_method.PercentagePrinter.tick">
+<code class="sig-name descname">tick</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.PercentagePrinter.tick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method to call per iteration.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.high_method.PotentialEnergyTracker">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.high_method.</code><code class="sig-name descname">PotentialEnergyTracker</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">potential_energy_dat</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.PotentialEnergyTracker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="ppmd.utility.high_method.PotentialEnergyTracker.execute">
+<code class="sig-name descname">execute</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.PotentialEnergyTracker.execute" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.PotentialEnergyTracker.get_potential_energy_array">
+<code class="sig-name descname">get_potential_energy_array</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.PotentialEnergyTracker.get_potential_energy_array" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.high_method.RadialDistributionPeriodicNVE">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.high_method.</code><code class="sig-name descname">RadialDistributionPeriodicNVE</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span></em>, <em class="sig-param"><span class="n">rmax</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">rsteps</span><span class="o">=</span><span class="default_value">100</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.RadialDistributionPeriodicNVE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to calculate radial distribution function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>state</em>) – State containing particle positions.</p></li>
+<li><p><strong>rmax</strong> (<em>double</em>) – Maximum radial distance.</p></li>
+<li><p><strong>rsteps</strong> (<em>int</em>) – Resolution to record to, default 100.</p></li>
+<li><p><strong>DEBUG</strong> (<em>bool</em>) – Flag to enable debug flags.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.high_method.RadialDistributionPeriodicNVE.evaluate">
+<code class="sig-name descname">evaluate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.RadialDistributionPeriodicNVE.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate the radial distribution function.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.RadialDistributionPeriodicNVE.plot">
+<code class="sig-name descname">plot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.RadialDistributionPeriodicNVE.plot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.RadialDistributionPeriodicNVE.raw_write">
+<code class="sig-name descname">raw_write</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dir_name</span><span class="o">=</span><span class="default_value">'./output'</span></em>, <em class="sig-param"><span class="n">filename</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">rename_override</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.RadialDistributionPeriodicNVE.raw_write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to write Radial Distribution Evaluations to disk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dir_name</strong> (<em>str</em>) – directory to write to, default ./output.</p></li>
+<li><p><strong>filename</strong> (<em>str</em>) – Filename to write to, default array name or data.rdf if name unset.</p></li>
+<li><p><strong>rename_override</strong> (<em>bool</em>) – Flagging as True will disable autorenaming of output file.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.RadialDistributionPeriodicNVE.reset">
+<code class="sig-name descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.RadialDistributionPeriodicNVE.reset" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.high_method.Schedule">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.high_method.</code><code class="sig-name descname">Schedule</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">steps</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">items</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.Schedule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to schedule automated running of functions every set number of steps.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>steps</strong> (<em>list</em>) – List of steps between each run.</p></li>
+<li><p><strong>items</strong> (<em>list</em>) – List of functions to run after set number of steps.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.high_method.Schedule.add_item">
+<code class="sig-name descname">add_item</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">steps</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">items</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.Schedule.add_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an item to the schedule.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>item</strong> (<em>function</em>) – Function to run.</p></li>
+<li><p><strong>step</strong> (<em>int</em>) – Number of steps between running the function.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.Schedule.count">
+<em class="property">property </em><code class="sig-name descname">count</code><a class="headerlink" href="#ppmd.utility.high_method.Schedule.count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the currently held count</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.Schedule.schedule">
+<em class="property">property </em><code class="sig-name descname">schedule</code><a class="headerlink" href="#ppmd.utility.high_method.Schedule.schedule" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the held schedule.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.Schedule.tick">
+<code class="sig-name descname">tick</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.Schedule.tick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method ran by integrator or other method per iteration. If the required number of ticks have passed the
+required functions will be ran.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.high_method.VelocityAutoCorrelation">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.high_method.</code><code class="sig-name descname">VelocityAutoCorrelation</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span></em>, <em class="sig-param"><span class="n">size</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">v0</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.VelocityAutoCorrelation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Method to calculate Velocity Autocorrelation Function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>state</em>) – Input state containing velocities.</p></li>
+<li><p><strong>size</strong> (<em>int</em>) – Initial length of VAF array (optional).</p></li>
+<li><p><strong>V0</strong> (<em>data.ParticleDat</em>) – Initial velocity Dat (optional).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.utility.high_method.VelocityAutoCorrelation.evaluate">
+<code class="sig-name descname">evaluate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.VelocityAutoCorrelation.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate VAF using the current velocities held in the state with the velocities in V0.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>t</strong> (<em>double</em>) – Time within block of integration.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.VelocityAutoCorrelation.plot">
+<code class="sig-name descname">plot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.VelocityAutoCorrelation.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot array of recorded VAF evaluations.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.VelocityAutoCorrelation.set_v0">
+<code class="sig-name descname">set_v0</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">v0</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">state</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.VelocityAutoCorrelation.set_v0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set an initial velocity Dat to use as V_0. Requires either a velocity Dat or a state as an argument. V_0 will be set to either the passed velocities or to the velocities in the passed state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>v0</strong> (<em>data.ParticleDat</em>) – Velocity Dat.</p></li>
+<li><p><strong>state</strong> (<em>state</em>) – State class containing velocities.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.high_method.VelocityVerlet">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.high_method.</code><code class="sig-name descname">VelocityVerlet</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="o">=</span><span class="default_value">0.0001</span></em>, <em class="sig-param"><span class="n">t</span><span class="o">=</span><span class="default_value">0.01</span></em>, <em class="sig-param"><span class="n">simulation</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">schedule</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">shell_thickness</span><span class="o">=</span><span class="default_value">0.0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.VelocityVerlet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to apply Velocity-Verlet to a given state using a given looping
+method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dt</strong> (<em>double</em>) – Time step size, can be specified at integrate call.</p></li>
+<li><p><strong>T</strong> (<em>double</em>) – End time, can be specified at integrate call.</p></li>
+<li><p><strong>USE_C</strong> (<em>bool</em>) – Flag to use C looping and kernel.</p></li>
+<li><p><strong>plot_handle</strong> (<a class="reference internal" href="#ppmd.utility.high_method.DrawParticles" title="ppmd.utility.high_method.DrawParticles"><em>DrawParticles</em></a>) – PLotting class to plot state at certain</p></li>
+</ul>
+</dd>
+</dl>
+<p>progress points.
+:arg BasicEnergyStore energy_handle: Energy storage class to log energy at
+each iteration.
+:arg bool writexyz: Flag to indicate writing of xyz at each DT.
+:arg bool DEBUG: Flag to enable debug flags.</p>
+<dl class="py method">
+<dt id="ppmd.utility.high_method.VelocityVerlet.integrate">
+<code class="sig-name descname">integrate</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">t</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.VelocityVerlet.integrate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Integrate state forward in time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dt</strong> (<em>double</em>) – Time step size.</p></li>
+<li><p><strong>t</strong> (<em>double</em>) – End time.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.VelocityVerlet.timer1">
+<em class="property">property </em><code class="sig-name descname">timer1</code><a class="headerlink" href="#ppmd.utility.high_method.VelocityVerlet.timer1" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.utility.high_method.VelocityVerlet.timer2">
+<em class="property">property </em><code class="sig-name descname">timer2</code><a class="headerlink" href="#ppmd.utility.high_method.VelocityVerlet.timer2" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.high_method.VelocityVerletAnderson">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.high_method.</code><code class="sig-name descname">VelocityVerletAnderson</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="o">=</span><span class="default_value">0.0001</span></em>, <em class="sig-param"><span class="n">t</span><span class="o">=</span><span class="default_value">0.01</span></em>, <em class="sig-param"><span class="n">simulation</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">schedule</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">shell_thickness</span><span class="o">=</span><span class="default_value">0.0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.VelocityVerletAnderson" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.utility.high_method.VelocityVerlet" title="ppmd.utility.high_method.VelocityVerlet"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.utility.high_method.VelocityVerlet</span></code></a></p>
+<dl class="py method">
+<dt id="ppmd.utility.high_method.VelocityVerletAnderson.integrate_thermostat">
+<code class="sig-name descname">integrate_thermostat</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dt</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">t</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">temp</span><span class="o">=</span><span class="default_value">273.15</span></em>, <em class="sig-param"><span class="n">nu</span><span class="o">=</span><span class="default_value">1.0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.VelocityVerletAnderson.integrate_thermostat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Integrate state forward in time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dt</strong> (<em>double</em>) – Time step size.</p></li>
+<li><p><strong>t</strong> (<em>double</em>) – End time.</p></li>
+<li><p><strong>temp</strong> (<em>double</em>) – Temperature of heat bath.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.utility.high_method.WriteTrajectoryXYZ">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.utility.high_method.</code><code class="sig-name descname">WriteTrajectoryXYZ</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">state</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dir_name</span><span class="o">=</span><span class="default_value">'./output'</span></em>, <em class="sig-param"><span class="n">file_name</span><span class="o">=</span><span class="default_value">'out.xyz'</span></em>, <em class="sig-param"><span class="n">title</span><span class="o">=</span><span class="default_value">'A'</span></em>, <em class="sig-param"><span class="n">symbol</span><span class="o">=</span><span class="default_value">'A'</span></em>, <em class="sig-param"><span class="n">overwrite</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">ordered</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.WriteTrajectoryXYZ" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Write Positions to file in XYZ format from given state to given filename.</p>
+<dl class="py method">
+<dt id="ppmd.utility.high_method.WriteTrajectoryXYZ.write">
+<code class="sig-name descname">write</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.utility.high_method.WriteTrajectoryXYZ.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Append current positions to file.
+:return:</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="ppmd.utility.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.utility.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l5"><a class="reference internal" href="ppmd.utility.dl_monte.html">ppmd.utility.dl_monte module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.utility.dl_poly.html">ppmd.utility.dl_poly module</a></li>
+<li class="toctree-l5 current"><a class="current reference internal" href="#">ppmd.utility.high_method module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.utility.lattice.html">ppmd.utility.lattice module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.utility.sanitise.html">ppmd.utility.sanitise module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.utility.xyz.html">ppmd.utility.xyz module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.utility.html">ppmd.utility package</a><ul>
+      <li>Previous: <a href="ppmd.utility.dl_poly.html" title="previous chapter">ppmd.utility.dl_poly module</a></li>
+      <li>Next: <a href="ppmd.utility.lattice.html" title="next chapter">ppmd.utility.lattice module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.utility.high_method.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

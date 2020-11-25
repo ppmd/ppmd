@@ -1,0 +1,7 @@
+ppmd.coulomb.fmm module
+=======================
+
+.. automodule:: ppmd.coulomb.fmm
+   :members:
+   :undoc-members:
+   :show-inheritance:

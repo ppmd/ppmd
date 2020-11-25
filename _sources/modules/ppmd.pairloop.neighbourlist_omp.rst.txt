@@ -1,0 +1,7 @@
+ppmd.pairloop.neighbourlist\_omp module
+=======================================
+
+.. automodule:: ppmd.pairloop.neighbourlist_omp
+   :members:
+   :undoc-members:
+   :show-inheritance:

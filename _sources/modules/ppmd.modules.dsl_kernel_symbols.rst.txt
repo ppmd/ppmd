@@ -1,0 +1,7 @@
+ppmd.modules.dsl\_kernel\_symbols module
+========================================
+
+.. automodule:: ppmd.modules.dsl_kernel_symbols
+   :members:
+   :undoc-members:
+   :show-inheritance:

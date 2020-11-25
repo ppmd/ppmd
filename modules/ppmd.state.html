@@ -1,0 +1,268 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.state module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.state_modifier module" href="ppmd.state_modifier.html" />
+    <link rel="prev" title="ppmd.runtime module" href="ppmd.runtime.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.state">
+<span id="ppmd-state-module"></span><h1>ppmd.state module<a class="headerlink" href="#module-ppmd.state" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.state.BaseMDState">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.state.</code><code class="sig-name descname">BaseMDState</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Create an empty state to which particle properties such as position, velocities are added as
+attributes.</p>
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.as_func">
+<code class="sig-name descname">as_func</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.as_func" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a function handle to evaluate the required attribute.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – Name of attribute.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Callable that returns the value of attribute at the time of calling.)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.broadcast_data_from">
+<code class="sig-name descname">broadcast_data_from</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rank</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.broadcast_data_from" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.cell_decompose">
+<code class="sig-name descname">cell_decompose</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cell_width</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.cell_decompose" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.check_npart_total">
+<code class="sig-name descname">check_npart_total</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.check_npart_total" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check no particles have been lost</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.check_position_consistency">
+<code class="sig-name descname">check_position_consistency</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.check_position_consistency" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.domain">
+<em class="property">property </em><code class="sig-name descname">domain</code><a class="headerlink" href="#ppmd.state.BaseMDState.domain" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.filter_on_domain_boundary">
+<code class="sig-name descname">filter_on_domain_boundary</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.filter_on_domain_boundary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove particles that do not reside in this subdomain. State requires a
+domain and a PositionDat</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.gather_data_on">
+<code class="sig-name descname">gather_data_on</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rank</span><span class="o">=</span><span class="default_value">0</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.gather_data_on" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.get_cell_to_particle_map">
+<code class="sig-name descname">get_cell_to_particle_map</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.get_cell_to_particle_map" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.get_npart_local_func">
+<code class="sig-name descname">get_npart_local_func</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.get_npart_local_func" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.get_position_dat">
+<code class="sig-name descname">get_position_dat</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.get_position_dat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.invalidate_lists">
+<code class="sig-name descname">invalidate_lists</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.invalidate_lists" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.modify">
+<code class="sig-name descname">modify</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.modify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.move_to_neighbour">
+<code class="sig-name descname">move_to_neighbour</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ids_directions_list</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dir_send_totals</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">shifts</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.move_to_neighbour" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.npart">
+<em class="property">property </em><code class="sig-name descname">npart</code><a class="headerlink" href="#ppmd.state.BaseMDState.npart" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.npart_local">
+<em class="property">property </em><code class="sig-name descname">npart_local</code><a class="headerlink" href="#ppmd.state.BaseMDState.npart_local" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Local number of particles</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.rebuild_cell_to_particle_maps">
+<code class="sig-name descname">rebuild_cell_to_particle_maps</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.rebuild_cell_to_particle_maps" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.remove_by_slot">
+<code class="sig-name descname">remove_by_slot</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">slots</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.remove_by_slot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.scatter_data_from">
+<code class="sig-name descname">scatter_data_from</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rank</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.scatter_data_from" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.state.BaseMDState.sum_npart_local">
+<code class="sig-name descname">sum_npart_local</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.BaseMDState.sum_npart_local" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sum npart_local across all ranks</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="ppmd.state.State">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.state.</code><code class="sig-name descname">State</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.state.State" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ppmd.state.BaseMDState" title="ppmd.state.BaseMDState"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.state.BaseMDState</span></code></a></p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.access.html">ppmd.access module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cell.html">ppmd.cell module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.domain.html">ppmd.domain module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.halo.html">ppmd.halo module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.host.html">ppmd.host module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.kernel.html">ppmd.kernel module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.method.html">ppmd.method module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.mpi.html">ppmd.mpi module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.opt.html">ppmd.opt module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pio.html">ppmd.pio module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.plain_cell_list.html">ppmd.plain_cell_list module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.runtime.html">ppmd.runtime module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">ppmd.state module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.state_modifier.html">ppmd.state_modifier module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+      <li>Previous: <a href="ppmd.runtime.html" title="previous chapter">ppmd.runtime module</a></li>
+      <li>Next: <a href="ppmd.state_modifier.html" title="next chapter">ppmd.state_modifier module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.state.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

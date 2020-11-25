@@ -1,0 +1,25 @@
+ppmd.modules package
+====================
+
+.. automodule:: ppmd.modules
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ppmd.modules.code_timer
+   ppmd.modules.dsl_array_access
+   ppmd.modules.dsl_cell_gather_scatter
+   ppmd.modules.dsl_cell_list_loop
+   ppmd.modules.dsl_kernel_symbols
+   ppmd.modules.dsl_record_local
+   ppmd.modules.dsl_seq_comp
+   ppmd.modules.dsl_stride_comp
+   ppmd.modules.dsl_struct_comp
+   ppmd.modules.module
+   ppmd.modules.mt19937

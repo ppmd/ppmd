@@ -1,0 +1,230 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.lib.compiler module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.loop package" href="ppmd.loop.html" />
+    <link rel="prev" title="ppmd.lib.common module" href="ppmd.lib.common.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.lib.compiler">
+<span id="ppmd-lib-compiler-module"></span><h1>ppmd.lib.compiler module<a class="headerlink" href="#module-ppmd.lib.compiler" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.lib.compiler.Compiler">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.lib.compiler.</code><code class="sig-name descname">Compiler</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name</span></em>, <em class="sig-param"><span class="n">binary</span></em>, <em class="sig-param"><span class="n">c_flags</span></em>, <em class="sig-param"><span class="n">l_flags</span></em>, <em class="sig-param"><span class="n">opt_flags</span></em>, <em class="sig-param"><span class="n">dbg_flags</span></em>, <em class="sig-param"><span class="n">compile_flag</span></em>, <em class="sig-param"><span class="n">shared_lib_flag</span></em>, <em class="sig-param"><span class="n">restrict_keyword</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="n">cfg_hash</span><span class="o">=</span><span class="default_value">''</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.lib.compiler.Compiler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Container to define different compilers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Compiler name, referance only.</p></li>
+<li><p><strong>binary</strong> (<em>str</em>) – Name(+path) of Compiler binary.</p></li>
+<li><p><strong>c_flags</strong> (<em>list</em>) – List of compile flags as strings.</p></li>
+<li><p><strong>l_flags</strong> (<em>list</em>) – List of link flags as strings.</p></li>
+<li><p><strong>opt_flags</strong> (<em>list</em>) – List of optimisation flags.</p></li>
+<li><p><strong>dbg_flags</strong> (<em>list</em>) – List of runtime.DEBUG flags as strings.</p></li>
+<li><p><strong>compile_flag</strong> (<em>list</em>) – List of compile flag as single string (eg [‘-c’]</p></li>
+</ul>
+</dd>
+</dl>
+<p>for gcc).
+:arg list shared_lib_flag: List of flags as strings to link as shared
+library.
+:arg string restrict_keyword: keyword to use for non aliased pointers
+:arg cfg_hash: Hash to use for this compiler</p>
+<dl class="py method">
+<dt id="ppmd.lib.compiler.Compiler.add_cflag">
+<code class="sig-name descname">add_cflag</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">entry</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.lib.compiler.Compiler.add_cflag" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.lib.compiler.Compiler.binary">
+<em class="property">property </em><code class="sig-name descname">binary</code><a class="headerlink" href="#ppmd.lib.compiler.Compiler.binary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return Compiler binary.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.lib.compiler.Compiler.c_flags">
+<em class="property">property </em><code class="sig-name descname">c_flags</code><a class="headerlink" href="#ppmd.lib.compiler.Compiler.c_flags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return Compiler compile flags</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.lib.compiler.Compiler.compile_flag">
+<em class="property">property </em><code class="sig-name descname">compile_flag</code><a class="headerlink" href="#ppmd.lib.compiler.Compiler.compile_flag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return Compiler compile flag.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.lib.compiler.Compiler.dbg_flags">
+<em class="property">property </em><code class="sig-name descname">dbg_flags</code><a class="headerlink" href="#ppmd.lib.compiler.Compiler.dbg_flags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return Compiler runtime.DEBUG flags</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.lib.compiler.Compiler.hash">
+<em class="property">property </em><code class="sig-name descname">hash</code><a class="headerlink" href="#ppmd.lib.compiler.Compiler.hash" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.lib.compiler.Compiler.l_flags">
+<em class="property">property </em><code class="sig-name descname">l_flags</code><a class="headerlink" href="#ppmd.lib.compiler.Compiler.l_flags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return Compiler link flags</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.lib.compiler.Compiler.name">
+<em class="property">property </em><code class="sig-name descname">name</code><a class="headerlink" href="#ppmd.lib.compiler.Compiler.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return Compiler name.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.lib.compiler.Compiler.opt_flags">
+<em class="property">property </em><code class="sig-name descname">opt_flags</code><a class="headerlink" href="#ppmd.lib.compiler.Compiler.opt_flags" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return Compiler runtime.DEBUG flags</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.lib.compiler.Compiler.restrict_keyword">
+<em class="property">property </em><code class="sig-name descname">restrict_keyword</code><a class="headerlink" href="#ppmd.lib.compiler.Compiler.restrict_keyword" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.lib.compiler.Compiler.shared_lib_flag">
+<em class="property">property </em><code class="sig-name descname">shared_lib_flag</code><a class="headerlink" href="#ppmd.lib.compiler.Compiler.shared_lib_flag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return Compiler link as shared library flag.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.lib.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l5"><a class="reference internal" href="ppmd.lib.build.html">ppmd.lib.build module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.lib.common.html">ppmd.lib.common module</a></li>
+<li class="toctree-l5 current"><a class="current reference internal" href="#">ppmd.lib.compiler module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.lib.html">ppmd.lib package</a><ul>
+      <li>Previous: <a href="ppmd.lib.common.html" title="previous chapter">ppmd.lib.common module</a></li>
+      <li>Next: <a href="ppmd.loop.html" title="next chapter">ppmd.loop package</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.lib.compiler.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

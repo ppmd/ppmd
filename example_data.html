@@ -1,0 +1,166 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Particle Data &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="State Containers" href="example_state.html" />
+    <link rel="prev" title="Examples" href="examples.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="particle-data">
+<h1>Particle Data<a class="headerlink" href="#particle-data" title="Permalink to this headline">¶</a></h1>
+<p>We provide a flexible data structure to store data on a per-particle basis.
+The number of elements per particle and the data type are specified by the user.</p>
+<p>Particle positions are stored in a particular type of ParticleDat called a PositionDat.</p>
+<p>Standalone ParticleDat and PositionDat instances are not particularly useful as they do not automatically group the data for particles together.
+To group particle data please refer to the <a class="reference internal" href="example_state.html#state-containers"><span class="std std-ref">State Containers</span></a> section.</p>
+<div class="section" id="particledat-object">
+<h2>ParticleDat Object<a class="headerlink" href="#particledat-object" title="Permalink to this headline">¶</a></h2>
+<p>Particle properties are stored within <code class="xref py py-class docutils literal notranslate"><span class="pre">ParticleDat</span></code> containers. These can be considered as two dimensional matrices with each row storing data for a particle. For example the velocities of <span class="math notranslate nohighlight">\(N\)</span> particles would be stored within a <span class="math notranslate nohighlight">\(N\)</span> X <span class="math notranslate nohighlight">\(3\)</span> ParticleDat.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ppmd</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">ParticleDat</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">ParticleDat</span>
+<span class="n">vel</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">npart</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>ParticleDats may contain ctypes.c_double, ctypes.c_int and ctypes.c_long data. To specifiy a data type other than the default ctypes.c_double the <code class="docutils literal notranslate"><span class="pre">dtype</span></code> keyword should be used.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="n">num_neighbours</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">npart</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>These data structures are specialised wrappers around Numpy objects and the underlying numpy data may be accessed by using the standard PythonNumpy indexing. For example to initialise the <code class="docutils literal notranslate"><span class="pre">vel</span></code> ParticleDat above with values drawn from a standard normal distribution we may do the following.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="n">vel</span><span class="p">[:,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>To create a <code class="docutils literal notranslate"><span class="pre">CUDA</span></code> ParticleDat use the ParticleDat from <code class="docutils literal notranslate"><span class="pre">ppmd.cuda</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ppmd.cuda</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">ParticleDat</span> <span class="o">=</span> <span class="n">cuda_data</span><span class="o">.</span><span class="n">ParticleDat</span>
+<span class="n">vel</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">npart</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">vel</span><span class="p">[:,:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">,</span><span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>The code above creates a ParticleDat on a CUDA device and assigns the values drawn from a standard normal distribution. The copying of data between the host and the CUDA device is handled automatically by the framework.</p>
+</div>
+<div class="section" id="positiondat-object">
+<h2>PositionDat Object<a class="headerlink" href="#positiondat-object" title="Permalink to this headline">¶</a></h2>
+<p>PositionDats always have 3 components and are of type <cite>ctypes.c_double</cite> and can be initialised with</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pos</span> <span class="o">=</span> <span class="n">PositionDat</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="examples.html">Examples</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Particle Data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#particledat-object">ParticleDat Object</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#positiondat-object">PositionDat Object</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="example_state.html">State Containers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_kernel.html">Kernels</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_integrator.html">Velocity-Verlet Integrator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_argon.html">Low-level Argon Example</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/ppmd.html">ppmd package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="examples.html">Examples</a><ul>
+      <li>Previous: <a href="examples.html" title="previous chapter">Examples</a></li>
+      <li>Next: <a href="example_state.html" title="next chapter">State Containers</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/example_data.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

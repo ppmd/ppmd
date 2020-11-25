@@ -1,0 +1,28 @@
+ppmd.utility package
+====================
+
+.. automodule:: ppmd.utility
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ppmd.utility.potential
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ppmd.utility.dl_monte
+   ppmd.utility.dl_poly
+   ppmd.utility.high_method
+   ppmd.utility.lattice
+   ppmd.utility.sanitise
+   ppmd.utility.xyz

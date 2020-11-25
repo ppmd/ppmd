@@ -1,0 +1,15 @@
+ppmd.pygcl package
+==================
+
+.. automodule:: ppmd.pygcl
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ppmd.pygcl.halo_exchange_3d

@@ -1,0 +1,7 @@
+ppmd.halo module
+================
+
+.. automodule:: ppmd.halo
+   :members:
+   :undoc-members:
+   :show-inheritance:

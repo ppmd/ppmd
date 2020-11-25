@@ -1,0 +1,7 @@
+ppmd.pio module
+===============
+
+.. automodule:: ppmd.pio
+   :members:
+   :undoc-members:
+   :show-inheritance:

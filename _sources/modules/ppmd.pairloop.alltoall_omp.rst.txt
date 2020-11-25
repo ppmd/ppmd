@@ -1,0 +1,7 @@
+ppmd.pairloop.alltoall\_omp module
+==================================
+
+.. automodule:: ppmd.pairloop.alltoall_omp
+   :members:
+   :undoc-members:
+   :show-inheritance:

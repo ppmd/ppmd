@@ -1,0 +1,17 @@
+ppmd.lib package
+================
+
+.. automodule:: ppmd.lib
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ppmd.lib.build
+   ppmd.lib.common
+   ppmd.lib.compiler

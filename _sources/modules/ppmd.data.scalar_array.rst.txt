@@ -1,0 +1,7 @@
+ppmd.data.scalar\_array module
+==============================
+
+.. automodule:: ppmd.data.scalar_array
+   :members:
+   :undoc-members:
+   :show-inheritance:

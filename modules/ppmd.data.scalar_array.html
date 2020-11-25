@@ -1,0 +1,240 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ppmd.data.scalar_array module &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ppmd.lib package" href="ppmd.lib.html" />
+    <link rel="prev" title="ppmd.data.particle_dat module" href="ppmd.data.particle_dat.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-ppmd.data.scalar_array">
+<span id="ppmd-data-scalar-array-module"></span><h1>ppmd.data.scalar_array module<a class="headerlink" href="#module-ppmd.data.scalar_array" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt id="ppmd.data.scalar_array.ScalarArray">
+<em class="property">class </em><code class="sig-prename descclassname">ppmd.data.scalar_array.</code><code class="sig-name descname">ScalarArray</code><span class="sig-paren">(</span><em class="sig-param">initial_value=None</em>, <em class="sig-param">name=None</em>, <em class="sig-param">ncomp=1</em>, <em class="sig-param">dtype=&lt;class 'ctypes.c_double'&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.scalar_array.ScalarArray" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="ppmd.host.html#ppmd.host.Array" title="ppmd.host.Array"><code class="xref py py-class docutils literal notranslate"><span class="pre">ppmd.host.Array</span></code></a></p>
+<p>Class to hold an array of scalar values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>initial_value</strong> – Value to initialise array with, default 0.0.</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Collective name of stored vars eg positions.</p></li>
+<li><p><strong>ncomp</strong> (<em>int</em>) – Number of components.</p></li>
+<li><p><strong>dtype</strong> – Data type. Should be a ctypes C data type.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="ppmd.data.scalar_array.ScalarArray.ctypes_value">
+<em class="property">property </em><code class="sig-name descname">ctypes_value</code><a class="headerlink" href="#ppmd.data.scalar_array.ScalarArray.ctypes_value" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>first value in correct type.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.data.scalar_array.ScalarArray.halo_aware">
+<code class="sig-name descname">halo_aware</code><a class="headerlink" href="#ppmd.data.scalar_array.ScalarArray.halo_aware" title="Permalink to this definition">¶</a></dt>
+<dd><p>How to handle writes to this dat in a reduction sense. In general for a reduction in a pair loop a write will occur once per pair In the case where one of the pair is in a halo, the write will occur if the ithparticle is not in the halo?</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.scalar_array.ScalarArray.max">
+<em class="property">property </em><code class="sig-name descname">max</code><a class="headerlink" href="#ppmd.data.scalar_array.ScalarArray.max" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The maximum value in the array.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.scalar_array.ScalarArray.mean">
+<em class="property">property </em><code class="sig-name descname">mean</code><a class="headerlink" href="#ppmd.data.scalar_array.ScalarArray.mean" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The mean value in the array.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.scalar_array.ScalarArray.min">
+<em class="property">property </em><code class="sig-name descname">min</code><a class="headerlink" href="#ppmd.data.scalar_array.ScalarArray.min" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The minimum in the array.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="ppmd.data.scalar_array.ScalarArray.name">
+<code class="sig-name descname">name</code><a class="headerlink" href="#ppmd.data.scalar_array.ScalarArray.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Name of ScalarArray instance.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.scalar_array.ScalarArray.resize">
+<code class="sig-name descname">resize</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">new_length</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.scalar_array.ScalarArray.resize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Increase the size of the array.
+:param int new_length: New array length.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.scalar_array.ScalarArray.scale">
+<code class="sig-name descname">scale</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">val</span></em><span class="sig-paren">)</span><a class="headerlink" href="#ppmd.data.scalar_array.ScalarArray.scale" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scale data array by given value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>val</strong> – Coefficient to scale all elements by.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="ppmd.data.scalar_array.ScalarArray.sum">
+<em class="property">property </em><code class="sig-name descname">sum</code><a class="headerlink" href="#ppmd.data.scalar_array.ScalarArray.sum" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The array sum.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="ppmd.html">ppmd package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="ppmd.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="ppmd.config.html">ppmd.config package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.coulomb.html">ppmd.coulomb package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.cuda.html">ppmd.cuda package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="ppmd.data.html">ppmd.data package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ppmd.data.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l5"><a class="reference internal" href="ppmd.data.data_movement.html">ppmd.data.data_movement module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.data.global_array.html">ppmd.data.global_array module</a></li>
+<li class="toctree-l5"><a class="reference internal" href="ppmd.data.particle_dat.html">ppmd.data.particle_dat module</a></li>
+<li class="toctree-l5 current"><a class="current reference internal" href="#">ppmd.data.scalar_array module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.lib.html">ppmd.lib package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.loop.html">ppmd.loop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.modules.html">ppmd.modules package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pairloop.html">ppmd.pairloop package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.pygcl.html">ppmd.pygcl package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="ppmd.utility.html">ppmd.utility package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ppmd.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="ppmd.html">ppmd package</a><ul>
+  <li><a href="ppmd.data.html">ppmd.data package</a><ul>
+      <li>Previous: <a href="ppmd.data.particle_dat.html" title="previous chapter">ppmd.data.particle_dat module</a></li>
+      <li>Next: <a href="ppmd.lib.html" title="next chapter">ppmd.lib package</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/ppmd.data.scalar_array.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

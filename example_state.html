@@ -1,0 +1,257 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>State Containers &#8212; PPMD 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Kernels" href="example_kernel.html" />
+    <link rel="prev" title="Particle Data" href="example_data.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="state-containers">
+<h1>State Containers<a class="headerlink" href="#state-containers" title="Permalink to this headline">¶</a></h1>
+<p>The state object couples multiple ParticleDats with a simulation domain that notionally contains the particles. The framework uses a spatial domain decomposition approach for course grain parallelism across MPI ranks. Spatial decomposition requires that when a particle leaves a subdomain owned by a process the data associated with the particle is moved to the new process.</p>
+<p>By adding ParticleDat instances to a state object boundary conditions and the movement of data between MPI ranks can be handled automatically by the framework. Instances of state objects follow the convention that <code class="docutils literal notranslate"><span class="pre">npart</span></code> returns the total number of particles in the system. <code class="docutils literal notranslate"><span class="pre">npart_local</span></code> returns the number of particles currently stored on the calling MPI rank.</p>
+<div class="section" id="base-case">
+<h2>Base Case<a class="headerlink" href="#base-case" title="Permalink to this headline">¶</a></h2>
+<p>The base case state object is designed with NVE ensembles in mind. In the example below we create a state object called <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ppmd</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="n">State</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">State</span>
+<span class="n">PBC</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">BoundaryTypePeriodic</span>
+
+<span class="n">A</span> <span class="o">=</span> <span class="n">State</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Here we add boundary conditions to the state called <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">A</span><span class="o">.</span><span class="n">domain</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">BaseDomainHalo</span><span class="p">(</span><span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mf">10.</span><span class="p">,</span> <span class="mf">10.</span><span class="p">,</span> <span class="mf">10.</span><span class="p">))</span>
+<span class="n">A</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">boundary_condition</span> <span class="o">=</span> <span class="n">PBC</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The second requirement for a state object is that a particular type of ParticleDat is added called a PositionDat. With a domain and a PositionDat the state object can handle the movement of particle data between processes.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PositionDat</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">PositionDat</span>
+<span class="n">A</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">PositionDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When added ParticleDats to a state class the <code class="docutils literal notranslate"><span class="pre">npart</span></code> argument should not be passed. As the framework uses spatial domain decomposition the ParticleDat holds valid particle data in the first <code class="docutils literal notranslate"><span class="pre">A.npart_local</span></code> rows.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span> <span class="n">A</span><span class="o">.</span><span class="n">pos</span><span class="p">[:</span><span class="n">A</span><span class="o">.</span><span class="n">npart_local</span><span class="p">:,</span> <span class="p">::]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="particle-data-operations">
+<h2>Particle Data Operations<a class="headerlink" href="#particle-data-operations" title="Permalink to this headline">¶</a></h2>
+<p>When we add <code class="docutils literal notranslate"><span class="pre">ParticleDats</span></code> to a state we define which properties particles hold. For example the following code defines properties for positions, velocities, forces and global ids.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">A</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">PositionDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">vel</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">force</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">gid</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_int64</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Particles are added through the <code class="docutils literal notranslate"><span class="pre">State.modify()</span></code> interface. This interface allows particles to be added and removed. The use of this interface is collective over all MPI ranks. A “window” where particles can be added and removed is created, on all MPI ranks, with:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">A</span><span class="o">.</span><span class="n">modify</span><span class="p">()</span> <span class="k">as</span> <span class="n">m</span><span class="p">:</span> <span class="c1"># this line must be called on all MPI ranks.</span>
+    <span class="c1"># Add/remove here</span>
+</pre></div>
+</div>
+<div class="section" id="adding-particles">
+<h3>Adding Particles<a class="headerlink" href="#adding-particles" title="Permalink to this headline">¶</a></h3>
+<p>After <code class="docutils literal notranslate"><span class="pre">State.modify()</span></code> is called particle data is added with a call to <code class="docutils literal notranslate"><span class="pre">add</span></code>. In the following example with add <code class="docutils literal notranslate"><span class="pre">N=1000</span></code> particles with uniform random positions, normal distributed forces and global ids. Particle properties where no values are passed are initialised to zero.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">N</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="k">with</span> <span class="n">A</span><span class="o">.</span><span class="n">modify</span><span class="p">()</span> <span class="k">as</span> <span class="n">m</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">A</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">add</span><span class="p">({</span>
+            <span class="n">A</span><span class="o">.</span><span class="n">pos</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">3</span><span class="p">)),</span>
+            <span class="n">A</span><span class="o">.</span><span class="n">vel</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">3</span><span class="p">)),</span>
+            <span class="n">A</span><span class="o">.</span><span class="n">gid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">N</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="p">})</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">npart</span><span class="p">)</span> <span class="c1"># should print 1000</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">npart_local</span><span class="p">)</span> <span class="c1"># should print the number of particles on this MPI rank</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">A.domain.comm.rank</span> <span class="pre">==</span> <span class="pre">0</span></code> statement ensures that only rank 0 adds particles. There are no restrictions on which MPI ranks may add particles. Furthermore a MPI rank can add particles anywhere in the simulation domain. Particle data is added on completion of the <code class="docutils literal notranslate"><span class="pre">State.modify()</span></code> context.
+Particles are automatically communicated to the MPI rank that owns the subdomain for those particular particles.</p>
+</div>
+<div class="section" id="removing-particles">
+<h3>Removing Particles<a class="headerlink" href="#removing-particles" title="Permalink to this headline">¶</a></h3>
+<p>Particles are removed by passing local indices to the <code class="docutils literal notranslate"><span class="pre">remove</span></code> call of (in this case) <code class="docutils literal notranslate"><span class="pre">m</span></code>. For example, to remove the first two particles on rank 1:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">A</span><span class="o">.</span><span class="n">modify</span><span class="p">()</span> <span class="k">as</span> <span class="n">m</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">A</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">comm</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">remove</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>It is the users responsibility to determine the local index of the particles they wish to remove. Particles are removed on completion of the <code class="docutils literal notranslate"><span class="pre">State.modify()</span></code> context. Removing particles will force a reordering of particles.</p>
+</div>
+<div class="section" id="modifying-particle-data">
+<h3>Modifying Particle Data<a class="headerlink" href="#modifying-particle-data" title="Permalink to this headline">¶</a></h3>
+<p>The data held in a <code class="docutils literal notranslate"><span class="pre">ParticleDat</span></code> is modified in a similar manner to modifying a <code class="docutils literal notranslate"><span class="pre">State</span></code>. First a collective call is made to <code class="docutils literal notranslate"><span class="pre">ParticleDat.modify_view()</span></code> on all MPI ranks. This call returns a <code class="docutils literal notranslate"><span class="pre">NumPy</span></code> view of size <code class="docutils literal notranslate"><span class="pre">A.npart_local</span> <span class="pre">x</span> <span class="pre">ParticleDat.ncomp</span></code> which can be modified safely. For example to draw new random velocities we perform:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">A</span><span class="o">.</span><span class="n">vel</span><span class="o">.</span><span class="n">modify_view</span><span class="p">()</span> <span class="k">as</span> <span class="n">m</span><span class="p">:</span>
+    <span class="n">m</span><span class="p">[:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">npart_local</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>If particle positions are modified then the particles will be communicated between MPI ranks on completion of the <code class="docutils literal notranslate"><span class="pre">ParticleDat.modify_view</span></code> context. This may well cause particles to change MPI ranks and hence cause a reordering of particle data.</p>
+</div>
+</div>
+<div class="section" id="initialise-data-scatter-example">
+<h2>Initialise Data Scatter Example<a class="headerlink" href="#initialise-data-scatter-example" title="Permalink to this headline">¶</a></h2>
+<p>Scattering data is a legacy method to broadcast particle data across the MPI ranks. Using <code class="docutils literal notranslate"><span class="pre">State.modify()</span></code> is the replacement.</p>
+<p>In this example we will create initial data on rank 0 then scatter that data across available MPI ranks. When scattering data from a rank the total number of particles <code class="docutils literal notranslate"><span class="pre">State.npart</span></code> should be set on the state object prior to scattering.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="kn">from</span> <span class="nn">ppmd</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="c1"># aliases start</span>
+
+<span class="n">State</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">State</span>
+<span class="n">ParticleDat</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">ParticleDat</span>
+<span class="n">PositionDat</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">PositionDat</span>
+<span class="n">PBC</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">BoundaryTypePeriodic</span>
+
+<span class="c1"># aliases end</span>
+
+
+<span class="n">N</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">State</span><span class="p">()</span>
+
+<span class="c1"># Total number of particles is set.</span>
+<span class="n">A</span><span class="o">.</span><span class="n">npart</span> <span class="o">=</span> <span class="n">N</span>
+
+<span class="n">A</span><span class="o">.</span><span class="n">domain</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">BaseDomainHalo</span><span class="p">(</span><span class="n">extent</span><span class="o">=</span><span class="p">(</span><span class="mf">10.</span><span class="p">,</span> <span class="mf">10.</span><span class="p">,</span> <span class="mf">10.</span><span class="p">))</span>
+<span class="n">A</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">boundary_condition</span> <span class="o">=</span> <span class="n">PBC</span><span class="p">()</span>
+
+<span class="n">A</span><span class="o">.</span><span class="n">p</span> <span class="o">=</span> <span class="n">PositionDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">f</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">A</span><span class="o">.</span><span class="n">gid</span> <span class="o">=</span> <span class="n">ParticleDat</span><span class="p">(</span><span class="n">ncomp</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="n">mpi</span><span class="o">.</span><span class="n">MPI_HANDLE</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">A</span><span class="o">.</span><span class="n">p</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">utility</span><span class="o">.</span><span class="n">lattice</span><span class="o">.</span><span class="n">cubic_lattice</span><span class="p">((</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="mf">10.</span><span class="p">,</span> <span class="mf">10.</span><span class="p">,</span> <span class="mf">10.</span><span class="p">))</span>
+    <span class="n">A</span><span class="o">.</span><span class="n">v</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">A</span><span class="o">.</span><span class="n">f</span><span class="p">[:]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">A</span><span class="o">.</span><span class="n">gid</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>
+
+<span class="n">A</span><span class="o">.</span><span class="n">scatter_data_from</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The state will use the positions in the PositionDat to filter which data belongs on which subdomain.</p>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">PPMD</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="concept.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="examples.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="example_data.html">Particle Data</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">State Containers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#base-case">Base Case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#particle-data-operations">Particle Data Operations</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#adding-particles">Adding Particles</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#removing-particles">Removing Particles</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#modifying-particle-data">Modifying Particle Data</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#initialise-data-scatter-example">Initialise Data Scatter Example</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="example_kernel.html">Kernels</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_integrator.html">Velocity-Verlet Integrator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example_argon.html">Low-level Argon Example</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/ppmd.html">ppmd package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="examples.html">Examples</a><ul>
+      <li>Previous: <a href="example_data.html" title="previous chapter">Particle Data</a></li>
+      <li>Next: <a href="example_kernel.html" title="next chapter">Kernels</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, wrs.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/example_state.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

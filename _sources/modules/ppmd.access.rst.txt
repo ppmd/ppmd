@@ -1,0 +1,7 @@
+ppmd.access module
+==================
+
+.. automodule:: ppmd.access
+   :members:
+   :undoc-members:
+   :show-inheritance:
