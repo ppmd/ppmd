@@ -9,3 +9,4 @@ pymbolic
 ConfigParser
 transforms3d
 sphinx
+wheel
