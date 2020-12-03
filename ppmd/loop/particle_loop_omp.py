@@ -114,9 +114,6 @@ class ParticleLoopOMP(ParticleLoop):
 
         kernel_call = cgen.Module([
             cgen.Comment('#### Kernel call arguments ####'),
-            cgen.Initializer(cgen.Const(cgen.Value(
-                'int', self._components['OMP_THREAD_INDEX_SYM'])),
-                'omp_get_thread_num()')
         ])
         kernel_call_symbols = []
         shared_syms = self._components['OMP_SHARED_SYMS']
@@ -182,6 +179,9 @@ class ParticleLoopOMP(ParticleLoop):
                 cgen.Value('int', '_thread_start'),
                 cgen.Value('int', '_thread_end'),
                 cgen.Line('get_thread_decomp((int)_N_LOCAL, &_thread_start, &_thread_end);'),
+                cgen.Initializer(cgen.Const(cgen.Value(
+                    'int', self._components['OMP_THREAD_INDEX_SYM'])),
+                    'omp_get_thread_num()'),
                 cgen.For('int ' + i + '= _thread_start',
                         i + '< _thread_end',
                         i+'++',

@@ -64,6 +64,58 @@ def s_nd():
 def base_rank(request):
     return request.param
 
+
+def test_host_sym_1():
+    """
+    symbol replacement
+    """
+    
+    N = 100
+    A = md.state.State(
+        domain=md.domain.BaseDomainHalo(
+            extent=(1.0, 1.0, 1.0), 
+            boundary_condition=md.domain.BoundaryTypePeriodic()
+        ),
+        particle_dats={
+            'P': PositionDat(),
+            'A': ParticleDat(ncomp=1, dtype=ctypes.c_int),
+            'AA': ParticleDat(ncomp=1, dtype=ctypes.c_int),
+        }
+    )
+
+    with A.modify() as ma:
+        if rank == 0:
+            ma.add({
+                A.P: np.random.uniform(low=0.0, high=1.0, size=(N,3)),
+            })
+
+
+    kernel = Kernel(
+        'test_host_loop_sym_replacement',
+        '''
+        A.i[0] = 1;
+        AA.i[0] = 2;
+        '''
+    )
+
+    loop = md.loop.ParticleLoopOMP(
+        kernel,
+        dat_dict={
+            'A': A.A(WRITE),
+            'AA': A.AA(WRITE),
+        }
+    )
+    # print(md.lib.build.LOADED_LIBS[-1])
+    
+    loop.execute()
+    assert np.all(A.A.view[:] == 1)
+    assert np.all(A.AA.view[:] == 2)
+
+
+
+
+
+
 def test_host_looping_1(s_nd):
     """
     looping on non spatially decomposed state
@@ -316,4 +368,6 @@ def test_host_looping_5(DTYPE):
         assert PI0[px, 0] == PR[px, 0], "bad zero increment"
 
     assert SR[0] == cast(SRi[0]), "read only data has changed"
+
+
 
