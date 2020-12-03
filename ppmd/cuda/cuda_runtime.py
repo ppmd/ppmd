@@ -35,10 +35,8 @@ ERROR_LEVEL = cuda_config.CUDA_CFG['error-level'][1]
 BUILD_DIR = runtime.BUILD_DIR
 
 
-
-
-
 from . import cuda_build
+
 
 try:
     LIB_HELPER = cuda_build.build_static_libs('cudaHelperLib')

@@ -68,7 +68,7 @@ if (_ix < d_nc){
 
 for (int offset = warpSize/2; offset > 0; offset /=2){
     //val = fmaxf(val, __shfl_down(val,offset));
-    int tmp = __shfl_down(val,offset);
+    int tmp = __shfl_down_sync(0xFFFFFFFF, val,offset);
     //val = (val > tmp) ? val : tmp;
     //asm("max.s32 %0, %1, %2;" : "=r"(val) : "r"(val), "r"(tmp));
     val = max(val,tmp);

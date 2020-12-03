@@ -18,7 +18,7 @@ lines of this file with a copy of the license included.
     #include "helper_cuda.h"
     #include <builtin_types.h>
     #include <cuda_profiler_api.h>
-    #include <device_functions.h>
+    //#include <device_functions.h>
     //#include "cuda_counting_types.h"
     #include <iostream>
 
@@ -128,8 +128,8 @@ Lines below this point are subject to the following license.
     __device__ inline
     double shfl_down_double(double var, unsigned int srcLane, int width=32) {
       int2 a = *reinterpret_cast<int2*>(&var);
-      a.x = __shfl_down(a.x, srcLane, width);
-      a.y = __shfl_down(a.y, srcLane, width);
+      a.x = __shfl_down_sync(0xFFFFFFFF, a.x, srcLane, width);
+      a.y = __shfl_down_sync(0xFFFFFFFF, a.y, srcLane, width);
       return *reinterpret_cast<double*>(&a);
     }    
     
@@ -138,7 +138,7 @@ Lines below this point are subject to the following license.
     __inline__ __device__
     int warpReduceSum(int val) {
       for (int offset = warpSize/2; offset > 0; offset /= 2)
-        val += __shfl_down(val, offset);
+        val += __shfl_down_sync(0xFFFFFFFF, val, offset);
       return val;
     }
 
@@ -215,7 +215,7 @@ Lines below this point are subject to the following license.
     __inline__ __device__
     int warpReduceMax(int val) {
       for (int offset = warpSize/2; offset > 0; offset /= 2)
-        val = max(__shfl_down(val, offset), val);
+        val = max(__shfl_down_sync(0xFFFFFFFF, val, offset), val);
       return val;
     }
 
