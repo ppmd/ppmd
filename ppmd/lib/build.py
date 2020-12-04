@@ -58,6 +58,7 @@ def write_header(header_src, extension='.h', dst_dir=ppmd.runtime.BUILD_DIR):
     if _MPIRANK == 0 and not _check_path_exists(filename):
         with open(filename, 'w') as fh:
             fh.write(header_src)
+            fh.write('\n')
     _MPIBARRIER()
     return Header(filename, system=False)
     
@@ -130,6 +131,8 @@ def _source_write(header_code, src_code, filename, extensions, dst_dir, CC):
     with open(os.path.join(dst_dir, filename + extensions[1]), 'w') as fh:
         fh.write('#include <' + filename + extensions[0] + '>\n\n')
         fh.write(str(src_code))
+        fh.write('\n')
+
     return filename, dst_dir
 
 def _load(filename):
