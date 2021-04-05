@@ -1,20 +1,9 @@
 from ppmd.lib import compiler, build
 import os
 from ppmd.sycl import sycl_config
+from ppmd import config
 
-DPCPP_CC = compiler.Compiler(
-    name="DPCPP",
-    binary=["dpcpp"],
-    c_flags=["-fPIC", "-O3", "-march=core-avx2"],
-    l_flags=[],
-    opt_flags=[],
-    dbg_flags=[],
-    compile_flag=["-c"],
-    shared_lib_flag=["-shared"],
-    restrict_keyword="restrict",
-)
-
-CC = DPCPP_CC
+CC = config.COMPILERS[os.environ.get("PPMD_CC_SYCL", "DPCPP")]
 
 SYCL_HEADER = """
 #include <CL/sycl.hpp>

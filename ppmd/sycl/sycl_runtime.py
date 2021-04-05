@@ -1,4 +1,5 @@
 import ctypes
+import os
 from ppmd import abort
 from ppmd.sycl.sycl_build import sycl_simple_lib_creator, build_static_libs
 
@@ -9,11 +10,13 @@ from ppmd.sycl.sycl_build import sycl_simple_lib_creator, build_static_libs
 #     abort('sycl_runtime error: Module is not initialised correctly, '
 #           'SYCL helper lib not loaded')
 
-LIB_HELPER = build_static_libs('syclHelperLib')
+LIB_HELPER = build_static_libs("syclHelperLib")
+DEVICE_SELECTOR = os.environ.get("PPMD_SYCL_DEVICE_SELECTOR", "cpu_selector")
+
 
 class Device:
-    def __init__(self, device_selector='cpu_selector'):
-        
+    def __init__(self, device_selector=DEVICE_SELECTOR):
+
         h = """
         """
         s = r"""
@@ -36,17 +39,18 @@ class Device:
             SELECTOR=device_selector
         )
 
-        lib = sycl_simple_lib_creator(h, s, "device_selector")['device_selector']
-        
+        lib = sycl_simple_lib_creator(h, s, "device_selector")["device_selector"]
+
         self.device = ctypes.c_void_p()
         lib(ctypes.byref(self.device))
+
 
 class Queue:
     def __init__(self, device):
         self.device = device
         self.lib = sycl_simple_lib_creator(
-                "",
-                r"""
+            "",
+            r"""
                 sycl::queue q;
                 extern "C"
                 int queue_creator(sycl::device *d, sycl::queue **q_ptr){
@@ -61,23 +65,16 @@ class Queue:
                     return 0;
                 }
                 """,
-                "queue_creator"
-            )
-        
+            "queue_creator",
+        )
+
         self.queue = ctypes.c_void_p()
         self.lib["queue_creator"](self.device.device, ctypes.byref(self.queue))
 
     def print_device_name(self):
         self.lib["print_device_name"](self.queue)
 
+
 device = Device()
 queue = Queue(device)
 queue.print_device_name()
-
-
-
-
-
-
-
-
