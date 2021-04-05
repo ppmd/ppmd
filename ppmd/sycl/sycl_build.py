@@ -1,0 +1,32 @@
+from ppmd.lib import compiler, build
+import os
+from ppmd.sycl import sycl_config
+
+DPCPP_CC = compiler.Compiler(
+    name="DPCPP",
+    binary=["dpcpp"],
+    c_flags=["-fPIC", "-O3", "-march=core-avx2"],
+    l_flags=[],
+    opt_flags=[],
+    dbg_flags=[],
+    compile_flag=["-c"],
+    shared_lib_flag=["-shared"],
+    restrict_keyword="restrict",
+)
+
+CC = DPCPP_CC
+
+SYCL_HEADER = """
+#include <CL/sycl.hpp>
+"""
+
+def sycl_simple_lib_creator(header_code, src_code, name=""):
+    header_code = SYCL_HEADER + "\n" + header_code
+    return build.simple_lib_creator(header_code, src_code, CC=CC, name=name, prefix="SYCL")
+
+def build_static_libs(lib):
+    with open(os.path.join(sycl_config.LIB_DIR, lib + ".hpp")) as fh:
+        hsrc = fh.read()
+    with open(os.path.join(sycl_config.LIB_DIR, lib + ".cpp")) as fh:
+        src = fh.read()
+    return sycl_simple_lib_creator(hsrc, src, lib)
