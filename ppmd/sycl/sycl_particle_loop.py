@@ -91,7 +91,6 @@ class SYCLParticleLoopBasic:
     def _generate_lib_specific_args(self):
         self._components['LIB_ARG_DECLS'] = [
                 cgen.Value('sycl::queue', '*_queue'),
-            cgen.Const(cgen.Value(host.int32_str, '_NUM_THREADS')),
             cgen.Const(cgen.Value(host.int32_str, '_N_LOCAL')),
             self.loop_timer.get_cpp_arguments_ast()
         ]
@@ -427,7 +426,7 @@ class SYCLParticleLoopBasic:
             _N_LOCAL = ctypes.c_int(n)
 
         assert _N_LOCAL is not None
-        args2 = [ctypes.c_int(runtime.NUM_THREADS), _N_LOCAL]
+        args2 = [ppmd.sycl.sycl_runtime.queue.queue, _N_LOCAL]
 
         args2.append(self.loop_timer.get_python_parameters())
 
