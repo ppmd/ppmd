@@ -15,8 +15,7 @@ from ppmd.lib.common import ctypes_map, OMP_DECOMP_HEADER
 
 import ppmd.sycl.sycl_runtime
 from ppmd.sycl.sycl_build import sycl_simple_lib_creator, CC
-
-
+from ppmd.modules.dsl_kernel_symbols import DSLKernelSymSub
 
 
 def Restrict(keyword, symbol):
@@ -53,16 +52,20 @@ class SYCLParticleLoopBasic:
                 if pd[1][0].group is not None:
                     self._group = pd[1][0].group
                     break
-   
+
+    def _generate_kernel(self):
+        k = DSLKernelSymSub(kernel=self._kernel.code)
+        self._components['KERNEL'] = k  
 
     def _generate(self):
         self._init_components()
-        self._generate_lib_specific_args()
-        self._generate_kernel_arg_decls()
-        self._generate_kernel_func()
-        self._generate_kernel_headers()
+        self._generate_kernel()
 
         self._generate_kernel_call()
+        self._generate_lib_specific_args()
+        self._generate_kernel_arg_decls()
+        self._generate_kernel_headers()
+
 
         self._generate_lib_outer_loop()
         self._generate_lib_func()
@@ -94,13 +97,8 @@ class SYCLParticleLoopBasic:
             self.loop_timer.get_cpp_arguments_ast()
         ]
 
-
-
     def _generate_lib_src(self):
         self._components['LIB_SRC'] = cgen.Module([
-            self._components['KERNEL_STRUCT_TYPEDEFS'],
-            cgen.Comment('#### Kernel function ####'),
-            self._components['KERNEL_FUNC'],
             cgen.Comment('#### Library function ####'),
             self._components['LIB_FUNC']
         ])
@@ -142,7 +140,6 @@ class SYCLParticleLoopBasic:
             )
 
 
-
     def _generate_kernel_headers(self):
         s = self._components['LIB_HEADERS']
         if self._kernel.headers is not None:
@@ -156,33 +153,13 @@ class SYCLParticleLoopBasic:
         self._components['KERNEL_HEADERS'] = cgen.Module(s)
 
 
-
-
-    def _generate_kernel_func(self):
-        self._components['KERNEL_FUNC'] = cgen.FunctionBody(
-            cgen.FunctionDeclaration(
-                cgen.DeclSpecifier(
-                    cgen.Value("void", 'k_' + self._kernel.name), 'inline'
-                ),
-                self._components['KERNEL_ARG_DECLS']
-            ),
-                cgen.Block([
-                    cgen.Line(self._kernel.code)
-                ])
-            )
-
     def _generate_kernel_arg_decls(self):
-
-        _kernel_arg_decls = []
+        
         _kernel_lib_arg_decls = []
-        _kernel_structs = cgen.Module([
-            cgen.Comment('#### Structs generated per ParticleDat ####')
-        ])
 
         if self._kernel.static_args is not None:
             for i, dat in enumerate(self._kernel.static_args.items()):
                 arg = cgen.Const(cgen.Value(host.ctypes_map[dat[1]], dat[0]))
-                _kernel_arg_decls.append(arg)
                 _kernel_lib_arg_decls.append(arg)
 
         for i, dat in enumerate(self._dat_dict.items()):
@@ -207,7 +184,6 @@ class SYCLParticleLoopBasic:
                 if not mode.write:
                     kernel_arg = cgen.Const(kernel_arg)
 
-                _kernel_arg_decls.append(kernel_arg)
 
                 if mode.write is True:
                     assert issubclass(type(obj), data.GlobalArrayClassic) or mode == access._INTERNAL_RW, \
@@ -222,10 +198,6 @@ class SYCLParticleLoopBasic:
                 if not dat[1][1].write:
                     ti = cgen.Const(ti)
                 typename = '_'+dat[0]+'_t'
-                _kernel_structs.append(cgen.Typedef(cgen.Struct('', [ti], typename)))
-
-                # MAKE STRUCT ARG
-                _kernel_arg_decls.append(cgen.Value(typename, dat[0]))
 
 
             if not dat[1][1].write:
@@ -233,13 +205,12 @@ class SYCLParticleLoopBasic:
 
             _kernel_lib_arg_decls.append(kernel_lib_arg)
 
-        self._components['KERNEL_ARG_DECLS'] = _kernel_arg_decls
         self._components['KERNEL_LIB_ARG_DECLS'] = _kernel_lib_arg_decls
-        self._components['KERNEL_STRUCT_TYPEDEFS'] = _kernel_structs
 
 
     def _generate_kernel_call(self):
 
+        kernel = self._components["KERNEL"]
         kernel_call = cgen.Module([
             cgen.Comment('#### Kernel call arguments ####'),
         ])
@@ -256,8 +227,8 @@ class SYCLParticleLoopBasic:
             obj = dat[1][0]
             dtype = dat[1][0].dtype
             nc = str(dat[1][0].ncomp)
+            sym = dat[0]
             if issubclass(type(dat[1][0]), host._Array):
-                sym = dat[0]
                 #if issubclass(type(dat[1][0]), data.GlobalArrayClassic):
                 #    sym += '[' + self._components['OMP_THREAD_INDEX_SYM'] + ']'
 
@@ -276,19 +247,11 @@ class SYCLParticleLoopBasic:
                     sycl_buffer_sym,
                     'read' if not mode.write else 'write'
                 )
-
-
-
-                kernel_call_symbols.append(sym)
-
-
-
-
+                
+                kernel.sub_sym(sym, sycl_access_sym)
 
 
             elif issubclass(type(dat[1][0]), host.Matrix):
-                call_symbol = dat[0] + '_c'
-                kernel_call_symbols.append(call_symbol)
 
                 _ishift = self._components['LIB_PAIR_INDEX_0'] + '*' + nc
                 
@@ -308,11 +271,18 @@ class SYCLParticleLoopBasic:
                     'read' if not mode.write else 'write'
                 )
 
-                isym = sycl_access_sym +'[' + _ishift + ']'
-                g = cgen.Value('_'+dat[0]+'_t', call_symbol)
-                g = cgen.Initializer(g, '{ &' + isym + '}')
-
-                kernel_call.append(g)
+                inner_sym = '_inner_{}'.format(sym)
+                kernel.sub_sym(sym + '.i', inner_sym)
+                kernel_call.append(
+                    cgen.Line(
+                        "auto {} = &{}[{}];".format(
+                            inner_sym,
+                            sycl_access_sym,
+                            _ishift
+                        )
+                    )
+                )
+                kernel.sub_sym(sym, inner_sym)
 
             else:
                 print("ERROR: Type not known")
@@ -322,13 +292,8 @@ class SYCLParticleLoopBasic:
 
         kernel_call.append(cgen.Comment('#### Kernel call ####'))
 
-        kernel_call_symbols_s = ''
-        for sx in kernel_call_symbols:
-            kernel_call_symbols_s += sx +','
-        kernel_call_symbols_s=kernel_call_symbols_s[:-1]
-
         kernel_call.append(cgen.Line(
-            'k_'+self._kernel.name+'(' + kernel_call_symbols_s + ');'
+            self._components['KERNEL'].kernel
         ))
 
         self._components['LIB_KERNEL_CALL'] = kernel_call

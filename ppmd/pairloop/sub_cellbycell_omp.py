@@ -150,7 +150,6 @@ class SubCellByCellOMP(object):
     
     def _generate_kernel(self):
         k = DSLKernelSymSub(kernel=self._kernel.code)
-
         self._components['KERNEL'] = k
 
     def _generate_kernel_func(self):
