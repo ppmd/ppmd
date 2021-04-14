@@ -60,7 +60,6 @@ class SYCLParticleLoopBasic:
         self._generate_lib_specific_args()
         self._generate_kernel_arg_decls()
         self._generate_kernel_func()
-        self._generate_map_macros()
         self._generate_kernel_headers()
 
         self._generate_kernel_call()
@@ -100,7 +99,6 @@ class SYCLParticleLoopBasic:
     def _generate_lib_src(self):
         self._components['LIB_SRC'] = cgen.Module([
             self._components['KERNEL_STRUCT_TYPEDEFS'],
-            self._components['KERNEL_MAP_MACROS'],
             cgen.Comment('#### Kernel function ####'),
             self._components['KERNEL_FUNC'],
             cgen.Comment('#### Library function ####'),
@@ -156,20 +154,6 @@ class SYCLParticleLoopBasic:
 
         s.append(self.loop_timer.get_cpp_headers_ast())
         self._components['KERNEL_HEADERS'] = cgen.Module(s)
-
-
-
-    def _generate_map_macros(self):
-
-        g = cgen.Module([cgen.Comment('#### KERNEL_MAP_MACROS ####')])
-
-        for i, dat in enumerate(self._dat_dict.items()):
-            if issubclass(type(dat[1][0]), host._Array):
-                g.append(cgen.Define(dat[0]+'(x)', '('+dat[0]+'[(x)])'))
-            if issubclass(type(dat[1][0]), host.Matrix):
-                g.append(cgen.Define(dat[0]+'(y)', dat[0]+'.i[(y)]'))
-
-        self._components['KERNEL_MAP_MACROS'] = g
 
 
 
