@@ -78,7 +78,6 @@ class SYCLParticleLoopBasic:
             data.ParticleDat: access.all_access_types,
             data.PositionDat: access.all_access_types,
             data.GlobalArrayClassic: (access.INC_ZERO, access.INC, access.READ),
-            data.GlobalArrayShared: (access.READ,),
         }
 
 
@@ -88,6 +87,9 @@ class SYCLParticleLoopBasic:
             'LIB_NAME': str(self._kernel.name) + '_wrapper',
             'LIB_HEADERS': [cgen.Include('omp.h', system=True), cgen.Line(OMP_DECOMP_HEADER)],
             'OMP_THREAD_INDEX_SYM': '_threadid',
+            "LOCAL_MEMORY_INIT": "",
+            "LOCAL_MEMORY_FINALISE": "",
+            "REDUCTION_STORE":"",
         }
 
     def _generate_lib_specific_args(self):
@@ -168,18 +170,19 @@ class SYCLParticleLoopBasic:
 
             obj = dat[1][0]
             mode = dat[1][1]
-            symbol = dat[0]
+            sym = dat[0]
+            dtype = dat[1][0].dtype
 
             kernel_lib_arg = cgen.Pointer(cgen.Value(host.ctypes_map[obj.dtype],
-                                          Restrict(CC.restrict_keyword, symbol))
+                                          Restrict(CC.restrict_keyword, sym))
                                       )
 
             if issubclass(type(obj), data.GlobalArrayClassic):
-                kernel_lib_arg = cgen.Pointer(kernel_lib_arg)
+                pass
 
             if issubclass(type(obj), host._Array):
                 kernel_arg = cgen.Pointer(cgen.Value(host.ctypes_map[obj.dtype],
-                                              Restrict(CC.restrict_keyword, symbol))
+                                              Restrict(CC.restrict_keyword, sym))
                                           )
                 if not mode.write:
                     kernel_arg = cgen.Const(kernel_arg)
@@ -190,17 +193,16 @@ class SYCLParticleLoopBasic:
                         "global array must be a thread safe type for write access. Type is:" + str(type(obj))
 
 
-            elif issubclass(type(dat[1][0]), host.Matrix):
+            elif issubclass(type(obj), host.Matrix):
                 # MAKE STRUCT TYPE
-                dtype = dat[1][0].dtype
                 ti = cgen.Pointer(cgen.Value(ctypes_map(dtype),
                                              Restrict(CC.restrict_keyword,'i')))
-                if not dat[1][1].write:
+                if not mode.write:
                     ti = cgen.Const(ti)
-                typename = '_'+dat[0]+'_t'
+                typename = f"_{sym}_t"
 
 
-            if not dat[1][1].write:
+            if not mode.write:
                 kernel_lib_arg = cgen.Const(kernel_lib_arg)
 
             _kernel_lib_arg_decls.append(kernel_lib_arg)
@@ -222,44 +224,103 @@ class SYCLParticleLoopBasic:
             for i, dat in enumerate(self._kernel.static_args.items()):
                 kernel_call_symbols.append(dat[0])
 
+        local_init = []
+        local_finalise = []
+        reduction_store = []
+
+        _i = self._components['LIB_PAIR_INDEX_0']
+        _i_local = f"{_i}_local"
+        
+
         for i, dat in enumerate(self._dat_dict.items()):
             mode = dat[1][1]
             obj = dat[1][0]
             dtype = dat[1][0].dtype
+            ctype = ctypes_map(dtype)
             nc = str(dat[1][0].ncomp)
             sym = dat[0]
-            if issubclass(type(dat[1][0]), host._Array):
+            if issubclass(type(obj), host._Array):
                 #if issubclass(type(dat[1][0]), data.GlobalArrayClassic):
                 #    sym += '[' + self._components['OMP_THREAD_INDEX_SYM'] + ']'
 
                 sycl_access_sym = '_sycl_access_' + sym
                 sycl_buffer_sym = '_{}_sycl_buffer'.format(sym)
-
+ 
                 sycl_buffer_creator = 'sycl::buffer<{}, 1>{}({}, sycl::range<1>({}));'.format(
-                    ctypes_map(dtype),
+                    ctype,
                     sycl_buffer_sym,
                     sym,
                     nc
                 )
 
-                sycl_access_creator = 'auto {0} = {1}.get_access<sycl::access::mode::{2}>(_cgh);'.format(
-                    sycl_access_sym,
-                    sycl_buffer_sym,
-                    'read' if not mode.write else 'write'
-                )
-                
+                if mode.write: # GA GlobalArray case
+                    sycl_access_creator = f"""
+                    sycl::accessor <{ctype}, 1, sycl::access::mode::read_write, sycl::access::target::local> 
+                        {sycl_access_sym}(sycl::range<1>(_WORKGROUPSIZE * {nc}), _cgh);
+                    """
+                    
+                    sycl_global_access_sym = f"{sycl_access_sym}_global"
+
+
+
+                    local_init.append(
+                        f"for(int _cx=0 ; _cx<{nc} ; _cx++) {{ {sycl_access_sym}[{_i_local} * {nc} + _cx] = 0; }}"
+                    )
+                    local_finalise.append(
+                        f"""
+                        if ({_i_local} == 0){{
+                            for(int _cx=0 ; _cx<{nc} ; _cx++) {{
+                                {ctype} _red_tmp = 0;
+                                for(int _lind=0 ; _lind<_WORKGROUPSIZE ; _lind++) {{
+                                    _red_tmp += {sycl_access_sym}[_lind * {nc} + _cx];
+                                }}
+                                {sycl_global_access_sym}[_item.get_group_linear_id() * {nc} + _cx] += _red_tmp;
+                            }}
+                        }}
+                        """
+                    )
+                    sycl_buffer_creator += f"\nauto {sycl_global_access_sym} = static_cast<{ctype} *>(sycl::malloc_shared(sizeof({ctype}) * _WORKGROUPCOUNT * {nc}, *_queue));"
+
+                    sycl_global_access = f"""
+                    for (int _lind=0 ; _lind<(_WORKGROUPCOUNT * {nc}) ; _lind++){{
+                        {sycl_global_access_sym}[_lind] = 0;
+                    }}
+                    """
+
+                    sycl_access_creator += "\n" + sycl_global_access
+
+                    reduction_store.append(
+                        f"""
+
+                        for(int _cx=0 ; _cx<{nc} ; _cx++){{
+                            for(int _wx=0 ; _wx<_WORKGROUPCOUNT ; _wx++){{
+                                {sym}[_cx] += {sycl_global_access_sym}[_wx * {nc} + _cx];
+                            }}
+                        }}
+                        sycl::free({sycl_global_access_sym}, *_queue);
+                        """
+                    )
+
+                else:
+
+                    sycl_access_creator = 'auto {0} = {1}.get_access<sycl::access::mode::{2}>(_cgh);'.format(
+                        sycl_access_sym,
+                        sycl_buffer_sym,
+                        'read' if not mode.write else 'write'
+                    )
+
                 kernel.sub_sym(sym, sycl_access_sym)
 
 
-            elif issubclass(type(dat[1][0]), host.Matrix):
+            elif issubclass(type(obj), host.Matrix):
 
-                _ishift = self._components['LIB_PAIR_INDEX_0'] + '*' + nc
+                _ishift = _i + '*' + nc
                 
-                sycl_access_sym = '_sycl_access_' + dat[0]
-                sycl_buffer_sym = '_{}_sycl_buffer'.format(dat[0])
+                sycl_access_sym = '_sycl_access_' + sym
+                sycl_buffer_sym = '_{}_sycl_buffer'.format(sym)
 
                 sycl_buffer_creator = 'sycl::buffer<{}, 1>{}({}, sycl::range<1>(_N_LOCAL * {}));'.format(
-                    ctypes_map(dtype),
+                    ctype,
                     sycl_buffer_sym,
                     dat[0],
                     nc
@@ -299,6 +360,13 @@ class SYCLParticleLoopBasic:
         self._components['LIB_KERNEL_CALL'] = kernel_call
         self._components['SYCL_ACCESSORS'] = sycl_accessors
         self._components['SYCL_BUFFERS'] = sycl_buffers
+        self._components['REDUCTION_STORE'] = '\n'.join(reduction_store)
+
+        if len(local_init) > 0:
+            self._components["LOCAL_MEMORY_INIT"] = "\n".join(local_init)
+        if len(local_finalise) > 0:
+            self._components["LOCAL_MEMORY_FINALISE"] = "_item.barrier(sycl::access::fence_space::local_space);\n"
+            self._components["LOCAL_MEMORY_FINALISE"] += "\n".join(local_finalise)
 
 
     def _generate_lib_outer_loop(self):
@@ -309,23 +377,39 @@ class SYCLParticleLoopBasic:
             ## buffer creationi
             cgen.Line("""
             {{
+
+                const size_t max_device_work_group_size = kernel.get_work_group_info<sycl::info::kernel_work_group::preferred_work_group_size_multiple>(device);
+                const int64_t _WORKGROUPCOUNT = (_N_LOCAL / _WORKGROUPSIZE) + 1;
+
                 {BUFFERS}
                 (*_queue).submit([&] (sycl::handler& _cgh) {{
                     {ACCESS}
                     _cgh.parallel_for<class _foo>(
-                        sycl::range<1>(_N_LOCAL),
-                        [=] (sycl::item<1> _item) {{
-                            auto {INDEX} = _item.get_linear_id();
+                        sycl::nd_range<1>(_N_LOCAL, _WORKGROUPSIZE),
+                        [=] (sycl::nd_item<1> _item) {{
+                            auto {INDEX} = _item.get_global_linear_id();
+                            auto {INDEX}_local = _item.get_local_linear_id();
+                            
+                            {LOCAL_MEMORY_INIT}
+
                             {KERNEL_CALL}
+
+                            {LOCAL_MEMORY_FINALISE}
                         }}
                     );
                 }});
+                (*_queue).wait_and_throw();
+
+                {REDUCTION_STORE}
             }}
                 """.format(
                     BUFFERS='\n'.join(self._components['SYCL_BUFFERS']),
                     ACCESS='\n'.join(self._components['SYCL_ACCESSORS']),
                     INDEX=self._components['LIB_PAIR_INDEX_0'],
-                    KERNEL_CALL=self._components['LIB_KERNEL_CALL']
+                    KERNEL_CALL=self._components['LIB_KERNEL_CALL'],
+                    LOCAL_MEMORY_INIT=self._components["LOCAL_MEMORY_INIT"],
+                    LOCAL_MEMORY_FINALISE=self._components["LOCAL_MEMORY_FINALISE"],
+                    REDUCTION_STORE=self._components["REDUCTION_STORE"],
                 )
                 ),
             )
@@ -358,7 +442,7 @@ class SYCLParticleLoopBasic:
             mode = dat[1][1]
 
             if issubclass(type(obj), data.GlobalArrayClassic):
-                args.append(obj.ctypes_data_access(mode, pair=False, threaded=True))
+                args.append(obj.ctypes_data_access(mode, pair=False, threaded=False))
             else:
                 args.append(obj.ctypes_data_access(mode, pair=False))
 
