@@ -5,6 +5,7 @@ import ctypes
 import numpy as np
 import ppmd as md
 from ppmd.access import *
+from ppmd.modules.dsl_kernel_symbols import DSLKernelSymSub
 
 Kernel = md.kernel.Kernel
 
@@ -97,6 +98,17 @@ def test_host_sym_1():
         AA.i[0] = 2;
         '''
     )
+
+    sym_kernel = DSLKernelSymSub(kernel.code)
+
+    sym_kernel.sub_sym('AA.i', '_AA_i')
+    sym_kernel.sub_sym('A.i', '_A_i')
+    
+    test_code = '''
+        _A_i[0] = 1;
+        _AA_i[0] = 2;
+        '''
+    assert sym_kernel.code == test_code
 
     loop = md.loop.ParticleLoopOMP(
         kernel,
