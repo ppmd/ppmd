@@ -7,6 +7,7 @@ CC = config.COMPILERS[os.environ.get("PPMD_CC_SYCL", "DPCPP")]
 
 SYCL_HEADER = """
 #include <CL/sycl.hpp>
+namespace sycl = cl::sycl;
 """
 
 def sycl_simple_lib_creator(header_code, src_code, name=""):
