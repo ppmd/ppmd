@@ -162,7 +162,7 @@ class SubCellByCellOMP(object):
                 self._components['KERNEL_ARG_DECLS']
             ),
                 cgen.Block([
-                    cgen.Line(self._components['KERNEL'].kernel)
+                    cgen.Line(self._components['KERNEL'].code)
                 ])
             )
 

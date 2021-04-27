@@ -24,3 +24,7 @@ class DSLKernelSymSub(object):
 
         k = re.sub(regex, new_sym, self.kernel)
         self.kernel = k
+
+    @property
+    def code(self):
+        return self.kernel
