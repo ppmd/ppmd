@@ -39,7 +39,7 @@ class SYCLParticleLoopBasic:
 
         self._generate()
         
-        print(self._components['LIB_SRC'])
+        #print(self._components['LIB_SRC'])
         self._lib = sycl_simple_lib_creator(self._generate_header_source(),
                                              self._components['LIB_SRC'],
                                              self._kernel.name)
@@ -116,11 +116,16 @@ class SYCLParticleLoopBasic:
 
         #include "%(LIB_DIR)s/generic.h"
 
+        #define _WORKGROUPSIZE %(WORKGROUPSIZE)s
+
         extern "C" %(FUNC_DEC)s
         '''
-        d = {'INCLUDED_HEADERS': str(self._components['KERNEL_HEADERS']),
-             'FUNC_DEC': str(self._components['LIB_FUNC'].fdecl),
-             'LIB_DIR': runtime.LIB_DIR}
+        d = {
+            'INCLUDED_HEADERS': str(self._components['KERNEL_HEADERS']),
+            'FUNC_DEC': str(self._components['LIB_FUNC'].fdecl),
+            'LIB_DIR': runtime.LIB_DIR,
+            'WORKGROUPSIZE': ppmd.sycl.sycl_runtime.WORK_GROUP_SIZE,
+        }
         return code % d
 
 
@@ -261,17 +266,21 @@ class SYCLParticleLoopBasic:
                     
                     sycl_global_access_sym = f"{sycl_access_sym}_global"
 
-
+                    sycl_local_access_sym = f"{sycl_access_sym}_local_mem"
 
                     local_init.append(
-                        f"for(int _cx=0 ; _cx<{nc} ; _cx++) {{ {sycl_access_sym}[{_i_local} * {nc} + _cx] = 0; }}"
+                        f"""
+                            for(int _cx=0 ; _cx<{nc} ; _cx++) {{ {sycl_access_sym}[{_i_local} * {nc} + _cx] = 0; }}
+                            auto {sycl_local_access_sym} = &{sycl_access_sym}[{_i_local}*{nc}];
+                        """
                     )
+
                     local_finalise.append(
                         f"""
                         if ({_i_local} == 0){{
                             for(int _cx=0 ; _cx<{nc} ; _cx++) {{
                                 {ctype} _red_tmp = 0;
-                                for(int _lind=0 ; _lind<_WORKGROUPSIZE ; _lind++) {{
+                                for(int _lind=0 ; _lind<_item.get_local_range(0) ; _lind++) {{
                                     _red_tmp += {sycl_access_sym}[_lind * {nc} + _cx];
                                 }}
                                 {sycl_global_access_sym}[_item.get_group_linear_id() * {nc} + _cx] += _red_tmp;
@@ -301,6 +310,7 @@ class SYCLParticleLoopBasic:
                         """
                     )
 
+                    kernel.sub_sym(sym, sycl_local_access_sym)
                 else:
 
                     sycl_access_creator = 'auto {0} = {1}.get_access<sycl::access::mode::{2}>(_cgh);'.format(
@@ -308,8 +318,7 @@ class SYCLParticleLoopBasic:
                         sycl_buffer_sym,
                         'read' if not mode.write else 'write'
                     )
-
-                kernel.sub_sym(sym, sycl_access_sym)
+                    kernel.sub_sym(sym, sycl_access_sym)
 
 
             elif issubclass(type(obj), host.Matrix):
@@ -332,7 +341,7 @@ class SYCLParticleLoopBasic:
                     'read' if not mode.write else 'write'
                 )
 
-                inner_sym = '_inner_{}'.format(sym)
+                inner_sym = '_inner_{}_i'.format(sym)
                 kernel.sub_sym(sym + '.i', inner_sym)
                 kernel_call.append(
                     cgen.Line(
@@ -343,7 +352,6 @@ class SYCLParticleLoopBasic:
                         )
                     )
                 )
-                kernel.sub_sym(sym, inner_sym)
 
             else:
                 print("ERROR: Type not known")
@@ -378,7 +386,6 @@ class SYCLParticleLoopBasic:
             cgen.Line("""
             {{
 
-                const size_t max_device_work_group_size = kernel.get_work_group_info<sycl::info::kernel_work_group::preferred_work_group_size_multiple>(device);
                 const int64_t _WORKGROUPCOUNT = (_N_LOCAL / _WORKGROUPSIZE) + 1;
 
                 {BUFFERS}

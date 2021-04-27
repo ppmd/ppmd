@@ -64,7 +64,15 @@ class Queue:
                     std::cout << q_tmp.get_device().get_info<sycl::info::device::name>() << "\n";
                     return 0;
                 }
-                """,
+
+                extern "C"
+                int get_max_work_group_size(sycl::queue *q_ptr, int * out){
+                    sycl::queue q_tmp = *q_ptr;
+                    auto device = q_tmp.get_device();
+                    *out = static_cast<int>(device.get_info<sycl::info::device::max_work_group_size>());
+                    return 0;
+                }
+            """,
             "queue_creator",
         )
 
@@ -73,8 +81,19 @@ class Queue:
 
     def print_device_name(self):
         self.lib["print_device_name"](self.queue)
+    
+    @property
+    def max_work_group_size(self):
+        out = ctypes.c_int(-1)
+        self.lib["get_max_work_group_size"](self.queue, ctypes.byref(out))
+        assert out.value > 0
+        return out.value
 
 
 device = Device()
 queue = Queue(device)
 queue.print_device_name()
+
+WORK_GROUP_SIZE = min(32, queue.max_work_group_size)
+
+
