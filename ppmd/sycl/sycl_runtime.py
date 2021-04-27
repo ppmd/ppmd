@@ -94,6 +94,6 @@ device = Device()
 queue = Queue(device)
 queue.print_device_name()
 
-WORK_GROUP_SIZE = min(32, queue.max_work_group_size)
+WORK_GROUP_SIZE = min(int(os.environ.get("PPMD_SYCL_WORK_GROUP_SIZE", 32)), queue.max_work_group_size)
 
 
